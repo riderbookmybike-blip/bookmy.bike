@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
 
 export type TenantType = 'DEALER' | 'BANK' | 'MARKETPLACE';
 
@@ -25,39 +26,52 @@ const TenantContext = createContext<TenantContextProps>({
 });
 
 export const TenantProvider = ({ children }: { children: ReactNode }) => {
-    // Persist mock tenant selection
     const [tenantType, setTenantTypeState] = useState<TenantType>('DEALER');
+    const [tenantName, setTenantName] = useState('Loading...');
 
-    // Mock status logic
+    // Mock status logic (Can be real later)
     const status: TenantStatus = 'ACTIVE';
     const isReadOnly = status !== 'ACTIVE';
 
     useEffect(() => {
-        const stored = localStorage.getItem('mock_tenant_type');
-        if (stored) setTenantTypeState(stored as TenantType);
+        const fetchTenantDetails = async () => {
+            try {
+                const supabase = createClient();
+                const { data: { user } } = await supabase.auth.getUser();
+
+                if (user) {
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('*, tenants(name, type)')
+                        .eq('id', user.id)
+                        .single();
+
+                    if (profile && profile.tenants) {
+                        // Map DB Tenant Type to UI Tenant Type
+                        // Ensure DB types match UI types (MARKETPLACE, DEALER, BANK)
+                        const dbType = profile.tenants.type;
+                        setTenantTypeState(dbType as TenantType);
+                        setTenantName(profile.tenants.name);
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching tenant details:', error);
+            }
+        };
+
+        fetchTenantDetails();
     }, []);
 
     const setTenantType = (type: TenantType) => {
+        // For debugging/switching specific roles if needed
         setTenantTypeState(type);
-        localStorage.setItem('mock_tenant_type', type);
-        // Force reload to clear any stale state if needed, or simple re-render
-        // window.location.reload(); 
-    };
-
-    const getTenantName = () => {
-        switch (tenantType) {
-            case 'DEALER': return 'Ace Honda (Dealer)';
-            case 'BANK': return 'HDFC Bank (Tenant)';
-            case 'MARKETPLACE': return 'BookMyBike HQ';
-            default: return 'Unknown';
-        }
     };
 
     return (
         <TenantContext.Provider value={{
             tenantType,
             setTenantType,
-            tenantName: getTenantName(),
+            tenantName,
             status,
             isReadOnly
         }}>
