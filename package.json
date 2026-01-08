@@ -14,9 +14,9 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@supabase/supabase-js": "^2.90.1",
     "lucide-react": "^0.562.0",
-    "next": "16.1.1",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
+    "next": "^16.1.1",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
     "zod": "^4.3.5"
   },
   "devDependencies": {
