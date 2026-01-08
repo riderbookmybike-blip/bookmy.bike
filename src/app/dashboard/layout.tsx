@@ -67,11 +67,4 @@ export default function DashboardLayout({
     );
 }
 
-<LoginSidebar
-    isOpen={isLoginOpen}
-    onClose={() => setIsLoginOpen(false)}
-    variant="TERMINAL"
-/>
-        </div >
-    );
-}
+
