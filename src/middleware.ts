@@ -3,8 +3,9 @@ import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
-    const host = request.headers.get('host') || '';
-    const hostname = host.split(':')[0]; // Remove port if present
+    const isDev = process.env.NODE_ENV === 'development';
+    // Use nextUrl.hostname which is reliable in Vercel Edge
+    const hostname = request.nextUrl.hostname;
 
     // --- CASE A: SUBDOMAIN (aums.bookmy.bike) ---
     if (hostname === 'aums.bookmy.bike' || hostname.startsWith('aums.')) {
@@ -36,6 +37,11 @@ export function middleware(request: NextRequest) {
     // 1. BLOCK Dashboard/AUMS Routes (Strict 404/Blocked)
     if (pathname.startsWith('/dashboard') || pathname.startsWith('/aums-landing')) {
         return NextResponse.rewrite(new URL('/blocked', request.url));
+    }
+
+    // NEW: Make /store the Homepage
+    if (pathname === '/') {
+        return NextResponse.rewrite(new URL('/store', request.url));
     }
 
     // 2. SEO Helper: Handle Legacy URL Redirects (Existing Logic)
