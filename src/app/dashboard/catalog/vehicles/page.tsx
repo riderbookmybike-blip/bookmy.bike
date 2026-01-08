@@ -5,6 +5,8 @@ import { Plus, Search, Filter, Car, Bike, MoreVertical } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import Image from 'next/image';
 
+import AddVehicleModal from '@/components/catalog/AddVehicleModal';
+
 interface Vehicle {
     id: string;
     type: string;
@@ -20,6 +22,7 @@ export default function VehicleCatalogPage() {
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [isArtModalOpen, setIsArtModalOpen] = useState(false);
 
     useEffect(() => {
         fetchVehicles();
@@ -56,13 +59,20 @@ export default function VehicleCatalogPage() {
                     <p className="text-slate-500 dark:text-slate-400 text-sm">Manage master list of vehicles for the marketplace</p>
                 </div>
                 <button
-                    onClick={() => alert('Add Vehicle Modal - Coming Next!')}
+                    onClick={() => setIsArtModalOpen(true)}
                     className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/30 active:scale-95"
                 >
                     <Plus size={20} />
                     Add Vehicle
                 </button>
             </div>
+
+            {/* Modal */}
+            <AddVehicleModal
+                isOpen={isArtModalOpen}
+                onClose={() => setIsArtModalOpen(false)}
+                onSuccess={fetchVehicles}
+            />
 
             {/* Filters */}
             <div className="flex gap-4">
