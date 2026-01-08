@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
-export type TenantType = 'DEALER' | 'BANK' | 'SUPER_ADMIN';
+export type TenantType = 'DEALER' | 'BANK' | 'MARKETPLACE';
 
 // Enhanced TenantContext with Status props
 export type TenantStatus = 'ACTIVE' | 'SUSPENDED' | 'TRIAL_EXPIRED';
@@ -48,7 +48,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
         switch (tenantType) {
             case 'DEALER': return 'Ace Honda (Dealer)';
             case 'BANK': return 'HDFC Bank (Tenant)';
-            case 'SUPER_ADMIN': return 'AUMS Admin';
+            case 'MARKETPLACE': return 'BookMyBike HQ';
             default: return 'Unknown';
         }
     };
