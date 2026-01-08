@@ -49,6 +49,7 @@ export async function submitLead(formData: FormData) {
         model: formData.get('model') as string,
         variant: formData.get('variant') as string,
         color: formData.get('color') as string,
+        selectedDealerId: formData.get('selectedDealerId') as string | null, // Optional
         honeypot: '',
         priceSnapshot: formData.get('priceSnapshot') ? JSON.parse(formData.get('priceSnapshot') as string) : null,
         utm: formData.get('utm') ? JSON.parse(formData.get('utm') as string) : null
@@ -61,30 +62,67 @@ export async function submitLead(formData: FormData) {
 
     const { data } = validation;
 
-    // 4. Determine Tenant (P0: Unassigned / NULL)
-    // We leave tenant_id as NULL. Admin dashboard will query `where tenant_id is null` to see new leads.
-    const tenantId = null;
+    try {
+        // 4. Determine Tenant (MARKETPLACE OWNER from DB)
+        // using Service Role Client (adminClient) because Public (Anon) user cannot read app_settings/tenants securely via RLS
+        const { data: settings } = await adminClient
+            .from('app_settings')
+            .select('default_owner_tenant_id')
+            .single();
 
-    // 5. Insert to Supabase (Bypassing RLS via Admin Client)
-    const { error } = await adminClient
-        .from('leads')
-        .insert({
-            tenant_id: tenantId,
-            customer_name: data.name,
-            customer_phone: data.phone,
-            customer_city: data.city,
-            interest_model: data.model,
-            interest_variant: data.variant,
-            interest_color: data.color,
-            price_snapshot: data.priceSnapshot,
-            utm_data: data.utm,
-            status: 'NEW'
-        });
+        const ownerTenantId = settings?.default_owner_tenant_id;
 
-    if (error) {
-        console.error('Lead Insert Error:', error);
-        return { success: false, message: 'System busy. Please try WhatsApp.' };
+        if (!ownerTenantId) {
+            console.error('CRITICAL: Default Owner Tenant ID missing in app_settings');
+            return { success: false, message: 'System error. Please contact support.' };
+        }
+
+        // 5. Insert Lead (Owned by Marketplace)
+        const { data: lead, error: insertError } = await adminClient
+            .from('leads')
+            .insert({
+                owner_tenant_id: ownerTenantId,
+                selected_dealer_tenant_id: rawData.selectedDealerId || null,
+                name: data.name,
+                phone: data.phone,
+                city: data.city,
+                pincode: null, // Can extract from city logic later if needed
+                interest_model: data.model,
+                interest_variant: data.variant,
+                interest_color: data.color,
+                price_snapshot: data.priceSnapshot,
+                utm_source: data.utm?.utm_source,
+                utm_medium: data.utm?.utm_medium,
+                utm_campaign: data.utm?.utm_campaign,
+                status: 'NEW'
+            })
+            .select('id')
+            .single();
+
+        if (insertError) {
+            console.error('Lead Insert Error:', insertError);
+            return { success: false, message: 'System busy (db). Please try WhatsApp.' };
+        }
+
+        // 6. If Dealer Selected -> Auto Share (FOREVER SHARING)
+        if (rawData.selectedDealerId && lead) {
+            const { error: shareError } = await adminClient
+                .from('lead_dealer_shares')
+                .insert({
+                    lead_id: lead.id,
+                    dealer_tenant_id: rawData.selectedDealerId,
+                    is_primary: true
+                });
+
+            if (shareError) {
+                console.warn('Share creation failed (non-critical):', shareError);
+            }
+        }
+
+        return { success: true, message: 'Callback requested successfully!' };
+
+    } catch (err) {
+        console.error('Unexpected lead sub error:', err);
+        return { success: false, message: 'Unexpected system error.' };
     }
-
-    return { success: true, message: 'Callback requested successfully!' };
 }
