@@ -207,7 +207,7 @@ export const getSidebarConfig = (tenantType: TenantType): SidebarGroup[] => {
   switch (tenantType) {
     case 'BANK':
       return BANK_SIDEBAR;
-    case 'SUPER_ADMIN':
+    case 'MARKETPLACE':
       return ADMIN_SIDEBAR;
     case 'DEALER':
     default:
