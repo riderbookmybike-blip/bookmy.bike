@@ -1,22 +1,65 @@
 'use client';
 
-import React from 'react';
-import { User, Mail, Phone, Shield, Building, MapPin } from 'lucide-react';
-import { useTenant } from '@/lib/tenant/tenantContext';
+import React, { useEffect, useState } from 'react';
+import { User, Mail, Phone, Shield, Building, MapPin, Loader2 } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 export default function ProfilePage() {
-    const { tenantType } = useTenant();
+    const [loading, setLoading] = useState(true);
+    const [user, setUser] = useState<{
+        name: string;
+        role: string;
+        email: string;
+        phone: string;
+        dealership: string;
+        location: string;
+    } | null>(null);
 
-    // Mock Data - In real app, fetch from Supabase
-    const user = {
-        name: typeof window !== 'undefined' ? localStorage.getItem('user_name') || 'Ajit Singh' : 'Ajit Singh',
-        role: tenantType || 'DEALER',
-        email: 'ajit.singh@honda.dealer.com',
-        phone: '+91 74474 03491',
-        dealership: 'Honda Delhi South',
-        location: 'Saket, New Delhi',
-        id: 'DLR-DEL-2024-001'
-    };
+    useEffect(() => {
+        async function fetchProfile() {
+            try {
+                const supabase = createClient();
+
+                // 1. Get Auth User
+                const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+                if (authError || !authUser) throw authError || new Error('No user found');
+
+                // 2. Get Profile & Tenant Details
+                const { data: profile, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('*, tenants(name)')
+                    .eq('id', authUser.id)
+                    .single();
+
+                if (profileError) throw profileError;
+
+                setUser({
+                    name: profile.full_name || 'BookMyBike User',
+                    role: profile.role || 'USER',
+                    email: authUser.email || '-',
+                    phone: profile.phone || '-',
+                    dealership: profile.tenants?.name || 'Unknown Organization',
+                    location: 'Mumbai, India', // Default for now
+                });
+            } catch (error) {
+                console.error('Error fetching profile:', error);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchProfile();
+    }, []);
+
+    if (loading) {
+        return (
+            <div className="flex h-[50vh] items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            </div>
+        );
+    }
+
+    if (!user) return null;
 
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
