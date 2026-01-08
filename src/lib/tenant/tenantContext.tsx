@@ -9,7 +9,7 @@ export type TenantType = 'DEALER' | 'BANK' | 'MARKETPLACE';
 export type TenantStatus = 'ACTIVE' | 'SUSPENDED' | 'TRIAL_EXPIRED';
 
 interface TenantContextProps {
-    tenantType: TenantType;
+    tenantType: TenantType | undefined;
     setTenantType: (type: TenantType) => void;
     tenantName: string;
     // Legacy / Status props
@@ -18,15 +18,16 @@ interface TenantContextProps {
 }
 
 const TenantContext = createContext<TenantContextProps>({
-    tenantType: 'DEALER',
+    tenantType: undefined,
     setTenantType: () => { },
-    tenantName: 'Demo Dealership',
+    tenantName: 'Loading...',
     status: 'ACTIVE',
     isReadOnly: false,
 });
 
 export const TenantProvider = ({ children }: { children: ReactNode }) => {
-    const [tenantType, setTenantTypeState] = useState<TenantType>('DEALER');
+    // Start as undefined so we don't default to DEALER prematurely
+    const [tenantType, setTenantTypeState] = useState<TenantType | undefined>(undefined);
     const [tenantName, setTenantName] = useState('Loading...');
 
     // Mock status logic (Can be real later)
@@ -40,18 +41,33 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                 const { data: { user } } = await supabase.auth.getUser();
 
                 if (user) {
-                    const { data: profile } = await supabase
+                    console.log('DEBUG: User ID:', user.id);
+                    const { data: profile, error } = await supabase
                         .from('profiles')
                         .select('*, tenants(name, type)')
                         .eq('id', user.id)
                         .single();
 
+                    if (error) {
+                        console.error('DEBUG: Error fetching profile:', error);
+                        return;
+                    }
+
                     if (profile && profile.tenants) {
-                        // Map DB Tenant Type to UI Tenant Type
-                        // Ensure DB types match UI types (MARKETPLACE, DEALER, BANK)
+                        console.log('DEBUG: Full Profile Data:', profile);
+                        // Ensure type mapping is exact
                         const dbType = profile.tenants.type;
-                        setTenantTypeState(dbType as TenantType);
+
+                        // If DB returned a type, use it. Otherwise warn.
+                        if (dbType) {
+                            setTenantTypeState(dbType as TenantType);
+                        } else {
+                            console.warn('DEBUG: Tenant has no TYPE column value!');
+                            setTenantTypeState('DEALER'); // Fallback only if strictly missing
+                        }
                         setTenantName(profile.tenants.name);
+                    } else {
+                        console.warn('DEBUG: Profile or Tenant not found for user');
                     }
                 }
             } catch (error) {
