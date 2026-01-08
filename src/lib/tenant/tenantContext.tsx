@@ -35,18 +35,42 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     const isReadOnly = status !== 'ACTIVE';
 
     useEffect(() => {
+        let mounted = true;
+
+        // Safety Timeout: If fetch hangs for 5s, force fallback to DEALER 
+        // This prevents "Blank Screen of Death" if API/RPC fails silently
+        const timeoutId = setTimeout(() => {
+            if (mounted) {
+                setTenantTypeState(prev => {
+                    if (prev === undefined) {
+                        console.warn('DEBUG: Fetch timed out, forcing fallback to DEALER');
+                        return 'DEALER';
+                    }
+                    return prev;
+                });
+                setTenantName(prev => prev === 'Loading...' ? 'System Timeout' : prev);
+            }
+        }, 5000);
+
         const fetchTenantDetails = async () => {
             try {
                 const supabase = createClient();
                 const { data: { user } } = await supabase.auth.getUser();
 
                 if (user) {
+                    if (!mounted) return;
                     console.log('DEBUG: User ID:', user.id);
+
                     // Use RPC to bypass RLS infinite recursion
                     const { data: profileData, error } = await supabase.rpc('get_session_profile');
 
+                    if (!mounted) return;
+
                     if (error) {
                         console.error('DEBUG: Error fetching profile (RPC):', error);
+                        // Fallback on Error so UI doesn't hang
+                        setTenantTypeState('DEALER');
+                        setTenantName('Error Loading Profile');
                         return;
                     }
 
@@ -74,10 +98,16 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                 }
             } catch (error) {
                 console.error('Error fetching tenant details:', error);
+                if (mounted) setTenantTypeState('DEALER');
             }
         };
 
         fetchTenantDetails();
+
+        return () => {
+            mounted = false;
+            clearTimeout(timeoutId);
+        };
     }, []);
 
     const setTenantType = (type: TenantType) => {
