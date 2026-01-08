@@ -22,7 +22,7 @@ export function usePermission() {
     const { tenantType } = useTenant();
 
     let currentRole: UserRole = 'TENANT_ADMIN'; // Default fallback
-    if (tenantType === 'SUPER_ADMIN') currentRole = 'SUPER_ADMIN';
+    if (tenantType === 'MARKETPLACE') currentRole = 'SUPER_ADMIN';
     else if (tenantType === 'BANK') currentRole = 'BANK_ADMIN';
     else if (tenantType === 'DEALER') currentRole = 'TENANT_ADMIN';
 
