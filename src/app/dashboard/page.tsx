@@ -16,7 +16,7 @@ export default function DashboardPage() {
             {/* Tenant specific Dashboard */}
             {tenantType === 'DEALER' && <DealerDashboard />}
             {tenantType === 'BANK' && <BankDashboard />}
-            {tenantType === 'SUPER_ADMIN' && <AdminDashboard />}
+            {tenantType === 'MARKETPLACE' && <AdminDashboard />}
         </div>
     );
 }
