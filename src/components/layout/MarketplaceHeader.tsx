@@ -40,6 +40,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                         <Link href="/store/finance" className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-white transition-colors">Zero Downpayment</Link>
                         <Link href="/store/blog" className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-white transition-colors">Blog</Link>
                         <Link href="/store/accessories" className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-white transition-colors">Accessories</Link>
+                        <Link href="/members" className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">Members</Link>
                     </nav>
                 </div>
 

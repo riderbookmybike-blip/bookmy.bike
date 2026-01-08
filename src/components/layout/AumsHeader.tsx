@@ -32,7 +32,7 @@ export const AumsHeader = ({ onLoginClick, onMenuClick, showSearch = false }: Au
     const handleLogout = () => {
         localStorage.removeItem('user_name');
         document.cookie = 'aums_session=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-        router.push('/aums-landing');
+        router.push('/');
         window.location.reload();
     };
 
@@ -48,7 +48,7 @@ export const AumsHeader = ({ onLoginClick, onMenuClick, showSearch = false }: Au
                             <Menu size={24} />
                         </button>
                     )}
-                    <Link href="/aums-landing" className="w-40 md:w-48">
+                    <Link href="/" className="w-40 md:w-48">
                         <Logo variant="blue" className="text-white" />
                     </Link>
 
