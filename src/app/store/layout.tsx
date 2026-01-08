@@ -1,0 +1,33 @@
+'use client';
+
+import React, { useState } from 'react';
+import { MarketplaceHeader } from '@/components/layout/MarketplaceHeader';
+import { MarketplaceFooter } from '@/components/layout/MarketplaceFooter';
+import LoginSidebar from '@/components/auth/LoginSidebar';
+
+export default function StoreLayout({
+    children,
+}: {
+    children: React.ReactNode;
+}) {
+    const [isLoginOpen, setIsLoginOpen] = useState(false);
+
+    return (
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-sans selection:bg-blue-500/30 transition-colors duration-300">
+            <MarketplaceHeader onLoginClick={() => setIsLoginOpen(true)} />
+
+            <main className="flex-1 pt-0">
+                {children}
+            </main>
+
+            <MarketplaceFooter />
+
+            {/* Global Login Sidebar */}
+            <LoginSidebar
+                isOpen={isLoginOpen}
+                onClose={() => setIsLoginOpen(false)}
+                variant="RETAIL"
+            />
+        </div>
+    );
+}

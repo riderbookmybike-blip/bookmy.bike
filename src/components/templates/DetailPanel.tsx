@@ -1,0 +1,174 @@
+'use client';
+
+import React, { useState } from 'react';
+import { X } from 'lucide-react';
+import ActivityTimeline from './ActivityTimeline';
+
+const TABS = ['Overview', 'Details', 'Settings', 'Activity'];
+type TabName = typeof TABS[number];
+
+interface DetailPanelProps {
+    title: string;
+    status?: string;
+    onClose?: () => void;
+    renderContent?: (activeTab: string) => React.ReactNode;
+    rightPanelContent?: (activeTab: string) => React.ReactNode;
+    onTabChange?: (tab: string) => void; // NEW: Callback for tab change
+    actionButton?: React.ReactNode;
+    tabs?: string[];
+    isLoading?: boolean;
+    hideHeader?: boolean;
+    onEdit?: () => void; // New prop
+    onAction?: () => void; // New prop
+}
+
+export default function DetailPanel({
+    title,
+    status = 'Active',
+    onClose,
+    renderContent,
+    rightPanelContent,
+    onTabChange,
+    actionButton,
+    tabs = TABS as unknown as string[],
+    isLoading = false,
+    hideHeader = false,
+    onEdit,
+    onAction,
+}: DetailPanelProps) {
+    const effectiveTabs = tabs.includes('Activity') ? tabs : [...tabs, 'Activity'];
+    const [activeTab, setActiveTab] = useState<string>(effectiveTabs[0]);
+
+    const handleTabClick = (tab: string) => {
+        setActiveTab(tab);
+        if (onTabChange) onTabChange(tab);
+    };
+
+    // Helper to get status badge styling
+    const getStatusBadgeClass = (s: string) => {
+        const status = s?.toLowerCase();
+        if (['active', 'issued', 'delivered', 'completed', 'paid', 'confirmed'].includes(status)) {
+            return 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800';
+        }
+        if (['pending', 'processing', 'in_progress', 'awaiting'].includes(status)) {
+            return 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800';
+        }
+        if (['cancelled', 'rejected', 'failed', 'overdue'].includes(status)) {
+            return 'bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800';
+        }
+        return 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700';
+    };
+
+    return (
+        <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900">
+            {/* Header */}
+            {!hideHeader && (
+                <div className="px-6 lg:px-8 py-5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between shrink-0">
+                    <div>
+                        <div className="flex items-center gap-3">
+                            <h1 className="text-xl lg:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{title}</h1>
+                            <span className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold border ${getStatusBadgeClass(status)}`}>
+                                {status}
+                            </span>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => {
+                                console.log('Edit clicked');
+                                if (onEdit) onEdit();
+                                else console.log('onEdit prop missing');
+                            }}
+                            className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                        >
+                            Edit
+                        </button>
+                        <button
+                            onClick={() => {
+                                console.log('Actions clicked');
+                                if (onAction) onAction();
+                                else console.log('onAction prop missing');
+                            }}
+                            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm hover:bg-indigo-700 font-semibold shadow-lg shadow-indigo-500/20 transition-all hover:shadow-xl hover:shadow-indigo-500/30"
+                        >
+                            Actions
+                        </button>
+                        {onClose && (
+                            <button
+                                onClick={onClose}
+                                className="p-2 ml-1 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                            >
+                                <X size={20} strokeWidth={1.5} />
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Tabs Navigation - Premium Segmented Control */}
+            <div className="px-6 lg:px-8 py-3 border-b border-slate-100 dark:border-white/5 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md shrink-0 flex items-center justify-between">
+                <div className="flex bg-slate-100/50 dark:bg-white/5 p-1 rounded-2xl border border-slate-200/50 dark:border-white/5">
+                    <nav className="flex space-x-1 overflow-x-auto scrollbar-none">
+                        {effectiveTabs.map((tab) => (
+                            <button
+                                key={tab}
+                                onClick={() => handleTabClick(tab)}
+                                className={`
+                                    min-w-[100px] py-2 px-6 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all duration-300
+                                    ${activeTab === tab
+                                        ? 'bg-white dark:bg-white/10 text-blue-600 dark:text-blue-400 shadow-sm scale-[1.02] border border-slate-200/50 dark:border-white/10'
+                                        : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/5'
+                                    }
+                                `}
+                            >
+                                {tab}
+                            </button>
+                        ))}
+                    </nav>
+                </div>
+
+                <div className="flex items-center">
+                    {actionButton}
+                </div>
+            </div>
+
+            {/* Content Area - Symmetric Padding */}
+            <div className="flex-1 overflow-auto scrollbar-thin px-6 lg:px-8 py-6">
+                {rightPanelContent ? (
+                    // 2-Column Layout when rightPanelContent is provided
+                    <div className="flex gap-10 w-full h-full">
+                        <div className="flex-[8] min-w-0 overflow-auto">
+                            {isLoading ? (
+                                <div className="space-y-6 animate-pulse">
+                                    <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded-lg w-1/4"></div>
+                                    <div className="h-40 bg-slate-200 dark:bg-slate-800 rounded-2xl"></div>
+                                </div>
+                            ) : activeTab === 'Activity' ? (
+                                <ActivityTimeline />
+                            ) : (
+                                renderContent && renderContent(activeTab)
+                            )}
+                        </div>
+                        <div className="flex-[2] min-w-0 overflow-auto">
+                            {rightPanelContent(activeTab)}
+                        </div>
+                    </div>
+                ) : (
+                    // Original single-column layout - FULL WIDTH
+                    <div className="w-full h-full flex flex-col">
+                        {isLoading ? (
+                            <div className="space-y-6 animate-pulse">
+                                <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded-lg w-1/4"></div>
+                                <div className="h-40 bg-slate-200 dark:bg-slate-800 rounded-2xl"></div>
+                            </div>
+                        ) : activeTab === 'Activity' ? (
+                            <ActivityTimeline />
+                        ) : (
+                            renderContent && renderContent(activeTab)
+                        )}
+                    </div>
+                )}
+            </div>
+        </div >
+    );
+}

@@ -1,0 +1,352 @@
+import {
+    RegistrationRule,
+    FormulaComponent,
+    CalculationContext,
+    CalculationResult,
+    CalculationResultItem
+} from "@/types/registration";
+
+const applyRounding = (amount: number, mode?: 'NONE' | 'ROUND' | 'CEIL' | 'FLOOR'): number => {
+    // User requested default rounding up (Ceil) for all calculations
+    // We still respect specific overrides if they exist in data, but default is now CEIL.
+    if (mode === 'FLOOR') return Math.floor(amount);
+    if (mode === 'ROUND') return Math.round(amount);
+    if (mode === 'NONE') return amount;
+    return Math.ceil(amount);
+};
+
+/**
+ * Recursive evaluator for Formula Components
+ */
+const evaluateComponent = (
+    comp: FormulaComponent,
+    ctx: CalculationContext,
+    accumulatedResults: CalculationResultItem[] = []
+): CalculationResultItem[] => {
+
+    const results: CalculationResultItem[] = [];
+    const runningTotal = accumulatedResults.reduce((sum, item) => sum + item.amount, 0);
+
+    // Helper: Apply Variant/RegType Logic (Company, BH Series)
+    const applyVariantLogic = (amount: number, ctx: CalculationContext, comp: FormulaComponent): { amount: number, metaSuffix: string } => {
+        let finalAmount = amount;
+        let suffix = '';
+
+        const treatment = comp.variantTreatment ?? (comp.type === 'SLAB' ? 'PRO_RATA' : 'NONE');
+
+        // 1. Company Registration (Multiplier)
+        if (ctx.regType === 'COMPANY' && ctx.variantConfig?.companyMultiplier && ctx.variantConfig.companyMultiplier > 1) {
+            // Apply multiplier only if it's considered a Tax (Slab or Pro-Rata explicit)
+            if (treatment === 'PRO_RATA' || comp.isRoadTax) {
+                finalAmount = finalAmount * ctx.variantConfig.companyMultiplier;
+                suffix += ` [Company x${ctx.variantConfig.companyMultiplier}]`;
+            }
+        }
+
+        // 2. BH Series (Bharat Series)
+        if (ctx.regType === 'BH_SERIES') {
+            if (treatment === 'PRO_RATA') {
+                const annual = amount / (ctx.variantConfig?.stateTenure || 15); // e.g. / 15
+                const bhAmount = annual * (ctx.variantConfig?.bhTenure || 2); // e.g. * 2
+                finalAmount = bhAmount;
+                suffix += ` [Pro-rata ${ctx.variantConfig?.bhTenure || 2}/${ctx.variantConfig?.stateTenure || 15} yrs]`;
+            }
+        }
+
+        return {
+            amount: applyRounding(finalAmount, comp.roundingMode),
+            metaSuffix: suffix
+        };
+    };
+
+    // Helper: Get Value from Component (Scalar or Matrix)
+    const getMatrixValue = (comp: FormulaComponent, defaultVal: number, ctx: CalculationContext): number => {
+        if (!comp.fuelMatrix) return defaultVal;
+
+        const fuel = (ctx.fuelType || 'PETROL').toUpperCase(); // Normalizing
+        // Exact match or fallback to PETROL, then 0
+        let val = 0;
+        if (fuel.includes('PETROL')) val = comp.fuelMatrix.PETROL ?? defaultVal;
+        else if (fuel.includes('DIESEL')) val = comp.fuelMatrix.DIESEL ?? defaultVal;
+        else if (fuel.includes('EV') || fuel.includes('ELECTRIC')) val = comp.fuelMatrix.EV ?? defaultVal;
+        else if (fuel.includes('CNG')) val = comp.fuelMatrix.CNG ?? defaultVal;
+        else val = comp.fuelMatrix.PETROL ?? defaultVal; // Fallback
+
+        return val;
+    };
+
+    // 1. Percentage
+    if (comp.type === 'PERCENTAGE') {
+        let basisValue = ctx.exShowroom;
+        let basisLabel = 'Ex-Showroom';
+
+        if (comp.basis === 'INVOICE_BASE') {
+            basisValue = ctx.invoiceBase || ctx.exShowroom;
+            basisLabel = 'Invoice Base';
+        } else if (comp.basis === 'PREVIOUS_TAX_TOTAL') {
+            basisValue = runningTotal;
+            basisLabel = 'Prev. Tax';
+        } else if (comp.basis === 'TARGET_COMPONENT' && comp.targetComponentId) {
+            // Find the specific component's result
+            const targetResult = accumulatedResults.find(r => r.componentId === comp.targetComponentId);
+            if (targetResult) {
+                basisValue = targetResult.amount;
+                basisLabel = targetResult.label; // e.g. "MV Tax 15 Years"
+            } else {
+                basisValue = 0;
+                basisLabel = 'Missing Component';
+            }
+        }
+
+
+
+        const pct = getMatrixValue(comp, comp.percentage || 0, ctx);
+        const rawAmt = basisValue * (pct / 100);
+
+        // Apply Variant Logic (BH Series, etc.)
+        const adjusted = applyVariantLogic(rawAmt, ctx, comp);
+        const finalAmt = adjusted.amount;
+        const metaSuffix = adjusted.metaSuffix;
+
+        results.push({
+            label: comp.label,
+            amount: finalAmt,
+            meta: `${pct}% of ${basisLabel} (₹${basisValue.toLocaleString()})${comp.roundingMode === 'CEIL' ? ' [Round Up]' : ''}${metaSuffix}`,
+            componentId: comp.id
+        });
+    }
+
+    // 2. Fixed
+    else if (comp.type === 'FIXED') {
+        const amtValue = getMatrixValue(comp, comp.amount || 0, ctx);
+        const adjusted = applyVariantLogic(amtValue, ctx, comp);
+        const finalAmt = adjusted.amount;
+        const metaSuffix = adjusted.metaSuffix;
+
+        results.push({
+            label: comp.label,
+            amount: finalAmt,
+            meta: `Fixed Charge${metaSuffix}`,
+            componentId: comp.id
+        });
+    }
+
+    // 3. Conditional
+    else if (comp.type === 'CONDITIONAL') {
+        let isMatch = false;
+
+        // Resolve Variable
+        let actualValue: any = null;
+        if (comp.conditionVariable === 'REG_TYPE') actualValue = ctx.regType;
+        else if (comp.conditionVariable === 'FUEL_TYPE') actualValue = ctx.fuelType;
+        else if (comp.conditionVariable === 'ENGINE_CC') actualValue = ctx.engineCc;
+        else if (comp.conditionVariable === 'EX_SHOWROOM') actualValue = ctx.exShowroom;
+        else if (comp.conditionVariable === 'KW_RATING') actualValue = ctx.kwRating;
+        else if (comp.conditionVariable === 'SEATING_CAPACITY') actualValue = ctx.seatingCapacity;
+        else if (comp.conditionVariable === 'GROSS_VEHICLE_WEIGHT') actualValue = ctx.grossVehicleWeight;
+
+        const targetValue = comp.conditionValue;
+
+        // Normalize for Comparison
+        const normalize = (v: any) => String(v || '').trim().toLowerCase();
+        const numActual = Number(actualValue);
+        const numTarget = Number(targetValue);
+        const isNumeric = !isNaN(numActual) && !isNaN(numTarget) && targetValue !== '';
+
+        console.log(`[Eval] Condition: ${comp.conditionVariable} (${actualValue}) ${comp.conditionOperator} ${targetValue}`);
+
+        // Compare
+        switch (comp.conditionOperator) {
+            case 'EQUALS':
+                isMatch = normalize(actualValue) === normalize(targetValue);
+                break;
+            case 'NOT_EQUALS':
+                isMatch = normalize(actualValue) !== normalize(targetValue);
+                break;
+            case 'GREATER_THAN':
+                isMatch = isNumeric && numActual > numTarget;
+                break;
+            case 'LESS_THAN':
+                isMatch = isNumeric && numActual < numTarget;
+                break;
+            case 'GREATER_EQUALS':
+                isMatch = isNumeric && numActual >= numTarget;
+                break;
+            case 'LESS_EQUALS':
+                isMatch = isNumeric && numActual <= numTarget;
+                break;
+        }
+
+        console.log(`[Eval] Result: ${isMatch}`);
+
+        const blockToRun = isMatch ? comp.thenBlock : comp.elseBlock;
+
+        if (blockToRun && blockToRun.length > 0) {
+            // We pass the currently accumulated results + whatever results this block generates locally?
+            // Actually, we need to pass the *current state*.
+            // Since we process children sequentially, we can create a local accumulator.
+
+            const currentScopeResults = [...accumulatedResults];
+
+            blockToRun.forEach(child => {
+                const childResults = evaluateComponent(child, ctx, currentScopeResults);
+
+                // UX Fix: If the Condition wrapper has a specific name (e.g. "MV Tax 15 Years"), 
+                // propagate it to the child result so it appears on the invoice.
+                if (comp.label && comp.label !== 'Condition' && comp.label !== 'Condition Name') {
+                    childResults.forEach(res => {
+                        // If child is generic "New Charge", replace it. Otherwise prepend.
+                        if (res.label === 'New Charge' || res.label === 'Charge Label') {
+                            res.label = comp.label;
+                        } else {
+                            res.label = `${comp.label} - ${res.label}`;
+                        }
+                    });
+                }
+
+                results.push(...childResults);
+                currentScopeResults.push(...childResults);
+            });
+        }
+    }
+
+    // 4. Switch (Multi-Way)
+    else if (comp.type === 'SWITCH') {
+        const variable = comp.switchVariable || 'REG_TYPE';
+        let currentValue: string = 'STATE_INDIVIDUAL'; // Default or fallback
+
+        if (variable === 'REG_TYPE') currentValue = ctx.regType;
+        else if (variable === 'FUEL_TYPE') currentValue = ctx.fuelType || 'PETROL';
+
+        // Find matching case
+        const matchingCase = comp.cases?.find(c => c.matchValue === currentValue);
+
+        if (matchingCase && matchingCase.block) {
+            // Create a local accumulator for this block's children
+            const currentScopeResults = [...accumulatedResults];
+
+            matchingCase.block.forEach(child => {
+                const childResults = evaluateComponent(child, ctx, currentScopeResults);
+
+                // UX Fix: Propagate parent label if applicable
+                if (comp.label && comp.label !== 'Switch' && comp.label !== 'Switch Name') {
+                    childResults.forEach(res => {
+                        if (res.label === 'New Charge' || res.label === 'Charge Label') {
+                            res.label = comp.label;
+                        } else {
+                            res.label = `${comp.label} - ${res.label}`;
+                        }
+                    });
+                }
+
+                results.push(...childResults);
+                currentScopeResults.push(...childResults);
+            });
+        }
+    }
+
+    // 5. SLAB / TABLE
+    else if (comp.type === 'SLAB') {
+        const ranges = comp.ranges || [];
+        const currentFuel = (ctx.fuelType || '').toUpperCase();
+
+        let match: any = null;
+        let actualValue: number = 0;
+        let basisVariable: string = 'EX_SHOWROOM';
+
+        // Universal Flat List Evaluation: Row by Row
+        for (const range of ranges) {
+            // 1. Check Fuel Applicability (If defined)
+            if (range.applicableFuels && range.applicableFuels.length > 0) {
+                const isMatch = range.applicableFuels.some(f => currentFuel.includes(f));
+                if (!isMatch) continue;
+            }
+
+            // 2. Resolve Basis Value for this Row
+            const rowVariable = range.slabBasis || comp.slabVariable || 'EX_SHOWROOM';
+            basisVariable = rowVariable;
+
+            let val: number = 0;
+            if (rowVariable === 'ENGINE_CC') val = ctx.engineCc || 0;
+            else if (rowVariable === 'KW_RATING') val = ctx.kwRating || 0;
+            else if (rowVariable === 'SEATING_CAPACITY') val = ctx.seatingCapacity || 0;
+            else if (rowVariable === 'GROSS_VEHICLE_WEIGHT') val = ctx.grossVehicleWeight || 0;
+            else val = ctx.exShowroom; // Default to Price
+
+            // 3. Check Range
+            const minOk = val >= range.min;
+            const maxOk = range.max === null || val <= range.max;
+
+            if (minOk && maxOk) {
+                match = range;
+                actualValue = val;
+                break; // Stop at first match (Top-Down priority)
+            }
+        }
+
+        if (match) {
+            // Calculate base tax
+            // Assumption: Percentage is applied on Ex-Showroom unless specified otherwise. 
+            // Most RTOs apply % on Cost even if slab is based on CC.
+            // If basis is needed, we'd need comp.basis vs comp.slabVariable distinction. 
+            // For now, assuming standard Ad Valorem on Ex-Showroom.
+            const basisAmount = ctx.exShowroom;
+            const rawAmt = basisAmount * (match.percentage / 100);
+
+            const adjusted = applyVariantLogic(rawAmt, ctx, comp);
+
+            results.push({
+                label: comp.label,
+                amount: adjusted.amount,
+                meta: `${match.percentage}% (Slab ${match.min}-${match.max || '∞'} ${basisVariable}) [${ctx.fuelType || 'Any'}]${adjusted.metaSuffix}`,
+                componentId: comp.id
+            });
+
+            // Add Integrated Cess if present
+            if (match.cessPercentage) {
+                const cessRaw = rawAmt * (match.cessPercentage / 100);
+                const cessAdjusted = applyVariantLogic(cessRaw, ctx, comp); // Use Same rounding/logic as base comp
+                results.push({
+                    label: `${comp.label} (Cess)`,
+                    amount: cessAdjusted.amount,
+                    meta: `${match.cessPercentage}% Surcharge on ${comp.label} (₹${rawAmt.toLocaleString()})`,
+                    componentId: `${comp.id}_cess`
+                });
+            }
+        }
+    }
+
+
+    return results;
+};
+
+export const calculateRegistrationCharges = (
+    rule: RegistrationRule,
+    context: CalculationContext
+): CalculationResult => {
+
+    const breakdown: CalculationResultItem[] = [];
+
+    rule.components.forEach(comp => {
+        const compResults = evaluateComponent(comp, context, breakdown);
+        breakdown.push(...compResults);
+    });
+
+    const totalAmount = breakdown.reduce((sum, item) => sum + item.amount, 0);
+
+    return {
+        breakdown,
+        totalAmount,
+        ruleId: rule.id,
+        ruleVersion: rule.version
+    };
+};
+
+export const validateRule = (rule: RegistrationRule): { valid: boolean, error?: string } => {
+    if (!rule.ruleName) return { valid: false, error: 'Rule Name is required' };
+    if (!rule.stateCode) return { valid: false, error: 'State is required' };
+    if (rule.components.length === 0) return { valid: false, error: 'Rule must have at least one component' };
+
+    // Recursive validation could be added here
+    return { valid: true };
+};

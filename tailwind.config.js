@@ -1,0 +1,35 @@
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+    content: [
+        "./src/**/*.{js,ts,jsx,tsx,mdx}",
+    ],
+    darkMode: "class", // Enables class-based toggling (.dark)
+    theme: {
+        extend: {
+            animation: {
+                'pulse-slower': 'pulse 8s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                'gradient-x': 'gradient-x 15s ease infinite',
+                'bounce-slow': 'bounce 3s infinite',
+                'scan': 'scan 3s linear infinite',
+            },
+            keyframes: {
+                'scan': {
+                    '0%': { top: '0%' },
+                    '100%': { top: '100%' },
+                },
+                'gradient-x': {
+                    '0%, 100%': {
+                        'background-size': '200% 200%',
+                        'background-position': 'left center',
+                    },
+                    '50%': {
+                        'background-size': '200% 200%',
+                        'background-position': 'right center',
+                    },
+                },
+            },
+        },
+    },
+    plugins: [],
+}
