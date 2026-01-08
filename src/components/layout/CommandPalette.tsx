@@ -23,6 +23,7 @@ export default function CommandPalette({ role }: CommandPaletteProps) {
 
     // 1. Flatten all navigable items (Pages) based on Tenant
     const allCommands = useMemo(() => {
+        if (!tenantType) return [];
         const sidebarSections = getSidebarConfig(tenantType);
 
         const commands: {
@@ -75,6 +76,7 @@ export default function CommandPalette({ role }: CommandPaletteProps) {
 
             // Alt + 1-9 Navigation
             if (e.altKey && !isNaN(parseInt(e.key))) {
+                if (!tenantType) return;
                 const num = parseInt(e.key);
                 if (num >= 1 && num <= 9) {
                     const sidebarSections = getSidebarConfig(tenantType);
