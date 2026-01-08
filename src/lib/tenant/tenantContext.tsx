@@ -42,16 +42,18 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
                 if (user) {
                     console.log('DEBUG: User ID:', user.id);
-                    const { data: profile, error } = await supabase
-                        .from('profiles')
-                        .select('*, tenants(name, type)')
-                        .eq('id', user.id)
-                        .single();
+                    // Use RPC to bypass RLS infinite recursion
+                    const { data: profileData, error } = await supabase.rpc('get_session_profile');
 
                     if (error) {
-                        console.error('DEBUG: Error fetching profile:', error);
+                        console.error('DEBUG: Error fetching profile (RPC):', error);
                         return;
                     }
+
+                    // RPC returns JSONB, so we cast it to our expected shape
+                    const profile = profileData as any;
+
+
 
                     if (profile && profile.tenants) {
                         console.log('DEBUG: Full Profile Data:', profile);
