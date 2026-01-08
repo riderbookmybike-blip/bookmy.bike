@@ -21,15 +21,26 @@ export function middleware(request: NextRequest) {
             return NextResponse.rewrite(new URL('/aums-landing', request.url));
         }
 
-        // 3. Protect /dashboard/*
-        if (pathname.startsWith('/dashboard')) {
-            const session = request.cookies.get('aums_session'); // Or supabase auth cookie check
-            // Note: Real Supabase middleware should go here if using their helpers, 
-            // but for P0 structure, this simple check remains as placeholder or we rely on page-level auth.
-            // We will assume page-level redirects for P0 to keep middleware simple.
+        // NEW: Clean URL - Redirect /aums-landing to /
+        if (pathname === '/aums-landing') {
+            return NextResponse.redirect(new URL('/', request.url));
         }
 
-        return NextResponse.next();
+        // 3. Protect /dashboard/*
+        if (pathname.startsWith('/dashboard')) {
+            const session = request.cookies.get('aums_session');
+            if (!session) {
+                return NextResponse.redirect(new URL('/', request.url));
+            }
+        }
+
+        // Add SEO Headers for AUMS
+        const response = pathname === '/'
+            ? NextResponse.rewrite(new URL('/aums-landing', request.url))
+            : NextResponse.next();
+
+        response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+        return response;
     }
 
     // --- CASE B: MAIN DOMAIN (bookmy.bike) ---

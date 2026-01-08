@@ -2,11 +2,8 @@
 
 import React, { useState } from 'react';
 import Sidebar from '@/components/Sidebar';
-import DashboardHeader from '@/components/layout/DashboardHeader';
-import { useTenant } from '@/lib/tenant/tenantContext';
-import { AumsHeader } from '@/components/layout/AumsHeader';
-import { AumsFooter } from '@/components/layout/AumsFooter';
-import LoginSidebar from '@/components/auth/LoginSidebar';
+import { DashboardHeader } from '@/components/layout/DashboardHeader';
+// AumsFooter removed for Dashboard
 
 export default function DashboardLayout({
     children,
@@ -32,13 +29,13 @@ export default function DashboardLayout({
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-            {/* Unified AUMS Header handles Search, Notifications, and Profile */}
-            <AumsHeader
+            {/* Dedicated CRM Header */}
+            <DashboardHeader
                 onMenuClick={() => setIsMobileSidebarOpen(true)}
                 showSearch={true}
             />
 
-            <div className="flex pt-20">
+            <div className="flex pt-16"> {/* Reduced top padding for 64px header */}
                 {/* Sidebar Component */}
                 <Sidebar
                     role="TENANT_ADMIN"
@@ -57,8 +54,7 @@ export default function DashboardLayout({
                     <main className="flex-1 overflow-x-hidden p-6 md:p-8">
                         {children}
                     </main>
-
-                    <AumsFooter />
+                    {/* Footer Removed for Dashboard */}
                 </div>
             </div>
 
@@ -68,5 +64,14 @@ export default function DashboardLayout({
                 variant="TERMINAL"
             />
         </div>
+    );
+}
+
+<LoginSidebar
+    isOpen={isLoginOpen}
+    onClose={() => setIsLoginOpen(false)}
+    variant="TERMINAL"
+/>
+        </div >
     );
 }

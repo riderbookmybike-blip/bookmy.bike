@@ -7,6 +7,7 @@ import {
     Package
 } from 'lucide-react';
 import { KpiCard, FunnelWidget, PaymentsWidget, RecentActivity, AlertsWidget } from './DashboardWidgets';
+import { InventoryTable } from './InventoryTable';
 
 export default function DealerDashboard() {
     return (
@@ -27,6 +28,11 @@ export default function DealerDashboard() {
                 <KpiCard title="Deliveries" value="42" sub="Pending PDI included" trend="up" icon={TrendingUp} />
                 <KpiCard title="Receivables" value="₹ 24.5L" sub="Overdue over 30 Days: ₹2L" trend="down" icon={Wallet} />
                 <KpiCard title="Inventory Value" value="₹ 1.8 Cr" sub="Healthy Mix" trend="neutral" icon={Package} />
+            </div>
+
+            {/* Inventory Table Section */}
+            <div>
+                <InventoryTable />
             </div>
 
             {/* Row 2: Funnel & Payments */}

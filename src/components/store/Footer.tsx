@@ -42,6 +42,7 @@ export const Footer = () => {
                             <FooterHeading>Company</FooterHeading>
                             <FooterLinkList>
                                 <FooterLink href="#">About Us</FooterLink>
+                                <FooterLink href="/members">Members Club</FooterLink>
                                 <FooterLink href="/login">Partner with Us</FooterLink>
                                 <FooterLink href="#">Careers</FooterLink>
                                 <FooterLink href="#">Press & Media</FooterLink>

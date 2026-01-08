@@ -6,9 +6,16 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
     console.log('Seed API Started');
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-        console.error('Missing Env Vars');
-        return NextResponse.json({ success: false, error: 'Missing Environment Variables' }, { status: 500 });
+    const missingVars = [];
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) missingVars.push('NEXT_PUBLIC_SUPABASE_URL');
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) missingVars.push('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (missingVars.length > 0) {
+        console.error('Missing Env Vars:', missingVars);
+        return NextResponse.json({
+            success: false,
+            error: `Missing Environment Variables: ${missingVars.join(', ')}`
+        }, { status: 500 });
     }
 
     try {
@@ -104,9 +111,25 @@ export async function GET() {
             }
         }
 
-        return NextResponse.json({ success: true, createdTenants, createdUsers, globalSettings: { default_owner: marketplaceTenantId } });
+        return NextResponse.json({
+            success: true,
+            message: 'Seed Completed Successfully',
+            createdTenants,
+            createdUsers,
+            globalSettings: { default_owner: marketplaceTenantId }
+        }, {
+            status: 200,
+            headers: {
+                'Cache-Control': 'no-store, max-age=0',
+            }
+        });
 
     } catch (e: any) {
-        return NextResponse.json({ success: false, error: e.message }, { status: 500 });
+        console.error('SEEDING FATAL ERROR:', e);
+        return NextResponse.json({
+            success: false,
+            error: e.message,
+            stack: e.stack
+        }, { status: 500 });
     }
 }
