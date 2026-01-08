@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { DashboardHeader } from '@/components/layout/DashboardHeader';
+import { useTenant } from '@/lib/tenant/tenantContext';
+import LoginSidebar from '@/components/auth/LoginSidebar';
 // AumsFooter removed for Dashboard
 
 export default function DashboardLayout({
