@@ -72,7 +72,7 @@ export const AumsHeader = ({ onLoginClick, onMenuClick, showSearch = false }: Au
                                         {userName}
                                     </span>
                                     <span className="text-[8px] font-bold text-slate-500 uppercase tracking-wider">
-                                        {tenantType.replace('_', ' ')}
+                                        {tenantType?.replace('_', ' ') || 'Guest'}
                                     </span>
                                 </div>
                                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-xs font-black text-white shadow-lg shadow-indigo-500/20 border border-white/20 group-hover/btn:scale-105 transition-all duration-300">
