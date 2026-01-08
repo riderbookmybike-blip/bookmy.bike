@@ -89,7 +89,15 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
                                     {userName || 'User'}
                                 </span>
                                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-                                    {tenantType?.replace('_', ' ') || 'Dealer'}
+                                    {(() => {
+                                        if (!tenantType) return 'Loading...';
+                                        switch (tenantType) {
+                                            case 'MARKETPLACE': return 'Start-up Admin';
+                                            case 'DEALER': return 'Dealer Partner';
+                                            case 'BANK': return 'Finance Partner';
+                                            default: return tenantType;
+                                        }
+                                    })()}
                                 </span>
                             </div>
                             <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-blue-600 flex items-center justify-center text-xs font-black text-white shadow-lg">
