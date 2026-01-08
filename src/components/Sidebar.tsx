@@ -35,9 +35,26 @@ export default function Sidebar({
     const pathname = usePathname();
     const { tenantType, tenantName } = useTenant();
     const { theme, setTheme } = useTheme();
-    const sidebarSections = getSidebarConfig(tenantType);
     const sidebarWidthClass = isExpanded ? 'w-64' : 'w-20';
 
+    // Loading State (Prevent Dealer Flash)
+    if (!tenantType) {
+        return (
+            <aside className={`fixed z-40 inset-y-0 left-0 bg-white dark:bg-slate-950/80 backdrop-blur-2xl flex flex-col border-r border-slate-200 dark:border-white/5 ${sidebarWidthClass} transition-all duration-300`}>
+                <div className="h-16 flex items-center justify-center border-b border-slate-100 dark:border-white/5">
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/5 animate-pulse" />
+                </div>
+                <div className="p-4 space-y-4">
+                    {[1, 2, 3, 4].map(i => (
+                        <div key={i} className="h-10 rounded-xl bg-slate-100 dark:bg-white/5 animate-pulse" />
+                    ))}
+                </div>
+            </aside>
+        )
+    }
+
+    // Only fetch config when we have a valid Type
+    const sidebarSections = getSidebarConfig(tenantType);
 
     return (
         <>
