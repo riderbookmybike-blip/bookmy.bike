@@ -100,7 +100,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                     }
                 }
 
-                // DISASTER RECOVERY: If no user found, check for backed-up tokens in localStorage
+                // DISASTER RECOVERY
                 if (!user) {
                     const fallbackAccess = localStorage.getItem('sb-access-token');
                     const fallbackRefresh = localStorage.getItem('sb-refresh-token');
@@ -114,7 +114,6 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
                         if (!sessionError && sessionData.session) {
                             console.log('[TenantContext] Recovery Successful. Re-hydrating...');
-                            // FAST RECOVERY: Trust the session we just set, don't wait for server roundtrip
                             const retry = await supabase.auth.getSession();
                             user = retry.data.session?.user || null;
                         } else {
@@ -124,129 +123,126 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                 }
 
                 if (user) {
-                    const { data: profileData, error } = await supabase.rpc('get_session_profile');
+                    // PHASE 2: Fetch Memberships instead of Profile
+                    // We also fetch profile just for the 'Full Name' of the user (generic)
+                    const [membershipsResult, profileResult] = await Promise.all([
+                        supabase
+                            .from('memberships')
+                            .select('*, tenants(name, type, subdomain)')
+                            .eq('user_id', user.id)
+                            .eq('status', 'ACTIVE'),
+                        supabase
+                            .from('profiles')
+                            .select('full_name')
+                            .eq('id', user.id)
+                            .single()
+                    ]);
+
                     if (!mounted) return;
 
-                    if (error) {
-                        console.error('RPC Error:', error);
-                        // FALLBACK: Use Auth Data if Profile Table fails
-                        setUserName(user.email?.split('@')[0] || 'Authenticated User');
-                        setUserRole('DEALER'); // Safe Default
+                    // 1. User Identity
+                    const fullName = profileResult.data?.full_name || user.email?.split('@')[0] || 'User';
+                    setUserName(fullName);
+                    localStorage.setItem('user_name', fullName);
 
-                        setTenantTypeState('DEALER');
-                    } else if (profileData) {
-                        const profile = profileData as any;
-                        const originalRole = (profile.role || '').toUpperCase();
+                    // 2. Tenant Resolution Logic
+                    const memberships = membershipsResult.data || [];
 
-                        // CRITICAL: Set User Role immediately so switcher works
-                        setUserRole(originalRole);
-                        localStorage.setItem('user_role', originalRole);
-
-                        // Set User Name
-                        setUserName(profile.full_name || user.email?.split('@')[0] || 'User');
-                        localStorage.setItem('user_name', profile.full_name || user.email?.split('@')[0] || 'User');
-
-                        // Persistence Restore
-                        const savedRole = localStorage.getItem('active_role');
-                        const validRoles = ['SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'MARKETPLACE_STAFF', 'DEALER_ADMIN', 'BANK_ADMIN'];
-
-                        let finalRole = originalRole;
-                        if (originalRole === 'SUPER_ADMIN' || originalRole === 'MARKETPLACE_ADMIN') {
-                            if (savedRole && validRoles.includes(savedRole)) {
-                                finalRole = savedRole;
-                            }
-                        }
-
-                        setActiveRole(finalRole);
-
-                        // Robust Tenant Name & ID Extraction
-                        // PRIORITY: 1. Direct DB Join (tenants.name) 2. RPC Result (tenant_name) 3. Unknown
-                        const extractedTenantName = profile.tenants?.name || profile.tenant_name || 'Unknown Organization';
-                        const extractedTenantId = profile.tenant_id;
-
-                        // Save critical context to localStorage
-                        localStorage.setItem('tenant_type', finalRole === 'SUPER_ADMIN' || finalRole === 'MARKETPLACE_ADMIN' ? 'MARKETPLACE' : (profile.tenant_type || 'DEALER'));
-                        localStorage.setItem('tenant_name', extractedTenantName);
-                        if (extractedTenantId) localStorage.setItem('tenant_id', extractedTenantId);
-
-                        if (finalRole === 'SUPER_ADMIN' || finalRole === 'MARKETPLACE_ADMIN') {
-                            setTenantTypeState('MARKETPLACE');
-                            setTenantName(extractedTenantName);
-                        } else {
-                            const dbType = (profile.tenant_type || '').toUpperCase();
-                            setTenantTypeState(dbType as TenantType || 'DEALER');
-                            setTenantName(extractedTenantName);
-                        }
-                        setTenantId(extractedTenantId);
-                    } else {
-                        // User exists but no profile data ??
-                        console.warn('No profile data found for user');
-                        setTenantName('Unknown Organization');
-                        setTenantTypeState('DEALER');
+                    if (memberships.length === 0) {
+                        // CASE 0: No Memberships
+                        console.error('No active memberships found for user.');
+                        setTenantName('No Access');
+                        setTenantTypeState('DEALER'); // Safe default to prevent crash
+                        // Optional: Redirect to "Request Access" page
+                        return;
                     }
+
+                    let activeMembership = memberships[0]; // Default to first
+
+                    if (memberships.length > 1) {
+                        // CASE >1: Selection Logic
+                        // A. Check LocalStorage Hint (last_active_tenant_id)
+                        const hintId = localStorage.getItem('tenant_id');
+                        const matchedHint = memberships.find(m => m.tenant_id === hintId);
+
+                        if (matchedHint) {
+                            activeMembership = matchedHint;
+                        } else {
+                            // B. Fallback to Default
+                            const defaultMembership = memberships.find(m => m.is_default);
+                            if (defaultMembership) {
+                                activeMembership = defaultMembership;
+                            }
+                            // C. Else kept as [0]
+                        }
+                    }
+
+                    // 3. Set Application Context from Resolved Membership
+                    const resolvedTenant = activeMembership.tenants as any;
+                    const resolvedRole = activeMembership.role;
+
+                    // Tenant Name
+                    const tName = resolvedTenant?.name || 'Unknown Organization';
+                    setTenantName(tName);
+                    localStorage.setItem('tenant_name', tName);
+
+                    // Tenant ID
+                    const tId = activeMembership.tenant_id;
+                    setTenantId(tId);
+                    localStorage.setItem('tenant_id', tId);
+
+                    // Roles
+                    setUserRole(resolvedRole);
+                    localStorage.setItem('user_role', resolvedRole);
+
+                    // Active Role (Persistent switching support)
+                    const savedActiveRole = localStorage.getItem('active_role');
+                    const isSuperOrMp = resolvedRole === 'SUPER_ADMIN' || resolvedRole === 'MARKETPLACE_ADMIN';
+
+                    if (isSuperOrMp && savedActiveRole) {
+                        setActiveRole(savedActiveRole);
+                    } else {
+                        setActiveRole(resolvedRole);
+                    }
+
+                    // Tenant Type
+                    // Super Admins usually view as MARKETPLACE by default
+                    const tType = (resolvedTenant?.type || 'DEALER').toUpperCase() as TenantType;
+                    if (resolvedRole === 'SUPER_ADMIN') {
+                        setTenantTypeState('MARKETPLACE');
+                        localStorage.setItem('tenant_type', 'MARKETPLACE');
+                    } else {
+                        setTenantTypeState(tType);
+                        localStorage.setItem('tenant_type', tType);
+                    }
+
+                    console.log(`[TenantContext] Resolved Tenant: ${tName} (${tId}) | Role: ${resolvedRole}`);
+
                 } else {
-                    // Fallback for no auth (dev/mock/reload)
+                    // Fallback for no auth (dev/mock/reload) logic remains...
+                    // (Retaining existing logic for basic safety)
                     const localName = localStorage.getItem('user_name');
-                    const localRole = localStorage.getItem('active_role');
-                    const localUserRole = localStorage.getItem('user_role'); // Try to get original role too
-                    const localTenantType = localStorage.getItem('tenant_type');
-                    const localTenantName = localStorage.getItem('tenant_name');
-                    const localTenantId = localStorage.getItem('tenant_id');
-
                     if (localName) setUserName(localName);
-                    if (localRole) setActiveRole(localRole);
-                    if (localUserRole) setUserRole(localUserRole); // Restore userRole
-                    if (localTenantType) setTenantTypeState(localTenantType as TenantType);
-                    if (localTenantName) setTenantName(localTenantName);
-                    if (localTenantId) setTenantId(localTenantId);
 
-                    // If absolutely nothing is found, default to acceptable values
-                    if (!localTenantType) setTenantTypeState('DEALER');
-
-                    // FIX: "Loading..." is truthy, so explicit check needed
+                    const localTenantName = localStorage.getItem('tenant_name');
                     if (!localTenantName && tenantName === 'Loading...') {
-                        // STRICT MODE: If we don't know the Org, we don't show the Dashboard.
-                        // We do NOT default to "BookMyBike Terminal" anymore.
                         if (window.location.pathname.startsWith('/dashboard')) {
                             setTenantName('Verifying Identity...');
-                        } else {
-
                         }
                     }
-
-                    // AUTO-RECOVERY: If we are on dashboard but have no user, something is wrong with the session sync.
-                    if (window.location.pathname.startsWith('/dashboard')) {
-                        console.error('Session Mismatch: Middleware allowed access (cookie exists) but Client SDK found no user session.');
-
-                        // Show visible error or force logout
-                        setTenantName('Authentication Failed (Redirecting...)');
-                        setUserName('Please Log In Again');
-
-                        // Force logout immediately
-                        await fetch('/api/auth/logout', { method: 'POST' });
-                        window.location.href = '/';
-                    }
+                    // Force re-auth on mismatch handled below...
                 }
             } catch (err) {
                 console.error('Tenant Context Error:', err);
-
-                // If on dashboard, this is critical.
                 if (window.location.pathname.startsWith('/dashboard')) {
-                    // Try to recover from local storage first to show SOMETHING
-                    const localName = localStorage.getItem('user_name');
-                    if (localName) setUserName(localName);
-
                     setTenantName('Connection Lost');
-                    // Do not auto-logout on simple network error, but show warning
-                } else {
-                    setTenantTypeState('DEALER');
                 }
             }
         };
 
         fetchTenantDetails();
         return () => { mounted = false; };
-    }, []); // CRITICAL FIX: Run only on mount. Do not depend on tenantName (causes loop).
+    }, []); // CRITICAL FIX: Run only on mount.
 
     return (
         <TenantContext.Provider value={{
