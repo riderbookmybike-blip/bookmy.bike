@@ -163,41 +163,39 @@ const BANK_SIDEBAR: SidebarGroup[] = [
 // 3. SUPER ADMIN CONFIGURATION (Full Access)
 const ADMIN_SIDEBAR: SidebarGroup[] = [
   {
-    group: 'Super Admin',
+    group: 'Overview',
     items: [
       { title: 'Platform Overview', href: '/dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
     ],
   },
   {
-    group: 'Platform Management',
+    group: 'Operations',
     items: [
-      { title: 'Dealerships', href: '/dashboard/dealers', icon: Building2, color: 'text-blue-600' },
+      { title: 'Vehicle Catalog', href: '/catalog/vehicles', icon: Box, color: 'text-indigo-500' },
+      { title: 'Accessories', href: '/catalog/accessories', icon: ShoppingBag, color: 'text-pink-500' },
+      { title: 'Service Areas', href: '/superadmin/service-area', icon: MapPin, color: 'text-red-500' },
+    ],
+  },
+  {
+    group: 'Partners',
+    items: [
+      { title: 'Dealership Network', href: '/dashboard/dealers', icon: Building2, color: 'text-blue-600' },
       { title: 'Finance Partners', href: '/dashboard/finance-partners', icon: Landmark, color: 'text-emerald-600' },
     ],
   },
   {
-    group: 'Access Control',
+    group: 'Finance & Compliance',
+    items: [
+      { title: 'Pricing Master', href: '/catalog/pricing', icon: Calculator, color: 'text-emerald-500' },
+      { title: 'HSN & Tax Engine', href: '/catalog/hsn', icon: FileText, color: 'text-slate-500' },
+      { title: 'Insurance Config', href: '/catalog/insurance', icon: ShieldCheck, color: 'text-rose-500' },
+    ],
+  },
+  {
+    group: 'Security & Auth',
     items: [
       { title: 'System Users', href: '/dashboard/users', icon: Users, color: 'text-purple-600' },
       { title: 'Permissions', href: '/dashboard/permissions', icon: Lock, color: 'text-red-600' },
-    ],
-  },
-  {
-    group: 'Global Catalog',
-    items: [
-      { title: 'Vehicles', href: '/catalog/vehicles', icon: Box, color: 'text-indigo-500' },
-      { title: 'Accessories', href: '/catalog/accessories', icon: ShoppingBag, color: 'text-pink-500' },
-      { title: 'HSN Master', href: '/catalog/hsn', icon: FileText, color: 'text-slate-500' },
-      { title: 'On-Road Pricing', href: '/catalog/pricing', icon: Calculator, color: 'text-emerald-500' },
-      { title: 'Registration', href: '/catalog/registration', icon: FileCheck, color: 'text-amber-500' },
-      { title: 'Insurance', href: '/catalog/insurance', icon: ShieldCheck, color: 'text-rose-500' },
-      { title: 'Services', href: '/catalog/services', icon: Wrench, color: 'text-slate-500' },
-      { title: 'Service Area', href: '/superadmin/service-area', icon: MapPin, color: 'text-red-500' },
-    ],
-  },
-  {
-    group: 'Infrastructure',
-    items: [
       { title: 'Audit Logs', href: '/audit-logs', icon: HistoryIcon, color: 'text-slate-500' },
     ],
   },
