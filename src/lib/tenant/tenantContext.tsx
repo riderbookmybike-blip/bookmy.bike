@@ -87,6 +87,11 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
                         setActiveRole(finalRole);
 
+                        // Save critical context to localStorage
+                        localStorage.setItem('tenant_type', finalRole === 'SUPER_ADMIN' || finalRole === 'MARKETPLACE_ADMIN' ? 'MARKETPLACE' : (profile.tenant_type || 'DEALER'));
+                        localStorage.setItem('tenant_name', profile.tenant_name || 'BookMyBike Platform');
+                        if (profile.tenant_id) localStorage.setItem('tenant_id', profile.tenant_id);
+
                         if (finalRole === 'SUPER_ADMIN' || finalRole === 'MARKETPLACE_ADMIN') {
                             setTenantTypeState('MARKETPLACE');
                             setTenantName(profile.tenant_name || 'BookMyBike Platform');
@@ -98,9 +103,21 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                         setTenantId(profile.tenant_id);
                     }
                 } else {
-                    // Fallback for no auth (dev/mock)
+                    // Fallback for no auth (dev/mock/reload)
                     const localName = localStorage.getItem('user_name');
+                    const localRole = localStorage.getItem('active_role');
+                    const localTenantType = localStorage.getItem('tenant_type');
+                    const localTenantName = localStorage.getItem('tenant_name');
+                    const localTenantId = localStorage.getItem('tenant_id');
+
                     if (localName) setUserName(localName);
+                    if (localRole) setActiveRole(localRole);
+                    if (localTenantType) setTenantTypeState(localTenantType as TenantType);
+                    if (localTenantName) setTenantName(localTenantName);
+                    if (localTenantId) setTenantId(localTenantId);
+
+                    // If absolutely nothing is found, default to acceptable values to prevent infinite loading
+                    if (!localTenantType) setTenantTypeState('DEALER');
                 }
             } catch (err) {
                 console.error(err);
