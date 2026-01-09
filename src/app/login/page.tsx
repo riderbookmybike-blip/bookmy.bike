@@ -73,8 +73,10 @@ export default function LoginPage() {
                     if (data.role) {
                         setTenantType(data.role as any);
                     }
+
                     setStatus('SUCCESS');
-                    router.push('/dashboard');
+                    // FORCE RELOAD: Ensure cookies are sent to server and state is fresh
+                    window.location.href = '/dashboard';
                 } else {
                     setStatus('ERROR');
                     setErrorMsg(data.message || 'Authentication failed.');
@@ -246,7 +248,7 @@ export default function LoginPage() {
                                 </button>
                                 <span
                                     onClick={() => setRememberMe(!rememberMe)}
-                                    className="text-xs font-bold text-slate-500 hover:text-indigo-600 cursor-pointer transition-colors"
+                                    className="text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer transition-colors"
                                 >
                                     Remember terminal ID
                                 </span>
