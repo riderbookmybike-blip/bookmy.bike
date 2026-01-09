@@ -22,6 +22,11 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
         try {
             await fetch('/api/auth/logout', { method: 'POST' });
             localStorage.removeItem('user_name');
+            localStorage.removeItem('tenant_type');
+            localStorage.removeItem('tenant_name');
+            localStorage.removeItem('tenant_id');
+            localStorage.removeItem('user_role');
+            localStorage.removeItem('active_role');
             router.push('/');
             router.refresh();
         } catch (error) {

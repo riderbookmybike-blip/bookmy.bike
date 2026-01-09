@@ -90,9 +90,14 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
                         // Persistence Restore
                         const savedRole = localStorage.getItem('active_role');
-                        const finalRole = (originalRole === 'SUPER_ADMIN' || originalRole === 'MARKETPLACE_ADMIN')
-                            ? (savedRole || originalRole)
-                            : originalRole;
+                        const validRoles = ['SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'MARKETPLACE_STAFF', 'DEALER_ADMIN', 'BANK_ADMIN'];
+
+                        let finalRole = originalRole;
+                        if (originalRole === 'SUPER_ADMIN' || originalRole === 'MARKETPLACE_ADMIN') {
+                            if (savedRole && validRoles.includes(savedRole)) {
+                                finalRole = savedRole;
+                            }
+                        }
 
                         setActiveRole(finalRole);
 
