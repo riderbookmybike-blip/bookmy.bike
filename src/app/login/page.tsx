@@ -154,14 +154,14 @@ export default function LoginPage() {
                     <div className="space-y-4">
                         <div className="flex items-center gap-3">
                             <div className="h-0.5 w-12 bg-indigo-600 rounded-full" />
-                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-600 dark:text-indigo-400 italic">Terminal Uplink</span>
+                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-600 dark:text-indigo-400 italic">BMB Terminal Uplink</span>
                         </div>
                         <h2 className="text-5xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white leading-[0.9]">
                             Initialize <br /> Access
                         </h2>
                         <p className="text-xs text-slate-500 font-medium tracking-wide leading-relaxed">
                             {step === 'PHONE'
-                                ? "Handshake required for AUMS administrative session. Restricted area."
+                                ? "Handshake required for BookMyBike administrative session. Restricted area."
                                 : "Encryption sequence sent. Finalize the 4-digit protocol."}
                         </p>
                     </div>

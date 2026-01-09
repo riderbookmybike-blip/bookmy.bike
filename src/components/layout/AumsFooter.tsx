@@ -11,7 +11,7 @@ export const AumsFooter = () => {
                 <Terminal size={20} className="text-slate-600" />
                 <Globe size={20} className="text-slate-600" />
             </div>
-            <p className="text-slate-600 text-xs font-bold uppercase tracking-widest">© 2026 BookMyBike AUMS. Infrastructure Division.</p>
+            <p className="text-slate-600 text-xs font-bold uppercase tracking-widest">© 2026 BookMyBike Enterprise. Infrastructure Division.</p>
         </footer>
     );
 };
