@@ -139,6 +139,16 @@ create table if not exists lead_events (
     created_at timestamptz default now()
 );
 
+create table if not exists marketplace_inventory (
+    id uuid primary key default uuid_generate_v4(),
+    tenant_id uuid references tenants(id) on delete cascade,
+    item_id uuid references items(id) on delete cascade,
+    local_price numeric,
+    stock_status text default 'IN_STOCK',
+    created_at timestamptz default now(),
+    unique(tenant_id, item_id)
+);
+
 
 -- 5. RLS (Robust Drop & Recreate)
 alter table tenants enable row level security;
@@ -146,11 +156,14 @@ alter table profiles enable row level security;
 alter table leads enable row level security;
 alter table lead_dealer_shares enable row level security;
 alter table bank_applications enable row level security;
+alter table marketplace_inventory enable row level security;
 -- alter table lead_events enable row level security;
 
 -- DROP OLD POLICIES to avoid recursion/errors
 drop policy if exists "Tenants visible to authenticated" on tenants;
 drop policy if exists "Read self and coworkers" on profiles;
+drop policy if exists "Read own profile" on profiles;
+drop policy if exists "Read coworkers" on profiles;
 drop policy if exists "Marketplace sees all leads" on leads;
 drop policy if exists "Tenants see own leads" on leads;
 drop policy if exists "Dealers see shared leads" on leads;
@@ -182,9 +195,13 @@ $$ language sql security definer;
 create policy "Tenants visible to authenticated" on tenants for select to authenticated using (true);
 
 -- Profiles
-create policy "Read self and coworkers" on profiles for select to authenticated 
+-- Profiles
+create policy "Read own profile" on profiles for select to authenticated
+using ( id = auth.uid() );
+
+create policy "Read coworkers" on profiles for select to authenticated
 using (
-    tenant_id = get_my_tenant_id() 
+    tenant_id = get_my_tenant_id()
     or is_marketplace_admin()
 );
 
@@ -220,6 +237,16 @@ create policy "Dealers see their shares" on lead_dealer_shares for select to aut
 -- Apps
 create policy "Marketplace sees all bank apps" on bank_applications for select to authenticated using ( is_marketplace_admin() );
 create policy "Banks see their apps" on bank_applications for select to authenticated using ( bank_tenant_id = get_my_tenant_id() );
+
+-- Inventory
+create policy "Dealers manage own inventory" on marketplace_inventory
+    for all to authenticated
+    using ( tenant_id = get_my_tenant_id() )
+    with check ( tenant_id = get_my_tenant_id() );
+
+create policy "Marketplace sees all inventory" on marketplace_inventory
+    for select to authenticated
+    using ( is_marketplace_admin() );
 
 -- Updates
 create policy "Marketplace can update leads" on leads for update to authenticated
