@@ -13,6 +13,7 @@ interface TenantContextProps {
     setTenantType: (type: TenantType) => void;
     tenantName: string;
     tenantId: string | undefined;
+    userRole: string | undefined;
     // Legacy / Status props
     status: TenantStatus;
     isReadOnly: boolean;
@@ -23,6 +24,7 @@ const TenantContext = createContext<TenantContextProps>({
     setTenantType: () => { },
     tenantName: 'Loading...',
     tenantId: undefined,
+    userRole: undefined,
     status: 'ACTIVE',
     isReadOnly: false,
 });
@@ -32,6 +34,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     const [tenantType, setTenantTypeState] = useState<TenantType | undefined>(undefined);
     const [tenantName, setTenantName] = useState('Loading...');
     const [tenantId, setTenantId] = useState<string | undefined>(undefined);
+    const [userRole, setUserRole] = useState<string | undefined>(undefined);
 
     // Mock status logic (Can be real later)
     const status: TenantStatus = 'ACTIVE';
@@ -71,8 +74,11 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                             setTenantTypeState('MARKETPLACE');
                             setTenantName(profile.tenants?.name || 'BookMyBike Platform');
                             setTenantId(profile.tenants?.id);
+                            setUserRole(profile.role);
                             return;
                         }
+
+                        setUserRole(profile.role);
 
                         // PRIORITY 2: Linked Tenant logic
                         if (profile.tenants) {
@@ -126,6 +132,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
             setTenantType,
             tenantName,
             tenantId,
+            userRole,
             status,
             isReadOnly
         }}>
