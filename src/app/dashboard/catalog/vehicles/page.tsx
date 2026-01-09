@@ -162,7 +162,7 @@ export default function VehicleCatalogPage() {
                         columns={VEHICLE_COLUMNS}
                         data={filteredVehicles}
                         actionLabel="Add Brand"
-                        onActionClick={() => { }}
+                        onActionClick={() => setIsAddModalOpen(true)}
                         basePath="/dashboard/catalog/vehicles"
                         tight={true}
                         onQuickAction={(action, item) => console.log(`Quick action ${action} on`, item)}
