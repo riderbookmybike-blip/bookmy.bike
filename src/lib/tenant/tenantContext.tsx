@@ -40,21 +40,6 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         let mounted = true;
 
-        // Safety Timeout: If fetch hangs for 5s, force fallback to DEALER 
-        // This prevents "Blank Screen of Death" if API/RPC fails silently
-        const timeoutId = setTimeout(() => {
-            if (mounted) {
-                setTenantTypeState(prev => {
-                    if (prev === undefined) {
-                        console.warn('DEBUG: Fetch timed out, forcing fallback to DEALER');
-                        return 'DEALER';
-                    }
-                    return prev;
-                });
-                setTenantName(prev => prev === 'Loading...' ? 'System Timeout' : prev);
-            }
-        }, 5000);
-
         const fetchTenantDetails = async () => {
             try {
                 const supabase = createClient();
@@ -62,7 +47,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
                 if (user) {
                     if (!mounted) return;
-                    console.log('DEBUG: User ID:', user.id);
+                    console.log('DEBUG: User ID found, fetching profile via RPC...');
 
                     // Use RPC to bypass RLS infinite recursion
                     const { data: profileData, error } = await supabase.rpc('get_session_profile');
@@ -71,21 +56,25 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
                     if (error) {
                         console.error('DEBUG: Error fetching profile (RPC):', error);
-                        // Fallback on Error so UI doesn't hang
-                        setTenantTypeState('DEALER');
-                        setTenantName('Error Loading Profile');
+                        // Do NOT fallback to DEALER blindly. 
+                        setTenantName('Connection Error');
                         return;
                     }
 
-                    // RPC returns JSONB, so we cast it to our expected shape
                     const profile = profileData as any;
 
-
-
                     if (profile) {
-                        console.log('DEBUG: Full Profile Data:', profile);
+                        console.log('DEBUG: Profile Role:', profile.role);
 
-                        // CASE 1: Has linked Tenant
+                        // PRIORITY 1: Role check (Super Admin bypass)
+                        if (profile.role === 'SUPER_ADMIN' || profile.role === 'MARKETPLACE_ADMIN') {
+                            setTenantTypeState('MARKETPLACE');
+                            setTenantName(profile.tenants?.name || 'BookMyBike Platform');
+                            setTenantId(profile.tenants?.id);
+                            return;
+                        }
+
+                        // PRIORITY 2: Linked Tenant logic
                         if (profile.tenants) {
                             const dbType = profile.tenants.type;
                             if (dbType) {
@@ -96,38 +85,26 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                                     setTenantTypeState(dbType as TenantType);
                                 }
                             } else {
-                                console.warn('DEBUG: Tenant has no TYPE column value!');
-                                setTenantTypeState('DEALER');
+                                setTenantTypeState('DEALER'); // Final fallback for staff
                             }
                             setTenantName(profile.tenants.name);
                             setTenantId(profile.tenants.id);
                         }
-                        // CASE 2: No Tenant (e.g. Super Admin / Platform Staff)
-                        else if (profile.role === 'SUPER_ADMIN' || profile.role === 'MARKETPLACE_ADMIN') {
-                            console.log('DEBUG: Super Admin detected (No Tenant Linked)');
-                            setTenantTypeState('MARKETPLACE');
-                            setTenantName('BookMyBike Platform');
-                        }
-                        // CASE 3: Orphaned User
                         else {
-                            console.warn('DEBUG: Profile or Tenant not found for user');
-                            setTenantTypeState('DEALER'); // Fallback to safe default
+                            // No tenant and not a super admin
+                            setTenantTypeState('DEALER');
                             setTenantName('Guest User');
                         }
                     } else {
-                        console.warn('DEBUG: Profile not found for user');
-                        setTenantTypeState('MARKETPLACE'); // Default to Marketplace for safety/setup
-                        setTenantName('New User');
+                        // Edge case: No profile at all
+                        setTenantTypeState('DEALER');
+                        setTenantName('Unknown Profile');
                     }
                 } else {
                     console.log('DEBUG: No user session found');
-                    // Could redirect to login here, but let middleware handle portions
-                    // For now, stop loading so they see something (empty or public)
-                    setTenantTypeState('DEALER');
                 }
             } catch (error) {
-                console.error('Error fetching tenant details:', error);
-                if (mounted) setTenantTypeState('DEALER');
+                console.error('Fatal error in TenantProvider:', error);
             }
         };
 
@@ -135,7 +112,6 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
         return () => {
             mounted = false;
-            clearTimeout(timeoutId);
         };
     }, []);
 
