@@ -82,22 +82,35 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
 
 
-                    if (profile && profile.tenants) {
+                    if (profile) {
                         console.log('DEBUG: Full Profile Data:', profile);
-                        // Ensure type mapping is exact
-                        const dbType = profile.tenants.type;
 
-                        // If DB returned a type, use it. Otherwise warn.
-                        if (dbType) {
-                            setTenantTypeState(dbType as TenantType);
-                        } else {
-                            console.warn('DEBUG: Tenant has no TYPE column value!');
-                            setTenantTypeState('DEALER'); // Fallback only if strictly missing
+                        // CASE 1: Has linked Tenant
+                        if (profile.tenants) {
+                            const dbType = profile.tenants.type;
+                            if (dbType) {
+                                setTenantTypeState(dbType as TenantType);
+                            } else {
+                                console.warn('DEBUG: Tenant has no TYPE column value!');
+                                setTenantTypeState('DEALER');
+                            }
+                            setTenantName(profile.tenants.name);
+                            setTenantId(profile.tenants.id);
                         }
-                        setTenantName(profile.tenants.name);
-                        setTenantId(profile.tenants.id);
+                        // CASE 2: No Tenant (e.g. Super Admin / Platform Staff)
+                        else if (profile.role === 'SUPER_ADMIN' || profile.role === 'MARKETPLACE_ADMIN') {
+                            console.log('DEBUG: Super Admin detected (No Tenant Linked)');
+                            setTenantTypeState('MARKETPLACE');
+                            setTenantName('BookMyBike Platform');
+                        }
+                        // CASE 3: Orphaned User
+                        else {
+                            console.warn('DEBUG: Profile or Tenant not found for user');
+                            setTenantTypeState('DEALER'); // Fallback to safe default
+                            setTenantName('Guest User');
+                        }
                     } else {
-                        console.warn('DEBUG: Profile or Tenant not found for user');
+                        console.warn('DEBUG: Profile not found');
                     }
                 }
             } catch (error) {
