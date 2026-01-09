@@ -12,7 +12,7 @@ export default function DashboardLayout({
 }: {
     children: React.ReactNode;
 }) {
-    const { tenantType, userRole, isSidebarExpanded, setIsSidebarExpanded } = useTenant();
+    const { tenantType, userRole, activeRole, isSidebarExpanded, setIsSidebarExpanded } = useTenant();
     const [isSidebarPinned, setIsSidebarPinned] = useState(false);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -39,7 +39,7 @@ export default function DashboardLayout({
             <div className="flex pt-16"> {/* Reduced top padding for 64px header */}
                 {/* Sidebar Component */}
                 <Sidebar
-                    role={userRole as any || 'TENANT_ADMIN'}
+                    role={(activeRole as any) || (userRole as any) || 'TENANT_ADMIN'}
                     isExpanded={isSidebarExpanded}
                     isPinned={isSidebarPinned}
                     onHoverChange={handleSidebarHoverChange}
