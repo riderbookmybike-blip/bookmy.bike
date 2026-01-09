@@ -133,7 +133,8 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                         setActiveRole(finalRole);
 
                         // Robust Tenant Name & ID Extraction
-                        const extractedTenantName = profile.tenant_name || profile.tenants?.name || 'BookMyBike Platform';
+                        // PRIORITY: 1. Direct DB Join (tenants.name) 2. RPC Result (tenant_name) 3. Unknown
+                        const extractedTenantName = profile.tenants?.name || profile.tenant_name || 'Unknown Organization';
                         const extractedTenantId = profile.tenant_id;
 
                         // Save critical context to localStorage
