@@ -26,9 +26,11 @@ export async function middleware(request: NextRequest) {
     // A. PUBLIC/STATIC ASSETS -> PASS
     if (
         pathname.startsWith('/_next') ||
-        pathname.startsWith('/api/public') || // Public APIs if any
+        pathname.startsWith('/api/public') ||
         pathname.startsWith('/static') ||
-        pathname.includes('.') // public files like .svg, .ico, .png
+        pathname.includes('.') || // public files like .svg, .ico, .png
+        pathname === '/robots.txt' ||
+        pathname === '/sitemap.xml'
     ) {
         return NextResponse.next();
     }
@@ -42,7 +44,7 @@ export async function middleware(request: NextRequest) {
         response.headers.set('X-Robots-Tag', 'noindex, nofollow');
     }
 
-    // C. PUBLIC SITE (Apex / WWW)
+    // C. PUBLIC SITE (Apex / WWW / Vercel Previews)
     if (!currentSubdomain) {
         // Allow all access (SEO allowed by default omission of header)
         return response;
@@ -71,7 +73,7 @@ export async function middleware(request: NextRequest) {
     // E. ROUTE ALLOWLISTS (Unauthenticated Access)
     const isAuthRoute =
         pathname.startsWith('/login') ||
-        pathname.startsWith('/auth') ||
+        pathname.startsWith('/auth') || // Supabase Auth Callbacks (e.g. /auth/callback)
         pathname.startsWith('/api/auth') ||
         pathname.startsWith('/forgot-password') ||
         pathname.startsWith('/reset-password');
