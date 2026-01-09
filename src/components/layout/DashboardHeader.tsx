@@ -93,30 +93,32 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
                         <div className="absolute right-0 top-full mt-3 w-64 opacity-0 invisible group-hover/avatar:opacity-100 group-hover/avatar:visible translate-y-2 group-hover/avatar:translate-y-0 transition-all duration-300 z-[100]">
                             <div className="bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl p-2 overflow-hidden ring-1 ring-black/5">
 
-                                {/* Role Switcher - Always visible for debugging */}
-                                <div className="mb-2 p-1.5 space-y-1 bg-slate-50 dark:bg-white/2 rounded-xl border border-slate-100 dark:border-white/5">
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-2 mb-1 opacity-80">Execution Context</p>
-                                    <button
-                                        onClick={() => switchRole('SUPER_ADMIN')}
-                                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all ${activeRole === 'SUPER_ADMIN' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'}`}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <Shield size={14} />
-                                            <span>Platform Admin</span>
-                                        </div>
-                                        {activeRole === 'SUPER_ADMIN' && <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_white]" />}
-                                    </button>
-                                    <button
-                                        onClick={() => switchRole('MARKETPLACE_ADMIN')}
-                                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all ${activeRole === 'MARKETPLACE_ADMIN' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'}`}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <ShoppingBag size={14} />
-                                            <span>Marketplace View</span>
-                                        </div>
-                                        {activeRole === 'MARKETPLACE_ADMIN' && <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_white]" />}
-                                    </button>
-                                </div>
+                                {/* Role Switcher - Visible only for Super Admins and Marketplace Admins */}
+                                {(userRole === 'SUPER_ADMIN' || userRole === 'MARKETPLACE_ADMIN') && (
+                                    <div className="mb-2 p-1.5 space-y-1 bg-slate-50 dark:bg-white/2 rounded-xl border border-slate-100 dark:border-white/5">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-2 mb-1 opacity-80">Execution Context</p>
+                                        <button
+                                            onClick={() => switchRole('SUPER_ADMIN')}
+                                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all ${activeRole === 'SUPER_ADMIN' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'}`}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <Shield size={14} />
+                                                <span>Platform Admin</span>
+                                            </div>
+                                            {activeRole === 'SUPER_ADMIN' && <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_white]" />}
+                                        </button>
+                                        <button
+                                            onClick={() => switchRole('MARKETPLACE_ADMIN')}
+                                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all ${activeRole === 'MARKETPLACE_ADMIN' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'}`}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <ShoppingBag size={14} />
+                                                <span>Marketplace View</span>
+                                            </div>
+                                            {activeRole === 'MARKETPLACE_ADMIN' && <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_white]" />}
+                                        </button>
+                                    </div>
+                                )}
 
                                 <div className="space-y-0.5">
                                     <Link href="/dashboard/profile" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-white transition-all">
