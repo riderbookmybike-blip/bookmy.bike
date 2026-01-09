@@ -99,7 +99,7 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
                             <div className="bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl p-2 overflow-hidden ring-1 ring-black/5">
 
                                 {/* Role Switcher - Visible for any Admin context */}
-                                {(['SUPER_ADMIN', 'MARKETPLACE_ADMIN'].includes(userRole || '') || ['SUPER_ADMIN', 'MARKETPLACE_ADMIN'].includes(activeRole || '')) && (
+                                {(tenantType === 'MARKETPLACE' || ['SUPER_ADMIN', 'MARKETPLACE_ADMIN'].includes(userRole || '') || ['SUPER_ADMIN', 'MARKETPLACE_ADMIN'].includes(activeRole || '')) && (
                                     <div className="mb-2 p-1.5 space-y-1 bg-slate-50 dark:bg-white/2 rounded-xl border border-slate-100 dark:border-white/5">
                                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-2 mb-1 opacity-80">Execution Context</p>
                                         <button
