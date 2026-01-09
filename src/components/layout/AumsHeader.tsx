@@ -13,21 +13,34 @@ interface AumsHeaderProps {
 }
 
 export const AumsHeader = ({ onLoginClick, onMenuClick, showSearch = false }: AumsHeaderProps) => {
-    const { tenantType, activeRole } = useTenant();
+    const { tenantType, activeRole, tenantName, userName: contextUserName } = useTenant();
     const router = useRouter();
-    const [userName, setUserName] = useState<string | null>(null);
+    const [localUserName, setLocalUserName] = useState<string | null>(null);
 
     useEffect(() => {
         const storedName = localStorage.getItem('user_name');
-        if (storedName) setUserName(storedName);
+        if (storedName) setLocalUserName(storedName);
 
         const handleLoginSync = () => {
             const name = localStorage.getItem('user_name');
-            setUserName(name);
+            setLocalUserName(name);
         };
         window.addEventListener('storage', handleLoginSync);
         return () => window.removeEventListener('storage', handleLoginSync);
     }, []);
+
+// ... (lines 32-71 skipped) ...
+
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-white group-hover/btn:text-indigo-400 transition-colors">
+                                        {contextUserName !== 'Guest User' ? contextUserName : localUserName}
+                                    </span>
+                                    <span className="text-[8px] font-bold text-slate-500 uppercase tracking-wider">
+                                        {tenantName !== 'Loading...' ? tenantName : 
+                                         (activeRole === 'SUPER_ADMIN' ? 'Platform Control' : 
+                                         activeRole === 'MARKETPLACE_ADMIN' ? 'Marketplace View' :
+                                         activeRole === 'DEALER_ADMIN' ? 'Partner Workspace' :
+                                         activeRole === 'BANK_ADMIN' ? 'Finance Console' : 'Guest View')}
+                                    </span>
 
     const handleLogout = () => {
         localStorage.removeItem('user_name');

@@ -14,14 +14,9 @@ interface DashboardHeaderProps {
 }
 
 export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHeaderProps) => {
-    const { tenantType, userRole, activeRole, switchRole, isSidebarExpanded } = useTenant();
+    const { tenantType, userRole, activeRole, switchRole, isSidebarExpanded, tenantName, userName } = useTenant();
     const router = useRouter();
-    const [userName, setUserName] = useState<string | null>(null);
 
-    useEffect(() => {
-        const storedName = localStorage.getItem('user_name');
-        if (storedName) setUserName(storedName);
-    }, []);
 
     const handleLogout = async () => {
         try {
@@ -81,10 +76,7 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
                                     {userName || 'User'}
                                 </span>
                                 <span className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-tighter mt-1">
-                                    {activeRole === 'SUPER_ADMIN' ? 'Platform Control' :
-                                        activeRole === 'MARKETPLACE_ADMIN' ? 'Marketplace View' :
-                                            activeRole === 'DEALER_ADMIN' ? 'Partner Workspace' :
-                                                activeRole === 'BANK_ADMIN' ? 'Finance Console' : 'Guest View'}
+                                    {tenantName || (activeRole === 'SUPER_ADMIN' ? 'Platform Control' : 'Marketplace View')}
                                 </span>
                                 {process.env.NODE_ENV === 'development' && (
                                     <span className="text-[8px] text-slate-400 mt-1 uppercase opacity-50">
