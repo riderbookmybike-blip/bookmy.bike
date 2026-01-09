@@ -9,6 +9,7 @@ import { useTenant } from '@/lib/tenant/tenantContext';
 import { UserRole } from '@/config/permissions';
 import { Pin, PinOff, ChevronRight } from 'lucide-react';
 import { useTheme } from '@/components/providers/ThemeProvider';
+import { Logo } from '@/components/brand/Logo';
 
 interface SidebarProps {
     role: UserRole;
@@ -70,24 +71,12 @@ export default function Sidebar({
                 {/* Header */}
                 <div className="h-20 flex items-center justify-between px-6 border-b border-slate-100 dark:border-white/5 shrink-0 overflow-hidden">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shrink-0 text-white shadow-lg shadow-indigo-500/20">
-                            <span className="font-black text-lg">{tenantType[0]}</span>
-                        </div>
-                        <AnimatePresence>
-                            {isExpanded && (
-                                <motion.div
-                                    initial={{ opacity: 0, x: -10 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: -10 }}
-                                    className="flex flex-col overflow-hidden"
-                                >
-                                    <span className="font-black text-lg tracking-tighter italic text-slate-900 dark:text-white">AUMS</span>
-                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 truncate max-w-[140px]">
-                                        {tenantName}
-                                    </span>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                        <Logo
+                            variant="light"
+                            showText={isExpanded}
+                            iconClassName="w-10 h-10"
+                            className="transition-all duration-300"
+                        />
                     </div>
 
                     {isExpanded && (
@@ -206,7 +195,7 @@ export default function Sidebar({
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={onMobileClose} />
                     <div className="relative w-72 bg-white dark:bg-slate-950 h-full shadow-2xl flex flex-col p-6 space-y-6">
                         <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-6">
-                            <span className="font-black text-2xl italic">AUMS</span>
+                            <Logo variant="light" iconClassName="w-10 h-10" />
                             <button onClick={onMobileClose} className="p-2 bg-slate-100 dark:bg-white/5 rounded-xl"><ChevronRight size={20} /></button>
                         </div>
                         <nav className="flex-1 overflow-y-auto space-y-6">
