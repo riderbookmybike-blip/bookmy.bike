@@ -113,10 +113,10 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
                                         <User size={14} />
                                         <span>Profile</span>
                                     </Link>
-                                    <button className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white transition-all">
+                                    <Link href="/dashboard/settings" className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white transition-all">
                                         <Settings size={14} />
                                         <span>Settings</span>
-                                    </button>
+                                    </Link>
                                     <div className="h-px bg-slate-100 dark:bg-white/5 my-1" />
                                     <button
                                         onClick={handleLogout}
