@@ -176,7 +176,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
                     // FIX: "Loading..." is truthy, so explicit check needed
                     if (!localTenantName && tenantName === 'Loading...') {
-                        setTenantName('Guest Workspace');
+                        setTenantName('BookMyBike Terminal');
                     }
 
                     // AUTO-RECOVERY: If we are on dashboard but have no user, something is wrong with the session sync.
@@ -211,7 +211,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
         fetchTenantDetails();
         return () => { mounted = false; };
-    }, [tenantName]);
+    }, []); // CRITICAL FIX: Run only on mount. Do not depend on tenantName (causes loop).
 
     return (
         <TenantContext.Provider value={{
