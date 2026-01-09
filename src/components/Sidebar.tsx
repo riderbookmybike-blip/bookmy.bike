@@ -71,12 +71,14 @@ export default function Sidebar({
                 {/* Header */}
                 <div className="h-20 flex items-center justify-between px-6 border-b border-slate-100 dark:border-white/5 shrink-0 overflow-hidden">
                     <div className="flex items-center gap-3">
-                        <Logo
-                            variant="red"
-                            showText={isExpanded}
-                            iconClassName="w-10 h-10"
-                            className="transition-all duration-300"
-                        />
+                        <div className="flex items-center gap-3">
+                            <Logo
+                                variant={tenantType === 'BANK' ? 'blue' : 'red'}
+                                showText={isExpanded}
+                                iconClassName="w-10 h-10"
+                                className="transition-all duration-300"
+                            />
+                        </div>
                     </div>
 
                     {isExpanded && (
@@ -195,7 +197,7 @@ export default function Sidebar({
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={onMobileClose} />
                     <div className="relative w-72 bg-white dark:bg-slate-950 h-full shadow-2xl flex flex-col p-6 space-y-6">
                         <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-6">
-                            <Logo variant="red" iconClassName="w-10 h-10" />
+                            <Logo variant={tenantType === 'BANK' ? 'blue' : 'red'} iconClassName="w-10 h-10" />
                             <button onClick={onMobileClose} className="p-2 bg-slate-100 dark:bg-white/5 rounded-xl"><ChevronRight size={20} /></button>
                         </div>
                         <nav className="flex-1 overflow-y-auto space-y-6">
