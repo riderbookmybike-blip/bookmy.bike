@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Lock, Phone, ShieldCheck, Zap, BarChart3, Globe, CheckCircle2, AlertTriangle, ChevronRight } from 'lucide-react';
+import { ArrowRight, Lock, Phone, ShieldCheck, Zap, BarChart3, Globe, CheckCircle2, AlertTriangle, ChevronRight, Check } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import { useTenant } from '@/lib/tenant/tenantContext';
 
@@ -14,54 +14,68 @@ export default function LoginPage() {
     const [otp, setOtp] = useState('');
     const [status, setStatus] = useState<'IDLE' | 'VALIDATING' | 'SUCCESS' | 'ERROR'>('IDLE');
     const [errorMsg, setErrorMsg] = useState('');
+    const [rememberMe, setRememberMe] = useState(false);
 
-    const handleSendOtp = async (e?: React.FormEvent) => {
-        if (e) e.preventDefault();
-        if (phone.length < 10) return;
+    // Load saved phone on mount
+    useEffect(() => {
+        const savedPhone = localStorage.getItem('remembered_phone');
+        if (savedPhone) {
+            setPhone(savedPhone);
+            setRememberMe(true);
+        }
+    }, []);
+
+    const handleSendOtp = async (inputPhone?: string) => {
+        const targetPhone = inputPhone || phone;
+        if (targetPhone.length < 10) return;
 
         setStatus('VALIDATING');
         setErrorMsg('');
 
+        // Save or Clear Phone based on preference
+        if (rememberMe) {
+            localStorage.setItem('remembered_phone', targetPhone);
+        } else {
+            localStorage.removeItem('remembered_phone');
+        }
+
         // Mock API Call
-        await new Promise(r => setTimeout(r, 1000));
+        await new Promise(r => setTimeout(r, 800)); // Slightly faster for better DX
 
         setStatus('IDLE');
         setStep('OTP');
     };
 
-    const handleVerifyOtp = async (e?: React.FormEvent) => {
-        if (e) e.preventDefault();
-        if (otp.length < 4) return;
+    const handleVerifyOtp = async (inputOtp?: string) => {
+        const targetOtp = inputOtp || otp;
+        if (targetOtp.length < 4) return;
 
         setStatus('VALIDATING');
         setErrorMsg('');
 
-        // Mock Verification
-        await new Promise(r => setTimeout(r, 1000));
+        // Mock Verification Delay
+        await new Promise(r => setTimeout(r, 800));
 
-        if (otp === '6424' || otp === '1234') { // Allow both for transition but user asked for 6424
+        if (targetOtp === '6424' || targetOtp === '1234') {
             try {
+                // Use state 'phone' here as it should be set
                 const res = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone, otp }),
+                    body: JSON.stringify({ phone, otp: targetOtp }),
                 });
 
                 const data = await res.json();
 
                 if (res.ok && data.success) {
-                    // Use context to set tenant type
                     if (data.role) {
                         setTenantType(data.role as any);
                     }
-
                     setStatus('SUCCESS');
-                    setTimeout(() => {
-                        router.push('/dashboard');
-                    }, 1000);
+                    router.push('/dashboard');
                 } else {
                     setStatus('ERROR');
-                    setErrorMsg(data.message || 'Authentication failed. Please check your credentials.');
+                    setErrorMsg(data.message || 'Authentication failed.');
                 }
             } catch (err) {
                 setStatus('ERROR');
@@ -185,6 +199,10 @@ export default function LoginPage() {
                                                 const val = e.target.value.replace(/\D/g, '').slice(0, 10);
                                                 setPhone(val);
                                                 if (status === 'ERROR') setStatus('IDLE');
+                                                // AUTO-ADVANCE
+                                                if (val.length === 10) {
+                                                    handleSendOtp(val);
+                                                }
                                             }}
                                             onKeyDown={handleKeyDown}
                                             className="bg-transparent border-none outline-none text-xl font-black tracking-[0.3em] text-slate-900 dark:text-white w-full pl-6 placeholder:text-slate-200 placeholder:tracking-normal"
@@ -202,6 +220,10 @@ export default function LoginPage() {
                                                 const val = e.target.value.replace(/\D/g, '').slice(0, 4);
                                                 setOtp(val);
                                                 if (status === 'ERROR') setStatus('IDLE');
+                                                // AUTO-LOGIN
+                                                if (val.length === 4) {
+                                                    handleVerifyOtp(val);
+                                                }
                                             }}
                                             onKeyDown={handleKeyDown}
                                             className="bg-transparent border-none outline-none text-xl font-black tracking-[1em] text-slate-900 dark:text-white w-full text-center placeholder:text-slate-200 placeholder:tracking-normal"
@@ -210,6 +232,24 @@ export default function LoginPage() {
                                 )}
                             </div>
                         </div>
+
+                        {/* Remember Me Checkbox (Phone Step Only) */}
+                        {step === 'PHONE' && (
+                            <div className="flex items-center gap-3 px-2">
+                                <button
+                                    onClick={() => setRememberMe(!rememberMe)}
+                                    className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${rememberMe ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300 dark:border-white/20 hover:border-indigo-500'}`}
+                                >
+                                    {rememberMe && <Check size={12} className="text-white" strokeWidth={4} />}
+                                </button>
+                                <span
+                                    onClick={() => setRememberMe(!rememberMe)}
+                                    className="text-xs font-bold text-slate-500 hover:text-indigo-600 cursor-pointer transition-colors"
+                                >
+                                    Remember terminal ID
+                                </span>
+                            </div>
+                        )}
 
                         {status === 'ERROR' && (
                             <div className="flex items-center gap-4 p-5 bg-red-500/5 border border-red-500/10 rounded-2xl animate-in fade-in slide-in-from-top-4 duration-500">
@@ -220,7 +260,7 @@ export default function LoginPage() {
 
                         <div className="space-y-6">
                             <button
-                                onClick={step === 'PHONE' ? handleSendOtp : handleVerifyOtp}
+                                onClick={() => step === 'PHONE' ? handleSendOtp() : handleVerifyOtp()}
                                 disabled={status === 'VALIDATING' || (step === 'PHONE' ? phone.length < 10 : otp.length < 4)}
                                 className={`w-full py-6 rounded-[32px] text-xs font-black uppercase tracking-[0.3em] italic flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-[0.98] ${status === 'SUCCESS' ? 'bg-emerald-600 text-white' :
                                     status === 'VALIDATING' ? 'bg-indigo-600/50 text-white cursor-wait' :
