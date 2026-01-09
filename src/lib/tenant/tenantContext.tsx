@@ -146,32 +146,38 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                     }
 
                     // AUTO-RECOVERY: If we are on dashboard but have no user, something is wrong with the session sync.
-                    // Middleware let us in (valid cookie?), but Client SDK says no user.
-                    // We should probably force a re-login to fix the loop.
                     if (window.location.pathname.startsWith('/dashboard')) {
-                        console.warn('Session Mismatch: Middleware allowed access but Client SDK found no user. Force clearing.');
-                        // Optional: Trigger logout to clean state
-                        fetch('/api/auth/logout', { method: 'POST' }).then(() => {
-                            window.location.href = '/';
-                        });
+                        console.error('Session Mismatch: Middleware allowed access (cookie exists) but Client SDK found no user session.');
+
+                        // Show visible error or force logout
+                        setTenantName('Authentication Failed (Redirecting...)');
+                        setUserName('Please In Again');
+
+                        // Force logout immediately
+                        await fetch('/api/auth/logout', { method: 'POST' });
+                        window.location.href = '/';
                     }
                 }
             } catch (err) {
-                console.error(err);
-                // On error, try to restore from local storage as last resort
-                const localName = localStorage.getItem('user_name');
-                const localTenantName = localStorage.getItem('tenant_name');
-                if (localName) setUserName(localName);
-                if (localTenantName) setTenantName(localTenantName);
-                else if (tenantName === 'Loading...') setTenantName('Connection Error');
+                console.error('Tenant Context Error:', err);
 
-                setTenantTypeState('DEALER');
+                // If on dashboard, this is critical.
+                if (window.location.pathname.startsWith('/dashboard')) {
+                    // Try to recover from local storage first to show SOMETHING
+                    const localName = localStorage.getItem('user_name');
+                    if (localName) setUserName(localName);
+
+                    setTenantName('Connection Lost');
+                    // Do not auto-logout on simple network error, but show warning
+                } else {
+                    setTenantTypeState('DEALER');
+                }
             }
         };
 
         fetchTenantDetails();
         return () => { mounted = false; };
-    }, []); // Add dependency on tenantName to ensure check updates if needed, though empty array is better for fetch once. Keep empty array but fix logic inside.
+    }, [tenantName]);
 
     return (
         <TenantContext.Provider value={{
