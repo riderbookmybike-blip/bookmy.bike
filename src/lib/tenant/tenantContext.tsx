@@ -64,7 +64,29 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
         const fetchTenantDetails = async () => {
             try {
                 const supabase = createClient();
-                const { data: { user } } = await supabase.auth.getUser();
+                let { data: { user }, error: userError } = await supabase.auth.getUser();
+
+                // DISASTER RECOVERY: If no user found, check for backed-up tokens in localStorage
+                if (!user) {
+                    const fallbackAccess = localStorage.getItem('sb-access-token');
+                    const fallbackRefresh = localStorage.getItem('sb-refresh-token');
+
+                    if (fallbackAccess && fallbackRefresh) {
+                        console.warn('[TenantContext] Attempting Disaster Recovery from localStorage...');
+                        const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+                            access_token: fallbackAccess,
+                            refresh_token: fallbackRefresh
+                        });
+
+                        if (!sessionError && sessionData.session) {
+                            console.log('[TenantContext] Recovery Successful. Retrying getUser...');
+                            const retry = await supabase.auth.getUser();
+                            user = retry.data.user;
+                        } else {
+                            console.error('[TenantContext] Recovery Failed:', sessionError);
+                        }
+                    }
+                }
 
                 if (user) {
                     const { data: profileData, error } = await supabase.rpc('get_session_profile');

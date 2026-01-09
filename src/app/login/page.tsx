@@ -70,11 +70,26 @@ export default function LoginPage() {
                 const data = await res.json();
 
                 if (res.ok && data.success) {
+                    // CRITICAL: Manually hydrate client session if provided
+                    if (data.session) {
+                        // 1. Await Supabase Internal Persistence
+                        const { error } = await supabase.auth.setSession(data.session);
+                        if (error) console.error('Manual Session Set Error:', error);
+
+                        // 2. BACKUP: Explicitly save to localStorage for disaster recovery
+                        localStorage.setItem('sb-access-token', data.session.access_token);
+                        localStorage.setItem('sb-refresh-token', data.session.refresh_token);
+                    }
+
                     if (data.role) {
                         setTenantType(data.role as any);
                     }
 
                     setStatus('SUCCESS');
+
+                    // 3. WAIT: Ensure storage events fire before reloading
+                    await new Promise(resolve => setTimeout(resolve, 100));
+
                     // FORCE RELOAD: Ensure cookies are sent to server and state is fresh
                     window.location.href = '/dashboard';
                 } else {
