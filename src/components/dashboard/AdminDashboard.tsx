@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
     LayoutDashboard,
     Users,
@@ -14,149 +14,266 @@ import {
     Server,
     Filter,
     Plus,
-    BarChart3
+    BarChart3,
+    TrendingUp,
+    Clock,
+    AlertCircle,
+    CheckCircle2
 } from 'lucide-react';
+import {
+    AreaChart,
+    Area,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    LineChart,
+    Line
+} from 'recharts';
+import { FilterDrawer } from './FilterDrawer';
+
+const fleetData = [
+    { time: '00:00', value: 400, projection: 420 },
+    { time: '02:00', value: 300, projection: 350 },
+    { time: '04:00', value: 200, projection: 220 },
+    { time: '06:00', value: 500, projection: 480 },
+    { time: '08:00', value: 900, projection: 850 },
+    { time: '10:00', value: 1100, projection: 1000 },
+    { time: '12:00', value: 1400, projection: 1300 },
+    { time: '14:00', value: 1600, projection: 1550 },
+    { time: '16:00', value: 1500, projection: 1600 },
+    { time: '18:00', value: 1200, projection: 1100 },
+    { time: '20:00', value: 800, projection: 850 },
+    { time: '22:00', value: 600, projection: 550 },
+];
+
+const sparkData = [
+    { v: 40 }, { v: 65 }, { v: 45 }, { v: 80 }, { v: 55 }, { v: 90 }, { v: 70 }
+];
 
 export default function AdminDashboard() {
+    const [range, setRange] = useState('1D');
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
+
     return (
         <div className="space-y-8 animate-in fade-in duration-700 pb-12">
+            <FilterDrawer isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)} />
             {/* Corporate Header Section */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-200 dark:border-white/5 pb-8">
                 <div className="space-y-1">
-                    <div className="flex items-center gap-2 px-2.5 py-1 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-lg w-fit">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">AUMS Enterprise v2.4</span>
+                    <div className="flex items-center gap-2 px-2.5 py-1 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 rounded-lg w-fit">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse" />
+                        <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-400">AUMS Enterprise Command v2.4</span>
                     </div>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white mt-4">
-                        Platform <span className="text-blue-600">Overview</span>
+                    <h1 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white mt-4">
+                        Platform <span className="text-indigo-600">Overview</span>
                     </h1>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 font-medium max-w-xl">
-                        Monitor global fleet operations and system health across the BookMyBike network.
+                    <p className="text-sm text-slate-500 dark:text-slate-400 font-bold max-w-xl">
+                        Monitor partners, fleet throughput, and system health across regions.
                     </p>
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <button className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm">
+                    <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-xl mr-4 border border-slate-200 dark:border-white/10 shadow-inner">
+                        {['1D', '1W', '1M'].map(t => (
+                            <button
+                                key={t}
+                                onClick={() => setRange(t)}
+                                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all duration-300 ${range === t ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-white shadow-xl scale-105' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                {t}
+                            </button>
+                        ))}
+                    </div>
+                    <button
+                        onClick={() => setIsFilterOpen(true)}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-xs font-black text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm"
+                    >
                         <Filter size={14} />
                         Filter View
                     </button>
-                    <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 dark:bg-blue-600 text-white text-xs font-bold hover:bg-slate-800 dark:hover:bg-blue-500 transition-all shadow-lg shadow-slate-200 dark:shadow-blue-900/20">
+                    <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-black hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-500/20">
                         <Plus size={14} />
                         Add Partner
                     </button>
                 </div>
             </div>
 
-            {/* Core Metrics Grid */}
+            {/* Premium Enterprise KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <MetricCard
-                    title="Total Revenue"
+                <KPICard
+                    title="Gross Revenue"
                     value="₹1.42 Cr"
-                    trend="+12.5%"
+                    delta="+12.5%"
                     isUp={true}
                     icon={Landmark}
-                    color="blue"
+                    sub="vs last 30 days"
                 />
-                <MetricCard
+                <KPICard
                     title="Active Dealers"
                     value="542"
-                    trend="+24"
+                    delta="+24"
                     isUp={true}
                     icon={Users}
-                    color="indigo"
+                    sub="+8.2% Growth"
                 />
-                <MetricCard
+                <KPICard
                     title="Fleet Volume"
-                    value="12.8k"
-                    trend="Across regions"
-                    isUp={true}
+                    value="12,840"
+                    delta="-2.1%"
+                    isUp={false}
                     icon={Zap}
-                    color="amber"
+                    sub="Active Vehicles"
                 />
-                <MetricCard
-                    title="Platform Security"
-                    value="A+"
-                    trend="0 Breaches"
+                <KPICard
+                    title="Service SLAs"
+                    value="99.2%"
+                    delta="Optimal"
                     isUp={true}
-                    icon={Shield}
-                    color="emerald"
+                    icon={Activity}
+                    sub="System Health"
                 />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Main Performance Chart Area */}
-                <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-8 shadow-sm">
-                    <div className="flex items-center justify-between mb-8">
+                {/* Flagship Fleet Velocity Chart */}
+                <div className="lg:col-span-2 bg-white dark:bg-slate-950/40 backdrop-blur-sm border border-slate-200 dark:border-white/10 rounded-2xl p-8 shadow-sm">
+                    <div className="flex items-center justify-between mb-10">
                         <div className="space-y-1">
-                            <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                <BarChart3 size={18} className="text-blue-600" />
-                                Fleet Velocity
+                            <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2 italic tracking-tighter">
+                                <TrendingUp size={20} className="text-indigo-600" />
+                                FLEET VELOCITY
                             </h3>
-                            <p className="text-xs text-slate-500 font-medium tracking-wide">Daily unit throughput across all active nodes</p>
+                            <p className="text-xs text-slate-400 font-bold tracking-widest uppercase">Unit Throughput Analysis</p>
                         </div>
-                        <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-xl">
-                            {['1D', '1W', '1M'].map(t => (
-                                <button key={t} className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${t === '1D' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
-                                    {t}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Modern Clean Bar Chart */}
-                    <div className="h-[280px] flex items-end justify-between gap-3 px-2 pt-10">
-                        {[40, 65, 45, 80, 55, 90, 70, 85, 60, 95, 75, 50].map((h, i) => (
-                            <div key={i} className="group relative flex-1">
-                                <div
-                                    className={`w-full rounded-t-lg transition-all duration-500 ease-out group-hover:opacity-80 ${i === 9 ? 'bg-blue-600' : 'bg-slate-100 dark:bg-white/5'}`}
-                                    style={{ height: `${h}%` }}
-                                />
-                                <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] font-bold text-slate-400 opacity-60">
-                                    {i + 1}h
-                                </div>
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase">
+                                <span className="w-2 h-2 rounded-full bg-indigo-600" /> Real-time
                             </div>
-                        ))}
-                    </div>
-                    <div className="mt-12 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400 border-t border-slate-100 dark:border-white/5 pt-6">
-                        <div className="flex items-center gap-6">
-                            <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-blue-600" /> Actual
-                            </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase">
                                 <span className="w-2 h-2 rounded-full bg-slate-200 dark:bg-white/10" /> Projected
                             </div>
                         </div>
-                        <div className="flex items-center gap-1 text-emerald-500 font-bold">
-                            Peak efficiency reached at 14:00
+                    </div>
+
+                    <div className="h-[320px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={fleetData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="gradientColor" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-slate-100 dark:text-white/5" />
+                                <XAxis
+                                    dataKey="time"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
+                                    dy={10}
+                                />
+                                <YAxis
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
+                                />
+                                <Tooltip
+                                    content={({ active, payload }) => {
+                                        if (active && payload && payload.length) {
+                                            return (
+                                                <div className="bg-slate-900 dark:bg-white px-4 py-3 rounded-xl shadow-2xl border border-white/10">
+                                                    <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase mb-1">Throughput @ {payload[0].payload.time}</p>
+                                                    <p className="text-lg font-black text-white dark:text-slate-900">{payload[0].value} Units</p>
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    }}
+                                />
+                                <Area
+                                    type="monotone"
+                                    dataKey="value"
+                                    stroke="#6366f1"
+                                    strokeWidth={4}
+                                    fillOpacity={1}
+                                    fill="url(#gradientColor)"
+                                    animationDuration={2000}
+                                />
+                                <Area
+                                    type="monotone"
+                                    dataKey="projection"
+                                    stroke="#94a3b8"
+                                    strokeWidth={2}
+                                    strokeDasharray="5 5"
+                                    fill="transparent"
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+
+                    <div className="mt-8 flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-emerald-500 text-xs font-black">
+                            <CheckCircle2 size={14} />
+                            Peak efficiency reached at 14:00 (1,600 units/hr)
                         </div>
+                        <button className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline">View Detailed Node Report</button>
                     </div>
                 </div>
 
-                {/* Sub-Metrics Section */}
+                {/* Actionable Platform Vitals */}
                 <div className="space-y-6">
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-8 shadow-sm">
+                    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-2xl p-8 shadow-sm h-full">
                         <div className="flex items-center justify-between mb-8">
-                            <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                <Database size={18} className="text-blue-600" /> Platform Vitals
+                            <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2 italic tracking-tighter">
+                                <Database size={20} className="text-indigo-600" /> VITALS
                             </h3>
-                            <Activity size={16} className="text-emerald-500" />
+                            <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                <span className="text-[9px] font-black text-emerald-500 leading-none">HEALTHY</span>
+                            </div>
                         </div>
 
-                        <div className="space-y-8">
-                            <VitalRow label="Database Sync" value="99.9%" status="Healthy" progress={99} />
-                            <VitalRow label="API Response" value="142ms" status="Optimal" progress={85} />
-                            <VitalRow label="Security Mesh" value="Active" status="SECURE" progress={100} />
+                        <div className="space-y-4">
+                            <VitalTile
+                                icon={TrendingUp}
+                                label="DB Sync Efficiency"
+                                value="99.99%"
+                                sub="Healthy"
+                                meta="Last sync 42s ago"
+                                color="emerald"
+                            />
+                            <VitalTile
+                                icon={Clock}
+                                label="Avg API Latency"
+                                value="142ms"
+                                sub="Optimal"
+                                meta="p95: 210ms"
+                                color="blue"
+                            />
+                            <VitalTile
+                                icon={AlertCircle}
+                                label="Traffic Error Rate"
+                                value="0.02%"
+                                sub="Stable"
+                                meta="12 incidents (24h)"
+                                color="indigo"
+                            />
                         </div>
 
-                        <div className="mt-10 p-5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5">
-                            <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-lg bg-white dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-white/5 shadow-sm">
-                                    <Server size={20} className="text-slate-400" />
+                        <div className="mt-10 p-5 rounded-2xl bg-slate-50 dark:bg-white/2 border border-slate-100 dark:border-white/5 group hover:border-indigo-500/30 transition-all cursor-pointer">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-white/10 shadow-sm group-hover:scale-110 transition-transform">
+                                        <Server size={24} className="text-indigo-500" />
+                                    </div>
+                                    <div>
+                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Master Node</div>
+                                        <div className="text-sm font-bold text-slate-900 dark:text-white">Mumbai East Cluster</div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Main Node</div>
-                                    <div className="text-xs font-bold text-slate-900 dark:text-white">Mumbai East Cluster</div>
-                                </div>
+                                <ArrowUpRight className="text-slate-300 group-hover:text-indigo-500" size={20} />
                             </div>
                         </div>
                     </div>
@@ -166,49 +283,67 @@ export default function AdminDashboard() {
     );
 }
 
-const MetricCard = ({ title, value, trend, isUp, icon: Icon, color }: any) => {
-    const colorClasses: any = {
-        blue: 'text-blue-600 bg-blue-50 dark:bg-blue-500/10',
-        indigo: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-500/10',
-        amber: 'text-amber-600 bg-amber-50 dark:bg-amber-500/10',
-        emerald: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10'
-    };
-
+const KPICard = ({ title, value, delta, isUp, icon: Icon, sub }: any) => {
     return (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all group">
-            <div className="flex justify-between items-start mb-4">
-                <div className={`p-2.5 rounded-xl ${colorClasses[color]} transition-transform duration-300 group-hover:scale-105`}>
+        <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 p-6 rounded-2xl shadow-sm hover:shadow-xl transition-all group overflow-hidden relative">
+            <div className="flex justify-between items-start mb-6">
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 text-slate-500 dark:text-white group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
                     <Icon size={20} />
                 </div>
-                <div className={`flex items-center gap-1 text-[11px] font-bold ${isUp ? 'text-emerald-500' : 'text-rose-500'}`}>
-                    {trend}
+                <div className={`flex items-center gap-1 text-[11px] font-black px-2 py-1 rounded-lg ${isUp ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10' : 'text-rose-600 bg-rose-50 dark:bg-rose-500/10'}`}>
+                    {delta}
                     {isUp ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
                 </div>
             </div>
-            <div className="space-y-1">
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{title}</div>
-                <div className="text-2xl font-bold text-slate-900 dark:text-white">{value}</div>
+
+            <div className="space-y-1 relative z-10">
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">{title}</div>
+                <div className="text-3xl font-black text-slate-900 dark:text-white tabular-nums tracking-tighter">{value}</div>
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{sub}</div>
+            </div>
+
+            {/* Micro Sparkline */}
+            <div className="absolute inset-x-0 bottom-0 h-12 opacity-30">
+                <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={sparkData}>
+                        <Area
+                            type="monotone"
+                            dataKey="v"
+                            stroke="#6366f1"
+                            strokeWidth={2}
+                            fill="#6366f1"
+                            fillOpacity={0.1}
+                            animationDuration={3000}
+                        />
+                    </AreaChart>
+                </ResponsiveContainer>
             </div>
         </div>
     );
 };
 
-const VitalRow = ({ label, value, status, progress }: any) => (
-    <div className="space-y-3">
-        <div className="flex justify-between items-end">
-            <div>
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{label}</div>
-                <div className="text-sm font-bold text-slate-900 dark:text-white">{value}</div>
+const VitalTile = ({ icon: Icon, label, value, sub, meta, color }: any) => {
+    const colorMap: any = {
+        emerald: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
+        blue: 'text-blue-500 bg-blue-500/10 border-blue-500/20',
+        indigo: 'text-indigo-500 bg-indigo-500/10 border-indigo-500/20',
+    };
+
+    return (
+        <div className="flex items-center justify-between p-4 rounded-2xl border border-slate-100 dark:border-white/5 hover:border-indigo-500/20 transition-all">
+            <div className="flex items-center gap-4">
+                <div className={`p-2.5 rounded-xl border ${colorMap[color]} shrink-0`}>
+                    <Icon size={18} />
+                </div>
+                <div>
+                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</div>
+                    <div className="text-base font-black text-slate-900 dark:text-white tabular-nums">{value}</div>
+                </div>
             </div>
-            <div className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${status === 'Healthy' || status === 'Optimal' || status === 'SECURE' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
-                {status}
+            <div className="text-right">
+                <div className="text-[10px] font-black text-indigo-500 uppercase tracking-tighter leading-none mb-1">{sub}</div>
+                <div className="text-[9px] font-bold text-slate-400 uppercase">{meta}</div>
             </div>
         </div>
-        <div className="h-1 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
-            <div
-                className="h-full bg-blue-600 rounded-full transition-all duration-1000"
-                style={{ width: `${progress}%` }}
-            />
-        </div>
-    </div>
-);
+    );
+};

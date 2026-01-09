@@ -3,12 +3,11 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import { getSidebarConfig } from '@/config/sidebarConfig';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { UserRole } from '@/config/permissions';
-import { Pin, PinOff, ChevronRight, Sun, Moon, Monitor } from 'lucide-react';
-import { usePermission } from '@/hooks/usePermission';
-import { useSubscription } from '@/hooks/useSubscription';
+import { Pin, PinOff, ChevronRight } from 'lucide-react';
 import { useTheme } from '@/components/providers/ThemeProvider';
 
 interface SidebarProps {
@@ -34,134 +33,140 @@ export default function Sidebar({
 }: SidebarProps) {
     const pathname = usePathname();
     const { tenantType, tenantName } = useTenant();
-    const { theme, setTheme } = useTheme();
-    const sidebarWidthClass = isExpanded ? 'w-64' : 'w-20';
 
-    // Loading State (Prevent Dealer Flash)
+    // Width constants
+    const EXPANDED_WIDTH = 280;
+    const COLLAPSED_WIDTH = 80;
+
     if (!tenantType) {
         return (
-            <aside className={`fixed z-40 inset-y-0 left-0 bg-white dark:bg-slate-950/80 backdrop-blur-2xl flex flex-col border-r border-slate-200 dark:border-white/5 ${sidebarWidthClass} transition-all duration-300`}>
+            <aside className="fixed z-40 inset-y-0 left-0 bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-white/5 w-20 transition-all">
                 <div className="h-16 flex items-center justify-center border-b border-slate-100 dark:border-white/5">
                     <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/5 animate-pulse" />
                 </div>
-                <div className="p-4 space-y-4">
-                    {[1, 2, 3, 4].map(i => (
-                        <div key={i} className="h-10 rounded-xl bg-slate-100 dark:bg-white/5 animate-pulse" />
-                    ))}
-                </div>
             </aside>
-        )
+        );
     }
 
-    // Only fetch config when we have a valid Type
     const sidebarSections = getSidebarConfig(tenantType, role);
 
     return (
         <>
             {/* Desktop Sidebar */}
-            <aside
-                className={`
-                    fixed z-[60] inset-y-0 left-0 
-                    bg-white dark:bg-slate-950/80 backdrop-blur-2xl
-                    flex flex-col 
-                    transition-all duration-300 ease-in-out 
-                    border-r border-slate-200 dark:border-white/10
-                    hidden md:flex 
-                    ${sidebarWidthClass} 
-                    ${className}
-                `}
+            <motion.aside
+                initial={false}
+                animate={{ width: isExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH }}
                 onMouseEnter={() => onHoverChange(true)}
                 onMouseLeave={() => onHoverChange(false)}
+                className={`
+                    fixed z-[60] inset-y-0 left-0 
+                    bg-white dark:bg-slate-950/90 backdrop-blur-xl
+                    flex flex-col 
+                    border-r border-slate-200 dark:border-white/10
+                    hidden md:flex overflow-hidden
+                    ${className}
+                `}
             >
                 {/* Header */}
-                <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 dark:border-white/10 shrink-0">
-                    <div className={`flex flex-col overflow-hidden transition-all duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0 w-0'}`}>
-                        <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shrink-0 text-xs font-black shadow-[0_0_20px_rgba(99,102,241,0.4)] border border-white/20 text-white">
-                                {tenantType[0]}
-                            </div>
-                            <span className="font-black text-xl whitespace-nowrap tracking-tighter italic text-slate-900 dark:text-white">STUDIO</span>
+                <div className="h-20 flex items-center justify-between px-6 border-b border-slate-100 dark:border-white/5 shrink-0 overflow-hidden">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shrink-0 text-white shadow-lg shadow-indigo-500/20">
+                            <span className="font-black text-lg">{tenantType[0]}</span>
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap truncate max-w-[180px] mt-0.5 opacity-60" title={tenantName}>
-                            {tenantName}
-                        </span>
+                        <AnimatePresence>
+                            {isExpanded && (
+                                <motion.div
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -10 }}
+                                    className="flex flex-col overflow-hidden"
+                                >
+                                    <span className="font-black text-lg tracking-tighter italic text-slate-900 dark:text-white">AUMS</span>
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 truncate max-w-[140px]">
+                                        {tenantName}
+                                    </span>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
 
-                    {/* Collapsed Logo */}
-                    {!isExpanded && (
-                        <div className="w-full flex justify-center">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-sm font-black shadow-[0_0_15px_rgba(99,102,241,0.3)] border border-white/10 text-white">
-                                {tenantType[0]}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Actions: Pin + Theme */}
                     {isExpanded && (
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={onPinToggle}
-                                className="p-2 rounded-xl hover:bg-white/10 text-slate-400 hover:text-white transition-all duration-200"
-                                title={isPinned ? "Unpin" : "Pin"}
-                            >
-                                {isPinned ? <PinOff size={16} /> : <Pin size={16} />}
-                            </button>
-                        </div>
+                        <motion.button
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            onClick={onPinToggle}
+                            className={`p-2 rounded-lg transition-colors ${isPinned ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-500/10' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5'}`}
+                        >
+                            {isPinned ? <Pin size={16} fill="currentColor" /> : <PinOff size={16} />}
+                        </motion.button>
                     )}
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 overflow-y-auto py-6 space-y-2 scrollbar-none" key={tenantType}>
+                <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-8 scrollbar-none">
                     {sidebarSections.map((section, idx) => (
-                        <div key={section.group + idx} className="mb-4">
-                            {/* Section Title */}
-                            <div className={`px-5 mb-3 overflow-hidden transition-all duration-300 ${isExpanded ? 'opacity-100 max-h-6' : 'opacity-0 max-h-0'}`}>
-                                <h3 className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] opacity-80">
-                                    {section.group}
-                                </h3>
+                        <div key={section.group + idx} className="space-y-2">
+                            {/* Section Label */}
+                            <div className="h-4 flex items-center">
+                                <AnimatePresence mode="wait">
+                                    {isExpanded ? (
+                                        <motion.h3
+                                            key="expanded-label"
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2"
+                                        >
+                                            {section.group}
+                                        </motion.h3>
+                                    ) : (
+                                        <motion.div
+                                            key="collapsed-divider"
+                                            initial={{ scaleX: 0 }}
+                                            animate={{ scaleX: 1 }}
+                                            className="w-full h-px bg-slate-100 dark:bg-white/5 mx-2"
+                                        />
+                                    )}
+                                </AnimatePresence>
                             </div>
 
-                            <ul className="space-y-1 px-3">
+                            <ul className="space-y-1">
                                 {section.items.map((item) => {
                                     const isActive = pathname === item.href;
                                     const Icon = item.icon;
                                     return (
-                                        <li key={item.href}>
+                                        <li key={item.href} className="relative group/item">
                                             <Link
                                                 href={item.href}
                                                 className={`
-                                                    group flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all duration-300 relative overflow-hidden
+                                                    flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-200
                                                     ${isActive
-                                                        ? 'bg-gradient-to-r from-indigo-600 to-blue-500 text-white shadow-[0_0_25px_rgba(79,70,229,0.3)] border border-white/10'
-                                                        : 'text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
-                                                    }
+                                                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25 border border-indigo-500/20'
+                                                        : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'}
                                                 `}
-                                                title={!isExpanded ? item.title : ''}
                                             >
-                                                {/* Hover Glow effect for non-active */}
-                                                {!isActive && (
-                                                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/0 to-blue-500/0 group-hover:from-indigo-500/5 group-hover:to-blue-500/5 transition-all duration-500" />
-                                                )}
+                                                <div className={`shrink-0 ${isActive ? 'text-white' : item.color || 'text-slate-400'}`}>
+                                                    {Icon && <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />}
+                                                </div>
 
-                                                {Icon && (
-                                                    <Icon
-                                                        size={20}
-                                                        strokeWidth={isActive ? 2.5 : 2}
-                                                        className={`shrink-0 transition-transform duration-300 ${isActive
-                                                            ? 'scale-110 text-white'
-                                                            : `group-hover:scale-110 ${item.color || 'text-slate-400 dark:text-slate-500'} group-hover:text-slate-900 dark:group-hover:text-white`
-                                                            }`}
-                                                    />
-                                                )}
+                                                <AnimatePresence>
+                                                    {isExpanded && (
+                                                        <motion.span
+                                                            initial={{ opacity: 0, x: -10 }}
+                                                            animate={{ opacity: 1, x: 0 }}
+                                                            exit={{ opacity: 0, x: -10 }}
+                                                            className="text-sm font-bold whitespace-nowrap"
+                                                        >
+                                                            {item.title}
+                                                        </motion.span>
+                                                    )}
+                                                </AnimatePresence>
 
-                                                <span className={`whitespace-nowrap transition-all duration-500 ${isExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4 absolute left-14 hidden'} ${isActive ? 'text-white' : 'text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white'}`}>
-                                                    {item.title}
-                                                </span>
-
-                                                {/* Tooltip for Collapsed */}
+                                                {/* Tooltip for Collapsed View */}
                                                 {!isExpanded && (
-                                                    <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 px-3 py-2 bg-slate-900/95 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 md:block hidden border border-white/10 scale-95 group-hover:scale-100 transition-all duration-200">
+                                                    <div className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 px-3 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[11px] font-bold rounded-lg shadow-xl opacity-0 invisible group-hover/item:opacity-100 group-hover/item:visible transition-all whitespace-nowrap z-[100]">
                                                         {item.title}
+                                                        <div className="absolute right-full top-1/2 -translate-y-1/2 border-8 border-transparent border-r-slate-900 dark:border-r-white" />
                                                     </div>
                                                 )}
                                             </Link>
@@ -172,57 +177,50 @@ export default function Sidebar({
                         </div>
                     ))}
                 </nav>
-            </aside>
 
-            {/* Mobile Drawer */}
+                {/* Footer / System Status */}
+                <div className="p-4 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2">
+                    <div className={`flex items-center gap-3 px-2 py-2 rounded-xl border border-transparent hover:border-slate-200 dark:hover:border-white/10 transition-all cursor-pointer`}>
+                        <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center shrink-0">
+                            <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
+                        </div>
+                        <AnimatePresence>
+                            {isExpanded && (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="flex flex-col"
+                                >
+                                    <span className="text-xs font-bold text-slate-900 dark:text-white leading-tight">System Status</span>
+                                    <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-tighter">99.9% Operational</span>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+                </div>
+            </motion.aside>
+
+            {/* Mobile Drawer (Simplied for now) */}
             {isMobileOpen && (
                 <div className="fixed inset-0 z-50 md:hidden flex">
-                    <div
-                        className="fixed inset-0 bg-black/60 backdrop-blur-sm"
-                        onClick={onMobileClose}
-                    />
-                    <div className="relative w-72 bg-slate-950/90 backdrop-blur-2xl text-white h-full shadow-2xl flex flex-col animate-slide-in-right border-l border-white/10">
-                        <div className="h-16 flex items-center justify-between px-4 border-b border-white/10">
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-sm font-black shadow-[0_0_15px_rgba(99,102,241,0.3)] border border-white/10 text-white">
-                                        {tenantType[0]}
-                                    </div>
-                                    <span className="font-black text-xl italic tracking-tighter text-slate-900 dark:text-white">STUDIO</span>
-                                </div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mt-0.5 opacity-60">{tenantName}</span>
-                            </div>
-                            <button onClick={onMobileClose} className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/10 transition-colors">
-                                <ChevronRight size={20} />
-                            </button>
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={onMobileClose} />
+                    <div className="relative w-72 bg-white dark:bg-slate-950 h-full shadow-2xl flex flex-col p-6 space-y-6">
+                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-6">
+                            <span className="font-black text-2xl italic">AUMS</span>
+                            <button onClick={onMobileClose} className="p-2 bg-slate-100 dark:bg-white/5 rounded-xl"><ChevronRight size={20} /></button>
                         </div>
-                        <nav className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-none">
+                        <nav className="flex-1 overflow-y-auto space-y-6">
                             {sidebarSections.map((section, idx) => (
-                                <div key={section.group + idx}>
-                                    <h3 className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3 px-3 opacity-80">
-                                        {section.group}
-                                    </h3>
-                                    <ul className="space-y-1">
-                                        {section.items.map((item) => {
-                                            const isActive = pathname === item.href;
-                                            const Icon = item.icon;
-                                            return (
-                                                <li key={item.href}>
-                                                    <Link
-                                                        href={item.href}
-                                                        onClick={onMobileClose}
-                                                        className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all ${isActive
-                                                            ? 'bg-gradient-to-r from-indigo-600 to-blue-500 text-white shadow-[0_0_20px_rgba(79,70,229,0.3)] border border-white/10'
-                                                            : 'text-slate-300 hover:bg-white/5'
-                                                            }`}
-                                                    >
-                                                        {Icon && <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />}
-                                                        {item.title}
-                                                    </Link>
-                                                </li>
-                                            );
-                                        })}
-                                    </ul>
+                                <div key={idx} className="space-y-3">
+                                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">{section.group}</h3>
+                                    <div className="space-y-1">
+                                        {section.items.map(item => (
+                                            <Link key={item.href} href={item.href} onClick={onMobileClose} className={`flex items-center gap-3 p-3 rounded-xl text-sm font-bold ${pathname === item.href ? 'bg-indigo-600 text-white' : 'text-slate-600'}`}>
+                                                {item.icon && <item.icon size={20} />}
+                                                {item.title}
+                                            </Link>
+                                        ))}
+                                    </div>
                                 </div>
                             ))}
                         </nav>

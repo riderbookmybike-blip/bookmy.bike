@@ -11,14 +11,19 @@ import { InventoryTable } from './InventoryTable';
 
 export default function DealerDashboard() {
     return (
-        <div className="space-y-6 animate-fade-in">
-            <div className="flex items-center gap-4 mb-2">
-                <div className="p-3 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-500/30">
-                    <Building2 size={24} strokeWidth={1.5} />
-                </div>
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Dealer Command Center</h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm">Real-time operational overview</p>
+        <div className="space-y-8 animate-in fade-in duration-700">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-200 dark:border-white/5 pb-8">
+                <div className="space-y-1">
+                    <div className="flex items-center gap-2 px-2.5 py-1 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 rounded-lg w-fit">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse" />
+                        <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-400">Partner Node: ACTIVE</span>
+                    </div>
+                    <h1 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white mt-4 italic">
+                        Dealer <span className="text-indigo-600 uppercase">Command</span>
+                    </h1>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 font-bold max-w-xl">
+                        Monitor local sales performance, delivery funnels, and inventory health.
+                    </p>
                 </div>
             </div>
 
