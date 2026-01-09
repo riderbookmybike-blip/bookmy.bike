@@ -12,10 +12,23 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "BookMyBike - Buy Two-Wheelers Online",
-  description: "The smartest way to buy your dream bike. Explore, compare, and book the best scooters and motorcycles with instant finance options.",
-};
+import { headers } from "next/headers";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const headersList = await headers();
+  const host = headersList.get("host") || "";
+
+  // Allow indexing ONLY for public domain
+  const isPublicDomain = host === "bookmy.bike" || host === "www.bookmy.bike";
+
+  return {
+    title: "BookMyBike - Buy Two-Wheelers Online",
+    description: "The smartest way to buy your dream bike. Explore, compare, and book the best scooters and motorcycles with instant finance options.",
+    robots: isPublicDomain
+      ? { index: true, follow: true }
+      : { index: false, follow: false },
+  };
+}
 
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { TenantProvider } from "@/lib/tenant/tenantContext";
