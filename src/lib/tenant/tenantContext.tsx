@@ -89,7 +89,12 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                         if (profile.tenants) {
                             const dbType = profile.tenants.type;
                             if (dbType) {
-                                setTenantTypeState(dbType as TenantType);
+                                // Normalize weird DB types
+                                if (dbType === 'SUPER_ADMIN' || dbType === 'MARKETPLACE_ADMIN') {
+                                    setTenantTypeState('MARKETPLACE');
+                                } else {
+                                    setTenantTypeState(dbType as TenantType);
+                                }
                             } else {
                                 console.warn('DEBUG: Tenant has no TYPE column value!');
                                 setTenantTypeState('DEALER');

@@ -92,7 +92,7 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
                                     {(() => {
                                         if (!tenantType) return 'Loading...';
                                         switch (tenantType) {
-                                            case 'MARKETPLACE': return 'Start-up Admin';
+                                            case 'MARKETPLACE': return 'Super Admin';
                                             case 'DEALER': return 'Dealer Partner';
                                             case 'BANK': return 'Finance Partner';
                                             default: return tenantType;
