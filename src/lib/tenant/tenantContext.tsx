@@ -14,6 +14,9 @@ interface TenantContextProps {
     tenantName: string;
     tenantId: string | undefined;
     userRole: string | undefined;
+    // Sidebar State
+    isSidebarExpanded: boolean;
+    setIsSidebarExpanded: (expanded: boolean) => void;
     // Legacy / Status props
     status: TenantStatus;
     isReadOnly: boolean;
@@ -25,6 +28,8 @@ const TenantContext = createContext<TenantContextProps>({
     tenantName: 'Loading...',
     tenantId: undefined,
     userRole: undefined,
+    isSidebarExpanded: true,
+    setIsSidebarExpanded: () => { },
     status: 'ACTIVE',
     isReadOnly: false,
 });
@@ -35,6 +40,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     const [tenantName, setTenantName] = useState('Loading...');
     const [tenantId, setTenantId] = useState<string | undefined>(undefined);
     const [userRole, setUserRole] = useState<string | undefined>(undefined);
+    const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
     // Mock status logic (Can be real later)
     const status: TenantStatus = 'ACTIVE';
@@ -133,6 +139,8 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
             tenantName,
             tenantId,
             userRole,
+            isSidebarExpanded,
+            setIsSidebarExpanded,
             status,
             isReadOnly
         }}>

@@ -223,13 +223,17 @@ const MARKETPLACE_SIDEBAR: SidebarGroup[] = [
 
 // getSidebarConfig function to return the correct array
 export const getSidebarConfig = (tenantType: TenantType, userRole?: string): SidebarGroup[] => {
-  switch (tenantType) {
+  const role = userRole?.toUpperCase();
+  const type = tenantType?.toUpperCase();
+
+  switch (type) {
     case 'BANK':
       return BANK_SIDEBAR;
     case 'MARKETPLACE':
-    case 'SUPER_ADMIN' as any: // Explicitly handle legacy/raw type
-      // Check for Super Admin Role
-      if (userRole === 'SUPER_ADMIN') {
+    case 'SUPER_ADMIN':
+    case 'MARKETPLACE_ADMIN':
+      // If we directly know they are Super Admin from the type or role
+      if (role === 'SUPER_ADMIN' || role === 'MARKETPLACE_ADMIN' || type === 'SUPER_ADMIN') {
         return ADMIN_SIDEBAR;
       }
       return MARKETPLACE_SIDEBAR;

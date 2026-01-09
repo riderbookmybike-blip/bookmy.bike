@@ -12,8 +12,7 @@ export default function DashboardLayout({
 }: {
     children: React.ReactNode;
 }) {
-    const { tenantType, userRole } = useTenant();
-    const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+    const { tenantType, userRole, isSidebarExpanded, setIsSidebarExpanded } = useTenant();
     const [isSidebarPinned, setIsSidebarPinned] = useState(true);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [isLoginOpen, setIsLoginOpen] = useState(false);
