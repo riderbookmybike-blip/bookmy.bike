@@ -176,7 +176,13 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
                     // FIX: "Loading..." is truthy, so explicit check needed
                     if (!localTenantName && tenantName === 'Loading...') {
-                        setTenantName('BookMyBike Terminal');
+                        // STRICT MODE: If we don't know the Org, we don't show the Dashboard.
+                        // We do NOT default to "BookMyBike Terminal" anymore.
+                        if (window.location.pathname.startsWith('/dashboard')) {
+                            setTenantName('Verifying Identity...');
+                        } else {
+                            setTenantName('BookMyBike Terminal');
+                        }
                     }
 
                     // AUTO-RECOVERY: If we are on dashboard but have no user, something is wrong with the session sync.
