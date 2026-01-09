@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 };
 
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import { TenantProvider } from "@/lib/tenant/tenantContext";
 
 export default function RootLayout({
   children,
@@ -31,7 +32,9 @@ export default function RootLayout({
         className={`${inter.variable} ${jetbrainsMono.variable} antialiased font-sans bg-[var(--background)] text-[var(--foreground)]`}
       >
         <ThemeProvider>
-          {children}
+          <TenantProvider>
+            {children}
+          </TenantProvider>
         </ThemeProvider>
       </body>
     </html>
