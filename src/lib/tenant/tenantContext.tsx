@@ -28,7 +28,7 @@ const TenantContext = createContext<TenantContextProps>({
     tenantName: 'Loading...',
     tenantId: undefined,
     userRole: undefined,
-    isSidebarExpanded: true,
+    isSidebarExpanded: false,
     setIsSidebarExpanded: () => { },
     status: 'ACTIVE',
     isReadOnly: false,
@@ -40,7 +40,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     const [tenantName, setTenantName] = useState('Loading...');
     const [tenantId, setTenantId] = useState<string | undefined>(undefined);
     const [userRole, setUserRole] = useState<string | undefined>(undefined);
-    const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+    const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
 
     // Mock status logic (Can be real later)
     const status: TenantStatus = 'ACTIVE';

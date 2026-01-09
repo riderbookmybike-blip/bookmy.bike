@@ -1,261 +1,214 @@
+'use client';
+
 import React from 'react';
 import {
-    ShieldCheck,
-    Building2,
+    LayoutDashboard,
+    Users,
     Landmark,
-    CheckCircle2,
-    Wallet,
+    Shield,
     ArrowUpRight,
     ArrowDownRight,
-    Search,
-    Filter,
-    Activity,
     Database,
-    Cpu,
     Zap,
-    Users,
-    ChevronRight,
+    Activity,
+    Server,
+    Filter,
     Plus,
-    Flame
+    BarChart3
 } from 'lucide-react';
-import { KpiCard } from './DashboardWidgets';
 
 export default function AdminDashboard() {
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* Mesh Gradient Background Elements (Subtle) */}
-            <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
-                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/5 blur-[120px] rounded-full animate-pulse" />
-                <div className="absolute bottom-[10%] right-[-5%] w-[30%] h-[30%] bg-blue-500/5 blur-[100px] rounded-full" />
-            </div>
-
-            {/* Premium Header Container */}
-            <div className="relative group">
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-slate-200 dark:border-white/5 relative">
-                    <div className="flex items-center gap-6">
-                        <div className="relative">
-                            <div className="absolute inset-0 bg-blue-600 blur-xl opacity-20 group-hover:opacity-40 transition-opacity" />
-                            <div className="relative p-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-[2rem] shadow-2xl flex items-center justify-center transform group-hover:rotate-6 transition-transform duration-500">
-                                <Activity size={32} strokeWidth={2.5} />
-                            </div>
-                        </div>
-                        <div>
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-black uppercase tracking-widest border border-blue-500/20">
-                                    AUMS Enterprise v2.4
-                                </span>
-                                <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-500">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                    Live
-                                </span>
-                            </div>
-                            <h1 className="text-4xl font-black italic uppercase tracking-tighter text-slate-900 dark:text-white leading-none">
-                                Mission <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-400">Control</span>
-                            </h1>
-                            <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest mt-2 opacity-60">Global Platform Health & Fleet Intelligence</p>
-                        </div>
+        <div className="space-y-8 animate-in fade-in duration-700 pb-12">
+            {/* Corporate Header Section */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-200 dark:border-white/5 pb-8">
+                <div className="space-y-1">
+                    <div className="flex items-center gap-2 px-2.5 py-1 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-lg w-fit">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">AUMS Enterprise v2.4</span>
                     </div>
+                    <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white mt-4">
+                        Platform <span className="text-blue-600">Overview</span>
+                    </h1>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 font-medium max-w-xl">
+                        Monitor global fleet operations and system health across the BookMyBike network.
+                    </p>
+                </div>
 
-                    <div className="flex items-center gap-3">
-                        <button className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl text-[11px] font-black uppercase tracking-widest text-slate-600 dark:text-white hover:bg-slate-50 dark:hover:bg-white/10 transition-all shadow-sm">
-                            <Filter size={14} /> Filter View
-                        </button>
-                        <button className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20 active:scale-95">
-                            <Plus size={14} /> Add Resource
-                        </button>
-                    </div>
+                <div className="flex items-center gap-3">
+                    <button className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm">
+                        <Filter size={14} />
+                        Filter View
+                    </button>
+                    <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 dark:bg-blue-600 text-white text-xs font-bold hover:bg-slate-800 dark:hover:bg-blue-500 transition-all shadow-lg shadow-slate-200 dark:shadow-blue-900/20">
+                        <Plus size={14} />
+                        Add Partner
+                    </button>
                 </div>
             </div>
 
-            {/* KPI Grid with Glassmorphism */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {[
-                    { title: 'Total Revenue', val: '₹ 1.42 Cr', sub: '+12.5% vs LW', icon: Wallet, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-                    { title: 'Active Dealers', val: '542', sub: '24 pending', icon: Building2, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-                    { title: 'Fleet Volume', val: '12.8k', sub: 'Across 42 cities', icon: Zap, color: 'text-amber-500', bg: 'bg-amber-500/10' },
-                    { title: 'System Security', val: 'A+', sub: '0 breaches', icon: ShieldCheck, color: 'text-indigo-500', bg: 'bg-indigo-500/10' }
-                ].map((kpi, i) => (
-                    <div key={i} className="group relative bg-white dark:bg-slate-950/40 backdrop-blur-xl p-6 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-sm hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className={`p-3 rounded-2xl ${kpi.bg} ${kpi.color}`}>
-                                <kpi.icon size={20} strokeWidth={2.5} />
-                            </div>
-                            <div className="text-[10px] font-black text-emerald-500 flex items-center gap-1 bg-emerald-500/5 px-2 py-1 rounded-lg uppercase">
-                                <ArrowUpRight size={12} /> {kpi.sub.split(' ')[0]}
-                            </div>
-                        </div>
-                        <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">{kpi.title}</h3>
-                        <p className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none">{kpi.val}</p>
-                        <p className="text-[10px] font-bold text-slate-400 mt-2 opacity-60 uppercase">{kpi.sub}</p>
-                    </div>
-                ))}
+            {/* Core Metrics Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <MetricCard
+                    title="Total Revenue"
+                    value="₹1.42 Cr"
+                    trend="+12.5%"
+                    isUp={true}
+                    icon={Landmark}
+                    color="blue"
+                />
+                <MetricCard
+                    title="Active Dealers"
+                    value="542"
+                    trend="+24"
+                    isUp={true}
+                    icon={Users}
+                    color="indigo"
+                />
+                <MetricCard
+                    title="Fleet Volume"
+                    value="12.8k"
+                    trend="Across regions"
+                    isUp={true}
+                    icon={Zap}
+                    color="amber"
+                />
+                <MetricCard
+                    title="Platform Security"
+                    value="A+"
+                    trend="0 Breaches"
+                    isUp={true}
+                    icon={Shield}
+                    color="emerald"
+                />
             </div>
 
-            {/* Main Visuals: Big Chart + Stats Panel */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-                {/* Visual Chart Panel */}
-                <div className="lg:col-span-8 bg-white dark:bg-slate-950/60 backdrop-blur-2xl rounded-[3rem] border border-slate-200 dark:border-white/5 shadow-xl overflow-hidden group/chart">
-                    <div className="p-8 pb-4 flex items-center justify-between">
-                        <div>
-                            <h3 className="text-xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter">Fleet Velocity</h3>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Real-time throughput metrics</p>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Main Performance Chart Area */}
+                <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-8 shadow-sm">
+                    <div className="flex items-center justify-between mb-8">
+                        <div className="space-y-1">
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <BarChart3 size={18} className="text-blue-600" />
+                                Fleet Velocity
+                            </h3>
+                            <p className="text-xs text-slate-500 font-medium tracking-wide">Daily unit throughput across all active nodes</p>
                         </div>
-                        <div className="flex items-center gap-2 p-1 bg-slate-100 dark:bg-white/5 rounded-2xl">
-                            {['1H', '1D', '1W', '1M'].map(t => (
-                                <button key={t} className={`px-4 py-1.5 rounded-xl text-[10px] font-black transition-all ${t === '1D' ? 'bg-white dark:bg-blue-600 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}>
+                        <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-xl">
+                            {['1D', '1W', '1M'].map(t => (
+                                <button key={t} className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${t === '1D' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
                                     {t}
                                 </button>
                             ))}
                         </div>
                     </div>
 
-                    {/* Highly Visual Bars */}
-                    <div className="h-80 w-full flex items-end justify-between gap-1.5 px-8 pb-8 pt-12 relative">
-                        {/* Background Grid Lines */}
-                        <div className="absolute inset-x-8 inset-y-8 flex flex-col justify-between pointer-events-none opacity-[0.03]">
-                            {[1, 2, 3, 4, 5].map(l => <div key={l} className="h-px bg-slate-900 dark:bg-white w-full" />)}
-                        </div>
-
-                        {[30, 45, 35, 60, 85, 70, 50, 40, 65, 80, 55, 95, 70, 50, 45, 75, 90, 60, 40, 55, 70, 85, 95, 100].map((h, i) => (
-                            <div key={i} className="flex-1 group/bar relative h-full flex items-end">
+                    {/* Modern Clean Bar Chart */}
+                    <div className="h-[280px] flex items-end justify-between gap-3 px-2 pt-10">
+                        {[40, 65, 45, 80, 55, 90, 70, 85, 60, 95, 75, 50].map((h, i) => (
+                            <div key={i} className="group relative flex-1">
                                 <div
-                                    className={`w-full rounded-t-xl transition-all duration-1000 ease-out group-hover/bar:brightness-125 cursor-crosshair relative
-                                        ${i % 4 === 0 ? 'bg-gradient-to-t from-blue-600 to-indigo-400' : 'bg-slate-100 dark:bg-white/5'}
-                                    `}
+                                    className={`w-full rounded-t-lg transition-all duration-500 ease-out group-hover:opacity-80 ${i === 9 ? 'bg-blue-600' : 'bg-slate-100 dark:bg-white/5'}`}
                                     style={{ height: `${h}%` }}
-                                >
-                                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full pb-2 opacity-0 group-hover/bar:opacity-100 transition-all">
-                                        <div className="bg-slate-900 text-white text-[9px] font-black px-2 py-1 rounded shadow-2xl whitespace-nowrap">
-                                            {h * 20} UNITs
-                                        </div>
-                                    </div>
+                                />
+                                <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] font-bold text-slate-400 opacity-60">
+                                    {i + 1}h
                                 </div>
                             </div>
                         ))}
                     </div>
-
-                    {/* Chart Legend */}
-                    <div className="px-8 py-6 bg-slate-50 dark:bg-white/5 border-t border-slate-100 dark:border-white/5 flex items-center justify-between">
+                    <div className="mt-12 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400 border-t border-slate-100 dark:border-white/5 pt-6">
                         <div className="flex items-center gap-6">
                             <div className="flex items-center gap-2">
-                                <div className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Growth Units</span>
+                                <span className="w-2 h-2 rounded-full bg-blue-600" /> Actual
                             </div>
                             <div className="flex items-center gap-2">
-                                <div className="w-2.5 h-2.5 rounded-full bg-slate-200 dark:bg-white/10" />
-                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Baseline Fleet</span>
+                                <span className="w-2 h-2 rounded-full bg-slate-200 dark:bg-white/10" /> Projected
                             </div>
                         </div>
-                        <p className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
-                            <ArrowUpRight size={12} className="text-emerald-500" />
-                            Peak efficiency reached at <span className="text-slate-900 dark:text-white font-black">14:00 IST</span>
-                        </p>
+                        <div className="flex items-center gap-1 text-emerald-500 font-bold">
+                            Peak efficiency reached at 14:00
+                        </div>
                     </div>
                 </div>
 
-                {/* Right Panel: Vital Monitoring */}
-                <div className="lg:col-span-4 space-y-6">
-                    {/* System Health Module */}
-                    <div className="bg-white dark:bg-slate-950/60 backdrop-blur-2xl p-8 rounded-[3rem] border border-slate-200 dark:border-white/5 shadow-xl relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-4 opacity-10">
-                            <ShieldCheck size={80} />
+                {/* Sub-Metrics Section */}
+                <div className="space-y-6">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-8 shadow-sm">
+                        <div className="flex items-center justify-between mb-8">
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <Database size={18} className="text-blue-600" /> Platform Vitals
+                            </h3>
+                            <Activity size={16} className="text-emerald-500" />
                         </div>
-
-                        <h3 className="text-lg font-black text-slate-900 dark:text-white mb-8 italic uppercase tracking-tighter flex items-center gap-2">
-                            <Flame size={18} className="text-orange-500" /> Platform Vitals
-                        </h3>
 
                         <div className="space-y-8">
-                            {[
-                                { label: 'Node Compute', val: 14, color: 'bg-blue-600', sub: 'Idle' },
-                                { label: 'Query Latency', val: 82, color: 'bg-indigo-500', sub: 'Optimized' },
-                                { label: 'Auth Throughput', val: 42, color: 'bg-emerald-500', sub: 'Stable' },
-                            ].map(vital => (
-                                <div key={vital.label} className="group/vital">
-                                    <div className="flex justify-between items-end mb-3">
-                                        <div>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-0.5">{vital.label}</p>
-                                            <p className="text-xs font-black text-slate-900 dark:text-white">{vital.sub}</p>
-                                        </div>
-                                        <p className="text-lg font-black text-blue-600 dark:text-blue-400">{vital.val}%</p>
-                                    </div>
-                                    <div className="h-1.5 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
-                                        <div
-                                            className={`h-full ${vital.color} rounded-full transition-all duration-[1.5s] ease-out group-hover/vital:opacity-80`}
-                                            style={{ width: `${vital.val}%` }}
-                                        />
-                                    </div>
-                                </div>
-                            ))}
+                            <VitalRow label="Database Sync" value="99.9%" status="Healthy" progress={99} />
+                            <VitalRow label="API Response" value="142ms" status="Optimal" progress={85} />
+                            <VitalRow label="Security Mesh" value="Active" status="SECURE" progress={100} />
                         </div>
 
-                        <div className="mt-10 p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
-                                <Database size={20} />
-                            </div>
-                            <div>
-                                <h4 className="text-[11px] font-black text-emerald-500 uppercase tracking-widest leading-none mb-1">Database Shard</h4>
-                                <p className="text-[10px] font-bold text-slate-500">Node cluster is operational</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Mini Quick Access */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <button className="p-6 bg-slate-900 rounded-[2.5rem] text-white hover:bg-slate-800 transition-all shadow-xl group/btn">
-                            <Users size={20} className="mb-3 text-indigo-400 group-hover/btn:scale-110 transition-transform" />
-                            <p className="text-[10px] font-black uppercase tracking-widest mb-1">Manage</p>
-                            <p className="text-xs font-bold opacity-60 italic">Users</p>
-                        </button>
-                        <button className="p-6 bg-indigo-600 rounded-[2.5rem] text-white hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-500/10 group/btn">
-                            <Zap size={20} className="mb-3 text-blue-200 group-hover/btn:scale-110 transition-transform" />
-                            <p className="text-[10px] font-black uppercase tracking-widest mb-1">Trigger</p>
-                            <p className="text-xs font-bold opacity-60 italic">Reports</p>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Bottom Row: Recent Activity feed */}
-            <div className="bg-white dark:bg-slate-950/40 backdrop-blur-xl rounded-[3rem] border border-slate-200 dark:border-white/5 p-8 shadow-sm">
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <h3 className="text-xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter">System Pulse</h3>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Live platform event stream</p>
-                    </div>
-                    <button className="text-[11px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-1 hover:gap-2 transition-all">
-                        View Audit Log <ChevronRight size={14} />
-                    </button>
-                </div>
-
-                <div className="space-y-1">
-                    {[
-                        { event: 'Tenant Created', target: 'Apex Motors, Mumbai', time: '2m ago', type: 'info' },
-                        { event: 'Catalog Sync', target: 'TVS Global Master', time: '14m ago', type: 'success' },
-                        { event: 'Security Prompt', target: 'Failed Login (JP Nagar, BLR)', time: '41m ago', type: 'warning' },
-                        { event: 'Finance Approval', target: 'HDFC x Rider #429', time: '1h ago', type: 'success' }
-                    ].map((entry, idx) => (
-                        <div key={idx} className="group flex items-center justify-between p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-white/5 transition-all cursor-default border border-transparent hover:border-slate-100 dark:hover:border-white/5">
-                            <div className="flex items-center gap-6">
-                                <div className={`w-2 h-2 rounded-full ${entry.type === 'success' ? 'bg-emerald-500' :
-                                        entry.type === 'warning' ? 'bg-rose-500' : 'bg-blue-500'
-                                    } shadow-[0_0_10px_currentColor] animate-pulse`} />
-                                <div>
-                                    <p className="text-sm font-black text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors uppercase italic tracking-tight">{entry.event}</p>
-                                    <p className="text-[11px] font-bold text-slate-400">{entry.target}</p>
-                                </div>
-                            </div>
+                        <div className="mt-10 p-5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5">
                             <div className="flex items-center gap-4">
-                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{entry.time}</span>
-                                <div className="p-2 opacity-0 group-hover:opacity-100 text-slate-400 dark:text-slate-600 transition-all">
-                                    <ChevronRight size={16} />
+                                <div className="w-10 h-10 rounded-lg bg-white dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-white/5 shadow-sm">
+                                    <Server size={20} className="text-slate-400" />
+                                </div>
+                                <div>
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Main Node</div>
+                                    <div className="text-xs font-bold text-slate-900 dark:text-white">Mumbai East Cluster</div>
                                 </div>
                             </div>
                         </div>
-                    ))}
+                    </div>
                 </div>
             </div>
         </div>
     );
 }
+
+const MetricCard = ({ title, value, trend, isUp, icon: Icon, color }: any) => {
+    const colorClasses: any = {
+        blue: 'text-blue-600 bg-blue-50 dark:bg-blue-500/10',
+        indigo: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-500/10',
+        amber: 'text-amber-600 bg-amber-50 dark:bg-amber-500/10',
+        emerald: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10'
+    };
+
+    return (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all group">
+            <div className="flex justify-between items-start mb-4">
+                <div className={`p-2.5 rounded-xl ${colorClasses[color]} transition-transform duration-300 group-hover:scale-105`}>
+                    <Icon size={20} />
+                </div>
+                <div className={`flex items-center gap-1 text-[11px] font-bold ${isUp ? 'text-emerald-500' : 'text-rose-500'}`}>
+                    {trend}
+                    {isUp ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                </div>
+            </div>
+            <div className="space-y-1">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{title}</div>
+                <div className="text-2xl font-bold text-slate-900 dark:text-white">{value}</div>
+            </div>
+        </div>
+    );
+};
+
+const VitalRow = ({ label, value, status, progress }: any) => (
+    <div className="space-y-3">
+        <div className="flex justify-between items-end">
+            <div>
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{label}</div>
+                <div className="text-sm font-bold text-slate-900 dark:text-white">{value}</div>
+            </div>
+            <div className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${status === 'Healthy' || status === 'Optimal' || status === 'SECURE' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                {status}
+            </div>
+        </div>
+        <div className="h-1 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+            <div
+                className="h-full bg-blue-600 rounded-full transition-all duration-1000"
+                style={{ width: `${progress}%` }}
+            />
+        </div>
+    </div>
+);
