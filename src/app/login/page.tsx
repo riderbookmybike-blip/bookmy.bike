@@ -86,6 +86,13 @@ export default function LoginPage() {
                         // 2. BACKUP: Explicitly save to localStorage for disaster recovery
                         localStorage.setItem('sb-access-token', data.session.access_token);
                         localStorage.setItem('sb-refresh-token', data.session.refresh_token);
+
+                        // 3. UI PRE-HYDRATION: seamless transition
+                        localStorage.setItem('user_name', data.name);
+                        localStorage.setItem('user_role', data.role);
+                        localStorage.setItem('active_role', data.role);
+                        localStorage.setItem('tenant_name', data.tenant_name || 'BookMyBike Terminal');
+                        if (data.tenant_id) localStorage.setItem('tenant_id', data.tenant_id);
                     }
 
                     if (data.role) {

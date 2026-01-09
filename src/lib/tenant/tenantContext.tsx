@@ -86,9 +86,10 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                         });
 
                         if (!sessionError && sessionData.session) {
-                            console.log('[TenantContext] Recovery Successful. Retrying getUser...');
-                            const retry = await supabase.auth.getUser();
-                            user = retry.data.user;
+                            console.log('[TenantContext] Recovery Successful. Re-hydrating...');
+                            // FAST RECOVERY: Trust the session we just set, don't wait for server roundtrip
+                            const retry = await supabase.auth.getSession();
+                            user = retry.data.session?.user || null;
                         } else {
                             console.error('[TenantContext] Recovery Failed:', sessionError);
                         }
@@ -191,7 +192,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
                         // Show visible error or force logout
                         setTenantName('Authentication Failed (Redirecting...)');
-                        setUserName('Please In Again');
+                        setUserName('Please Log In Again');
 
                         // Force logout immediately
                         await fetch('/api/auth/logout', { method: 'POST' });
