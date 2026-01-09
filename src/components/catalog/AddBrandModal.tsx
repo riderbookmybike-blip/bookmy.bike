@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Loader2, Save, ShoppingBag } from 'lucide-react';
+import { X, Loader2, ShoppingBag, Globe } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
 interface AddBrandModalProps {
@@ -14,7 +14,7 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess }: AddBrandMo
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
-        type: 'MOTORCYCLE'
+        landingUrl: ''
     });
 
     if (!isOpen) return null;
@@ -28,12 +28,15 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess }: AddBrandMo
 
             // Create a placeholder item for the brand to ensure it shows up in the catalog
             const { error } = await supabase.from('items').insert([{
-                type: formData.type,
+                type: 'VEHICLE',
                 make: formData.name,
                 model: 'BASE-ENTRY', // Placeholder
                 variant: 'STANDARD', // Placeholder
                 color: 'STOCK', // Placeholder
                 price: 0,
+                specs: {
+                    landingUrl: formData.landingUrl
+                },
                 is_active: true
             }]);
 
@@ -41,7 +44,7 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess }: AddBrandMo
 
             onSuccess(formData.name);
             onClose();
-            setFormData({ name: '', type: 'MOTORCYCLE' });
+            setFormData({ name: '', landingUrl: '' });
 
         } catch (error: any) {
             console.error('Error adding brand:', error);
@@ -81,21 +84,17 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess }: AddBrandMo
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Primary Category</label>
-                            <div className="grid grid-cols-2 gap-3">
-                                {['MOTORCYCLE', 'SCOOTER', 'MOPED', 'CAR'].map(type => (
-                                    <button
-                                        key={type}
-                                        type="button"
-                                        onClick={() => setFormData({ ...formData, type })}
-                                        className={`p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all ${formData.type === type
-                                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-500/20'
-                                            : 'bg-slate-50 dark:bg-white/5 text-slate-400 border-slate-100 dark:border-white/5 hover:border-indigo-500/30'}`}
-                                    >
-                                        {type}
-                                    </button>
-                                ))}
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Brand Landing Page URL</label>
+                            <div className="relative">
+                                <Globe size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    placeholder="https://www.honda2wheelers.com"
+                                    value={formData.landingUrl}
+                                    onChange={e => setFormData({ ...formData, landingUrl: e.target.value })}
+                                    className="w-full p-4 pl-12 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-2xl font-medium focus:ring-2 focus:ring-indigo-500/20 outline-none text-sm"
+                                />
                             </div>
+                            <p className="text-[10px] text-slate-400 px-1">Official manufacturer website for reference</p>
                         </div>
                     </div>
 
