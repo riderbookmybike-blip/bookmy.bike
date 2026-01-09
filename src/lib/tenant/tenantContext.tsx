@@ -79,51 +79,50 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                     clearTimeout(timeoutId);
 
                     if (error) {
-                        console.error('DEBUG: Error fetching profile (RPC):', error);
+                        console.error('DEBUG: RPC get_session_profile error:', error);
                         setTenantTypeState('DEALER');
                         setTenantName('Connection Error');
                         return;
                     }
 
+                    console.log('DEBUG: RPC Profile Result:', JSON.stringify(profileData));
                     const profile = profileData as any;
 
-                    if (profile) {
-                        console.log('DEBUG: Profile Role:', profile.role);
+                    if (profile && profile.id) {
+                        const role = (profile.role || profile.user_role || '').toUpperCase();
+                        console.log('DEBUG: Normalized Role:', role);
 
-                        // PRIORITY 1: Role check (Super Admin bypass)
-                        if (profile.role === 'SUPER_ADMIN' || profile.role === 'MARKETPLACE_ADMIN') {
+                        // PRIORITY 1: Admin Roles (Super Admin bypass)
+                        if (role === 'SUPER_ADMIN' || role === 'MARKETPLACE_ADMIN') {
+                            console.log('DEBUG: Admin Access Granted');
                             setTenantTypeState('MARKETPLACE');
-                            setTenantName(profile.tenants?.name || 'BookMyBike Platform');
-                            setTenantId(profile.tenants?.id);
-                            setUserRole(profile.role);
+                            setTenantName(profile.tenant_name || 'BookMyBike Platform');
+                            setTenantId(profile.tenant_id);
+                            setUserRole(role);
                             return;
                         }
 
-                        setUserRole(profile.role);
-
                         // PRIORITY 2: Linked Tenant logic
-                        if (profile.tenants) {
-                            const dbType = profile.tenants.type;
-                            if (dbType) {
-                                // Normalize weird DB types
-                                if (dbType === 'SUPER_ADMIN' || dbType === 'MARKETPLACE_ADMIN') {
-                                    setTenantTypeState('MARKETPLACE');
-                                } else {
-                                    setTenantTypeState(dbType as TenantType);
-                                }
+                        const dbType = (profile.tenant_type || '').toUpperCase();
+                        if (dbType) {
+                            console.log('DEBUG: Found Tenant Type:', dbType);
+                            // Normalize weird DB types
+                            if (dbType === 'SUPER_ADMIN' || dbType === 'MARKETPLACE_ADMIN' || dbType === 'MARKETPLACE') {
+                                setTenantTypeState('MARKETPLACE');
                             } else {
-                                setTenantTypeState('DEALER'); // Final fallback for staff
+                                setTenantTypeState(dbType as TenantType);
                             }
-                            setTenantName(profile.tenants.name);
-                            setTenantId(profile.tenants.id);
-                        }
-                        else {
-                            // No tenant and not a super admin
+                            setTenantName(profile.tenant_name || 'Business Partner');
+                            setTenantId(profile.tenant_id);
+                            setUserRole(role);
+                        } else {
+                            console.warn('DEBUG: No tenant link found, defaulting to DEALER');
                             setTenantTypeState('DEALER');
                             setTenantName('Guest User');
+                            setUserRole(role);
                         }
                     } else {
-                        // Edge case: No profile at all
+                        console.warn('DEBUG: RPC returned empty or invalid profile object');
                         setTenantTypeState('DEALER');
                         setTenantName('Unknown Profile');
                     }
