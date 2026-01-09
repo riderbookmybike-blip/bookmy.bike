@@ -160,56 +160,79 @@ const BANK_SIDEBAR: SidebarGroup[] = [
 ];
 
 // 3. SUPER ADMIN CONFIGURATION
+// 3. SUPER ADMIN CONFIGURATION (Full Access)
 const ADMIN_SIDEBAR: SidebarGroup[] = [
   {
-    group: 'AUMS Admin',
+    group: 'Super Admin',
+    items: [
+      { title: 'Mission Control', href: '/dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
+    ],
+  },
+  {
+    group: 'Platform Management',
+    items: [
+      { title: 'Dealerships', href: '/dashboard/dealers', icon: Building2, color: 'text-blue-600' },
+      { title: 'Finance Partners', href: '/dashboard/finance-partners', icon: Landmark, color: 'text-emerald-600' },
+    ],
+  },
+  {
+    group: 'Access Control',
+    items: [
+      { title: 'System Users', href: '/dashboard/users', icon: Users, color: 'text-purple-600' },
+      { title: 'Permissions', href: '/dashboard/permissions', icon: Lock, color: 'text-red-600' },
+    ],
+  },
+  {
+    group: 'Global Catalog',
+    items: [
+      { title: 'Vehicles', href: '/catalog/vehicles', icon: Box, color: 'text-indigo-500' },
+      { title: 'Accessories', href: '/catalog/accessories', icon: ShoppingBag, color: 'text-pink-500' },
+      { title: 'HSN Master', href: '/catalog/hsn', icon: FileText, color: 'text-slate-500' },
+      { title: 'On-Road Pricing', href: '/catalog/pricing', icon: Calculator, color: 'text-emerald-500' },
+      { title: 'Registration', href: '/catalog/registration', icon: FileCheck, color: 'text-amber-500' },
+      { title: 'Insurance', href: '/catalog/insurance', icon: ShieldCheck, color: 'text-rose-500' },
+      { title: 'Services', href: '/catalog/services', icon: Wrench, color: 'text-slate-500' },
+      { title: 'Service Area', href: '/superadmin/service-area', icon: MapPin, color: 'text-red-500' },
+    ],
+  },
+  {
+    group: 'Infrastructure',
+    items: [
+      { title: 'Audit Logs', href: '/audit-logs', icon: HistoryIcon, color: 'text-slate-500' },
+    ],
+  },
+];
+
+// 4. MARKETPLACE STAFF CONFIGURATION (Restricted)
+const MARKETPLACE_SIDEBAR: SidebarGroup[] = [
+  {
+    group: 'Marketplace',
     items: [
       { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, color: 'text-indigo-500' },
     ],
   },
   {
-    group: 'Tenants',
-    items: [
-      { title: 'Dealerships', href: '/dealers', icon: Building2, color: 'text-blue-500' },
-      { title: 'Finance Partners', href: '/finance-partners', icon: Landmark, color: 'text-emerald-500' },
-    ],
-  },
-  {
-    group: 'Users & Roles',
-    items: [
-      { title: 'Users', href: '/users', icon: Users, color: 'text-purple-500' },
-      { title: 'Permissions', href: '/permissions', icon: Lock, color: 'text-red-500' },
-    ],
-  },
-  {
-    group: 'Catalog',
+    group: 'Catalog Operations',
     items: [
       { title: 'Vehicles', href: '/catalog/vehicles', icon: Box, color: 'text-indigo-400' },
       { title: 'Accessories', href: '/catalog/accessories', icon: ShoppingBag, color: 'text-pink-400' },
-      { title: 'HSN Master', href: '/catalog/hsn', icon: FileText, color: 'text-slate-400' },
       { title: 'On-Road Pricing', href: '/catalog/pricing', icon: Calculator, color: 'text-emerald-400' },
-      { title: 'Registration', href: '/catalog/registration', icon: FileCheck, color: 'text-amber-400' },
-      { title: 'Insurance', href: '/catalog/insurance', icon: ShieldCheck, color: 'text-rose-400' },
-      { title: 'Services', href: '/catalog/services', icon: Wrench, color: 'text-slate-400' },
-      { title: 'Service Area', href: '/superadmin/service-area', icon: MapPin, color: 'text-red-400' },
-    ],
-  },
-  {
-    group: 'SaaS Management',
-    items: [
-      { title: 'Audit Logs', href: '/audit-logs', icon: HistoryIcon, color: 'text-slate-400' },
     ],
   },
 ];
 
 // getSidebarConfig function to return the correct array
-export const getSidebarConfig = (tenantType: TenantType): SidebarGroup[] => {
+export const getSidebarConfig = (tenantType: TenantType, userRole?: string): SidebarGroup[] => {
   switch (tenantType) {
     case 'BANK':
       return BANK_SIDEBAR;
     case 'MARKETPLACE':
     case 'SUPER_ADMIN' as any: // Explicitly handle legacy/raw type
-      return ADMIN_SIDEBAR;
+      // Check for Super Admin Role
+      if (userRole === 'SUPER_ADMIN') {
+        return ADMIN_SIDEBAR;
+      }
+      return MARKETPLACE_SIDEBAR;
     case 'DEALER':
     default:
       return DEALER_SIDEBAR;

@@ -54,7 +54,7 @@ export default function Sidebar({
     }
 
     // Only fetch config when we have a valid Type
-    const sidebarSections = getSidebarConfig(tenantType);
+    const sidebarSections = getSidebarConfig(tenantType, role);
 
     return (
         <>
