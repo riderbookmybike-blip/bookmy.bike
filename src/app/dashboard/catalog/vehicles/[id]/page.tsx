@@ -164,7 +164,7 @@ export default function ProductDetailPage() {
     const selectedBrand = brands.find(b => b.id === brandId);
 
     const handleClose = () => {
-        router.push('/catalog/vehicles');
+        router.push('/dashboard/catalog/vehicles');
     };
 
     const handleAddModel = (data: { name: string, category: string, fuelType: string, hsnCode: string, gstRate: number }) => {
