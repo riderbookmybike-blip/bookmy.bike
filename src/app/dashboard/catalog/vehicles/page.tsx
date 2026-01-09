@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Plus, Search, Filter, Car, Bike, MoreVertical } from 'lucide-react';
+import { Plus, Search, Filter, Car, Bike, MoreVertical, CheckCircle2, ShieldCheck, ShoppingBag } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { useTenant } from '@/lib/tenant/tenantContext';
 import Image from 'next/image';
 
 import AddVehicleModal from '@/components/catalog/AddVehicleModal';
@@ -19,8 +20,11 @@ interface Vehicle {
 }
 
 export default function VehicleCatalogPage() {
+    const { tenantType, tenantId } = useTenant();
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+    const [inventoryIds, setInventoryIds] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
+    const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [search, setSearch] = useState('');
     const [isArtModalOpen, setIsArtModalOpen] = useState(false);
 
@@ -31,17 +35,60 @@ export default function VehicleCatalogPage() {
     const fetchVehicles = async () => {
         try {
             const supabase = createClient();
-            const { data, error } = await supabase
+
+            // 1. Fetch Global Catalog
+            const { data: items, error: itemsError } = await supabase
                 .from('items')
                 .select('*')
                 .order('created_at', { ascending: false });
 
-            if (error) throw error;
-            setVehicles(data || []);
+            if (itemsError) throw itemsError;
+            setVehicles(items || []);
+
+            // 2. Fetch My Inventory (if Dealer)
+            if (tenantType === 'DEALER') {
+                const { data: inventory, error: invError } = await supabase
+                    .from('marketplace_inventory')
+                    .select('item_id');
+
+                if (!invError && inventory) {
+                    setInventoryIds(new Set(inventory.map(i => i.item_id)));
+                }
+            }
+
         } catch (error) {
-            console.error('Error fetching vehicles:', error);
+            console.error('Error fetching catalog:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleAddToInventory = async (vehicle: Vehicle) => {
+        if (!tenantId) return;
+        setActionLoading(vehicle.id);
+
+        try {
+            const supabase = createClient();
+            const { error } = await supabase
+                .from('marketplace_inventory')
+                .insert({
+                    tenant_id: tenantId,
+                    item_id: vehicle.id,
+                    local_price: vehicle.price, // Default to global price
+                    stock_status: 'IN_STOCK'
+                });
+
+            if (error) throw error;
+
+            // Update local state
+            setInventoryIds(prev => new Set(prev).add(vehicle.id));
+
+            // Show success feedback (optional toast could go here)
+        } catch (err) {
+            console.error('Failed to add to inventory:', err);
+            alert('Failed to add item. It might already be in your inventory.');
+        } finally {
+            setActionLoading(null);
         }
     };
 
@@ -56,15 +103,23 @@ export default function VehicleCatalogPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Global Vehicle Catalog</h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm">Manage master list of vehicles for the marketplace</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm">
+                        {tenantType === 'DEALER'
+                            ? "Browse and add vehicles to your showroom inventory"
+                            : "Manage master list of vehicles for the marketplace"}
+                    </p>
                 </div>
-                <button
-                    onClick={() => setIsArtModalOpen(true)}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/30 active:scale-95"
-                >
-                    <Plus size={20} />
-                    Add Vehicle
-                </button>
+
+                {/* Only Super Admins can add NEW items to Global Catalog */}
+                {['SUPER_ADMIN', 'MARKETPLACE_ADMIN'].includes(tenantType || '') && (
+                    <button
+                        onClick={() => setIsArtModalOpen(true)}
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/30 active:scale-95"
+                    >
+                        <Plus size={20} />
+                        Add Vehicle
+                    </button>
+                )}
             </div>
 
             {/* Modal */}
@@ -133,11 +188,35 @@ export default function VehicleCatalogPage() {
                                         <MoreVertical size={18} />
                                     </button>
                                 </div>
+
+                                {/* Dealer Action Area */}
+                                {tenantType === 'DEALER' && (
+                                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/5">
+                                        {inventoryIds.has(vehicle.id) ? (
+                                            <div className="w-full py-2.5 bg-emerald-500/10 text-emerald-600 rounded-xl flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest border border-emerald-500/20">
+                                                <CheckCircle2 size={14} /> In Inventory
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => handleAddToInventory(vehicle)}
+                                                disabled={actionLoading === vehicle.id}
+                                                className="w-full py-2.5 bg-slate-900 dark:bg-white text-white dark:text-black hover:bg-slate-800 dark:hover:bg-slate-200 rounded-xl flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-slate-900/20 active:scale-95 disabled:opacity-50 disabled:cursor-wait"
+                                            >
+                                                {actionLoading === vehicle.id ? (
+                                                    <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                                ) : (
+                                                    <>
+                                                        <ShoppingBag size={14} /> Add to Stock
+                                                    </>
+                                                )}
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
-                    ))}
-                </div>
-            )}
+                        </div>
+            ))}
         </div>
     );
 }

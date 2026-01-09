@@ -27,7 +27,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
     const [tempPincode, setTempPincode] = useState('');
 
     useEffect(() => {
-        if (isOpen && !location.pincode) {
+        if (variant !== 'TERMINAL' && isOpen && !location.pincode) {
             detectLocation();
         }
     }, [isOpen]);
@@ -160,50 +160,52 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                     </button>
                 </div>
 
-                {/* Pincode / Serviceability Section */}
-                <div className="mx-10 mb-8 p-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <MapPin size={14} className="text-blue-600" />
-                            {isEditingPincode ? (
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="text"
-                                        maxLength={6}
-                                        value={tempPincode}
-                                        onChange={(e) => setTempPincode(e.target.value.replace(/\D/g, ''))}
-                                        onBlur={handlePincodeSubmit}
-                                        onKeyDown={(e) => e.key === 'Enter' && handlePincodeSubmit()}
-                                        autoFocus
-                                        className="bg-transparent border-b border-blue-600/30 outline-none text-[11px] font-black uppercase tracking-widest text-slate-900 dark:text-white w-20"
-                                        placeholder="INPUT"
-                                    />
+                {/* Pincode / Serviceability Section - Hidden for TERMINAL/AUMS */}
+                {variant !== 'TERMINAL' && (
+                    <div className="mx-10 mb-8 p-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <MapPin size={14} className="text-blue-600" />
+                                {isEditingPincode ? (
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="text"
+                                            maxLength={6}
+                                            value={tempPincode}
+                                            onChange={(e) => setTempPincode(e.target.value.replace(/\D/g, ''))}
+                                            onBlur={handlePincodeSubmit}
+                                            onKeyDown={(e) => e.key === 'Enter' && handlePincodeSubmit()}
+                                            autoFocus
+                                            className="bg-transparent border-b border-blue-600/30 outline-none text-[11px] font-black uppercase tracking-widest text-slate-900 dark:text-white w-20"
+                                            placeholder="INPUT"
+                                        />
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => {
+                                            setTempPincode(location.pincode || '');
+                                            setIsEditingPincode(true);
+                                        }}
+                                        className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-blue-600 transition-colors flex items-center gap-2 group/pin"
+                                    >
+                                        {location.loading ? "Locating..." : (location.pincode || "Zone Unknown")}
+                                        {!location.loading && <span className="text-[8px] opacity-0 group-hover/pin:opacity-100 transition-opacity">(Edit)</span>}
+                                    </button>
+                                )}
+                            </div>
+                            {location.isServiceable && !isEditingPincode && (
+                                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-500/10 text-emerald-600 rounded-full text-[8px] font-black uppercase tracking-widest border border-emerald-500/20 animate-in fade-in zoom-in duration-300">
+                                    <CheckCircle2 size={8} /> Serviceable
                                 </div>
-                            ) : (
-                                <button
-                                    onClick={() => {
-                                        setTempPincode(location.pincode || '');
-                                        setIsEditingPincode(true);
-                                    }}
-                                    className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-blue-600 transition-colors flex items-center gap-2 group/pin"
-                                >
-                                    {location.loading ? "Locating..." : (location.pincode || "Zone Unknown")}
-                                    {!location.loading && <span className="text-[8px] opacity-0 group-hover/pin:opacity-100 transition-opacity">(Edit)</span>}
-                                </button>
+                            )}
+                            {!location.isServiceable && location.pincode && !isEditingPincode && (
+                                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-rose-500/10 text-rose-600 rounded-full text-[8px] font-black uppercase tracking-widest border border-rose-500/20 animate-in fade-in zoom-in duration-300">
+                                    <AlertCircle size={8} /> Out of Zone
+                                </div>
                             )}
                         </div>
-                        {location.isServiceable && !isEditingPincode && (
-                            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-500/10 text-emerald-600 rounded-full text-[8px] font-black uppercase tracking-widest border border-emerald-500/20 animate-in fade-in zoom-in duration-300">
-                                <CheckCircle2 size={8} /> Serviceable
-                            </div>
-                        )}
-                        {!location.isServiceable && location.pincode && !isEditingPincode && (
-                            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-rose-500/10 text-rose-600 rounded-full text-[8px] font-black uppercase tracking-widest border border-rose-500/20 animate-in fade-in zoom-in duration-300">
-                                <AlertCircle size={8} /> Out of Zone
-                            </div>
-                        )}
                     </div>
-                </div>
+                )}
 
                 {/* Core Authentication Interface */}
                 <div className="flex-1 overflow-y-auto px-10 space-y-8">

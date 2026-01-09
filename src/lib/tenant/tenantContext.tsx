@@ -12,6 +12,7 @@ interface TenantContextProps {
     tenantType: TenantType | undefined;
     setTenantType: (type: TenantType) => void;
     tenantName: string;
+    tenantId: string | undefined;
     // Legacy / Status props
     status: TenantStatus;
     isReadOnly: boolean;
@@ -21,6 +22,7 @@ const TenantContext = createContext<TenantContextProps>({
     tenantType: undefined,
     setTenantType: () => { },
     tenantName: 'Loading...',
+    tenantId: undefined,
     status: 'ACTIVE',
     isReadOnly: false,
 });
@@ -29,6 +31,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     // Start as undefined so we don't default to DEALER prematurely
     const [tenantType, setTenantTypeState] = useState<TenantType | undefined>(undefined);
     const [tenantName, setTenantName] = useState('Loading...');
+    const [tenantId, setTenantId] = useState<string | undefined>(undefined);
 
     // Mock status logic (Can be real later)
     const status: TenantStatus = 'ACTIVE';
@@ -92,6 +95,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                             setTenantTypeState('DEALER'); // Fallback only if strictly missing
                         }
                         setTenantName(profile.tenants.name);
+                        setTenantId(profile.tenants.id);
                     } else {
                         console.warn('DEBUG: Profile or Tenant not found for user');
                     }
@@ -120,6 +124,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
             tenantType,
             setTenantType,
             tenantName,
+            tenantId,
             status,
             isReadOnly
         }}>
