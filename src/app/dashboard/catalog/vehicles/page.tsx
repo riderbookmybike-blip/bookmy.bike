@@ -215,8 +215,10 @@ export default function VehicleCatalogPage() {
                                 )}
                             </div>
                         </div>
-                        </div>
-            ))}
+
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
