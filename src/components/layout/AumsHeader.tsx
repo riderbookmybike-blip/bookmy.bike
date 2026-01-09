@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { User, Terminal, Shield, LogOut, Search, Bell, Command, Settings, Menu } from 'lucide-react';
+import { User, Terminal, LogOut, Bell, Settings, Menu } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useTenant } from '@/lib/tenant/tenantContext';
@@ -29,18 +29,7 @@ export const AumsHeader = ({ onLoginClick, onMenuClick, showSearch = false }: Au
         return () => window.removeEventListener('storage', handleLoginSync);
     }, []);
 
-// ... (lines 32-71 skipped) ...
-
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-white group-hover/btn:text-indigo-400 transition-colors">
-                                        {contextUserName !== 'Guest User' ? contextUserName : localUserName}
-                                    </span>
-                                    <span className="text-[8px] font-bold text-slate-500 uppercase tracking-wider">
-                                        {tenantName !== 'Loading...' ? tenantName : 
-                                         (activeRole === 'SUPER_ADMIN' ? 'Platform Control' : 
-                                         activeRole === 'MARKETPLACE_ADMIN' ? 'Marketplace View' :
-                                         activeRole === 'DEALER_ADMIN' ? 'Partner Workspace' :
-                                         activeRole === 'BANK_ADMIN' ? 'Finance Console' : 'Guest View')}
-                                    </span>
+    const displayUserName = (contextUserName && contextUserName !== 'Guest User') ? contextUserName : localUserName;
 
     const handleLogout = () => {
         localStorage.removeItem('user_name');
@@ -68,7 +57,7 @@ export const AumsHeader = ({ onLoginClick, onMenuClick, showSearch = false }: Au
                 </div>
 
                 <div className="flex items-center gap-4 lg:gap-6">
-                    {userName && (
+                    {displayUserName && (
                         <button className="p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all relative group">
                             <Bell size={18} />
                             <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-black" />
@@ -77,22 +66,23 @@ export const AumsHeader = ({ onLoginClick, onMenuClick, showSearch = false }: Au
 
                     <ThemeToggle />
 
-                    {userName ? (
+                    {displayUserName ? (
                         <div className="relative group/avatar pl-2">
                             <button className="flex items-center gap-3 group/btn px-1 py-1 rounded-2xl hover:bg-white/5 transition-all duration-300">
                                 <div className="flex flex-col items-end hidden sm:flex px-1">
                                     <span className="text-[10px] font-black uppercase tracking-widest text-white group-hover/btn:text-indigo-400 transition-colors">
-                                        {userName}
+                                        {displayUserName}
                                     </span>
                                     <span className="text-[8px] font-bold text-slate-500 uppercase tracking-wider">
-                                        {activeRole === 'SUPER_ADMIN' ? 'Platform Control' :
-                                            activeRole === 'MARKETPLACE_ADMIN' ? 'Marketplace View' :
-                                                activeRole === 'DEALER_ADMIN' ? 'Partner Workspace' :
-                                                    activeRole === 'BANK_ADMIN' ? 'Finance Console' : 'Guest View'}
+                                        {tenantName !== 'Loading...' ? tenantName :
+                                            (activeRole === 'SUPER_ADMIN' ? 'Platform Control' :
+                                                activeRole === 'MARKETPLACE_ADMIN' ? 'Marketplace View' :
+                                                    activeRole === 'DEALER_ADMIN' ? 'Partner Workspace' :
+                                                        activeRole === 'BANK_ADMIN' ? 'Finance Console' : 'Guest View')}
                                     </span>
                                 </div>
                                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-xs font-black text-white shadow-lg shadow-indigo-500/20 border border-white/20 group-hover/btn:scale-105 transition-all duration-300">
-                                    {userName?.charAt(0) || 'U'}
+                                    {displayUserName.charAt(0).toUpperCase() || 'U'}
                                 </div>
                             </button>
 
@@ -101,7 +91,7 @@ export const AumsHeader = ({ onLoginClick, onMenuClick, showSearch = false }: Au
                                 <div className="bg-slate-950/95 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl p-2 overflow-hidden">
                                     <div className="px-4 py-4 border-b border-white/5 mb-2">
                                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Authenticated Account</p>
-                                        <p className="text-sm font-bold text-white truncate">{userName.toLowerCase().replace(' ', '.')}@bookmy.bike</p>
+                                        <p className="text-sm font-bold text-white truncate">{displayUserName.toLowerCase().replace(' ', '.')}@bookmy.bike</p>
                                     </div>
 
                                     <div className="space-y-1">
