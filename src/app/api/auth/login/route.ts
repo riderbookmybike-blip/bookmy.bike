@@ -115,21 +115,35 @@ export async function POST(request: Request) {
         session: data.session
     });
 
-    // CRITICAL: Manually bridge Supabase Auth Cookies to Response
+    // CRITICAL: Manually bridge Supabase Auth Cookies to Response with ROOT DOMAIN Scope
+    // This ensures login at me.bookmy.bike works at team.bookmy.bike
+    const isProduction = process.env.NODE_ENV === 'production';
+    const host = request.headers.get('host') || '';
+
+    // Determine cookie domain dynamically based on proper production domain
+    // If we are on ANY *.bookmy.bike subdomain, scope to .bookmy.bike
+    // Otherwise (localhost, Vercel preview), leave undefined to restrict to host
+    const cookieDomain = host.endsWith('.bookmy.bike') ? '.bookmy.bike' : undefined;
+
     cookieStore.getAll().forEach((cookie) => {
         if (cookie.name.startsWith('sb-')) {
             console.log(`[LoginAPI] Bridging cookie to response: ${cookie.name}`);
             response.cookies.set({
-                ...cookie
+                ...cookie,
+                domain: cookieDomain,
+                path: '/',
+                sameSite: 'lax',
+                secure: isProduction,
             });
         }
     });
 
     response.cookies.set('aums_session', `session_${profile.role}`, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: isProduction,
         sameSite: 'lax',
         path: '/',
+        domain: cookieDomain,
         maxAge: 60 * 60 * 24 * 7, // 1 week
     });
 
