@@ -5,7 +5,7 @@ interface LogoProps {
     className?: string;
     iconClassName?: string;
     textClassName?: string;
-    variant?: 'red' | 'blue' | 'light';
+    variant?: 'red' | 'blue' | 'light' | 'indigo';
     showText?: boolean;
     showTagline?: boolean;
 }
@@ -41,6 +41,14 @@ export const Logo: React.FC<LogoProps> = ({
                 icon: BLUE_COLOR,
                 bookmy: "currentColor",
                 bike: BLUE_COLOR,
+                tagline: "currentColor"
+            };
+        }
+        if (variant === 'indigo') {
+            return {
+                icon: "#4F46E5", // Indigo-600
+                bookmy: "currentColor",
+                bike: "#4F46E5",
                 tagline: "currentColor"
             };
         }
