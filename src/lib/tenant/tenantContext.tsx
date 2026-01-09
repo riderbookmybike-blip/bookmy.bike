@@ -49,6 +49,20 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         let mounted = true;
 
+        // Safety Timeout: If fetch hangs for 5s, force fallback to DEALER 
+        const timeoutId = setTimeout(() => {
+            if (mounted) {
+                setTenantTypeState(prev => {
+                    if (prev === undefined) {
+                        console.warn('DEBUG: Fetch timed out, forcing fallback to DEALER');
+                        return 'DEALER';
+                    }
+                    return prev;
+                });
+                setTenantName(prev => prev === 'Loading...' ? 'System Timeout' : prev);
+            }
+        }, 5000);
+
         const fetchTenantDetails = async () => {
             try {
                 const supabase = createClient();
@@ -62,10 +76,11 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                     const { data: profileData, error } = await supabase.rpc('get_session_profile');
 
                     if (!mounted) return;
+                    clearTimeout(timeoutId);
 
                     if (error) {
                         console.error('DEBUG: Error fetching profile (RPC):', error);
-                        // Do NOT fallback to DEALER blindly. 
+                        setTenantTypeState('DEALER');
                         setTenantName('Connection Error');
                         return;
                     }
@@ -114,9 +129,14 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                     }
                 } else {
                     console.log('DEBUG: No user session found');
+                    // If no user, we might be on a public page or need to redirect, 
+                    // but for the context we just stop loading.
+                    setTenantTypeState('DEALER');
+                    setTenantName('Guest');
                 }
             } catch (error) {
                 console.error('Fatal error in TenantProvider:', error);
+                setTenantTypeState('DEALER');
             }
         };
 
@@ -124,6 +144,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
         return () => {
             mounted = false;
+            clearTimeout(timeoutId);
         };
     }, []);
 
