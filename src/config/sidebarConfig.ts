@@ -33,210 +33,205 @@ import {
 } from 'lucide-react';
 import { TenantType } from '@/lib/tenant/tenantContext';
 
+// Define Permissions
+export type PermissionAction = 'read' | 'write' | 'delete' | 'approve' | 'manage';
+
 // Define strict types for sidebar items
 export interface SidebarItem {
   title: string;
   href: string;
   icon?: any;
-  color?: string; // Added color property
+  color?: string;
+  allowedTenants?: TenantType[]; // Which tenants can see this?
+  allowedRoles?: string[];       // Specific roles (e.g., 'SUPER_ADMIN')
+  permissions?: PermissionAction[]; // Actions allowed in this module
 }
 
 export interface SidebarGroup {
   group: string;
   items: SidebarItem[];
+  id?: string; // For permission targeting
 }
 
-// 1. DEALER TENANT CONFIGURATION
-const DEALER_SIDEBAR: SidebarGroup[] = [
+// MASTER CONFIGURATION
+// This single list defines ALL possible menus. Filtering Logic in Sidebar.tsx will handle visibility.
+
+const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
   {
     group: 'Dashboard',
     items: [
-      { title: 'Overview', href: '/dashboard', icon: LayoutDashboard, color: 'text-indigo-500' },
-    ],
-  },
-  {
-    group: 'Sales',
-    items: [
-      { title: 'Leads & Enquiries', href: '/leads', icon: Users, color: 'text-blue-500' },
-      { title: 'Customers', href: '/customers', icon: UserCheck, color: 'text-blue-400' },
-      { title: 'Quotes', href: '/quotes', icon: FileText, color: 'text-blue-300' },
-      { title: 'Sales Orders', href: '/sales-orders', icon: ShoppingCart, color: 'text-cyan-500' },
-      { title: 'Finance Status', href: '/finance-applications', icon: BadgeIndianRupee, color: 'text-emerald-500' },
-    ],
+      {
+        title: 'Platform Overview',
+        href: '/dashboard',
+        icon: LayoutDashboard,
+        color: 'text-indigo-600',
+        allowedTenants: ['MARKETPLACE'],
+        allowedRoles: ['SUPER_ADMIN', 'MARKETPLACE_ADMIN']
+      },
+      {
+        title: 'Overview',
+        href: '/dashboard',
+        icon: LayoutDashboard,
+        color: 'text-indigo-500',
+        allowedTenants: ['DEALER', 'BANK']
+      },
+      {
+        title: 'Marketplace Dashboard',
+        href: '/dashboard',
+        icon: LayoutDashboard,
+        color: 'text-indigo-500',
+        allowedTenants: ['MARKETPLACE'], // Staff view
+        allowedRoles: ['MARKETPLACE_STAFF']
+      }
+    ]
   },
   {
     group: 'Operations',
     items: [
-      { title: 'Delivery Notes', href: '/delivery-notes', icon: Truck, color: 'text-orange-500' },
-      { title: 'Inspection', href: '/pdi', icon: ClipboardCheck, color: 'text-emerald-500' },
-      { title: 'Insurance', href: '/insurance', icon: ShieldCheck, color: 'text-rose-500' },
-      { title: 'Registration', href: '/registration', icon: FileCheck, color: 'text-amber-500' },
-    ],
+      {
+        title: 'Vehicle Catalog',
+        href: '/dashboard/catalog/vehicles',
+        icon: Box,
+        color: 'text-indigo-500',
+        allowedTenants: ['MARKETPLACE', 'DEALER'],
+        permissions: ['read']
+      },
+      {
+        title: 'Accessories',
+        href: '/dashboard/catalog/accessories',
+        icon: ShoppingBag,
+        color: 'text-pink-500',
+        allowedTenants: ['MARKETPLACE', 'DEALER']
+      },
+      {
+        title: 'Service Areas',
+        href: '/superadmin/service-area',
+        icon: MapPin,
+        color: 'text-red-500',
+        allowedTenants: ['MARKETPLACE'],
+        allowedRoles: ['SUPER_ADMIN']
+      },
+      {
+        title: 'Inventory',
+        href: '/inventory',
+        icon: Warehouse,
+        color: 'text-purple-500',
+        allowedTenants: ['DEALER']
+      },
+      {
+        title: 'Finance Status',
+        href: '/finance-applications',
+        icon: BadgeIndianRupee,
+        color: 'text-emerald-500',
+        allowedTenants: ['DEALER', 'BANK']
+      },
+    ]
   },
   {
-    group: 'Inventory',
+    group: 'Sales & CRM',
     items: [
-      { title: 'Inventory', href: '/inventory', icon: Warehouse, color: 'text-purple-500' },
-      { title: 'Brand Enablement', href: '/brand-enablement', icon: Tags, color: 'text-pink-500' },
-      { title: 'Price Lists', href: '/pricelists', icon: ScrollText, color: 'text-slate-400' },
-      { title: 'Stock Transfer', href: '/stock-transfer', icon: FileOutput, color: 'text-orange-400' },
-      { title: 'Physical Audit', href: '/physical-audit', icon: ClipboardCheck, color: 'text-red-400' },
-      { title: 'Returns', href: '/returns', icon: HistoryIcon, color: 'text-slate-400' },
-      // Catalog View
-      { title: 'Vehicles', href: '/dashboard/catalog/vehicles', icon: Box, color: 'text-indigo-400' },
-      { title: 'Accessories', href: '/dashboard/catalog/accessories', icon: ShoppingBag, color: 'text-pink-400' },
-    ],
+      {
+        title: 'Leads & Enquiries',
+        href: '/leads',
+        icon: Users,
+        color: 'text-blue-500',
+        allowedTenants: ['DEALER']
+      },
+      {
+        title: 'Customers',
+        href: '/customers',
+        icon: UserCheck,
+        color: 'text-blue-400',
+        allowedTenants: ['DEALER']
+      },
+      {
+        title: 'Quotes',
+        href: '/quotes',
+        icon: FileText,
+        color: 'text-blue-300',
+        allowedTenants: ['DEALER']
+      },
+      {
+        title: 'Sales Orders',
+        href: '/sales-orders',
+        icon: ShoppingCart,
+        color: 'text-cyan-500',
+        allowedTenants: ['DEALER']
+      },
+    ]
   },
   {
-    group: 'Procurement',
+    group: 'Admin & Settings',
     items: [
-      { title: 'Vendors', href: '/vendors', icon: Building2, color: 'text-slate-500' },
-      { title: 'Purchase Orders', href: '/purchase-orders', icon: ScrollText, color: 'text-blue-400' },
-      { title: 'Receiving', href: '/receiving', icon: Warehouse, color: 'text-emerald-400' },
-    ],
-  },
-  {
-    group: 'Accounting',
-    items: [
-      { title: 'Invoices', href: '/invoices', icon: Receipt, color: 'text-purple-500' },
-      { title: 'Receipts', href: '/receipts', icon: ScrollText, color: 'text-purple-400' },
-      { title: 'General Ledger', href: '/ledger', icon: Calculator, color: 'text-slate-400' },
-      { title: 'Day Book', href: '/daybook', icon: FileText, color: 'text-slate-400' },
-      { title: 'Trial Balance', href: '/trial-balance', icon: BarChart4, color: 'text-orange-400' },
-      { title: 'Profit & Loss', href: '/profit-loss', icon: PieChart, color: 'text-red-400' },
-      { title: 'Balance Sheet', href: '/balance-sheet', icon: Columns, color: 'text-blue-400' },
-      { title: 'Credit Notes', href: '/credit-notes', icon: FileText, color: 'text-red-300' },
-      { title: 'Payments', href: '/payments', icon: Wallet, color: 'text-emerald-500' },
-      { title: 'Bills', href: '/bills', icon: Receipt, color: 'text-orange-500' },
-      { title: 'Expenses', href: '/expenses', icon: PieChart, color: 'text-red-500' },
-      { title: 'Banking (Internal)', href: '/banking', icon: Landmark, color: 'text-indigo-500' },
-    ],
-  },
-  {
-    group: 'Strategy',
-    items: [
-      { title: 'Campaigns', href: '/campaigns', icon: Megaphone, color: 'text-pink-500' },
-      { title: 'Budget', href: '/budget', icon: Calculator, color: 'text-emerald-400' },
-      { title: 'Targets', href: '/targets', icon: BarChart4, color: 'text-blue-500' },
-      { title: 'Reports', href: '/reports', icon: BarChart4, color: 'text-indigo-500' },
-      { title: 'HR', href: '/hr', icon: Users, color: 'text-orange-400' },
-      { title: 'Team', href: '/team', icon: Users, color: 'text-orange-500' },
-    ],
-  },
-  {
-    group: 'System',
-    items: [
-      { title: 'Audit Logs', href: '/audit-logs', icon: HistoryIcon, color: 'text-slate-400' },
+      {
+        title: 'Dealership Network',
+        href: '/dashboard/dealers',
+        icon: Building2,
+        color: 'text-blue-600',
+        allowedTenants: ['MARKETPLACE'],
+        allowedRoles: ['SUPER_ADMIN', 'MARKETPLACE_ADMIN']
+      },
+      {
+        title: 'Finance Partners',
+        href: '/dashboard/finance-partners',
+        icon: Landmark,
+        color: 'text-emerald-600',
+        allowedTenants: ['MARKETPLACE'],
+        allowedRoles: ['SUPER_ADMIN']
+      },
+      {
+        title: 'System Users',
+        href: '/dashboard/users',
+        icon: Users,
+        color: 'text-purple-600',
+        allowedTenants: ['MARKETPLACE'],
+        allowedRoles: ['SUPER_ADMIN']
+      },
+      {
+        title: 'Bank Settings',
+        href: '/settings',
+        icon: Settings,
+        color: 'text-slate-400',
+        allowedTenants: ['BANK']
+      },
+      {
+        title: 'Audit Logs',
+        href: '/audit-logs',
+        icon: HistoryIcon,
+        color: 'text-slate-400',
+        allowedTenants: ['MARKETPLACE', 'DEALER', 'BANK'],
+        permissions: ['read']
+      }
     ]
   }
 ];
 
-// 2. BANK TENANT CONFIGURATION
-const BANK_SIDEBAR: SidebarGroup[] = [
-  {
-    group: 'Bank Dashboard',
-    items: [
-      { title: 'Overview', href: '/dashboard', icon: LayoutDashboard, color: 'text-indigo-500' },
-    ],
-  },
-  {
-    group: 'Loan Processing',
-    items: [
-      { title: 'Applications', href: '/finance-applications', icon: FileText, color: 'text-blue-500' },
-    ],
-  },
-  {
-    group: 'Team Management',
-    items: [
-      { title: 'Bank Team', href: '/team', icon: Users, color: 'text-orange-500' },
-    ],
-  },
-  {
-    group: 'Settings',
-    items: [
-      { title: 'Bank Settings', href: '/settings', icon: Settings, color: 'text-slate-400' },
-    ],
-  },
-];
+// Helper to check if item is allowed
+const isItemAllowed = (item: SidebarItem, tenantType: TenantType, userRole?: string): boolean => {
+  // 1. Check Tenant
+  if (item.allowedTenants && !item.allowedTenants.includes(tenantType)) return false;
 
-// 3. SUPER ADMIN CONFIGURATION
-// 3. SUPER ADMIN CONFIGURATION (Full Access)
-const ADMIN_SIDEBAR: SidebarGroup[] = [
-  {
-    group: 'Overview',
-    items: [
-      { title: 'Platform Overview', href: '/dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
-    ],
-  },
-  {
-    group: 'Operations',
-    items: [
-      { title: 'Vehicle Catalog', href: '/dashboard/catalog/vehicles', icon: Box, color: 'text-indigo-500' },
-      { title: 'Accessories', href: '/dashboard/catalog/accessories', icon: ShoppingBag, color: 'text-pink-500' },
-      { title: 'Service Areas', href: '/superadmin/service-area', icon: MapPin, color: 'text-red-500' },
-    ],
-  },
-  {
-    group: 'Partners',
-    items: [
-      { title: 'Dealership Network', href: '/dashboard/dealers', icon: Building2, color: 'text-blue-600' },
-      { title: 'Finance Partners', href: '/dashboard/finance-partners', icon: Landmark, color: 'text-emerald-600' },
-    ],
-  },
-  {
-    group: 'Finance & Compliance',
-    items: [
-      { title: 'Pricing Master', href: '/dashboard/catalog/pricing', icon: Calculator, color: 'text-emerald-500' },
-      { title: 'HSN & Tax Engine', href: '/dashboard/catalog/hsn', icon: FileText, color: 'text-slate-500' },
-      { title: 'Insurance Config', href: '/dashboard/catalog/insurance', icon: ShieldCheck, color: 'text-rose-500' },
-    ],
-  },
-  {
-    group: 'Security & Auth',
-    items: [
-      { title: 'System Users', href: '/dashboard/users', icon: Users, color: 'text-purple-600' },
-      { title: 'Permissions', href: '/dashboard/permissions', icon: Lock, color: 'text-red-600' },
-      { title: 'Audit Logs', href: '/audit-logs', icon: HistoryIcon, color: 'text-slate-500' },
-    ],
-  },
-];
+  // 2. Check Role (if specified)
+  if (item.allowedRoles && userRole) {
+    if (!item.allowedRoles.includes(userRole)) return false;
+  }
 
-// 4. MARKETPLACE STAFF CONFIGURATION (Restricted)
-const MARKETPLACE_SIDEBAR: SidebarGroup[] = [
-  {
-    group: 'Marketplace',
-    items: [
-      { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, color: 'text-indigo-500' },
-    ],
-  },
-  {
-    group: 'Catalog Operations',
-    items: [
-      { title: 'Vehicles', href: '/dashboard/catalog/vehicles', icon: Box, color: 'text-indigo-400' },
-      { title: 'Accessories', href: '/dashboard/catalog/accessories', icon: ShoppingBag, color: 'text-pink-400' },
-      { title: 'On-Road Pricing', href: '/dashboard/catalog/pricing', icon: Calculator, color: 'text-emerald-400' },
-    ],
-  },
-];
+  // 3. Fallback for legacy behavior: If strict filtering is ON, we might want to hide items without explicit config
+  // For now, if no restrictions are present, we assume it's NOT allowed to prevent leaking
+  if (!item.allowedTenants && !item.allowedRoles) return false;
+
+  return true;
+};
 
 // getSidebarConfig function to return the correct array
 export const getSidebarConfig = (tenantType: TenantType, userRole?: string): SidebarGroup[] => {
   const role = userRole?.toUpperCase();
-  const type = tenantType?.toUpperCase();
+  const type = tenantType?.toUpperCase() as TenantType;
 
-  switch (type) {
-    case 'BANK':
-      return BANK_SIDEBAR;
-    case 'MARKETPLACE':
-    case 'SUPER_ADMIN':
-    case 'MARKETPLACE_ADMIN':
-      // If we directly know they are Super Admin from the type or role
-      if (role === 'SUPER_ADMIN' || role === 'MARKETPLACE_ADMIN' || type === 'SUPER_ADMIN') {
-        return ADMIN_SIDEBAR;
-      }
-      return MARKETPLACE_SIDEBAR;
-    case 'DEALER':
-    default:
-      return DEALER_SIDEBAR;
-  }
+  // Filter groups
+  return ALL_SIDEBAR_GROUPS.map(group => {
+    // Filter items within group
+    const visibleItems = group.items.filter(item => isItemAllowed(item, type, role));
+    return { ...group, items: visibleItems };
+  }).filter(group => group.items.length > 0); // Remove empty groups
 };

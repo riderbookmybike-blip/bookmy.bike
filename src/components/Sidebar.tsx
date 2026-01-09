@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -49,7 +49,9 @@ export default function Sidebar({
         );
     }
 
-    const sidebarSections = getSidebarConfig(tenantType, role);
+    const sidebarGroups = useMemo(() => {
+        return getSidebarConfig(tenantType, role);
+    }, [tenantType, role]);
 
     return (
         <>
@@ -95,7 +97,7 @@ export default function Sidebar({
 
                 {/* Navigation */}
                 <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-8 scrollbar-none">
-                    {sidebarSections.map((section, idx) => (
+                    {sidebarGroups.map((section, idx) => (
                         <div key={section.group + idx} className="space-y-2">
                             {/* Section Label */}
                             <div className="h-4 flex items-center">
@@ -201,7 +203,7 @@ export default function Sidebar({
                             <button onClick={onMobileClose} className="p-2 bg-slate-100 dark:bg-white/5 rounded-xl"><ChevronRight size={20} /></button>
                         </div>
                         <nav className="flex-1 overflow-y-auto space-y-6">
-                            {sidebarSections.map((section, idx) => (
+                            {sidebarGroups.map((section, idx) => (
                                 <div key={idx} className="space-y-3">
                                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">{section.group}</h3>
                                     <div className="space-y-1">
