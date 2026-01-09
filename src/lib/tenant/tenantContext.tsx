@@ -70,10 +70,19 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                     const { data: profileData, error } = await supabase.rpc('get_session_profile');
                     if (!mounted) return;
 
+                    if (error) {
+                        console.error('RPC Error:', error);
+                        // Fallback to local storage or defaults on error
+                        throw new Error('Profile fetch failed');
+                    }
+
                     if (profileData) {
                         const profile = profileData as any;
                         const originalRole = (profile.role || '').toUpperCase();
+
+                        // CRITICAL: Set User Role immediately so switcher works
                         setUserRole(originalRole);
+                        localStorage.setItem('user_role', originalRole);
 
                         // Set User Name
                         setUserName(profile.full_name || user.email?.split('@')[0] || 'User');
@@ -101,26 +110,41 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                             setTenantName(profile.tenant_name || 'Business Partner');
                         }
                         setTenantId(profile.tenant_id);
+                    } else {
+                        // User exists but no profile data ??
+                        console.warn('No profile data found for user');
+                        setTenantName('Unknown Organization');
+                        setTenantTypeState('DEALER');
                     }
                 } else {
                     // Fallback for no auth (dev/mock/reload)
                     const localName = localStorage.getItem('user_name');
                     const localRole = localStorage.getItem('active_role');
+                    const localUserRole = localStorage.getItem('user_role'); // Try to get original role too
                     const localTenantType = localStorage.getItem('tenant_type');
                     const localTenantName = localStorage.getItem('tenant_name');
                     const localTenantId = localStorage.getItem('tenant_id');
 
                     if (localName) setUserName(localName);
                     if (localRole) setActiveRole(localRole);
+                    if (localUserRole) setUserRole(localUserRole); // Restore userRole
                     if (localTenantType) setTenantTypeState(localTenantType as TenantType);
                     if (localTenantName) setTenantName(localTenantName);
                     if (localTenantId) setTenantId(localTenantId);
 
-                    // If absolutely nothing is found, default to acceptable values to prevent infinite loading
+                    // If absolutely nothing is found, default to acceptable values
                     if (!localTenantType) setTenantTypeState('DEALER');
+                    if (!localTenantName && !tenantName) setTenantName('Guest Workspace');
                 }
             } catch (err) {
                 console.error(err);
+                // On error, try to restore from local storage as last resort
+                const localName = localStorage.getItem('user_name');
+                const localTenantName = localStorage.getItem('tenant_name');
+                if (localName) setUserName(localName);
+                if (localTenantName) setTenantName(localTenantName);
+                else setTenantName('Connection Error');
+
                 setTenantTypeState('DEALER');
             }
         };
