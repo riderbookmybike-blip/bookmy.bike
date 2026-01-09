@@ -61,7 +61,7 @@ export default function Sidebar({
             {/* Desktop Sidebar */}
             <aside
                 className={`
-                    fixed z-40 inset-y-0 left-0 
+                    fixed z-[60] inset-y-0 left-0 
                     bg-white dark:bg-slate-950/80 backdrop-blur-2xl
                     flex flex-col 
                     transition-all duration-300 ease-in-out 
