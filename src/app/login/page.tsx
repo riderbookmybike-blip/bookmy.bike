@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 import { ArrowRight, Lock, Phone, ShieldCheck, Zap, BarChart3, Globe, CheckCircle2, AlertTriangle, ChevronRight, Check } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import { useTenant } from '@/lib/tenant/tenantContext';
+import { createClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
     const router = useRouter();
     const { setTenantType } = useTenant();
+    const supabase = createClient();
     const [step, setStep] = useState<'PHONE' | 'OTP'>('PHONE');
     const [phone, setPhone] = useState('');
     const [otp, setOtp] = useState('');
@@ -159,18 +161,18 @@ export default function LoginPage() {
             </div>
 
             {/* Right Section: Form Interface */}
-            <div className="flex-1 bg-white dark:bg-slate-950 flex flex-col items-center justify-center p-12 relative overflow-hidden">
+            <div className="flex-1 bg-white dark:bg-slate-950 flex flex-col items-center justify-center p-8 md:p-12 relative overflow-y-auto">
                 {/* Visual Flair */}
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/5 blur-[120px] rounded-full translate-x-1/3 -translate-y-1/3 pointer-events-none" />
                 <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-emerald-500/5 blur-[100px] rounded-full -translate-x-1/2 translate-y-1/2 pointer-events-none" />
 
-                <div className="w-full max-w-sm space-y-12 relative z-10">
+                <div className="w-full max-w-sm space-y-8 relative z-10">
                     <div className="space-y-4">
                         <div className="flex items-center gap-3">
                             <div className="h-0.5 w-12 bg-indigo-600 rounded-full" />
                             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-600 dark:text-indigo-400 italic">BMB Terminal Uplink</span>
                         </div>
-                        <h2 className="text-5xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white leading-[0.9]">
+                        <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white leading-[0.9]">
                             Initialize <br /> Access
                         </h2>
                         <p className="text-xs text-slate-500 font-medium tracking-wide leading-relaxed">
@@ -180,7 +182,7 @@ export default function LoginPage() {
                         </p>
                     </div>
 
-                    <div className="space-y-8">
+                    <div className="space-y-6">
                         <div className="relative group overflow-hidden">
                             <div className="absolute inset-0 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[32px] transition-all group-focus-within:border-indigo-600 group-focus-within:ring-[16px] group-focus-within:ring-indigo-600/5" />
 

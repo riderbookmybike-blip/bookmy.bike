@@ -89,7 +89,8 @@ export async function POST(request: Request) {
         role: profile.role,
         name: profile.full_name,
         tenant_id: profile.tenant_id,
-        tenant_name: profile.tenants?.name
+        tenant_name: profile.tenants?.name,
+        session: data.session // CRITICAL: Send session to client for manual set
     });
 
     // CRITICAL: Manually bridge Supabase Auth Cookies to Response
