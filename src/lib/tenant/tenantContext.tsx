@@ -66,6 +66,13 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                 const supabase = createClient();
                 let { data: { user }, error: userError } = await supabase.auth.getUser();
 
+                if (!user) {
+                    const { data: sessionData } = await supabase.auth.getSession();
+                    if (sessionData?.session?.user) {
+                        user = sessionData.session.user;
+                    }
+                }
+
                 // DISASTER RECOVERY: If no user found, check for backed-up tokens in localStorage
                 if (!user) {
                     const fallbackAccess = localStorage.getItem('sb-access-token');
