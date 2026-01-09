@@ -41,12 +41,39 @@ const TenantContext = createContext<TenantContextProps>({
 });
 
 export const TenantProvider = ({ children }: { children: ReactNode }) => {
-    const [tenantType, setTenantTypeState] = useState<TenantType | undefined>(undefined);
-    const [tenantName, setTenantName] = useState('Loading...');
-    const [userName, setUserName] = useState('Guest User');
-    const [tenantId, setTenantId] = useState<string | undefined>(undefined);
-    const [userRole, setUserRole] = useState<string | undefined>(undefined);
-    const [activeRole, setActiveRole] = useState<string | undefined>(undefined);
+    // FIX: Lazy Initialize State to prevent "Guest Flash"
+    const [tenantType, setTenantTypeState] = useState<TenantType | undefined>(() => {
+        if (typeof window !== 'undefined') {
+            return (localStorage.getItem('tenant_type') as TenantType) || undefined;
+        }
+        return undefined;
+    });
+
+    const [tenantName, setTenantName] = useState(() => {
+        if (typeof window !== 'undefined') return localStorage.getItem('tenant_name') || '';
+        return '';
+    });
+
+    const [userName, setUserName] = useState(() => {
+        if (typeof window !== 'undefined') return localStorage.getItem('user_name') || ''; // No 'Guest User' default
+        return '';
+    });
+
+    const [tenantId, setTenantId] = useState<string | undefined>(() => {
+        if (typeof window !== 'undefined') return localStorage.getItem('tenant_id') || undefined;
+        return undefined;
+    });
+
+    const [userRole, setUserRole] = useState<string | undefined>(() => {
+        if (typeof window !== 'undefined') return localStorage.getItem('user_role') || undefined;
+        return undefined;
+    });
+
+    const [activeRole, setActiveRole] = useState<string | undefined>(() => {
+        if (typeof window !== 'undefined') return localStorage.getItem('active_role') || undefined;
+        return undefined;
+    });
+
     const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
 
     const status: TenantStatus = 'ACTIVE';
