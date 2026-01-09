@@ -55,11 +55,12 @@ export default function VehicleCatalogPage() {
 
             if (itemsError) throw itemsError;
 
-            // Map 'make' to 'brand' for ListPanel consistency
+            // Map 'make' to 'brand' and use it as 'id' for navigation to the complex management page
             const mappedItems = (items || []).map(item => ({
                 ...item,
+                id: item.make, // DETAIL PAGE EXPECTS BRAND NAME AS ID
                 brand: item.make,
-                status: 'Active' // Global items are typically active
+                status: 'Active'
             }));
 
             setVehicles(mappedItems);

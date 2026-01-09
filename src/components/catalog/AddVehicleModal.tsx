@@ -76,9 +76,11 @@ export default function AddVehicleModal({ isOpen, onClose, onSuccess }: AddVehic
                                 onChange={e => setFormData({ ...formData, type: e.target.value })}
                                 className="w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl font-bold focus:ring-2 focus:ring-blue-500/20 outline-none"
                             >
-                                <option value="BIKE">BIKE</option>
+                                <option value="MOTORCYCLE">MOTORCYCLE</option>
                                 <option value="SCOOTER">SCOOTER</option>
+                                <option value="MOPED">MOPED</option>
                                 <option value="CAR">CAR</option>
+                                <option value="ACCESSORY">ACCESSORY</option>
                             </select>
                         </div>
                         <div className="space-y-1">
