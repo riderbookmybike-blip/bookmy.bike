@@ -14,7 +14,7 @@ interface DashboardHeaderProps {
 }
 
 export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHeaderProps) => {
-    const { tenantType } = useTenant();
+    const { tenantType, isSidebarExpanded } = useTenant();
     const router = useRouter();
     const [userName, setUserName] = useState<string | null>(null);
 
@@ -44,28 +44,28 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
     };
 
     return (
-        <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-white/80 dark:bg-slate-950/80 border-b border-slate-200 dark:border-white/5 transition-colors duration-300">
+        <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isSidebarExpanded ? 'md:left-64' : 'md:left-20'} backdrop-blur-xl bg-white/80 dark:bg-slate-950/80 border-b border-slate-200 dark:border-white/5`}>
             <div className="w-full px-6 h-16 flex items-center justify-between">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center flex-1">
                     {onMenuClick && (
                         <button
                             onClick={onMenuClick}
-                            className="p-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white md:hidden"
+                            className="p-2 mr-4 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white md:hidden"
                         >
                             <Menu size={20} />
                         </button>
                     )}
 
-                    {/* Search Bar - CRM Specific */}
+                    {/* Search Bar - Center Aligned */}
                     {showSearch && (
-                        <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl w-64 lg:w-96 transition-all focus-within:w-full focus-within:max-w-xl focus-within:ring-2 focus-within:ring-blue-500/20">
+                        <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl w-64 lg:w-96 transition-all focus-within:w-[450px] focus-within:ring-2 focus-within:ring-blue-500/20">
                             <Search size={16} className="text-slate-400" />
                             <input
                                 type="text"
                                 placeholder="Global Search (Orders, Customers, VIN...)"
                                 className="bg-transparent border-none outline-none text-xs font-medium text-slate-900 dark:text-white w-full placeholder:text-slate-400"
                             />
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1 opacity-50 group-focus-within:opacity-100">
                                 <span className="p-1 rounded bg-white dark:bg-white/10 text-[10px] font-bold text-slate-400">⌘</span>
                                 <span className="p-1 rounded bg-white dark:bg-white/10 text-[10px] font-bold text-slate-400">K</span>
                             </div>
@@ -92,7 +92,9 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
                                     {(() => {
                                         if (!tenantType) return 'Loading...';
                                         switch (tenantType) {
-                                            case 'MARKETPLACE': return 'Super Admin';
+                                            case 'MARKETPLACE':
+                                            case 'SUPER_ADMIN' as any:
+                                                return 'Super Admin';
                                             case 'DEALER': return 'Dealer Partner';
                                             case 'BANK': return 'Finance Partner';
                                             default: return tenantType;
