@@ -110,8 +110,15 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                             setTenantName('Guest User');
                         }
                     } else {
-                        console.warn('DEBUG: Profile not found');
+                        console.warn('DEBUG: Profile not found for user');
+                        setTenantTypeState('MARKETPLACE'); // Default to Marketplace for safety/setup
+                        setTenantName('New User');
                     }
+                } else {
+                    console.log('DEBUG: No user session found');
+                    // Could redirect to login here, but let middleware handle portions
+                    // For now, stop loading so they see something (empty or public)
+                    setTenantTypeState('DEALER');
                 }
             } catch (error) {
                 console.error('Error fetching tenant details:', error);
