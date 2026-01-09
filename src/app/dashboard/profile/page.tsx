@@ -22,7 +22,25 @@ export default function ProfilePage() {
 
                 // 1. Get Auth User
                 const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-                if (authError || !authUser) throw authError || new Error('No user found');
+
+                if (authError || !authUser) {
+                    console.warn('Supabase auth missing, falling back to local storage');
+                    // Fallback for demo/mock login (since we use /api/auth/login mock)
+                    const localName = localStorage.getItem('user_name') || 'Guest User';
+                    const localRole = localStorage.getItem('user_role') || 'DEALER_ADMIN';
+                    const localTenant = localStorage.getItem('tenant_type') || 'DEALER';
+
+                    setUser({
+                        name: localName,
+                        role: localRole,
+                        email: 'user@bookmy.bike',
+                        phone: '+91 98765 43210',
+                        dealership: localTenant === 'DEALER' ? 'Authorized Dealership' : 'Partner Network',
+                        location: 'India',
+                    });
+                    setLoading(false);
+                    return;
+                }
 
                 // 2. Get Profile & Tenant Details
                 const { data: profile, error: profileError } = await supabase
@@ -43,6 +61,16 @@ export default function ProfilePage() {
                 });
             } catch (error) {
                 console.error('Error fetching profile:', error);
+                // Fallback even on error
+                const localName = localStorage.getItem('user_name') || 'Guest User';
+                setUser({
+                    name: localName,
+                    role: 'USER',
+                    email: '-',
+                    phone: '-',
+                    dealership: '-',
+                    location: '-',
+                });
             } finally {
                 setLoading(false);
             }

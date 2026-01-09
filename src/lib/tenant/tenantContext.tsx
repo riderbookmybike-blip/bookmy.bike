@@ -12,6 +12,7 @@ interface TenantContextProps {
     tenantType: TenantType | undefined;
     setTenantType: (type: TenantType) => void;
     tenantName: string;
+    userName: string;
     tenantId: string | undefined;
     userRole: string | undefined;
     activeRole: string | undefined;
@@ -28,6 +29,7 @@ const TenantContext = createContext<TenantContextProps>({
     tenantType: undefined,
     setTenantType: () => { },
     tenantName: 'Loading...',
+    userName: 'Guest User',
     tenantId: undefined,
     userRole: undefined,
     activeRole: undefined,
@@ -41,6 +43,7 @@ const TenantContext = createContext<TenantContextProps>({
 export const TenantProvider = ({ children }: { children: ReactNode }) => {
     const [tenantType, setTenantTypeState] = useState<TenantType | undefined>(undefined);
     const [tenantName, setTenantName] = useState('Loading...');
+    const [userName, setUserName] = useState('Guest User');
     const [tenantId, setTenantId] = useState<string | undefined>(undefined);
     const [userRole, setUserRole] = useState<string | undefined>(undefined);
     const [activeRole, setActiveRole] = useState<string | undefined>(undefined);
@@ -72,6 +75,10 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                         const originalRole = (profile.role || '').toUpperCase();
                         setUserRole(originalRole);
 
+                        // Set User Name
+                        setUserName(profile.full_name || user.email?.split('@')[0] || 'User');
+                        localStorage.setItem('user_name', profile.full_name || user.email?.split('@')[0] || 'User');
+
                         // Persistence Restore
                         const savedRole = localStorage.getItem('active_role');
                         const finalRole = (originalRole === 'SUPER_ADMIN' || originalRole === 'MARKETPLACE_ADMIN')
@@ -90,6 +97,10 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                         }
                         setTenantId(profile.tenant_id);
                     }
+                } else {
+                    // Fallback for no auth (dev/mock)
+                    const localName = localStorage.getItem('user_name');
+                    if (localName) setUserName(localName);
                 }
             } catch (err) {
                 console.error(err);
@@ -106,6 +117,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
             tenantType,
             setTenantType: setTenantTypeState,
             tenantName,
+            userName,
             tenantId,
             userRole,
             activeRole,
