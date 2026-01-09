@@ -101,11 +101,12 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
                     if (error) {
                         console.error('RPC Error:', error);
-                        // Fallback to local storage or defaults on error
-                        throw new Error('Profile fetch failed');
-                    }
-
-                    if (profileData) {
+                        // FALLBACK: Use Auth Data if Profile Table fails
+                        setUserName(user.email?.split('@')[0] || 'Authenticated User');
+                        setUserRole('DEALER'); // Safe Default
+                        setTenantName('BookMyBike Terminal');
+                        setTenantTypeState('DEALER');
+                    } else if (profileData) {
                         const profile = profileData as any;
                         const originalRole = (profile.role || '').toUpperCase();
 
