@@ -91,12 +91,16 @@ export const AumsHeader = ({ onLoginClick, onMenuClick, showSearch = false }: Au
                                     <div className="space-y-1">
                                         <Link href="/dashboard" className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold text-slate-400 hover:bg-indigo-500/10 hover:text-indigo-400 transition-all">
                                             <Terminal size={16} />
-                                            <span>Command Center</span>
+                                            <span>Dashboard</span>
                                         </Link>
-                                        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold text-slate-400 hover:bg-indigo-500/10 hover:text-indigo-400 transition-all">
+                                        <Link href="/dashboard/profile" className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold text-slate-400 hover:bg-indigo-500/10 hover:text-indigo-400 transition-all">
+                                            <User size={16} />
+                                            <span>Profile</span>
+                                        </Link>
+                                        <Link href="/dashboard/settings" className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold text-slate-400 hover:bg-indigo-500/10 hover:text-indigo-400 transition-all">
                                             <Settings size={16} />
-                                            <span>System Settings</span>
-                                        </button>
+                                            <span>Settings</span>
+                                        </Link>
                                     </div>
 
                                     <div className="mt-2 p-1">
