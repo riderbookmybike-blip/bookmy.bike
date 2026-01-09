@@ -165,7 +165,7 @@ const ADMIN_SIDEBAR: SidebarGroup[] = [
   {
     group: 'Super Admin',
     items: [
-      { title: 'Mission Control', href: '/dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
+      { title: 'Platform Overview', href: '/dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
     ],
   },
   {
