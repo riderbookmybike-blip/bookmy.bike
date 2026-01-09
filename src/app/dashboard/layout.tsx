@@ -28,6 +28,13 @@ export default function DashboardLayout({
         setIsSidebarExpanded(!isSidebarPinned);
     };
 
+    // Intelligent Role Fallback
+    const effectiveRole = activeRole || userRole || (() => {
+        if (tenantType === 'MARKETPLACE') return 'MARKETPLACE_ADMIN';
+        if (tenantType === 'BANK') return 'BANK_ADMIN';
+        return 'TENANT_ADMIN';
+    })();
+
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
             {/* Dedicated CRM Header */}
@@ -39,7 +46,7 @@ export default function DashboardLayout({
             <div className="flex pt-16"> {/* Reduced top padding for 64px header */}
                 {/* Sidebar Component */}
                 <Sidebar
-                    role={(activeRole as any) || (userRole as any) || 'TENANT_ADMIN'}
+                    role={effectiveRole as any}
                     isExpanded={isSidebarExpanded}
                     isPinned={isSidebarPinned}
                     onHoverChange={handleSidebarHoverChange}

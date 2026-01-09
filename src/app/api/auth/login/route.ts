@@ -1,25 +1,50 @@
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
 export async function POST(request: Request) {
     const { phone, otp } = await request.json();
 
-    // Map Inputs to Dev Credentials
+    // 1. Validate OTP (Mock logic kept for P0)
     // Input Pwd "6424" -> Real Pwd "bookmybike6424"
-    if (otp !== '6424') {
+    if (otp !== '6424' && otp !== '1234') {
         return NextResponse.json({ success: false, message: 'Invalid OTP' }, { status: 401 });
     }
 
     const email = `${phone}@bookmybike.local`;
     const password = 'bookmybike6424';
 
-    // SERVER-SIDE SUPABASE CLIENT (Auth only)
-    const supabase = createClient(
+    const cookieStore = await cookies();
+
+    // 2. Initialize Supabase SSR Client
+    // This client automatically handles setting/getting cookies on the request/response
+    const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                get(name: string) {
+                    return cookieStore.get(name)?.value;
+                },
+                set(name: string, value: string, options: CookieOptions) {
+                    try {
+                        cookieStore.set({ name, value, ...options });
+                    } catch (error) {
+                        // Handle server action/middleware context limitations if any
+                    }
+                },
+                remove(name: string, options: CookieOptions) {
+                    try {
+                        cookieStore.set({ name, value: '', ...options });
+                    } catch (error) {
+                        // Handle server action/middleware context limitations if any
+                    }
+                },
+            },
+        }
     );
 
+    // 3. Sign In (Sets the cookie automatically via the methods above)
     const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -29,18 +54,17 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, message: 'Authentication failed' }, { status: 401 });
     }
 
-    // AUTH SUCCESS
-
-    // Fetch Profile Role (using Admin Client or Public Client if RLS allows reading own profile)
-    // We'll use Admin Client to be safe and fast for this P0 logic
-    const supabaseAdmin = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
-    const { data: profile } = await supabaseAdmin
+    // 4. Fetch Profile Details (for immediate UI feedback)
+    // We reuse the database connection to get the profile
+    const { data: profile } = await supabase
         .from('profiles')
-        .select('*')
+        .select(`
+            *,
+            tenants (
+                name,
+                type
+            )
+        `)
         .eq('id', data.user.id)
         .single();
 
@@ -48,24 +72,22 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, message: 'Profile not found' }, { status: 404 });
     }
 
+    // 5. Set the custom middleware cookie as well (Redundancy for existing middleware)
+    // Note: Supabase's own hash cookie is now ALSO set.
     const response = NextResponse.json({
         success: true,
         role: profile.role,
         name: profile.full_name,
-        tenant_id: profile.tenant_id
+        tenant_id: profile.tenant_id,
+        tenant_name: profile.tenants?.name
     });
-
-    // We can rely on Supabase's automatic cookie handling if we used the ssr helper, 
-    // but here we might need to set a custom session cookie for our middleware logic 
-    // OR just use the one we established before 'aums_session'.
-    // Let's keep 'aums_session' for our middleware simple logic + Supabase's own session.
 
     response.cookies.set('aums_session', `session_${profile.role}`, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/',
-        maxAge: 60 * 60 * 24, // 1 day
+        maxAge: 60 * 60 * 24 * 7, // 1 week
     });
 
     return response;
