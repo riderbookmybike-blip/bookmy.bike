@@ -130,20 +130,24 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
                         setActiveRole(finalRole);
 
+                        // Robust Tenant Name & ID Extraction
+                        const extractedTenantName = profile.tenant_name || profile.tenants?.name || 'BookMyBike Platform';
+                        const extractedTenantId = profile.tenant_id;
+
                         // Save critical context to localStorage
                         localStorage.setItem('tenant_type', finalRole === 'SUPER_ADMIN' || finalRole === 'MARKETPLACE_ADMIN' ? 'MARKETPLACE' : (profile.tenant_type || 'DEALER'));
-                        localStorage.setItem('tenant_name', profile.tenant_name || 'BookMyBike Platform');
-                        if (profile.tenant_id) localStorage.setItem('tenant_id', profile.tenant_id);
+                        localStorage.setItem('tenant_name', extractedTenantName);
+                        if (extractedTenantId) localStorage.setItem('tenant_id', extractedTenantId);
 
                         if (finalRole === 'SUPER_ADMIN' || finalRole === 'MARKETPLACE_ADMIN') {
                             setTenantTypeState('MARKETPLACE');
-                            setTenantName(profile.tenant_name || 'BookMyBike Platform');
+                            setTenantName(extractedTenantName);
                         } else {
                             const dbType = (profile.tenant_type || '').toUpperCase();
                             setTenantTypeState(dbType as TenantType || 'DEALER');
-                            setTenantName(profile.tenant_name || 'Business Partner');
+                            setTenantName(extractedTenantName);
                         }
-                        setTenantId(profile.tenant_id);
+                        setTenantId(extractedTenantId);
                     } else {
                         // User exists but no profile data ??
                         console.warn('No profile data found for user');
