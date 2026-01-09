@@ -21,6 +21,8 @@ import MasterListDetailLayout from '@/components/templates/MasterListDetailLayou
 import ListPanel from '@/components/templates/ListPanel';
 import { KPICard } from '@/components/dashboard/KPICard';
 import AddVehicleModal from '@/components/catalog/AddVehicleModal';
+import AddBrandModal from '@/components/catalog/AddBrandModal';
+import { MOCK_VEHICLES } from '@/types/productMaster';
 
 const VEHICLE_COLUMNS: any[] = [
     { key: 'brand', header: 'Brand' },
@@ -37,6 +39,7 @@ export default function VehicleCatalogPage() {
     const [inventoryIds, setInventoryIds] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
@@ -47,25 +50,45 @@ export default function VehicleCatalogPage() {
         try {
             const supabase = createClient();
 
-            // 1. Fetch Global Catalog
-            const { data: items, error: itemsError } = await supabase
+            // 1. Fetch Global Catalog from DB
+            const { data: dbItems, error: itemsError } = await supabase
                 .from('items')
                 .select('*')
                 .order('created_at', { ascending: false });
 
-            if (itemsError) throw itemsError;
-
-            // Map 'make' to 'brand' and use it as 'id' for navigation to the complex management page
-            const mappedItems = (items || []).map(item => ({
+            // 2. Map DB Items
+            const mappedDbItems = (dbItems || []).map(item => ({
                 ...item,
-                id: item.make, // DETAIL PAGE EXPECTS BRAND NAME AS ID
+                id: item.make, // Navigation expects Brand ID/Name
                 brand: item.make,
-                status: 'Active'
+                status: 'Active',
+                source: 'live'
             }));
 
-            setVehicles(mappedItems);
+            // 3. Map Mock Items (to ensure user's previous work/data is visible)
+            const mappedMockItems = MOCK_VEHICLES.map(v => ({
+                id: v.make,
+                brand: v.make,
+                model: v.model,
+                variant: v.variant,
+                type: v.bodyType,
+                price: 0, // Mock price not specified in master
+                status: 'Active',
+                source: 'mock'
+            }));
 
-            // 2. Fetch My Inventory (if Dealer)
+            // 4. Merge - Dedup by matching brand+model+variant if needed, or just combine
+            // For now, let's combine and priority to DB
+            const allItems = [...mappedDbItems, ...mappedMockItems];
+
+            // Deduplicate by brand+model+variant to avoid confusion
+            const uniqueItems = Array.from(new Map(allItems.map(item => [
+                `${item.brand}-${item.model}-${item.variant}`, item
+            ])).values());
+
+            setVehicles(uniqueItems);
+
+            // 5. Fetch My Inventory (if Dealer)
             if (tenantType === 'DEALER') {
                 const { data: inventory, error: invError } = await supabase
                     .from('marketplace_inventory')
@@ -84,9 +107,9 @@ export default function VehicleCatalogPage() {
     };
 
     const filteredVehicles = vehicles.filter(v =>
-        v.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        v.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        v.variant.toLowerCase().includes(searchQuery.toLowerCase())
+        (v.brand || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (v.model || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (v.variant || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     const metrics = (
@@ -99,21 +122,18 @@ export default function VehicleCatalogPage() {
                 onClick={() => setSearchQuery('')}
             />
             <KPICard
-                title="Registered SKUs"
+                title="Catalog Items"
                 value={vehicles.length}
                 icon={Box}
-                delta="+4"
+                delta={vehicles.filter(v => v.source === 'live').length.toString()}
                 isUp={true}
-                sub="Active in Inventory"
+                sub="Live in Database"
             />
             <KPICard
-                title="Inactive SKUs"
-                value={vehicles.filter(s => s.status === 'Inactive').length}
-                icon={AlertCircle}
-                delta="0%"
-                isUp={true}
-                sub="Requires Attention"
-                onClick={() => setSearchQuery('inactive')}
+                title="Database Sync"
+                value={vehicles.filter(v => v.source === 'live').length}
+                icon={CheckCircle2}
+                sub="Verified Entities"
             />
             <KPICard
                 title="Total Variants"
@@ -135,7 +155,7 @@ export default function VehicleCatalogPage() {
                                 CATALOG V2.0
                             </div>
                             <div className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-black text-emerald-500 uppercase tracking-widest">
-                                SYNCED
+                                {vehicles.filter(v => v.source === 'live').length > 0 ? 'SYNCED' : 'HYBRID'}
                             </div>
                         </div>
                         <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter italic leading-none">
@@ -147,10 +167,10 @@ export default function VehicleCatalogPage() {
                     {['SUPER_ADMIN', 'MARKETPLACE_ADMIN'].includes(tenantType || '') && (
                         <button
                             onClick={() => setIsAddModalOpen(true)}
-                            className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-500/20 active:scale-95"
+                            className="flex items-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl active:scale-95 border border-white/10"
                         >
                             <Plus size={18} strokeWidth={3} />
-                            Add Vehicle
+                            Add Vehicle SKU
                         </button>
                     )}
                 </div>
@@ -163,7 +183,7 @@ export default function VehicleCatalogPage() {
                         columns={VEHICLE_COLUMNS}
                         data={filteredVehicles}
                         actionLabel="Add Brand"
-                        onActionClick={() => setIsAddModalOpen(true)}
+                        onActionClick={() => setIsBrandModalOpen(true)}
                         basePath="/dashboard/catalog/vehicles"
                         tight={true}
                         onQuickAction={(action, item) => console.log(`Quick action ${action} on`, item)}
@@ -174,6 +194,15 @@ export default function VehicleCatalogPage() {
                     isOpen={isAddModalOpen}
                     onClose={() => setIsAddModalOpen(false)}
                     onSuccess={fetchVehicles}
+                />
+
+                <AddBrandModal
+                    isOpen={isBrandModalOpen}
+                    onClose={() => setIsBrandModalOpen(false)}
+                    onSuccess={(brandName) => {
+                        fetchVehicles();
+                        // Optional: Navigate to brand detail page right away
+                    }}
                 />
             </div>
         </RoleGuard>

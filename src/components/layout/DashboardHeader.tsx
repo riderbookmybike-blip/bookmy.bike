@@ -83,6 +83,11 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
                                 <span className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-tighter mt-1">
                                     {activeRole === 'SUPER_ADMIN' ? 'Platform Control' : 'Marketplace View'}
                                 </span>
+                                {process.env.NODE_ENV === 'development' && (
+                                    <span className="text-[8px] text-slate-400 mt-1 uppercase opacity-50">
+                                        Role: {userRole} | Active: {activeRole}
+                                    </span>
+                                )}
                             </div>
                             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-sm font-black text-white shadow-lg shadow-indigo-500/20">
                                 {userName ? userName.charAt(0) : 'U'}
@@ -93,7 +98,7 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
                         <div className="absolute right-0 top-full mt-3 w-64 opacity-0 invisible group-hover/avatar:opacity-100 group-hover/avatar:visible translate-y-2 group-hover/avatar:translate-y-0 transition-all duration-300 z-[100]">
                             <div className="bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl p-2 overflow-hidden ring-1 ring-black/5">
 
-                                {/* Role Switcher (Super Admins / Marketplace Admins) */}
+                                {/* Role Switcher - Visible for any Admin context */}
                                 {(['SUPER_ADMIN', 'MARKETPLACE_ADMIN'].includes(userRole || '') || ['SUPER_ADMIN', 'MARKETPLACE_ADMIN'].includes(activeRole || '')) && (
                                     <div className="mb-2 p-1.5 space-y-1 bg-slate-50 dark:bg-white/2 rounded-xl border border-slate-100 dark:border-white/5">
                                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-2 mb-1 opacity-80">Execution Context</p>

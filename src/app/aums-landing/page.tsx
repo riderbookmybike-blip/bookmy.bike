@@ -96,7 +96,7 @@ export default function AumsLandingPage() {
                                 <div className="w-3 h-3 rounded-full bg-amber-500/20 border border-amber-500/50" />
                                 <div className="w-3 h-3 rounded-full bg-emerald-500/20 border border-emerald-500/50" />
                             </div>
-                            <div className="ml-4 text-[10px] font-mono text-slate-500">aums_terminal_v2 — -zsh — 80x24</div>
+                            <div className="ml-4 text-[10px] font-mono text-slate-500">bmb_terminal_v2 — -zsh — 80x24</div>
                         </div>
                         <div className="p-8 font-mono text-sm md:text-base space-y-4">
                             <div className="flex gap-4">
