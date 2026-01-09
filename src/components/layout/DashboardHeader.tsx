@@ -21,17 +21,24 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
     const handleLogout = async () => {
         try {
             await fetch('/api/auth/logout', { method: 'POST' });
+
+            // Client-Side Nuke
             localStorage.removeItem('user_name');
             localStorage.removeItem('tenant_type');
             localStorage.removeItem('tenant_name');
             localStorage.removeItem('tenant_id');
             localStorage.removeItem('user_role');
             localStorage.removeItem('active_role');
-            router.push('/');
-            router.refresh();
+            localStorage.removeItem('last_active_tenant_id');
+            localStorage.removeItem('sb-access-token'); // If used
+            localStorage.removeItem('sb-refresh-token'); // If used
+
+            // Redirect to Login Service
+            // Use window.location.href to force a full browser refresh and clear in-memory states
+            window.location.href = 'https://me.bookmy.bike/login';
         } catch (error) {
             console.error('Logout failed:', error);
-            router.push('/');
+            window.location.href = 'https://me.bookmy.bike/login';
         }
     };
 
