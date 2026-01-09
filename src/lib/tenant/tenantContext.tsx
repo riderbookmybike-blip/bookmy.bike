@@ -134,7 +134,22 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
                     // If absolutely nothing is found, default to acceptable values
                     if (!localTenantType) setTenantTypeState('DEALER');
-                    if (!localTenantName && !tenantName) setTenantName('Guest Workspace');
+
+                    // FIX: "Loading..." is truthy, so explicit check needed
+                    if (!localTenantName && tenantName === 'Loading...') {
+                        setTenantName('Guest Workspace');
+                    }
+
+                    // AUTO-RECOVERY: If we are on dashboard but have no user, something is wrong with the session sync.
+                    // Middleware let us in (valid cookie?), but Client SDK says no user.
+                    // We should probably force a re-login to fix the loop.
+                    if (window.location.pathname.startsWith('/dashboard')) {
+                        console.warn('Session Mismatch: Middleware allowed access but Client SDK found no user. Force clearing.');
+                        // Optional: Trigger logout to clean state
+                        fetch('/api/auth/logout', { method: 'POST' }).then(() => {
+                            window.location.href = '/';
+                        });
+                    }
                 }
             } catch (err) {
                 console.error(err);
@@ -143,7 +158,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                 const localTenantName = localStorage.getItem('tenant_name');
                 if (localName) setUserName(localName);
                 if (localTenantName) setTenantName(localTenantName);
-                else setTenantName('Connection Error');
+                else if (tenantName === 'Loading...') setTenantName('Connection Error');
 
                 setTenantTypeState('DEALER');
             }
@@ -151,7 +166,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
         fetchTenantDetails();
         return () => { mounted = false; };
-    }, []);
+    }, []); // Add dependency on tenantName to ensure check updates if needed, though empty array is better for fetch once. Keep empty array but fix logic inside.
 
     return (
         <TenantContext.Provider value={{
