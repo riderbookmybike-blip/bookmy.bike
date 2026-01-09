@@ -66,8 +66,15 @@ export async function POST(request: Request) {
 
 
     // 4. Fetch Profile Details (for immediate UI feedback)
-    // We reuse the database connection to get the profile
-    const { data: profile } = await supabase
+    // CRITICAL FIX: Use Service Role to bypass RLS.
+    // The user's session isn't fully established in cookies yet, so Anon client might fail to read 'tenants' table.
+    const adminClient = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!, // Use Service Key for initial data fetch
+        { cookies: { getAll: () => [], setAll: () => { } } } // No cookies needed for admin client
+    );
+
+    const { data: profile } = await adminClient
         .from('profiles')
         .select(`
             *,
