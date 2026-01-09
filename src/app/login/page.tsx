@@ -91,7 +91,7 @@ export default function LoginPage() {
                         localStorage.setItem('user_name', data.name);
                         localStorage.setItem('user_role', data.role);
                         localStorage.setItem('active_role', data.role);
-                        localStorage.setItem('tenant_name', data.tenant_name || 'BookMyBike Terminal');
+                        localStorage.setItem('tenant_name', data.tenant_name || '');
                         if (data.tenant_id) localStorage.setItem('tenant_id', data.tenant_id);
                     }
 

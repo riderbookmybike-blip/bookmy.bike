@@ -105,7 +105,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                         // FALLBACK: Use Auth Data if Profile Table fails
                         setUserName(user.email?.split('@')[0] || 'Authenticated User');
                         setUserRole('DEALER'); // Safe Default
-                        setTenantName('BookMyBike Terminal');
+
                         setTenantTypeState('DEALER');
                     } else if (profileData) {
                         const profile = profileData as any;
@@ -183,7 +183,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                         if (window.location.pathname.startsWith('/dashboard')) {
                             setTenantName('Verifying Identity...');
                         } else {
-                            setTenantName('BookMyBike Terminal');
+
                         }
                     }
 
