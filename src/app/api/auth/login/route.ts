@@ -28,31 +28,42 @@ export async function POST(request: Request) {
                 },
                 set(name: string, value: string, options: CookieOptions) {
                     try {
+                        console.log(`[LoginAPI] Setting Cookie: ${name}`);
                         cookieStore.set({ name, value, ...options });
                     } catch (error) {
-                        // Handle server action/middleware context limitations if any
+                        console.error(`[LoginAPI] Failed to set cookie ${name}:`, error);
                     }
                 },
                 remove(name: string, options: CookieOptions) {
                     try {
+                        console.log(`[LoginAPI] Removing Cookie: ${name}`);
                         cookieStore.set({ name, value: '', ...options });
                     } catch (error) {
-                        // Handle server action/middleware context limitations if any
+                        console.error(`[LoginAPI] Failed to remove cookie ${name}:`, error);
                     }
                 },
             },
         }
     );
 
-    // 3. Sign In (Sets the cookie automatically via the methods above)
+    console.log('[LoginAPI] Attempting sign in...');
     const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
     });
 
-    if (error || !data.user) {
+    if (error) {
+        console.error('[LoginAPI] Auth Error:', error);
         return NextResponse.json({ success: false, message: 'Authentication failed' }, { status: 401 });
     }
+
+    if (!data.user) {
+        console.error('[LoginAPI] No user returned after success?');
+        return NextResponse.json({ success: false, message: 'Authentication failed' }, { status: 401 });
+    }
+
+    console.log('[LoginAPI] Auth Success. User ID:', data.user.id);
+
 
     // 4. Fetch Profile Details (for immediate UI feedback)
     // We reuse the database connection to get the profile
@@ -72,14 +83,27 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, message: 'Profile not found' }, { status: 404 });
     }
 
-    // 5. Set the custom middleware cookie as well (Redundancy for existing middleware)
-    // Note: Supabase's own hash cookie is now ALSO set.
+    // 5. Set the custom middleware cookie as well
     const response = NextResponse.json({
         success: true,
         role: profile.role,
         name: profile.full_name,
         tenant_id: profile.tenant_id,
         tenant_name: profile.tenants?.name
+    });
+
+    // CRITICAL: Manually bridge Supabase Auth Cookies to Response
+    // Since we used cookieStore.set inside createServerClient, the cookies are in the Request headers (outgoing)
+    // but might not attach to NextResponse automatically in this context.
+    // Iterating over the modified store to set them on response.
+    cookieStore.getAll().forEach((cookie) => {
+        if (cookie.name.startsWith('sb-')) {
+            console.log(`[LoginAPI] Bridging cookie to response: ${cookie.name}`);
+            response.cookies.set({
+                ...cookie
+                // Note: options like httpOnly might need distinct handling if not in cookie object
+            });
+        }
     });
 
     response.cookies.set('aums_session', `session_${profile.role}`, {
