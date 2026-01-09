@@ -1,4 +1,5 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
@@ -57,8 +58,8 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, message: 'Authentication failed' }, { status: 401 });
     }
 
-    if (!data.user) {
-        console.error('[LoginAPI] No user returned after success?');
+    if (!data.user || !data.session) {
+        console.error('[LoginAPI] No user/session returned after success?');
         return NextResponse.json({ success: false, message: 'Authentication failed' }, { status: 401 });
     }
 
@@ -66,15 +67,24 @@ export async function POST(request: Request) {
 
 
     // 4. Fetch Profile Details (for immediate UI feedback)
-    // CRITICAL FIX: Use Service Role to bypass RLS.
-    // The user's session isn't fully established in cookies yet, so Anon client might fail to read 'tenants' table.
-    const adminClient = createServerClient(
+    // SECURE FIX: Use the User's fresh Access Token to fetch profile.
+    // This proves RLS is working correctly (no recursion, no permission denied).
+
+    const userClient = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!, // Use Service Key for initial data fetch
-        { cookies: { getAll: () => [], setAll: () => { } } } // No cookies needed for admin client
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            global: {
+                headers: {
+                    Authorization: `Bearer ${data.session.access_token}`
+                }
+            }
+        }
     );
 
-    const { data: profile } = await adminClient
+    console.log('[LoginAPI] Fetching profile with User Token (RLS Check)...');
+
+    const { data: profile, error: profileError } = await userClient
         .from('profiles')
         .select(`
             *,
@@ -86,30 +96,31 @@ export async function POST(request: Request) {
         .eq('id', data.user.id)
         .single();
 
+    if (profileError) {
+        console.error('[LoginAPI] Profile Fetch Failed (RLS Issue?):', profileError);
+        return NextResponse.json({ success: false, message: 'Failed to retrieve user profile.' }, { status: 500 });
+    }
+
     if (!profile) {
         return NextResponse.json({ success: false, message: 'Profile not found' }, { status: 404 });
     }
 
-    // 5. Set the custom middleware cookie as well
+    // 5. Build Response
     const response = NextResponse.json({
         success: true,
         role: profile.role,
         name: profile.full_name,
         tenant_id: profile.tenant_id,
         tenant_name: profile.tenants?.name,
-        session: data.session // CRITICAL: Send session to client for manual set
+        session: data.session
     });
 
     // CRITICAL: Manually bridge Supabase Auth Cookies to Response
-    // Since we used cookieStore.set inside createServerClient, the cookies are in the Request headers (outgoing)
-    // but might not attach to NextResponse automatically in this context.
-    // Iterating over the modified store to set them on response.
     cookieStore.getAll().forEach((cookie) => {
         if (cookie.name.startsWith('sb-')) {
             console.log(`[LoginAPI] Bridging cookie to response: ${cookie.name}`);
             response.cookies.set({
                 ...cookie
-                // Note: options like httpOnly might need distinct handling if not in cookie object
             });
         }
     });
