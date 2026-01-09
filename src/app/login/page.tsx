@@ -70,6 +70,13 @@ export default function LoginPage() {
                 const data = await res.json();
 
                 if (res.ok && data.success) {
+                    // STRICT VALIDATION: Ensure User has a valid Organization/Role
+                    if (!data.role || !data.name) {
+                        setStatus('ERROR');
+                        setErrorMsg('Account configuration incomplete. Please contact support.');
+                        return; // ABORT LOGIN
+                    }
+
                     // CRITICAL: Manually hydrate client session if provided
                     if (data.session) {
                         // 1. Await Supabase Internal Persistence
