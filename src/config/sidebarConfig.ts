@@ -83,8 +83,8 @@ const DEALER_SIDEBAR: SidebarGroup[] = [
       { title: 'Physical Audit', href: '/physical-audit', icon: ClipboardCheck, color: 'text-red-400' },
       { title: 'Returns', href: '/returns', icon: HistoryIcon, color: 'text-slate-400' },
       // Catalog View
-      { title: 'Vehicles', href: '/catalog/vehicles', icon: Box, color: 'text-indigo-400' },
-      { title: 'Accessories', href: '/catalog/accessories', icon: ShoppingBag, color: 'text-pink-400' },
+      { title: 'Vehicles', href: '/dashboard/catalog/vehicles', icon: Box, color: 'text-indigo-400' },
+      { title: 'Accessories', href: '/dashboard/catalog/accessories', icon: ShoppingBag, color: 'text-pink-400' },
     ],
   },
   {
@@ -171,8 +171,8 @@ const ADMIN_SIDEBAR: SidebarGroup[] = [
   {
     group: 'Operations',
     items: [
-      { title: 'Vehicle Catalog', href: '/catalog/vehicles', icon: Box, color: 'text-indigo-500' },
-      { title: 'Accessories', href: '/catalog/accessories', icon: ShoppingBag, color: 'text-pink-500' },
+      { title: 'Vehicle Catalog', href: '/dashboard/catalog/vehicles', icon: Box, color: 'text-indigo-500' },
+      { title: 'Accessories', href: '/dashboard/catalog/accessories', icon: ShoppingBag, color: 'text-pink-500' },
       { title: 'Service Areas', href: '/superadmin/service-area', icon: MapPin, color: 'text-red-500' },
     ],
   },
@@ -186,9 +186,9 @@ const ADMIN_SIDEBAR: SidebarGroup[] = [
   {
     group: 'Finance & Compliance',
     items: [
-      { title: 'Pricing Master', href: '/catalog/pricing', icon: Calculator, color: 'text-emerald-500' },
-      { title: 'HSN & Tax Engine', href: '/catalog/hsn', icon: FileText, color: 'text-slate-500' },
-      { title: 'Insurance Config', href: '/catalog/insurance', icon: ShieldCheck, color: 'text-rose-500' },
+      { title: 'Pricing Master', href: '/dashboard/catalog/pricing', icon: Calculator, color: 'text-emerald-500' },
+      { title: 'HSN & Tax Engine', href: '/dashboard/catalog/hsn', icon: FileText, color: 'text-slate-500' },
+      { title: 'Insurance Config', href: '/dashboard/catalog/insurance', icon: ShieldCheck, color: 'text-rose-500' },
     ],
   },
   {
@@ -212,9 +212,9 @@ const MARKETPLACE_SIDEBAR: SidebarGroup[] = [
   {
     group: 'Catalog Operations',
     items: [
-      { title: 'Vehicles', href: '/catalog/vehicles', icon: Box, color: 'text-indigo-400' },
-      { title: 'Accessories', href: '/catalog/accessories', icon: ShoppingBag, color: 'text-pink-400' },
-      { title: 'On-Road Pricing', href: '/catalog/pricing', icon: Calculator, color: 'text-emerald-400' },
+      { title: 'Vehicles', href: '/dashboard/catalog/vehicles', icon: Box, color: 'text-indigo-400' },
+      { title: 'Accessories', href: '/dashboard/catalog/accessories', icon: ShoppingBag, color: 'text-pink-400' },
+      { title: 'On-Road Pricing', href: '/dashboard/catalog/pricing', icon: Calculator, color: 'text-emerald-400' },
     ],
   },
 ];

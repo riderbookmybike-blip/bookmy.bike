@@ -32,6 +32,8 @@ import {
     Line
 } from 'recharts';
 import { FilterDrawer } from './FilterDrawer';
+import { KPICard } from './KPICard';
+import { VitalTile } from './VitalTile';
 
 const fleetData = [
     { time: '00:00', value: 400, projection: 420 },
@@ -283,67 +285,3 @@ export default function AdminDashboard() {
     );
 }
 
-const KPICard = ({ title, value, delta, isUp, icon: Icon, sub }: any) => {
-    return (
-        <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 p-6 rounded-2xl shadow-sm hover:shadow-xl transition-all group overflow-hidden relative">
-            <div className="flex justify-between items-start mb-6">
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 text-slate-500 dark:text-white group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
-                    <Icon size={20} />
-                </div>
-                <div className={`flex items-center gap-1 text-[11px] font-black px-2 py-1 rounded-lg ${isUp ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10' : 'text-rose-600 bg-rose-50 dark:bg-rose-500/10'}`}>
-                    {delta}
-                    {isUp ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                </div>
-            </div>
-
-            <div className="space-y-1 relative z-10">
-                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">{title}</div>
-                <div className="text-3xl font-black text-slate-900 dark:text-white tabular-nums tracking-tighter">{value}</div>
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{sub}</div>
-            </div>
-
-            {/* Micro Sparkline */}
-            <div className="absolute inset-x-0 bottom-0 h-12 opacity-30">
-                <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={sparkData}>
-                        <Area
-                            type="monotone"
-                            dataKey="v"
-                            stroke="#6366f1"
-                            strokeWidth={2}
-                            fill="#6366f1"
-                            fillOpacity={0.1}
-                            animationDuration={3000}
-                        />
-                    </AreaChart>
-                </ResponsiveContainer>
-            </div>
-        </div>
-    );
-};
-
-const VitalTile = ({ icon: Icon, label, value, sub, meta, color }: any) => {
-    const colorMap: any = {
-        emerald: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
-        blue: 'text-blue-500 bg-blue-500/10 border-blue-500/20',
-        indigo: 'text-indigo-500 bg-indigo-500/10 border-indigo-500/20',
-    };
-
-    return (
-        <div className="flex items-center justify-between p-4 rounded-2xl border border-slate-100 dark:border-white/5 hover:border-indigo-500/20 transition-all">
-            <div className="flex items-center gap-4">
-                <div className={`p-2.5 rounded-xl border ${colorMap[color]} shrink-0`}>
-                    <Icon size={18} />
-                </div>
-                <div>
-                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</div>
-                    <div className="text-base font-black text-slate-900 dark:text-white tabular-nums">{value}</div>
-                </div>
-            </div>
-            <div className="text-right">
-                <div className="text-[10px] font-black text-indigo-500 uppercase tracking-tighter leading-none mb-1">{sub}</div>
-                <div className="text-[9px] font-bold text-slate-400 uppercase">{meta}</div>
-            </div>
-        </div>
-    );
-};
