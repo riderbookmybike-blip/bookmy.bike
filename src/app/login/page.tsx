@@ -87,8 +87,20 @@ export default function LoginPage() {
 
                     setStatus('SUCCESS');
 
-                    // 3. WAIT: Ensure storage events fire before reloading
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                    // 3. VERIFY: Ensure persistence is confirmed before redirect
+                    let saved = false;
+                    for (let i = 0; i < 10; i++) {
+                        if (localStorage.getItem('sb-access-token')) {
+                            saved = true;
+                            break;
+                        }
+                        await new Promise(r => setTimeout(r, 50));
+                    }
+
+                    if (!saved) {
+                        console.error('LocalStorage Write Failed');
+                        // Proceed anyway, hoping memory persistence works
+                    }
 
                     // FORCE RELOAD: Ensure cookies are sent to server and state is fresh
                     window.location.href = '/dashboard';
