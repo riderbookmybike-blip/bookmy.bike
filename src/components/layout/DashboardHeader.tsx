@@ -1,4 +1,6 @@
 // ... imports
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { User, Terminal, Shield, LogOut, Search, Bell, Command, Settings, Menu, ShoppingBag, ChevronDown, Check } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 // ...
