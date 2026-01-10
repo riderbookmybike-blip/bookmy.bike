@@ -252,13 +252,16 @@ export default function LoginPage() {
                                     const supabase = createClient();
                                     const returnUrl = '/dashboard';
                                     const origin = window.location.origin;
-                                    const callbackUrl = `${origin}/auth/callback?next=${encodeURIComponent(returnUrl)}`;
+                                    const callbackUrl = `${origin}/auth/callback`; // Strict match (no params)
 
                                     await supabase.auth.signInWithOAuth({
                                         provider: 'google',
                                         options: {
                                             redirectTo: callbackUrl,
-                                            queryParams: { access_type: 'offline', prompt: 'consent' },
+                                            queryParams: {
+                                                access_type: 'offline',
+                                                prompt: 'consent'
+                                            },
                                         },
                                     });
                                 }}
