@@ -113,7 +113,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                                         ? "text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-500"
                                         : "text-white group-hover:text-blue-300"
                                         }`}>
-                                        {userName}
+                                        Hi, {userName.split(' ')[0]}
                                     </span>
                                 </div>
                             ) : (
@@ -125,7 +125,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                                         }`}
                                 >
                                     <User size={14} />
-                                    Sign In
+                                    Members
                                 </button>
                             )}
                         </div>
@@ -150,7 +150,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                                 }}
                                 className="w-full py-4 bg-blue-600 text-white rounded-xl text-sm font-black uppercase tracking-widest mt-8"
                             >
-                                Sign In / Register
+                                Members Login
                             </button>
                         )}
                     </nav>
