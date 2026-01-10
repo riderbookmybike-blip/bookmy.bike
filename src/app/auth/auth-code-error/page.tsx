@@ -9,7 +9,7 @@ export default function AuthErrorPage() {
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 p-4 font-sans">
             <div className="mb-8">
-                <Logo variant="indigo" className="h-8" />
+                <Logo mode="auto" />
             </div>
 
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-8 md:p-12 rounded-3xl shadow-2xl max-w-md w-full text-center space-y-6">

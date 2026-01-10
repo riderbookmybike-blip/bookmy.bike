@@ -12,7 +12,7 @@ export const Footer = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-12 mb-16">
                     <div className="space-y-6">
                         <div className="flex items-center gap-2">
-                            <Logo className="text-slate-900 dark:text-white" variant="blue" showTagline={false} />
+                            <Logo mode="auto" />
                         </div>
                         <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-xs font-medium">
                             India's most trusted two-wheeler marketplace. We simplify buying with verified dealers, instant finance, and doorstep delivery.
@@ -80,7 +80,7 @@ export const Footer = () => {
                     </p>
                     <div className="flex items-center gap-1 text-[10px] text-slate-400 dark:text-slate-600 font-medium">
                         <span>Made with</span>
-                        <Heart size={10} className="text-red-500 fill-red-500" />
+                        <Logo mode="auto" />
                         <span>in India</span>
                     </div>
                 </div>
