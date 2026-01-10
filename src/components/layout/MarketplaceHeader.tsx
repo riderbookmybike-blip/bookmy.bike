@@ -59,18 +59,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                 </Link>
             }
             center={
-                <nav className="flex items-center gap-10">
-                    {['HOME', 'BLOG', 'ABOUT', 'CONTACT'].map((item) => (
-                        <Link
-                            key={item}
-                            href={item === 'HOME' ? '/store' : `/${item.toLowerCase()}`}
-                            className={`${navLinkClass} relative group/link`}
-                        >
-                            {item}
-                            <span className="absolute -bottom-1 left-0 w-0 h-[2px] bg-blue-600 transition-all duration-300 group-hover/link:w-full" />
-                        </Link>
-                    ))}
-                </nav>
+                <div className="flex-1" />
             }
             right={
                 <div className="flex items-center gap-6">
