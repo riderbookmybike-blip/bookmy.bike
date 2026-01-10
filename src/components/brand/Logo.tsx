@@ -54,9 +54,9 @@ export const Logo: React.FC<LogoProps> = ({
         }
         return {
             icon: RED_COLOR,
-            bookmy: BLACK_COLOR,
+            bookmy: "currentColor",
             bike: RED_COLOR,
-            tagline: BLACK_COLOR
+            tagline: "currentColor"
         };
     };
 

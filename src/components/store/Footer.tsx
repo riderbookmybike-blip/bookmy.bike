@@ -5,85 +5,85 @@ import { ShieldCheck, Award, CreditCard, Facebook, Twitter, Linkedin, Instagram,
 
 export const Footer = () => {
     return (
-        <footer className="bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-white/5 pt-16 pb-12 transition-colors duration-300">
+        <footer className="bg-slate-50 dark:bg-black border-t border-slate-200 dark:border-white/10 pt-24 pb-12 transition-colors duration-500">
             <div className="max-w-[1400px] mx-auto px-6">
 
                 {/* Top Section: Trust & Brand */}
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-12 mb-16">
-                    <div className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-16 mb-24">
+                    <div className="lg:col-span-2 space-y-8">
                         <div className="flex items-center gap-2">
-                            <Logo className="text-slate-900 dark:text-white" variant="blue" showTagline={false} />
+                            {/* Always Blue variant, but in Dark mode it pops against black */}
+                            <Logo className="text-slate-900 dark:text-white scale-125 origin-left" variant="blue" showTagline={false} />
                         </div>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-xs font-medium">
-                            India's most trusted two-wheeler marketplace. We simplify buying with verified dealers, instant finance, and doorstep delivery.
+                        <p className="text-base text-slate-500 dark:text-slate-400 leading-loose max-w-sm font-medium tracking-wide">
+                            BookMyBike is India's first premium two-wheeler procurement platform. We blend technology with automotive passion to deliver an uncompromised buying experience.
                         </p>
-                        <div className="flex gap-4">
-                            <SocialIcon icon={<Facebook size={18} />} href="#" />
-                            <SocialIcon icon={<Twitter size={18} />} href="#" />
-                            <SocialIcon icon={<Instagram size={18} />} href="#" />
-                            <SocialIcon icon={<Linkedin size={18} />} href="#" />
-                            <SocialIcon icon={<Youtube size={18} />} href="#" />
+
+                        <div className="flex flex-col gap-4 pt-4">
+                            <div className="flex gap-3">
+                                <SocialIcon icon={<Instagram size={20} />} href="#" />
+                                <SocialIcon icon={<Twitter size={20} />} href="#" />
+                                <SocialIcon icon={<Youtube size={20} />} href="#" />
+                                <SocialIcon icon={<Linkedin size={20} />} href="#" />
+                            </div>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Connect With Us</p>
                         </div>
                     </div>
 
-                    <div className="lg:col-span-3 grid grid-cols-2 md:grid-cols-4 gap-8">
+                    <div className="lg:col-span-3 grid grid-cols-2 md:grid-cols-3 gap-12">
                         <div>
-                            <FooterHeading>Shop</FooterHeading>
+                            <FooterHeading>The Collection</FooterHeading>
                             <FooterLinkList>
-                                <FooterLink href="/store/catalog?category=SCOOTER">Scooters</FooterLink>
-                                <FooterLink href="/store/catalog?category=MOTORCYCLE">Motorcycles</FooterLink>
-                                <FooterLink href="/store/catalog?category=MOPED">Mopeds</FooterLink>
-                                <FooterLink href="/store/catalog?category=ELECTRIC">Electric Bikes</FooterLink>
-                                <FooterLink href="/store/accessories">Helmets & Accessories</FooterLink>
+                                <FooterLink href="/store/catalog?category=SCOOTER">Urban Scooters</FooterLink>
+                                <FooterLink href="/store/catalog?category=MOTORCYCLE">Performance Motorcycles</FooterLink>
+                                <FooterLink href="/store/catalog?category=ELECTRIC">Electric Future</FooterLink>
+                                <FooterLink href="/store/accessories">Riding Gear</FooterLink>
+                                <FooterLink href="/store/accessories">Genuine Parts</FooterLink>
+                            </FooterLinkList>
+                        </div>
+
+                        <div>
+                            <FooterHeading>Services</FooterHeading>
+                            <FooterLinkList>
+                                <FooterLink href="#">Instant Finance</FooterLink>
+                                <FooterLink href="#">Insurance Claims</FooterLink>
+                                <FooterLink href="#">RTO Assistance</FooterLink>
+                                <FooterLink href="#">Bike Servicing</FooterLink>
+                                <FooterLink href="#">Roadside Assist</FooterLink>
                             </FooterLinkList>
                         </div>
 
                         <div>
                             <FooterHeading>Company</FooterHeading>
                             <FooterLinkList>
-                                <FooterLink href="#">About Us</FooterLink>
+                                <FooterLink href="#">Our Story</FooterLink>
                                 <FooterLink href="/members">Members Club</FooterLink>
-                                <FooterLink href="/login">Partner with Us</FooterLink>
-                                <FooterLink href="#">Careers</FooterLink>
+                                <FooterLink href="/login" highlight>Partner With Us</FooterLink>
                                 <FooterLink href="#">Press & Media</FooterLink>
-                                <FooterLink href="#">Privacy Policy</FooterLink>
-                                <FooterLink href="#">Terms of Service</FooterLink>
-                            </FooterLinkList>
-                        </div>
-
-                        <div>
-                            <FooterHeading>Support</FooterHeading>
-                            <FooterLinkList>
-                                <FooterLink href="#">Help Center</FooterLink>
-                                <FooterLink href="#">Track Order</FooterLink>
-                                <FooterLink href="#">Contact Support</FooterLink>
-                                <FooterLink href="#">Cancellation & Returns</FooterLink>
-                                <FooterLink href="#">Buying Guide</FooterLink>
-                            </FooterLinkList>
-                        </div>
-
-                        <div>
-                            <FooterHeading>Resources</FooterHeading>
-                            <FooterLinkList>
-                                <FooterLink href="#">RTO Rules</FooterLink>
-                                <FooterLink href="#">Traffic Challan</FooterLink>
-                                <FooterLink href="#">Bike Insurance</FooterLink>
-                                <FooterLink href="#">EMI Calculator</FooterLink>
-                                <FooterLink href="#">Electric Vehicle Subsidy</FooterLink>
+                                <FooterLink href="#">Careers</FooterLink>
                             </FooterLinkList>
                         </div>
                     </div>
                 </div>
 
                 {/* Bottom Section: Legal & Copyright Addressed */}
-                <div className="flex flex-col md:flex-row items-center justify-between pt-8 border-t border-slate-200 dark:border-white/5 gap-6">
-                    <p className="text-xs text-slate-500 font-bold">
-                        © 2026 BookMyBike Technologies Pvt. Ltd. All rights reserved.
+                <div className="flex flex-col md:flex-row items-center justify-between pt-10 border-t border-slate-200 dark:border-white/5 gap-6">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                        © 2026 BookMyBike Technologies. All rights reserved.
                     </p>
-                    <div className="flex items-center gap-1 text-[10px] text-slate-400 dark:text-slate-600 font-medium">
-                        <span>Made with</span>
-                        <Heart size={10} className="text-red-500 fill-red-500" />
-                        <span>in India</span>
+
+                    <div className="flex gap-8">
+                        <LegalLink href="#">Privacy Policy</LegalLink>
+                        <LegalLink href="#">Terms of Service</LegalLink>
+                        <LegalLink href="#">Sitemap</LegalLink>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider bg-slate-100 dark:bg-white/5 px-4 py-2 rounded-full">
+                        <span>Engineered in</span>
+                        <span className="text-slate-900 dark:text-white">India</span>
+                        <div className="w-2 h-2 rounded-full bg-orange-500 ml-1" />
+                        <div className="w-2 h-2 rounded-full bg-white ml-[-4px] border border-slate-100 dark:border-slate-800" />
+                        <div className="w-2 h-2 rounded-full bg-green-500 ml-[-4px]" />
                     </div>
                 </div>
             </div>
@@ -104,9 +104,12 @@ const FooterLinkList = ({ children }: { children: React.ReactNode }) => (
     </ul>
 );
 
-const FooterLink = ({ href, children }: { href: string, children: React.ReactNode }) => (
+const FooterLink = ({ href, children, highlight }: { href: string, children: React.ReactNode, highlight?: boolean }) => (
     <li>
-        <Link href={href} className="text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-500 transition-colors">
+        <Link href={href} className={`text-xs font-bold transition-colors ${highlight
+            ? "text-blue-600 dark:text-blue-500 hover:text-blue-700 dark:hover:text-blue-400"
+            : "text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-white"
+            }`}>
             {children}
         </Link>
     </li>
