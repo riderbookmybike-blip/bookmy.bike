@@ -7,6 +7,8 @@ import { Logo } from '@/components/brand/Logo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useTheme } from '@/components/providers/ThemeProvider';
 
+import { AppHeaderShell } from './AppHeaderShell';
+
 interface MarketplaceHeaderProps {
     onLoginClick: () => void;
 }
@@ -39,82 +41,68 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         };
     }, []);
 
-    // Cinematic Styling Logic
-    const isDark = theme === 'dark' || !mounted; // Default to dark for contrast on Hero
-
-    const headerClass = scrolled
-        ? "bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200 dark:border-white/5 py-3"
-        : "bg-transparent border-transparent py-5";
-
     const navLinkClass = scrolled
         ? "text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-white transition-colors"
         : `${theme === 'light' ? 'text-slate-900/80 hover:text-slate-900' : 'text-white/80 hover:text-white'} text-[10px] font-black uppercase tracking-[0.2em] transition-colors drop-shadow-sm`;
-
-    const iconClass = scrolled
-        ? "text-slate-600 dark:text-slate-400"
-        : (theme === 'light' ? "text-slate-900" : "text-white");
 
     const mobileMenuButtonClass = scrolled
         ? "text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/5"
         : (theme === 'light' ? "text-slate-900 hover:bg-slate-900/5" : "text-white hover:bg-white/10");
 
     return (
-        <header className={`sticky top-0 z-50 transition-all duration-500 ${headerClass}`}>
-            <div className="max-w-[1400px] mx-auto px-6 flex items-center justify-between">
+        <AppHeaderShell
+            scrolled={scrolled}
+            transparentAtTop={true}
+            left={
                 <Link href="/" className="flex items-center group">
-                    <Logo mode="auto" />
+                    <Logo mode="auto" size="sm" />
                 </Link>
+            }
+            center={
+                <nav className="flex items-center gap-8">
+                    <Link href="/store" className={navLinkClass}>Home</Link>
+                    <Link href="/store/blog" className={navLinkClass}>Blog</Link>
+                    <Link href="/about" className={navLinkClass}>About</Link>
+                    <Link href="/contact" className={navLinkClass}>Contact</Link>
+                </nav>
+            }
+            right={
+                <>
+                    <ThemeToggle />
 
-                <div className="flex items-center gap-8">
-                    <nav className="hidden md:flex items-center gap-8">
-                        <Link href="/store" className={navLinkClass}>Home</Link>
-                        <Link href="/store/blog" className={navLinkClass}>Blog</Link>
-                        <Link href="/about" className={navLinkClass}>About</Link>
-                        <Link href="/contact" className={navLinkClass}>Contact</Link>
-                    </nav>
+                    <button
+                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                        className={`p-2 rounded-xl transition-all md:hidden ${mobileMenuButtonClass}`}
+                    >
+                        {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                    </button>
 
-                    <div className="flex items-center gap-2 md:gap-8">
-                        {/* MapPin Removed */}
-
-                        <div className="flex items-center gap-1 md:gap-4">
-                            {/* Theme Toggle - Always Visible */}
-                            <ThemeToggle />
-
-                            <button
-                                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                                className={`p-2 md:p-3 rounded-xl transition-all md:hidden ${mobileMenuButtonClass}`}
-                            >
-                                {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-                            </button>
-
-                            {userName ? (
-                                <Link
-                                    href="/dashboard"
-                                    className={`${navLinkClass} flex items-center gap-2 group cursor-pointer`}
-                                >
-                                    <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-[8px] font-black text-white shadow-lg group-hover:bg-blue-500 transition-colors">
-                                        {userName.charAt(0)}
-                                    </div>
-                                    <span className="group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                                        Hi, {userName.split(' ')[0]}
-                                    </span>
-                                </Link>
-                            ) : (
-                                <button
-                                    onClick={onLoginClick}
-                                    className={`${navLinkClass} flex items-center group transition-all active:scale-95`}
-                                >
-                                    Hi, Member
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
+                    {userName ? (
+                        <Link
+                            href="/dashboard"
+                            className={`${navLinkClass} flex items-center gap-2 group cursor-pointer max-w-[160px] flex-shrink-0`}
+                        >
+                            <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-[8px] font-black text-white shadow-lg group-hover:bg-blue-500 transition-colors flex-shrink-0">
+                                {userName.charAt(0)}
+                            </div>
+                            <span className="group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
+                                Hi, {userName.split(' ')[0]}
+                            </span>
+                        </Link>
+                    ) : (
+                        <button
+                            onClick={onLoginClick}
+                            className={`${navLinkClass} flex items-center group transition-all active:scale-95 flex-shrink-0`}
+                        >
+                            Hi, Member
+                        </button>
+                    )}
+                </>
+            }
+        >
             {/* Mobile Menu Overlay */}
             {isMobileMenuOpen && (
-                <div className="md:hidden bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-white/5 p-6 space-y-8 animate-in slide-in-from-top-4 duration-300 shadow-2xl h-screen fixed inset-0 top-20 z-40">
+                <div className="md:hidden bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-white/5 p-6 space-y-8 animate-in slide-in-from-top-4 duration-300 shadow-2xl h-screen fixed inset-0 top-16 z-40">
                     <nav className="flex flex-col gap-6">
                         <Link href="/store" className="text-xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">Home</Link>
                         <Link href="/store/catalog?category=ELECTRIC" className="text-xl font-black uppercase tracking-tighter text-slate-500 dark:text-slate-400">Electric</Link>
@@ -135,6 +123,6 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                     </nav>
                 </div>
             )}
-        </header>
+        </AppHeaderShell>
     );
 };

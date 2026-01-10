@@ -6,6 +6,8 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { useRouter } from 'next/navigation';
 
+import { AppHeaderShell } from './AppHeaderShell';
+
 interface AumsHeaderProps {
     onLoginClick?: () => void;
     onMenuClick?: () => void;
@@ -39,9 +41,9 @@ export const AumsHeader = ({ onLoginClick, onMenuClick, showSearch = false }: Au
     };
 
     return (
-        <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-black/80 border-b border-white/5 transition-colors duration-300">
-            <div className="max-w-[1400px] mx-auto px-6 h-20 flex items-center justify-between">
-                <div className="flex items-center gap-6 md:gap-12">
+        <AppHeaderShell
+            left={
+                <div className="flex items-center gap-6 md:gap-12 h-full">
                     {onMenuClick && (
                         <button
                             onClick={onMenuClick}
@@ -50,30 +52,30 @@ export const AumsHeader = ({ onLoginClick, onMenuClick, showSearch = false }: Au
                             <Menu size={24} />
                         </button>
                     )}
-                    <Link href="/" className="w-40 md:w-48">
-                        <Logo mode="auto" className="h-10 transition-all group-hover:scale-105 group-hover:brightness-125" />
+                    <Link href="/" className="flex items-center group">
+                        <Logo mode="auto" size="sm" />
                     </Link>
-
                 </div>
-
-                <div className="flex items-center gap-4 lg:gap-6">
+            }
+            right={
+                <div className="flex items-center gap-4 lg:gap-6 h-full">
                     {displayUserName && (
                         <button className="p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all relative group">
                             <Bell size={18} />
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-black" />
+                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-slate-900" />
                         </button>
                     )}
 
                     <ThemeToggle />
 
                     {displayUserName ? (
-                        <div className="relative group/avatar pl-2">
-                            <button className="flex items-center gap-3 group/btn px-1 py-1 rounded-2xl hover:bg-white/5 transition-all duration-300">
-                                <div className="flex flex-col items-end hidden sm:flex px-1">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-white group-hover/btn:text-indigo-400 transition-colors">
+                        <div className="relative group/avatar pl-2 flex items-center h-full">
+                            <button className="flex items-center gap-3 group/btn px-1 py-1 rounded-2xl hover:bg-white/5 transition-all duration-300 max-w-[160px]">
+                                <div className="flex flex-col items-end hidden sm:flex px-1 truncate">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white group-hover/btn:text-blue-600 transition-colors truncate w-full">
                                         {displayUserName}
                                     </span>
-                                    <span className="text-[8px] font-bold text-slate-500 uppercase tracking-wider">
+                                    <span className="text-[8px] font-bold text-slate-500 uppercase tracking-wider truncate w-full">
                                         {tenantName !== 'Loading...' ? tenantName :
                                             (activeRole === 'SUPER_ADMIN' ? 'Platform Control' :
                                                 activeRole === 'MARKETPLACE_ADMIN' ? 'Marketplace View' :
@@ -81,38 +83,38 @@ export const AumsHeader = ({ onLoginClick, onMenuClick, showSearch = false }: Au
                                                         activeRole === 'BANK_ADMIN' ? 'Finance Console' : 'Guest View')}
                                     </span>
                                 </div>
-                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-xs font-black text-white shadow-lg shadow-indigo-500/20 border border-white/20 group-hover/btn:scale-105 transition-all duration-300">
-                                    <Logo mode="auto" variant="icon" />
+                                <div className="w-9 h-9 flex-shrink-0 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-xs font-black text-white shadow-lg shadow-indigo-500/20 border border-white/20 group-hover/btn:scale-105 transition-all duration-300">
+                                    <Logo mode="auto" variant="icon" size={16} />
                                 </div>
                             </button>
 
                             {/* Dropdown Menu */}
                             <div className="absolute right-0 top-full mt-2 w-64 opacity-0 invisible group-hover/avatar:opacity-100 group-hover/avatar:visible translate-y-2 group-hover/avatar:translate-y-0 transition-all duration-300 z-50">
-                                <div className="bg-slate-950/95 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl p-2 overflow-hidden">
-                                    <div className="px-4 py-4 border-b border-white/5 mb-2">
+                                <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-3xl shadow-2xl p-2 overflow-hidden">
+                                    <div className="px-4 py-4 border-b border-slate-100 dark:border-white/5 mb-2">
                                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Authenticated Account</p>
-                                        <p className="text-sm font-bold text-white truncate"><Logo mode="auto" />{displayUserName.toLowerCase().replace(' ', '.')}@bookmy.bike</p>
+                                        <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{displayUserName.toLowerCase().replace(/ /g, '.')}@bookmy.bike</p>
                                     </div>
 
                                     <div className="space-y-1">
-                                        <Link href="/dashboard" className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold text-slate-400 hover:bg-indigo-500/10 hover:text-indigo-400 transition-all">
+                                        <Link href="/dashboard" className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold text-slate-500 dark:text-slate-400 hover:bg-blue-500/10 hover:text-blue-600 transition-all">
                                             <Terminal size={16} />
                                             <span>Dashboard</span>
                                         </Link>
-                                        <Link href="/dashboard/profile" className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold text-slate-400 hover:bg-indigo-500/10 hover:text-indigo-400 transition-all">
+                                        <Link href="/dashboard/profile" className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold text-slate-500 dark:text-slate-400 hover:bg-blue-500/10 hover:text-blue-600 transition-all">
                                             <User size={16} />
                                             <span>Profile</span>
                                         </Link>
-                                        <Link href="/dashboard/settings" className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold text-slate-400 hover:bg-indigo-500/10 hover:text-indigo-400 transition-all">
+                                        <Link href="/dashboard/settings" className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold text-slate-500 dark:text-slate-400 hover:bg-blue-500/10 hover:text-blue-600 transition-all">
                                             <Settings size={16} />
                                             <span>Settings</span>
                                         </Link>
                                     </div>
 
-                                    <div className="mt-2 p-1">
+                                    <div className="mt-2 p-1 border-t border-slate-100 dark:border-white/5">
                                         <button
                                             onClick={handleLogout}
-                                            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest text-red-400 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
+                                            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest text-red-500 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
                                         >
                                             <LogOut size={16} />
                                             <span>Sign Out</span>
@@ -124,14 +126,15 @@ export const AumsHeader = ({ onLoginClick, onMenuClick, showSearch = false }: Au
                     ) : (
                         <button
                             onClick={onLoginClick}
-                            className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-indigo-500/20 transition-all flex items-center gap-2"
+                            className="px-6 h-9 bg-blue-600 hover:bg-blue-500 rounded-xl text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2 flex-shrink-0"
                         >
                             <Terminal size={14} />
                             Terminal Login
                         </button>
                     )}
                 </div>
-            </div>
-        </nav>
+            }
+        />
     );
 };
+
