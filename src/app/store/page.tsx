@@ -2,14 +2,26 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ChevronRight, ArrowRight, Zap, Play, Shield, Star, Trophy, Search, MapPin } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ChevronRight, ArrowRight, Zap, Play, Shield, Star, Trophy, Search, MapPin, ShieldCheck, Award, Clock, ChevronDown } from 'lucide-react';
 import { MOCK_VEHICLES } from '@/types/productMaster';
 
 export default function StorePage() {
+    const router = useRouter();
     const [searchQuery, setSearchQuery] = React.useState('');
     const [searchResults, setSearchResults] = React.useState<typeof MOCK_VEHICLES>([]);
     const [showResults, setShowResults] = React.useState(false);
     const searchRef = React.useRef<HTMLDivElement>(null);
+
+    const placeholders = ['Search "ACTIVA"', 'Search "SPLENDOR"', 'Search "NTORQ"', 'Search "ROYAL ENFIELD"', 'Search "MT-15"'];
+    const [placeholderIndex, setPlaceholderIndex] = React.useState(0);
+
+    React.useEffect(() => {
+        const interval = setInterval(() => {
+            setPlaceholderIndex((prev) => (prev + 1) % placeholders.length);
+        }, 3000);
+        return () => clearInterval(interval);
+    }, []);
 
     React.useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -65,7 +77,7 @@ export default function StorePage() {
                                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-blue-400 to-indigo-600 transition-all">Legend Awaits.</span>
                             </h1>
 
-                            <p className="max-w-3xl mx-auto text-base md:text-xl text-slate-500 dark:text-slate-400 font-medium tracking-wide animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300 transition-colors leading-relaxed italic">
+                            <p className="max-w-3xl mx-auto text-base md:text-xl text-slate-700 dark:text-slate-200 font-bold tracking-wide animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300 transition-colors leading-relaxed italic drop-shadow-sm">
                                 Unified pricing. Instant location quotes. Lowest EMI guaranteed. <br className="hidden md:block" />
                                 Experience the pinnacle of bike procurement.
                             </p>
@@ -75,16 +87,31 @@ export default function StorePage() {
                         <div className="w-full max-w-4xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-500 relative z-50">
                             <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
                                 <div className="md:col-span-8 group relative" ref={searchRef}>
-                                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-1.5 rounded-[2rem] shadow-2xl shadow-blue-900/10 transition-all focus-within:shadow-blue-600/20 focus-within:border-blue-600/30">
-                                        <div className="flex items-center px-6 h-16 bg-slate-50 dark:bg-white/5 rounded-[1.75rem] transition-colors">
-                                            <Search className="text-slate-400 group-focus-within:text-blue-600 transition-colors mr-4" size={22} />
-                                            <input
-                                                type="text"
-                                                value={searchQuery}
-                                                onChange={handleSearch}
-                                                placeholder="Model, Make or Category..."
-                                                className="w-full bg-transparent border-none outline-none text-slate-900 dark:text-white placeholder:text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] md:text-xs"
-                                            />
+                                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-1.5 rounded-[2.5rem] shadow-2xl shadow-blue-900/10 transition-all focus-within:shadow-blue-600/30 focus-within:border-blue-600/40">
+                                        <div className="flex items-center gap-1">
+                                            <div className="flex-1 flex items-center px-6 h-16 bg-slate-50 dark:bg-white/5 rounded-[2rem] transition-colors relative overflow-hidden group/input">
+                                                <Search className="text-slate-400 group-focus-within/input:text-blue-600 transition-colors mr-3" size={18} />
+                                                <input
+                                                    type="text"
+                                                    value={searchQuery}
+                                                    onChange={handleSearch}
+                                                    placeholder={placeholders[placeholderIndex]}
+                                                    className="w-full bg-transparent border-none outline-none text-slate-900 dark:text-white placeholder:text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] md:text-xs transition-all duration-500"
+                                                />
+                                            </div>
+                                            <button
+                                                className="h-16 px-8 bg-blue-600 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-[0.2em] hover:bg-blue-700 transition-all shadow-lg hidden sm:flex items-center justify-center group/searchbtn active:scale-95 transition-all"
+                                                onClick={() => searchQuery.length > 1 && router.push(`/store/catalog?search=${searchQuery}`)}
+                                            >
+                                                <span>Search</span>
+                                                <ArrowRight size={14} className="ml-2 group-hover/searchbtn:translate-x-1 transition-transform" />
+                                            </button>
+                                            <button
+                                                className="h-12 w-12 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 transition-all shadow-lg sm:hidden absolute right-3"
+                                                onClick={() => searchQuery.length > 1 && router.push(`/store/catalog?search=${searchQuery}`)}
+                                            >
+                                                <Search size={16} />
+                                            </button>
                                         </div>
                                     </div>
 
@@ -122,11 +149,16 @@ export default function StorePage() {
                                 </div>
                             </div>
 
-                            <div className="flex justify-center gap-12 opacity-40">
-                                {['Transparency', 'Speed', 'Precision'].map((item) => (
-                                    <div key={item} className="flex items-center gap-2">
-                                        <Shield size={14} className="text-blue-600" />
-                                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">{item}</span>
+                            <div className="flex flex-wrap justify-center gap-6 md:gap-10 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-800">
+                                {[
+                                    { label: 'Verified Dealers', icon: ShieldCheck },
+                                    { label: 'Best Price Guaranteed', icon: Award },
+                                    { label: '48h Delivery', icon: Zap },
+                                    { label: 'Instant Quotes', icon: Clock }
+                                ].map((item, i) => (
+                                    <div key={i} className="flex items-center gap-2.5 px-5 py-2.5 bg-white/50 dark:bg-white/5 backdrop-blur-md rounded-full border border-slate-200/50 dark:border-white/10 shadow-sm transition-all hover:border-blue-600/20">
+                                        <item.icon size={14} className="text-blue-600" />
+                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300">{item.label}</span>
                                     </div>
                                 ))}
                             </div>
