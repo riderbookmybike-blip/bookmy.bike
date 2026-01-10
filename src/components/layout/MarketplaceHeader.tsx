@@ -76,16 +76,12 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                         <Link href="/contact" className={navLinkClass}>Contact</Link>
                     </nav>
 
-                    <div className="flex items-center gap-2 md:gap-6">
+                    <div className="flex items-center gap-2 md:gap-8">
                         {/* MapPin Removed */}
 
-                        <div className={`w-px h-6 hidden md:block ${scrolled ? "bg-slate-200 dark:bg-white/10" : "bg-white/20"}`} />
-
-                        <div className="flex items-center gap-1 md:gap-2">
-                            {/* Theme Toggle */}
-                            <div className={!scrolled ? "opacity-0 pointer-events-none w-0 overflow-hidden" : "opacity-100 transition-opacity"}>
-                                <ThemeToggle />
-                            </div>
+                        <div className="flex items-center gap-1 md:gap-4">
+                            {/* Theme Toggle - Always Visible */}
+                            <ThemeToggle />
 
                             <button
                                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -95,29 +91,23 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                             </button>
 
                             {userName ? (
-                                <div className={`hidden sm:flex items-center gap-3 px-5 py-2.5 rounded-full group cursor-pointer transition-all ${scrolled
-                                    ? "bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10"
-                                    : "bg-white/10 border border-white/20 hover:bg-white/20 backdrop-blur-md"
-                                    }`}>
-                                    <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-[10px] font-black text-white shadow-lg">
+                                <Link
+                                    href="/dashboard"
+                                    className={`${navLinkClass} flex items-center gap-2 group cursor-pointer`}
+                                >
+                                    <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-[8px] font-black text-white shadow-lg group-hover:bg-blue-500 transition-colors">
                                         {userName.charAt(0)}
                                     </div>
-                                    <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${scrolled
-                                        ? "text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-500"
-                                        : "text-white group-hover:text-blue-300"
-                                        }`}>
+                                    <span className="group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                                         Hi, {userName.split(' ')[0]}
                                     </span>
-                                </div>
+                                </Link>
                             ) : (
                                 <button
                                     onClick={onLoginClick}
-                                    className={`hidden sm:flex ml-2 px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest items-center gap-2 shadow-lg transition-all active:scale-95 ${scrolled
-                                        ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/20"
-                                        : "bg-white text-blue-900 hover:bg-white/90 shadow-white/10"
-                                        }`}
+                                    className={`${navLinkClass} flex items-center gap-2 group transition-all active:scale-95`}
                                 >
-                                    <User size={14} />
+                                    <User size={14} className="group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
                                     Hi, Member
                                 </button>
                             )}
