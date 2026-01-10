@@ -22,13 +22,23 @@ export const Logo: React.FC<LogoProps> = ({
     const { theme } = useTheme();
 
     const heights = useMemo(() => {
-        if (typeof size === 'number') return { h: `${size}px`, iconW: `${size * (80 / 109)}px` };
-        switch (size) {
-            case 'sm': return { h: '28px', iconW: '20.5px' }; // 28 * (80/109)
-            case 'lg': return { h: '48px', iconW: '35.2px' }; // 48 * (80/109)
-            case 'md':
-            default: return { h: '36px', iconW: '26.4px' }; // 36 * (80/109)
+        let h: number;
+        if (typeof size === 'number') {
+            h = size;
+        } else {
+            switch (size) {
+                case 'sm': h = 28; break;
+                case 'lg': h = 48; break;
+                case 'md':
+                default: h = 36; break;
+            }
         }
+
+        return {
+            iconH: `${h}px`,
+            iconW: `${h * (80 / 109)}px`,
+            textH: `${h * 0.86}px`
+        };
     }, [size]);
 
     // Determine target mode (handle auto)
@@ -67,7 +77,7 @@ export const Logo: React.FC<LogoProps> = ({
         <svg
             viewBox="0 0 80 109"
             fill="none"
-            style={{ height: heights.h, width: heights.iconW }}
+            style={{ height: heights.iconH, width: heights.iconW }}
             className={`${iconClassName} transition-transform group-hover:scale-105 duration-500 shrink-0`}
         >
             {ICON_PATHS.PRIMARY.map((d, i) => (
@@ -78,10 +88,10 @@ export const Logo: React.FC<LogoProps> = ({
 
     const renderWordmark = () => (
         <svg
-            viewBox="0 0 205 32"
+            viewBox="0 0 205 26"
             fill="none"
-            style={{ height: heights.h }}
-            className="w-auto shrink-0"
+            style={{ height: heights.textH }}
+            className="w-auto shrink-0 transition-all duration-300"
         >
             {/* bookmy text */}
             {TEXT_PATHS.BOOKMY.map((d, i) => (
@@ -95,9 +105,10 @@ export const Logo: React.FC<LogoProps> = ({
     );
 
     return (
-        <div className={`flex items-center gap-3 group transition-all duration-300 ${className}`}>
+        <div className={`flex items-center gap-2.5 group transition-all duration-300 ${className}`}>
             {(variant === 'full' || variant === 'icon') && renderIcon()}
             {(variant === 'full' || variant === 'wordmark') && renderWordmark()}
         </div>
     );
 };
+

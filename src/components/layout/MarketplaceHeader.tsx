@@ -55,7 +55,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
             transparentAtTop={true}
             left={
                 <Link href="/" className="flex items-center group">
-                    <Logo mode="auto" size="sm" />
+                    <Logo mode="auto" size={30} />
                 </Link>
             }
             center={
