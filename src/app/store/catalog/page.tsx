@@ -154,22 +154,22 @@ function CatalogContent() {
     };
 
     return (
-        <div className="max-w-[1400px] mx-auto px-6 py-4 md:py-8 space-y-8 md:space-y-12">
+        <div className="max-w-[1400px] mx-auto px-6 py-4 md:py-8 space-y-8 md:space-y-12 bg-white dark:bg-[#020617] transition-colors duration-500">
             {/* 1. Auto-Scrolling Brand elimination Ribbon */}
-            <div className="relative py-4 border-b border-white/5 overflow-hidden group">
+            <div className="relative py-8 border-b border-slate-200 dark:border-white/5 overflow-hidden group">
                 <div className="flex whitespace-nowrap animate-marquee gap-16 md:gap-24 opacity-100 transition-opacity">
                     {[...brands, ...brands].map((brand, i) => (
                         <button
                             key={i}
                             onClick={() => toggleMake(brand)}
-                            className={`text-xl md:text-3xl font-black italic tracking-[0.2em] uppercase transition-all duration-300 ${selectedMakes.includes(brand) ? 'text-white scale-100 opacity-100' : 'text-slate-800 scale-90 opacity-40 hover:opacity-100'}`}
+                            className={`text-xl md:text-4xl font-black italic tracking-tighter uppercase transition-all duration-500 ${selectedMakes.includes(brand) ? 'text-blue-600 dark:text-white scale-110' : 'text-slate-300 dark:text-slate-800 scale-90 opacity-40 hover:opacity-100'}`}
                         >
                             {brand}
                         </button>
                     ))}
                 </div>
-                <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-slate-950 to-transparent z-10" />
-                <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-slate-950 to-transparent z-10" />
+                <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-white dark:from-[#020617] to-transparent z-10" />
+                <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-white dark:from-[#020617] to-transparent z-10" />
             </div>
 
             {/* 2. Mobile Filter Trigger (Mobile Only) */}
@@ -300,15 +300,15 @@ function CatalogContent() {
                             />
                         </div>
 
-                        <div className="pt-8 border-t border-white/5">
-                            <div className="p-8 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl space-y-6 shadow-2xl shadow-blue-500/20 border border-white/10 group overflow-hidden relative">
-                                <Zap size={32} className="text-white fill-white animate-pulse" />
+                        <div className="pt-8 border-t border-slate-200 dark:border-white/5">
+                            <div className="p-8 bg-slate-100 dark:bg-white/5 rounded-3xl space-y-6 shadow-2xl border border-slate-200 dark:border-white/10 group overflow-hidden relative">
+                                <Zap size={32} className="text-blue-600 dark:text-blue-500 fill-blue-600/20 animate-pulse" />
                                 <div className="space-y-2 relative z-10">
-                                    <h4 className="text-xl font-black uppercase tracking-tighter italic leading-tight text-white">Machine <br /> Concierge</h4>
-                                    <p className="text-[10px] font-bold text-blue-100/70 uppercase tracking-widest italic leading-relaxed">Direct access to our <br /> expert technicians.</p>
+                                    <h4 className="text-xl font-black uppercase tracking-tighter italic leading-tight text-slate-900 dark:text-white">Expert <br /> Concierge</h4>
+                                    <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest italic leading-relaxed">Direct access to our <br /> technical inner circle.</p>
                                 </div>
-                                <button className="w-full py-4 bg-white text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all shadow-xl relative z-10">Connect Now</button>
-                                <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700" />
+                                <button className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 dark:hover:bg-blue-500 dark:hover:text-white transition-all shadow-xl relative z-10">Request Briefing</button>
+                                <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-blue-600/5 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700" />
                             </div>
                         </div>
                     </div>

@@ -332,60 +332,118 @@ export default function StorePage() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {[
-                            {
-                                name: 'Arjun Kapoor',
-                                handle: 'TVS Jupiter',
-                                quote: '"Booking my bike online should be as easy as ordering food. I want to see my on-road price, compare EMIs, and confirm the delivery date—without visiting five different showrooms or decoding hidden charges."',
-                            },
-                            {
-                                name: 'Meera Reddy',
-                                handle: 'Honda Activa',
-                                quote: '"The transparency is what I loved. No hidden costs, everything upfront. The delivery was right on time as promised. This is exactly what the two-wheeler market needed."',
-                            },
-                            {
-                                name: 'Karan Malhotra',
-                                handle: 'Suzuki V-Strom',
-                                quote: '"Finally a platform that understands what riders need. The EMI comparison tool saved me so much time and money. Highly recommended for anyone looking to buy a bike."',
-                            }
-                        ].map((m, i) => (
-                            <div key={i} className="group p-10 bg-white/[0.03] border border-white/5 rounded-[3rem] space-y-8 hover:bg-white/[0.05] transition-all duration-500 relative">
-                                <div className="absolute top-10 right-10 opacity-10 group-hover:opacity-20 transition-opacity">
-                                    <svg width="40" height="40" viewBox="0 0 40 40" fill="currentColor">
-                                        <path d="M10 10v10h10V10H10zm0 20h10V20H10v10zm20-20v10h10V10H30zm0 20h10V20H30v10z" />
-                                    </svg>
-                                </div>
-
-                                <div className="flex gap-1">
-                                    {[1, 2, 3, 4, 5].map(s => <Star key={s} size={14} className="text-white fill-white" />)}
-                                </div>
-
-                                <p className="text-lg font-medium text-slate-300 leading-relaxed italic">
-                                    {m.quote}
-                                </p>
-
-                                <div className="pt-8 border-t border-white/5 flex items-center gap-4">
-                                    <div className="w-14 h-14 rounded-2xl bg-slate-800 overflow-hidden">
-                                        <img
-                                            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${m.name}`}
-                                            alt={m.name}
-                                            className="w-full h-full object-cover"
-                                        />
+                    <div className="relative group overflow-hidden">
+                        <div className="flex animate-marquee gap-8 whitespace-nowrap py-10 w-max">
+                            {[
+                                { name: 'Arjun', city: 'Bengaluru', bike: 'RE Classic 350', quote: 'Showroom me 2 mahine ki waiting thi, yahan 5 din me mil gayi. Transparent breakdown best hai.' },
+                                { name: 'Priya', city: 'Pune', bike: 'Honda Activa 6G', quote: 'Online buying me darr tha par Lowest EMI guarantee ne 4k bachaye. Delivery team 10/10.' },
+                                { name: 'Rahul', city: 'Delhi', bike: 'Apache RTR 160', quote: 'EMI approve ho gayi 10 minutes me. No hidden charges. Total peace of mind.' },
+                                { name: 'Sneha', city: 'Mumbai', bike: 'Ola S1 Pro', quote: 'BMB handled everything—subsidies, taxes, registration. Electric booking made easy.' },
+                                { name: 'Karthik', city: 'Chennai', bike: 'Yamaha R15 V4', quote: 'Got the Racing Blue variant when it was out of stock everywhere. Massive network.' },
+                                { name: 'Amit', city: 'Ahmedabad', bike: 'Splendor Plus', quote: 'Daily commute ke liye bike chahiye thi fast. Zero hidden costs. Delivered to office.' },
+                                { name: 'Vikram', city: 'Hyderabad', bike: 'Access 125', quote: 'Concierge team is very professional. Professional help with documentation.' },
+                                { name: 'Anjali', city: 'Kolkata', bike: 'Ather 450X', quote: 'Everything from insurance to registration was handled in the app. Smooth digital process.' },
+                                { name: 'Siddharth', city: 'Gurgaon', bike: 'Ninja 300', quote: 'Elite Circle privileges are real. Priority delivery and premium kit was a surprise.' },
+                                { name: 'Neha', city: 'Chandigarh', bike: 'Vespa VXL 150', quote: 'Found the specific color no local dealer had. Delivered in pristine condition.' },
+                                { name: 'Manish', city: 'Jaipur', bike: 'Pulsar NS200', quote: 'EMI calculator is spot on. No processing fee surprises. Paid what was shown.' },
+                                { name: 'Rohan', city: 'Indore', bike: 'Hornet 2.0', quote: 'Unified pricing across dealers stopped the showroom haggling immediately.' },
+                                { name: 'Deepak', city: 'Lucknow', bike: 'Meteor 350', quote: 'On-road price in UP was lower than local dealers. Verified by evening.' },
+                                { name: 'Suresh', city: 'Kochi', bike: 'NTORQ 125', quote: 'Smooth experience. Best for busy professionals who dont want to waste weekends.' },
+                                { name: 'Megha', city: 'Nagpur', bike: 'Yamaha MT-15', quote: 'Loved the UI. Seeing every variant in high-res helped me decide. 100% happy.' },
+                            ].concat([
+                                { name: 'Arjun', city: 'Bengaluru', bike: 'RE Classic 350', quote: 'Showroom me 2 mahine ki waiting thi, yahan 5 din me mil gayi. Transparent breakdown best hai.' },
+                                { name: 'Priya', city: 'Pune', bike: 'Honda Activa 6G', quote: 'Online buying me darr tha par Lowest EMI guarantee ne 4k bachaye. Delivery team 10/10.' },
+                                { name: 'Rahul', city: 'Delhi', bike: 'Apache RTR 160', quote: 'EMI approve ho gayi 10 minutes me. No hidden charges. Total peace of mind.' },
+                                { name: 'Sneha', city: 'Mumbai', bike: 'Ola S1 Pro', quote: 'BMB handled everything—subsidies, taxes, registration. Electric booking made easy.' },
+                                { name: 'Karthik', city: 'Chennai', bike: 'Yamaha R15 V4', quote: 'Got the Racing Blue variant when it was out of stock everywhere. Massive network.' },
+                                { name: 'Amit', city: 'Ahmedabad', bike: 'Splendor Plus', quote: 'Daily commute ke liye bike chahiye thi fast. Zero hidden costs. Delivered to office.' },
+                                { name: 'Vikram', city: 'Hyderabad', bike: 'Access 125', quote: 'Concierge team is very professional. Professional help with documentation.' },
+                                { name: 'Anjali', city: 'Kolkata', bike: 'Ather 450X', quote: 'Everything from insurance to registration was handled in the app. Smooth digital process.' },
+                                { name: 'Siddharth', city: 'Gurgaon', bike: 'Ninja 300', quote: 'Elite Circle privileges are real. Priority delivery and premium kit was a surprise.' },
+                                { name: 'Neha', city: 'Chandigarh', bike: 'Vespa VXL 150', quote: 'Found the specific color no local dealer had. Delivered in pristine condition.' },
+                                { name: 'Manish', city: 'Jaipur', bike: 'Pulsar NS200', quote: 'EMI calculator is spot on. No processing fee surprises. Paid what was shown.' },
+                                { name: 'Rohan', city: 'Indore', bike: 'Hornet 2.0', quote: 'Unified pricing across dealers stopped the showroom haggling immediately.' },
+                                { name: 'Deepak', city: 'Lucknow', bike: 'Meteor 350', quote: 'On-road price in UP was lower than local dealers. Verified by evening.' },
+                                { name: 'Suresh', city: 'Kochi', bike: 'NTORQ 125', quote: 'Smooth experience. Best for busy professionals who dont want to waste weekends.' },
+                                { name: 'Megha', city: 'Nagpur', bike: 'Yamaha MT-15', quote: 'Loved the UI. Seeing every variant in high-res helped me decide. 100% happy.' },
+                            ]).map((m, i) => (
+                                <div key={i} className="inline-block w-[350px] md:w-[450px] p-6 md:p-10 bg-white/[0.03] border border-white/5 rounded-[2rem] md:rounded-[3rem] space-y-4 md:space-y-6 hover:bg-white/[0.05] transition-all duration-500 relative whitespace-normal flex-shrink-0">
+                                    <div className="flex gap-1">
+                                        {[1, 2, 3, 4, 5].map(s => <Star key={s} size={12} className="text-white fill-white" />)}
                                     </div>
-                                    <div>
-                                        <p className="text-sm font-black uppercase tracking-widest italic">{m.name}</p>
-                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">{m.handle}</p>
+                                    <p className="text-sm md:text-lg font-medium text-slate-300 leading-relaxed italic">"{m.quote}"</p>
+                                    <div className="pt-4 md:pt-6 border-t border-white/5 flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-slate-800 flex items-center justify-center font-black text-[10px] md:text-xs text-slate-500">{m.name.charAt(0)}</div>
+                                            <div>
+                                                <p className="text-[10px] md:text-xs font-black uppercase tracking-widest text-white">{m.name}, <span className="text-slate-500">{m.city}</span></p>
+                                                <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-blue-500 italic">{m.bike}</p>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
+
+                        <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-[#020617] to-transparent z-10" />
+                        <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-[#020617] to-transparent z-10" />
                     </div>
 
-                    <div className="flex justify-center gap-3">
-                        {[1, 2, 3, 4, 5, 6].map(dot => (
-                            <div key={dot} className={`w-2 h-2 rounded-full ${dot === 1 ? 'bg-red-600 w-4' : 'bg-slate-800'} transition-all`} />
-                        ))}
+                    {/* Second Row Opposite Direction */}
+                    <div className="relative overflow-hidden mt-[-2rem]">
+                        <div className="flex animate-marquee-reverse gap-8 whitespace-nowrap py-10 w-max">
+                            {[
+                                { name: 'Abhishek', city: 'Patna', bike: 'XPulse 200', quote: 'Village delivery was surprising but they managed it. Trustworthy service for Bihar.' },
+                                { name: 'Divya', city: 'Surat', bike: 'Burgman Street', quote: 'White glove delivery is legit. They even helped me with temporary reg plate.' },
+                                { name: 'Ishaan', city: 'Bhubaneswar', bike: 'Duke 200', quote: 'Fastest finance approval. Document upload to approval took less than 15 mins.' },
+                                { name: 'Rajesh', city: 'Ludhiana', bike: 'CB350RS', quote: 'Verified status of dealers gives confidence. Professional and quick. Highly recommended.' },
+                                { name: 'Pooja', city: 'Raipur', bike: 'Jupiter 125', quote: 'Simple, fast, and secure. Made the perfect gift for my brother birthday.' },
+                                { name: 'Nitin', city: 'Dehradun', bike: 'SR 160', quote: 'Mountain delivery was on time. Bike came in a closed truck, no scratches.' },
+                                { name: 'Shubham', city: 'Ghaziabad', bike: 'FZ-S', quote: 'Comparing EMIs of 4 banks in one screen saved me at least 1% interest rate.' },
+                                { name: 'Anita', city: 'Bhopal', bike: 'Dio', quote: 'The member dashboard shows my booking status live. Very helpful and transparent.' },
+                                { name: 'Varun', city: 'Vizag', bike: 'Speed 400', quote: 'Early access for members helped me get into the first batch. Worth it.' },
+                                { name: 'Alok', city: 'Jamshedpur', bike: 'Glamour', quote: 'Simple Hinglish support made the process very easy for my father.' },
+                                { name: 'Tanvi', city: 'Mysore', bike: 'Ather 450S', quote: 'Eco-friendly process. No paperwork, just digital signatures. The way forward.' },
+                                { name: 'Jatin', city: 'Amritsar', bike: 'Hunter 350', quote: 'Bullet lover but tech person. Great price, great service. Sat Sri Akal!' },
+                                { name: 'Kavita', city: 'Madurai', bike: 'XL100', quote: 'Bought for my business delivery. Helped me get bulk registration handled.' },
+                                { name: 'Sameer', city: 'Jammu', bike: 'V-Strom SX', quote: 'Got delivery even during light snow. The team is dedicated to the rider.' },
+                                { name: 'Ritu', city: 'Guwahati', bike: 'Shine', quote: 'North East delivery was very clear about the timeline. Bike arrived today!' },
+                            ].concat([
+                                { name: 'Abhishek', city: 'Patna', bike: 'XPulse 200', quote: 'Village delivery was surprising but they managed it. Trustworthy service for Bihar.' },
+                                { name: 'Divya', city: 'Surat', bike: 'Burgman Street', quote: 'White glove delivery is legit. They even helped me with temporary reg plate.' },
+                                { name: 'Ishaan', city: 'Bhubaneswar', bike: 'Duke 200', quote: 'Fastest finance approval. Document upload to approval took less than 15 mins.' },
+                                { name: 'Rajesh', city: 'Ludhiana', bike: 'CB350RS', quote: 'Verified status of dealers gives confidence. Professional and quick. Highly recommended.' },
+                                { name: 'Pooja', city: 'Raipur', bike: 'Jupiter 125', quote: 'Simple, fast, and secure. Made the perfect gift for my brother birthday.' },
+                                { name: 'Nitin', city: 'Dehradun', bike: 'SR 160', quote: 'Mountain delivery was on time. Bike came in a closed truck, no scratches.' },
+                                { name: 'Shubham', city: 'Ghaziabad', bike: 'FZ-S', quote: 'Comparing EMIs of 4 banks in one screen saved me at least 1% interest rate.' },
+                                { name: 'Anita', city: 'Bhopal', bike: 'Dio', quote: 'The member dashboard shows my booking status live. Very helpful and transparent.' },
+                                { name: 'Varun', city: 'Vizag', bike: 'Speed 400', quote: 'Early access for members helped me get into the first batch. Worth it.' },
+                                { name: 'Alok', city: 'Jamshedpur', bike: 'Glamour', quote: 'Simple Hinglish support made the process very easy for my father.' },
+                                { name: 'Tanvi', city: 'Mysore', bike: 'Ather 450S', quote: 'Eco-friendly process. No paperwork, just digital signatures. The way forward.' },
+                                { name: 'Jatin', city: 'Amritsar', bike: 'Hunter 350', quote: 'Bullet lover but tech person. Great price, great service. Sat Sri Akal!' },
+                                { name: 'Kavita', city: 'Madurai', bike: 'XL100', quote: 'Bought for my business delivery. Helped me get bulk registration handled.' },
+                                { name: 'Sameer', city: 'Jammu', bike: 'V-Strom SX', quote: 'Got delivery even during light snow. The team is dedicated to the rider.' },
+                                { name: 'Ritu', city: 'Guwahati', bike: 'Shine', quote: 'North East delivery was very clear about the timeline. Bike arrived today!' },
+                            ]).map((m, i) => (
+                                <div key={i} className="inline-block w-[350px] md:w-[450px] p-6 md:p-10 bg-white/[0.03] border border-white/5 rounded-[2rem] md:rounded-[3rem] space-y-4 md:space-y-6 hover:bg-white/[0.05] transition-all duration-500 relative whitespace-normal flex-shrink-0">
+                                    <div className="flex gap-1">
+                                        {[1, 2, 3, 4, 5].map(s => <Star key={s} size={12} className="text-white fill-white" />)}
+                                    </div>
+                                    <p className="text-sm md:text-lg font-medium text-slate-300 leading-relaxed italic">"{m.quote}"</p>
+                                    <div className="pt-4 md:pt-6 border-t border-white/5 flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-slate-800 flex items-center justify-center font-black text-[10px] md:text-xs text-slate-500">{m.name.charAt(0)}</div>
+                                            <div>
+                                                <p className="text-[10px] md:text-xs font-black uppercase tracking-widest text-white">{m.name}, <span className="text-slate-500">{m.city}</span></p>
+                                                <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-blue-500 italic">{m.bike}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-[#020617] to-transparent z-10" />
+                        <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-[#020617] to-transparent z-10" />
                     </div>
                 </div>
 

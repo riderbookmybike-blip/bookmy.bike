@@ -12,6 +12,8 @@ module.exports = {
                 'gradient-x': 'gradient-x 15s ease infinite',
                 'bounce-slow': 'bounce 3s infinite',
                 'scan': 'scan 3s linear infinite',
+                'marquee': 'marquee 120s linear infinite',
+                'marquee-reverse': 'marquee-reverse 120s linear infinite',
             },
             keyframes: {
                 'scan': {
@@ -27,6 +29,14 @@ module.exports = {
                         'background-size': '200% 200%',
                         'background-position': 'right center',
                     },
+                },
+                'marquee': {
+                    '0%': { transform: 'translateX(0%)' },
+                    '100%': { transform: 'translateX(-100%)' },
+                },
+                'marquee-reverse': {
+                    '0%': { transform: 'translateX(-100%)' },
+                    '100%': { transform: 'translateX(0%)' },
                 },
             },
         },
