@@ -12,7 +12,7 @@ interface LogoProps {
 
 export const Logo: React.FC<LogoProps> = ({
     className = "",
-    iconClassName = "w-8 h-auto",
+    iconClassName = "w-10 h-auto",
     textClassName = "h-6 w-auto",
     variant = 'red',
     showText = true,
@@ -71,7 +71,7 @@ export const Logo: React.FC<LogoProps> = ({
     );
 
     const getText = () => (
-        <div className={`font-sans font-semibold tracking-tighter leading-none flex items-baseline ${textClassName === "h-6 w-auto" ? "text-[27px]" : textClassName}`}>
+        <div className={`font-sans font-semibold tracking-tighter leading-none flex items-baseline ${textClassName === "h-6 w-auto" ? "text-[32px]" : textClassName}`}>
             <span style={{ color: colors.bookmy }}>bookmy</span>
             <span style={{ color: colors.bike }}>.bike</span>
         </div>
