@@ -14,7 +14,7 @@ interface AppHeaderShellProps {
 
 /**
  * Canonical Header Shell for BookMyBike.
- * Locks the header height to 64px (h-16) and provides theme-aware separation.
+ * Locks the header height to 80px (h-20) and provides theme-aware separation.
  */
 export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
     left,
