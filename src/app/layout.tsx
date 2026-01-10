@@ -1,14 +1,9 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono, Outfit } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({
   variable: "--font-inter",
-  subsets: ["latin"],
-});
-
-const outfit = Outfit({
-  variable: "--font-outfit",
   subsets: ["latin"],
 });
 
@@ -47,7 +42,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         suppressHydrationWarning
-        className={`${inter.variable} ${jetbrainsMono.variable} ${outfit.variable} antialiased font-sans bg-[var(--background)] text-[var(--foreground)]`}
+        className={`${inter.variable} ${jetbrainsMono.variable} antialiased font-sans bg-[var(--background)] text-[var(--foreground)]`}
       >
         <ThemeProvider>
           <TenantProvider>
