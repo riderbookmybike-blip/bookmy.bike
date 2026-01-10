@@ -97,7 +97,7 @@ export default function MediaKitPage() {
 
             <main className="flex-1 relative">
                 {/* Background Large Ghost Text */}
-                <div className="absolute top-40 right-[-10%] text-[40vw] font-black italic uppercase text-white/[0.02] pointer-events-none select-none leading-none z-0">
+                <div className="absolute top-80 -right-20 text-[30vw] font-black italic uppercase text-white/[0.015] pointer-events-none select-none leading-none z-0">
                     KIT
                 </div>
 
@@ -226,6 +226,61 @@ export default function MediaKitPage() {
                             </AssetCard>
                         </div>
                     </section>
+
+                    {/* Colors Section */}
+                    <section className="space-y-16">
+                        <div className="space-y-4 border-l-4 border-blue-600 pl-8">
+                            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500">Color Palette</p>
+                            <h2 className="text-5xl md:text-6xl font-black italic uppercase tracking-tighter leading-none">The Colors</h2>
+                        </div>
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+                            <ColorSwatch name="BOOKMY BLUE" hex="#2B7FFF" primary />
+                            <ColorSwatch name="PURE WHITE" hex="#FFFFFF" />
+                            <ColorSwatch name="SLATE GRAY" hex="#64748B" />
+                            <ColorSwatch name="DEEP ONYX" hex="#030712" border />
+                        </div>
+                    </section>
+
+                    {/* Typography Section */}
+                    <section className="space-y-16">
+                        <div className="space-y-4 border-l-4 border-blue-600 pl-8">
+                            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500">Type System</p>
+                            <h2 className="text-5xl md:text-6xl font-black italic uppercase tracking-tighter leading-none">Typography</h2>
+                        </div>
+                        <div className="bg-white/5 border border-white/10 rounded-[4rem] p-12 md:p-20 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center overflow-hidden relative">
+                            {/* Large Ghost Text inside card */}
+                            <div className="absolute top-0 right-0 text-[15vw] font-black italic uppercase text-white/[0.01] pointer-events-none select-none">
+                                ABC
+                            </div>
+
+                            <div className="space-y-10 relative z-10">
+                                <div className="space-y-4">
+                                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-blue-500">Primary Face</p>
+                                    <h3 className="text-9xl font-black italic tracking-tighter text-white uppercase italic">Inter</h3>
+                                </div>
+                                <p className="text-slate-400 text-xl leading-relaxed font-medium italic">
+                                    Modern, precise, and engineered for high-performance mobility interfaces.
+                                </p>
+                                <div className="space-y-6">
+                                    <TypeRow label="Branding" weight="Semibold 600" />
+                                    <TypeRow label="UI Headings" weight="Medium 500" />
+                                    <TypeRow label="App Body" weight="Regular 400" />
+                                </div>
+                            </div>
+
+                            <div className="bg-black/60 p-12 rounded-[2.5rem] border border-white/10 space-y-12 backdrop-blur-xl relative z-10">
+                                <div className="space-y-4">
+                                    <p className="text-8xl font-black tracking-tighter text-white italic leading-none">Aa.Zz</p>
+                                    <div className="h-px bg-white/10 w-full" />
+                                </div>
+                                <div className="text-slate-500 font-mono text-sm leading-8 tracking-[0.2em] uppercase">
+                                    ABCDEFGHIJKLMNOPQRSTUVWXYZ<br />
+                                    abcdefghijklmnopqrstuvwxyz<br />
+                                    0123456789 !@#$%^&*
+                                </div>
+                            </div>
+                        </div>
+                    </section>
                 </div>
             </main>
 
@@ -266,5 +321,28 @@ const AssetCard = ({ title, description, usage, children, onDownload }: { title:
                 {usage}
             </p>
         </div>
+    </div>
+);
+
+const ColorSwatch = ({ name, hex, primary, border }: { name: string, hex: string, primary?: boolean, border?: boolean }) => (
+    <div className="space-y-6 group">
+        <div
+            className={`h-40 rounded-[2rem] transition-all duration-500 group-hover:scale-[1.02] group-hover:-translate-y-2 ${primary ? 'shadow-2xl shadow-blue-600/30' : ''} ${border ? 'border border-white/10' : ''}`}
+            style={{ backgroundColor: hex }}
+        />
+        <div className="pl-2">
+            <p className="font-black italic text-white text-lg uppercase tracking-tight">{name}</p>
+            <div className="flex items-center gap-3 mt-2">
+                <span className="text-[9px] font-black bg-blue-600/20 text-blue-500 px-2 py-1 rounded-md uppercase tracking-widest leading-none">HEX</span>
+                <p className="text-xs font-mono text-slate-500 font-bold tracking-widest uppercase">{hex}</p>
+            </div>
+        </div>
+    </div>
+);
+
+const TypeRow = ({ label, weight }: { label: string, weight: string }) => (
+    <div className="flex items-center justify-between border-b border-white/5 pb-4">
+        <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 italic">{label}</span>
+        <span className="text-sm font-black text-white italic tracking-widest uppercase">{weight}</span>
     </div>
 );
