@@ -75,6 +75,7 @@ export async function middleware(request: NextRequest) {
         pathname.startsWith('/login') ||
         pathname.startsWith('/auth') || // Supabase Auth Callbacks (e.g. /auth/callback)
         pathname.startsWith('/api/auth') ||
+        pathname.startsWith('/api/admin') || // API routes handled internally
         pathname.startsWith('/forgot-password') ||
         pathname.startsWith('/reset-password') ||
         pathname.startsWith('/invite');

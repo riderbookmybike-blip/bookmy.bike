@@ -46,5 +46,41 @@
                 "primaryColor": "#f59e0b"
             }
         }
+    },
+    {
+        "slug": "addbike",
+        "name": "AddBike Dealers",
+        "type": "DEALER",
+        "pincode": "560001",
+        "config": {
+            "brand": {
+                "displayName": "AddBike",
+                "primaryColor": "#f59e0b"
+            }
+        }
+    },
+    {
+        "slug": "myscooty",
+        "name": "MyScooty",
+        "type": "DEALER",
+        "pincode": "110001",
+        "config": {
+            "brand": {
+                "displayName": "MyScooty",
+                "primaryColor": "#8b5cf6"
+            }
+        }
+    },
+    {
+        "slug": "ltfinance",
+        "name": "L&T Finance",
+        "type": "BANK",
+        "pincode": "400001",
+        "config": {
+            "brand": {
+                "displayName": "L&T Finance",
+                "primaryColor": "#2563eb"
+            }
+        }
     }
 ]
