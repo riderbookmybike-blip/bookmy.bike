@@ -38,7 +38,7 @@ export async function middleware(request: NextRequest) {
     // B. SEO & HEADERS (Strict NoIndex for Subdomains)
     // We create a "base" response. If we redirect later, this header might be lost, 
     // but successful responses for internal portals must have it.
-    let response = NextResponse.next();
+    const response = NextResponse.next();
 
     if (currentSubdomain) {
         response.headers.set('X-Robots-Tag', 'noindex, nofollow');
@@ -61,7 +61,7 @@ export async function middleware(request: NextRequest) {
                     return request.cookies.getAll();
                 },
                 setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value));
+                    cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
                     cookiesToSet.forEach(({ name, value, options }) => response.cookies.set({ name, value, ...options }));
                 },
             },
@@ -196,7 +196,11 @@ export async function middleware(request: NextRequest) {
 
 // Helper for cleaner membership check
 function validMembership(data: any) {
-    return data && data.tenants && data.tenants.subdomain;
+    if (!data || !data.tenants) return false;
+    if (Array.isArray(data.tenants)) {
+        return data.tenants.length > 0 && data.tenants[0].subdomain;
+    }
+    return data.tenants.subdomain;
 }
 
 export const config = {

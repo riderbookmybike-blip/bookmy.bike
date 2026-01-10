@@ -86,7 +86,11 @@ export default function SetupWizard() {
         setSaving(true);
         const success = await updateConfig({
             ...tenantConfig,
-            brand: { ...tenantConfig?.brand, displayName: orgData.displayName },
+            brand: {
+                ...tenantConfig?.brand,
+                primaryColor: tenantConfig?.brand?.primaryColor || '#4F46E5', // Default
+                displayName: orgData.displayName
+            },
             // Note: location is technically in 'tenants' table columns too, but we store in config for now 
             // or update tenant row directly if specific columns exist.
             // User requested: Organization info (edit name/location).

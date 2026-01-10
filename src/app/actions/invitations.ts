@@ -6,34 +6,7 @@ import { randomBytes, createHash } from 'crypto';
 import { headers } from 'next/headers';
 import { logAudit } from '@/lib/audit';
 
-// ... (inside createInvite after insert)
-// 3. Log Audit
-await logAudit({
-    tenantId,
-    actorId: user.id,
-    action: 'INVITE_CREATED',
-    entityType: 'INVITATION',
-    entityId: email, // Valid to use email as ID here or the new row ID if we fetch it
-    metadata: { role, tokenHash }
-});
 
-// 4. Send Email (Stub)
-return { success: true, message: 'Invite created', debugToken: rawToken };
-}
-
-// ... (inside acceptInvite after update)
-// 4. Log Audit
-await logAudit({
-    tenantId: invite.tenant_id,
-    actorId: userId,
-    action: 'INVITE_ACCEPTED',
-    entityType: 'INVITATION',
-    entityId: invite.id,
-    metadata: { role: invite.role }
-});
-
-return { success: true };
-}
 
 // Helper: Hash token
 function hashToken(token: string) {
@@ -98,7 +71,17 @@ export async function createInvite(prevState: any, formData: FormData) {
         return { success: false, message: 'Failed to create invite' };
     }
 
-    // 3. Send Email (Stub for now, or real if provider exists)
+    // 3. Log Audit
+    await logAudit({
+        tenantId,
+        actorId: user.id,
+        action: 'INVITE_CREATED',
+        entityType: 'INVITATION',
+        entityId: email,
+        metadata: { role, tokenHash }
+    });
+
+    // 4. Send Email (Stub for now, or real if provider exists)
     // In real app: await sendEmail({ to: email, link: `https://${subdomain}.bookmy.bike/invite?token=${rawToken}` })
 
     // Return the raw token for UI display (since email is stubbed)
@@ -155,6 +138,16 @@ export async function acceptInvite(token: string, userId: string) {
         .from('invitations')
         .update({ status: 'ACCEPTED', accepted_by: userId })
         .eq('id', invite.id);
+
+    // 4. Log Audit
+    await logAudit({
+        tenantId: invite.tenant_id,
+        actorId: userId,
+        action: 'INVITE_ACCEPTED',
+        entityType: 'INVITATION',
+        entityId: invite.id,
+        metadata: { role: invite.role }
+    });
 
     return { success: true };
 }

@@ -48,7 +48,7 @@ interface TenantContextProps {
     // Legacy / Status props
     status: TenantStatus;
     isReadOnly: boolean;
-    memberships: any[]; // NEW
+    memberships: Record<string, any>[]; // List of memberships
 }
 
 const TenantContext = createContext<TenantContextProps>({
@@ -123,7 +123,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
         const fetchTenantDetails = async () => {
             try {
                 const supabase = createClient();
-                let { data: { user }, error: userError } = await supabase.auth.getUser();
+                let { data: { user } } = await supabase.auth.getUser();
 
                 if (!user) {
                     const { data: sessionData } = await supabase.auth.getSession();
