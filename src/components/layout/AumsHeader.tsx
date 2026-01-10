@@ -53,7 +53,7 @@ export const AumsHeader = ({ onLoginClick, onMenuClick, showSearch = false }: Au
                         </button>
                     )}
                     <Link href="/" className="flex items-center group">
-                        <Logo mode="auto" size="sm" />
+                        <Logo mode="auto" size={30} />
                     </Link>
                 </div>
             }
