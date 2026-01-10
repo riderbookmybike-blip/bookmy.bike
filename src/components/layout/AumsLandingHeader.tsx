@@ -15,7 +15,7 @@ export const AumsLandingHeader = ({ onLoginClick }: AumsLandingHeaderProps) => {
         <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-slate-950/80 border-b border-white/5 transition-colors duration-300">
             <div className="max-w-[1400px] mx-auto px-6 h-20 flex items-center justify-between">
                 <Link href="/" className="w-40 md:w-48">
-                    <Logo variant="blue" className="text-white" />
+                    <Logo mode="dark" />
                 </Link>
 
                 <div className="flex items-center gap-4 lg:gap-6">

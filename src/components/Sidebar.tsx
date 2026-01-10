@@ -96,9 +96,8 @@ export default function Sidebar({
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-3">
                             <Logo
-                                variant={tenantType === 'BANK' ? 'blue' : 'red'}
-                                showText={isExpanded}
-                                iconClassName="w-10 h-10"
+                                mode="auto"
+                                variant={isExpanded ? 'full' : 'icon'}
                                 className="transition-all duration-300"
                             />
                         </div>
