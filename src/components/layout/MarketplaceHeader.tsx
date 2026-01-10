@@ -64,7 +64,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                 <Link href="/" className="flex items-center group">
                     <Logo
                         variant="blue"
-                        className={`w-32 md:w-40 transition-all ${scrolled ? 'text-slate-900 dark:text-white' : 'text-white'}`}
+                        className={`transition-all ${scrolled ? 'text-slate-900 dark:text-white' : 'text-white'}`}
                     />
                 </Link>
 
