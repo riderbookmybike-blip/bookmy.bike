@@ -7,8 +7,9 @@ interface LogoProps {
     iconClassName?: string;
     mode?: 'auto' | 'light' | 'dark';
     variant?: 'full' | 'icon' | 'wordmark';
-    monochrome?: 'none' | 'white' | 'black';
+    monochrome?: 'none' | 'white' | 'black' | 'gold' | 'silver';
     size?: 'sm' | 'md' | 'lg' | number;
+    style?: React.CSSProperties;
 }
 
 export const Logo: React.FC<LogoProps> = ({
@@ -17,7 +18,8 @@ export const Logo: React.FC<LogoProps> = ({
     mode = 'auto',
     variant = 'full',
     monochrome = 'none',
-    size = 'md'
+    size = 'md',
+    style = {}
 }) => {
     const { theme } = useTheme();
 
@@ -54,6 +56,12 @@ export const Logo: React.FC<LogoProps> = ({
         }
         if (monochrome === 'black') {
             return { icon: "#000000", bookmy: "#000000", bike: "#000000" };
+        }
+        if (monochrome === 'gold') {
+            return { icon: "#D4AF37", bookmy: "#C5A028", bike: "#D4AF37" };
+        }
+        if (monochrome === 'silver') {
+            return { icon: "#C0C0C0", bookmy: "#A9A9A9", bike: "#C0C0C0" };
         }
 
         // Standard Themed Variants
@@ -97,7 +105,10 @@ export const Logo: React.FC<LogoProps> = ({
     );
 
     return (
-        <div className={`flex items-center gap-2 group transition-all duration-300 ${className}`}>
+        <div
+            className={`flex items-center gap-2 group transition-all duration-300 ${className}`}
+            style={style}
+        >
             {(variant === 'full' || variant === 'icon') && renderIcon()}
             {(variant === 'full' || variant === 'wordmark') && renderWordmark()}
         </div>
