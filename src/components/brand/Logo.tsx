@@ -107,7 +107,7 @@ export const Logo: React.FC<LogoProps> = ({
             viewBox="0 0 80 109"
             fill="none"
             style={{ height: heights.iconH, width: heights.iconW }}
-            className={`${iconClassName} transition-transform group-hover:scale-105 duration-500 shrink-0 ${isMetallic ? 'animate-shimmer' : ''}`}
+            className={`${iconClassName} transition-transform group-hover:scale-105 duration-500 ${isMetallic ? 'animate-shimmer' : ''}`}
         >
             {renderGradients()}
             {ICON_PATHS.PRIMARY.map((d, i) => (
@@ -116,41 +116,14 @@ export const Logo: React.FC<LogoProps> = ({
         </svg>
     );
 
-    const renderWordmark = () => (
-        <div
-            style={{ height: heights.textH, fontSize: heights.textH, lineHeight: 1 }}
-            className={`flex items-center font-sans font-semibold tracking-[-0.03em] shrink-0 transition-all duration-300 ${isMetallic ? 'animate-shimmer' : ''}`}
-        >
-            <svg style={{ height: heights.textH, width: 'auto', overflow: 'visible' }}>
-                {renderGradients()}
-                <text
-                    y="80%"
-                    fill={colors.bookmy}
-                    style={{ font: 'inherit' }}
-                >
-                    bookmy
-                </text>
-                {/* Manual offset for .bike */}
-                <text
-                    x="250"
-                    y="80%"
-                    fill={colors.bike}
-                    style={{ font: 'inherit' }}
-                >
-                    .bike
-                </text>
-            </svg>
-        </div>
-    );
-
     // Re-implementing wordmark with SVG for gradient support on text
     const renderWordmarkSVG = () => (
         <div
             style={{ height: heights.textH }}
-            className={`flex items-center font-sans font-semibold tracking-[-0.03em] shrink-0 transition-all duration-300 ${isMetallic ? 'animate-shimmer' : ''}`}
+            className={`flex items-center font-sans font-semibold tracking-[-0.03em] transition-all duration-300 ${isMetallic ? 'animate-shimmer' : ''}`}
         >
             <svg
-                viewBox="0 0 350 40"
+                viewBox="0 0 215 40"
                 style={{ height: heights.textH, width: 'auto', overflow: 'visible' }}
                 preserveAspectRatio="xMinYMid meet"
             >
@@ -170,7 +143,7 @@ export const Logo: React.FC<LogoProps> = ({
 
     return (
         <div
-            className={`flex items-center gap-2 group transition-all duration-300 ${className}`}
+            className={`flex items-center justify-center gap-2 group transition-all duration-300 ${className}`}
             style={style}
         >
             {(variant === 'full' || variant === 'icon') && renderIcon()}
@@ -178,12 +151,13 @@ export const Logo: React.FC<LogoProps> = ({
 
             <style jsx global>{`
                 @keyframes shimmer {
-                    0% { filter: brightness(1); }
-                    50% { filter: brightness(1.3); }
-                    100% { filter: brightness(1); }
+                    0% { filter: brightness(1) contrast(1); }
+                    15% { filter: brightness(1.4) contrast(1.1); }
+                    30% { filter: brightness(1) contrast(1); }
+                    100% { filter: brightness(1) contrast(1); }
                 }
                 .animate-shimmer {
-                    animation: shimmer 3s infinite ease-in-out;
+                    animation: shimmer 4s infinite linear;
                 }
             `}</style>
         </div>
