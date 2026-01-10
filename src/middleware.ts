@@ -195,6 +195,7 @@ export async function middleware(request: NextRequest) {
 }
 
 // Helper for cleaner membership check
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function validMembership(data: any) {
     if (!data || !data.tenants) return false;
     if (Array.isArray(data.tenants)) {

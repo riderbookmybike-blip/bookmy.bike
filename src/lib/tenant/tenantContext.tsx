@@ -48,6 +48,7 @@ interface TenantContextProps {
     // Legacy / Status props
     status: TenantStatus;
     isReadOnly: boolean;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     memberships: Record<string, any>[]; // List of memberships
 }
 
@@ -104,6 +105,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
         return undefined;
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [memberships, setMemberships] = useState<any[]>([]);
 
     const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
@@ -123,6 +125,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
         const fetchTenantDetails = async () => {
             try {
                 const supabase = createClient();
+                // eslint-disable-next-line prefer-const
                 let { data: { user } } = await supabase.auth.getUser();
 
                 if (!user) {
@@ -131,6 +134,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                         user = sessionData.session.user;
                     }
                 }
+
 
                 // DISASTER RECOVERY
                 if (!user) {
@@ -211,6 +215,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                     }
 
                     // 3. Set Application Context from Resolved Membership
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const resolvedTenant = activeMembership.tenants as any;
                     const resolvedRole = activeMembership.role;
 
