@@ -89,7 +89,7 @@ export const Logo: React.FC<LogoProps> = ({
     const renderWordmark = () => (
         <div
             style={{ height: heights.textH, fontSize: heights.textH, lineHeight: 1 }}
-            className="flex items-center font-outfit font-bold tracking-[-0.03em] shrink-0 transition-all duration-300"
+            className="flex items-center font-sans font-bold tracking-[-0.03em] shrink-0 transition-all duration-300"
         >
             <span style={{ color: colors.bookmy }}>bookmy</span>
             <span style={{ color: colors.bike }}>.bike</span>
