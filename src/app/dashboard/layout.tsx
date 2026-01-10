@@ -12,10 +12,18 @@ export default function DashboardLayout({
 }: {
     children: React.ReactNode;
 }) {
-    const { tenantType, userRole, activeRole, isSidebarExpanded, setIsSidebarExpanded } = useTenant();
+    const { tenantType, userRole, activeRole, isSidebarExpanded, setIsSidebarExpanded, tenantConfig } = useTenant();
     const [isSidebarPinned, setIsSidebarPinned] = useState(false);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [isLoginOpen, setIsLoginOpen] = useState(false);
+
+    // BRANDING INJECTION
+    const primaryColor = tenantConfig?.brand?.primaryColor;
+    const displayName = tenantConfig?.brand?.displayName;
+
+    // TODO: Dynamic Meta Tags (Title/Favicon) are harder in client components.
+    // Ideally use generateMetadata in a Server Component layout, but context is client-side.
+    // For now, we inject CSS variables.
 
     const handleSidebarHoverChange = (isHovered: boolean) => {
         if (!isSidebarPinned) {
@@ -35,8 +43,26 @@ export default function DashboardLayout({
         return 'TENANT_ADMIN';
     })();
 
+    // SETUP ENFORCEMENT
+    React.useEffect(() => {
+        if (tenantConfig && tenantConfig.setup?.isComplete === false) {
+            // Only force setup for Admins
+            const isAdmin = effectiveRole?.includes('ADMIN') || effectiveRole?.includes('OWNER');
+            if (isAdmin) {
+                // Prevent loop if we are already redirected (though this layout is for /dashboard)
+                window.location.href = '/setup';
+            }
+        }
+    }, [tenantConfig, effectiveRole]);
+
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+        <div
+            className="min-h-screen bg-slate-50 dark:bg-slate-950"
+            style={{
+                // @ts-ignore
+                '--primary': primaryColor || '#4F46E5', // Indigo-600 default
+            } as React.CSSProperties}
+        >
             {/* Dedicated CRM Header */}
             <DashboardHeader
                 onMenuClick={() => setIsMobileSidebarOpen(true)}

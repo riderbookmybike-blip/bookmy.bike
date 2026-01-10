@@ -10,6 +10,9 @@ import { UserRole } from '@/config/permissions';
 import { Pin, PinOff, ChevronRight } from 'lucide-react';
 import { useTheme } from '@/components/providers/ThemeProvider';
 import { Logo } from '@/components/brand/Logo';
+import { can } from '@/lib/auth/rbac';
+
+
 
 interface SidebarProps {
     role: UserRole;
@@ -50,7 +53,25 @@ export default function Sidebar({
     }
 
     const sidebarGroups = useMemo(() => {
-        return getSidebarConfig(tenantType, role);
+        const groups = getSidebarConfig(tenantType, role);
+
+        // RBAC Filter
+        return groups.map(group => ({
+            ...group,
+            items: group.items.filter(item => {
+                // If item has a permission property, check it
+                // Note: Current sidebarConfig might not have permissions attached to items yet.
+                // We assume items *might* have a 'permission' field.
+                // If we haven't updated sidebarConfig to include 'permission', this filter is a no-op 
+                // unless we cast item to any or update the type. 
+                // For safety, we check if property exists.
+                const perm = (item as any).permission;
+                if (perm) {
+                    return can(role, perm);
+                }
+                return true;
+            })
+        }));
     }, [tenantType, role]);
 
     return (

@@ -8,10 +8,35 @@ export type TenantType = 'DEALER' | 'BANK' | 'MARKETPLACE';
 // Enhanced TenantContext with Status props
 export type TenantStatus = 'ACTIVE' | 'SUSPENDED' | 'TRIAL_EXPIRED';
 
+export interface TenantConfig {
+    brand: {
+        displayName: string;
+        primaryColor: string;
+        logoUrl?: string;
+        faviconUrl?: string;
+    };
+    portal?: {
+        landingEnabled?: boolean;
+        landingRedirectTo?: string;
+    };
+    features?: Record<string, boolean>;
+    setup?: {
+        isComplete: boolean;
+        step: number;
+    };
+    // Legacy support if needed
+    landing?: {
+        title?: string;
+        subtitle?: string;
+        ctaText?: string;
+    };
+}
+
 interface TenantContextProps {
     tenantType: TenantType | undefined;
     setTenantType: (type: TenantType) => void;
     tenantName: string;
+    tenantConfig: TenantConfig | null; // NEW
     userName: string;
     tenantId: string | undefined;
     userRole: string | undefined;
@@ -23,12 +48,14 @@ interface TenantContextProps {
     // Legacy / Status props
     status: TenantStatus;
     isReadOnly: boolean;
+    memberships: any[]; // NEW
 }
 
 const TenantContext = createContext<TenantContextProps>({
     tenantType: undefined,
     setTenantType: () => { },
     tenantName: 'Loading...',
+    tenantConfig: null,
     userName: 'Guest User',
     tenantId: undefined,
     userRole: undefined,
@@ -38,6 +65,7 @@ const TenantContext = createContext<TenantContextProps>({
     setIsSidebarExpanded: () => { },
     status: 'ACTIVE',
     isReadOnly: false,
+    memberships: [],
 });
 
 export const TenantProvider = ({ children }: { children: ReactNode }) => {
@@ -53,6 +81,8 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
         if (typeof window !== 'undefined') return localStorage.getItem('tenant_name') || '';
         return '';
     });
+
+    const [tenantConfig, setTenantConfig] = useState<TenantConfig | null>(null);
 
     const [userName, setUserName] = useState(() => {
         if (typeof window !== 'undefined') return localStorage.getItem('user_name') || ''; // No 'Guest User' default
@@ -73,6 +103,8 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
         if (typeof window !== 'undefined') return localStorage.getItem('active_role') || undefined;
         return undefined;
     });
+
+    const [memberships, setMemberships] = useState<any[]>([]);
 
     const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
 
@@ -128,7 +160,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                     const [membershipsResult, profileResult] = await Promise.all([
                         supabase
                             .from('memberships')
-                            .select('*, tenants(name, type, subdomain)')
+                            .select('*, tenants(name, type, subdomain, config)')
                             .eq('user_id', user.id)
                             .eq('status', 'ACTIVE'),
                         supabase
@@ -147,6 +179,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
                     // 2. Tenant Resolution Logic
                     const memberships = membershipsResult.data || [];
+                    setMemberships(memberships); // NEW
 
                     if (memberships.length === 0) {
                         // CASE 0: No Memberships
@@ -216,6 +249,11 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                         localStorage.setItem('tenant_type', tType);
                     }
 
+                    // Config Resolution
+                    if (resolvedTenant?.config) {
+                        setTenantConfig(resolvedTenant.config);
+                    }
+
                     console.log(`[TenantContext] Resolved Tenant: ${tName} (${tId}) | Role: ${resolvedRole}`);
 
                 } else {
@@ -249,6 +287,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
             tenantType,
             setTenantType: setTenantTypeState,
             tenantName,
+            tenantConfig,
             userName,
             tenantId,
             userRole,
@@ -257,7 +296,8 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
             isSidebarExpanded,
             setIsSidebarExpanded,
             status,
-            isReadOnly
+            isReadOnly,
+            memberships // NEW
         }}>
             {children}
         </TenantContext.Provider>

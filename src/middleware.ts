@@ -76,7 +76,8 @@ export async function middleware(request: NextRequest) {
         pathname.startsWith('/auth') || // Supabase Auth Callbacks (e.g. /auth/callback)
         pathname.startsWith('/api/auth') ||
         pathname.startsWith('/forgot-password') ||
-        pathname.startsWith('/reset-password');
+        pathname.startsWith('/reset-password') ||
+        pathname.startsWith('/invite');
 
     // 1. Internal Portals (AUMS, WE, LTFINANCE) - STRICT
     if (['aums', 'we', 'ltfinance'].includes(currentSubdomain)) {
@@ -174,6 +175,12 @@ export async function middleware(request: NextRequest) {
         .single();
 
     if (!tenantMembership) {
+        // Allow access to Login/Auth routes to enable "Switch Account" or "Logout"
+        // Also allow Landing Page ('/') to render if available (page.tsx handles config check)
+        if (isAuthRoute || pathname === '/') {
+            return response;
+        }
+
         // Logged in, but not a member of this partner
         return NextResponse.rewrite(new URL('/403', request.url));
     }

@@ -7,11 +7,15 @@ import { Logo } from '@/components/brand/Logo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { useRouter } from 'next/navigation';
+import { WorkspaceSwitcher } from '@/components/layout/WorkspaceSwitcher';
 
 interface DashboardHeaderProps {
     onMenuClick?: () => void;
     showSearch?: boolean;
 }
+
+
+
 
 export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHeaderProps) => {
     const { tenantType, userRole, activeRole, switchRole, isSidebarExpanded, tenantName, userName } = useTenant();
@@ -45,7 +49,7 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
     return (
         <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isSidebarExpanded ? 'md:left-[280px]' : 'md:left-[80px]'} backdrop-blur-2xl bg-white/80 dark:bg-slate-950/80 border-b border-slate-200 dark:border-white/5`}>
             <div className="w-full px-6 h-20 flex items-center justify-between">
-                <div className="flex items-center flex-1">
+                <div className="flex items-center flex-1 gap-4">
                     {onMenuClick && (
                         <button
                             onClick={onMenuClick}
@@ -54,6 +58,11 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
                             <Menu size={20} />
                         </button>
                     )}
+
+                    {/* Workspace Switcher */}
+                    <div className="hidden md:block">
+                        <WorkspaceSwitcher />
+                    </div>
 
                     {/* Command Bar style Search */}
                     {showSearch && (
@@ -105,32 +114,7 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
                         <div className="absolute right-0 top-full mt-3 w-64 opacity-0 invisible group-hover/avatar:opacity-100 group-hover/avatar:visible translate-y-2 group-hover/avatar:translate-y-0 transition-all duration-300 z-[100]">
                             <div className="bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl p-2 overflow-hidden ring-1 ring-black/5">
 
-                                {/* Role Switcher - Visible only for Super Admins and Marketplace Admins */}
-                                {(userRole === 'SUPER_ADMIN' || userRole === 'MARKETPLACE_ADMIN') && (
-                                    <div className="mb-2 p-1.5 space-y-1 bg-slate-50 dark:bg-white/2 rounded-xl border border-slate-100 dark:border-white/5">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-2 mb-1 opacity-80">Execution Context</p>
-                                        <button
-                                            onClick={() => switchRole('SUPER_ADMIN')}
-                                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all ${activeRole === 'SUPER_ADMIN' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'}`}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <Shield size={14} />
-                                                <span>Platform Admin</span>
-                                            </div>
-                                            {activeRole === 'SUPER_ADMIN' && <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_white]" />}
-                                        </button>
-                                        <button
-                                            onClick={() => switchRole('MARKETPLACE_ADMIN')}
-                                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all ${activeRole === 'MARKETPLACE_ADMIN' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'}`}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <ShoppingBag size={14} />
-                                                <span>Marketplace View</span>
-                                            </div>
-                                            {activeRole === 'MARKETPLACE_ADMIN' && <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_white]" />}
-                                        </button>
-                                    </div>
-                                )}
+
 
                                 <div className="space-y-0.5">
                                     <Link href="/dashboard/profile" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-white transition-all">
