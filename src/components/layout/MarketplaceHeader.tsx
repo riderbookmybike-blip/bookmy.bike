@@ -72,10 +72,8 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                     <nav className="hidden md:flex items-center gap-8">
                         <Link href="/store" className={navLinkClass}>Home</Link>
                         <Link href="/store/blog" className={navLinkClass}>Blog</Link>
-                        <Link href="/members" className={scrolled
-                            ? "text-[10px] font-black uppercase tracking-[0.2em] text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
-                            : "text-[10px] font-black uppercase tracking-[0.2em] text-amber-400 hover:text-amber-300 transition-colors drop-shadow-md"
-                        }>Members</Link>
+                        <Link href="/about" className={navLinkClass}>About</Link>
+                        <Link href="/contact" className={navLinkClass}>Contact</Link>
                     </nav>
 
                     <div className="flex items-center gap-2 md:gap-6">
@@ -88,11 +86,6 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                             <div className={!scrolled ? "opacity-0 pointer-events-none w-0 overflow-hidden" : "opacity-100 transition-opacity"}>
                                 <ThemeToggle />
                             </div>
-
-                            <button className={`p-2 md:p-3 rounded-xl transition-all relative ${iconClass} ${scrolled ? "hover:bg-slate-100 dark:hover:bg-white/5" : "hover:bg-white/10"}`}>
-                                <ShoppingCart size={18} />
-                                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-600 dark:bg-blue-500 rounded-full border-2 border-slate-50 dark:border-slate-950" />
-                            </button>
 
                             <button
                                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -125,7 +118,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                                         }`}
                                 >
                                     <User size={14} />
-                                    Members
+                                    Hi, Member
                                 </button>
                             )}
                         </div>
