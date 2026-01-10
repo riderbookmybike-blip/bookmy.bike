@@ -43,6 +43,11 @@ export async function POST(request: NextRequest) {
     const results = [];
 
     // 3. Loop & Seed
+    let tenantsUpserted = 0;
+    let membershipsUpserted = 0;
+
+    console.log(`[SEED] Starting seed for ${tenantsConfig.length} tenants...`);
+
     for (const tConfig of tenantsConfig) {
         // A. Upsert Tenant
         const { data: tenant, error: tenantError } = await supabaseAdmin
@@ -59,9 +64,11 @@ export async function POST(request: NextRequest) {
             .single();
 
         if (tenantError) {
+            console.error(`[SEED] Failed tenant ${tConfig.slug}:`, tenantError);
             results.push({ slug: tConfig.slug, status: 'error', error: tenantError.message });
             continue;
         }
+        tenantsUpserted++;
 
         // B. Ensure Profile Exists (Match Auth ID)
         const { error: profileError } = await supabaseAdmin
@@ -70,10 +77,10 @@ export async function POST(request: NextRequest) {
                 id: adminUser.id,
                 email: adminUser.email,
                 full_name: 'Kajit Rathore (Owner)',
-                // avatar_url: ...
             }, { onConflict: 'id' });
 
         if (profileError) {
+            console.error(`[SEED] Failed profile ${tConfig.slug}:`, profileError);
             results.push({ slug: tConfig.slug, status: 'profile_error', error: profileError.message });
             continue;
         }
@@ -90,11 +97,22 @@ export async function POST(request: NextRequest) {
             }, { onConflict: 'user_id, tenant_id' });
 
         if (memberError) {
+            console.error(`[SEED] Failed membership ${tConfig.slug}:`, memberError);
             results.push({ slug: tConfig.slug, status: 'membership_error', error: memberError.message });
         } else {
+            console.log(`[SEED] Success ${tConfig.slug}`);
+            membershipsUpserted++;
             results.push({ slug: tConfig.slug, status: 'success', tenantId: tenant.id });
         }
     }
 
-    return NextResponse.json({ success: true, results });
+    console.log(`[SEED] Completed. Tenants: ${tenantsUpserted}, Memberships: ${membershipsUpserted}`);
+
+    return NextResponse.json({
+        ok: true,
+        tenantsUpserted,
+        ownerEmail,
+        membershipsUpserted,
+        details: results
+    });
 }
