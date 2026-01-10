@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ICON_PATHS, TEXT_PATHS, TAGLINE_PATHS, BRAND_BLUE } from './paths';
+import { ICON_PATHS, TAGLINE_PATHS, BRAND_BLUE } from './paths';
 import { useTheme } from '@/components/providers/ThemeProvider';
 
 interface LogoProps {
@@ -87,21 +87,13 @@ export const Logo: React.FC<LogoProps> = ({
     );
 
     const renderWordmark = () => (
-        <svg
-            viewBox="0 0 205 32"
-            fill="none"
-            style={{ height: heights.textH }}
-            className="w-auto shrink-0 transition-all duration-300"
+        <div
+            style={{ height: heights.textH, fontSize: heights.textH, lineHeight: 1 }}
+            className="flex items-center font-outfit font-bold tracking-[-0.03em] shrink-0 transition-all duration-300"
         >
-            {/* bookmy text */}
-            {TEXT_PATHS.BOOKMY.map((d, i) => (
-                <path key={i} d={d} fill={colors.bookmy} />
-            ))}
-            {/* .bike text */}
-            {TEXT_PATHS.BIKE.map((d, i) => (
-                <path key={i} d={d} fill={colors.bike} />
-            ))}
-        </svg>
+            <span style={{ color: colors.bookmy }}>bookmy</span>
+            <span style={{ color: colors.bike }}>.bike</span>
+        </div>
     );
 
     return (
