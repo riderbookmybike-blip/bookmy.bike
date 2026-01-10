@@ -185,6 +185,50 @@ export default function StorePage() {
                 </div>
             </section>
 
+            {/* How it Works - Select. Quote. Conquer. */}
+            <section className="py-32 md:py-48 bg-slate-900 text-white relative overflow-hidden">
+                <div className="absolute inset-0 opacity-10">
+                    <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_120%,#3b82f6,transparent_70%)]" />
+                </div>
+
+                <div className="max-w-[1400px] mx-auto px-6 relative z-10">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-24 items-center">
+                        <div className="lg:col-span-5 space-y-12">
+                            <div className="space-y-6">
+                                <p className="text-[12px] font-black text-blue-500 uppercase tracking-[0.5em] italic">The Protocol</p>
+                                <h2 className="text-6xl md:text-8xl font-black uppercase tracking-tighter italic leading-[0.9]">Select.<br />Quote.<br />Conquer.</h2>
+                            </div>
+                            <p className="text-xl text-slate-400 font-medium italic leading-relaxed">
+                                We’ve digitized the dealership floor. <br />
+                                Transparent, instant, and absolute.
+                            </p>
+                        </div>
+
+                        <div className="lg:col-span-7 grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-4">
+                            {[
+                                { step: '01', title: 'Select', desc: 'Browse 500+ models with unified dealer pricing.', icon: <Search size={24} /> },
+                                { step: '02', title: 'Quote', desc: 'Get an instant, on-road quote for your exact location.', icon: <MapPin size={24} /> },
+                                { step: '03', title: 'Own', desc: 'Secure the lowest EMI & get delivery in 48 hours.', icon: <Zap size={24} /> }
+                            ].map((item, i) => (
+                                <div key={i} className="group p-8 md:p-10 bg-white/5 border border-white/5 rounded-[3rem] space-y-8 hover:bg-white/10 transition-all duration-500">
+                                    <div className="w-16 h-16 rounded-2xl bg-blue-600/20 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
+                                        {item.icon}
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">{item.step}</span>
+                                            <div className="h-[1px] flex-1 bg-white/10" />
+                                        </div>
+                                        <h3 className="text-3xl font-black uppercase italic tracking-tighter">{item.title}</h3>
+                                        <p className="text-sm text-slate-400 font-medium leading-relaxed">{item.desc}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             {/* Featured Categories */}
             <section className="py-32 md:py-48 bg-slate-50 dark:bg-[#020617] transition-colors">
                 <div className="max-w-[1400px] mx-auto px-6">
@@ -227,6 +271,126 @@ export default function StorePage() {
                         ))}
                     </div>
                 </div>
+            </section>
+
+            {/* Legend Spotlight */}
+            <section className="relative h-screen flex items-center overflow-hidden bg-black text-white py-32 md:py-0">
+                <div className="absolute inset-0 z-0">
+                    <div className="absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent z-10" />
+                    <img
+                        src="/images/hero/lifestyle_1.png"
+                        alt="Spotlight Legend"
+                        className="w-full h-full object-cover opacity-60 scale-110"
+                    />
+                </div>
+
+                <div className="max-w-[1400px] mx-auto px-6 relative z-20 grid grid-cols-1 lg:grid-cols-2 gap-12 w-full">
+                    <div className="space-y-12">
+                        <div className="space-y-6">
+                            <p className="text-[12px] font-black text-rose-600 uppercase tracking-[0.6em] italic animate-pulse">Now Premiering</p>
+                            <h2 className="text-7xl md:text-[10rem] font-black uppercase tracking-tighter italic leading-[0.8]">The<br />ZX-10R.</h2>
+                            <p className="text-xl text-slate-400 font-medium italic max-w-lg">
+                                Born on the track. Refined for the streets. The pinnacle of Kawasaki engineering is now available for booking.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-8 pt-8">
+                            {[
+                                { label: 'Top Speed', value: '299' },
+                                { label: 'Power', value: '203hp' },
+                                { label: '0-100', value: '2.9s' }
+                            ].map((stat, i) => (
+                                <div key={i} className="space-y-1">
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{stat.label}</p>
+                                    <p className="text-3xl font-black italic">{stat.value}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                        <Link href="/store/kawasaki/ninja/zx-10r" className="inline-flex items-center gap-4 px-10 py-5 bg-rose-600 text-white rounded-full font-black uppercase italic tracking-widest hover:bg-rose-700 hover:scale-105 transition-all shadow-2xl shadow-rose-600/30">
+                            Configure Legend <ArrowRight size={20} />
+                        </Link>
+                    </div>
+                </div>
+            </section>
+
+            {/* Member Experience Section */}
+            <section className="py-32 md:py-48 bg-[#020617] text-white overflow-hidden relative">
+                <div className="max-w-[1400px] mx-auto px-6 space-y-24">
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-12">
+                        <div className="space-y-6">
+                            <h2 className="text-5xl md:text-8xl font-black uppercase tracking-tighter italic leading-none">The Member Experience</h2>
+                            <p className="text-lg md:text-xl text-slate-500 font-medium italic">Hear from the select few who have secured access.</p>
+                        </div>
+                        <div className="flex gap-4">
+                            <button className="w-14 h-14 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/5 transition-colors">
+                                <ChevronRight size={24} className="rotate-180" />
+                            </button>
+                            <button className="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center hover:bg-slate-200 transition-colors">
+                                <ChevronRight size={24} />
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        {[
+                            {
+                                name: 'Arjun Kapoor',
+                                handle: 'TVS Jupiter',
+                                quote: '"Booking my bike online should be as easy as ordering food. I want to see my on-road price, compare EMIs, and confirm the delivery date—without visiting five different showrooms or decoding hidden charges."',
+                            },
+                            {
+                                name: 'Meera Reddy',
+                                handle: 'Honda Activa',
+                                quote: '"The transparency is what I loved. No hidden costs, everything upfront. The delivery was right on time as promised. This is exactly what the two-wheeler market needed."',
+                            },
+                            {
+                                name: 'Karan Malhotra',
+                                handle: 'Suzuki V-Strom',
+                                quote: '"Finally a platform that understands what riders need. The EMI comparison tool saved me so much time and money. Highly recommended for anyone looking to buy a bike."',
+                            }
+                        ].map((m, i) => (
+                            <div key={i} className="group p-10 bg-white/[0.03] border border-white/5 rounded-[3rem] space-y-8 hover:bg-white/[0.05] transition-all duration-500 relative">
+                                <div className="absolute top-10 right-10 opacity-10 group-hover:opacity-20 transition-opacity">
+                                    <svg width="40" height="40" viewBox="0 0 40 40" fill="currentColor">
+                                        <path d="M10 10v10h10V10H10zm0 20h10V20H10v10zm20-20v10h10V10H30zm0 20h10V20H30v10z" />
+                                    </svg>
+                                </div>
+
+                                <div className="flex gap-1">
+                                    {[1, 2, 3, 4, 5].map(s => <Star key={s} size={14} className="text-white fill-white" />)}
+                                </div>
+
+                                <p className="text-lg font-medium text-slate-300 leading-relaxed italic">
+                                    {m.quote}
+                                </p>
+
+                                <div className="pt-8 border-t border-white/5 flex items-center gap-4">
+                                    <div className="w-14 h-14 rounded-2xl bg-slate-800 overflow-hidden">
+                                        <img
+                                            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${m.name}`}
+                                            alt={m.name}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-black uppercase tracking-widest italic">{m.name}</p>
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">{m.handle}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="flex justify-center gap-3">
+                        {[1, 2, 3, 4, 5, 6].map(dot => (
+                            <div key={dot} className={`w-2 h-2 rounded-full ${dot === 1 ? 'bg-red-600 w-4' : 'bg-slate-800'} transition-all`} />
+                        ))}
+                    </div>
+                </div>
+
+                {/* Bottom Red Bar like Mockup */}
+                <div className="absolute bottom-0 left-0 right-0 h-40 bg-red-600 z-[-1] opacity-90 blur-[100px] pointer-events-none translate-y-20" />
             </section>
 
 
