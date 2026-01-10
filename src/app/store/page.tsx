@@ -58,16 +58,21 @@ export default function StorePage() {
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-500/5 dark:bg-blue-500/10 blur-[150px] rounded-full animate-pulse-slow" />
                 </div>
 
-                <div className="max-w-[1400px] mx-auto px-6 relative z-10 w-full text-center">
+                <div className="max-w-[1400px] mx-auto px-6 relative z-10 w-full text-center pt-20">
                     <div className="space-y-12 md:space-y-16">
 
                         <div className="space-y-8">
+                            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600/10 dark:bg-blue-600/20 border border-blue-600/20 dark:border-blue-500/30 text-blue-600 dark:text-blue-400 rounded-full text-[10px] font-black uppercase tracking-[0.2em] mb-4 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+                                <Zap size={12} fill="currentColor" className="animate-pulse" />
+                                Lowest EMI Guaranteed
+                            </div>
                             <h1 className="text-5xl sm:text-7xl md:text-8xl lg:text-[7rem] font-black italic uppercase tracking-tighter leading-[0.9] animate-in fade-in zoom-in-95 duration-1000">
                                 <span className="text-slate-900 dark:text-white drop-shadow-2xl dark:drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)] transition-colors">Unlock The Best</span> <br />
                                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-slate-800 to-slate-500 dark:from-blue-400 dark:via-white dark:to-slate-400 drop-shadow-sm dark:drop-shadow-[0_0_20px_rgba(255,255,255,0.2)] transition-all">On-Road Experience</span>
                             </h1>
-                            <p className="max-w-2xl mx-auto text-sm md:text-lg text-slate-600 dark:text-slate-300 font-medium tracking-wide animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300 transition-colors">
-                                Instant, location-based quotes for 500+ premium bikes across India. <br className="hidden md:block" /> No hidden costs. Pure transparency.
+                            <p className="max-w-3xl mx-auto text-sm md:text-lg text-slate-600 dark:text-slate-300 font-medium tracking-wide animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300 transition-colors leading-relaxed">
+                                Beyond just a price tag. Get precision-engineered location quotes for <br className="hidden md:block" />
+                                500+ premium bikes with India's most transparent mobility platform.
                             </p>
                         </div>
 
