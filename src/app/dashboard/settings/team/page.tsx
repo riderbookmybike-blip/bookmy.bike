@@ -7,6 +7,8 @@ import { Users, UserPlus, MoreVertical, Shield, Search, X } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 
+import { can } from '@/lib/auth/rbac';
+
 type Member = {
     id: string; // membership id
     user_id: string;
@@ -25,6 +27,16 @@ export default function TeamPage() {
     const [members, setMembers] = useState<Member[]>([]);
     const [loading, setLoading] = useState(true);
     const [isInviteOpen, setIsInviteOpen] = useState(false);
+    const [currentUser, setCurrentUser] = useState<any>(null);
+
+    useEffect(() => {
+        const fetchUser = async () => {
+            const supabase = createClient();
+            const { data } = await supabase.auth.getUser();
+            setCurrentUser(data.user);
+        };
+        fetchUser();
+    }, []);
 
     useEffect(() => {
         if (tenantId) fetchMembers();
@@ -52,20 +64,47 @@ export default function TeamPage() {
         await supabase.from('memberships').update({ status: newStatus }).eq('id', memberId);
     };
 
-    // Real Invite Logic
+    // Transfer Logic
+    const [transferTarget, setTransferTarget] = useState<{ id: string, name: string } | null>(null);
+
+    const handleTransferOwnership = (targetUserId: string, targetName: string) => {
+        setTransferTarget({ id: targetUserId, name: targetName });
+    };
+
+    const confirmTransfer = async () => {
+        if (!transferTarget || !tenantId) return;
+        const confirmName = prompt(`To confirm transfer of ownership to ${transferTarget.name}, please type their name:`);
+        if (confirmName !== transferTarget.name) {
+            alert('Name mismatch. Transfer cancelled.');
+            return;
+        }
+
+        try {
+            const { transferOwnership } = await import('@/app/actions/ownership');
+            const result = await transferOwnership(transferTarget.id, tenantId);
+            if (result.success) {
+                alert('Ownership Transferred! You are now an Admin.');
+                setTransferTarget(null);
+                window.location.reload(); // Refresh to reflect role change
+            }
+        } catch (err: any) {
+            alert(err.message);
+        }
+    };
+
     const handleInvite = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
         formData.append('tenantId', tenantId || '');
 
         try {
-            const { createInvite } = await import('@/app/actions/invitations'); // Dynamic import to keep component client-side happy if needed, or straight import
+            const { createInvite } = await import('@/app/actions/invitations');
             const result = await createInvite(null, formData);
 
             if (result.success) {
                 alert(`Invite Created! Share this token for now (Email is stubbed): \n\n ${result.debugToken}`);
                 setIsInviteOpen(false);
-                // Refresh list?
+                fetchMembers();
             } else {
                 alert(result.message);
             }
@@ -137,7 +176,15 @@ export default function TeamPage() {
                                             {member.status}
                                         </span>
                                     </td>
-                                    <td className="p-6 text-right">
+                                    <td className="p-6 text-right space-x-2">
+                                        {(can(userRole, 'transfer_ownership') && member.user_id !== currentUser?.id && member.status === 'ACTIVE') && (
+                                            <button
+                                                onClick={() => handleTransferOwnership(member.user_id, member.profiles.full_name)}
+                                                className="text-xs font-bold text-slate-400 hover:text-amber-600 transition-colors"
+                                            >
+                                                Transfer Owner
+                                            </button>
+                                        )}
                                         <button
                                             onClick={() => toggleStatus(member.id, member.status)}
                                             className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors"
