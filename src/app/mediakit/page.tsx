@@ -59,7 +59,7 @@ const downloadSVG = (variant: 'full' | 'icon' | 'wordmark', mode: 'light' | 'dar
             ${iconG}
         </svg>`;
     } else if (variant === 'wordmark') {
-        svgContent = `<svg width="210" height="40" viewBox="0 0 210 40" xmlns="http://www.w3.org/2000/svg">
+        svgContent = `<svg width="220" height="40" viewBox="0 0 220 40" xmlns="http://www.w3.org/2000/svg">
             ${(mode === 'gold' || mode === 'silver') ? gradients : ''}
             <g transform="translate(0, 5)">
                 ${bookmyG}
@@ -67,11 +67,12 @@ const downloadSVG = (variant: 'full' | 'icon' | 'wordmark', mode: 'light' | 'dar
             </g>
         </svg>`;
     } else {
-        svgContent = `<svg width="300" height="110" viewBox="0 0 300 110" xmlns="http://www.w3.org/2000/svg">
+        // Full Logo - Use a larger canvas and careful scaling to fit icon + text
+        svgContent = `<svg width="600" height="160" viewBox="0 0 600 160" xmlns="http://www.w3.org/2000/svg">
             ${(mode === 'gold' || mode === 'silver') ? gradients : ''}
-            <g transform="scale(0.8)">
-                <g>${iconG}</g>
-                <g transform="translate(95, 45) scale(2.2)">
+            <g transform="translate(40, 25)">
+                <g transform="scale(1.2)">${iconG}</g>
+                <g transform="translate(110, 48) scale(1.6)">
                     ${bookmyG}
                     ${bikeG}
                 </g>
@@ -210,6 +211,18 @@ export default function MediaKitPage() {
                             >
                                 <div className="h-64 flex items-center justify-center bg-blue-600 rounded-3xl mb-8 group-hover:scale-[1.02] transition-transform duration-500">
                                     <Logo monochrome="white" size={48} />
+                                </div>
+                            </AssetCard>
+
+                            {/* Icon Only */}
+                            <AssetCard
+                                title="BRAND GLYPH"
+                                description="Icon Identity"
+                                usage="Compact mark for social avatars and small app icons."
+                                onDownload={() => downloadSVG('icon', 'light')}
+                            >
+                                <div className="h-64 flex items-center justify-center bg-[#0a0f1d] rounded-3xl border border-white/5 mb-8 group-hover:scale-[1.05] transition-transform duration-700">
+                                    <Logo variant="icon" size={64} mode="auto" />
                                 </div>
                             </AssetCard>
 
