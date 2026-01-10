@@ -80,7 +80,7 @@ export const Footer = () => {
                     </p>
                     <div className="flex items-center gap-1 text-[10px] text-slate-400 dark:text-slate-600 font-medium">
                         <span>Made with</span>
-                        <Logo mode="auto" />
+                        <Heart size={10} className="text-red-500 fill-red-500" />
                         <span>in India</span>
                     </div>
                 </div>
