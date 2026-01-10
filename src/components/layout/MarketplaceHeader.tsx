@@ -42,8 +42,8 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     }, []);
 
     const navLinkClass = scrolled
-        ? "text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-white transition-colors"
-        : `${theme === 'light' ? 'text-slate-900/80 hover:text-slate-900' : 'text-white/80 hover:text-white'} text-[10px] font-black uppercase tracking-[0.2em] transition-colors drop-shadow-sm`;
+        ? "text-[11px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-white transition-all duration-300"
+        : `${theme === 'light' ? 'text-slate-900/90 hover:text-blue-600' : 'text-white/90 hover:text-blue-400'} text-[11px] font-black uppercase tracking-[0.3em] transition-all duration-300 drop-shadow-md`;
 
     const mobileMenuButtonClass = scrolled
         ? "text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/5"
@@ -55,20 +55,28 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
             transparentAtTop={true}
             left={
                 <Link href="/" className="flex items-center group">
-                    <Logo mode="auto" size={30} />
+                    <Logo mode="auto" size={36} />
                 </Link>
             }
             center={
-                <nav className="flex items-center gap-8">
-                    <Link href="/store" className={navLinkClass}>Home</Link>
-                    <Link href="/store/blog" className={navLinkClass}>Blog</Link>
-                    <Link href="/about" className={navLinkClass}>About</Link>
-                    <Link href="/contact" className={navLinkClass}>Contact</Link>
+                <nav className="flex items-center gap-10">
+                    {['HOME', 'BLOG', 'ABOUT', 'CONTACT'].map((item) => (
+                        <Link
+                            key={item}
+                            href={item === 'HOME' ? '/store' : `/${item.toLowerCase()}`}
+                            className={`${navLinkClass} relative group/link`}
+                        >
+                            {item}
+                            <span className="absolute -bottom-1 left-0 w-0 h-[2px] bg-blue-600 transition-all duration-300 group-hover/link:w-full" />
+                        </Link>
+                    ))}
                 </nav>
             }
             right={
-                <>
+                <div className="flex items-center gap-6">
                     <ThemeToggle />
+
+                    <div className="h-4 w-[1px] bg-slate-200 dark:bg-white/10" />
 
                     <button
                         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -80,24 +88,24 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                     {userName ? (
                         <Link
                             href="/dashboard"
-                            className={`${navLinkClass} flex items-center gap-2 group cursor-pointer max-w-[160px] flex-shrink-0`}
+                            className={`${navLinkClass} flex items-center gap-3 group cursor-pointer max-w-[180px] flex-shrink-0`}
                         >
-                            <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-[8px] font-black text-white shadow-lg group-hover:bg-blue-500 transition-colors flex-shrink-0">
+                            <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-[10px] font-black text-white shadow-xl group-hover:scale-110 transition-all flex-shrink-0">
                                 {userName.charAt(0)}
                             </div>
-                            <span className="group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
+                            <span className="truncate group-hover:translate-x-1 transition-transform">
                                 Hi, {userName.split(' ')[0]}
                             </span>
                         </Link>
                     ) : (
                         <button
                             onClick={onLoginClick}
-                            className={`${navLinkClass} flex items-center group transition-all active:scale-95 flex-shrink-0`}
+                            className={`${navLinkClass} hover:translate-x-1 transition-transform flex-shrink-0`}
                         >
                             Hi, Member
                         </button>
                     )}
-                </>
+                </div>
             }
         >
             {/* Mobile Menu Overlay */}

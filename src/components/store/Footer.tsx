@@ -16,10 +16,12 @@ export const Footer = () => {
                         <p className="text-base text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm font-medium italic">
                             Redefining the era of mobility. India's premier marketplace for the next generation of riders.
                         </p>
-                        <div className="flex gap-6">
+                        <div className="flex gap-6 items-center">
                             <SocialIcon icon={<Instagram size={20} />} href="#" />
                             <SocialIcon icon={<Twitter size={20} />} href="#" />
                             <SocialIcon icon={<Linkedin size={20} />} href="#" />
+                            <div className="w-8 h-[1px] bg-slate-200 dark:bg-white/10 rotate-90" />
+                            <Link href="/store/blog" className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 hover:text-blue-600 transition-colors">Blog</Link>
                         </div>
                     </div>
 
