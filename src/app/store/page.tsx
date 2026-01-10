@@ -57,7 +57,7 @@ export default function StorePage() {
                         <div className="space-y-10">
                             <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-blue-600/5 dark:bg-blue-600/10 border border-blue-600/10 dark:border-blue-500/20 text-blue-600 dark:text-blue-400 rounded-full text-[11px] font-black uppercase tracking-[0.3em] mb-4 animate-in fade-in slide-in-from-bottom-4 duration-1000">
                                 <span className="flex h-2 w-2 rounded-full bg-blue-600 animate-ping" />
-                                India's Most Trusted Mobility Platform
+                                India’s Lowest EMI Guarantee
                             </div>
 
                             <h1 className="text-6xl sm:text-8xl md:text-9xl lg:text-[8.5rem] font-black italic uppercase tracking-tighter leading-[0.85] animate-in fade-in zoom-in-95 duration-1000">
@@ -66,8 +66,8 @@ export default function StorePage() {
                             </h1>
 
                             <p className="max-w-3xl mx-auto text-base md:text-xl text-slate-500 dark:text-slate-400 font-medium tracking-wide animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300 transition-colors leading-relaxed italic">
-                                Unified pricing. Instant location quotes. Lowest EMI guaranteed. <br className="hidden md:block" />
-                                Experience the pinnacle of bike procurement.
+                                Stop Negotiating. Start Riding. India’s Best On-Road Price. <br className="hidden md:block" />
+                                Unified rates from verified dealers. Instant location-based quotes. The industry's lowest EMIs, unlocked.
                             </p>
                         </div>
 
