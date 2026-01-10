@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Settings, Users, Building2, Palette, CheckCircle2, Loader2 } from 'lucide-react';
+import { Settings, Users, Building2, Palette, CheckCircle2, Loader2, User } from 'lucide-react';
 import { useTenant, TenantConfig } from '@/lib/tenant/tenantContext';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
@@ -119,6 +119,12 @@ export default function SettingsPage() {
                         className="w-full text-left px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5 text-sm font-bold flex items-center gap-3 transition-colors"
                     >
                         <Users size={18} /> Team Members
+                    </Link>
+                    <Link
+                        href="/dashboard/settings/profile"
+                        className="w-full text-left px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5 text-sm font-bold flex items-center gap-3 transition-colors"
+                    >
+                        <Users size={18} /> My Profile
                     </Link>
                 </div>
 

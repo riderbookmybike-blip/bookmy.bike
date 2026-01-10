@@ -32,6 +32,27 @@ export default function LoginPage() {
         }
     }, []);
 
+    // Removed duplicate useEffect
+
+    const handleSocialLogin = async (provider: 'google' | 'facebook') => {
+        // Renaming to avoid shadowing if createClient is imported
+        const supabaseClient = createClient();
+        const origin = window.location.origin;
+        // Strict match (no params)
+        const callbackUrl = `${origin}/auth/callback`;
+
+        await supabaseClient.auth.signInWithOAuth({
+            provider: provider,
+            options: {
+                redirectTo: callbackUrl,
+                queryParams: {
+                    access_type: 'offline',
+                    prompt: 'consent'
+                },
+            },
+        });
+    };
+
     const handleSendOtp = async (inputPhone?: string) => {
         const targetPhone = inputPhone || phone;
         if (targetPhone.length < 10) return;
@@ -248,23 +269,7 @@ export default function LoginPage() {
                         {/* Google OAuth Button */}
                         <div className="relative group/google">
                             <button
-                                onClick={async () => {
-                                    const supabase = createClient();
-                                    const returnUrl = '/dashboard';
-                                    const origin = window.location.origin;
-                                    const callbackUrl = `${origin}/auth/callback`; // Strict match (no params)
-
-                                    await supabase.auth.signInWithOAuth({
-                                        provider: 'google',
-                                        options: {
-                                            redirectTo: callbackUrl,
-                                            queryParams: {
-                                                access_type: 'offline',
-                                                prompt: 'consent'
-                                            },
-                                        },
-                                    });
-                                }}
+                                onClick={() => handleSocialLogin('google')}
                                 className="w-full py-4 mb-6 rounded-[24px] bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-indigo-500 dark:hover:border-indigo-500 hover:bg-slate-100 dark:hover:bg-white/10 flex items-center justify-center gap-3 transition-all group-hover/google:shadow-lg group-hover/google:shadow-indigo-500/10"
                             >
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -282,6 +287,8 @@ export default function LoginPage() {
                                 <div className="flex-grow border-t border-slate-200 dark:border-white/10"></div>
                             </div>
                         </div>
+
+
 
                         <div className="relative group overflow-hidden">
                             <div className="absolute inset-0 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[32px] transition-all group-focus-within:border-indigo-600 group-focus-within:ring-[16px] group-focus-within:ring-indigo-600/5" />
