@@ -98,7 +98,7 @@ export default function MediaKitPage() {
 
             <main className="flex-1 relative">
                 {/* Background Large Ghost Text */}
-                <div className="absolute top-80 -right-20 text-[30vw] font-black italic uppercase text-slate-200/50 dark:text-white/[0.015] pointer-events-none select-none leading-none z-0">
+                <div className="absolute top-80 -right-20 text-[30vw] font-black italic uppercase text-slate-300/10 dark:text-white/[0.015] pointer-events-none select-none leading-none z-0">
                     KIT
                 </div>
 
@@ -123,7 +123,7 @@ export default function MediaKitPage() {
                             </p>
                             <h1 className="text-7xl md:text-9xl font-black italic uppercase tracking-tighter leading-[0.9] text-slate-900 dark:text-white">
                                 Media <br />
-                                <span className="text-slate-200 dark:text-white/20 transition-colors">Guidelines.</span>
+                                <span className="text-slate-300/40 dark:text-white/20 transition-colors">Guidelines.</span>
                             </h1>
                             <p className="text-slate-500 dark:text-slate-400 text-xl max-w-2xl leading-relaxed mt-8 font-medium italic">
                                 Leading the way in mobility. Official assets for BookMyBike brand and partners.
