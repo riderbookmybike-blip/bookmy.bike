@@ -51,7 +51,7 @@ export const AumsHeader = ({ onLoginClick, onMenuClick, showSearch = false }: Au
                         </button>
                     )}
                     <Link href="/" className="w-40 md:w-48">
-                        <Logo variant="blue" className="text-white" />
+                        <Logo mode="auto" className="h-10 transition-all group-hover:scale-105 group-hover:brightness-125" />
                     </Link>
 
                 </div>
@@ -82,7 +82,7 @@ export const AumsHeader = ({ onLoginClick, onMenuClick, showSearch = false }: Au
                                     </span>
                                 </div>
                                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-xs font-black text-white shadow-lg shadow-indigo-500/20 border border-white/20 group-hover/btn:scale-105 transition-all duration-300">
-                                    {displayUserName.charAt(0).toUpperCase() || 'U'}
+                                    <Logo mode="auto" variant="icon" />
                                 </div>
                             </button>
 
@@ -91,7 +91,7 @@ export const AumsHeader = ({ onLoginClick, onMenuClick, showSearch = false }: Au
                                 <div className="bg-slate-950/95 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl p-2 overflow-hidden">
                                     <div className="px-4 py-4 border-b border-white/5 mb-2">
                                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Authenticated Account</p>
-                                        <p className="text-sm font-bold text-white truncate">{displayUserName.toLowerCase().replace(' ', '.')}@bookmy.bike</p>
+                                        <p className="text-sm font-bold text-white truncate"><Logo mode="auto" />{displayUserName.toLowerCase().replace(' ', '.')}@bookmy.bike</p>
                                     </div>
 
                                     <div className="space-y-1">

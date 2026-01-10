@@ -62,12 +62,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         <header className={`sticky top-0 z-50 transition-all duration-500 ${headerClass}`}>
             <div className="max-w-[1400px] mx-auto px-6 flex items-center justify-between">
                 <Link href="/" className="flex items-center group">
-                    <Logo
-                        variant="blue"
-                        className={`transition-all ${scrolled
-                            ? 'text-slate-900 dark:text-white'
-                            : (theme === 'light' ? 'text-slate-900' : 'text-white')}`}
-                    />
+                    <Logo mode="auto" />
                 </Link>
 
                 <div className="flex items-center gap-8">

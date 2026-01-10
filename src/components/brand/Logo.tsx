@@ -1,99 +1,89 @@
-import React from 'react';
-import { ICON_PATHS, TEXT_PATHS, TAGLINE_PATHS } from './paths';
+import React, { useMemo } from 'react';
+import { ICON_PATHS, TEXT_PATHS, TAGLINE_PATHS, BRAND_BLUE } from './paths';
+import { useTheme } from '@/components/providers/ThemeProvider';
 
 interface LogoProps {
     className?: string;
     iconClassName?: string;
-    textClassName?: string;
-    variant?: 'red' | 'blue' | 'light' | 'indigo';
-    showText?: boolean;
-    showTagline?: boolean;
+    mode?: 'auto' | 'light' | 'dark';
+    variant?: 'full' | 'icon' | 'wordmark';
+    monochrome?: 'none' | 'white' | 'black';
 }
 
 export const Logo: React.FC<LogoProps> = ({
     className = "",
     iconClassName = "w-10 h-auto",
-    textClassName = "h-6 w-auto",
-    variant = 'red',
-    showText = true,
-    showTagline = false
+    mode = 'auto',
+    variant = 'full',
+    monochrome = 'none'
 }) => {
-    const isBlue = variant === 'blue';
-    const isLight = variant === 'light';
+    const { theme } = useTheme();
 
-    // Primary brand colors from SVG assets
-    const RED_COLOR = "#EF1D26";
-    const BLUE_COLOR = "#2B7FFF";
-    const BLACK_COLOR = "#000000";
-    const WHITE_COLOR = "#FFFFFF";
+    // Determine target mode (handle auto)
+    const activeMode = useMemo(() => {
+        if (mode !== 'auto') return mode;
+        return (theme === 'dark' || theme === 'system') ? 'dark' : 'light';
+    }, [mode, theme]);
 
-    const getColors = () => {
-        if (isLight) {
+    // Color Logic based on Variants and Monochrome overrides
+    const colors = useMemo(() => {
+        if (monochrome === 'white') {
+            return { icon: "#FFFFFF", bookmy: "#FFFFFF", bike: "#FFFFFF" };
+        }
+        if (monochrome === 'black') {
+            return { icon: "#000000", bookmy: "#000000", bike: "#000000" };
+        }
+
+        // Standard Themed Variants
+        if (activeMode === 'dark') {
             return {
-                icon: WHITE_COLOR,
-                bookmy: WHITE_COLOR,
-                bike: WHITE_COLOR,
-                tagline: WHITE_COLOR
+                icon: BRAND_BLUE,
+                bookmy: "#FFFFFF",
+                bike: BRAND_BLUE
             };
         }
-        if (isBlue) {
-            return {
-                icon: BLUE_COLOR,
-                bookmy: "currentColor",
-                bike: BLUE_COLOR,
-                tagline: "currentColor"
-            };
-        }
-        if (variant === 'indigo') {
-            return {
-                icon: "#4F46E5", // Indigo-600
-                bookmy: "currentColor",
-                bike: "#4F46E5",
-                tagline: "currentColor"
-            };
-        }
+
+        // Default Light Mode
         return {
-            icon: RED_COLOR,
-            bookmy: "currentColor",
-            bike: RED_COLOR,
-            tagline: "currentColor"
+            icon: BRAND_BLUE,
+            bookmy: "#000000",
+            bike: BRAND_BLUE
         };
-    };
+    }, [activeMode, monochrome]);
 
-    const colors = getColors();
-
-    const getIcon = () => (
-        <svg viewBox="0 0 80 109" fill="none" className={`${iconClassName} transition-transform group-hover:scale-105 duration-500`}>
+    const renderIcon = () => (
+        <svg
+            viewBox="0 0 80 109"
+            fill="none"
+            className={`${iconClassName} transition-transform group-hover:scale-105 duration-500 shrink-0`}
+        >
             {ICON_PATHS.PRIMARY.map((d, i) => (
                 <path key={i} d={d} fill={colors.icon} />
             ))}
         </svg>
     );
 
-    const getText = () => (
-        <div className={`font-sans font-semibold tracking-tighter leading-none flex items-baseline ${textClassName === "h-6 w-auto" ? "text-[32px]" : textClassName}`}>
-            <span style={{ color: colors.bookmy }}>bookmy</span>
-            <span style={{ color: colors.bike }}>.bike</span>
-        </div>
-    );
-
-    const getTagline = () => (
-        <svg viewBox="0 0 156 11" fill="none" className="w-full h-auto mt-1">
-            {TAGLINE_PATHS.map((d, i) => (
-                <path key={i} d={d} fill={colors.tagline} />
+    const renderWordmark = () => (
+        <svg
+            viewBox="0 0 205 32"
+            fill="none"
+            className="h-8 w-auto shrink-0"
+        >
+            {/* bookmy text */}
+            {TEXT_PATHS.BOOKMY.map((d, i) => (
+                <path key={i} d={d} fill={colors.bookmy} />
+            ))}
+            {/* .bike text */}
+            {TEXT_PATHS.BIKE.map((d, i) => (
+                <path key={i} d={d} fill={colors.bike} />
             ))}
         </svg>
     );
 
     return (
-        <div className={`flex items-center gap-2 group ${className}`}>
-            {getIcon()}
-            {(showText || showTagline) && (
-                <div className="flex flex-col justify-center">
-                    {showText && getText()}
-                    {showTagline && getTagline()}
-                </div>
-            )}
+        <div className={`flex items-center gap-3 group transition-all duration-300 ${className}`}>
+            {(variant === 'full' || variant === 'icon') && renderIcon()}
+            {(variant === 'full' || variant === 'wordmark') && renderWordmark()}
         </div>
     );
 };
