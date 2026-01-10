@@ -5,83 +5,81 @@ import { ShieldCheck, Award, CreditCard, Facebook, Twitter, Linkedin, Instagram,
 
 export const Footer = () => {
     return (
-        <footer className="bg-slate-50 dark:bg-black border-t border-slate-200 dark:border-white/10 pt-24 pb-12 transition-colors duration-500">
-            <div className="max-w-[1400px] mx-auto px-6">
+        <footer className="bg-white dark:bg-[#020617] border-t border-slate-100 dark:border-white/5 pt-32 pb-16 transition-colors duration-500 overflow-hidden relative">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-600/20 to-transparent" />
 
+            <div className="max-w-[1400px] mx-auto px-6 relative z-10">
                 {/* Top Section: Trust & Brand */}
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-12 mb-16">
-                    <div className="space-y-6">
-                        <div className="flex items-center gap-2">
-                            <Logo mode="auto" />
-                        </div>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-xs font-medium">
-                            India's most trusted two-wheeler marketplace. We simplify buying with verified dealers, instant finance, and doorstep delivery.
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 mb-24">
+                    <div className="lg:col-span-4 space-y-8">
+                        <Logo mode="auto" size={32} />
+                        <p className="text-base text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm font-medium italic">
+                            Redefining the era of mobility. India's premier marketplace for the next generation of riders.
                         </p>
-                        <div className="flex gap-4">
-                            <SocialIcon icon={<Instagram size={18} />} href="#" />
-                            <SocialIcon icon={<Twitter size={18} />} href="#" />
-                            <SocialIcon icon={<Linkedin size={18} />} href="#" />
-                            <SocialIcon icon={<Youtube size={18} />} href="#" />
+                        <div className="flex gap-6">
+                            <SocialIcon icon={<Instagram size={20} />} href="#" />
+                            <SocialIcon icon={<Twitter size={20} />} href="#" />
+                            <SocialIcon icon={<Linkedin size={20} />} href="#" />
                         </div>
                     </div>
 
-                    <div className="lg:col-span-3 grid grid-cols-2 md:grid-cols-4 gap-8">
-                        <div>
-                            <FooterHeading>Shop</FooterHeading>
+                    <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-4 gap-12">
+                        <div className="space-y-8">
+                            <FooterHeading>Portfolio</FooterHeading>
                             <FooterLinkList>
                                 <FooterLink href="/store/catalog?category=SCOOTER">Scooters</FooterLink>
                                 <FooterLink href="/store/catalog?category=MOTORCYCLE">Motorcycles</FooterLink>
-                                <FooterLink href="/store/catalog?category=MOPED">Mopeds</FooterLink>
-                                <FooterLink href="/store/catalog?category=ELECTRIC">Electric Bikes</FooterLink>
-                                <FooterLink href="/store/accessories">Helmets & Accessories</FooterLink>
+                                <FooterLink href="/store/catalog?category=ELECTRIC">Electric</FooterLink>
+                                <FooterLink href="/store/accessories">Boutique</FooterLink>
                             </FooterLinkList>
                         </div>
 
-                        <div>
-                            <FooterHeading>Company</FooterHeading>
+                        <div className="space-y-8">
+                            <FooterHeading>Ecosystem</FooterHeading>
                             <FooterLinkList>
-                                <FooterLink href="#">About Us</FooterLink>
-                                <FooterLink href="/login">Partner with Us</FooterLink>
-                                <FooterLink href="#">Careers</FooterLink>
+                                <FooterLink href="#">About</FooterLink>
+                                <FooterLink href="/login">Partners</FooterLink>
                                 <FooterLink href="/mediakit">Media Kit</FooterLink>
-                                <FooterLink href="#">Privacy Policy</FooterLink>
-                                <FooterLink href="#">Terms of Service</FooterLink>
+                                <FooterLink href="#">Careers</FooterLink>
                             </FooterLinkList>
                         </div>
 
-                        <div>
-                            <FooterHeading>Support</FooterHeading>
+                        <div className="space-y-8">
+                            <FooterHeading>Concierge</FooterHeading>
                             <FooterLinkList>
                                 <FooterLink href="#">Help Center</FooterLink>
-                                <FooterLink href="#">Track Order</FooterLink>
-                                <FooterLink href="#">Contact Support</FooterLink>
-                                <FooterLink href="#">Cancellation & Returns</FooterLink>
-                                <FooterLink href="#">Buying Guide</FooterLink>
+                                <FooterLink href="#">RTO Rules</FooterLink>
+                                <FooterLink href="#">Insurance</FooterLink>
+                                <FooterLink href="#">EMI Config</FooterLink>
                             </FooterLinkList>
                         </div>
 
-                        <div>
-                            <FooterHeading>Resources</FooterHeading>
+                        <div className="space-y-8">
+                            <FooterHeading>Legal</FooterHeading>
                             <FooterLinkList>
-                                <FooterLink href="#">RTO Rules</FooterLink>
-                                <FooterLink href="#">Traffic Challan</FooterLink>
-                                <FooterLink href="#">Bike Insurance</FooterLink>
-                                <FooterLink href="#">EMI Calculator</FooterLink>
-                                <FooterLink href="#">Electric Vehicle Subsidy</FooterLink>
+                                <FooterLink href="#">Privacy</FooterLink>
+                                <FooterLink href="#">Terms</FooterLink>
+                                <FooterLink href="#">Compliance</FooterLink>
                             </FooterLinkList>
                         </div>
                     </div>
                 </div>
 
                 {/* Bottom Section: Legal & Copyright Addressed */}
-                <div className="flex flex-col md:flex-row items-center justify-between pt-8 border-t border-slate-200 dark:border-white/5 gap-6">
-                    <p className="text-xs text-slate-500 font-bold">
-                        © 2026 BookMyBike Technologies Pvt. Ltd. All rights reserved.
-                    </p>
-                    <div className="flex items-center gap-1 text-[10px] text-slate-400 dark:text-slate-600 font-medium">
-                        <span>Made with</span>
-                        <Heart size={10} className="text-red-500 fill-red-500" />
-                        <span>in India</span>
+                <div className="flex flex-col md:flex-row items-center justify-between pt-12 border-t border-slate-100 dark:border-white/5 gap-8">
+                    <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
+                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">
+                            © 2026 BookMyBike Technologies. Built for Excellence.
+                        </p>
+                    </div>
+
+                    <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-600 font-medium uppercase tracking-widest">
+                            <span>Engineered with</span>
+                            <Heart size={10} className="text-blue-600 fill-blue-600" />
+                            <span>in India</span>
+                        </div>
                     </div>
                 </div>
             </div>
