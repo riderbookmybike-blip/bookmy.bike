@@ -6,7 +6,8 @@ export type AuditAction =
     | 'INVITE_ACCEPTED'
     | 'MEMBER_ROLE_UPDATED'
     | 'MEMBER_REMOVED'
-    | 'SETTINGS_UPDATED';
+    | 'SETTINGS_UPDATED'
+    | 'OWNERSHIP_TRANSFERRED';
 
 export type AuditEntityType =
     | 'INVITATION'

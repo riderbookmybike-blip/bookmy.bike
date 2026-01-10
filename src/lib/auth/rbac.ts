@@ -17,19 +17,22 @@ export type Permission =
     | 'manage_leads'
     | 'view_leads'
     | 'access_marketplace'
-    | 'manage_marketplace';
+    | 'manage_marketplace'
+    | 'transfer_ownership'; // New Permission
 
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     SUPER_ADMIN: [
         'manage_organization', 'manage_team', 'manage_billing', 'view_analytics',
-        'manage_inventory', 'manage_leads', 'access_marketplace', 'manage_marketplace', 'view_inventory', 'view_leads'
+        'manage_inventory', 'manage_leads', 'access_marketplace', 'manage_marketplace', 'view_inventory', 'view_leads',
+        'transfer_ownership'
     ],
     MARKETPLACE_ADMIN: [
         'access_marketplace', 'manage_marketplace', 'view_analytics'
     ],
     DEALER_OWNER: [
         'manage_organization', 'manage_team', 'manage_billing', 'view_analytics',
-        'manage_inventory', 'manage_leads', 'view_inventory', 'view_leads'
+        'manage_inventory', 'manage_leads', 'view_inventory', 'view_leads',
+        'transfer_ownership'
     ],
     DEALER_ADMIN: [
         'manage_team', 'view_analytics',
@@ -56,9 +59,9 @@ export function can(role: string | undefined, permission: Permission): boolean {
 export const ROLES_LABEL: Record<Role, string> = {
     SUPER_ADMIN: 'Super Admin',
     MARKETPLACE_ADMIN: 'Marketplace Admin',
-    DEALER_OWNER: 'Dealer Owner',
-    DEALER_ADMIN: 'Manager',
-    SALES_EXEC: 'Sales Executive',
-    OPERATIONS: 'Operations',
+    DEALER_OWNER: 'Owner',
+    DEALER_ADMIN: 'Admin',
+    SALES_EXEC: 'Staff',
+    OPERATIONS: 'Operations', // Keeping for backward compatibility or future use
     VIEWER: 'Viewer'
 };

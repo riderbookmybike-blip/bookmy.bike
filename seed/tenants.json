@@ -1,0 +1,50 @@
+[
+    {
+        "slug": "we",
+        "name": "Rider Super Team",
+        "type": "INTERNAL",
+        "pincode": "400050",
+        "config": {
+            "brand": {
+                "displayName": "We Rider",
+                "primaryColor": "#6366f1"
+            }
+        }
+    },
+    {
+        "slug": "aums",
+        "name": "Audit & Management System",
+        "type": "SUPER_ADMIN",
+        "pincode": "400001",
+        "config": {
+            "brand": {
+                "displayName": "AUMS Platform",
+                "primaryColor": "#dc2626"
+            }
+        }
+    },
+    {
+        "slug": "aapli",
+        "name": "Aapli Automobiles",
+        "type": "DEALER",
+        "pincode": "411001",
+        "config": {
+            "brand": {
+                "displayName": "Aapli Auto",
+                "primaryColor": "#10b981"
+            }
+        }
+    },
+    {
+        "slug": "addbike",
+        "name": "AddBike Dealers",
+        "type": "DEALER",
+        "pincode": "560001",
+        "config": {
+            "brand": {
+                "displayName": "AddBike",
+                "primaryColor": "#f59e0b"
+            }
+        }
+    }
+]
