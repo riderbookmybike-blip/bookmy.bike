@@ -58,10 +58,10 @@ export const Logo: React.FC<LogoProps> = ({
             return { icon: "#000000", bookmy: "#000000", bike: "#000000" };
         }
         if (monochrome === 'gold') {
-            return { icon: "#D4AF37", bookmy: "#C5A028", bike: "#D4AF37" };
+            return { icon: "url(#gold-gradient)", bookmy: "url(#gold-gradient)", bike: "url(#gold-gradient)" };
         }
         if (monochrome === 'silver') {
-            return { icon: "#C0C0C0", bookmy: "#A9A9A9", bike: "#C0C0C0" };
+            return { icon: "url(#silver-gradient)", bookmy: "url(#silver-gradient)", bike: "url(#silver-gradient)" };
         }
 
         // Standard Themed Variants
@@ -81,13 +81,35 @@ export const Logo: React.FC<LogoProps> = ({
         };
     }, [activeMode, monochrome]);
 
+    const isMetallic = monochrome === 'gold' || monochrome === 'silver';
+
+    const renderGradients = () => (
+        <defs>
+            <linearGradient id="gold-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#BF953F" />
+                <stop offset="25%" stopColor="#FCF6BA" />
+                <stop offset="50%" stopColor="#B38728" />
+                <stop offset="75%" stopColor="#FBF5B7" />
+                <stop offset="100%" stopColor="#AA771C" />
+            </linearGradient>
+            <linearGradient id="silver-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#C0C0C0" />
+                <stop offset="25%" stopColor="#FFFFFF" />
+                <stop offset="50%" stopColor="#808080" />
+                <stop offset="75%" stopColor="#D3D3D3" />
+                <stop offset="100%" stopColor="#A9A9A9" />
+            </linearGradient>
+        </defs>
+    );
+
     const renderIcon = () => (
         <svg
             viewBox="0 0 80 109"
             fill="none"
             style={{ height: heights.iconH, width: heights.iconW }}
-            className={`${iconClassName} transition-transform group-hover:scale-105 duration-500 shrink-0`}
+            className={`${iconClassName} transition-transform group-hover:scale-105 duration-500 shrink-0 ${isMetallic ? 'animate-shimmer' : ''}`}
         >
+            {renderGradients()}
             {ICON_PATHS.PRIMARY.map((d, i) => (
                 <path key={i} d={d} fill={colors.icon} />
             ))}
@@ -97,10 +119,52 @@ export const Logo: React.FC<LogoProps> = ({
     const renderWordmark = () => (
         <div
             style={{ height: heights.textH, fontSize: heights.textH, lineHeight: 1 }}
-            className="flex items-center font-sans font-semibold tracking-[-0.03em] shrink-0 transition-all duration-300"
+            className={`flex items-center font-sans font-semibold tracking-[-0.03em] shrink-0 transition-all duration-300 ${isMetallic ? 'animate-shimmer' : ''}`}
         >
-            <span style={{ color: colors.bookmy }}>bookmy</span>
-            <span style={{ color: colors.bike }}>.bike</span>
+            <svg style={{ height: heights.textH, width: 'auto', overflow: 'visible' }}>
+                {renderGradients()}
+                <text
+                    y="80%"
+                    fill={colors.bookmy}
+                    style={{ font: 'inherit' }}
+                >
+                    bookmy
+                </text>
+                {/* Manual offset for .bike */}
+                <text
+                    x="250"
+                    y="80%"
+                    fill={colors.bike}
+                    style={{ font: 'inherit' }}
+                >
+                    .bike
+                </text>
+            </svg>
+        </div>
+    );
+
+    // Re-implementing wordmark with SVG for gradient support on text
+    const renderWordmarkSVG = () => (
+        <div
+            style={{ height: heights.textH }}
+            className={`flex items-center font-sans font-semibold tracking-[-0.03em] shrink-0 transition-all duration-300 ${isMetallic ? 'animate-shimmer' : ''}`}
+        >
+            <svg
+                viewBox="0 0 350 40"
+                style={{ height: heights.textH, width: 'auto', overflow: 'visible' }}
+                preserveAspectRatio="xMinYMid meet"
+            >
+                {renderGradients()}
+                <text
+                    x="0"
+                    y="32"
+                    className="font-sans font-semibold"
+                    style={{ fontSize: '38px', letterSpacing: '-0.03em' }}
+                >
+                    <tspan fill={colors.bookmy}>bookmy</tspan>
+                    <tspan fill={colors.bike}>.bike</tspan>
+                </text>
+            </svg>
         </div>
     );
 
@@ -110,7 +174,18 @@ export const Logo: React.FC<LogoProps> = ({
             style={style}
         >
             {(variant === 'full' || variant === 'icon') && renderIcon()}
-            {(variant === 'full' || variant === 'wordmark') && renderWordmark()}
+            {(variant === 'full' || variant === 'wordmark') && renderWordmarkSVG()}
+
+            <style jsx global>{`
+                @keyframes shimmer {
+                    0% { filter: brightness(1); }
+                    50% { filter: brightness(1.3); }
+                    100% { filter: brightness(1); }
+                }
+                .animate-shimmer {
+                    animation: shimmer 3s infinite ease-in-out;
+                }
+            `}</style>
         </div>
     );
 };
