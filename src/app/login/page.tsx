@@ -190,7 +190,7 @@ export default function LoginPage() {
                         {logoUrl ? (
                             <img src={logoUrl} alt={brandName} className="h-12 object-contain" />
                         ) : (
-                            <Logo variant="light" className="h-10 transition-all group-hover:scale-105 group-hover:brightness-125" />
+                            <Logo mode="auto" />
                         )}
                         <div className="mt-4 flex items-center gap-2">
                             <div className="h-px w-8 bg-indigo-500/50" style={{ backgroundColor: primaryColor }} />
