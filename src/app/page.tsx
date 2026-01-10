@@ -1,5 +1,6 @@
 import { headers } from 'next/headers';
 import StorePage from './store/page';
+import StoreLayout from './store/layout';
 import LoginPage from './login/page';
 import PartnerLandingPage from '@/components/brand/PartnerLandingPage';
 import { adminClient } from '@/lib/supabase/admin';
@@ -12,7 +13,11 @@ export default async function RootPage() {
   // 1. Public Site -> Show Store
   const isPublic = host === rootDomain || host === `www.${rootDomain}`;
   if (isPublic) {
-    return <StorePage />;
+    return (
+      <StoreLayout>
+        <StorePage />
+      </StoreLayout>
+    );
   }
 
   // 2. Parse Subdomain
