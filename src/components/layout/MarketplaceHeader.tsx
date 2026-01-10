@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ShoppingCart, User, Search, MapPin, Menu, X } from 'lucide-react';
+import { ShoppingCart, User, Search, MapPin, Menu, X, ChevronDown } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useTheme } from '@/components/providers/ThemeProvider';
@@ -77,21 +77,23 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                     {userName ? (
                         <Link
                             href="/dashboard"
-                            className={`${navLinkClass} flex items-center gap-3 group cursor-pointer max-w-[180px] flex-shrink-0`}
+                            className="flex items-center gap-3 px-4 py-2 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full hover:border-blue-600/50 transition-all group/account"
                         >
                             <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-[10px] font-black text-white shadow-xl group-hover:scale-110 transition-all flex-shrink-0">
                                 {userName.charAt(0)}
                             </div>
-                            <span className="truncate group-hover:translate-x-1 transition-transform">
-                                Hi, {userName.split(' ')[0]}
+                            <span className="text-[11px] font-black uppercase tracking-widest text-slate-700 dark:text-white/90 truncate max-w-[80px]">
+                                {userName.split(' ')[0]}
                             </span>
+                            <ChevronDown size={14} className="text-slate-400 group-hover/account:text-blue-600 transition-colors" />
                         </Link>
                     ) : (
                         <button
                             onClick={onLoginClick}
-                            className={`${navLinkClass} hover:translate-x-1 transition-transform flex-shrink-0`}
+                            className="flex items-center gap-3 px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-black rounded-full hover:bg-blue-600 dark:hover:bg-blue-500 dark:hover:text-white transition-all shadow-lg group/member active:scale-95"
                         >
-                            Hi, Member
+                            <User size={14} className="group-hover/member:scale-110 transition-transform" />
+                            <span className="text-[11px] font-black uppercase tracking-widest">Sign In</span>
                         </button>
                     )}
                 </div>
