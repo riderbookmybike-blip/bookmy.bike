@@ -156,7 +156,7 @@ function InviteContent() {
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-white p-4 font-sans">
-            <div className="mb-8"><Logo variant="dark" className="h-8" /></div>
+            <div className="mb-8"><Logo variant="indigo" className="h-8" /></div>
 
             <div className="bg-white border border-slate-200 p-8 md:p-12 rounded-3xl shadow-2xl shadow-indigo-500/10 max-w-lg w-full text-center space-y-8 animate-in fade-in zoom-in duration-500">
                 <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto text-indigo-600">

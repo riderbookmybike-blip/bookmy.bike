@@ -69,6 +69,7 @@ export default function SettingsPage() {
         updateConfig({
             brand: {
                 ...tenantConfig?.brand,
+                primaryColor: tenantConfig?.brand?.primaryColor || '#4F46E5', // Default Indigo
                 displayName: orgData.displayName
             }
         });
