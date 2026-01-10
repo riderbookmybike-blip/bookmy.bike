@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ShoppingCart, User, Search, MapPin, Menu, X } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { useTheme } from '@/components/providers/ThemeProvider';
 
 interface MarketplaceHeaderProps {
     onLoginClick: () => void;
@@ -14,8 +15,11 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [userName, setUserName] = useState<string | null>(null);
     const [scrolled, setScrolled] = useState(false);
+    const { theme } = useTheme();
+    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
+        setMounted(true);
         const handleScroll = () => {
             setScrolled(window.scrollY > 20);
         };
@@ -36,27 +40,23 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     }, []);
 
     // Cinematic Styling Logic
-    // Scrolled: Glassmorphism (Blur, Semi-white/dark) -> Text: Theme Default
-    // Top: Transparent -> Text: White (For Hero Contrast)
+    const isDark = theme === 'dark' || !mounted; // Default to dark for contrast on Hero
 
-    // NOTE: We force Dark Mode / White Text when transparent because Hero is Dark/Image.
     const headerClass = scrolled
         ? "bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200 dark:border-white/5 py-3"
         : "bg-transparent border-transparent py-5";
 
     const navLinkClass = scrolled
         ? "text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-white transition-colors"
-        : "text-[10px] font-black uppercase tracking-[0.2em] text-white/80 hover:text-white transition-colors drop-shadow-md";
-
-    const logoVariant = scrolled ? "blue" : "white"; // Assuming Logo supports 'white' variant or we force it
+        : `${theme === 'light' ? 'text-slate-900/80 hover:text-slate-900' : 'text-white/80 hover:text-white'} text-[10px] font-black uppercase tracking-[0.2em] transition-colors drop-shadow-sm`;
 
     const iconClass = scrolled
-        ? "text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-white"
-        : "text-white/80 hover:text-white drop-shadow-md";
+        ? "text-slate-600 dark:text-slate-400"
+        : (theme === 'light' ? "text-slate-900" : "text-white");
 
     const mobileMenuButtonClass = scrolled
-        ? "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5"
-        : "text-white hover:bg-white/10";
+        ? "text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/5"
+        : (theme === 'light' ? "text-slate-900 hover:bg-slate-900/5" : "text-white hover:bg-white/10");
 
     return (
         <header className={`sticky top-0 z-50 transition-all duration-500 ${headerClass}`}>
@@ -64,7 +64,9 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                 <Link href="/" className="flex items-center group">
                     <Logo
                         variant="blue"
-                        className={`transition-all ${scrolled ? 'text-slate-900 dark:text-white' : 'text-white'}`}
+                        className={`transition-all ${scrolled
+                            ? 'text-slate-900 dark:text-white'
+                            : (theme === 'light' ? 'text-slate-900' : 'text-white')}`}
                     />
                 </Link>
 
@@ -105,9 +107,8 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                             ) : (
                                 <button
                                     onClick={onLoginClick}
-                                    className={`${navLinkClass} flex items-center gap-2 group transition-all active:scale-95`}
+                                    className={`${navLinkClass} flex items-center group transition-all active:scale-95`}
                                 >
-                                    <User size={14} className="group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
                                     Hi, Member
                                 </button>
                             )}
