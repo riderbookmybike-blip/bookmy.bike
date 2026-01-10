@@ -125,7 +125,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
         const fetchTenantDetails = async () => {
             try {
                 const supabase = createClient();
-                // eslint-disable-next-line prefer-const
+
                 let { data: { user } } = await supabase.auth.getUser();
 
                 if (!user) {
