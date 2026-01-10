@@ -231,26 +231,6 @@ export default function StorePage() {
 
 
 
-            {/* Fixed Floating Mascot Buddy */}
-            <div className="fixed bottom-10 right-10 z-[100] group hidden md:block">
-                <div className="absolute bottom-full right-0 mb-8 w-80 p-10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-3xl border border-slate-200 dark:border-white/10 rounded-[3rem] shadow-4xl opacity-0 translate-y-10 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-700 pointer-events-none">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
-                        <p className="text-[12px] font-black uppercase tracking-[0.4em] text-blue-600 italic">Concierge</p>
-                    </div>
-                    <p className="text-base font-medium text-slate-600 dark:text-slate-300 leading-relaxed italic">"Looking for something specific, Captain? I can help you unlock dealer-only pricing."</p>
-                    <div className="absolute bottom-0 right-14 translate-y-1/2 w-8 h-8 bg-white dark:bg-slate-900 border-r border-b border-slate-200 dark:border-white/10 rotate-45" />
-                </div>
-
-                <button className="w-20 h-20 bg-slate-900 dark:bg-white rounded-[2rem] flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-3xl relative overflow-hidden group/mascot">
-                    <img
-                        src="/images/bmb_mascot.png"
-                        alt="BMB Concierge"
-                        className="w-12 h-12 object-contain relative z-10 brightness-0 invert dark:brightness-100 dark:invert-0"
-                    />
-                    <div className="absolute inset-0 bg-blue-600 opacity-0 group-hover/mascot:opacity-100 transition-opacity" />
-                </button>
-            </div>
         </div>
     );
 }
