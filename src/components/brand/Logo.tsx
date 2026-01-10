@@ -30,9 +30,9 @@ export const Logo: React.FC<LogoProps> = ({
     const getColors = () => {
         if (isLight) {
             return {
-                icon: RED_COLOR,
+                icon: WHITE_COLOR,
                 bookmy: WHITE_COLOR,
-                bike: RED_COLOR,
+                bike: WHITE_COLOR,
                 tagline: WHITE_COLOR
             };
         }

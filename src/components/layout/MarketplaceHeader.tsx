@@ -63,8 +63,8 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
             <div className="max-w-[1400px] mx-auto px-6 flex items-center justify-between">
                 <Link href="/" className="flex items-center group">
                     <Logo
-                        variant={scrolled ? 'blue' : 'light'}
-                        className={`w-32 md:w-40 transition-all ${scrolled ? 'text-slate-900 dark:text-white' : ''}`}
+                        variant="blue"
+                        className={`w-32 md:w-40 transition-all ${scrolled ? 'text-slate-900 dark:text-white' : 'text-white'}`}
                     />
                 </Link>
 
