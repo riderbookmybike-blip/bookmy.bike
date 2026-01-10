@@ -35,9 +35,9 @@ export const Logo: React.FC<LogoProps> = ({
         }
 
         return {
-            iconH: `${h}px`,
-            iconW: `${h * (80 / 109)}px`,
-            textH: `${h * 0.86}px`
+            iconH: `${h * 1.1}px`, // Enlarge icon slightly (Mamuli sa bada)
+            iconW: `${(h * 1.1) * (80 / 109)}px`,
+            textH: `${h * 0.9}px` // Text at 90% of base h for better presence than 86%
         };
     }, [size]);
 
@@ -88,7 +88,7 @@ export const Logo: React.FC<LogoProps> = ({
 
     const renderWordmark = () => (
         <svg
-            viewBox="0 0 205 26"
+            viewBox="0 0 205 32"
             fill="none"
             style={{ height: heights.textH }}
             className="w-auto shrink-0 transition-all duration-300"
@@ -105,10 +105,11 @@ export const Logo: React.FC<LogoProps> = ({
     );
 
     return (
-        <div className={`flex items-center gap-2.5 group transition-all duration-300 ${className}`}>
+        <div className={`flex items-center gap-2 group transition-all duration-300 ${className}`}>
             {(variant === 'full' || variant === 'icon') && renderIcon()}
             {(variant === 'full' || variant === 'wordmark') && renderWordmark()}
         </div>
     );
 };
+
 
