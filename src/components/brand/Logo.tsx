@@ -35,9 +35,9 @@ export const Logo: React.FC<LogoProps> = ({
         }
 
         return {
-            iconH: `${h * 1.1}px`, // Enlarge icon slightly (Mamuli sa bada)
+            iconH: `${h * 1.1}px`, // Icon at 110% of base height for presence
             iconW: `${(h * 1.1) * (80 / 109)}px`,
-            textH: `${h * 0.9}px` // Text at 90% of base h for better presence than 86%
+            textH: `${h * 0.82}px` // Text at 82% of base height to align with Icon's optically center
         };
     }, [size]);
 
@@ -89,7 +89,7 @@ export const Logo: React.FC<LogoProps> = ({
     const renderWordmark = () => (
         <div
             style={{ height: heights.textH, fontSize: heights.textH, lineHeight: 1 }}
-            className="flex items-center font-sans font-bold tracking-[-0.03em] shrink-0 transition-all duration-300"
+            className="flex items-center font-sans font-semibold tracking-[-0.03em] shrink-0 transition-all duration-300"
         >
             <span style={{ color: colors.bookmy }}>bookmy</span>
             <span style={{ color: colors.bike }}>.bike</span>
