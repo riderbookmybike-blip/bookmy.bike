@@ -61,88 +61,74 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     return (
         <header className={`sticky top-0 z-50 transition-all duration-500 ${headerClass}`}>
             <div className="max-w-[1400px] mx-auto px-6 flex items-center justify-between">
-                <div className="flex items-center gap-12">
-                    <Link href="/" className="flex items-center group">
-                        {/* 
-                            Logic:
-                            - Not Scrolled (Hero): variant="light" (All White, perfect for dark cinematic hero)
-                            - Scrolled (Glass): variant="blue" (Blue Icon, currentColor text).
-                              We add `text-slate-900 dark:text-white` to handle the text color in glass mode.
-                        */}
-                        <Logo
-                            variant={scrolled ? 'blue' : 'light'}
-                            className={`w-32 md:w-40 transition-all ${scrolled ? 'text-slate-900 dark:text-white' : ''}`}
-                        />
-                    </Link>
+                <Link href="/" className="flex items-center group">
+                    <Logo
+                        variant={scrolled ? 'blue' : 'light'}
+                        className={`w-32 md:w-40 transition-all ${scrolled ? 'text-slate-900 dark:text-white' : ''}`}
+                    />
+                </Link>
 
+                <div className="flex items-center gap-8">
                     <nav className="hidden md:flex items-center gap-8">
                         <Link href="/store" className={navLinkClass}>Home</Link>
-                        <Link href="/store/finance" className={navLinkClass}>Zero Downpayment</Link>
                         <Link href="/store/blog" className={navLinkClass}>Blog</Link>
-                        <Link href="/store/accessories" className={navLinkClass}>Accessories</Link>
                         <Link href="/members" className={scrolled
                             ? "text-[10px] font-black uppercase tracking-[0.2em] text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
                             : "text-[10px] font-black uppercase tracking-[0.2em] text-amber-400 hover:text-amber-300 transition-colors drop-shadow-md"
                         }>Members</Link>
                     </nav>
-                </div>
 
-                <div className="flex items-center gap-2 md:gap-6">
-                    <div className={`hidden sm:flex items-center gap-2 px-4 py-2 rounded-full cursor-pointer transition-all ${scrolled
-                        ? "bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10"
-                        : "bg-white/10 border border-white/20 hover:bg-white/20 backdrop-blur-md"
-                        }`}>
-                        <MapPin size={12} className={scrolled ? "text-blue-600 dark:text-blue-500" : "text-white"} />
-                        <span className={`text-[9px] font-black uppercase tracking-widest ${scrolled ? "text-slate-700 dark:text-slate-300" : "text-white"}`}>Delhi</span>
-                    </div>
+                    <div className="flex items-center gap-2 md:gap-6">
+                        {/* MapPin Removed */}
 
-                    <div className={`w-px h-6 hidden md:block ${scrolled ? "bg-slate-200 dark:bg-white/10" : "bg-white/20"}`} />
+                        <div className={`w-px h-6 hidden md:block ${scrolled ? "bg-slate-200 dark:bg-white/10" : "bg-white/20"}`} />
 
-                    <div className="flex items-center gap-1 md:gap-2">
-                        {/* Theme Toggle might need adjustment for transparent (usually hidden or adapted) */}
-                        <div className={!scrolled ? "opacity-0 pointer-events-none w-0 overflow-hidden" : "opacity-100 transition-opacity"}>
-                            <ThemeToggle />
-                        </div>
-
-                        <button className={`p-2 md:p-3 rounded-xl transition-all relative ${iconClass} ${scrolled ? "hover:bg-slate-100 dark:hover:bg-white/5" : "hover:bg-white/10"}`}>
-                            <ShoppingCart size={18} />
-                            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-600 dark:bg-blue-500 rounded-full border-2 border-slate-50 dark:border-slate-950" />
-                        </button>
-
-                        <button
-                            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                            className={`p-2 md:p-3 rounded-xl transition-all md:hidden ${mobileMenuButtonClass}`}
-                        >
-                            {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-                        </button>
-
-                        {userName ? (
-                            <div className={`hidden sm:flex items-center gap-3 px-5 py-2.5 rounded-full group cursor-pointer transition-all ${scrolled
-                                ? "bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10"
-                                : "bg-white/10 border border-white/20 hover:bg-white/20 backdrop-blur-md"
-                                }`}>
-                                <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-[10px] font-black text-white shadow-lg">
-                                    {userName.charAt(0)}
-                                </div>
-                                <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${scrolled
-                                    ? "text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-500"
-                                    : "text-white group-hover:text-blue-300"
-                                    }`}>
-                                    {userName}
-                                </span>
+                        <div className="flex items-center gap-1 md:gap-2">
+                            {/* Theme Toggle */}
+                            <div className={!scrolled ? "opacity-0 pointer-events-none w-0 overflow-hidden" : "opacity-100 transition-opacity"}>
+                                <ThemeToggle />
                             </div>
-                        ) : (
-                            <button
-                                onClick={onLoginClick}
-                                className={`hidden sm:flex ml-2 px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest items-center gap-2 shadow-lg transition-all active:scale-95 ${scrolled
-                                    ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/20"
-                                    : "bg-white text-blue-900 hover:bg-white/90 shadow-white/10"
-                                    }`}
-                            >
-                                <User size={14} />
-                                Sign In
+
+                            <button className={`p-2 md:p-3 rounded-xl transition-all relative ${iconClass} ${scrolled ? "hover:bg-slate-100 dark:hover:bg-white/5" : "hover:bg-white/10"}`}>
+                                <ShoppingCart size={18} />
+                                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-600 dark:bg-blue-500 rounded-full border-2 border-slate-50 dark:border-slate-950" />
                             </button>
-                        )}
+
+                            <button
+                                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                                className={`p-2 md:p-3 rounded-xl transition-all md:hidden ${mobileMenuButtonClass}`}
+                            >
+                                {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                            </button>
+
+                            {userName ? (
+                                <div className={`hidden sm:flex items-center gap-3 px-5 py-2.5 rounded-full group cursor-pointer transition-all ${scrolled
+                                    ? "bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10"
+                                    : "bg-white/10 border border-white/20 hover:bg-white/20 backdrop-blur-md"
+                                    }`}>
+                                    <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-[10px] font-black text-white shadow-lg">
+                                        {userName.charAt(0)}
+                                    </div>
+                                    <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${scrolled
+                                        ? "text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-500"
+                                        : "text-white group-hover:text-blue-300"
+                                        }`}>
+                                        {userName}
+                                    </span>
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={onLoginClick}
+                                    className={`hidden sm:flex ml-2 px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest items-center gap-2 shadow-lg transition-all active:scale-95 ${scrolled
+                                        ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/20"
+                                        : "bg-white text-blue-900 hover:bg-white/90 shadow-white/10"
+                                        }`}
+                                >
+                                    <User size={14} />
+                                    Sign In
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
