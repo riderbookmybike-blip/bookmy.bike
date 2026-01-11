@@ -4,6 +4,7 @@ import { ShoppingCart, User, Search, MapPin, Menu, X, ChevronDown, LayoutDashboa
 import { Logo } from '@/components/brand/Logo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useTheme } from '@/components/providers/ThemeProvider';
+import { createClient } from '@/lib/supabase/client';
 
 import { AppHeaderShell } from './AppHeaderShell';
 
@@ -70,6 +71,23 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         setIsProfileOpen(false);
     };
 
+    const handleGoogleLogin = async () => {
+        const supabase = createClient();
+        const origin = window.location.origin;
+        const callbackUrl = `${origin}/auth/callback`;
+
+        await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: callbackUrl,
+                queryParams: {
+                    access_type: 'offline',
+                    prompt: 'consent'
+                },
+            },
+        });
+    };
+
     return (
         <AppHeaderShell
             scrolled={scrolled}
@@ -99,8 +117,8 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                         <button
                             onClick={() => setIsProfileOpen(!isProfileOpen)}
                             className={`flex items-center gap-3 pl-3 pr-2 py-1.5 rounded-full border transition-all group ${scrolled || theme === 'light'
-                                    ? 'border-red-600/40 bg-white/10 dark:bg-black/40'
-                                    : 'border-red-600/60 bg-black/40'
+                                ? 'border-red-600/40 bg-white/10 dark:bg-black/40'
+                                : 'border-red-600/60 bg-black/40'
                                 }`}
                         >
                             <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${scrolled || theme === 'light' ? 'text-slate-900 dark:text-white' : 'text-white'
@@ -166,10 +184,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                                                 </>
                                             ) : (
                                                 <button
-                                                    onClick={() => {
-                                                        onLoginClick();
-                                                        setIsProfileOpen(false);
-                                                    }}
+                                                    onClick={handleGoogleLogin}
                                                     className="w-full flex items-center gap-3 px-3 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-lg shadow-blue-500/20 group"
                                                 >
                                                     <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
