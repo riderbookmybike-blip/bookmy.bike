@@ -180,6 +180,8 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                     const fullName = profileResult.data?.full_name || user.email?.split('@')[0] || 'User';
                     setUserName(fullName);
                     localStorage.setItem('user_name', fullName);
+                    // Notify other components (like MarketplaceHeader) that auth state changed
+                    window.dispatchEvent(new Event('storage'));
 
                     // 2. Tenant Resolution Logic
                     const memberships = membershipsResult.data || [];

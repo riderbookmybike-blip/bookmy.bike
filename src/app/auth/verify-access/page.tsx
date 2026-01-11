@@ -57,7 +57,6 @@ export default async function VerifyAccessPage() {
     }
 
     // 2. Marketplace/Partner Mode -> Check Profile
-    // (Partners might have different logic, but for now we assume 'Public' behavior for non-CRM)
     const { data: profile } = await supabase
         .from('profiles')
         .select('id')
@@ -66,7 +65,24 @@ export default async function VerifyAccessPage() {
 
     if (profile) {
         redirect('/dashboard');
-    } else {
-        return <RegistrationConsent />;
     }
+
+    // AUTO-REGISTRATION for Marketplace (Root Domain)
+    if (!currentSubdomain) {
+        const { error } = await supabase
+            .from('profiles')
+            .insert({
+                id: user.id,
+                email: user.email,
+                phone: user.phone,
+                full_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
+                avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
+            });
+
+        if (!error) {
+            redirect('/');
+        }
+    }
+
+    return <RegistrationConsent />;
 }
