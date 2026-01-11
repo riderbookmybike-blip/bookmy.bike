@@ -304,12 +304,17 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                         <div className="flex items-center px-6 py-4">
                                             <Lock size={18} className="text-slate-400 group-focus-within:text-blue-600 transition-colors mr-6" />
                                             <input
-                                                type="text"
-                                                placeholder="XXXX"
+                                                type="tel"
+                                                inputMode="numeric"
+                                                pattern="[0-9]*"
+                                                placeholder="Enter OTP"
                                                 value={otp}
-                                                maxLength={4}
-                                                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                                                className="bg-transparent border-none outline-none text-xl font-black tracking-[1em] text-slate-900 dark:text-white w-full text-center placeholder:text-slate-300 dark:placeholder:text-slate-700 placeholder:tracking-normal"
+                                                onChange={(e) => {
+                                                    const val = e.target.value.replace(/\D/g, '');
+                                                    if (val.length <= 4) setOtp(val);
+                                                }}
+                                                className="w-full bg-transparent text-lg font-bold placeholder:text-slate-400 focus:outline-none tracking-widest"
+                                                autoFocus
                                             />
                                         </div>
                                     )}
