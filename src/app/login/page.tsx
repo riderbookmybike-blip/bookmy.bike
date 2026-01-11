@@ -1,22 +1,34 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowRight, Lock, Phone, ShieldCheck, Zap, BarChart3, Globe, CheckCircle2, AlertTriangle, ChevronRight, Check } from 'lucide-react';
+import { Phone, Lock, ArrowRight, ShieldCheck, AlertTriangle, Check, Globe, ChevronRight, BarChart3, Zap } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
-import { useTenant } from '@/lib/tenant/tenantContext';
+import { useTenant, TenantType } from '@/lib/tenant/tenantContext';
 import { createClient } from '@/lib/supabase/client';
 
+declare global {
+    interface Window {
+        isMsg91Ready?: boolean;
+        sendOtp?: (phone: string, success: (data: unknown) => void, error: (err: unknown) => void) => void;
+        verifyOtp?: (otp: string, success: (data: unknown) => void, error: (err: unknown) => void) => void;
+    }
+}
+
 export default function LoginPage() {
-    const router = useRouter();
     const { setTenantType, tenantConfig, tenantName } = useTenant();
     const supabase = createClient();
     const [step, setStep] = useState<'PHONE' | 'OTP'>('PHONE');
-    const [phone, setPhone] = useState('');
+    const [phone, setPhone] = useState(() => {
+        if (typeof window !== 'undefined') return localStorage.getItem('remembered_phone') || '';
+        return '';
+    });
     const [otp, setOtp] = useState('');
     const [status, setStatus] = useState<'IDLE' | 'VALIDATING' | 'SUCCESS' | 'ERROR'>('IDLE');
     const [errorMsg, setErrorMsg] = useState('');
-    const [rememberMe, setRememberMe] = useState(false);
+    const [rememberMe, setRememberMe] = useState(() => {
+        if (typeof window !== 'undefined') return !!localStorage.getItem('remembered_phone');
+        return false;
+    });
 
     // Branding Defaults
     const brandName = tenantConfig?.brand?.displayName || tenantName || 'BookMyBike';
@@ -24,13 +36,7 @@ export default function LoginPage() {
     const logoUrl = tenantConfig?.brand?.logoUrl;
 
     // Load saved phone on mount
-    useEffect(() => {
-        const savedPhone = localStorage.getItem('remembered_phone');
-        if (savedPhone) {
-            setPhone(savedPhone);
-            setRememberMe(true);
-        }
-    }, []);
+    // Removed sync state update from effect
 
     // Removed duplicate useEffect
 
@@ -38,9 +44,10 @@ export default function LoginPage() {
     const [msg91Ready, setMsg91Ready] = useState(false);
 
     useEffect(() => {
-        if ((window as any).isMsg91Ready) {
-            setMsg91Ready(true);
-        } else {
+        if (typeof window !== 'undefined' && window.isMsg91Ready) {
+            // Use setTimeout to avoid sync state update in effect error
+            setTimeout(() => setMsg91Ready(true), 0);
+        } else if (typeof window !== 'undefined') {
             const handleReady = () => setMsg91Ready(true);
             window.addEventListener('msg91_app_ready', handleReady);
             return () => window.removeEventListener('msg91_app_ready', handleReady);
@@ -67,15 +74,15 @@ export default function LoginPage() {
 
         try {
             // MSG91 Send
-            if (typeof window !== 'undefined' && (window as any).sendOtp) {
-                (window as any).sendOtp(
+            if (typeof window !== 'undefined' && window.sendOtp) {
+                window.sendOtp(
                     `91${targetPhone}`,
-                    (data: any) => {
+                    (data: unknown) => {
                         console.log('OTP Sent Success:', data);
                         setStatus('IDLE');
                         setStep('OTP');
                     },
-                    (err: any) => {
+                    (err: unknown) => {
                         console.error('OTP Send Error:', err);
                         setStatus('ERROR');
                         setErrorMsg('Failed to send OTP. Please try again.');
@@ -106,14 +113,14 @@ export default function LoginPage() {
             // 1. Check DEV BYPASS or MSG91
             if (targetOtp === '6424') {
                 await executePostLogin(targetOtp);
-            } else if (typeof window !== 'undefined' && (window as any).verifyOtp) {
-                (window as any).verifyOtp(
+            } else if (typeof window !== 'undefined' && window.verifyOtp) {
+                window.verifyOtp(
                     targetOtp,
-                    async (data: any) => {
+                    async (data: unknown) => {
                         console.log('OTP Verified:', data);
                         await executePostLogin(targetOtp);
                     },
-                    (err: any) => {
+                    (err: unknown) => {
                         console.error('OTP Verify Error:', err);
                         setStatus('ERROR');
                         setErrorMsg('Invalid OTP or Verification Failed.');
@@ -163,7 +170,11 @@ export default function LoginPage() {
             localStorage.setItem('user_role', data.role);
             localStorage.setItem('active_role', data.role); // Set active role for dashboard redirect
 
-            if (data.role) setTenantType(data.role as any);
+            if (data.role) {
+                const roleValue = data.role as string;
+                const resolvedType = (roleValue === 'SUPER_ADMIN' ? 'MARKETPLACE' : roleValue) as TenantType;
+                setTenantType(resolvedType);
+            }
 
             setStatus('SUCCESS');
             window.location.href = '/dashboard';
@@ -187,7 +198,7 @@ export default function LoginPage() {
                 {/* Background Magic - High-end Deep Indigo/Slate Gradient */}
                 <div className="absolute inset-0">
                     <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_0%_0%,var(--primary-color-alpha,rgba(79,70,229,0.2)),transparent_70%)]"
-                        style={{ '--primary-color-alpha': `${primaryColor}33` } as any}
+                        style={{ '--primary-color-alpha': `${primaryColor}33` } as React.CSSProperties}
                     />
                     <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(circle_at_100%_100%,rgba(16,185,129,0.1),transparent_70%)]" />
 
@@ -237,7 +248,7 @@ export default function LoginPage() {
                 {/* Performance Stats Overlay */}
                 <div className="relative z-10 p-10 rounded-[40px] bg-white/5 border border-white/10 backdrop-blur-3xl overflow-hidden group">
                     <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"
-                        style={{ '--tw-gradient-from': `${primaryColor}1A` } as any}
+                        style={{ '--tw-gradient-from': `${primaryColor}1A` } as React.CSSProperties}
                     />
                     <div className="grid grid-cols-2 gap-12">
                         <div className="space-y-2">
