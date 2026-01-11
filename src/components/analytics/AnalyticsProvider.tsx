@@ -115,6 +115,7 @@ export default function AnalyticsProvider({ children }: { children: React.ReactN
         queueRef.current = []; // Clear queue immediately
 
         try {
+            const { data: { user } } = await supabase.auth.getUser();
             let locationData = null;
             try {
                 const locationCache = localStorage.getItem('bkmb_user_pincode');
