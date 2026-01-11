@@ -27,6 +27,9 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         };
         window.addEventListener('scroll', handleScroll);
 
+        const storedName = localStorage.getItem('user_name');
+        if (storedName) setUserName(storedName);
+
         const handleLoginSync = () => {
             const name = localStorage.getItem('user_name');
             setUserName(name);
