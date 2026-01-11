@@ -3,7 +3,7 @@ import { adminClient } from '@/lib/supabase/admin';
 
 export async function POST(req: NextRequest) {
     try {
-        const { phone, displayName } = await req.json();
+        const { phone, displayName, pincode } = await req.json();
 
         if (!phone) {
             return NextResponse.json({ success: false, message: 'Phone number required' }, { status: 400 });
@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
                     full_name: displayName,
                     phone: phone, // Storing raw 10 digit in profile for display
                     role: 'USER', // Default role
+                    pincode: pincode || null, // Optional default pincode
                     // tenant_id intentionally left null or handled by trigger defaults
                 });
 
