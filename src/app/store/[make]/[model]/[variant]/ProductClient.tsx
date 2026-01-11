@@ -48,32 +48,32 @@ export default function ProductClient({
 
     const productColors: LocalColorConfig[] = [
         {
-            id: 'matte-axis-grey',
-            name: 'Matte Axis Grey',
-            hex: '#374151',
-            class: 'bg-slate-700',
-            pricingOverride: { exShowroom: 84000 } // +2000 variance
+            id: 'obsidian-black',
+            name: 'Obsidian Black',
+            hex: '#000000',
+            class: 'bg-black',
+            pricingOverride: { exShowroom: 78000 }
         },
         {
-            id: 'pearl-precious-white',
-            name: 'Pearl Precious White',
-            hex: '#f8fafc',
-            class: 'bg-slate-100',
-            pricingOverride: { exShowroom: 82000 } // Base Price
+            id: 'stellar-silver',
+            name: 'Stellar Silver',
+            hex: '#cbd5e1',
+            class: 'bg-slate-300',
+            pricingOverride: { exShowroom: 78000 }
         },
         {
-            id: 'rebel-red-metallic',
-            name: 'Rebel Red Metallic',
-            hex: '#991b1b',
-            class: 'bg-red-800',
-            pricingOverride: { exShowroom: 82000, dealerOffer: 1000 } // Base + Discount
+            id: 'racing-red',
+            name: 'Racing Red',
+            hex: '#dc2626',
+            class: 'bg-red-600',
+            pricingOverride: { exShowroom: 79500, dealerOffer: 1500 }
         },
         {
-            id: 'midnight-blue',
-            name: 'Midnight Blue',
-            hex: '#1e3a8a',
-            class: 'bg-blue-900',
-            pricingOverride: { exShowroom: 83000 } // +1000 variance
+            id: 'electric-blue',
+            name: 'Electric Blue',
+            hex: '#2563eb',
+            class: 'bg-blue-600',
+            pricingOverride: { exShowroom: 79500 }
         },
     ];
 
@@ -228,7 +228,7 @@ export default function ProductClient({
 
     // Use derived ExShowroom from override or default
     // Use derived ExShowroom from override or default
-    const baseExShowroom = activePricingOverride?.exShowroom || initialPrice?.exShowroom || (product.make === 'Royal Enfield' ? 193000 : 82000);
+    const baseExShowroom = activePricingOverride?.exShowroom || initialPrice?.exShowroom || 78000;
     // Breakdown Ex-Showroom for Display (Standard vs Premium)
 
 
@@ -319,7 +319,7 @@ export default function ProductClient({
         : (defaultExShowroom + defaultRto + baseInsurance + insuranceAddonsPrice + roadTax + accessoriesPrice + servicesPrice - offersDiscount - defaultColorDiscount);
 
     // Deltas
-    const deltaExShowroom = baseExShowroom - defaultExShowroom;
+    const deltaExShowroom = baseExShowroom - (defaultPricingOverride?.exShowroom || 78000);
     const deltaRto = rtoEstimates - defaultRto;
     const deltaDiscount = colorDiscount - defaultColorDiscount;
     const deltaTotal = totalOnRoad - defaultTotalOnRoad;
@@ -713,14 +713,15 @@ export default function ProductClient({
                         }
                         actions={
                             <>
+                                <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-full">
+                                    <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Price Protection</span>
+                                </div>
                                 <button onClick={handleShareQuote} className="p-3 bg-white/5 hover:bg-white/10 rounded-full text-white transition-all backdrop-blur-md">
                                     <Share size={18} />
                                 </button>
                                 <button className="p-3 bg-white/5 hover:bg-white/10 rounded-full text-white transition-all backdrop-blur-md">
                                     <Heart size={18} />
-                                </button>
-                                <button className="p-3 bg-white/5 hover:bg-white/10 rounded-full text-white transition-all backdrop-blur-md">
-                                    <Info size={18} />
                                 </button>
                             </>
                         }

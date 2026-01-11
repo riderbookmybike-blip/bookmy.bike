@@ -15,6 +15,10 @@ function CatalogContent() {
     const [selectedBodyTypes, setSelectedBodyTypes] = useState<string[]>([]);
     const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
 
+    // Dynamic EMI States
+    const [downpayment, setDownpayment] = useState(15000);
+    const [tenure, setTenure] = useState(36);
+
     useEffect(() => {
         const categoryParam = searchParams.get('category');
         if (categoryParam) {
@@ -272,30 +276,67 @@ function CatalogContent() {
                                 showReset
                             />
 
+                            {/* Dynamic EMI HUD */}
+                            <div className="space-y-6 pt-4">
+                                <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white flex items-center gap-2">
+                                        <div className="w-1 h-1 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]" />
+                                        EMI Calculator
+                                    </h4>
+                                </div>
+                                <div className="space-y-8 p-6 bg-green-500/5 border border-green-500/10 rounded-2xl">
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-end">
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Downpayment</span>
+                                            <span className="text-sm font-black text-green-500 tracking-tighter italic">₹{downpayment.toLocaleString('en-IN')}</span>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min="5000"
+                                            max="75000"
+                                            step="5000"
+                                            value={downpayment}
+                                            onChange={(e) => setDownpayment(parseInt(e.target.value))}
+                                            className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-green-500"
+                                        />
+                                        <div className="flex justify-between text-[7px] font-bold text-slate-600 uppercase">
+                                            <span>₹5K</span>
+                                            <span>₹75K</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Tenure (Months)</span>
+                                        <div className="grid grid-cols-4 gap-2">
+                                            {[12, 24, 36, 48].map((t) => (
+                                                <button
+                                                    key={t}
+                                                    onClick={() => setTenure(t)}
+                                                    className={`py-2 rounded-lg text-[10px] font-black transition-all ${tenure === t ? 'bg-green-600 text-white' : 'bg-white/5 text-slate-500 hover:bg-white/10'}`}
+                                                >
+                                                    {t}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <FilterGroup
-                                title="Budget Range"
-                                options={['< 1 Lac', '1-2 Lac', '2-3 Lac', 'Elite']}
-                                selectedValues={[]} // Need to add state if logic is implemented
+                                title="Best For"
+                                options={['Family Commute', 'Style & Performance', 'Business Delivery', 'Eco-Friendly']}
+                                selectedValues={[]}
                                 onToggle={() => { }}
                                 onReset={() => { }}
                                 showReset
                             />
 
                             <FilterGroup
-                                title="Power Source"
-                                options={['Petrol', 'Electric', 'CNG']}
-                                selectedValues={selectedFuels}
-                                onToggle={(v: string) => toggleFilter(setSelectedFuels, v)}
-                                onReset={() => setSelectedFuels([])}
-                                showReset
-                            />
-
-                            <FilterGroup
-                                title="Segment"
-                                options={['Commuter', 'Sport', 'Cruiser', 'Adventure']}
-                                selectedValues={selectedSegments}
-                                onToggle={(v: string) => toggleFilter(setSelectedSegments, v)}
-                                onReset={() => setSelectedSegments([])}
+                                title="Family Features"
+                                options={['Low Seat Height', 'High Mileage', 'Extra Storage', 'Lightweight']}
+                                selectedValues={[]}
+                                onToggle={() => { }}
+                                onReset={() => { }}
                                 showReset
                             />
                         </div>
@@ -329,249 +370,279 @@ function CatalogContent() {
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8">
                             {filteredVehicles.map((v, idx) => {
                                 // Mock Pricing Logic for Demo
-                                const basePriceStr = v.make === 'Royal Enfield' ? '2.24' : '0.88';
+                                const basePriceStr = v.make === 'Royal Enfield' ? '2.15' : '0.85';
                                 const basePrice = parseFloat(basePriceStr) * 100000;
-                                const onRoadPrice = Math.round(basePrice * 1.12); // Approx 12% tax
-                                const offerPrice = Math.round(onRoadPrice * 0.95); // 5% Discount
+                                const onRoadPrice = Math.round(basePrice * 1.15); // Approx 15% tax/reg
+                                const offerPrice = Math.round(onRoadPrice * 0.94); // 6% Discount
                                 const saving = onRoadPrice - offerPrice;
 
+                                // Calculate monthly EMI dynamically based on sidebar state
+                                // Formula: P * r * (1+r)^n / ((1+r)^n - 1)
+                                // Interest rate: 10% (0.10)
+                                const annualInterestRate = 0.10;
+                                const monthlyRate = annualInterestRate / 12;
+                                const loanAmount = Math.max(0, offerPrice - downpayment);
+                                const emiValue = loanAmount > 0
+                                    ? Math.round(loanAmount * monthlyRate * Math.pow(1 + monthlyRate, tenure) / (Math.pow(1 + monthlyRate, tenure) - 1))
+                                    : 0;
+
+                                // Owner-centric stats
+                                const mileage = v.bodyType === 'SCOOTER' ? '45-50' : '35-42';
+                                const gc = v.specifications?.dimensions?.groundClearance || '165 mm';
+                                const seatHeight = v.specifications?.dimensions?.seatHeight || '765 mm';
+
                                 return (
-                                    <Link
+                                    <div
                                         key={v.id}
-                                        href={`/store/${slugify(v.make)}/${slugify(v.model)}/${slugify(v.variant)}/${slugify(v.color || 'Standard')}`}
-                                        className="group relative bg-slate-950 border border-white/5 rounded-[2.5rem] overflow-hidden hover:border-blue-500/30 transition-all duration-700 flex flex-col animate-in fade-in slide-in-from-bottom-8"
-                                        style={{ animationDelay: `${idx * 100}ms` }}
+                                        className="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-[2rem] overflow-hidden hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 flex flex-col animate-in fade-in slide-in-from-bottom-8 shadow-sm"
+                                        style={{ animationDelay: `${idx * 50}ms` }}
                                     >
-                                        {/* Blueprint Overlay Background */}
-                                        <div className="absolute inset-x-0 top-0 h-1/2 bg-[radial-gradient(circle_at_top,rgba(37,99,235,0.05)_0%,transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-
-                                        {/* Image Section - Compacted */}
-                                        <div className="aspect-[16/9] bg-slate-900/50 flex items-center justify-center p-8 overflow-hidden relative border-b border-white/5">
-                                            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.03] grayscale pointer-events-none" />
-
-                                            {/* Status Badges - Compacted */}
-                                            <div className="absolute top-6 left-6 z-20 flex flex-col gap-3">
-                                                <div className="flex items-center gap-2 px-2.5 py-1 bg-blue-600/10 border border-blue-500/20 rounded-full backdrop-blur-md">
-                                                    <div className="w-1 h-1 rounded-full bg-blue-500 animate-pulse" />
-                                                    <span className="text-[7px] font-black uppercase tracking-[0.2em] text-blue-500 italic">{v.id.substring(0, 6).toUpperCase()}</span>
+                                        {/* Image Section - Prominent & Dynamic */}
+                                        <div className="aspect-[4/3] bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center p-6 overflow-hidden relative group-hover:bg-slate-100 dark:group-hover:bg-slate-800 transition-colors">
+                                            {/* Flash Badges */}
+                                            <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
+                                                <div className="flex items-center gap-1.5 px-3 py-1 bg-green-500 text-white rounded-full shadow-lg shadow-green-500/20 animate-pulse">
+                                                    <Zap size={10} className="fill-white" />
+                                                    <span className="text-[9px] font-black uppercase tracking-widest">Lowest EMI</span>
                                                 </div>
+                                                {v.make === 'Honda' && (
+                                                    <div className="px-3 py-1 bg-blue-600 text-white rounded-full text-[8px] font-black uppercase tracking-widest">
+                                                        Best Seller
+                                                    </div>
+                                                )}
                                             </div>
 
-                                            <button className="absolute top-6 right-6 z-20 w-10 h-10 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-all shadow-xl">
+                                            <button className="absolute top-4 right-4 z-20 w-10 h-10 bg-white/80 dark:bg-black/40 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-full flex items-center justify-center text-slate-400 hover:text-rose-500 transition-all shadow-md">
                                                 <Heart className="w-4 h-4" />
                                             </button>
 
                                             {/* Vehicle Image Placeholder */}
-                                            <div className="relative w-full h-full flex items-center justify-center transform group-hover:scale-105 transition-transform duration-[2s] ease-out">
-                                                <span className="font-black text-[9px] text-slate-700 uppercase italic opacity-20 text-center tracking-[0.4em] leading-relaxed absolute">
+                                            <div className="relative w-full h-full flex items-center justify-center transform group-hover:scale-110 transition-transform duration-700 ease-out">
+                                                <div className="absolute inset-0 bg-gradient-to-t from-slate-200/50 dark:from-slate-900/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                <span className="font-black text-[10px] text-slate-300 dark:text-slate-700 uppercase italic opacity-40 text-center tracking-[0.5em] leading-relaxed">
                                                     {v.make} <br /> {v.model}
                                                 </span>
-                                                <div className="w-32 h-1 bg-blue-500/10 blur-xl absolute bottom-0 animate-pulse" />
+                                                {/* Simulated Shadow */}
+                                                <div className="w-48 h-2 bg-black/10 dark:bg-black/40 blur-xl absolute bottom-10 rounded-full group-hover:scale-125 transition-transform" />
                                             </div>
                                         </div>
 
-                                        {/* Details Section - Compacted */}
-                                        <div className="p-6 md:p-8 space-y-6 flex-1 flex flex-col relative bg-gradient-to-b from-transparent to-slate-950/50">
-                                            <div className="space-y-3">
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-500 italic px-2 py-0.5 border border-blue-500/20 rounded-md bg-blue-500/5">{v.make}</span>
-                                                    <div className="h-px flex-1 bg-white/5" />
+                                        {/* Content Section - Commercial Focus */}
+                                        <div className="p-6 space-y-5 flex-1 flex flex-col">
+                                            {/* Header: Title & Brand */}
+                                            <div className="space-y-1">
+                                                <div className="flex items-center justify-between">
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 italic">{v.make}</p>
+                                                    <div className="flex gap-0.5">
+                                                        {[1, 2, 3, 4].map(s => <Star key={s} size={10} className="text-amber-400 fill-amber-400" />)}
+                                                        <Star size={10} className="text-slate-300 fill-slate-300" />
+                                                    </div>
                                                 </div>
+                                                <h3 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white leading-none">
+                                                    {v.model}
+                                                    <span className="block text-[10px] font-bold text-slate-400 mt-1">{v.variant}</span>
+                                                </h3>
+                                            </div>
+
+                                            {/* Commercial Soul: The EMI Box (VARIANT 4 STYLE) */}
+                                            <div className="bg-green-500/5 dark:bg-green-500/10 border border-green-500/20 rounded-2xl p-4 flex items-center justify-between group-hover:bg-green-500/10 dark:group-hover:bg-green-500/20 transition-colors">
                                                 <div className="space-y-0.5">
-                                                    <h3 className="text-2xl font-black uppercase tracking-tighter italic text-white group-hover:text-blue-500 transition-colors duration-500">{v.model}</h3>
-                                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] italic">{v.variant}</p>
+                                                    <p className="text-[8px] font-black uppercase tracking-[0.2em] text-green-600 dark:text-green-500 italic">Pay Only Monthly</p>
+                                                    <p className="text-xl font-black text-slate-900 dark:text-white tracking-tighter">
+                                                        ₹{emiValue.toLocaleString('en-IN')}<span className="text-xs font-bold text-slate-400 italic">/mo*</span>
+                                                    </p>
+                                                </div>
+                                                <div className="bg-green-500 text-white text-[9px] font-black px-2 py-1 rounded-lg shadow-lg shadow-green-500/20 uppercase tracking-widest group-hover:scale-110 transition-transform">
+                                                    Apply
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-6 border-y border-white/5 py-6">
-                                                <div className="space-y-2">
-                                                    <div className="text-[8px] font-bold uppercase text-slate-600 tracking-[0.2em] italic flex items-center gap-2">
-                                                        <div className="w-1 h-1 bg-slate-700 rounded-full" />
-                                                        Displacement
-                                                    </div>
-                                                    <p className="text-sm font-black text-slate-200 italic font-mono tracking-tighter">{v.specifications?.engine?.displacement || '000.00'} <span className="text-[8px] text-slate-600 ml-0.5">CC</span></p>
+                                            {/* Owner Stats: Real Value (Mileage, GC) */}
+                                            <div className="grid grid-cols-3 gap-4 border-y border-slate-100 dark:border-white/5 py-4">
+                                                <div className="text-center space-y-1">
+                                                    <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Mileage</p>
+                                                    <p className="text-[11px] font-black text-slate-700 dark:text-slate-300 italic">{mileage} <span className="text-[8px]">kmpl</span></p>
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <div className="text-[8px] font-bold uppercase text-slate-600 tracking-[0.2em] italic flex items-center gap-2">
-                                                        <div className="w-1 h-1 bg-slate-700 rounded-full" />
-                                                        Efficiency
-                                                    </div>
-                                                    <p className="text-sm font-black text-slate-200 italic font-mono tracking-tighter">48.2 <span className="text-[8px] text-slate-600 ml-0.5">KM/L</span></p>
+                                                <div className="text-center space-y-1 border-x border-slate-100 dark:border-white/5">
+                                                    <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Clearance</p>
+                                                    <p className="text-[11px] font-black text-slate-700 dark:text-slate-300 italic">{gc}</p>
+                                                </div>
+                                                <div className="text-center space-y-1">
+                                                    <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Seat Height</p>
+                                                    <p className="text-[11px] font-black text-slate-700 dark:text-slate-300 italic">{seatHeight}</p>
                                                 </div>
                                             </div>
 
-                                            <div className="mt-auto pt-4 space-y-4">
-                                                {/* Revised Pricing Section */}
-                                                <div className="flex items-end justify-between">
-                                                    <div>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-[10px] font-bold text-slate-500 line-through decoration-slate-500/50">
-                                                                ₹{onRoadPrice.toLocaleString('en-IN')}
-                                                            </span>
-                                                            <span className="text-[9px] font-black uppercase text-green-500 bg-green-500/10 px-1.5 py-0.5 rounded tracking-wider">
-                                                                SAVE ₹{saving.toLocaleString('en-IN')}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex items-baseline gap-1 mt-1">
-                                                            <p className="text-2xl md:text-3xl font-black text-white italic tracking-tighter font-mono">
-                                                                ₹{offerPrice.toLocaleString('en-IN')}
-                                                            </p>
-                                                        </div>
-                                                        <p className="text-[8px] font-bold text-slate-600 uppercase tracking-wider mt-1">On-Road Price</p>
+                                            {/* Final Action: Pricing & Book Now */}
+                                            <div className="mt-auto pt-2 flex items-center justify-between">
+                                                <div className="space-y-0.5">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[9px] font-bold text-slate-400 line-through">₹{onRoadPrice.toLocaleString('en-IN')}</span>
+                                                        <span className="text-[8px] font-black text-blue-600 dark:text-blue-400 uppercase">Save ₹{saving.toLocaleString('en-IN')}</span>
                                                     </div>
-
-                                                    <div
-                                                        className="px-6 py-3 bg-white text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all hover:bg-blue-600 hover:text-white hover:scale-105 active:scale-95 italic shadow-lg mb-1"
-                                                    >
-                                                        Configure
-                                                    </div>
+                                                    <p className="text-lg font-black text-slate-900 dark:text-white tracking-tighter">₹{offerPrice.toLocaleString('en-IN')}</p>
+                                                    <p className="text-[7px] font-bold text-slate-500 uppercase tracking-widest italic">Final On-Road Price</p>
                                                 </div>
+                                                <Link
+                                                    href={`/store/${slugify(v.make)}/${slugify(v.model)}/${slugify(v.variant)}`}
+                                                    className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-red-500/20 active:scale-95 transition-all italic hover:-translate-y-1 animate-pulse"
+                                                >
+                                                    Book Now
+                                                </Link>
                                             </div>
                                         </div>
 
-                                        {/* Scan Line Detail */}
-                                        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-500/50 to-transparent -translate-y-full group-hover:animate-scan transition-opacity" />
-                                    </Link>
+                                        {/* Inline Social Proof (Every 4th card) */}
+                                        {idx % 4 === 3 && (
+                                            <div className="absolute bottom-0 inset-x-0 p-4 bg-blue-600/90 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all duration-700 transform translate-y-full group-hover:translate-y-0 z-30">
+                                                <p className="text-white text-[10px] font-bold italic text-center">"Lowest EMI and delivery within 48 hours. Best deal for my family!"</p>
+                                                <p className="text-blue-200 text-[8px] font-black uppercase text-center mt-1">- Rajesh, Ludhiana</p>
+                                            </div>
+                                        )}
+                                    </div>
                                 );
                             })}
                         </div>
-                    )}
+                    )
+                    }
                 </div>
             </div>
 
             {/* Mobile Filter Drawer */}
-            {isMobileFiltersOpen && (
-                <div className="fixed inset-0 z-[200] lg:hidden">
-                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={() => setIsMobileFiltersOpen(false)} />
-                    <div className="absolute bottom-0 left-0 right-0 bg-slate-900 border-t border-white/10 rounded-t-[2.5rem] p-8 pb-12 space-y-8 animate-in slide-in-from-bottom duration-300 shadow-3xl max-h-[85vh] overflow-y-auto">
-                        <div className="flex items-center justify-between sticky top-0 bg-slate-900 z-10 pb-4 border-b border-white/5">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
-                                    <SlidersHorizontal size={20} className="text-blue-500" />
+            {
+                isMobileFiltersOpen && (
+                    <div className="fixed inset-0 z-[200] lg:hidden">
+                        <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={() => setIsMobileFiltersOpen(false)} />
+                        <div className="absolute bottom-0 left-0 right-0 bg-slate-900 border-t border-white/10 rounded-t-[2.5rem] p-8 pb-12 space-y-8 animate-in slide-in-from-bottom duration-300 shadow-3xl max-h-[85vh] overflow-y-auto">
+                            <div className="flex items-center justify-between sticky top-0 bg-slate-900 z-10 pb-4 border-b border-white/5">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
+                                        <SlidersHorizontal size={20} className="text-blue-500" />
+                                    </div>
+                                    <h3 className="text-xl font-black uppercase italic tracking-tight">Refine Results</h3>
                                 </div>
-                                <h3 className="text-xl font-black uppercase italic tracking-tight">Refine Results</h3>
+                                <button
+                                    onClick={() => setIsMobileFiltersOpen(false)}
+                                    className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white"
+                                >
+                                    Close
+                                </button>
                             </div>
-                            <button
-                                onClick={() => setIsMobileFiltersOpen(false)}
-                                className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white"
-                            >
-                                Close
-                            </button>
-                        </div>
 
-                        {/* Search in Mobile Drawer */}
-                        <div className="space-y-4">
-                            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Quick Find</h4>
-                            <div className="relative">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
-                                <input
-                                    type="text"
-                                    placeholder="SEARCH BRAND OR MODEL..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] outline-none focus:border-blue-500 transition-all placeholder:text-slate-700"
+                            {/* Search in Mobile Drawer */}
+                            <div className="space-y-4">
+                                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Quick Find</h4>
+                                <div className="relative">
+                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
+                                    <input
+                                        type="text"
+                                        placeholder="SEARCH BRAND OR MODEL..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] outline-none focus:border-blue-500 transition-all placeholder:text-slate-700"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Brand Filter in Mobile Drawer */}
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Brand Selection</h4>
+                                    {(selectedMakes.length > 0) && (
+                                        <button onClick={() => setSelectedMakes([])} className="text-[9px] font-black uppercase text-blue-500">Clear</button>
+                                    )}
+                                </div>
+                                <div className="flex flex-wrap gap-3">
+                                    {brands.map(brand => (
+                                        <button
+                                            key={brand}
+                                            onClick={() => toggleMake(brand)}
+                                            className={`px-4 py-3 rounded-xl border flex items-center gap-2 transition-all ${selectedMakes.includes(brand) ? 'bg-blue-600 border-blue-600' : 'bg-white/5 border-white/10'}`}
+                                        >
+                                            <span className={`text-[10px] font-bold uppercase italic ${selectedMakes.includes(brand) ? 'text-white' : 'text-slate-400'}`}>{brand}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="space-y-10">
+                                {/* Technical Filters in Mobile Drawer */}
+                                <FilterGroup
+                                    title="Make"
+                                    options={brands}
+                                    selectedValues={selectedMakes}
+                                    onToggle={(v: string) => toggleMake(v)}
+                                    onReset={() => setSelectedMakes([])}
+                                    showReset
+                                />
+                                <FilterGroup
+                                    title="CC Range"
+                                    options={['< 125cc', '125-250cc', '250-500cc', '> 500cc']}
+                                    selectedValues={selectedCC}
+                                    onToggle={(v: string) => toggleFilter(setSelectedCC, v)}
+                                    onReset={() => setSelectedCC([])}
+                                    showReset
+                                />
+
+                                <FilterGroup
+                                    title="Brake System"
+                                    options={['Drum', 'Disc (Front)', 'Disc (Rear)', 'Single ABS', 'Dual ABS', 'CBS']}
+                                    selectedValues={selectedBrakes}
+                                    onToggle={(v: string) => toggleFilter(setSelectedBrakes, v)}
+                                    onReset={() => setSelectedBrakes([])}
+                                    showReset
+                                />
+
+                                <FilterGroup
+                                    title="Wheel Type"
+                                    options={['Alloy', 'Spoke', 'Cast Aluminum', 'Carbon Fiber']}
+                                    selectedValues={selectedWheels}
+                                    onToggle={(v: string) => toggleFilter(setSelectedWheels, v)}
+                                    onReset={() => setSelectedWheels([])}
+                                    showReset
+                                />
+
+                                <FilterGroup
+                                    title="Console"
+                                    options={['Analog', 'Semi-Digital', 'Full Digital', 'TFT Display', 'Bluetooth Ready']}
+                                    selectedValues={selectedConsole}
+                                    onToggle={(v: string) => toggleFilter(setSelectedConsole, v)}
+                                    onReset={() => setSelectedConsole([])}
+                                    showReset
+                                />
+
+                                <FilterGroup
+                                    title="Power Source"
+                                    options={['Petrol', 'Electric', 'CNG']}
+                                    selectedValues={selectedFuels}
+                                    onToggle={(v: string) => toggleFilter(setSelectedFuels, v)}
+                                    onReset={() => setSelectedFuels([])}
+                                    showReset
+                                />
+
+                                <FilterGroup
+                                    title="Segment"
+                                    options={['Commuter', 'Sport', 'Cruiser', 'Adventure']}
+                                    selectedValues={selectedSegments}
+                                    onToggle={(v: string) => toggleFilter(setSelectedSegments, v)}
+                                    onReset={() => setSelectedSegments([])}
+                                    showReset
                                 />
                             </div>
-                        </div>
 
-                        {/* Brand Filter in Mobile Drawer */}
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between">
-                                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Brand Selection</h4>
-                                {(selectedMakes.length > 0) && (
-                                    <button onClick={() => setSelectedMakes([])} className="text-[9px] font-black uppercase text-blue-500">Clear</button>
-                                )}
+                            <div className="pt-4 sticky bottom-0 bg-slate-900 pb-2">
+                                <button
+                                    onClick={() => setIsMobileFiltersOpen(false)}
+                                    className="w-full py-4 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl"
+                                >
+                                    Show {filteredVehicles.length} Machines
+                                </button>
                             </div>
-                            <div className="flex flex-wrap gap-3">
-                                {brands.map(brand => (
-                                    <button
-                                        key={brand}
-                                        onClick={() => toggleMake(brand)}
-                                        className={`px-4 py-3 rounded-xl border flex items-center gap-2 transition-all ${selectedMakes.includes(brand) ? 'bg-blue-600 border-blue-600' : 'bg-white/5 border-white/10'}`}
-                                    >
-                                        <span className={`text-[10px] font-bold uppercase italic ${selectedMakes.includes(brand) ? 'text-white' : 'text-slate-400'}`}>{brand}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="space-y-10">
-                            {/* Technical Filters in Mobile Drawer */}
-                            <FilterGroup
-                                title="Make"
-                                options={brands}
-                                selectedValues={selectedMakes}
-                                onToggle={(v: string) => toggleMake(v)}
-                                onReset={() => setSelectedMakes([])}
-                                showReset
-                            />
-                            <FilterGroup
-                                title="CC Range"
-                                options={['< 125cc', '125-250cc', '250-500cc', '> 500cc']}
-                                selectedValues={selectedCC}
-                                onToggle={(v: string) => toggleFilter(setSelectedCC, v)}
-                                onReset={() => setSelectedCC([])}
-                                showReset
-                            />
-
-                            <FilterGroup
-                                title="Brake System"
-                                options={['Drum', 'Disc (Front)', 'Disc (Rear)', 'Single ABS', 'Dual ABS', 'CBS']}
-                                selectedValues={selectedBrakes}
-                                onToggle={(v: string) => toggleFilter(setSelectedBrakes, v)}
-                                onReset={() => setSelectedBrakes([])}
-                                showReset
-                            />
-
-                            <FilterGroup
-                                title="Wheel Type"
-                                options={['Alloy', 'Spoke', 'Cast Aluminum', 'Carbon Fiber']}
-                                selectedValues={selectedWheels}
-                                onToggle={(v: string) => toggleFilter(setSelectedWheels, v)}
-                                onReset={() => setSelectedWheels([])}
-                                showReset
-                            />
-
-                            <FilterGroup
-                                title="Console"
-                                options={['Analog', 'Semi-Digital', 'Full Digital', 'TFT Display', 'Bluetooth Ready']}
-                                selectedValues={selectedConsole}
-                                onToggle={(v: string) => toggleFilter(setSelectedConsole, v)}
-                                onReset={() => setSelectedConsole([])}
-                                showReset
-                            />
-
-                            <FilterGroup
-                                title="Power Source"
-                                options={['Petrol', 'Electric', 'CNG']}
-                                selectedValues={selectedFuels}
-                                onToggle={(v: string) => toggleFilter(setSelectedFuels, v)}
-                                onReset={() => setSelectedFuels([])}
-                                showReset
-                            />
-
-                            <FilterGroup
-                                title="Segment"
-                                options={['Commuter', 'Sport', 'Cruiser', 'Adventure']}
-                                selectedValues={selectedSegments}
-                                onToggle={(v: string) => toggleFilter(setSelectedSegments, v)}
-                                onReset={() => setSelectedSegments([])}
-                                showReset
-                            />
-                        </div>
-
-                        <div className="pt-4 sticky bottom-0 bg-slate-900 pb-2">
-                            <button
-                                onClick={() => setIsMobileFiltersOpen(false)}
-                                className="w-full py-4 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl"
-                            >
-                                Show {filteredVehicles.length} Machines
-                            </button>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }
 
