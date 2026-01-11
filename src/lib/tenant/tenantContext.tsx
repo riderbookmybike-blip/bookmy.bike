@@ -201,7 +201,11 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                         }
                     }
 
-                    const fullName = profileResult.data?.full_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Member';
+                    const fullName = profileResult.data?.full_name ||
+                        user.user_metadata?.full_name ||
+                        user.user_metadata?.name ||
+                        user.email?.split('@')[0] ||
+                        'Member';
                     setUserName(fullName);
                     localStorage.setItem('user_name', fullName);
                     // Notify other components (like MarketplaceHeader) that auth state changed
