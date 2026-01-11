@@ -148,13 +148,9 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                 if (name) setFullName(name);
             }
 
-            // 3. Send OTP (If user exists OR if new user has entered name)
-            const payload = {
-                mobile: '91' + phone,
-                template_id: '64d36efbd6fc0526e6329063'
-            };
-
-            console.log('Sending OTP Payload:', payload);
+            // 3. Send OTP
+            // REVERT: Use simple string identifier as per original working code.
+            // The template ID is handled by the widget configuration loaded in MSG91Initializer.
 
             if (!(window as any).sendOtp) {
                 console.error('MSG91 sendOtp not found on window');
@@ -164,7 +160,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
             }
 
             (window as any).sendOtp(
-                payload,
+                `91${phone}`,
                 (data: any) => {
                     console.log('OTP Sent Success:', data);
                     setStep('OTP');
