@@ -77,28 +77,54 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
     const [msg91Loaded, setMsg91Loaded] = useState(false);
 
     useEffect(() => {
-        // Define global callback if needed or handle via window ref
-        if (typeof window !== 'undefined') {
-            (window as any).onMsg91Load = () => {
-                const configuration = {
-                    widgetId: "36616b677853323939363231",
-                    tokenAuth: "477985T3uAd4stn6963525fP1",
-                    identifier: "mobile",
-                    exposeMethods: true,
-                    success: (data: any) => {
-                        console.log('MSG91 Init Success:', data);
-                        setMsg91Loaded(true);
-                    },
-                    failure: (error: any) => {
-                        console.error('MSG91 Init Failure:', error);
-                    }
-                };
-                // Initialize
-                if ((window as any).initSendOTP) {
-                    (window as any).initSendOTP(configuration);
+        const initMSG91 = () => {
+            if (typeof window === 'undefined') return;
+
+            const configuration = {
+                widgetId: "36616b677853323939363231",
+                tokenAuth: "477985T3uAd4stn6963525fP1",
+                identifier: "mobile",
+                exposeMethods: true,
+                success: (data: any) => {
+                    console.log('MSG91 Init Success:', data);
                     setMsg91Loaded(true);
+                },
+                failure: (error: any) => {
+                    console.error('MSG91 Init Failure:', error);
                 }
             };
+
+            if ((window as any).initSendOTP) {
+                (window as any).initSendOTP(configuration);
+                console.log('MSG91 initialized via initSendOTP');
+                setMsg91Loaded(true);
+            }
+        };
+
+        if (typeof window !== 'undefined') {
+            // Check if already loaded
+            if ((window as any).initSendOTP) {
+                initMSG91();
+            } else {
+                // Check if script exists
+                const scriptId = 'msg91-otp-script';
+                if (!document.getElementById(scriptId)) {
+                    const script = document.createElement('script');
+                    script.id = scriptId;
+                    script.src = "https://verify.msg91.com/otp-provider.js";
+                    script.defer = true;
+                    script.onload = initMSG91;
+                    document.body.appendChild(script);
+                } else {
+                    // Script exists but might not be loaded; try to attach listener or just init if ready
+                    const script = document.getElementById(scriptId) as HTMLScriptElement;
+                    script.addEventListener('load', initMSG91);
+                    // Fallback check
+                    setTimeout(() => {
+                        if ((window as any).initSendOTP && !msg91Loaded) initMSG91();
+                    }, 1000);
+                }
+            }
         }
     }, []);
 
@@ -432,13 +458,8 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                     <Globe size={16} className="text-slate-300" />
                 </div>
             </div>
-            <script
-                src="https://verify.msg91.com/otp-provider.js"
-                defer
-                onLoad={() => {
-                    if ((window as any).onMsg91Load) (window as any).onMsg91Load();
-                }}
-            ></script>
+            {/* Script removed from here to be handled programmatically in useEffect for better control */}
         </div>
     );
 }
+
