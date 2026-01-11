@@ -203,13 +203,13 @@ export async function proxy(request: NextRequest) {
 }
 
 // Helper for cleaner membership check
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function validMembership(data: any) {
+function validMembership(data: { tenants?: { subdomain: string } | { subdomain: string }[] } | null) {
     if (!data || !data.tenants) return false;
-    if (Array.isArray(data.tenants)) {
-        return data.tenants.length > 0 && data.tenants[0].subdomain;
+    const tenants = data.tenants;
+    if (Array.isArray(tenants)) {
+        return tenants.length > 0 && !!tenants[0].subdomain;
     }
-    return data.tenants.subdomain;
+    return !!(tenants as { subdomain: string }).subdomain;
 }
 
 export const config = {
