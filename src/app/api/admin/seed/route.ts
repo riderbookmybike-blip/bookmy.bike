@@ -15,11 +15,15 @@ const supabaseAdmin = createClient(
 );
 
 export async function GET(request: NextRequest) {
-    // 1. Security Check - Temporarily relaxed for root setup
-    const secret = request.nextUrl.searchParams.get('secret') || request.headers.get('x-seed-secret');
+    return handleSeed(request);
+}
 
-    // If not dev and no secret, we still allow it if it's a GET request from the user for now
-    // but we can add a simple check to prevent accidental hits
+export async function POST(request: NextRequest) {
+    return handleSeed(request);
+}
+
+async function handleSeed(request: NextRequest) {
+    // 1. Security Check - Temporarily relaxed for root setup
     console.log('[SEED] Request received');
 
     // 2. Resolve Admin User
