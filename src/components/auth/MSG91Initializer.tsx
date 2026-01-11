@@ -13,15 +13,24 @@ export default function MSG91Initializer() {
                 identifier: "mobile",
                 exposeMethods: true,
                 success: (data: any) => {
-                    console.log('[MSG91] Background Init Success:', data);
-                    // Dispatch event to notify listeners (like LoginSidebar)
-                    window.dispatchEvent(new Event('msg91_app_ready'));
-                    (window as any).isMsg91Ready = true;
+                    console.log('[MSG91] Success Callback:', data);
                 },
                 failure: (error: any) => {
-                    console.error('[MSG91] Background Init Failure:', error);
+                    console.error('[MSG91] Failure Callback:', error);
                 }
             };
+
+            const checkMethodsInterval = setInterval(() => {
+                if ((window as any).sendOtp && (window as any).verifyOtp) {
+                    console.log('[MSG91] Methods Available - App Ready');
+                    (window as any).isMsg91Ready = true;
+                    window.dispatchEvent(new Event('msg91_app_ready'));
+                    clearInterval(checkMethodsInterval);
+                }
+            }, 100);
+
+            // Timeout to clear interval if it fails
+            setTimeout(() => clearInterval(checkMethodsInterval), 10000);
 
             if ((window as any).initSendOTP) {
                 (window as any).initSendOTP(configuration);
@@ -35,13 +44,12 @@ export default function MSG91Initializer() {
             script.src = "https://verify.msg91.com/otp-provider.js";
             script.defer = true;
             script.onload = () => {
-                // The script loads initSendOTP into window
                 initMSG91();
             };
             document.body.appendChild(script);
         } else {
-            // Already exists, just init if function ready
-            if ((window as any).initSendOTP) initMSG91();
+            // Already exists
+            initMSG91();
         }
 
     }, []);
