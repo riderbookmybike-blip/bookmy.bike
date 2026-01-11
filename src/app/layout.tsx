@@ -33,6 +33,8 @@ export async function generateMetadata(): Promise<Metadata> {
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { TenantProvider } from "@/lib/tenant/tenantContext";
 
+import MSG91Initializer from "@/components/auth/MSG91Initializer";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -46,6 +48,7 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <TenantProvider>
+            <MSG91Initializer />
             {children}
           </TenantProvider>
         </ThemeProvider>
