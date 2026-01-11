@@ -6,6 +6,7 @@ import DealerDashboard from '@/components/dashboard/DealerDashboard';
 import BankDashboard from '@/components/dashboard/BankDashboard';
 import AdminDashboard from '@/components/dashboard/AdminDashboard';
 import MarketplaceDashboard from '@/components/dashboard/MarketplaceDashboard';
+import UserDashboard from '@/components/dashboard/UserDashboard';
 
 // MAIN PAGE SHELL
 export default function DashboardPage() {
@@ -28,7 +29,9 @@ export default function DashboardPage() {
             {tenantType === 'DEALER' && <DealerDashboard />}
             {tenantType === 'BANK' && <BankDashboard />}
             {(tenantType === 'MARKETPLACE' || tenantType === 'SUPER_ADMIN' as any) && (
-                activeRole === 'MARKETPLACE_ADMIN' ? <MarketplaceDashboard /> : <AdminDashboard />
+                (activeRole === 'SUPER_ADMIN' || activeRole === 'MARKETPLACE_ADMIN')
+                    ? <AdminDashboard />
+                    : <UserDashboard />
             )}
         </div>
     );
