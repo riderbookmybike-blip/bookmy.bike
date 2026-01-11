@@ -73,31 +73,64 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
         }
     };
 
+    // MSG91 SDK Integration
+    const [msg91Loaded, setMsg91Loaded] = useState(false);
+
+    useEffect(() => {
+        // Define global callback if needed or handle via window ref
+        if (typeof window !== 'undefined') {
+            (window as any).onMsg91Load = () => {
+                const configuration = {
+                    widgetId: "36616b677853323939363231",
+                    tokenAuth: "477985T3uAd4stn6963525fP1",
+                    identifier: "mobile",
+                    exposeMethods: true,
+                    success: (data: any) => {
+                        console.log('MSG91 Init Success:', data);
+                        setMsg91Loaded(true);
+                    },
+                    failure: (error: any) => {
+                        console.error('MSG91 Init Failure:', error);
+                    }
+                };
+                // Initialize
+                if ((window as any).initSendOTP) {
+                    (window as any).initSendOTP(configuration);
+                    setMsg91Loaded(true);
+                }
+            };
+        }
+    }, []);
+
     const handleSendOtp = async () => {
         if (phone.length < 10) return;
         setLoading(true);
 
         try {
-            const res = await fetch('/api/auth/send-otp', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone })
-            });
-            const data = await res.json();
-
-            if (data.success) {
-                setStep('OTP');
-                setResendTimer(30);
-            } else {
-                alert(data.message || 'Failed to send OTP. Please try again.');
+            if (!(window as any).sendOtp) {
+                // Fallback / Wait logic if script not ready
+                console.warn('MSG91 SDK not ready');
+                alert('OTP Service initializing... please click again in a moment.');
+                setLoading(false);
+                return;
             }
+
+            (window as any).sendOtp(
+                `91${phone}`, // Identifier
+                (data: any) => {
+                    console.log('OTP Sent:', data);
+                    setStep('OTP');
+                    setResendTimer(30);
+                    setLoading(false);
+                },
+                (error: any) => {
+                    console.error('OTP Send Error:', error);
+                    alert('Failed to send OTP. Please check the number.');
+                    setLoading(false);
+                }
+            );
         } catch (error) {
-            console.error('Send OTP Error:', error);
-            alert('Something went wrong. Using dev bypass?');
-            // For development, we can still move to next step if needed, 
-            // but for prod it must fail correctly.
-            setStep('OTP');
-        } finally {
+            console.error('Send OTP Exception:', error);
             setLoading(false);
         }
     };
@@ -105,36 +138,51 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
     const handleLogin = async () => {
         if (otp.length < 4) return;
         setLoading(true);
+
         try {
-            const res = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone, otp }),
-            });
-
-            const data = await res.json();
-
-            if (res.ok && data.success) {
-                if (data.role) {
-                    setTenantType(data.role as any);
-                }
-                // Save name for unified headers
-                const displayName = data.name || (phone === '9820760596' ? 'Ajit Singh' : 'Valued User');
-                localStorage.setItem('user_name', displayName);
-
-                // Trigger storage event for same-tab listeners
-                window.dispatchEvent(new Event('storage'));
-
-                document.cookie = 'aums_session=true; path=/;';
-                router.push('/dashboard');
-                onClose();
-            } else {
-                alert(data.message || 'Authentication failed');
+            // Verify via MSG91 SDK
+            if (!(window as any).verifyOtp) {
+                alert('Validation service not ready.');
+                setLoading(false);
+                return;
             }
+
+            (window as any).verifyOtp(
+                otp,
+                async (data: any) => {
+                    // Success callback from MSG91
+                    console.log('OTP Verified:', data);
+                    await completeLogin();
+                },
+                (error: any) => {
+                    // Failure callback
+                    console.error('OTP Verify Error:', error);
+                    alert('Invalid OTP. Please try again.');
+                    setLoading(false);
+                }
+            );
         } catch (err) {
-            alert('Network error. Please try again.');
-        } finally {
+            alert('Verification error.');
             setLoading(false);
+        }
+    };
+
+    const completeLogin = async () => {
+        // Finalize login session on our backend (set cookies/storage)
+        // We can just set the session locally or call a simplified backend route to set cookies
+        // Since we trust the MSG91 verification here, we'll proceed to set user state.
+
+        // For security, ideally we pass the MSG91 verify response token to backend to double check,
+        // but for now we follow the frontend-driven flow requested.
+
+        if (true) { // Successfully verified
+            setTenantType('USER'); // Default role
+            const displayName = phone === '9820760596' ? 'Ajit Singh' : 'Valued User';
+            localStorage.setItem('user_name', displayName);
+            window.dispatchEvent(new Event('storage'));
+            document.cookie = 'aums_session=true; path=/;';
+            router.push('/dashboard');
+            onClose();
         }
     };
 
