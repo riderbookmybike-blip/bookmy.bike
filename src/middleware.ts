@@ -118,6 +118,8 @@ export async function middleware(request: NextRequest) {
     }
 
     // F. AUTHORIZATION (Authenticated User Checks)
+    // Always allow auth routes to bypass role checks (enables Switching Accounts)
+    if (isAuthRoute) return response;
 
     // 1. AUMS (Super Admin)
     if (currentSubdomain === 'aums') {
@@ -130,10 +132,6 @@ export async function middleware(request: NextRequest) {
             .single();
 
         if (!membership || membership.role !== 'SUPER_ADMIN') {
-            // Allow access to login/auth routes even if role check fails
-            // This prevents a 403 loop and allows "Switch Account"
-            if (isAuthRoute) return response;
-
             return NextResponse.rewrite(new URL('/403', request.url));
         }
         return response;
