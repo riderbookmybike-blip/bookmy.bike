@@ -36,6 +36,7 @@ export default async function VerifyAccessPage() {
     if (host.endsWith(`.${ROOT_DOMAIN}`)) {
         currentSubdomain = host.replace(`.${ROOT_DOMAIN}`, '');
     }
+    console.log('[VerifyAccess] Host:', host, 'Subdomain:', currentSubdomain);
 
     // 1. CRM Mode (Private) -> Check Membership
     const isCRM = ['aums', 'we', 'ltfinance'].includes(currentSubdomain || '');
@@ -63,6 +64,8 @@ export default async function VerifyAccessPage() {
         .eq('id', user.id)
         .single();
 
+    console.log('[VerifyAccess] Profile found:', !!profile, 'Email:', user.email);
+
     if (profile && currentSubdomain) {
         redirect('/dashboard');
     }
@@ -73,7 +76,13 @@ export default async function VerifyAccessPage() {
 
     // AUTO-REGISTRATION for Marketplace (Root Domain)
     if (!currentSubdomain) {
-        const MARKETPLACE_TENANT_ID = '5371fa81-a58a-4a39-aef2-2821268c96c8';
+        // Fetch current Marketplace Tenant ID
+        const { data: settings } = await supabase
+            .from('app_settings')
+            .select('default_owner_tenant_id')
+            .single();
+
+        const MARKETPLACE_TENANT_ID = settings?.default_owner_tenant_id || '5371fa81-a58a-4a39-aef2-2821268c96c8';
 
         // 1. Ensure Profile Exists
         if (!profile) {
@@ -86,13 +95,12 @@ export default async function VerifyAccessPage() {
                     full_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
                     avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
                     tenant_id: MARKETPLACE_TENANT_ID,
-                    role: 'MEMBER'
+                    role: 'STAFF'
                 });
         }
 
         // 2. Ensure Lead Entry Exists (Marketplace Hub)
         // This resolves the user's request for users to appear in leads after login.
-
         const { data: existingLead } = await supabase
             .from('leads')
             .select('id')
