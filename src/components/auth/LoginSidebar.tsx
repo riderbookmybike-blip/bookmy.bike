@@ -258,14 +258,22 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
             window.dispatchEvent(new Event('storage'));
             document.cookie = 'aums_session=true; path=/;';
 
-            // UX: If normal user, stay on page (just reload to update state). If Admin, go to Dashboard.
-            if (activeRole === 'SUPER_ADMIN' || activeRole === 'MARKETPLACE_ADMIN' || activeRole === 'TENANT_ADMIN') {
+            // STRICT DOMAIN SEPARATION
+            const isMarketplaceDomain = window.location.hostname === 'bookmy.bike' || window.location.hostname === 'www.bookmy.bike' || window.location.hostname === 'localhost';
+
+            // Admin Check (Always allow dashboard access for admins)
+            const isAdmin = activeRole === 'SUPER_ADMIN' || activeRole === 'MARKETPLACE_ADMIN' || activeRole === 'TENANT_ADMIN';
+
+            if (isAdmin) {
                 router.push('/dashboard');
-            } else {
-                // For users, we probably want to stay on the same page but refresh auth state
-                // Using window.location.reload() ensures all components re-fetch user state
+            } else if (isMarketplaceDomain) {
+                // CONSUMER SITE: Stay on page, just refresh auth
                 window.location.reload();
+            } else {
+                // OPS SITE (we.bookmy.bike etc): Go to dashboard
+                router.push('/dashboard');
             }
+
             onClose();
         }
     };
