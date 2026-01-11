@@ -162,14 +162,21 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
 
             // SYNC WITH BACKEND
             try {
-                await fetch('/api/auth/msg91/sync', {
+                const syncRes = await fetch('/api/auth/msg91/sync', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ phone, displayName })
                 });
+
+                if (!syncRes.ok) {
+                    const errData = await syncRes.json();
+                    console.error('Sync API Error:', errData);
+                    alert(`Login System Error: ${errData.message || 'Sync Failed'}. Please contact support.`);
+                    // Optional: return; to stop login if strict strictness is required
+                }
             } catch (err) {
-                console.error('Background Sync Failed', err);
-                // Proceed anyway as Client Side is main priority for now
+                console.error('Background Sync Network Error', err);
+                alert('Connection Error with Login Server. Please try again.');
             }
 
             setTenantType('MARKETPLACE'); // Default role
