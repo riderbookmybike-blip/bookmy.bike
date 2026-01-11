@@ -367,8 +367,8 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                         <div className="space-y-6">
                             <button
                                 onClick={step === 'PHONE' ? handleSendOtp : handleLogin}
-                                disabled={loading || (step === 'PHONE' ? phone.length < 10 : otp.length < 4)}
-                                className={`w-full py-6 rounded-[32px] text-xs font-black uppercase tracking-[0.3em] italic flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-[0.98] ${loading ? 'bg-blue-600/50 cursor-wait' : 'bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-500'
+                                disabled={loading || (step === 'PHONE' ? (phone.length < 10 || !msg91Loaded) : otp.length < 4)}
+                                className={`w-full py-6 rounded-[32px] text-xs font-black uppercase tracking-[0.3em] italic flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-[0.98] ${loading || !msg91Loaded ? 'bg-blue-600/50 cursor-wait' : 'bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-500'
                                     } text-white shadow-blue-600/20 disabled:opacity-50`}
                             >
                                 {loading ? (
@@ -377,6 +377,8 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                         <span className="w-1.5 h-1.5 rounded-full bg-white animate-bounce [animation-delay:0.2s]" />
                                         <span className="w-1.5 h-1.5 rounded-full bg-white animate-bounce [animation-delay:0.4s]" />
                                     </div>
+                                ) : !msg91Loaded && step === 'PHONE' ? (
+                                    <span>Connecting Secure Server...</span>
                                 ) : (
                                     <>{step === 'PHONE' ? 'Initialize' : 'Authorize Protocol'} <ArrowRight size={16} /></>
                                 )}
