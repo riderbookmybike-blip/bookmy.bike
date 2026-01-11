@@ -35,9 +35,25 @@ export default function LoginPage() {
     // Removed duplicate useEffect
 
 
+    const [msg91Ready, setMsg91Ready] = useState(false);
+
+    useEffect(() => {
+        if ((window as any).isMsg91Ready) {
+            setMsg91Ready(true);
+        } else {
+            const handleReady = () => setMsg91Ready(true);
+            window.addEventListener('msg91_app_ready', handleReady);
+            return () => window.removeEventListener('msg91_app_ready', handleReady);
+        }
+    }, []);
+
     const handleSendOtp = async (inputPhone?: string) => {
         const targetPhone = inputPhone || phone;
         if (targetPhone.length < 10) return;
+        if (!msg91Ready) {
+            setErrorMsg('Security System Loading... Please wait.');
+            return;
+        }
 
         setStatus('VALIDATING');
         setErrorMsg('');
@@ -52,31 +68,30 @@ export default function LoginPage() {
         try {
             // MSG91 Send
             if (typeof window !== 'undefined' && (window as any).sendOtp) {
-                await new Promise((resolve, reject) => {
-                    (window as any).sendOtp(
-                        {
-                            phoneNumber: `91${targetPhone}`,
-                            organization_id: tenantConfig?.auth?.msg91_widget_id || 'YOUR_MSG91_WIDGET_ID' // Fallback needed
-                        },
-                        (data: any) => {
-                            if (data?.type === 'success') resolve(data);
-                            else reject(new Error('OTP Send Failed'));
-                        },
-                        (err: any) => reject(err)
-                    );
-                });
+                (window as any).sendOtp(
+                    `91${targetPhone}`,
+                    (data: any) => {
+                        console.log('OTP Sent Success:', data);
+                        setStatus('IDLE');
+                        setStep('OTP');
+                    },
+                    (err: any) => {
+                        console.error('OTP Send Error:', err);
+                        setStatus('ERROR');
+                        setErrorMsg('Failed to send OTP. Please try again.');
+                    }
+                );
             } else {
                 console.warn('MSG91 SDK not ready, using mock fallback for dev');
                 // Mock Fallback
                 await new Promise(r => setTimeout(r, 800));
+                setStatus('IDLE');
+                setStep('OTP');
             }
-
-            setStatus('IDLE');
-            setStep('OTP');
         } catch (err) {
-            console.error('OTP Send Error:', err);
+            console.error('Handshake Error:', err);
             setStatus('ERROR');
-            setErrorMsg('Failed to send OTP. Please try again.');
+            setErrorMsg('Failed to initialize handshake.');
         }
     };
 
@@ -89,73 +104,72 @@ export default function LoginPage() {
 
         try {
             // 1. Check DEV BYPASS or MSG91
-            let isVerified = false;
-
             if (targetOtp === '6424') {
-                isVerified = true;
+                await executePostLogin(targetOtp);
             } else if (typeof window !== 'undefined' && (window as any).verifyOtp) {
-                await new Promise((resolve, reject) => {
-                    (window as any).verifyOtp(
-                        {
-                            otp: targetOtp,
-                            phoneNumber: `91${phone}`
-                        },
-                        (data: any) => {
-                            if (data?.type === 'success') {
-                                isVerified = true;
-                                resolve(data);
-                            } else {
-                                reject(new Error('Invalid OTP'));
-                            }
-                        },
-                        (err: any) => reject(err)
-                    );
-                });
+                (window as any).verifyOtp(
+                    targetOtp,
+                    async (data: any) => {
+                        console.log('OTP Verified:', data);
+                        await executePostLogin(targetOtp);
+                    },
+                    (err: any) => {
+                        console.error('OTP Verify Error:', err);
+                        setStatus('ERROR');
+                        setErrorMsg('Invalid OTP or Verification Failed.');
+                    }
+                );
             } else {
                 // Mock fallback for non-MSG91 envs
                 await new Promise(r => setTimeout(r, 600));
-                if (targetOtp === '1234') isVerified = true;
-            }
-
-            if (isVerified) {
-                // Perform Login / Session Creation
-                const res = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone, otp: targetOtp }), // API will trust the client-side verification for now or verify again if token passed
-                });
-
-                const data = await res.json();
-
-                if (res.ok && data.success) {
-                    if (!data.role || !data.name) {
-                        setStatus('ERROR');
-                        setErrorMsg('System Error: Profile incomplete.');
-                        return;
-                    }
-
-                    // Session Persistence
-                    if (data.session) {
-                        await supabase.auth.setSession(data.session);
-                        localStorage.setItem('sb-access-token', data.session.access_token);
-                    }
-
-                    localStorage.setItem('user_name', data.name);
-                    localStorage.setItem('user_role', data.role);
-
-                    if (data.role) setTenantType(data.role as any);
-
-                    setStatus('SUCCESS');
-                    window.location.href = '/dashboard';
+                if (targetOtp === '1234') {
+                    await executePostLogin(targetOtp);
                 } else {
                     setStatus('ERROR');
-                    setErrorMsg(data.message || 'Authentication failed.');
+                    setErrorMsg('Invalid OTP.');
                 }
             }
         } catch (err) {
             console.error('Verification Error:', err);
             setStatus('ERROR');
-            setErrorMsg('Invalid OTP or Verification Failed.');
+            setErrorMsg('Verification system error.');
+        }
+    };
+
+    const executePostLogin = async (targetOtp: string) => {
+        // Perform Login / Session Creation
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone, otp: targetOtp }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            if (!data.role || !data.name) {
+                setStatus('ERROR');
+                setErrorMsg('System Error: Profile incomplete.');
+                return;
+            }
+
+            // Session Persistence
+            if (data.session) {
+                await supabase.auth.setSession(data.session);
+                localStorage.setItem('sb-access-token', data.session.access_token);
+            }
+
+            localStorage.setItem('user_name', data.name);
+            localStorage.setItem('user_role', data.role);
+            localStorage.setItem('active_role', data.role); // Set active role for dashboard redirect
+
+            if (data.role) setTenantType(data.role as any);
+
+            setStatus('SUCCESS');
+            window.location.href = '/dashboard';
+        } else {
+            setStatus('ERROR');
+            setErrorMsg(data.message || 'Authentication failed.');
         }
     };
 
