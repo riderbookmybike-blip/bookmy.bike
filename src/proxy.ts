@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-export default async function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
     const hostname = request.headers.get('host') || '';
 
@@ -80,6 +80,7 @@ export default async function proxy(request: NextRequest) {
     // E. ROUTE ALLOWLISTS (Unauthenticated Access)
     const isAuthRoute =
         pathname.startsWith('/login') ||
+        pathname.startsWith('/logout') ||
         pathname.startsWith('/auth') || // Supabase Auth Callbacks (e.g. /auth/callback)
         pathname.startsWith('/api/auth') ||
         pathname.startsWith('/api/admin') || // API routes handled internally
@@ -119,7 +120,7 @@ export default async function proxy(request: NextRequest) {
 
     // F. AUTHORIZATION (Authenticated User Checks)
     // Always allow auth routes to bypass role checks (enables Switching Accounts)
-    if (isAuthRoute) return response;
+    if (pathname === '/login' || pathname === '/logout' || isAuthRoute) return response;
 
     // 1. AUMS (Super Admin)
     if (currentSubdomain === 'aums') {

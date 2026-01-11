@@ -9,7 +9,7 @@ export default function AccessDenied() {
                 You are authenticated, but you do not have permission to access this portal.
             </p>
             <Link
-                href="/login"
+                href="/logout"
                 className="rounded-full bg-slate-900 px-8 py-4 text-xs font-black uppercase tracking-[0.2em] text-white transition-all hover:bg-indigo-600 dark:bg-white dark:text-black dark:hover:bg-indigo-400"
             >
                 Switch Account // Login
