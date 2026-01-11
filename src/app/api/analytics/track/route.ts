@@ -6,6 +6,10 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const { sessionId, userId, events, userAgent, location, device } = body;
 
+        // Extract IP Address (Reliable method for Vercel/Next.js)
+        const forwardedFor = req.headers.get('x-forwarded-for');
+        const ip = forwardedFor ? forwardedFor.split(',')[0] : '127.0.0.1';
+
         if (!sessionId || !events || !Array.isArray(events)) {
             return NextResponse.json({ success: false, error: 'Invalid payload' }, { status: 400 });
         }
@@ -24,8 +28,8 @@ export async function POST(req: NextRequest) {
                     country: location.country,
                     latitude: location.latitude,
                     longitude: location.longitude,
-                    ip_address: location.ip // gathered from headers typically, but passed here for simplicity or derived below
                 }),
+                ip_address: ip, // Always capture IP
                 ...(device && {
                     device_type: device.type,
                     os_name: device.os,

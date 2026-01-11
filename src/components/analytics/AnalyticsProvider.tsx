@@ -115,9 +115,19 @@ export default function AnalyticsProvider({ children }: { children: React.ReactN
         queueRef.current = []; // Clear queue immediately
 
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            const locationCache = localStorage.getItem('bkmb_user_pincode');
-            let locationData = locationCache ? JSON.parse(locationCache) : null;
+            let locationData = null;
+            try {
+                const locationCache = localStorage.getItem('bkmb_user_pincode');
+                if (locationCache) {
+                    const parsed = JSON.parse(locationCache);
+                    // Handle legacy numeric/string pincode or new object
+                    if (parsed && typeof parsed === 'object') {
+                        locationData = parsed;
+                    }
+                }
+            } catch (e) {
+                // Ignore parsing errors
+            }
 
             await fetch('/api/analytics/track', {
                 method: 'POST',
