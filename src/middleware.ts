@@ -46,6 +46,13 @@ export async function middleware(request: NextRequest) {
 
     // C. PUBLIC SITE (Apex / WWW / Vercel Previews)
     if (!currentSubdomain) {
+        // [FIX] If we landed on the home page with an OAuth code, redirect to the callback handler
+        // This happens if the Supabase redirectTo wasn't respected or was set to root.
+        const code = request.nextUrl.searchParams.get('code');
+        if (code && pathname === '/') {
+            return NextResponse.redirect(new URL(`/auth/callback?code=${code}`, request.url));
+        }
+
         // Allow all access (SEO allowed by default omission of header)
         return response;
     }

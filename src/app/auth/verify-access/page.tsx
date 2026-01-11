@@ -73,6 +73,8 @@ export default async function VerifyAccessPage() {
 
     // AUTO-REGISTRATION for Marketplace (Root Domain)
     if (!currentSubdomain) {
+        const MARKETPLACE_TENANT_ID = '5371fa81-a58a-4a39-aef2-2821268c96c8';
+
         // 1. Ensure Profile Exists
         if (!profile) {
             await supabase
@@ -83,12 +85,13 @@ export default async function VerifyAccessPage() {
                     phone: user.phone || user.user_metadata?.phone || '',
                     full_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
                     avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
+                    tenant_id: MARKETPLACE_TENANT_ID,
+                    role: 'MEMBER'
                 });
         }
 
         // 2. Ensure Lead Entry Exists (Marketplace Hub)
         // This resolves the user's request for users to appear in leads after login.
-        const MARKETPLACE_TENANT_ID = '5371fa81-a58a-4a39-aef2-2821268c96c8';
 
         const { data: existingLead } = await supabase
             .from('leads')
