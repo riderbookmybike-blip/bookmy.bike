@@ -63,15 +63,15 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                     <Logo mode="auto" size={36} />
                 </Link>
             }
-            center={
-                <div className="hidden lg:flex items-center gap-12">
-                    <Link href="/" className={navLinkClass}>Home</Link>
-                    <Link href="/compare" className={navLinkClass}>Compare</Link>
-                    <Link href="/zero" className={navLinkClass}>Zero</Link>
-                </div>
-            }
+            center={null}
             right={
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-10">
+                    <div className="hidden lg:flex items-center gap-10 mr-4">
+                        <Link href="/" className={navLinkClass}>Home</Link>
+                        <Link href="/compare" className={navLinkClass}>Compare</Link>
+                        <Link href="/zero" className={navLinkClass}>Zero</Link>
+                    </div>
+
                     <button
                         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                         className={`p-2 rounded-xl transition-all md:hidden ${mobileMenuButtonClass}`}
