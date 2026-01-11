@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
                     city: city || null,
                     state: state || null,
                     country: country || null,
+                    address: address || null, // Best effort save (if column exists)
                     latitude: latitude || null,
                     longitude: longitude || null,
                     // tenant_id intentionally left null or handled by trigger defaults
