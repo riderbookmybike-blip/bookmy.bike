@@ -138,7 +138,10 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
                 let currentSubdomain = '';
                 if (hostname.endsWith(`.${ROOT_DOMAIN}`)) {
-                    currentSubdomain = hostname.replace(`.${ROOT_DOMAIN}`, '');
+                    const sub = hostname.replace(`.${ROOT_DOMAIN}`, '');
+                    if (sub !== 'www') {
+                        currentSubdomain = sub;
+                    }
                 }
 
 

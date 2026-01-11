@@ -34,7 +34,10 @@ export default async function VerifyAccessPage() {
 
     let currentSubdomain = null;
     if (host.endsWith(`.${ROOT_DOMAIN}`)) {
-        currentSubdomain = host.replace(`.${ROOT_DOMAIN}`, '');
+        const sub = host.replace(`.${ROOT_DOMAIN}`, '');
+        if (sub !== 'www') {
+            currentSubdomain = sub;
+        }
     }
     console.log('[VerifyAccess] Host:', host, 'Subdomain:', currentSubdomain);
 
