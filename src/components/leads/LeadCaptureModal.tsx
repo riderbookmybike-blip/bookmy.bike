@@ -59,19 +59,25 @@ export function LeadCaptureModal({ isOpen, onClose, productName, model, variant,
                 </button>
 
                 {success ? (
-                    <div className="text-center py-10 space-y-4 animate-in zoom-in-50 duration-300">
-                        <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto text-green-600 dark:text-green-400">
-                            <CheckCircle className="w-8 h-8" />
+                    <div className="text-center py-10 space-y-6 animate-in zoom-in-50 duration-500">
+                        <div className="relative w-24 h-24 mx-auto">
+                            <div className="absolute inset-0 bg-emerald-500/20 rounded-full animate-ping" />
+                            <div className="relative w-24 h-24 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 border-2 border-emerald-500/50">
+                                <CheckCircle className="w-12 h-12" />
+                            </div>
                         </div>
-                        <h3 className="text-2xl font-black uppercase italic text-slate-900 dark:text-white">Request Received!</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 max-w-xs mx-auto">
-                            Our dealer partner will call you shortly to confirm your interest in the <strong>{productName}</strong>.
+                        <div className="space-y-2">
+                            <h3 className="text-3xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white leading-none">Exclusive Deal Locked!</h3>
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-500">Priority Callback Initiated</p>
+                        </div>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
+                            Our dealer partner has received your configuration for the <strong>{productName}</strong>. You'll receive a VIP call within 30 minutes.
                         </p>
                         <button
                             onClick={onClose}
-                            className="mt-6 px-8 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold uppercase tracking-widest rounded-xl hover:scale-105 transition-transform"
+                            className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black uppercase italic tracking-widest rounded-2xl hover:scale-[1.02] transition-all shadow-xl"
                         >
-                            Close
+                            Back to Gallery
                         </button>
                     </div>
                 ) : (
