@@ -39,7 +39,6 @@ export default async function VerifyAccessPage() {
             currentSubdomain = sub;
         }
     }
-    console.log('[VerifyAccess] Host:', host, 'Subdomain:', currentSubdomain);
 
     // 1. CRM Mode (Private) -> Check Membership
     const isCRM = ['aums', 'we', 'ltfinance'].includes(currentSubdomain || '');
@@ -67,7 +66,6 @@ export default async function VerifyAccessPage() {
         .eq('id', user.id)
         .single();
 
-    console.log('[VerifyAccess] Profile found:', !!profile, 'Email:', user.email);
 
     if (profile && currentSubdomain) {
         redirect('/dashboard');

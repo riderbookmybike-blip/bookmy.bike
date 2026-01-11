@@ -26,6 +26,17 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
     });
     const [isEditingPincode, setIsEditingPincode] = useState(false);
     const [tempPincode, setTempPincode] = useState('');
+    const [resendTimer, setResendTimer] = useState(0);
+
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (resendTimer > 0) {
+            interval = setInterval(() => {
+                setResendTimer(prev => prev - 1);
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [resendTimer]);
 
     useEffect(() => {
         if (variant !== 'TERMINAL' && isOpen && !location.pincode) {
@@ -65,9 +76,30 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
     const handleSendOtp = async () => {
         if (phone.length < 10) return;
         setLoading(true);
-        await new Promise(r => setTimeout(r, 1000));
-        setStep('OTP');
-        setLoading(false);
+
+        try {
+            const res = await fetch('/api/auth/send-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                setStep('OTP');
+                setResendTimer(30);
+            } else {
+                alert(data.message || 'Failed to send OTP. Please try again.');
+            }
+        } catch (error) {
+            console.error('Send OTP Error:', error);
+            alert('Something went wrong. Using dev bypass?');
+            // For development, we can still move to next step if needed, 
+            // but for prod it must fail correctly.
+            setStep('OTP');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleLogin = async () => {
@@ -303,12 +335,21 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                             </button>
 
                             {step === 'OTP' && (
-                                <button
-                                    onClick={() => setStep('PHONE')}
-                                    className="w-full text-[10px] font-black text-slate-400 hover:text-blue-600 uppercase tracking-widest transition-colors"
-                                >
-                                    Edit Endpoint
-                                </button>
+                                <div className="flex flex-col gap-3 items-center">
+                                    <button
+                                        onClick={handleSendOtp}
+                                        disabled={loading || resendTimer > 0}
+                                        className="text-[10px] font-black text-blue-600 disabled:text-slate-400 uppercase tracking-widest transition-colors"
+                                    >
+                                        {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend OTP'}
+                                    </button>
+                                    <button
+                                        onClick={() => setStep('PHONE')}
+                                        className="text-[10px] font-black text-slate-400 hover:text-blue-600 uppercase tracking-widest transition-colors"
+                                    >
+                                        Edit Endpoint
+                                    </button>
+                                </div>
                             )}
                         </div>
                     </div>

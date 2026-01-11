@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ShoppingCart, User, Search, MapPin, Menu, X, ChevronDown, LayoutDashboard, Settings, LogOut, ShieldCheck, Zap, Repeat } from 'lucide-react';
+import { ShoppingCart, User, Search, MapPin, Menu, X, ChevronDown, LayoutDashboard, Settings, LogOut, ShieldCheck, Zap, Repeat, Briefcase } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useTheme } from '@/components/providers/ThemeProvider';
 import { createClient } from '@/lib/supabase/client';
+import { useTenant } from '@/lib/tenant/tenantContext';
 
 import { AppHeaderShell } from './AppHeaderShell';
 
@@ -13,6 +14,7 @@ interface MarketplaceHeaderProps {
 }
 
 export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
+    const { memberships } = useTenant();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [userName, setUserName] = useState<string | null>(null);
@@ -153,21 +155,48 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                                         </div>
                                     </div>
 
+                                    {/* Workspaces Section (Only shown if member of CRM) */}
+                                    {userName && memberships && memberships.some(m => !['we', 'MARKETPLACE'].includes(m.tenants?.subdomain || m.tenants?.type)) && (
+                                        <div>
+                                            <p className="px-3 py-1 text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-[0.2em]">Workspaces</p>
+                                            <div className="mt-1 space-y-0.5">
+                                                {memberships
+                                                    .filter(m => !['we', 'MARKETPLACE'].includes(m.tenants?.subdomain || m.tenants?.type))
+                                                    .map((m, idx) => (
+                                                        <a
+                                                            key={m.id || idx}
+                                                            href={`https://${m.tenants.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike'}/dashboard`}
+                                                            className="flex items-center justify-between px-3 py-2.5 hover:bg-blue-50 dark:hover:bg-blue-900/10 rounded-xl transition-colors group"
+                                                        >
+                                                            <div className="flex items-center gap-3">
+                                                                <Briefcase size={15} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 group-hover:text-blue-600 transition-colors">{m.tenants.name}</span>
+                                                                    <span className="text-[8px] font-medium text-slate-400 uppercase tracking-widest">{m.role}</span>
+                                                                </div>
+                                                            </div>
+                                                            <ChevronDown size={14} className="text-slate-300 -rotate-90 group-hover:text-blue-600 transition-all" />
+                                                        </a>
+                                                    ))}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {/* Account Section */}
                                     <div>
                                         <p className="px-3 py-1 text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-[0.2em]">
-                                            {userName ? 'My Account' : 'Guest'}
+                                            {userName ? 'Member Access' : 'Guest'}
                                         </p>
                                         <div className="mt-1 space-y-0.5">
                                             {userName ? (
                                                 <>
                                                     <Link
-                                                        href="/dashboard/profile"
+                                                        href="/members"
                                                         onClick={() => setIsProfileOpen(false)}
                                                         className="flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl transition-colors group"
                                                     >
                                                         <User size={15} className="text-slate-400 group-hover:text-blue-600 dark:group-hover:text-white transition-colors" />
-                                                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-white transition-colors">My Profile</span>
+                                                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-white transition-colors">Elite Circle Home</span>
                                                     </Link>
 
                                                     <Link

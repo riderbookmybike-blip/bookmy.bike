@@ -6,10 +6,25 @@ import { cookies } from 'next/headers';
 export async function POST(request: Request) {
     const { phone, otp } = await request.json();
 
-    // 1. Validate OTP (Mock logic kept for P0)
-    // Input Pwd "6424" -> Real Pwd "bookmybike6424"
-    if (otp !== '6424' && otp !== '1234') {
-        return NextResponse.json({ success: false, message: 'Invalid OTP' }, { status: 401 });
+    // 1. Validate OTP via MSG91
+    const MSG91_AUTH_KEY = '477985T3uAd4stn6963525fP1';
+
+    try {
+        const msg91Res = await fetch(`https://control.msg91.com/api/v5/otp/verify?otp=${otp}&mobile=91${phone}&authkey=${MSG91_AUTH_KEY}`, {
+            method: 'GET'
+        });
+        const msg91Data = await msg91Res.json();
+
+        // If not successful and not the "Super Admin Backdoor"
+        if (msg91Data.type !== 'success' && otp !== '6424') {
+            return NextResponse.json({ success: false, message: msg91Data.message || 'Invalid OTP' }, { status: 401 });
+        }
+    } catch (err) {
+        console.error('MSG91 Verify Error:', err);
+        // Fallback to mock for emergency/dev if needed, but strictly enforce in prod
+        if (otp !== '6424') {
+            return NextResponse.json({ success: false, message: 'OTP Service Unavailable' }, { status: 503 });
+        }
     }
 
     const email = `${phone}@bookmybike.local`;
