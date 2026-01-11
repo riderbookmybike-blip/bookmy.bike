@@ -257,7 +257,15 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
             localStorage.setItem('active_role', 'USER'); // Explicitly set role
             window.dispatchEvent(new Event('storage'));
             document.cookie = 'aums_session=true; path=/;';
-            router.push('/dashboard');
+
+            // UX: If normal user, stay on page (just reload to update state). If Admin, go to Dashboard.
+            if (activeRole === 'SUPER_ADMIN' || activeRole === 'MARKETPLACE_ADMIN' || activeRole === 'TENANT_ADMIN') {
+                router.push('/dashboard');
+            } else {
+                // For users, we probably want to stay on the same page but refresh auth state
+                // Using window.location.reload() ensures all components re-fetch user state
+                window.location.reload();
+            }
             onClose();
         }
     };
