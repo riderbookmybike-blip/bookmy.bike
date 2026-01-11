@@ -111,21 +111,21 @@ function CatalogContent() {
         return (
             <div className="space-y-6">
                 <div
-                    className="flex items-center justify-between border-b border-white/5 pb-4 cursor-pointer group"
+                    className="flex items-center justify-between border-b border-slate-200 dark:border-white/5 pb-4 cursor-pointer group"
                     onClick={() => setIsCollapsed(!isCollapsed)}
                 >
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white flex items-center gap-2">
-                        <div className={`w-1 h-1 rounded-full transition-colors ${selectedValues.length > 0 ? 'bg-blue-500 shadow-[0_0_8px_#3b82f6]' : 'bg-slate-700'}`} />
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white flex items-center gap-2">
+                        <div className={`w-1 h-1 rounded-full transition-colors ${selectedValues.length > 0 ? 'bg-blue-500 shadow-[0_0_8px_#3b82f6]' : 'bg-slate-300 dark:bg-slate-700'}`} />
                         {title}
                     </h4>
                     <div className="flex items-center gap-3">
                         {showReset && selectedValues.length > 0 && (
                             <button
                                 onClick={(e) => { e.stopPropagation(); onReset(); }}
-                                className="text-[9px] font-black uppercase text-blue-500 hover:text-white transition-colors"
+                                className="text-[9px] font-black uppercase text-blue-600 dark:text-blue-500 hover:text-slate-900 dark:hover:text-white transition-colors"
                             >Reset</button>
                         )}
-                        <ChevronDown size={14} className={`text-slate-500 transition-transform duration-300 ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} />
+                        <ChevronDown size={14} className="text-slate-400 dark:text-slate-500 transition-transform duration-300 group-hover:text-blue-500" />
                     </div>
                 </div>
 
@@ -136,17 +136,17 @@ function CatalogContent() {
                                 <button
                                     key={opt}
                                     onClick={() => onToggle(opt)}
-                                    className={`group relative flex items-center justify-between p-3 rounded-lg border transition-all duration-300 ${selectedValues.includes(opt) ? 'bg-blue-600/10 border-blue-500/50' : 'bg-transparent border-white/5 hover:border-white/10'}`}
+                                    className={`group relative flex items-center justify-between p-3 rounded-lg border transition-all duration-300 ${selectedValues.includes(opt) ? 'bg-blue-600/10 border-blue-500/50' : 'bg-transparent border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10'}`}
                                 >
-                                    <span className={`text-[9px] font-black uppercase tracking-widest italic transition-colors ${selectedValues.includes(opt) ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'}`}>{opt}</span>
-                                    <div className={`w-1.5 h-1.5 rounded-full transition-all ${selectedValues.includes(opt) ? 'bg-blue-500 shadow-[0_0_8px_#3b82f6]' : 'bg-slate-800'}`} />
+                                    <span className={`text-[9px] font-black uppercase tracking-widest italic transition-colors ${selectedValues.includes(opt) ? 'text-blue-600 dark:text-white' : 'text-slate-500 group-hover:text-slate-800 dark:group-hover:text-slate-300'}`}>{opt}</span>
+                                    <div className={`w-1.5 h-1.5 rounded-full transition-all ${selectedValues.includes(opt) ? 'bg-blue-500 shadow-[0_0_8px_#3b82f6]' : 'bg-slate-200 dark:bg-slate-800'}`} />
                                 </button>
                             ))}
                         </div>
                         {options.length > 3 && (
                             <button
                                 onClick={() => setIsExpanded(!isExpanded)}
-                                className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-blue-500 transition-colors w-full text-center py-1 border border-dashed border-white/5 rounded-md"
+                                className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-blue-600 dark:hover:text-blue-500 transition-colors w-full text-center py-1 border border-dashed border-slate-200 dark:border-white/5 rounded-md"
                             >
                                 {isExpanded ? 'Show Less' : `+ Show ${options.length - 3} More`}
                             </button>
@@ -198,25 +198,71 @@ function CatalogContent() {
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-12 md:gap-16">
                 {/* 2. Advanced Sidebar HUD */}
                 <aside className="space-y-10 hidden lg:block animate-in slide-in-from-left-8 duration-700">
-                    <div className="space-y-10 p-8 bg-white/[0.03] border border-white/5 rounded-[3rem] backdrop-blur-3xl shadow-2xl relative overflow-hidden">
+                    <div className="space-y-10 p-8 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 rounded-[3rem] backdrop-blur-3xl shadow-2xl relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-3xl -z-10" />
+
+                        {/* EMI Calculator - HIGHEST PRIORITY */}
+                        <div className="space-y-6 pt-0">
+                            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/5 pb-4">
+                                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white flex items-center gap-2">
+                                    <div className="w-1 h-1 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]" />
+                                    EMI Calculator
+                                </h4>
+                            </div>
+                            <div className="space-y-8 p-6 bg-green-500/10 dark:bg-green-500/5 border border-green-500/20 dark:border-green-500/10 rounded-2xl">
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-end">
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Downpayment</span>
+                                        <span className="text-sm font-black text-green-600 dark:text-green-500 tracking-tighter italic">₹{downpayment.toLocaleString('en-IN')}</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="5000"
+                                        max="75000"
+                                        step="5000"
+                                        value={downpayment}
+                                        onChange={(e) => setDownpayment(parseInt(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-green-600 dark:accent-green-500"
+                                    />
+                                    <div className="flex justify-between text-[7px] font-bold text-slate-400 dark:text-slate-600 uppercase">
+                                        <span>₹5K</span>
+                                        <span>₹75K</span>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Tenure (Months)</span>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        {[12, 24, 36, 48].map((t) => (
+                                            <button
+                                                key={t}
+                                                onClick={() => setTenure(t)}
+                                                className={`py-2 rounded-lg text-[10px] font-black transition-all ${tenure === t ? 'bg-green-600 text-white shadow-lg shadow-green-600/20' : 'bg-white dark:bg-white/5 text-slate-500 border border-slate-200 dark:border-transparent hover:bg-slate-100 dark:hover:bg-white/10'}`}
+                                            >
+                                                {t}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
                         {/* Search HUD */}
                         <div className="space-y-6">
-                            <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white flex items-center gap-2">
+                            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4">
+                                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white flex items-center gap-2">
                                     <div className="w-1 h-1 bg-blue-500 rounded-full animate-pulse" />
                                     Telemetry Search
                                 </h4>
                             </div>
                             <div className="relative group">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 w-4 h-4 group-focus-within:text-blue-500 transition-colors" />
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors w-4 h-4" />
                                 <input
                                     type="text"
                                     placeholder="FIND MACHINE..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] outline-none focus:border-blue-500/50 transition-all placeholder:text-slate-800"
+                                    className="w-full pl-12 pr-4 py-4 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] outline-none focus:border-blue-500/50 transition-all text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 shadow-sm dark:shadow-none"
                                 />
                             </div>
                         </div>
@@ -276,51 +322,6 @@ function CatalogContent() {
                                 showReset
                             />
 
-                            {/* Dynamic EMI HUD */}
-                            <div className="space-y-6 pt-4">
-                                <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white flex items-center gap-2">
-                                        <div className="w-1 h-1 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]" />
-                                        EMI Calculator
-                                    </h4>
-                                </div>
-                                <div className="space-y-8 p-6 bg-green-500/5 border border-green-500/10 rounded-2xl">
-                                    <div className="space-y-4">
-                                        <div className="flex justify-between items-end">
-                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Downpayment</span>
-                                            <span className="text-sm font-black text-green-500 tracking-tighter italic">₹{downpayment.toLocaleString('en-IN')}</span>
-                                        </div>
-                                        <input
-                                            type="range"
-                                            min="5000"
-                                            max="75000"
-                                            step="5000"
-                                            value={downpayment}
-                                            onChange={(e) => setDownpayment(parseInt(e.target.value))}
-                                            className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-green-500"
-                                        />
-                                        <div className="flex justify-between text-[7px] font-bold text-slate-600 uppercase">
-                                            <span>₹5K</span>
-                                            <span>₹75K</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Tenure (Months)</span>
-                                        <div className="grid grid-cols-4 gap-2">
-                                            {[12, 24, 36, 48].map((t) => (
-                                                <button
-                                                    key={t}
-                                                    onClick={() => setTenure(t)}
-                                                    className={`py-2 rounded-lg text-[10px] font-black transition-all ${tenure === t ? 'bg-green-600 text-white' : 'bg-white/5 text-slate-500 hover:bg-white/10'}`}
-                                                >
-                                                    {t}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
 
                             <FilterGroup
                                 title="Best For"
@@ -513,8 +514,8 @@ function CatalogContent() {
                 isMobileFiltersOpen && (
                     <div className="fixed inset-0 z-[200] lg:hidden">
                         <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={() => setIsMobileFiltersOpen(false)} />
-                        <div className="absolute bottom-0 left-0 right-0 bg-slate-900 border-t border-white/10 rounded-t-[2.5rem] p-8 pb-12 space-y-8 animate-in slide-in-from-bottom duration-300 shadow-3xl max-h-[85vh] overflow-y-auto">
-                            <div className="flex items-center justify-between sticky top-0 bg-slate-900 z-10 pb-4 border-b border-white/5">
+                        <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-white/10 rounded-t-[2.5rem] p-8 pb-12 space-y-8 animate-in slide-in-from-bottom duration-300 shadow-3xl max-h-[85vh] overflow-y-auto">
+                            <div className="flex items-center justify-between sticky top-0 bg-white dark:bg-slate-900 z-10 pb-4 border-b border-slate-200 dark:border-white/5">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
                                         <SlidersHorizontal size={20} className="text-blue-500" />
@@ -531,7 +532,7 @@ function CatalogContent() {
 
                             {/* Search in Mobile Drawer */}
                             <div className="space-y-4">
-                                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Quick Find</h4>
+                                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white">Quick Find</h4>
                                 <div className="relative">
                                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
                                     <input
@@ -547,7 +548,7 @@ function CatalogContent() {
                             {/* Brand Filter in Mobile Drawer */}
                             <div className="space-y-6">
                                 <div className="flex items-center justify-between">
-                                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Brand Selection</h4>
+                                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white">Brand Selection</h4>
                                     {(selectedMakes.length > 0) && (
                                         <button onClick={() => setSelectedMakes([])} className="text-[9px] font-black uppercase text-blue-500">Clear</button>
                                     )}
@@ -630,7 +631,7 @@ function CatalogContent() {
                                 />
                             </div>
 
-                            <div className="pt-4 sticky bottom-0 bg-slate-900 pb-2">
+                            <div className="pt-4 sticky bottom-0 bg-white dark:bg-slate-900 pb-2">
                                 <button
                                     onClick={() => setIsMobileFiltersOpen(false)}
                                     className="w-full py-4 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl"

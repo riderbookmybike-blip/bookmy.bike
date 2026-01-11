@@ -27,17 +27,19 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         };
         window.addEventListener('scroll', handleScroll);
 
-        const storedName = localStorage.getItem('user_name');
-        if (storedName) setUserName(storedName);
-
         const handleLoginSync = () => {
             const name = localStorage.getItem('user_name');
             setUserName(name);
         };
+        const handleAuthSync = (e: any) => {
+            if (e.detail?.name) setUserName(e.detail.name);
+        };
         window.addEventListener('storage', handleLoginSync);
+        window.addEventListener('auth_sync', handleAuthSync);
         return () => {
             window.removeEventListener('scroll', handleScroll);
             window.removeEventListener('storage', handleLoginSync);
+            window.removeEventListener('auth_sync', handleAuthSync);
         };
     }, []);
 
@@ -117,7 +119,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                         <button
                             onClick={() => setIsProfileOpen(!isProfileOpen)}
                             className={`flex items-center gap-3 pl-3 pr-2 py-1.5 rounded-full border transition-all group ${scrolled || theme === 'light'
-                                ? 'border-red-600/40 bg-white/10 dark:bg-black/40'
+                                ? 'border-red-600/20 dark:border-red-600/40 bg-slate-100 dark:bg-black/40'
                                 : 'border-red-600/60 bg-black/40'
                                 }`}
                         >

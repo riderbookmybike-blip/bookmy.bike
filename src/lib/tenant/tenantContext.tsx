@@ -182,6 +182,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                     localStorage.setItem('user_name', fullName);
                     // Notify other components (like MarketplaceHeader) that auth state changed
                     window.dispatchEvent(new Event('storage'));
+                    window.dispatchEvent(new CustomEvent('auth_sync', { detail: { name: fullName } }));
 
                     // 2. Tenant Resolution Logic
                     const memberships = membershipsResult.data || [];

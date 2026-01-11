@@ -341,7 +341,7 @@ export default function StorePage() {
                     </div>
 
                     <div className="relative group overflow-hidden">
-                        <div className="flex animate-marquee gap-8 whitespace-nowrap py-10 w-max">
+                        <div className="flex animate-marquee gap-8 whitespace-nowrap py-10 w-max pr-8">
                             {[
                                 { name: 'Arjun', city: 'Bengaluru', bike: 'Pulsar NS200', quote: 'Showroom me 2 mahine ki waiting thi, yahan 5 din me mil gayi. Transparent breakdown best hai.' },
                                 { name: 'Priya', city: 'Pune', bike: 'Honda Activa 6G', quote: 'Online buying me darr tha par Lowest EMI guarantee ne 4k bachaye. Delivery team 10/10.' },
@@ -380,7 +380,7 @@ export default function StorePage() {
                                         <div className="flex gap-1">
                                             {[1, 2, 3, 4, 5].map(s => <Star key={s} size={12} className="text-white fill-white" />)}
                                         </div>
-                                        <p className="text-sm md:text-lg font-medium text-slate-300 leading-relaxed italic">"{m.quote}"</p>
+                                        <p className="text-sm md:text-lg font-medium text-slate-100 dark:text-white leading-relaxed italic">"{m.quote}"</p>
                                         <div className="pt-4 md:pt-6 border-t border-white/5 flex items-center justify-between">
                                             <div className="flex items-center gap-4">
                                                 <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-slate-800 flex items-center justify-center font-black text-[10px] md:text-xs text-slate-500">{m.name.charAt(0)}</div>
@@ -399,8 +399,8 @@ export default function StorePage() {
                     </div>
 
                     {/* Second Row Opposite Direction */}
-                    <div className="relative overflow-hidden mt-[-2rem]">
-                        <div className="flex animate-marquee-reverse gap-8 whitespace-nowrap py-10 w-max">
+                    <div className="relative overflow-hidden mt-4 md:mt-12">
+                        <div className="flex animate-marquee-reverse gap-8 whitespace-nowrap py-10 w-max pr-8">
                             {[
                                 { name: 'Abhishek', city: 'Patna', bike: 'Hero XPulse 200', quote: 'Village delivery was surprising but they managed it. Trustworthy service for Bihar.' },
                                 { name: 'Divya', city: 'Surat', bike: 'Suzuki Burgman', quote: 'White glove delivery is legit. They even helped me with temporary reg plate.' },

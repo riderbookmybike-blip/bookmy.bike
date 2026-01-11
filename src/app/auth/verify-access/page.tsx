@@ -69,19 +69,44 @@ export default async function VerifyAccessPage() {
 
     // AUTO-REGISTRATION for Marketplace (Root Domain)
     if (!currentSubdomain) {
-        const { error } = await supabase
-            .from('profiles')
-            .insert({
-                id: user.id,
-                email: user.email,
-                phone: user.phone,
-                full_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
-                avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
-            });
-
-        if (!error) {
-            redirect('/');
+        // 1. Ensure Profile Exists
+        if (!profile) {
+            await supabase
+                .from('profiles')
+                .insert({
+                    id: user.id,
+                    email: user.email,
+                    phone: user.phone || user.user_metadata?.phone || '',
+                    full_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
+                    avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
+                });
         }
+
+        // 2. Ensure Lead Entry Exists (Marketplace Hub)
+        // This resolves the user's request for users to appear in leads after login.
+        const MARKETPLACE_TENANT_ID = '5371fa81-a58a-4a39-aef2-2821268c96c8';
+
+        const { data: existingLead } = await supabase
+            .from('leads')
+            .select('id')
+            .eq('customer_phone', user.phone || user.user_metadata?.phone || user.email)
+            .eq('owner_tenant_id', MARKETPLACE_TENANT_ID)
+            .single();
+
+        if (!existingLead) {
+            await supabase
+                .from('leads')
+                .insert({
+                    customer_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Member',
+                    customer_phone: user.phone || user.user_metadata?.phone || user.email || '',
+                    owner_tenant_id: MARKETPLACE_TENANT_ID,
+                    status: 'NEW',
+                    interest_model: 'Marketplace Login',
+                    utm_data: { source: 'direct_auth', mode: 'auto_sync' }
+                });
+        }
+
+        redirect('/');
     }
 
     return <RegistrationConsent />;
