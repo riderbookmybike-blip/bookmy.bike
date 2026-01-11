@@ -130,9 +130,10 @@ export async function middleware(request: NextRequest) {
             .single();
 
         if (!membership || membership.role !== 'SUPER_ADMIN') {
-            // 403 Forbidden - Rewrite to error page to preserve URL context
-            // or Redirect to Login if we want to force switch? 
-            // 403 is cleaner for "Wrong User".
+            // Allow access to login/auth routes even if role check fails
+            // This prevents a 403 loop and allows "Switch Account"
+            if (isAuthRoute) return response;
+
             return NextResponse.rewrite(new URL('/403', request.url));
         }
         return response;
