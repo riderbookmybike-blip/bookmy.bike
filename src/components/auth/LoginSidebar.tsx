@@ -253,6 +253,8 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
             setTenantType('MARKETPLACE'); // Default role
             localStorage.setItem('user_name', displayName);
             localStorage.setItem('tenant_type', 'MARKETPLACE');
+            localStorage.setItem('user_role', 'USER'); // Explicitly set role
+            localStorage.setItem('active_role', 'USER'); // Explicitly set role
             window.dispatchEvent(new Event('storage'));
             document.cookie = 'aums_session=true; path=/;';
             router.push('/dashboard');
