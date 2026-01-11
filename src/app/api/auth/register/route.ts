@@ -19,6 +19,8 @@ export async function POST() {
 
     const { data: { user } } = await supabase.auth.getUser();
 
+    console.log('[RegisterAPI] Attempting registration for user:', user?.email);
+
     if (!user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -32,7 +34,7 @@ export async function POST() {
             id: user.id,
             email: user.email,
             phone: user.phone || user.user_metadata?.phone || '',
-            full_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
+            full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || '',
             avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
             tenant_id: MARKETPLACE_TENANT_ID,
             role: 'MEMBER'
