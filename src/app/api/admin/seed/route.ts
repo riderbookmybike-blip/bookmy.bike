@@ -28,16 +28,18 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Resolve Admin User
-    // Hardcoded email for now as per instructions
-    const ownerEmail = 'kajit.rathore@gmail.com';
+    // Use the Phone Number provided by the user
+    const ownerPhoneInput = '9820760596';
+    const formattedPhone = `91${ownerPhoneInput}`;
+    const ownerEmail = `${ownerPhoneInput}@bookmy.bike`;
 
     // List users to find ID (Admin API)
     const { data: { users }, error: userError } = await supabaseAdmin.auth.admin.listUsers();
     if (userError) return NextResponse.json({ error: 'Failed to list users', details: userError }, { status: 500 });
 
-    const adminUser = users.find(u => u.email === ownerEmail);
+    const adminUser = users.find(u => u.phone === formattedPhone || u.email === ownerEmail);
     if (!adminUser) {
-        return NextResponse.json({ error: `User ${ownerEmail} not found in Auth. Please sign up first.` }, { status: 404 });
+        return NextResponse.json({ error: `User with phone ${ownerPhoneInput} not found in Auth. Please sign up first.` }, { status: 404 });
     }
 
     const results = [];
@@ -75,8 +77,9 @@ export async function POST(request: NextRequest) {
             .from('profiles')
             .upsert({
                 id: adminUser.id,
-                email: adminUser.email,
-                full_name: 'Kajit Rathore (Owner)',
+                full_name: 'Ajit M Singh Rathore (Owner)',
+                phone: ownerPhoneInput,
+                role: tConfig.type === 'SUPER_ADMIN' ? 'SUPER_ADMIN' : 'DEALER_OWNER', // Default base role
             }, { onConflict: 'id' });
 
         if (profileError) {
@@ -86,14 +89,17 @@ export async function POST(request: NextRequest) {
         }
 
         // C. Upsert Owner Membership
+        // For 'aums', role is SUPER_ADMIN. For others, it is TENANT_OWNER/DEALER_OWNER.
+        const membershipRole = tConfig.type === 'SUPER_ADMIN' ? 'SUPER_ADMIN' : 'OWNER';
+
         const { error: memberError } = await supabaseAdmin
             .from('memberships')
             .upsert({
                 user_id: adminUser.id,
                 tenant_id: tenant.id,
-                role: tConfig.type === 'SUPER_ADMIN' ? 'SUPER_ADMIN' : 'DEALER_OWNER',
+                role: membershipRole,
                 status: 'ACTIVE',
-                is_default: true
+                is_default: tConfig.slug === 'aums' // Make aums the default for this user
             }, { onConflict: 'user_id, tenant_id' });
 
         if (memberError) {
@@ -111,7 +117,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
         ok: true,
         tenantsUpserted,
-        ownerEmail,
+        ownerPhone: ownerPhoneInput,
         membershipsUpserted,
         details: results
     });
