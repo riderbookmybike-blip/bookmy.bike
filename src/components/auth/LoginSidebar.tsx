@@ -16,9 +16,10 @@ interface LoginSidebarProps {
 export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: LoginSidebarProps) {
     const router = useRouter();
     const { setTenantType } = useTenant();
-    const [step, setStep] = useState<'PHONE' | 'OTP'>('PHONE');
+    const [step, setStep] = useState<'PHONE' | 'NAME' | 'OTP'>('PHONE');
     const [phone, setPhone] = useState('');
     const [otp, setOtp] = useState('');
+    const [fullName, setFullName] = useState('');
     const [loading, setLoading] = useState(false);
     const [location, setLocation] = useState<{
         pincode: string | null;
