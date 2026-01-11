@@ -5,6 +5,7 @@ import { Phone, ArrowRight, Lock, MapPin, Loader2, X, ShieldCheck, CheckCircle2,
 import { useRouter } from 'next/navigation';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { createClient } from '@/lib/supabase/client';
+import { getSmartPincode } from '@/lib/location/geocode';
 
 interface LoginSidebarProps {
     isOpen: boolean;
@@ -49,13 +50,22 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
             setLocation(prev => ({ ...prev, loading: true }));
             navigator.geolocation.getCurrentPosition(
                 async (position) => {
-                    // Simulate reverse geocoding
-                    setTimeout(() => {
-                        const mockPincode = '400001';
-                        const isServiceable = mockPincode.startsWith('400');
-                        setLocation({ pincode: mockPincode, loading: false, isServiceable });
-                        setTempPincode(mockPincode);
-                    }, 1500);
+                    // Smart Geocoding (Cache First -> Google API -> Mock)
+                    const { latitude, longitude } = position.coords;
+                    const result = await getSmartPincode(
+                        latitude,
+                        longitude,
+                        process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY // Safe to pass undefined (will trigger Mock)
+                    );
+
+                    if (result.pincode) {
+                        const isServiceable = result.pincode.startsWith('400');
+                        setLocation({ pincode: result.pincode, loading: false, isServiceable });
+                        setTempPincode(result.pincode);
+                    } else {
+                        // Fallback Error State
+                        setLocation({ pincode: null, loading: false, isServiceable: null });
+                    }
                 },
                 (error) => {
                     console.error("Geolocation error:", error);
