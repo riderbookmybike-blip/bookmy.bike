@@ -14,15 +14,15 @@ const supabaseAdmin = createClient(
     }
 );
 
-export async function GET(request: NextRequest) {
-    return handleSeed(request);
+export async function GET(_request: NextRequest) {
+    return handleSeed(_request);
 }
 
-export async function POST(request: NextRequest) {
-    return handleSeed(request);
+export async function POST(_request: NextRequest) {
+    return handleSeed(_request);
 }
 
-async function handleSeed(request: NextRequest) {
+async function handleSeed(_request: NextRequest) {
     // 1. Security Check - Temporarily relaxed for root setup
     console.log('[SEED] Request received');
 

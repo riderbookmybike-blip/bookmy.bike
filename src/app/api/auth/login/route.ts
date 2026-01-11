@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
 export async function POST(request: Request) {
-    const { phone, otp } = await request.json();
+    const { phone } = await request.json();
 
     // 1. OTP Verification is handled on the Client side via MSG91 SDK Widget
     // We trust the client has verified it before calling this endpoint.
