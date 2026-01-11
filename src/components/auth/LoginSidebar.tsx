@@ -179,7 +179,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
         // Finalize login session on our backend
 
         if (true) { // Successfully verified via Client SDK
-            const displayName = phone === '9820760596' ? 'Ajit Singh' : 'Valued User';
+            const displayName = fullName || 'Valued User';
 
             // SYNC WITH BACKEND
             try {
@@ -287,18 +287,36 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
 
                                 <div className="relative p-2">
                                     {step === 'PHONE' ? (
-                                        <div className="flex items-center px-6 py-4">
-                                            <div className="flex items-center gap-3 pr-6 border-r border-slate-200 dark:border-white/10">
-                                                <Phone size={18} className="text-slate-400 group-focus-within:text-blue-600 transition-colors" />
-                                                <span className="text-xs font-black text-slate-500">+91</span>
+                                        <div className="space-y-4">
+                                            {/* Name Input */}
+                                            <div className="flex items-center px-6 py-4 border-b border-slate-100 dark:border-white/5">
+                                                <div className="flex items-center gap-3 pr-6 border-r border-slate-200 dark:border-white/10">
+                                                    <User size={18} className="text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Your Full Name"
+                                                    value={fullName}
+                                                    onChange={(e) => setFullName(e.target.value)}
+                                                    className="bg-transparent border-none outline-none text-lg font-bold text-slate-900 dark:text-white w-full pl-6 placeholder:text-slate-300 dark:placeholder:text-slate-700"
+                                                    autoFocus
+                                                />
                                             </div>
-                                            <input
-                                                type="tel"
-                                                placeholder="XXXXX XXXXX"
-                                                value={phone}
-                                                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                                                className="bg-transparent border-none outline-none text-xl font-black tracking-[0.3em] text-slate-900 dark:text-white w-full pl-6 placeholder:text-slate-300 dark:placeholder:text-slate-700 placeholder:tracking-normal"
-                                            />
+
+                                            {/* Phone Input */}
+                                            <div className="flex items-center px-6 py-4">
+                                                <div className="flex items-center gap-3 pr-6 border-r border-slate-200 dark:border-white/10">
+                                                    <Phone size={18} className="text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                                                    <span className="text-xs font-black text-slate-500">+91</span>
+                                                </div>
+                                                <input
+                                                    type="tel"
+                                                    placeholder="Mobile Number"
+                                                    value={phone}
+                                                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                                                    className="bg-transparent border-none outline-none text-xl font-black tracking-[0.3em] text-slate-900 dark:text-white w-full pl-6 placeholder:text-slate-300 dark:placeholder:text-slate-700 placeholder:tracking-normal"
+                                                />
+                                            </div>
                                         </div>
                                     ) : (
                                         <div className="flex items-center px-6 py-4">
@@ -324,7 +342,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                             <div className="space-y-6">
                                 <button
                                     onClick={step === 'PHONE' ? handleSendOtp : handleLogin}
-                                    disabled={loading || (step === 'PHONE' ? (phone.length < 10 || !msg91Loaded) : otp.length < 4)}
+                                    disabled={loading || (step === 'PHONE' ? (phone.length < 10 || fullName.length < 3 || !msg91Loaded) : otp.length < 4)}
                                     className={`w-full py-6 rounded-[32px] text-xs font-black uppercase tracking-[0.3em] italic flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-[0.98] ${loading || !msg91Loaded ? 'bg-blue-600/50 cursor-wait' : 'bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-500'
                                         } text-white shadow-blue-600/20 disabled:opacity-50`}
                                 >
