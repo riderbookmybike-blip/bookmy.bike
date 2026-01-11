@@ -315,19 +315,27 @@ export default function StorePage() {
             </section>
 
             {/* Member Experience Section */}
-            <section className="py-32 md:py-48 bg-[#020617] text-white overflow-hidden relative">
-                <div className="max-w-[1400px] mx-auto px-6 space-y-24">
-                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-12">
-                        <div className="space-y-6">
-                            <h2 className="text-5xl md:text-8xl font-black uppercase tracking-tighter italic leading-none">The Member Experience</h2>
-                            <p className="text-lg md:text-xl text-slate-500 font-medium italic">Hear from the select few who have secured access.</p>
+            <section className="py-32 md:py-64 bg-[#020617] text-white overflow-hidden relative">
+                {/* Background Watermark */}
+                <div className="absolute top-12 left-6 right-6 pointer-events-none select-none overflow-hidden h-64 md:h-96 flex items-center justify-center">
+                    <h2 className="text-[8rem] md:text-[18rem] font-black italic uppercase tracking-tighter leading-none text-white opacity-[0.03] whitespace-nowrap select-none">
+                        Member Experience
+                    </h2>
+                </div>
+
+                <div className="max-w-[1400px] mx-auto px-6 relative z-10">
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-12 mb-24">
+                        <div className="max-w-xl">
+                            <p className="text-lg md:text-2xl text-slate-400 font-medium italic leading-relaxed">
+                                Hear from the select few who have secured access.
+                            </p>
                         </div>
                         <div className="flex gap-4">
-                            <button className="w-14 h-14 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/5 transition-colors">
-                                <ChevronRight size={24} className="rotate-180" />
+                            <button className="w-14 h-14 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/5 transition-all group">
+                                <ChevronRight size={24} className="rotate-180 group-hover:-translate-x-1 transition-transform" />
                             </button>
-                            <button className="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center hover:bg-slate-200 transition-colors">
-                                <ChevronRight size={24} />
+                            <button className="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center hover:bg-slate-200 transition-all group border border-white shadow-xl shadow-white/5">
+                                <ChevronRight size={24} className="group-hover:translate-x-1 transition-transform" />
                             </button>
                         </div>
                     </div>
