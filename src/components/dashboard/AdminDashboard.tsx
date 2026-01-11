@@ -34,6 +34,10 @@ import {
 import { FilterDrawer } from './FilterDrawer';
 import { KPICard } from './KPICard';
 import { VitalTile } from './VitalTile';
+import { Card } from '@/components/ui/Card'; // Added for new tab system
+import { Logo } from '@/components/brand/Logo'; // Added for new tab system
+import { useTenant } from '@/lib/tenant/tenantContext'; // Added for new tab system
+import AnalyticsDashboard from '@/components/admin/analytics/AnalyticsDashboard'; // Added for new tab system
 
 const fleetData = [
     { time: '00:00', value: 400, projection: 420 },
@@ -235,53 +239,85 @@ export default function AdminDashboard() {
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                 <span className="text-[9px] font-black text-emerald-500 leading-none">HEALTHY</span>
                             </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            <VitalTile
-                                icon={TrendingUp}
-                                label="DB Sync Efficiency"
-                                value="99.99%"
-                                sub="Healthy"
-                                meta="Last sync 42s ago"
-                                color="emerald"
-                            />
-                            <VitalTile
-                                icon={Clock}
-                                label="Avg API Latency"
-                                value="142ms"
-                                sub="Optimal"
-                                meta="p95: 210ms"
-                                color="blue"
-                            />
-                            <VitalTile
-                                icon={AlertCircle}
-                                label="Traffic Error Rate"
-                                value="0.02%"
-                                sub="Stable"
-                                meta="12 incidents (24h)"
-                                color="indigo"
-                            />
-                        </div>
-
-                        <div className="mt-10 p-5 rounded-2xl bg-slate-50 dark:bg-white/2 border border-slate-100 dark:border-white/5 group hover:border-indigo-500/30 transition-all cursor-pointer">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-white/10 shadow-sm group-hover:scale-110 transition-transform">
-                                        <Server size={24} className="text-indigo-500" />
+                            <div className="p-8">
+                                {activeTab === 'overview' && (
+                                    <div className="space-y-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <Card className="p-6">
+                                                <h3 className="text-sm font-medium text-slate-500">Total Tenants</h3>
+                                                <p className="text-3xl font-bold mt-2">12</p>
+                                            </Card>
+                                            <Card className="p-6">
+                                                <h3 className="text-sm font-medium text-slate-500">Total Users</h3>
+                                                <p className="text-3xl font-bold mt-2">1,234</p>
+                                            </Card>
+                                            <Card className="p-6">
+                                                <h3 className="text-sm font-medium text-slate-500">System Status</h3>
+                                                <div className="flex items-center gap-2 mt-2">
+                                                    <div className="w-3 h-3 rounded-full bg-green-500" />
+                                                    <p className="text-lg font-medium text-green-600">Operational</p>
+                                                </div>
+                                            </Card>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Master Node</div>
-                                        <div className="text-sm font-bold text-slate-900 dark:text-white">Mumbai East Cluster</div>
+                                )}
+
+                                {activeTab === 'analytics' && (
+                                    <AnalyticsDashboard />
+                                )}
+
+                                {activeTab === 'tenants' && (
+                                    <div className="text-center py-20 text-slate-400">
+                                        Tenants Management UI Placeholder
                                     </div>
+                                )}
+                            </div>
+
+                            <div className="space-y-4">
+                                <VitalTile
+                                    icon={TrendingUp}
+                                    label="DB Sync Efficiency"
+                                    value="99.99%"
+                                    sub="Healthy"
+                                    meta="Last sync 42s ago"
+                                    color="emerald"
+                                />
+                                <VitalTile
+                                    icon={Clock}
+                                    label="Avg API Latency"
+                                    value="142ms"
+                                    sub="Optimal"
+                                    meta="p95: 210ms"
+                                    color="blue"
+                                />
+                                <VitalTile
+                                    icon={AlertCircle}
+                                    label="Traffic Error Rate"
+                                    value="0.02%"
+                                    sub="Stable"
+                                    meta="12 incidents (24h)"
+                                    color="indigo"
+                                />
+                            </div>
+
+                            <div className="mt-10 p-5 rounded-2xl bg-slate-50 dark:bg-white/2 border border-slate-100 dark:border-white/5 group hover:border-indigo-500/30 transition-all cursor-pointer">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-white/10 shadow-sm group-hover:scale-110 transition-transform">
+                                            <Server size={24} className="text-indigo-500" />
+                                        </div>
+                                        <div>
+                                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Master Node</div>
+                                            <div className="text-sm font-bold text-slate-900 dark:text-white">Mumbai East Cluster</div>
+                                        </div>
+                                    </div>
+                                    <ArrowUpRight className="text-slate-300 group-hover:text-indigo-500" size={20} />
                                 </div>
-                                <ArrowUpRight className="text-slate-300 group-hover:text-indigo-500" size={20} />
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    );
+            );
 }
 
