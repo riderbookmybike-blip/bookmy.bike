@@ -34,7 +34,7 @@ import {
 import { FilterDrawer } from './FilterDrawer';
 import { KPICard } from './KPICard';
 import { VitalTile } from './VitalTile';
-import { Card } from '@/components/ui/Card'; // Added for new tab system
+// Added for new tab system
 import { Logo } from '@/components/brand/Logo'; // Added for new tab system
 import { useTenant } from '@/lib/tenant/tenantContext'; // Added for new tab system
 import AnalyticsDashboard from '@/components/admin/analytics/AnalyticsDashboard'; // Added for new tab system
@@ -61,6 +61,14 @@ const sparkData = [
 export default function AdminDashboard() {
     const [range, setRange] = useState('1D');
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState('overview');
+
+    const tabs = [
+        { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+        { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+        { id: 'tenants', label: 'Tenants', icon: Landmark },
+        { id: 'users', label: 'Users', icon: Users },
+    ];
 
     return (
         <div className="space-y-8 animate-in fade-in duration-700 pb-12">
@@ -69,7 +77,7 @@ export default function AdminDashboard() {
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-200 dark:border-white/5 pb-8">
                 <div className="space-y-1">
                     <div className="flex items-center gap-2 px-2.5 py-1 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 rounded-lg w-fit">
-                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse" />
+                        <span className="w-1.1 h-1.5 rounded-full bg-indigo-600 animate-pulse" />
                         <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-400">AUMS Enterprise Command v2.4</span>
                     </div>
                     <h1 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white mt-4">
@@ -99,11 +107,27 @@ export default function AdminDashboard() {
                         <Filter size={14} />
                         Filter View
                     </button>
-                    <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-black hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-500/20">
-                        <Plus size={14} />
-                        Add Partner
+                    <button className="p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-500/20">
+                        <Plus size={16} />
                     </button>
                 </div>
+            </div>
+
+            {/* Navigation Tabs */}
+            <div className="flex items-center gap-2 p-1 overflow-x-auto no-scrollbar">
+                {tabs.map((tab) => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === tab.id
+                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 scale-105'
+                            : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10'
+                            }`}
+                    >
+                        <tab.icon size={16} className={activeTab === tab.id ? 'text-white' : 'text-slate-400'} />
+                        {tab.label}
+                    </button>
+                ))}
             </div>
 
             {/* Premium Enterprise KPI Cards */}

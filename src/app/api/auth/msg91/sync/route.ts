@@ -3,7 +3,7 @@ import { adminClient } from '@/lib/supabase/admin';
 
 export async function POST(req: NextRequest) {
     try {
-        const { phone, displayName, pincode, city, state, country, latitude, longitude } = await req.json();
+        const { phone, displayName, pincode, city, state, country, latitude, longitude, address } = await req.json();
 
         if (!phone) {
             return NextResponse.json({ success: false, message: 'Phone number required' }, { status: 400 });
