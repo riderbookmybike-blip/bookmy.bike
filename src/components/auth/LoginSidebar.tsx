@@ -261,12 +261,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
             // STRICT DOMAIN SEPARATION
             const isMarketplaceDomain = window.location.hostname === 'bookmy.bike' || window.location.hostname === 'www.bookmy.bike' || window.location.hostname === 'localhost';
 
-            // Admin Check (Always allow dashboard access for admins)
-            const isAdmin = activeRole === 'SUPER_ADMIN' || activeRole === 'MARKETPLACE_ADMIN' || activeRole === 'TENANT_ADMIN';
-
-            if (isAdmin) {
-                router.push('/dashboard');
-            } else if (isMarketplaceDomain) {
+            if (isMarketplaceDomain) {
                 // CONSUMER SITE: Stay on page, just refresh auth
                 window.location.reload();
             } else {
