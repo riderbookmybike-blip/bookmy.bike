@@ -368,7 +368,7 @@ function CatalogContent() {
                             <button onClick={() => { setSearchQuery(''); setSelectedFuels([]); setSelectedSegments([]); }} className="px-8 py-3 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest text-blue-500 hover:text-white transition-all">Clear Systems</button>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6 md:gap-8">
                             {filteredVehicles.map((v, idx) => {
                                 // Mock Pricing Logic for Demo
                                 const basePriceStr = v.make === 'Royal Enfield' ? '2.15' : '0.85';
