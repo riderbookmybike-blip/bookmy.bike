@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
     ArrowRight,
@@ -14,15 +15,53 @@ import {
 } from 'lucide-react';
 import { MarketplaceHeader } from '@/components/layout/MarketplaceHeader';
 import { MarketplaceFooter } from '@/components/layout/MarketplaceFooter';
+import { useTenant } from '@/lib/tenant/tenantContext';
+import { createClient } from '@/lib/supabase/client';
 
 export default function MembersHome() {
-    const [referralCode] = useState('R9K2X7P4M');
+    const { userName, tenantId } = useTenant();
+    const router = useRouter();
+    const supabase = createClient();
+    const [referralCode, setReferralCode] = useState('FETCHING...');
+    const [memberId, setMemberId] = useState('...');
     const [copied, setCopied] = useState(false);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetchProfile() {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                // If not logged in, we might want to stay or redirect
+                setLoading(false);
+                return;
+            }
+
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('referral_code, id')
+                .eq('id', user.id)
+                .single();
+
+            if (profile) {
+                setReferralCode(profile.referral_code || 'GENERATE_ONE');
+                setMemberId(profile.id.slice(-6).toUpperCase());
+            }
+            setLoading(false);
+        }
+        fetchProfile();
+    }, [supabase]);
 
     const copyToClipboard = () => {
+        if (referralCode === 'FETCHING...') return;
         navigator.clipboard.writeText(referralCode);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
+    };
+
+    const handleSignOut = async () => {
+        await supabase.auth.signOut();
+        localStorage.removeItem('user_name');
+        window.location.href = '/';
     };
 
     return (
@@ -39,16 +78,19 @@ export default function MembersHome() {
                         </div>
                         <div className="space-y-2">
                             <h1 className="text-5xl md:text-7xl font-black tracking-tighter italic">
-                                Welcome Back, <span className="text-rose-600">Ajit M Singh Rathore</span>
+                                Welcome Back, <span className="text-rose-600 truncate max-w-[400px] inline-block align-bottom">{userName || 'Member'}</span>
                             </h1>
                             <div className="flex items-center gap-4">
-                                <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">ID: X7R9K2</p>
+                                <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">ID: {memberId}</p>
                                 <span className="px-3 py-0.5 bg-rose-600/10 border border-rose-600 text-rose-600 text-[10px] font-black uppercase tracking-widest italic rounded">Founder Member</span>
                             </div>
                         </div>
                     </div>
 
-                    <button className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:border-white/20 transition-all group">
+                    <button
+                        onClick={handleSignOut}
+                        className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:border-white/20 transition-all group"
+                    >
                         <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" />
                         Sign Out
                     </button>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminClient } from '@/lib/supabase/admin';
+import { generateDisplayId } from '@/utils/displayId';
 
 export async function POST(req: NextRequest) {
     try {
@@ -37,6 +38,15 @@ export async function POST(req: NextRequest) {
 
         // 3. Upsert Profile
         if (userId) {
+            // First check if profile already has a referral code
+            const { data: existingProfile } = await adminClient
+                .from('profiles')
+                .select('referral_code')
+                .eq('id', userId)
+                .single();
+
+            const referralCode = existingProfile?.referral_code || generateDisplayId();
+
             const { error: profileError } = await adminClient
                 .from('profiles')
                 .upsert({
@@ -44,19 +54,19 @@ export async function POST(req: NextRequest) {
                     full_name: displayName,
                     phone: phone, // Storing raw 10 digit in profile for display
                     role: 'USER', // Default role
+                    referral_code: referralCode,
                     pincode: pincode || null,
                     city: city || null,
                     state: state || null,
                     country: country || null,
-                    address: address || null, // Best effort save (if column exists)
+                    address: address || null,
                     latitude: latitude || null,
                     longitude: longitude || null,
-                    // tenant_id intentionally left null or handled by trigger defaults
                 });
 
             if (profileError) {
                 console.error('Profile Sync Error:', profileError);
-                // Non-blocking but logged
+                // If it's a missing column error, we might log it but continue
             }
         }
 
