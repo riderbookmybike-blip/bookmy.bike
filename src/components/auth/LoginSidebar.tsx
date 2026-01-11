@@ -134,7 +134,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
             />
 
             {/* Sidebar Container - Glassmorphic Floating Island */}
-            <div className="relative w-full max-w-xl h-fit max-h-[calc(100vh-8rem)] bg-white/20 dark:bg-slate-950/20 backdrop-blur-3xl shadow-[0_0_100px_rgba(0,0,0,0.2)] flex flex-col animate-in slide-in-from-right duration-700 cubic-bezier(0.16, 1, 0.3, 1) border border-white/20 dark:border-white/5 rounded-[48px] overflow-hidden pointer-events-auto">
+            <div className="relative w-full max-w-xl h-fit max-h-[calc(100vh-8rem)] bg-white/90 dark:bg-slate-950/20 backdrop-blur-3xl shadow-[0_0_100px_rgba(0,0,0,0.2)] flex flex-col animate-in slide-in-from-right duration-700 cubic-bezier(0.16, 1, 0.3, 1) border border-slate-200 dark:border-white/5 rounded-[48px] overflow-hidden pointer-events-auto">
 
                 {/* Grainy Texture Overlay */}
                 <div className="absolute inset-0 pointer-events-none opacity-[0.03] dark:opacity-[0.05] grayscale bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
@@ -265,7 +265,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                             placeholder="XXXXX XXXXX"
                                             value={phone}
                                             onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                                            className="bg-transparent border-none outline-none text-xl font-black tracking-[0.3em] text-slate-900 dark:text-white w-full pl-6 placeholder:text-slate-200 placeholder:tracking-normal"
+                                            className="bg-transparent border-none outline-none text-xl font-black tracking-[0.3em] text-slate-900 dark:text-white w-full pl-6 placeholder:text-slate-300 dark:placeholder:text-slate-700 placeholder:tracking-normal"
                                         />
                                     </div>
                                 ) : (
@@ -277,7 +277,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                             value={otp}
                                             maxLength={4}
                                             onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                                            className="bg-transparent border-none outline-none text-xl font-black tracking-[1em] text-slate-900 dark:text-white w-full text-center placeholder:text-slate-200 placeholder:tracking-normal"
+                                            className="bg-transparent border-none outline-none text-xl font-black tracking-[1em] text-slate-900 dark:text-white w-full text-center placeholder:text-slate-300 dark:placeholder:text-slate-700 placeholder:tracking-normal"
                                         />
                                     </div>
                                 )}
