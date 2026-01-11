@@ -23,15 +23,19 @@ export async function POST() {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Explicitly create profile
+    const MARKETPLACE_TENANT_ID = '5371fa81-a58a-4a39-aef2-2821268c96c8';
+
+    // Explicitly create profile with required Marketplace context
     const { error } = await supabase
         .from('profiles')
         .insert({
             id: user.id,
             email: user.email,
-            phone: user.phone,
+            phone: user.phone || user.user_metadata?.phone || '',
             full_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
             avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
+            tenant_id: MARKETPLACE_TENANT_ID,
+            role: 'MEMBER'
         });
 
     if (error) {
