@@ -176,7 +176,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
         // but for now we follow the frontend-driven flow requested.
 
         if (true) { // Successfully verified
-            setTenantType('USER'); // Default role
+            setTenantType('MARKETPLACE'); // Default role
             const displayName = phone === '9820760596' ? 'Ajit Singh' : 'Valued User';
             localStorage.setItem('user_name', displayName);
             window.dispatchEvent(new Event('storage'));
@@ -430,6 +430,13 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                     <Globe size={16} className="text-slate-300" />
                 </div>
             </div>
+            <script
+                src="https://verify.msg91.com/otp-provider.js"
+                defer
+                onLoad={() => {
+                    if ((window as any).onMsg91Load) (window as any).onMsg91Load();
+                }}
+            ></script>
         </div>
     );
 }
