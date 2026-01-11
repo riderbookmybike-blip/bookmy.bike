@@ -20,13 +20,25 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
     const [phone, setPhone] = useState('');
     const [otp, setOtp] = useState('');
     const [loading, setLoading] = useState(false);
-    const [location, setLocation] = useState<{ pincode: string | null; loading: boolean; isServiceable: boolean | null }>({
+    const [location, setLocation] = useState<{
+        pincode: string | null;
+        city: string | null;
+        state: string | null;
+        country: string | null;
+        latitude: number | null;
+        longitude: number | null;
+        loading: boolean;
+        isServiceable: boolean | null
+    }>({
         pincode: null,
+        city: null,
+        state: null,
+        country: null,
+        latitude: null,
+        longitude: null,
         loading: false,
         isServiceable: null
     });
-    const [isEditingPincode, setIsEditingPincode] = useState(false);
-    const [tempPincode, setTempPincode] = useState('');
     const [resendTimer, setResendTimer] = useState(0);
 
     useEffect(() => {
@@ -58,30 +70,29 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                         process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY // Safe to pass undefined (will trigger Mock)
                     );
 
-                    if (result.pincode) {
-                        const isServiceable = result.pincode.startsWith('400');
-                        setLocation({ pincode: result.pincode, loading: false, isServiceable });
-                        setTempPincode(result.pincode);
-                    } else {
-                        // Fallback Error State
-                        setLocation({ pincode: null, loading: false, isServiceable: null });
-                    }
+                    // Silently update state with whatever we got
+                    setLocation(prev => ({
+                        ...prev,
+                        loading: false,
+                        pincode: result.pincode,
+                        city: result.city,
+                        state: result.state || null,
+                        country: result.country || null,
+                        latitude: result.latitude || latitude,
+                        longitude: result.longitude || longitude,
+                        isServiceable: result.pincode ? result.pincode.startsWith('400') : null
+                    }));
                 },
                 (error) => {
                     console.error("Geolocation error:", error);
-                    setLocation({ pincode: null, loading: false, isServiceable: null });
+                    // Silently fail, just stop loading
+                    setLocation(prev => ({ ...prev, loading: false }));
                 }
             );
         }
     };
 
-    const handlePincodeSubmit = () => {
-        if (tempPincode.length === 6) {
-            const isServiceable = tempPincode.startsWith('400');
-            setLocation({ pincode: tempPincode, loading: false, isServiceable });
-            setIsEditingPincode(false);
-        }
-    };
+    // Removed handlePincodeSubmit and related manual edit state for silent mode
 
 
     // MSG91 SDK Integration (Global Listener)
@@ -175,7 +186,16 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                 const syncRes = await fetch('/api/auth/msg91/sync', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone, displayName, pincode: location.pincode })
+                    body: JSON.stringify({
+                        phone,
+                        displayName,
+                        pincode: location.pincode,
+                        city: location.city,
+                        state: location.state,
+                        country: location.country,
+                        latitude: location.latitude,
+                        longitude: location.longitude
+                    })
                 });
 
                 if (!syncRes.ok) {
@@ -254,52 +274,8 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                     </button>
                 </div>
 
-                {/* Pincode / Serviceability Section - Hidden for TERMINAL/AUMS */}
-                {variant !== 'TERMINAL' && (
-                    <div className="mx-10 mb-8 p-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <MapPin size={14} className="text-blue-600" />
-                                {isEditingPincode ? (
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="text"
-                                            maxLength={6}
-                                            value={tempPincode}
-                                            onChange={(e) => setTempPincode(e.target.value.replace(/\D/g, ''))}
-                                            onBlur={handlePincodeSubmit}
-                                            onKeyDown={(e) => e.key === 'Enter' && handlePincodeSubmit()}
-                                            autoFocus
-                                            className="bg-transparent border-b border-blue-600/30 outline-none text-[11px] font-black uppercase tracking-widest text-slate-900 dark:text-white w-20"
-                                            placeholder="INPUT"
-                                        />
-                                    </div>
-                                ) : (
-                                    <button
-                                        onClick={() => {
-                                            setTempPincode(location.pincode || '');
-                                            setIsEditingPincode(true);
-                                        }}
-                                        className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-blue-600 transition-colors flex items-center gap-2 group/pin"
-                                    >
-                                        {location.loading ? "Locating..." : (location.pincode || "Zone Unknown")}
-                                        {!location.loading && <span className="text-[8px] opacity-0 group-hover/pin:opacity-100 transition-opacity">(Edit)</span>}
-                                    </button>
-                                )}
-                            </div>
-                            {location.isServiceable && !isEditingPincode && (
-                                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-500/10 text-emerald-600 rounded-full text-[8px] font-black uppercase tracking-widest border border-emerald-500/20 animate-in fade-in zoom-in duration-300">
-                                    <CheckCircle2 size={8} /> Serviceable
-                                </div>
-                            )}
-                            {!location.isServiceable && location.pincode && !isEditingPincode && (
-                                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-rose-500/10 text-rose-600 rounded-full text-[8px] font-black uppercase tracking-widest border border-rose-500/20 animate-in fade-in zoom-in duration-300">
-                                    <AlertCircle size={8} /> Out of Zone
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
+                {/* Pincode / Serviceability Section - SILENT MODE ACTIVATED (Hidden from UI) */}
+                {/* We are still capturing location in background but not showing it here to reduce friction */}
 
                 {/* Core Authentication Interface */}
                 <div className="flex-1 overflow-y-auto px-10 space-y-8 pt-10">
