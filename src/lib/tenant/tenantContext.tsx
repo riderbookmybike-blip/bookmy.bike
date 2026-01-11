@@ -125,7 +125,6 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
         const fetchTenantDetails = async () => {
             try {
                 const supabase = createClient();
-
                 let { data: { user } } = await supabase.auth.getUser();
 
                 if (!user) {
@@ -133,6 +132,13 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                     if (sessionData?.session?.user) {
                         user = sessionData.session.user;
                     }
+                }
+
+                const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+                const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
+                let currentSubdomain = '';
+                if (hostname.endsWith(`.${ROOT_DOMAIN}`)) {
+                    currentSubdomain = hostname.replace(`.${ROOT_DOMAIN}`, '');
                 }
 
 
@@ -176,8 +182,26 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
                     if (!mounted) return;
 
-                    // 1. User Identity
-                    const fullName = profileResult.data?.full_name || user.email?.split('@')[0] || 'User';
+                    // 1. User Identity & Auto-Registration
+                    if (!profileResult.data) {
+                        console.warn('[TenantContext] Profile missing for user. Triggering auto-registration...');
+                        try {
+                            const regResponse = await fetch('/api/auth/register', { method: 'POST' });
+                            if (regResponse.ok) {
+                                console.log('[TenantContext] Auto-registration successful. Re-fetching profile...');
+                                const { data: newProfile } = await supabase
+                                    .from('profiles')
+                                    .select('full_name')
+                                    .eq('id', user.id)
+                                    .single();
+                                if (newProfile) (profileResult as any).data = newProfile;
+                            }
+                        } catch (regErr) {
+                            console.error('[TenantContext] Auto-registration failed:', regErr);
+                        }
+                    }
+
+                    const fullName = profileResult.data?.full_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Member';
                     setUserName(fullName);
                     localStorage.setItem('user_name', fullName);
                     // Notify other components (like MarketplaceHeader) that auth state changed
@@ -190,6 +214,15 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
                     if (memberships.length === 0) {
                         // CASE 0: No Memberships
+                        const isApex = !currentSubdomain;
+                        if (isApex) {
+                            setTenantName('Marketplace');
+                            setTenantTypeState('MARKETPLACE');
+                            setUserRole('MEMBER');
+                            setActiveRole('MEMBER');
+                            return;
+                        }
+
                         console.error('No active memberships found for user.');
                         setTenantName('No Access');
                         setTenantTypeState('DEALER'); // Safe default to prevent crash
