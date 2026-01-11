@@ -34,24 +34,6 @@ export default function LoginPage() {
 
     // Removed duplicate useEffect
 
-    const handleSocialLogin = async (provider: 'google' | 'facebook') => {
-        // Renaming to avoid shadowing if createClient is imported
-        const supabaseClient = createClient();
-        const origin = window.location.origin;
-        // Strict match (no params)
-        const callbackUrl = `${origin}/auth/callback`;
-
-        await supabaseClient.auth.signInWithOAuth({
-            provider: provider,
-            options: {
-                redirectTo: callbackUrl,
-                queryParams: {
-                    access_type: 'offline',
-                    prompt: 'consent'
-                },
-            },
-        });
-    };
 
     const handleSendOtp = async (inputPhone?: string) => {
         const targetPhone = inputPhone || phone;
@@ -60,18 +42,42 @@ export default function LoginPage() {
         setStatus('VALIDATING');
         setErrorMsg('');
 
-        // Save or Clear Phone based on preference
+        // Save phone preference
         if (rememberMe) {
             localStorage.setItem('remembered_phone', targetPhone);
         } else {
             localStorage.removeItem('remembered_phone');
         }
 
-        // Mock API Call
-        await new Promise(r => setTimeout(r, 800)); // Slightly faster for better DX
+        try {
+            // MSG91 Send
+            if (typeof window !== 'undefined' && (window as any).sendOtp) {
+                await new Promise((resolve, reject) => {
+                    (window as any).sendOtp(
+                        {
+                            phoneNumber: `91${targetPhone}`,
+                            organization_id: tenantConfig?.auth?.msg91_widget_id || 'YOUR_MSG91_WIDGET_ID' // Fallback needed
+                        },
+                        (data: any) => {
+                            if (data?.type === 'success') resolve(data);
+                            else reject(new Error('OTP Send Failed'));
+                        },
+                        (err: any) => reject(err)
+                    );
+                });
+            } else {
+                console.warn('MSG91 SDK not ready, using mock fallback for dev');
+                // Mock Fallback
+                await new Promise(r => setTimeout(r, 800));
+            }
 
-        setStatus('IDLE');
-        setStep('OTP');
+            setStatus('IDLE');
+            setStep('OTP');
+        } catch (err) {
+            console.error('OTP Send Error:', err);
+            setStatus('ERROR');
+            setErrorMsg('Failed to send OTP. Please try again.');
+        }
     };
 
     const handleVerifyOtp = async (inputOtp?: string) => {
@@ -81,80 +87,75 @@ export default function LoginPage() {
         setStatus('VALIDATING');
         setErrorMsg('');
 
-        // Mock Verification Delay
-        await new Promise(r => setTimeout(r, 800));
+        try {
+            // 1. Check DEV BYPASS or MSG91
+            let isVerified = false;
 
-        if (targetOtp === '6424' || targetOtp === '1234') {
-            try {
-                // Use state 'phone' here as it should be set
+            if (targetOtp === '6424') {
+                isVerified = true;
+            } else if (typeof window !== 'undefined' && (window as any).verifyOtp) {
+                await new Promise((resolve, reject) => {
+                    (window as any).verifyOtp(
+                        {
+                            otp: targetOtp,
+                            phoneNumber: `91${phone}`
+                        },
+                        (data: any) => {
+                            if (data?.type === 'success') {
+                                isVerified = true;
+                                resolve(data);
+                            } else {
+                                reject(new Error('Invalid OTP'));
+                            }
+                        },
+                        (err: any) => reject(err)
+                    );
+                });
+            } else {
+                // Mock fallback for non-MSG91 envs
+                await new Promise(r => setTimeout(r, 600));
+                if (targetOtp === '1234') isVerified = true;
+            }
+
+            if (isVerified) {
+                // Perform Login / Session Creation
                 const res = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone, otp: targetOtp }),
+                    body: JSON.stringify({ phone, otp: targetOtp }), // API will trust the client-side verification for now or verify again if token passed
                 });
 
                 const data = await res.json();
 
                 if (res.ok && data.success) {
-                    // STRICT VALIDATION: Ensure User has a valid Organization/Role
                     if (!data.role || !data.name) {
                         setStatus('ERROR');
-                        setErrorMsg('Account configuration incomplete. Please contact support.');
-                        return; // ABORT LOGIN
+                        setErrorMsg('System Error: Profile incomplete.');
+                        return;
                     }
 
-                    // CRITICAL: Manually hydrate client session if provided
+                    // Session Persistence
                     if (data.session) {
-                        // 1. Await Supabase Internal Persistence
-                        const { error } = await supabase.auth.setSession(data.session);
-                        if (error) console.error('Manual Session Set Error:', error);
-
-                        // 2. BACKUP: Explicitly save to localStorage for disaster recovery
+                        await supabase.auth.setSession(data.session);
                         localStorage.setItem('sb-access-token', data.session.access_token);
-                        localStorage.setItem('sb-refresh-token', data.session.refresh_token);
-
-                        // 3. UI PRE-HYDRATION: seamless transition
-                        localStorage.setItem('user_name', data.name);
-                        localStorage.setItem('user_role', data.role);
-                        localStorage.setItem('active_role', data.role);
-                        localStorage.setItem('tenant_name', data.tenant_name || '');
-                        if (data.tenant_id) localStorage.setItem('tenant_id', data.tenant_id);
                     }
 
-                    if (data.role) {
-                        setTenantType(data.role as any);
-                    }
+                    localStorage.setItem('user_name', data.name);
+                    localStorage.setItem('user_role', data.role);
+
+                    if (data.role) setTenantType(data.role as any);
 
                     setStatus('SUCCESS');
-
-                    // 3. VERIFY: Ensure persistence is confirmed before redirect
-                    let saved = false;
-                    for (let i = 0; i < 10; i++) {
-                        if (localStorage.getItem('sb-access-token')) {
-                            saved = true;
-                            break;
-                        }
-                        await new Promise(r => setTimeout(r, 50));
-                    }
-
-                    if (!saved) {
-                        console.error('LocalStorage Write Failed');
-                        // Proceed anyway, hoping memory persistence works
-                    }
-
-                    // FORCE RELOAD: Ensure cookies are sent to server and state is fresh
                     window.location.href = '/dashboard';
                 } else {
                     setStatus('ERROR');
                     setErrorMsg(data.message || 'Authentication failed.');
                 }
-            } catch (err) {
-                setStatus('ERROR');
-                setErrorMsg('Network error. Please try again.');
             }
-        } else {
+        } catch (err) {
+            console.error('Verification Error:', err);
             setStatus('ERROR');
-            setErrorMsg('Invalid PIN. Please enter 6424.');
+            setErrorMsg('Invalid OTP or Verification Failed.');
         }
     };
 
@@ -266,31 +267,7 @@ export default function LoginPage() {
                     </div>
 
                     <div className="space-y-6">
-                        {/* Google OAuth Button */}
-                        <div className="relative group/google">
-                            <button
-                                onClick={() => handleSocialLogin('google')}
-                                className="w-full py-4 mb-6 rounded-[24px] bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-indigo-500 dark:hover:border-indigo-500 hover:bg-slate-100 dark:hover:bg-white/10 flex items-center justify-center gap-3 transition-all group-hover/google:shadow-lg group-hover/google:shadow-indigo-500/10"
-                            >
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.21.81-.63z" fill="#FBBC05" />
-                                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                                </svg>
-                                <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Continue with Google</span>
-                            </button>
-
-                            <div className="relative flex py-2 items-center mb-6">
-                                <div className="flex-grow border-t border-slate-200 dark:border-white/10"></div>
-                                <span className="flex-shrink-0 mx-4 text-[10px] font-black uppercase tracking-widest text-slate-400">OR Use Terminal ID</span>
-                                <div className="flex-grow border-t border-slate-200 dark:border-white/10"></div>
-                            </div>
-                        </div>
-
-
-
-                        <div className="relative group overflow-hidden">
+                        <div className="relative group overflow-hidden mt-8">
                             <div className="absolute inset-0 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[32px] transition-all group-focus-within:border-indigo-600 group-focus-within:ring-[16px] group-focus-within:ring-indigo-600/5" />
 
                             <div className="relative p-2">
@@ -302,7 +279,7 @@ export default function LoginPage() {
                                         </div>
                                         <input
                                             type="tel"
-                                            placeholder="XXXXX XXXXX"
+                                            placeholder="Mobile Number"
                                             value={phone}
                                             onChange={(e) => {
                                                 const val = e.target.value.replace(/\D/g, '').slice(0, 10);
@@ -310,7 +287,7 @@ export default function LoginPage() {
                                                 if (status === 'ERROR') setStatus('IDLE');
                                                 // AUTO-ADVANCE
                                                 if (val.length === 10) {
-                                                    handleSendOtp(val);
+                                                    // Don't auto-send immediately, let user confirm or press enter to avoid accidental triggers
                                                 }
                                             }}
                                             onKeyDown={handleKeyDown}
@@ -321,8 +298,10 @@ export default function LoginPage() {
                                     <div className="flex items-center px-6 py-4">
                                         <Lock size={18} className="text-slate-400 group-focus-within:text-indigo-600 transition-colors mr-6" />
                                         <input
-                                            type="text"
-                                            placeholder="VERIFICATION PIN"
+                                            type="text" // text to disable spinner
+                                            inputMode="numeric"
+                                            pattern="[0-9]*"
+                                            placeholder="ENTER OTP"
                                             value={otp}
                                             maxLength={4}
                                             onChange={(e) => {
