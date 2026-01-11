@@ -61,6 +61,8 @@ export async function submitLead(formData: FormData) {
     }
 
     const { data } = validation;
+    const referrerUserId = formData.get('referrer_user_id') as string | null;
+    const referrerTenantId = formData.get('referrer_tenant_id') as string | null;
 
     try {
         // 4. Determine Tenant (MARKETPLACE OWNER from DB)
@@ -86,7 +88,7 @@ export async function submitLead(formData: FormData) {
                 name: data.name,
                 phone: data.phone,
                 city: data.city,
-                pincode: null, // Can extract from city logic later if needed
+                pincode: null,
                 interest_model: data.model,
                 interest_variant: data.variant,
                 interest_color: data.color,
@@ -94,7 +96,9 @@ export async function submitLead(formData: FormData) {
                 utm_source: data.utm?.utm_source,
                 utm_medium: data.utm?.utm_medium,
                 utm_campaign: data.utm?.utm_campaign,
-                status: 'NEW'
+                status: 'NEW',
+                referrer_user_id: referrerUserId || null,
+                meta_data: referrerTenantId ? { source_tenant_id: referrerTenantId } : null
             })
             .select('id')
             .single();
@@ -104,19 +108,27 @@ export async function submitLead(formData: FormData) {
             return { success: false, message: 'System busy (db). Please try WhatsApp.' };
         }
 
-        // 6. If Dealer Selected -> Auto Share (FOREVER SHARING)
+        // 6. AUTO-SHARE Logic
+        // A. If Dealer explicitly Selected by customer
         if (rawData.selectedDealerId && lead) {
-            const { error: shareError } = await adminClient
+            await adminClient
                 .from('lead_dealer_shares')
                 .insert({
                     lead_id: lead.id,
                     dealer_tenant_id: rawData.selectedDealerId,
                     is_primary: true
                 });
+        }
 
-            if (shareError) {
-                console.warn('Share creation failed (non-critical):', shareError);
-            }
+        // B. If referred by a Staff Member (Share with their dealership)
+        if (referrerTenantId && lead && referrerTenantId !== rawData.selectedDealerId) {
+            await adminClient
+                .from('lead_dealer_shares')
+                .insert({
+                    lead_id: lead.id,
+                    dealer_tenant_id: referrerTenantId,
+                    is_primary: false // Secondary share (referrer)
+                });
         }
 
         return { success: true, message: 'Callback requested successfully!' };

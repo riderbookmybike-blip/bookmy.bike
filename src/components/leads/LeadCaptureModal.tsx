@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { submitLead } from '@/actions/lead';
-import { X, CheckCircle, Loader2 } from 'lucide-react';
+import { X, CheckCircle, Loader2, Briefcase } from 'lucide-react';
+import { useTenant } from '@/lib/tenant/tenantContext';
+import { createClient } from '@/lib/supabase/client';
 
 interface LeadCaptureModalProps {
     isOpen: boolean;
@@ -15,9 +17,14 @@ interface LeadCaptureModalProps {
 }
 
 export function LeadCaptureModal({ isOpen, onClose, productName, model, variant, color, priceSnapshot }: LeadCaptureModalProps) {
+    const { tenantId, userRole, memberships } = useTenant();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Detect if current user is a staff member of any dealership
+    const isStaff = userRole && userRole !== 'MEMBER';
+    const primaryMembership = memberships?.find(m => m.tenant_id === tenantId);
 
     if (!isOpen) return null;
 
@@ -31,6 +38,16 @@ export function LeadCaptureModal({ isOpen, onClose, productName, model, variant,
             if (variant) formData.append('variant', variant);
             if (color) formData.append('color', color);
             if (priceSnapshot) formData.append('priceSnapshot', JSON.stringify(priceSnapshot));
+
+            // Referral Data
+            if (isStaff) {
+                const supabase = createClient();
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    formData.append('referrer_user_id', user.id);
+                    if (tenantId) formData.append('referrer_tenant_id', tenantId);
+                }
+            }
 
             const result = await submitLead(formData);
 
@@ -82,9 +99,21 @@ export function LeadCaptureModal({ isOpen, onClose, productName, model, variant,
                     </div>
                 ) : (
                     <div className="space-y-6">
+                        {isStaff && (
+                            <div className="bg-blue-600/10 border border-blue-600/20 rounded-2xl p-4 flex items-center gap-4 animate-in fade-in slide-in-from-top-2 duration-500">
+                                <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white flex-shrink-0 animate-pulse">
+                                    <Briefcase size={20} />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Staff Referral Mode</p>
+                                    <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Booking for a customer from <span className="text-blue-600">{primaryMembership?.tenants?.name || 'your dealership'}</span>.</p>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="text-center space-y-1">
                             <h3 className="text-xl font-black uppercase italic text-slate-900 dark:text-white">
-                                Get Best Offer
+                                {isStaff ? 'Book for Customer' : 'Get Best Offer'}
                             </h3>
                             <p className="text-xs font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400">
                                 {productName}
@@ -102,18 +131,22 @@ export function LeadCaptureModal({ isOpen, onClose, productName, model, variant,
                             <input type="text" name="hp_check" className="hidden" tabIndex={-1} autoComplete="off" />
 
                             <div className="space-y-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Your Name</label>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">
+                                    {isStaff ? 'Customer Name' : 'Your Name'}
+                                </label>
                                 <input
                                     type="text"
                                     name="name"
                                     required
-                                    placeholder="Enter your full name"
+                                    placeholder={isStaff ? "Customer's full name" : "Enter your full name"}
                                     className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-blue-500 outline-none font-bold text-slate-900 dark:text-white transition-all"
                                 />
                             </div>
 
                             <div className="space-y-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Mobile Number</label>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">
+                                    {isStaff ? 'Customer Mobile' : 'Mobile Number'}
+                                </label>
                                 <div className="relative">
                                     <span className="absolute left-4 top-3.5 text-slate-400 font-bold">+91</span>
                                     <input
@@ -133,7 +166,7 @@ export function LeadCaptureModal({ isOpen, onClose, productName, model, variant,
                                 <input
                                     type="text"
                                     name="city"
-                                    placeholder="Your City"
+                                    placeholder="Customer's City"
                                     className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-blue-500 outline-none font-bold text-slate-900 dark:text-white transition-all"
                                 />
                             </div>
@@ -146,10 +179,10 @@ export function LeadCaptureModal({ isOpen, onClose, productName, model, variant,
                                 {isSubmitting ? (
                                     <>
                                         <Loader2 className="w-4 h-4 animate-spin" />
-                                        Sending...
+                                        Submitting Lead...
                                     </>
                                 ) : (
-                                    'Get Callback'
+                                    isStaff ? 'Submit Referral' : 'Get Best Offer'
                                 )}
                             </button>
 
