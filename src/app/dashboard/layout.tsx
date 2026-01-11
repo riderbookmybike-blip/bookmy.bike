@@ -5,7 +5,7 @@ import Sidebar from '@/components/Sidebar';
 import { DashboardHeader } from '@/components/layout/DashboardHeader';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import LoginSidebar from '@/components/auth/LoginSidebar';
-// AumsFooter removed for Dashboard
+import { MarketplaceHeader } from '@/components/layout/MarketplaceHeader';
 
 export default function DashboardLayout({
     children,
@@ -20,10 +20,6 @@ export default function DashboardLayout({
     // BRANDING INJECTION
     const primaryColor = tenantConfig?.brand?.primaryColor;
     const displayName = tenantConfig?.brand?.displayName;
-
-    // TODO: Dynamic Meta Tags (Title/Favicon) are harder in client components.
-    // Ideally use generateMetadata in a Server Component layout, but context is client-side.
-    // For now, we inject CSS variables.
 
     const handleSidebarHoverChange = (isHovered: boolean) => {
         if (!isSidebarPinned) {
@@ -43,18 +39,41 @@ export default function DashboardLayout({
         return 'TENANT_ADMIN';
     })();
 
+    // DETECT REGULAR USER
+    const isRegularUser = activeRole === 'USER' || activeRole === 'MEMBER';
+
     // SETUP ENFORCEMENT
     React.useEffect(() => {
+        // Regular users have nothing to "setup", so ignore them
+        if (isRegularUser) return;
+
         if (tenantConfig && tenantConfig.setup?.isComplete === false) {
             // Only force setup for Admins
             const isAdmin = effectiveRole?.includes('ADMIN') || effectiveRole?.includes('OWNER');
             if (isAdmin) {
-                // Prevent loop if we are already redirected (though this layout is for /dashboard)
                 window.location.href = '/setup';
             }
         }
-    }, [tenantConfig, effectiveRole]);
+    }, [tenantConfig, effectiveRole, isRegularUser]);
 
+    // --- REGULAR USER LAYOUT ---
+    if (isRegularUser) {
+        return (
+            <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+                <MarketplaceHeader onLoginClick={() => setIsLoginOpen(true)} />
+                <main className="pt-20 p-6 md:p-8 max-w-7xl mx-auto">
+                    {children}
+                </main>
+                <LoginSidebar
+                    isOpen={isLoginOpen}
+                    onClose={() => setIsLoginOpen(false)}
+                    variant="RETAIL"
+                />
+            </div>
+        );
+    }
+
+    // --- ADMIN / ENTERPRISE LAYOUT ---
     return (
         <div
             className="min-h-screen bg-slate-50 dark:bg-slate-950"
@@ -69,7 +88,7 @@ export default function DashboardLayout({
                 showSearch={true}
             />
 
-            <div className="flex pt-16"> {/* Reduced top padding for 64px header */}
+            <div className="flex pt-16">
                 {/* Sidebar Component */}
                 <Sidebar
                     role={effectiveRole as any}
@@ -88,7 +107,6 @@ export default function DashboardLayout({
                     <main className="flex-1 overflow-x-hidden p-6 md:p-8">
                         {children}
                     </main>
-                    {/* Footer Removed for Dashboard */}
                 </div>
             </div>
 
@@ -100,5 +118,3 @@ export default function DashboardLayout({
         </div>
     );
 }
-
-
