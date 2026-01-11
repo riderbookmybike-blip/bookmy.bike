@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { getDashboardStats, getRecentEvents, getLocationStats, AnalyticsStats, RecentEvent, LocationStat } from '@/actions/analytics';
-import { Card } from '@/components/ui/Card';
 import { Users, MousePointer, Clock, MapPin, Activity, Zap } from 'lucide-react';
 
 export default function AnalyticsDashboard() {
@@ -95,7 +94,7 @@ export default function AnalyticsDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* 2. Live Activity Feed */}
                 <div className="lg:col-span-2 space-y-4">
-                    <Card className="p-6">
+                    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-2xl shadow-sm p-6">
                         <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                             <Activity className="w-5 h-5 text-slate-400" />
                             Recent Activity
@@ -130,12 +129,12 @@ export default function AnalyticsDashboard() {
                                 </div>
                             ))}
                         </div>
-                    </Card>
+                    </div>
                 </div>
 
                 {/* 3. Top Locations */}
                 <div className="space-y-4">
-                    <Card className="p-6">
+                    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-2xl shadow-sm p-6">
                         <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                             <MapPin className="w-5 h-5 text-slate-400" />
                             Top Cities
@@ -157,7 +156,7 @@ export default function AnalyticsDashboard() {
                                 ))
                             )}
                         </div>
-                    </Card>
+                    </div>
                 </div>
             </div>
         </div>
@@ -167,7 +166,7 @@ export default function AnalyticsDashboard() {
 // Sub-components & Helpers
 
 const StatCard = ({ title, value, icon: Icon, color, bg }: any) => (
-    <Card className="p-6 flex items-center gap-4 hover:shadow-md transition-shadow">
+    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-2xl shadow-sm p-6 flex items-center gap-4 hover:shadow-md transition-shadow">
         <div className={`p-3 rounded-xl ${bg} ${color}`}>
             <Icon className="w-6 h-6" />
         </div>
@@ -175,7 +174,7 @@ const StatCard = ({ title, value, icon: Icon, color, bg }: any) => (
             <p className="text-sm font-medium text-slate-500 uppercase tracking-wide">{title}</p>
             <p className="text-2xl font-black text-slate-900">{value}</p>
         </div>
-    </Card>
+    </div>
 );
 
 const ActivityIcon = ({ type }: { type: string }) => {

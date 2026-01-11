@@ -35,6 +35,7 @@ import { TenantProvider } from "@/lib/tenant/tenantContext";
 
 import MSG91Initializer from "@/components/auth/MSG91Initializer";
 
+import { Suspense } from 'react';
 import AnalyticsProvider from '@/components/analytics/AnalyticsProvider';
 
 export default function RootLayout({
@@ -50,10 +51,12 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <TenantProvider>
-            <AnalyticsProvider>
-              <MSG91Initializer />
-              {children}
-            </AnalyticsProvider>
+            <Suspense fallback={null}>
+              <AnalyticsProvider>
+                <MSG91Initializer />
+                {children}
+              </AnalyticsProvider>
+            </Suspense>
           </TenantProvider>
         </ThemeProvider>
       </body>

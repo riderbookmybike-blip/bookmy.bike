@@ -24,6 +24,10 @@ export interface TenantConfig {
         isComplete: boolean;
         step: number;
     };
+    auth?: {
+        msg91_widget_id?: string;
+        msg91_auth_key?: string;
+    };
     // Legacy support if needed
     landing?: {
         title?: string;
