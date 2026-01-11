@@ -29,8 +29,12 @@ export async function getSmartPincode(
     if (typeof window !== 'undefined') {
         const cached = localStorage.getItem(LOCATION_CACHE_KEY);
         if (cached) {
-            console.log('Location retrieved from cache (Zero Cost)');
-            return { pincode: cached, city: null, source: 'CACHE' };
+            const data = JSON.parse(cached) as GeocodeResult;
+            // Only return if we have valid data (prevent stuck nulls from previous errors)
+            if (data.city && data.pincode) {
+                console.log('📍 Location from Cache:', data);
+                return data;
+            }
         }
     }
 
