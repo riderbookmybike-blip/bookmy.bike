@@ -37,10 +37,10 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
             localStorage.removeItem('last_active_tenant_id');
             localStorage.removeItem('sb-access-token');
             localStorage.removeItem('sb-refresh-token');
-            window.location.href = 'https://me.bookmy.bike/login';
+            window.location.href = '/login';
         } catch (error) {
             console.error('Logout failed:', error);
-            window.location.href = 'https://me.bookmy.bike/login';
+            window.location.href = '/login';
         }
     };
 
