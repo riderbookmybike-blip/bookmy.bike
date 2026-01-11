@@ -11,8 +11,8 @@ export async function POST(request: Request) {
     // In production, you might want to verify it again if you have a valid Auth Key.
     console.log(`[LoginAPI] Skipping redundant server-side MSG91 verification for phone: ${phone}`);
 
-    const email = `${phone}@bookmybike.local`;
-    const password = 'bookmybike6424';
+    const email = `${phone}@bookmy.bike`;
+    const password = `MSG91_${phone}_${process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(0, 8)}`;
 
     const cookieStore = await cookies();
 
