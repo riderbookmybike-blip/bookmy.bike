@@ -165,7 +165,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                 const syncRes = await fetch('/api/auth/msg91/sync', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone, displayName })
+                    body: JSON.stringify({ phone, displayName, pincode: location.pincode })
                 });
 
                 if (!syncRes.ok) {
