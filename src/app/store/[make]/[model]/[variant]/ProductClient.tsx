@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Zap, Star, ShieldCheck, Info, ArrowRight, ChevronDown, Save, Download, Share, Heart } from 'lucide-react';
 import { LeadCaptureModal } from '@/components/leads/LeadCaptureModal';
+import { createClient } from '@/lib/supabase/client';
+import { EmailUpdateModal } from '@/components/auth/EmailUpdateModal';
 import PersonalizeLayout from '@/components/store/Personalize/PersonalizeLayout';
 import DynamicHeader from '@/components/store/Personalize/DynamicHeader';
 import DeliveryChecker from '@/components/store/Personalize/DeliveryChecker';
@@ -416,7 +418,22 @@ export default function ProductClient({
         }
     };
 
-    const handleBookingRequest = () => {
+    const [showEmailModal, setShowEmailModal] = useState(false);
+
+    // ... existing handleBookingRequest ...
+
+    const handleBookingRequest = async () => {
+        // 1. Check for Real Email Logic
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        // If email is fake (placeholder), block booking and ask for update
+        if (user?.email?.endsWith('@bookmy.bike')) {
+            setShowEmailModal(true);
+            return;
+        }
+
+        // 2. Proceed with Referral or Success Flow
         if (!isReferralActive) {
             setShowReferralModal(true);
         } else {
