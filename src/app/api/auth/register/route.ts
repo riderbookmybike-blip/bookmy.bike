@@ -25,9 +25,16 @@ export async function POST() {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const MARKETPLACE_TENANT_ID = '5371fa81-a58a-4a39-aef2-2821268c96c8';
+    // 4. Determine Tenant (MARKETPLACE OWNER from DB)
+    const { data: settings } = await supabase
+        .from('app_settings')
+        .select('default_owner_tenant_id')
+        .single();
+
+    const MARKETPLACE_TENANT_ID = settings?.default_owner_tenant_id || '5371fa81-a58a-4a39-aef2-2821268c96c8';
 
     // Explicitly create profile with required Marketplace context
+    // Using 'STAFF' as 'MEMBER' is not in the DB enum 'app_role'
     const { error } = await supabase
         .from('profiles')
         .insert({
@@ -37,7 +44,7 @@ export async function POST() {
             full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || '',
             avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
             tenant_id: MARKETPLACE_TENANT_ID,
-            role: 'MEMBER'
+            role: 'STAFF'
         });
 
     if (error) {
