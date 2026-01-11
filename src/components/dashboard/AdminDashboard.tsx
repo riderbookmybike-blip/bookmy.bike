@@ -142,135 +142,104 @@ export default function AdminDashboard() {
                 />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Flagship Fleet Velocity Chart */}
-                <div className="lg:col-span-2 bg-white dark:bg-slate-950/40 backdrop-blur-sm border border-slate-200 dark:border-white/10 rounded-2xl p-8 shadow-sm">
-                    <div className="flex items-center justify-between mb-10">
-                        <div className="space-y-1">
-                            <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2 italic tracking-tighter">
-                                <TrendingUp size={20} className="text-indigo-600" />
-                                FLEET VELOCITY
-                            </h3>
-                            <p className="text-xs text-slate-400 font-bold tracking-widest uppercase">Unit Throughput Analysis</p>
+            {activeTab === 'overview' && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Flagship Fleet Velocity Chart */}
+                    <div className="lg:col-span-2 bg-white dark:bg-slate-950/40 backdrop-blur-sm border border-slate-200 dark:border-white/10 rounded-2xl p-8 shadow-sm">
+                        <div className="flex items-center justify-between mb-10">
+                            <div className="space-y-1">
+                                <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2 italic tracking-tighter">
+                                    <TrendingUp size={20} className="text-indigo-600" />
+                                    FLEET VELOCITY
+                                </h3>
+                                <p className="text-xs text-slate-400 font-bold tracking-widest uppercase">Unit Throughput Analysis</p>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase">
+                                    <span className="w-2 h-2 rounded-full bg-indigo-600" /> Real-time
+                                </div>
+                                <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase">
+                                    <span className="w-2 h-2 rounded-full bg-slate-200 dark:bg-white/10" /> Projected
+                                </div>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase">
-                                <span className="w-2 h-2 rounded-full bg-indigo-600" /> Real-time
+
+                        <div className="h-[320px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={fleetData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="gradientColor" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-slate-100 dark:text-white/5" />
+                                    <XAxis
+                                        dataKey="time"
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
+                                        dy={10}
+                                    />
+                                    <YAxis
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
+                                    />
+                                    <Tooltip
+                                        content={({ active, payload }) => {
+                                            if (active && payload && payload.length) {
+                                                return (
+                                                    <div className="bg-slate-900 dark:bg-white px-4 py-3 rounded-xl shadow-2xl border border-white/10">
+                                                        <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase mb-1">Throughput @ {payload[0].payload.time}</p>
+                                                        <p className="text-lg font-black text-white dark:text-slate-900">{payload[0].value} Units</p>
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        }}
+                                    />
+                                    <Area
+                                        type="monotone"
+                                        dataKey="value"
+                                        stroke="#6366f1"
+                                        strokeWidth={4}
+                                        fillOpacity={1}
+                                        fill="url(#gradientColor)"
+                                        animationDuration={2000}
+                                    />
+                                    <Area
+                                        type="monotone"
+                                        dataKey="projection"
+                                        stroke="#94a3b8"
+                                        strokeWidth={2}
+                                        strokeDasharray="5 5"
+                                        fill="transparent"
+                                    />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+
+                        <div className="mt-8 flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-emerald-500 text-xs font-black">
+                                <CheckCircle2 size={14} />
+                                Peak efficiency reached at 14:00 (1,600 units/hr)
                             </div>
-                            <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase">
-                                <span className="w-2 h-2 rounded-full bg-slate-200 dark:bg-white/10" /> Projected
-                            </div>
+                            <button className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline">View Detailed Node Report</button>
                         </div>
                     </div>
 
-                    <div className="h-[320px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={fleetData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="gradientColor" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-slate-100 dark:text-white/5" />
-                                <XAxis
-                                    dataKey="time"
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
-                                    dy={10}
-                                />
-                                <YAxis
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
-                                />
-                                <Tooltip
-                                    content={({ active, payload }) => {
-                                        if (active && payload && payload.length) {
-                                            return (
-                                                <div className="bg-slate-900 dark:bg-white px-4 py-3 rounded-xl shadow-2xl border border-white/10">
-                                                    <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase mb-1">Throughput @ {payload[0].payload.time}</p>
-                                                    <p className="text-lg font-black text-white dark:text-slate-900">{payload[0].value} Units</p>
-                                                </div>
-                                            );
-                                        }
-                                        return null;
-                                    }}
-                                />
-                                <Area
-                                    type="monotone"
-                                    dataKey="value"
-                                    stroke="#6366f1"
-                                    strokeWidth={4}
-                                    fillOpacity={1}
-                                    fill="url(#gradientColor)"
-                                    animationDuration={2000}
-                                />
-                                <Area
-                                    type="monotone"
-                                    dataKey="projection"
-                                    stroke="#94a3b8"
-                                    strokeWidth={2}
-                                    strokeDasharray="5 5"
-                                    fill="transparent"
-                                />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
-
-                    <div className="mt-8 flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-emerald-500 text-xs font-black">
-                            <CheckCircle2 size={14} />
-                            Peak efficiency reached at 14:00 (1,600 units/hr)
-                        </div>
-                        <button className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline">View Detailed Node Report</button>
-                    </div>
-                </div>
-
-                {/* Actionable Platform Vitals */}
-                <div className="space-y-6">
-                    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-2xl p-8 shadow-sm h-full">
-                        <div className="flex items-center justify-between mb-8">
-                            <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2 italic tracking-tighter">
-                                <Database size={20} className="text-indigo-600" /> VITALS
-                            </h3>
-                            <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                <span className="text-[9px] font-black text-emerald-500 leading-none">HEALTHY</span>
-                            </div>
-                            <div className="p-8">
-                                {activeTab === 'overview' && (
-                                    <div className="space-y-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                            <Card className="p-6">
-                                                <h3 className="text-sm font-medium text-slate-500">Total Tenants</h3>
-                                                <p className="text-3xl font-bold mt-2">12</p>
-                                            </Card>
-                                            <Card className="p-6">
-                                                <h3 className="text-sm font-medium text-slate-500">Total Users</h3>
-                                                <p className="text-3xl font-bold mt-2">1,234</p>
-                                            </Card>
-                                            <Card className="p-6">
-                                                <h3 className="text-sm font-medium text-slate-500">System Status</h3>
-                                                <div className="flex items-center gap-2 mt-2">
-                                                    <div className="w-3 h-3 rounded-full bg-green-500" />
-                                                    <p className="text-lg font-medium text-green-600">Operational</p>
-                                                </div>
-                                            </Card>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {activeTab === 'analytics' && (
-                                    <AnalyticsDashboard />
-                                )}
-
-                                {activeTab === 'tenants' && (
-                                    <div className="text-center py-20 text-slate-400">
-                                        Tenants Management UI Placeholder
-                                    </div>
-                                )}
+                    {/* Actionable Platform Vitals */}
+                    <div className="space-y-6">
+                        <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-2xl p-8 shadow-sm h-full">
+                            <div className="flex items-center justify-between mb-8">
+                                <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2 italic tracking-tighter">
+                                    <Database size={20} className="text-indigo-600" /> VITALS
+                                </h3>
+                                <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span className="text-[9px] font-black text-emerald-500 leading-none">HEALTHY</span>
+                                </div>
                             </div>
 
                             <div className="space-y-4">
@@ -317,7 +286,23 @@ export default function AdminDashboard() {
                         </div>
                     </div>
                 </div>
-            </div>
-            );
-}
+            )}
 
+            {activeTab === 'analytics' && (
+                <AnalyticsDashboard />
+            )}
+
+            {activeTab === 'tenants' && (
+                <div className="text-center py-20 text-slate-400 font-mono text-sm">
+                    Tenant Management Module [Not Loaded]
+                </div>
+            )}
+
+            {activeTab === 'users' && (
+                <div className="text-center py-20 text-slate-400 font-mono text-sm">
+                    User Directory [Restricted]
+                </div>
+            )}
+        </div>
+    );
+}
