@@ -45,6 +45,7 @@ interface TenantContextProps {
     tenantId: string | undefined;
     userRole: string | undefined;
     activeRole: string | undefined;
+    referralCode: string | undefined;
     switchRole: (role: string) => void;
     // Sidebar State
     isSidebarExpanded: boolean;
@@ -65,6 +66,7 @@ const TenantContext = createContext<TenantContextProps>({
     tenantId: undefined,
     userRole: undefined,
     activeRole: undefined,
+    referralCode: undefined,
     switchRole: () => { },
     isSidebarExpanded: false,
     setIsSidebarExpanded: () => { },
@@ -106,6 +108,11 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
     const [activeRole, setActiveRole] = useState<string | undefined>(() => {
         if (typeof window !== 'undefined') return localStorage.getItem('active_role') || undefined;
+        return undefined;
+    });
+
+    const [referralCode, setReferralCode] = useState<string | undefined>(() => {
+        if (typeof window !== 'undefined') return localStorage.getItem('referral_code') || undefined;
         return undefined;
     });
 
@@ -182,7 +189,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                             .eq('status', 'ACTIVE'),
                         supabase
                             .from('profiles')
-                            .select('full_name')
+                            .select('full_name, referral_code')
                             .eq('id', user.id)
                             .single()
                     ]);
@@ -215,6 +222,13 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                         'Member';
                     setUserName(fullName);
                     localStorage.setItem('user_name', fullName);
+
+                    const refCode = profileResult.data?.referral_code;
+                    if (refCode) {
+                        setReferralCode(refCode);
+                        localStorage.setItem('referral_code', refCode);
+                    }
+
                     // Notify other components (like MarketplaceHeader) that auth state changed
                     window.dispatchEvent(new Event('storage'));
                     window.dispatchEvent(new CustomEvent('auth_sync', { detail: { name: fullName } }));
@@ -344,6 +358,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
             tenantId,
             userRole,
             activeRole,
+            referralCode,
             switchRole,
             isSidebarExpanded,
             setIsSidebarExpanded,
