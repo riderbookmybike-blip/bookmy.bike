@@ -6,6 +6,10 @@ const LOCATION_CACHE_KEY = 'bkmb_user_pincode';
 interface GeocodeResult {
     pincode: string | null;
     city: string | null;
+    state?: string | null;
+    country?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
     source: 'CACHE' | 'API' | 'MOCK' | 'ERROR';
 }
 
