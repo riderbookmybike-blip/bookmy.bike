@@ -35,6 +35,8 @@ import { TenantProvider } from "@/lib/tenant/tenantContext";
 
 import MSG91Initializer from "@/components/auth/MSG91Initializer";
 
+import AnalyticsProvider from '@/components/analytics/AnalyticsProvider';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -48,8 +50,10 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <TenantProvider>
-            <MSG91Initializer />
-            {children}
+            <AnalyticsProvider>
+              <MSG91Initializer />
+              {children}
+            </AnalyticsProvider>
           </TenantProvider>
         </ThemeProvider>
       </body>
