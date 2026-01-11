@@ -21,6 +21,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
     const [otp, setOtp] = useState('');
     const [fullName, setFullName] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showNameField, setShowNameField] = useState(false); // New state for progressive profiling
     const [location, setLocation] = useState<{
         pincode: string | null;
         city: string | null;
@@ -112,22 +113,60 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
     }, []);
 
     const handleSendOtp = async () => {
-        if (phone.length < 10) return;
+        if (!msg91Loaded) {
+            alert('Security System Loading... Please wait.');
+            return;
+        }
+
         setLoading(true);
 
         try {
+            // 1. Check if user exists
+            const checkRes = await fetch('/api/auth/check-user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone })
+            });
+            const { exists, name } = await checkRes.json();
+
+            // 2. Handle New User Flow
+            if (!exists) {
+                if (!showNameField) {
+                    // REVEAL NAME FIELD
+                    setShowNameField(true);
+                    setLoading(false);
+                    return;
+                }
+
+                // If field is visible but empty
+                if (fullName.length < 3) {
+                    setLoading(false);
+                    return;
+                }
+            } else {
+                // User exists - ensure we don't ask for name
+                if (name) setFullName(name);
+            }
+
+            // 3. Send OTP (If user exists OR if new user has entered name)
+            const payload = {
+                mobile: '91' + phone,
+                template_id: '64d36efbd6fc0526e6329063'
+            };
+
+            console.log('Sending OTP Payload:', payload);
+
             if (!(window as any).sendOtp) {
-                // Fallback / Wait logic if script not ready
-                console.warn('MSG91 SDK not ready');
-                alert('OTP Service initializing... please click again in a moment.');
+                console.error('MSG91 sendOtp not found on window');
+                alert('OTP service not ready.');
                 setLoading(false);
                 return;
             }
 
             (window as any).sendOtp(
-                `91${phone}`, // Identifier
+                payload,
                 (data: any) => {
-                    console.log('OTP Sent:', data);
+                    console.log('OTP Sent Success:', data);
                     setStep('OTP');
                     setResendTimer(30);
                     setLoading(false);
@@ -138,9 +177,10 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                     setLoading(false);
                 }
             );
-        } catch (error) {
-            console.error('Send OTP Exception:', error);
+        } catch (err) {
+            console.error('Check User/Send OTP Error:', err);
             setLoading(false);
+            alert('Connection interrupted. Please try again.');
         }
     };
 
@@ -180,7 +220,11 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
         // Finalize login session on our backend
 
         if (true) { // Successfully verified via Client SDK
-            const displayName = fullName || 'Valued User';
+            console.log('Completing login with fullName:', fullName);
+            // Better fallback logic
+            const displayName = fullName && fullName.trim().length > 0
+                ? fullName
+                : `Rider ${phone.slice(-4)}`;
 
             // SYNC WITH BACKEND
             try {
@@ -289,20 +333,22 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                 <div className="relative p-2">
                                     {step === 'PHONE' ? (
                                         <div className="space-y-4">
-                                            {/* Name Input */}
-                                            <div className="flex items-center px-6 py-4 border-b border-slate-100 dark:border-white/5">
-                                                <div className="flex items-center gap-3 pr-6 border-r border-slate-200 dark:border-white/10">
-                                                    <User size={18} className="text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                                            {/* Name Input - Conditionally Rendered */}
+                                            {showNameField && (
+                                                <div className="flex items-center px-6 py-4 border-b border-slate-100 dark:border-white/5 animate-in slide-in-from-top-4 duration-500 fade-in">
+                                                    <div className="flex items-center gap-3 pr-6 border-r border-slate-200 dark:border-white/10">
+                                                        <User size={18} className="text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                                                    </div>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Your Full Name"
+                                                        value={fullName}
+                                                        onChange={(e) => setFullName(e.target.value)}
+                                                        className="bg-transparent border-none outline-none text-lg font-bold text-slate-900 dark:text-white w-full pl-6 placeholder:text-slate-300 dark:placeholder:text-slate-700"
+                                                        autoFocus
+                                                    />
                                                 </div>
-                                                <input
-                                                    type="text"
-                                                    placeholder="Your Full Name"
-                                                    value={fullName}
-                                                    onChange={(e) => setFullName(e.target.value)}
-                                                    className="bg-transparent border-none outline-none text-lg font-bold text-slate-900 dark:text-white w-full pl-6 placeholder:text-slate-300 dark:placeholder:text-slate-700"
-                                                    autoFocus
-                                                />
-                                            </div>
+                                            )}
 
                                             {/* Phone Input */}
                                             <div className="flex items-center px-6 py-4">
@@ -343,7 +389,13 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                             <div className="space-y-6">
                                 <button
                                     onClick={step === 'PHONE' ? handleSendOtp : handleLogin}
-                                    disabled={loading || (step === 'PHONE' ? (phone.length < 10 || fullName.length < 3 || !msg91Loaded) : otp.length < 4)}
+                                    disabled={
+                                        loading ||
+                                        (step === 'PHONE'
+                                            ? (phone.length < 10 || (showNameField && fullName.length < 3) || !msg91Loaded)
+                                            : otp.length < 4
+                                        )
+                                    }
                                     className={`w-full py-6 rounded-[32px] text-xs font-black uppercase tracking-[0.3em] italic flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-[0.98] ${loading || !msg91Loaded ? 'bg-blue-600/50 cursor-wait' : 'bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-500'
                                         } text-white shadow-blue-600/20 disabled:opacity-50`}
                                 >
