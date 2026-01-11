@@ -82,61 +82,67 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                     <div className="relative">
                         <button
                             onClick={() => setIsProfileOpen(!isProfileOpen)}
-                            className={`${navLinkClass} flex items-center gap-3 group cursor-pointer flex-shrink-0 transition-all`}
+                            className="flex items-center gap-3 pl-3 pr-2 py-1.5 rounded-full border border-red-600/40 bg-black/40 hover:bg-black/60 transition-all group"
                         >
-                            {userName ? (
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-[10px] font-black text-white shadow-xl group-hover:scale-110 transition-all">
-                                        {userName.charAt(0)}
-                                    </div>
-                                    <span className="truncate max-w-[100px]">
-                                        Hi, {userName.split(' ')[0]}
-                                    </span>
-                                </div>
-                            ) : (
-                                <span onClick={(e) => { e.stopPropagation(); onLoginClick(); }}>Hi, Member</span>
-                            )}
-                            <ChevronDown size={14} className={`transition-transform duration-300 ${isProfileOpen ? 'rotate-180' : ''}`} />
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">
+                                {userName ? `Hi, ${userName.split(' ')[0]}` : 'Hi, Member'}
+                            </span>
+                            <div className={`transition-transform duration-300 ${isProfileOpen ? 'rotate-180 text-red-500' : 'text-slate-500'}`}>
+                                <ChevronDown size={14} />
+                            </div>
                         </button>
 
-                        {/* Profile Dropdown */}
+                        {/* Figma-Style Profile Dropdown */}
                         {isProfileOpen && (
-                            <div className="absolute top-full right-0 mt-4 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2rem] shadow-2xl p-4 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300 z-50">
-                                <div className="space-y-2">
-                                    <p className="px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5 mb-2">Member Preferences</p>
-
-                                    <div className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/5 rounded-2xl transition-colors cursor-default">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-500">
-                                                <Repeat size={16} />
+                            <div className="absolute top-full right-0 mt-3 w-64 bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl p-2 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+                                <div className="p-2 space-y-4">
+                                    {/* Appearance Section */}
+                                    <div>
+                                        <p className="px-3 py-1 text-[9px] font-black text-slate-600 uppercase tracking-[0.2em]">Appearance</p>
+                                        <div className="mt-1 flex items-center justify-between px-3 py-2.5 hover:bg-white/5 rounded-xl transition-colors cursor-default">
+                                            <div className="flex items-center gap-3">
+                                                <div className="text-slate-400">
+                                                    <Zap size={15} />
+                                                </div>
+                                                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300">Change Theme</span>
                                             </div>
-                                            <span className="text-[11px] font-black uppercase tracking-widest">Interface Mode</span>
+                                            <ThemeToggle />
                                         </div>
-                                        <ThemeToggle />
                                     </div>
 
-                                    <Link
-                                        href="/members"
-                                        onClick={() => setIsProfileOpen(false)}
-                                        className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/5 rounded-2xl transition-colors text-rose-600"
-                                    >
-                                        <div className="w-8 h-8 rounded-lg bg-rose-600/10 flex items-center justify-center">
-                                            <LayoutDashboard size={16} />
-                                        </div>
-                                        <span className="text-[11px] font-black uppercase tracking-widest">Elite Dashboard</span>
-                                    </Link>
+                                    {/* Account Section */}
+                                    <div>
+                                        <p className="px-3 py-1 text-[9px] font-black text-slate-600 uppercase tracking-[0.2em]">My Account</p>
+                                        <div className="mt-1 space-y-0.5">
+                                            <Link
+                                                href="/dashboard/profile"
+                                                onClick={() => setIsProfileOpen(false)}
+                                                className="flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-xl transition-colors group"
+                                            >
+                                                <User size={15} className="text-slate-400 group-hover:text-white transition-colors" />
+                                                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300 group-hover:text-white transition-colors">My Profile</span>
+                                            </Link>
 
-                                    {userName && (
-                                        <button
-                                            onClick={handleSignOut}
-                                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/5 rounded-2xl transition-colors text-slate-500"
-                                        >
-                                            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/5 flex items-center justify-center">
-                                                <LogOut size={16} />
-                                            </div>
-                                            <span className="text-[11px] font-black uppercase tracking-widest">Sign Out</span>
-                                        </button>
-                                    )}
+                                            <Link
+                                                href="/members"
+                                                onClick={() => setIsProfileOpen(false)}
+                                                className="flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-xl transition-colors group"
+                                            >
+                                                <ShoppingCart size={15} className="text-slate-400 group-hover:text-white transition-colors" />
+                                                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300 group-hover:text-white transition-colors">My Orders</span>
+                                            </Link>
+
+                                            {userName && (
+                                                <button
+                                                    onClick={handleSignOut}
+                                                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-xl transition-colors group"
+                                                >
+                                                    <LogOut size={15} className="text-slate-400 group-hover:text-red-500 transition-colors" />
+                                                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300 group-hover:text-red-500 transition-colors">Logout</span>
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         )}
