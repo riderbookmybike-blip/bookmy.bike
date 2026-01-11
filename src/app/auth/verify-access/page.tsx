@@ -63,8 +63,12 @@ export default async function VerifyAccessPage() {
         .eq('id', user.id)
         .single();
 
-    if (profile) {
+    if (profile && currentSubdomain) {
         redirect('/dashboard');
+    }
+
+    if (profile && !currentSubdomain) {
+        redirect('/');
     }
 
     // AUTO-REGISTRATION for Marketplace (Root Domain)
