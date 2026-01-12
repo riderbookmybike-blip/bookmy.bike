@@ -115,7 +115,7 @@ export function CatalogDesktop({ filters }: CatalogDesktopProps) {
                         <button
                             key={i}
                             onClick={() => toggleFilter(setSelectedMakes, brand.toUpperCase())}
-                            className={`text-4xl font-black italic tracking-tighter uppercase transition-all duration-500 ${selectedMakes.includes(brand.toUpperCase()) ? 'text-brand-primary dark:text-brand-primary scale-110' : 'text-slate-300 dark:text-slate-800 scale-90 opacity-40 hover:opacity-100'}`}
+                            className={`text-4xl font-black italic tracking-tighter uppercase transition-all duration-500 ${selectedMakes.includes(brand.toUpperCase()) ? 'text-[#F4B000] scale-110' : 'text-[#F4B000]/40 hover:text-[#F4B000] scale-90'}`}
                         >
                             {brand}
                         </button>
@@ -241,7 +241,11 @@ export function CatalogDesktop({ filters }: CatalogDesktopProps) {
 
                                         {/* Dynamic Image with Fallback */}
                                         <img
-                                            src={`/images/categories/motorcycle_nobg.png`} // Placeholder for now as per user instruction "where is images"
+                                            src={
+                                                v.bodyType === 'SCOOTER'
+                                                    ? '/images/categories/scooter_nobg.png'
+                                                    : '/images/categories/motorcycle_nobg.png'
+                                            }
                                             alt={v.model}
                                             className="absolute w-[80%] h-[80%] object-contain z-10 transition-transform duration-500 group-hover:scale-105"
                                         />
