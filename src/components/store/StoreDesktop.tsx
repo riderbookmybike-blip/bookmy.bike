@@ -63,9 +63,7 @@ export function StoreDesktop() {
                             <h1 className="text-6xl sm:text-8xl md:text-9xl lg:text-[8.5rem] font-black italic uppercase tracking-tighter leading-[0.85]">
                                 <span className="text-slate-900 dark:text-white transition-colors">Your Next</span>{' '}
                                 <br />
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 via-amber-500 to-yellow-600 transition-all drop-shadow-sm">
-                                    Legend Awaits.
-                                </span>
+                                <span className="text-[#FFD700] drop-shadow-md transition-all">Legend Awaits.</span>
                             </h1>
 
                             <p className="max-w-3xl mx-auto text-base md:text-xl text-slate-500 dark:text-slate-400 font-medium tracking-wide transition-colors leading-relaxed italic">
