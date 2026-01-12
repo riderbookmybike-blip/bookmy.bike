@@ -41,7 +41,7 @@ export default function StorePage() {
     return (
         <div className="flex flex-col pb-40 transition-colors duration-300">
             {/* Premium Photography Hero Section */}
-            <section className="relative min-h-[95vh] flex items-center justify-center overflow-hidden bg-white dark:bg-[#020617] isolate transition-colors duration-500">
+            <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden bg-white dark:bg-[#020617] isolate transition-colors duration-500">
                 {/* 1. Cinematic Background Image */}
                 <div className="absolute inset-0 z-0 opacity-40 dark:opacity-50">
                     <img
@@ -52,8 +52,8 @@ export default function StorePage() {
                     <div className="absolute inset-0 bg-gradient-to-b from-white via-white/40 to-white dark:from-[#020617] dark:via-[#020617]/40 dark:to-[#020617]" />
                 </div>
 
-                <div className="max-w-[1400px] mx-auto px-6 relative z-10 w-full text-center pt-32">
-                    <div className="space-y-16 md:space-y-24">
+                <div className="max-w-[1400px] mx-auto px-6 relative z-10 w-full text-center pt-24">
+                    <div className="space-y-12 md:space-y-16">
                         <div className="space-y-10">
                             <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-blue-600/5 dark:bg-blue-600/10 border border-blue-600/10 dark:border-blue-500/20 text-blue-600 dark:text-blue-400 rounded-full text-[11px] font-black uppercase tracking-[0.3em] mb-4 animate-in fade-in slide-in-from-bottom-4 duration-1000">
                                 <span className="flex h-2 w-2 rounded-full bg-blue-600 animate-ping" />
@@ -132,19 +132,19 @@ export default function StorePage() {
                             </div>
                         </div>
 
-                        {/* Updated Metrics Section */}
-                        <div className="w-full max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-0 py-16 border-t border-slate-200 dark:border-white/5 transition-colors">
-                            <div className="text-center group cursor-default space-y-2">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{">"} Available Models</p>
-                                <p className="text-5xl md:text-6xl font-black italic text-slate-900 dark:text-white tracking-tighter">500+</p>
+                        {/* Metrics Section - Visible on Landing */}
+                        <div className="w-full max-w-5xl mx-auto grid grid-cols-3 gap-4 md:gap-0 py-8 border-t border-slate-200 dark:border-white/5 transition-colors">
+                            <div className="text-center group cursor-default space-y-1">
+                                <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest">{">"} Models</p>
+                                <p className="text-3xl md:text-5xl font-black italic text-slate-900 dark:text-white tracking-tighter">500+</p>
                             </div>
-                            <div className="text-center group cursor-default space-y-2 border-x border-slate-200 dark:border-white/5">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{">"} Customer Savings</p>
-                                <p className="text-5xl md:text-6xl font-black italic text-slate-900 dark:text-white tracking-tighter">₹12k+</p>
+                            <div className="text-center group cursor-default space-y-1 border-x border-slate-200 dark:border-white/5">
+                                <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest">{">"} Savings</p>
+                                <p className="text-3xl md:text-5xl font-black italic text-slate-900 dark:text-white tracking-tighter">₹12k+</p>
                             </div>
-                            <div className="text-center group cursor-default space-y-2">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{">"} Delivery Timeline</p>
-                                <p className="text-5xl md:text-6xl font-black italic text-slate-900 dark:text-white tracking-tighter underline decoration-blue-500 decoration-8 underline-offset-[-2px]">48h</p>
+                            <div className="text-center group cursor-default space-y-1">
+                                <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest">{">"} Delivery</p>
+                                <p className="text-3xl md:text-5xl font-black italic text-slate-900 dark:text-white tracking-tighter underline decoration-blue-500 decoration-4 md:decoration-8 underline-offset-[-2px]">48h</p>
                             </div>
                         </div>
                     </div>
@@ -287,7 +287,7 @@ export default function StorePage() {
                 <div className="max-w-[1400px] mx-auto px-6 relative z-20 grid grid-cols-1 lg:grid-cols-2 gap-12 w-full">
                     <div className="space-y-12">
                         <div className="space-y-6">
-                            <p className="text-[12px] font-black text-rose-600 uppercase tracking-[0.6em] italic animate-pulse">Now Premiering</p>
+                            <p className="text-[12px] font-black text-blue-600 uppercase tracking-[0.6em] italic animate-pulse">Now Premiering</p>
                             <h2 className="text-7xl md:text-[10rem] font-black uppercase tracking-tighter italic leading-[0.8]">The<br />ZX-10R.</h2>
                             <p className="text-xl text-slate-400 font-medium italic max-w-lg">
                                 Born on the track. Refined for the streets. The pinnacle of Kawasaki engineering is now available for booking.
@@ -307,7 +307,7 @@ export default function StorePage() {
                             ))}
                         </div>
 
-                        <Link href="/store/kawasaki/ninja/zx-10r" className="inline-flex items-center gap-4 px-10 py-5 bg-rose-600 text-white rounded-full font-black uppercase italic tracking-widest hover:bg-rose-700 hover:scale-105 transition-all shadow-2xl shadow-rose-600/30">
+                        <Link href="/store/kawasaki/ninja/zx-10r" className="inline-flex items-center gap-4 px-10 py-5 bg-blue-600 text-white rounded-full font-black uppercase italic tracking-widest hover:bg-blue-700 hover:scale-105 transition-all shadow-2xl shadow-blue-600/30">
                             Configure Legend <ArrowRight size={20} />
                         </Link>
                     </div>
@@ -387,7 +387,7 @@ export default function StorePage() {
                                                     <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-slate-800 flex items-center justify-center font-black text-[10px] md:text-xs text-slate-500">{m.name.charAt(0)}</div>
                                                     <div>
                                                         <p className="text-[10px] md:text-xs font-black uppercase tracking-widest text-white">{m.name}</p>
-                                                        <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-blue-500 italic">{m.bike}</p>
+                                                        <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-red-500 italic">{m.bike}</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -446,7 +446,7 @@ export default function StorePage() {
                                                     <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-slate-800 flex items-center justify-center font-black text-[10px] md:text-xs text-slate-500">{m.name.charAt(0)}</div>
                                                     <div>
                                                         <p className="text-[10px] md:text-xs font-black uppercase tracking-widest text-white">{m.name}</p>
-                                                        <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-blue-500 italic">{m.bike}</p>
+                                                        <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-red-500 italic">{m.bike}</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -459,8 +459,8 @@ export default function StorePage() {
                     </div>
                 </div>
 
-                {/* Bottom Red Bar like Mockup */}
-                <div className="absolute bottom-0 left-0 right-0 h-40 bg-red-600 z-[-1] opacity-90 blur-[100px] pointer-events-none translate-y-20" />
+                {/* Bottom Red Bar like Mockup -> Blue Bar */}
+                <div className="absolute bottom-0 left-0 right-0 h-40 bg-blue-600 z-[-1] opacity-90 blur-[100px] pointer-events-none translate-y-20" />
             </section>
 
 

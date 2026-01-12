@@ -6,6 +6,10 @@ module.exports = {
     darkMode: "class", // Enables class-based toggling (.dark)
     theme: {
         extend: {
+            // [AUMS] Inject Design Tokens
+            colors: {
+                ...require('./src/config/design-tokens').colors,
+            },
             animation: {
                 'pulse-slower': 'pulse 8s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                 'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',

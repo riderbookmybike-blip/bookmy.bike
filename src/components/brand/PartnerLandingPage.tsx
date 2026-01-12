@@ -15,13 +15,13 @@ export default function PartnerLandingPage({ config, name }: PartnerLandingProps
     const landing = (config as any).landing || {}; // Cast as any if 'landing' not yet in type definition
 
     // Defaults
-    const primaryColor = brand.primaryColor || '#4F46E5';
+    const primaryColor = brand.primaryColor || '#DC2626';
     const heroTitle = landing.title || `Welcome to ${brand.displayName || name}`;
     const heroSubtitle = landing.subtitle || "Your premium destination for two-wheeler financing and sales.";
     const ctaText = landing.ctaText || "Login to Portal";
 
     return (
-        <div className="min-h-screen bg-white dark:bg-slate-950 font-sans selection:bg-indigo-500/30">
+        <div className="min-h-screen bg-white dark:bg-slate-950 font-sans selection:bg-red-500/30">
             {/* Navbar */}
             <nav className="border-b border-slate-100 dark:border-white/5 py-4 px-6 md:px-12 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md z-50">
                 <div className="flex items-center gap-3">
@@ -31,7 +31,7 @@ export default function PartnerLandingPage({ config, name }: PartnerLandingProps
                         <div className="text-xl font-black tracking-tight text-slate-900 dark:text-white uppercase">{brand.displayName || name}</div>
                     )}
                 </div>
-                <Link href="/login" className="text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 transition-colors">
+                <Link href="/login" className="text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-red-600 transition-colors">
                     Log In
                 </Link>
             </nav>
@@ -57,7 +57,7 @@ export default function PartnerLandingPage({ config, name }: PartnerLandingProps
                     <Link
                         href="/login"
                         style={{ backgroundColor: primaryColor }}
-                        className="px-8 py-4 rounded-2xl text-white font-bold text-lg hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
+                        className="px-8 py-4 rounded-2xl text-white font-bold text-lg hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-500/20"
                     >
                         {ctaText} <ArrowRight size={20} />
                     </Link>
@@ -74,7 +74,7 @@ export default function PartnerLandingPage({ config, name }: PartnerLandingProps
                         { icon: ShieldCheck, title: "Secure Platform", desc: "Enterprise-grade security for your data." },
                         { icon: CheckCircle2, title: "Verified Inventory", desc: "Access 100% verified stock directly." }
                     ].map((f, i) => (
-                        <div key={i} className="p-6 rounded-3xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 hover:border-indigo-500/30 transition-colors group">
+                        <div key={i} className="p-6 rounded-3xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 hover:border-red-500/30 transition-colors group">
                             <div className="w-12 h-12 rounded-2xl bg-white dark:bg-white/10 flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform duration-300">
                                 <f.icon size={24} style={{ color: primaryColor }} />
                             </div>

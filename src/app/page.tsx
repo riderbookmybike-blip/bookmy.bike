@@ -11,7 +11,11 @@ export default async function RootPage() {
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
 
   // 1. Public Site -> Show Store
-  const isPublic = host === rootDomain || host === `www.${rootDomain}`;
+  // Account for localhost in development
+  const isPublic = host === rootDomain ||
+    host === `www.${rootDomain}` ||
+    host.startsWith('localhost');
+
   if (isPublic) {
     return (
       <StoreLayout>

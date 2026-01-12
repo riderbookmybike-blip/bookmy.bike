@@ -5,6 +5,7 @@ import { MarketplaceHeader } from '@/components/layout/MarketplaceHeader';
 import { MarketplaceFooter } from '@/components/layout/MarketplaceFooter';
 import LoginSidebar from '@/components/auth/LoginSidebar';
 import { TenantProvider } from '@/lib/tenant/tenantContext';
+import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
 
 export default function StoreLayout({
     children,
@@ -15,22 +16,24 @@ export default function StoreLayout({
 
     return (
         <TenantProvider>
-            <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-sans selection:bg-blue-500/30 transition-colors duration-300">
-                <MarketplaceHeader onLoginClick={() => setIsLoginOpen(true)} />
+            <FavoritesProvider>
+                <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-sans selection:bg-red-500/30 transition-colors duration-300">
+                    <MarketplaceHeader onLoginClick={() => setIsLoginOpen(true)} />
 
-                <main className="flex-1 pt-0">
-                    {children}
-                </main>
+                    <main className="flex-1 pt-0">
+                        {children}
+                    </main>
 
-                <MarketplaceFooter />
+                    <MarketplaceFooter />
 
-                {/* Global Login Sidebar */}
-                <LoginSidebar
-                    isOpen={isLoginOpen}
-                    onClose={() => setIsLoginOpen(false)}
-                    variant="RETAIL"
-                />
-            </div>
+                    {/* Global Login Sidebar */}
+                    <LoginSidebar
+                        isOpen={isLoginOpen}
+                        onClose={() => setIsLoginOpen(false)}
+                        variant="RETAIL"
+                    />
+                </div>
+            </FavoritesProvider>
         </TenantProvider>
     );
 }

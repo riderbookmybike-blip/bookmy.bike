@@ -33,7 +33,7 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
     return (
         <>
             <header className={`sticky top-0 z-50 h-20 w-full flex items-center transition-all duration-300 ${bgClass} ${className}`}>
-                <div className="max-w-[1400px] mx-auto px-6 w-full flex items-center justify-between h-full">
+                <div className="w-full max-w-[1920px] mx-auto px-6 md:px-12 lg:px-20 flex items-center justify-between h-full">
                     {/* Left Slot: Logo / Brand */}
                     <div className="flex-shrink-0 flex items-center h-full">
                         {left}
