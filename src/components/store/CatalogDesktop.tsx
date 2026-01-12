@@ -130,16 +130,16 @@ export function CatalogDesktop({ filters }: CatalogDesktopProps) {
                         {/* EMI Calculator */}
                         <div className="space-y-6">
                             <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white flex items-center gap-2">
-                                <div className="w-1 h-1 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]" />
+                                <div className="w-1 h-1 rounded-full bg-brand-primary shadow-[0_0_8px_#F4B000]" />
                                 EMI Calculator
                             </h4>
-                            <div className="space-y-8 p-6 bg-green-500/10 border border-green-500/20 rounded-2xl">
+                            <div className="space-y-8 p-6 bg-brand-primary/5 border border-brand-primary/10 rounded-2xl">
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-end">
                                         <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
                                             Downpayment
                                         </span>
-                                        <span className="text-sm font-black text-green-600 italic">
+                                        <span className="text-sm font-black text-brand-primary italic">
                                             ₹{downpayment.toLocaleString('en-IN')}
                                         </span>
                                     </div>
@@ -151,7 +151,7 @@ export function CatalogDesktop({ filters }: CatalogDesktopProps) {
                                         step="5000"
                                         value={downpayment}
                                         onChange={e => setDownpayment(parseInt(e.target.value))}
-                                        className="w-full h-1 bg-slate-200 dark:bg-slate-800 appearance-none rounded-full accent-green-600"
+                                        className="w-full h-1 bg-slate-200 dark:bg-slate-800 appearance-none rounded-full accent-brand-primary"
                                     />
                                 </div>
                                 <div className="grid grid-cols-4 gap-2">
@@ -159,7 +159,7 @@ export function CatalogDesktop({ filters }: CatalogDesktopProps) {
                                         <button
                                             key={t}
                                             onClick={() => setTenure(t)}
-                                            className={`py-2 rounded-lg text-[10px] font-black transition-all ${tenure === t ? 'bg-green-600 text-white shadow-lg' : 'bg-slate-200 dark:bg-white/5 text-slate-500'}`}
+                                            className={`py-2 rounded-lg text-[10px] font-black transition-all ${tenure === t ? 'bg-brand-primary text-black shadow-lg' : 'bg-slate-200 dark:bg-white/5 text-slate-500'}`}
                                         >
                                             {t}
                                         </button>
@@ -228,19 +228,27 @@ export function CatalogDesktop({ filters }: CatalogDesktopProps) {
                                 >
                                     <div className="aspect-[4/3] bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center relative p-6">
                                         <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
-                                            <div className="flex items-center gap-1.5 px-3 py-1 bg-green-500 text-white rounded-full shadow-lg">
-                                                <Zap size={10} className="fill-white" />
+                                            <div className="flex items-center gap-1.5 px-3 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-full shadow-lg">
+                                                <Zap size={10} className="fill-brand-primary text-brand-primary" />
                                                 <span className="text-[9px] font-black uppercase tracking-widest">
-                                                    Lowest EMI
+                                                    Best Seller
                                                 </span>
                                             </div>
                                         </div>
                                         <button className="absolute top-4 right-4 z-20 w-10 h-10 bg-white/80 dark:bg-black/40 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-full flex items-center justify-center text-slate-400 hover:text-rose-500 transition-all">
                                             <Heart className="w-4 h-4" />
                                         </button>
-                                        <div className="relative text-center opacity-40 group-hover:scale-110 transition-transform duration-700">
-                                            <span className="font-black text-[10px] uppercase tracking-widest">
-                                                {v.make} <br /> {v.model}
+
+                                        {/* Dynamic Image with Fallback */}
+                                        <img
+                                            src={`/images/categories/motorcycle_nobg.png`} // Placeholder for now as per user instruction "where is images"
+                                            alt={v.model}
+                                            className="absolute w-[80%] h-[80%] object-contain z-10 transition-transform duration-500 group-hover:scale-105"
+                                        />
+
+                                        <div className="relative text-center opacity-10 group-hover:opacity-0 transition-opacity duration-700">
+                                            <span className="font-black text-[6rem] uppercase tracking-tighter leading-none text-slate-900/5 dark:text-white/5 select-none">
+                                                {v.make[0]}
                                             </span>
                                         </div>
                                     </div>
@@ -256,36 +264,37 @@ export function CatalogDesktop({ filters }: CatalogDesktopProps) {
                                                 </span>
                                             </h3>
                                         </div>
-                                        <div className="bg-green-500/5 border border-green-500/20 rounded-2xl p-4 flex items-center justify-between">
-                                            <div className="space-y-0.5">
-                                                <p className="text-[8px] font-black uppercase tracking-[0.2em] text-green-600 italic">
-                                                    Pay Only Monthly
+
+                                        <div className="flex items-end justify-between border-t border-slate-100 dark:border-white/5 pt-4">
+                                            <div className="space-y-1">
+                                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                                    On-Road Price
                                                 </p>
-                                                <p className="text-xl font-black text-slate-900 dark:text-white tracking-tighter">
+                                                <div className="flex items-baseline gap-2">
+                                                    <span className="text-lg font-black text-slate-900 dark:text-white">
+                                                        ₹{offerPrice.toLocaleString('en-IN')}
+                                                    </span>
+                                                    <span className="text-xs font-bold text-slate-400 line-through decoration-red-500/50">
+                                                        ₹{onRoadPrice.toLocaleString('en-IN')}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="text-right space-y-1">
+                                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                                    EMI / {tenure}mo
+                                                </p>
+                                                <p className="text-lg font-black text-brand-primary">
                                                     ₹{emiValue.toLocaleString('en-IN')}
-                                                    <span className="text-xs italic text-slate-400">/mo*</span>
                                                 </p>
-                                            </div>
-                                            <div className="bg-green-500 text-white text-[9px] font-black px-3 py-1.5 rounded-lg">
-                                                APPLY
                                             </div>
                                         </div>
-                                        <div className="mt-auto pt-2 flex items-center justify-between">
-                                            <div className="space-y-0.5">
-                                                <p className="text-lg font-black text-slate-900 dark:text-white tracking-tighter">
-                                                    ₹{offerPrice.toLocaleString('en-IN')}
-                                                </p>
-                                                <p className="text-[7px] font-bold text-slate-500 uppercase tracking-widest italic">
-                                                    Final On-Road Price
-                                                </p>
-                                            </div>
-                                            <Link
-                                                href={`/store/${slugify(v.make)}/${slugify(v.model)}/${slugify(v.variant)}`}
-                                                className="px-6 py-3 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em]"
-                                            >
-                                                BOOK NOW
-                                            </Link>
-                                        </div>
+
+                                        <Link
+                                            href={`/store/${slugify(v.make)}/${slugify(v.model)}/${slugify(v.variant)}`}
+                                            className="w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:bg-brand-primary hover:text-black transition-colors"
+                                        >
+                                            GET QUOTE
+                                        </Link>
                                     </div>
                                 </div>
                             );
