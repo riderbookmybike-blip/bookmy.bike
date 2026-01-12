@@ -107,7 +107,7 @@ export function CatalogDesktop({ filters }: CatalogDesktopProps) {
     };
 
     return (
-        <div className="max-w-[1920px] mx-auto px-6 md:px-12 lg:px-20 py-8 space-y-12 bg-white dark:bg-[#020617] transition-colors duration-500">
+        <div className="max-w-[1920px] mx-auto px-6 md:px-12 lg:px-20 pt-32 pb-20 space-y-12 bg-white dark:bg-[#020617] transition-colors duration-500">
             {/* 1. Brand elimination Ribbon */}
             <div className="relative py-8 border-b border-slate-200 dark:border-white/5 overflow-hidden group">
                 <div className="flex whitespace-nowrap animate-marquee gap-24">
