@@ -20,9 +20,11 @@ export default function PersonalizeLayout({
             <div className="max-w-[1400px] mx-auto px-6 py-4 md:py-8 space-y-8">
 
                 {/* 1. Header Section */}
-                <div className="sticky top-16 md:top-20 z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl px-6 -mx-6 py-4 border-b border-slate-200 dark:border-white/5 transition-all duration-300">
-                    {header}
-                </div>
+                {header && (
+                    <div className="sticky top-16 md:top-20 z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl px-6 -mx-6 py-4 border-b border-slate-200 dark:border-white/5 transition-all duration-300">
+                        {header}
+                    </div>
+                )}
 
                 {/* 2. Visuals Section (Image | Video) */}
                 <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">

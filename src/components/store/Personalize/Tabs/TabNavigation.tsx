@@ -15,7 +15,7 @@ interface TabNavigationProps {
 
 export default function TabNavigation({ tabs, activeTab, onTabChange, className = '' }: TabNavigationProps) {
     return (
-        <div className={`flex items-center w-full gap-2 overflow-x-auto no-scrollbar ${className}`}>
+        <div className={`flex items-center w-full gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] ${className}`}>
             {tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
@@ -23,17 +23,17 @@ export default function TabNavigation({ tabs, activeTab, onTabChange, className 
                         key={tab.id}
                         onClick={() => onTabChange(tab.id)}
                         className={`
-                            flex-1 w-full text-center px-4 py-3 rounded-full text-[10px] md:text-xs font-black uppercase tracking-widest whitespace-nowrap transition-all duration-300
+                            flex-1 w-full text-center px-2 md:px-4 py-2.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all duration-300
                             border flex items-center justify-center gap-2
                             ${isActive
-                                ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/25 scale-100 z-10'
-                                : 'bg-transparent border-slate-800 text-slate-500 hover:border-slate-600 hover:text-slate-300 hover:bg-slate-900'
+                                ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/25 scale-105 z-10'
+                                : 'bg-transparent border-slate-200 dark:border-slate-800 text-slate-500 hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 dark:hover:border-slate-700'
                             }
                         `}
                     >
                         <span>{tab.label}</span>
                         {tab.count !== undefined && tab.count !== null && (
-                            <span className={`inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-full text-[9px] font-bold ${isActive ? 'bg-white text-blue-600' : 'bg-slate-700 text-white shadow-sm ring-1 ring-slate-600'}`}>
+                            <span className={`inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full text-[8px] font-bold ${isActive ? 'bg-white text-blue-600' : 'bg-slate-200 dark:bg-slate-800 text-slate-500'}`}>
                                 {tab.count}
                             </span>
                         )}
