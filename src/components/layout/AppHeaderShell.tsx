@@ -29,7 +29,7 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
     const bgClass =
         transparentAtTop && !scrolled
             ? 'bg-transparent border-b-transparent'
-            : 'bg-white/70 dark:bg-slate-950/70 backdrop-blur-md border-b border-slate-200 dark:border-white/10 shadow-sm';
+            : 'bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-white/10 shadow-sm';
 
     return (
         <>

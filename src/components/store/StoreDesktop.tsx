@@ -42,7 +42,7 @@ export function StoreDesktop() {
     return (
         <div className="flex flex-col pb-40 transition-colors duration-300">
             {/* Premium Photography Hero Section */}
-            <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden bg-white dark:bg-[#020617] isolate transition-colors duration-500">
+            <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden bg-white dark:bg-[#020617] isolate transition-colors duration-500 -mt-24">
                 <div className="absolute inset-0 z-0 opacity-40 dark:opacity-50">
                     <img
                         src="/images/hero/lifestyle_1.png"
@@ -63,7 +63,7 @@ export function StoreDesktop() {
                             <h1 className="text-6xl sm:text-8xl md:text-9xl lg:text-[8.5rem] font-black italic uppercase tracking-tighter leading-[0.85]">
                                 <span className="text-slate-900 dark:text-white transition-colors">Your Next</span>{' '}
                                 <br />
-                                <span className="text-[#FFD700] drop-shadow-md transition-all">Legend Awaits.</span>
+                                <span className="text-[#F4B000] drop-shadow-md transition-all">Legend Awaits.</span>
                             </h1>
 
                             <p className="max-w-3xl mx-auto text-base md:text-xl text-slate-500 dark:text-slate-400 font-medium tracking-wide transition-colors leading-relaxed italic">
