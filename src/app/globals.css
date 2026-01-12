@@ -8,17 +8,18 @@
    ============================================= */
 
 :root {
-  /* Primary Brand (Indigo) */
-  --color-primary-50: #eef2ff;
-  --color-primary-100: #e0e7ff;
-  --color-primary-200: #c7d2fe;
-  --color-primary-300: #a5b4fc;
-  --color-primary-400: #818cf8;
-  --color-primary-500: #6366f1;
-  --color-primary-600: #4f46e5;
-  --color-primary-700: #4338ca;
-  --color-primary-800: #3730a3;
-  --color-primary-900: #312e81;
+  /* Primary Brand (Cyber Yellow) */
+  --color-primary-50: #fefce8;
+  --color-primary-100: #fef9c3;
+  --color-primary-200: #fef08a;
+  --color-primary-300: #fde047;
+  --color-primary-400: #facc15;
+  --color-primary-500: #ffd700;
+  /* Core Brand Color */
+  --color-primary-600: #eab308;
+  --color-primary-700: #ca8a04;
+  --color-primary-800: #a16207;
+  --color-primary-900: #854d0e;
 
   /* Success - Emerald */
   --color-success-50: #ecfdf5;

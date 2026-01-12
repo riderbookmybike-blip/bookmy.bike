@@ -183,7 +183,7 @@ export default function RegistrationDetailPage() {
         const currentRules = loadRulesFromStorage();
         const idx = currentRules.findIndex((r: any) => r.id === rule.id);
 
-        let newRules = [...currentRules];
+        const newRules = [...currentRules];
 
         if (idx !== -1) {
             // Update existing
@@ -222,7 +222,7 @@ export default function RegistrationDetailPage() {
 
     // Helper to flatten components for targeting
     const collectAllComponents = (comps: any[]): { id: string, label: string }[] => {
-        let acc: { id: string, label: string }[] = [];
+        const acc: { id: string, label: string }[] = [];
         comps.forEach(c => {
             if (c.label && c.label !== 'Condition' && c.label !== 'New Charge') {
                 acc.push({ id: c.id, label: c.label });

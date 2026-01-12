@@ -7,6 +7,7 @@ import { slugify } from '@/utils/slugs';
 import { brands } from '@/hooks/useCatalogFilters';
 
 interface CatalogTabletProps {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     filters: any;
 }
 
@@ -34,12 +35,12 @@ export function CatalogTablet({ filters }: CatalogTabletProps) {
                         placeholder="FIND MACHINE..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none focus:border-blue-500/50"
+                        className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none focus:border-brand-primary/50"
                     />
                 </div>
                 <button
                     onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
-                    className={`h-14 px-8 rounded-2xl border flex items-center gap-3 transition-all ${isFiltersExpanded ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/5 text-slate-900 dark:text-white'}`}
+                    className={`h-14 px-8 rounded-2xl border flex items-center gap-3 transition-all ${isFiltersExpanded ? 'bg-brand-primary border-brand-primary text-black' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/5 text-slate-900 dark:text-white'}`}
                 >
                     <SlidersHorizontal size={18} />
                     <span className="text-[10px] font-black uppercase tracking-widest">Filters</span>
@@ -72,7 +73,7 @@ export function CatalogTablet({ filters }: CatalogTabletProps) {
                                 <button
                                     key={opt}
                                     onClick={() => toggleFilter(setSelectedCC, opt)}
-                                    className={`px-4 py-2.5 rounded-xl border text-[9px] font-black uppercase italic transition-all ${selectedCC.includes(opt) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/5 text-slate-500'}`}
+                                    className={`px-4 py-2.5 rounded-xl border text-[9px] font-black uppercase italic transition-all ${selectedCC.includes(opt) ? 'bg-brand-primary text-black border-brand-primary' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/5 text-slate-500'}`}
                                 >
                                     {opt}
                                 </button>

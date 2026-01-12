@@ -7,6 +7,7 @@ import { slugify } from '@/utils/slugs';
 import { brands } from '@/hooks/useCatalogFilters';
 
 interface CatalogMobileProps {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     filters: any;
 }
 
@@ -42,7 +43,7 @@ export function CatalogMobile({ filters }: CatalogMobileProps) {
                             <button
                                 key={opt}
                                 onClick={() => onToggle(opt)}
-                                className={`px-4 py-3 rounded-xl border text-[9px] font-black uppercase transition-all ${selectedValues.includes(opt) ? 'bg-blue-600 border-blue-600 text-white' : 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500'}`}
+                                className={`px-4 py-3 rounded-xl border text-[9px] font-black uppercase transition-all ${selectedValues.includes(opt) ? 'bg-brand-primary border-brand-primary text-black' : 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500'}`}
                             >
                                 {opt}
                             </button>
@@ -82,7 +83,7 @@ export function CatalogMobile({ filters }: CatalogMobileProps) {
                         <button
                             key={brand}
                             onClick={() => toggleFilter(setSelectedMakes, brand.toUpperCase())}
-                            className={`flex-shrink-0 px-5 py-2 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${selectedMakes.includes(brand.toUpperCase()) ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-400'}`}
+                            className={`flex-shrink-0 px-5 py-2 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${selectedMakes.includes(brand.toUpperCase()) ? 'bg-brand-primary border-brand-primary text-black shadow-md' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-400'}`}
                         >
                             {brand}
                         </button>
@@ -171,7 +172,7 @@ export function CatalogMobile({ filters }: CatalogMobileProps) {
                             <FilterGroup title="CC Range" options={['< 125cc', '125-250cc', '250-500cc', '> 500cc']} selectedValues={selectedCC} onToggle={(v: string) => toggleFilter(setSelectedCC, v)} />
                         </div>
 
-                        <button onClick={() => setIsMobileFiltersOpen(false)} className="w-full py-5 bg-blue-600 text-white rounded-3xl text-[10px] font-black uppercase tracking-widest shadow-2xl">Apply Filters</button>
+                        <button onClick={() => setIsMobileFiltersOpen(false)} className="w-full py-5 bg-black text-white dark:bg-brand-primary dark:text-black rounded-3xl text-[10px] font-black uppercase tracking-widest shadow-2xl">Apply Filters</button>
                     </div>
                 </div>
             )}

@@ -68,7 +68,7 @@ let QUOTES: Quote[] = [
 ];
 
 // MOCK INVENTORY
-let MOCK_INVENTORY: InventoryItem[] = [
+const MOCK_INVENTORY: InventoryItem[] = [
     {
         id: 'INV-001',
         sku: 'HND-ACT-6G-STD-GRY',
@@ -191,7 +191,8 @@ export const createBookingFromOrder = (orderId: string) => {
         sku: 'SKU-' + order.id, // Mock SKU
         label: `${order.brand} ${order.model} ${order.variant}`,
         status: 'ACTIVE'
-    } as any; // Cast to any to avoid importing ProductVariant if not strictly needed in DataStore, or import it.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
 
     const lockedSnapshot = generateMockSnapshot(mockVariantForSnapshot, 'DL', 'DL-01');
 
@@ -226,7 +227,7 @@ export const createBookingFromOrder = (orderId: string) => {
 };
 
 export const updateBookingStatus = (bookingId: string, updates: Partial<Booking>, auditNote: string) => {
-    let bookingFound = BOOKINGS.find(b => b.id === bookingId);
+    const bookingFound = BOOKINGS.find(b => b.id === bookingId);
     if (!bookingFound) throw new Error("Booking not found");
 
     // Intercept Allotment Changes for Inventory Check
@@ -585,7 +586,7 @@ export const generateInvoice = (bookingId: string) => {
 };
 
 // --- LEDGER MODULE ---
-let LEDGER: LedgerEntry[] = [];
+const LEDGER: LedgerEntry[] = [];
 
 export const getLedgerEntries = () => LEDGER;
 
