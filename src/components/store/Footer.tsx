@@ -1,31 +1,24 @@
 import React from 'react';
 import Link from 'next/link';
 import { Logo } from '@/components/brand/Logo';
-import { ShieldCheck, Award, CreditCard, Facebook, Twitter, Linkedin, Instagram, Youtube, Heart } from 'lucide-react';
+import { ShieldCheck, Award, CreditCard, Facebook, Twitter, Linkedin, Instagram, Youtube, Heart, ArrowRight } from 'lucide-react';
 
 export const Footer = () => {
     return (
         <footer className="bg-white dark:bg-[#020617] border-t border-slate-100 dark:border-white/5 pt-32 pb-16 transition-colors duration-500 overflow-hidden relative">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-600/20 to-transparent" />
 
-            <div className="max-w-[1400px] mx-auto px-6 relative z-10">
+            <div className="max-w-[1920px] mx-auto px-6 md:px-12 lg:px-20 relative z-10">
                 {/* Top Section: Trust & Brand */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 mb-24">
                     <div className="lg:col-span-4 space-y-8">
-                        <Logo mode="auto" size={32} />
+                        <Logo mode="auto" size={32} className="justify-start" />
                         <p className="text-base text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm font-medium italic">
                             Redefining the era of mobility. India's premier marketplace for the next generation of riders.
                         </p>
-                        <div className="flex gap-6 items-center">
-                            <SocialIcon icon={<Instagram size={20} />} href="#" />
-                            <SocialIcon icon={<Twitter size={20} />} href="#" />
-                            <SocialIcon icon={<Linkedin size={20} />} href="#" />
-                            <div className="w-8 h-[1px] bg-slate-200 dark:bg-white/10 rotate-90" />
-                            <Link href="/store/blog" className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 hover:text-blue-600 transition-colors">Blog</Link>
-                        </div>
                     </div>
 
-                    <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-4 gap-12">
+                    <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-6 gap-12">
                         <div className="space-y-8">
                             <FooterHeading>Portfolio</FooterHeading>
                             <FooterLinkList>
@@ -33,6 +26,20 @@ export const Footer = () => {
                                 <FooterLink href="/store/catalog?category=MOTORCYCLE">Motorcycles</FooterLink>
                                 <FooterLink href="/store/catalog?category=ELECTRIC">Electric</FooterLink>
                                 <FooterLink href="/store/accessories">Boutique</FooterLink>
+                            </FooterLinkList>
+                        </div>
+
+                        <div className="space-y-8">
+                            <FooterHeading>Brands</FooterHeading>
+                            <FooterLinkList>
+                                <FooterLink href="/store/honda">Honda</FooterLink>
+                                <FooterLink href="/store/tvs">TVS</FooterLink>
+                                <FooterLink href="/store/royal-enfield">Royal Enfield</FooterLink>
+                                <FooterLink href="/store/hero">Hero MotoCorp</FooterLink>
+                                <FooterLink href="/store/bajaj">Bajaj Auto</FooterLink>
+                                <FooterLink href="/store/ktm">KTM</FooterLink>
+                                <FooterLink href="/store/suzuki">Suzuki</FooterLink>
+                                <FooterLink href="/store/yamaha">Yamaha</FooterLink>
                             </FooterLinkList>
                         </div>
 
@@ -63,6 +70,21 @@ export const Footer = () => {
                                 <FooterLink href="#">Terms</FooterLink>
                                 <FooterLink href="#">Compliance</FooterLink>
                             </FooterLinkList>
+                        </div>
+
+                        <div className="space-y-8">
+                            <FooterHeading>Connect</FooterHeading>
+                            <FooterLinkList>
+                                <FooterLink href="https://instagram.com">Instagram</FooterLink>
+                                <FooterLink href="https://twitter.com">Twitter</FooterLink>
+                                <FooterLink href="https://linkedin.com">LinkedIn</FooterLink>
+                                <FooterLink href="https://facebook.com">Facebook</FooterLink>
+                            </FooterLinkList>
+                            <div className="pt-4">
+                                <Link href="/store/blog" className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-blue-600 transition-colors flex items-center gap-2">
+                                    READ OUR BLOG <ArrowRight size={12} />
+                                </Link>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -1,0 +1,23 @@
+# Prettier Ignore
+# Don't format these files/directories
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+.next/
+out/
+build/
+dist/
+
+# Generated files
+*.min.js
+*.min.css
+package-lock.json
+
+# Miscellaneous
+.vercel/
+coverage/
+*.md

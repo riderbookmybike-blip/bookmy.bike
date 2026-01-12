@@ -201,6 +201,14 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         color: 'text-slate-400',
         allowedTenants: ['MARKETPLACE', 'DEALER', 'BANK'],
         permissions: ['read']
+      },
+      {
+        title: 'Brand Guidelines',
+        href: '/dashboard/design-system',
+        icon: Tags,
+        color: 'text-pink-500',
+        allowedTenants: ['MARKETPLACE'],
+        allowedRoles: ['SUPER_ADMIN']
       }
     ]
   }

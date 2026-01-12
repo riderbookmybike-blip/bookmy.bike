@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ICON_PATHS, TAGLINE_PATHS, BRAND_BLUE } from './paths';
+import { ICON_PATHS, TAGLINE_PATHS, BRAND_GOLD } from './paths';
 import { useTheme } from '@/components/providers/ThemeProvider';
 
 interface LogoProps {
@@ -9,6 +9,12 @@ interface LogoProps {
     variant?: 'full' | 'icon' | 'wordmark';
     monochrome?: 'none' | 'white' | 'black' | 'gold' | 'silver';
     size?: 'sm' | 'md' | 'lg' | number;
+    customColor?: string;
+    customColors?: {
+        icon?: string;
+        bookmy?: string;
+        bike?: string;
+    };
     style?: React.CSSProperties;
 }
 
@@ -18,6 +24,8 @@ export const Logo: React.FC<LogoProps> = ({
     mode = 'auto',
     variant = 'full',
     monochrome = 'none',
+    customColor,
+    customColors,
     size = 'md',
     style = {}
 }) => {
@@ -51,6 +59,20 @@ export const Logo: React.FC<LogoProps> = ({
 
     // Color Logic based on Variants and Monochrome overrides
     const colors = useMemo(() => {
+        // Granular overrides if provided
+        if (customColors) {
+            return {
+                icon: customColors.icon || (activeMode === 'dark' ? BRAND_GOLD : BRAND_GOLD),
+                bookmy: customColors.bookmy || (activeMode === 'dark' ? '#FFFFFF' : '#000000'),
+                bike: customColors.bike || (activeMode === 'dark' ? BRAND_GOLD : BRAND_GOLD)
+            };
+        }
+
+        // Legacy single custom color fallback (can be deprecated or kept for simple usage)
+        if (customColor) {
+            return { icon: customColor, bookmy: customColor, bike: customColor };
+        }
+
         if (monochrome === 'white') {
             return { icon: "#FFFFFF", bookmy: "#FFFFFF", bike: "#FFFFFF" };
         }
@@ -67,19 +89,19 @@ export const Logo: React.FC<LogoProps> = ({
         // Standard Themed Variants
         if (activeMode === 'dark') {
             return {
-                icon: BRAND_BLUE,
+                icon: BRAND_GOLD,
                 bookmy: "#FFFFFF",
-                bike: BRAND_BLUE
+                bike: BRAND_GOLD
             };
         }
 
         // Default Light Mode
         return {
-            icon: BRAND_BLUE,
+            icon: BRAND_GOLD,
             bookmy: "#000000",
-            bike: BRAND_BLUE
+            bike: BRAND_GOLD
         };
-    }, [activeMode, monochrome]);
+    }, [activeMode, monochrome, customColor, customColors]);
 
     const isMetallic = monochrome === 'gold' || monochrome === 'silver';
 

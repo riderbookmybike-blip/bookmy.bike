@@ -4,7 +4,7 @@ import React from 'react';
 import { Logo } from '@/components/brand/Logo';
 import { MarketplaceHeader } from '@/components/layout/MarketplaceHeader';
 import { MarketplaceFooter } from '@/components/layout/MarketplaceFooter';
-import { ICON_PATHS, TEXT_PATHS, BRAND_BLUE } from '@/components/brand/paths';
+import { ICON_PATHS, TEXT_PATHS, BRAND_GOLD } from '@/components/brand/paths';
 import { Download, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
@@ -33,9 +33,9 @@ const downloadSVG = (variant: 'full' | 'icon' | 'wordmark', mode: 'light' | 'dar
     `;
 
     const colors = {
-        icon: BRAND_BLUE,
+        icon: BRAND_GOLD,
         bookmy: mode === 'dark' ? "#FFFFFF" : "#000000",
-        bike: BRAND_BLUE
+        bike: BRAND_GOLD
     };
 
     if (mode === 'white') {

@@ -88,7 +88,11 @@ export interface ProductVariant {
     make: string;      // Honda
     model: string;     // Activa
     variant: string;   // Standard / 6G
-    bodyType?: 'SCOOTER' | 'MOTORCYCLE' | 'MOPED'; // Added for category filtering
+    bodyType?: 'SCOOTER' | 'MOTORCYCLE' | 'MOPED' | 'ELECTRIC_BIKE' | 'ELECTRIC_SCOOTER'; // Enhanced category filtering
+    fuelType?: string;   // PETROL, ELECTRIC, etc.
+    displacement?: number; // 110, 350, etc.
+    powerUnit?: 'CC' | 'KW';
+    segment?: string;    // COMMUTER, SPORT, CRUISER, etc.
 
     // Detailed Context
     displayName?: string; // Full public name
@@ -126,6 +130,10 @@ export const MOCK_VEHICLES: ProductVariant[] = [
         model: 'Activa 6G',
         variant: 'Standard',
         bodyType: 'SCOOTER',
+        fuelType: 'PETROL',
+        displacement: 109.51,
+        powerUnit: 'CC',
+        segment: 'COMMUTER',
         displayName: 'Honda Activa 6G Standard',
         color: 'Matte Axis Grey',
         sku: 'HND-ACT-6G-STD-MAG',
@@ -183,6 +191,10 @@ export const MOCK_VEHICLES: ProductVariant[] = [
         model: 'Classic 350',
         variant: 'Dark',
         bodyType: 'MOTORCYCLE',
+        fuelType: 'PETROL',
+        displacement: 349.34,
+        powerUnit: 'CC',
+        segment: 'CRUISER',
         displayName: 'Royal Enfield Classic 350 Dark',
         color: 'Stealth Black',
         sku: 'RE-CLS-350-DRK-BLK',
@@ -203,6 +215,68 @@ export const MOCK_VEHICLES: ProductVariant[] = [
             }
         },
         features: ['Dual Channel ABS', 'Tripper Navigation', 'USB Charging Port']
+    },
+    // Yamaha R15M V4 - Actual Specifications from Yamaha Motor India
+    {
+        id: 'v3',
+        type: 'VEHICLE',
+        make: 'Yamaha',
+        model: 'R15M',
+        variant: 'V4',
+        bodyType: 'MOTORCYCLE',
+        fuelType: 'PETROL',
+        displacement: 155,
+        powerUnit: 'CC',
+        segment: 'SPORT',
+        displayName: 'Yamaha R15M V4',
+        color: 'Racing Blue',
+        sku: 'YMH-R15M-V4-RBL',
+        hsnCode: '871120',
+        gstRate: 28,
+        label: 'Yamaha / R15M / V4 / Racing Blue',
+        status: 'ACTIVE',
+        specifications: {
+            engine: {
+                displacement: '155 cc',
+                maxPower: '18.4 PS @ 10,000 rpm',
+                maxTorque: '14.2 Nm @ 7,500 rpm',
+                cooling: 'Liquid Cooled',
+                fuelSystem: 'Fuel Injection'
+            },
+            transmission: {
+                type: 'Manual',
+                gears: 6,
+                clutchType: 'Wet, Multiple-Disc, Assist & Slipper'
+            },
+            brakes: {
+                front: '282mm Disc',
+                rear: '220mm Disc'
+            },
+            wheels: {
+                front: '100/80-17',
+                rear: '140/70-17'
+            },
+            dimensions: {
+                length: '1,990 mm',
+                width: '725 mm',
+                height: '1,135 mm',
+                wheelbase: '1,325 mm',
+                groundClearance: '170 mm',
+                seatHeight: '815 mm',
+                kerbWeight: '142 kg',
+                fuelCapacity: '11 L'
+            }
+        },
+        features: [
+            'Variable Valve Actuation (VVA)',
+            'Quick Shifter (Upshift)',
+            'Traction Control System (TCS)',
+            'Dual Channel ABS',
+            'LED Headlight with DRL',
+            'Negative LCD Instrument Cluster',
+            'Y-Connect App Connectivity',
+            'USD Front Forks'
+        ]
     }
 ];
 

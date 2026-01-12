@@ -1,4 +1,4 @@
-export const BRAND_BLUE = "#2B7FFF";
+export const BRAND_GOLD = "#F4B000"; // Gold (Locked - Previously BRAND_BLUE)
 
 export const ICON_PATHS = {
     PRIMARY: [
