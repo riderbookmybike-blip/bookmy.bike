@@ -1,20 +1,32 @@
 import React from 'react';
 import Link from 'next/link';
 import { Logo } from '@/components/brand/Logo';
-import { ShieldCheck, Award, CreditCard, Facebook, Twitter, Linkedin, Instagram, Youtube, Heart, ArrowRight } from 'lucide-react';
+import {
+    ShieldCheck,
+    Award,
+    CreditCard,
+    Facebook,
+    Twitter,
+    Linkedin,
+    Instagram,
+    Youtube,
+    Heart,
+    ArrowRight,
+} from 'lucide-react';
 
 export const Footer = () => {
     return (
-        <footer className="bg-white dark:bg-[#020617] border-t border-slate-100 dark:border-white/5 pt-32 pb-16 transition-colors duration-500 overflow-hidden relative">
+        <footer className="bg-white dark:bg-[#020617] border-t border-slate-100 dark:border-white/5 pt-48 pb-24 transition-colors duration-500 overflow-hidden relative">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-brand-primary/20 to-transparent" />
 
             <div className="max-w-[1920px] mx-auto px-6 md:px-12 lg:px-20 relative z-10">
                 {/* Top Section: Trust & Brand */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 mb-24">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-20 mb-32">
                     <div className="lg:col-span-4 space-y-8">
                         <Logo mode="auto" size={32} className="justify-start" />
                         <p className="text-base text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm font-medium italic">
-                            Redefining the era of mobility. India's premier marketplace for the next generation of riders.
+                            Redefining the era of mobility. India&apos;s premier marketplace for the next generation of
+                            riders.
                         </p>
                     </div>
 
@@ -24,11 +36,15 @@ export const Footer = () => {
                             <div className="grid grid-cols-2 gap-8">
                                 <div className="space-y-8">
                                     <div>
-                                        <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-3">Explore</p>
+                                        <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-3">
+                                            Explore
+                                        </p>
                                         <FooterLinkList>
                                             <FooterLink href="/store/catalog">All Inventory</FooterLink>
                                             <FooterLink href="/store/catalog?category=SCOOTER">Scooters</FooterLink>
-                                            <FooterLink href="/store/catalog?category=MOTORCYCLE">Motorcycles</FooterLink>
+                                            <FooterLink href="/store/catalog?category=MOTORCYCLE">
+                                                Motorcycles
+                                            </FooterLink>
                                             <FooterLink href="/store/catalog?category=MOPED">Moped</FooterLink>
                                             <FooterLink href="/store/catalog?sort=price_asc">Low to High</FooterLink>
                                             <FooterLink href="/store/catalog?sort=price_desc">High to Low</FooterLink>
@@ -38,7 +54,9 @@ export const Footer = () => {
                                 </div>
                                 <div className="space-y-8">
                                     <div>
-                                        <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-3">Makes</p>
+                                        <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-3">
+                                            Makes
+                                        </p>
                                         <FooterLinkList>
                                             <FooterLink href="/store/honda">Honda</FooterLink>
                                             <FooterLink href="/store/tvs">TVS</FooterLink>
@@ -92,7 +110,10 @@ export const Footer = () => {
                                 <SocialIcon icon={<Facebook size={18} />} href="https://facebook.com" />
                             </div>
                             <div className="mt-6">
-                                <Link href="/store/blog" className="text-xs font-bold text-slate-500 hover:text-brand-primary transition-colors flex items-center gap-1 group">
+                                <Link
+                                    href="/store/blog"
+                                    className="text-xs font-bold text-slate-500 hover:text-brand-primary transition-colors flex items-center gap-1 group"
+                                >
                                     <span>Read our Blog</span>
                                     <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                                 </Link>
@@ -130,34 +151,43 @@ const FooterHeading = ({ children }: { children: React.ReactNode }) => (
     </h4>
 );
 
-const FooterLinkList = ({ children }: { children: React.ReactNode }) => (
-    <ul className="space-y-3">
-        {children}
-    </ul>
-);
+const FooterLinkList = ({ children }: { children: React.ReactNode }) => <ul className="space-y-5">{children}</ul>;
 
-const FooterLink = ({ href, children, highlight }: { href: string, children: React.ReactNode, highlight?: boolean }) => (
+const FooterLink = ({
+    href,
+    children,
+    highlight,
+}: {
+    href: string;
+    children: React.ReactNode;
+    highlight?: boolean;
+}) => (
     <li>
-        <Link href={href} className={`text-xs font-bold transition-colors ${highlight
-            ? "text-brand-primary dark:text-brand-primary hover:text-yellow-600 dark:hover:text-yellow-400"
-            : "text-slate-500 dark:text-slate-400 hover:text-brand-primary dark:hover:text-brand-primary"
-            }`}>
+        <Link
+            href={href}
+            className={`text-xs font-bold transition-colors ${
+                highlight
+                    ? 'text-brand-primary dark:text-brand-primary hover:text-yellow-600 dark:hover:text-yellow-400'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-brand-primary dark:hover:text-brand-primary'
+            }`}
+        >
             {children}
         </Link>
     </li>
 );
 
-const SocialIcon = ({ icon, href }: { icon: React.ReactNode, href: string }) => (
-    <a href={href} className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:bg-brand-primary hover:text-black dark:hover:bg-brand-primary dark:hover:text-black transition-all">
+const SocialIcon = ({ icon, href }: { icon: React.ReactNode; href: string }) => (
+    <a
+        href={href}
+        className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:bg-brand-primary hover:text-black dark:hover:bg-brand-primary dark:hover:text-black transition-all"
+    >
         {icon}
     </a>
 );
 
-const TrustBadge = ({ icon, title, desc }: { icon: React.ReactNode, title: string, desc: string }) => (
+const TrustBadge = ({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) => (
     <div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10 transition-colors">
-        <div className="p-2 bg-brand-primary/10 dark:bg-brand-primary/10 rounded-lg">
-            {icon}
-        </div>
+        <div className="p-2 bg-brand-primary/10 dark:bg-brand-primary/10 rounded-lg">{icon}</div>
         <div>
             <h5 className="text-sm font-black text-slate-900 dark:text-slate-200 mb-1">{title}</h5>
             <p className="text-xs text-slate-500 leading-relaxed font-medium">{desc}</p>
@@ -165,8 +195,11 @@ const TrustBadge = ({ icon, title, desc }: { icon: React.ReactNode, title: strin
     </div>
 );
 
-const LegalLink = ({ href, children }: { href: string, children: React.ReactNode }) => (
-    <Link href={href} className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-300 transition-colors">
+const LegalLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
+    <Link
+        href={href}
+        className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-300 transition-colors"
+    >
         {children}
     </Link>
 );
