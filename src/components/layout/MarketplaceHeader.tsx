@@ -36,11 +36,11 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
             const name = localStorage.getItem('user_name');
             setUserName(name);
         };
-        const handleAuthSync = (e: CustomEvent) => {
+        const handleAuthSync = ((e: CustomEvent) => {
             if (e.detail?.name) setUserName(e.detail.name);
-        };
+        }) as EventListener;
         window.addEventListener('storage', handleLoginSync);
-        window.addEventListener('auth_sync', handleAuthSync as EventListener);
+        window.addEventListener('auth_sync', handleAuthSync);
         return () => {
             window.removeEventListener('scroll', handleScroll);
             window.removeEventListener('storage', handleLoginSync);
@@ -109,6 +109,11 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                         </Link>
                     </div>
 
+                    {/* Theme Toggle */}
+                    <div className="hidden md:block">
+                        <ThemeToggle />
+                    </div>
+
                     {/* User Dropdown - Desktop Only */}
                     <div className="relative hidden md:block" ref={profileRef}>
                         <button
@@ -144,22 +149,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                             <div className="absolute top-full right-0 mt-3 w-64 bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl p-2 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
                                 <div className="p-2 space-y-4">
                                     {/* Appearance Section */}
-                                    <div>
-                                        <p className="px-3 py-1 text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-[0.2em]">
-                                            Appearance
-                                        </p>
-                                        <div className="mt-1 flex items-center justify-between px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl transition-colors cursor-default">
-                                            <div className="flex items-center gap-3">
-                                                <div className="text-slate-400">
-                                                    <Zap size={15} />
-                                                </div>
-                                                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                                                    Change Theme
-                                                </span>
-                                            </div>
-                                            <ThemeToggle />
-                                        </div>
-                                    </div>
+                                    {/* Appearance Section Moved to Header */}
 
                                     {/* Workspaces Section */}
                                     {userName &&
@@ -286,6 +276,11 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                     >
                         {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
                     </button>
+
+                    {/* Mobile Theme Toggle (Visible only on mobile) */}
+                    <div className="md:hidden">
+                        <ThemeToggle />
+                    </div>
                 </div>
             }
         >
