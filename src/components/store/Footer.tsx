@@ -18,29 +18,40 @@ export const Footer = () => {
                         </p>
                     </div>
 
-                    <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-6 gap-12">
-                        <div className="space-y-8">
-                            <FooterHeading>Portfolio</FooterHeading>
-                            <FooterLinkList>
-                                <FooterLink href="/store/catalog?category=SCOOTER">Scooters</FooterLink>
-                                <FooterLink href="/store/catalog?category=MOTORCYCLE">Motorcycles</FooterLink>
-                                <FooterLink href="/store/catalog?category=ELECTRIC">Electric</FooterLink>
-                                <FooterLink href="/store/accessories">Boutique</FooterLink>
-                            </FooterLinkList>
-                        </div>
-
-                        <div className="space-y-8">
-                            <FooterHeading>Brands</FooterHeading>
-                            <FooterLinkList>
-                                <FooterLink href="/store/honda">Honda</FooterLink>
-                                <FooterLink href="/store/tvs">TVS</FooterLink>
-                                <FooterLink href="/store/royal-enfield">Royal Enfield</FooterLink>
-                                <FooterLink href="/store/hero">Hero MotoCorp</FooterLink>
-                                <FooterLink href="/store/bajaj">Bajaj Auto</FooterLink>
-                                <FooterLink href="/store/ktm">KTM</FooterLink>
-                                <FooterLink href="/store/suzuki">Suzuki</FooterLink>
-                                <FooterLink href="/store/yamaha">Yamaha</FooterLink>
-                            </FooterLinkList>
+                    <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-5 gap-12">
+                        <div className="col-span-2">
+                            <FooterHeading>Collection</FooterHeading>
+                            <div className="grid grid-cols-2 gap-8">
+                                <div className="space-y-8">
+                                    <div>
+                                        <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-3">Explore</p>
+                                        <FooterLinkList>
+                                            <FooterLink href="/store/catalog">All Inventory</FooterLink>
+                                            <FooterLink href="/store/catalog?category=SCOOTER">Scooters</FooterLink>
+                                            <FooterLink href="/store/catalog?category=MOTORCYCLE">Motorcycles</FooterLink>
+                                            <FooterLink href="/store/catalog?category=MOPED">Moped</FooterLink>
+                                            <FooterLink href="/store/catalog?sort=price_asc">Low to High</FooterLink>
+                                            <FooterLink href="/store/catalog?sort=price_desc">High to Low</FooterLink>
+                                            <FooterLink href="/store/catalog?sort=mileage">Best Mileage</FooterLink>
+                                        </FooterLinkList>
+                                    </div>
+                                </div>
+                                <div className="space-y-8">
+                                    <div>
+                                        <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-3">Makes</p>
+                                        <FooterLinkList>
+                                            <FooterLink href="/store/honda">Honda</FooterLink>
+                                            <FooterLink href="/store/tvs">TVS</FooterLink>
+                                            <FooterLink href="/store/royal-enfield">Royal Enfield</FooterLink>
+                                            <FooterLink href="/store/hero">Hero MotoCorp</FooterLink>
+                                            <FooterLink href="/store/bajaj">Bajaj Auto</FooterLink>
+                                            <FooterLink href="/store/ktm">KTM</FooterLink>
+                                            <FooterLink href="/store/suzuki">Suzuki</FooterLink>
+                                            <FooterLink href="/store/yamaha">Yamaha</FooterLink>
+                                        </FooterLinkList>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <div className="space-y-8">
@@ -74,15 +85,16 @@ export const Footer = () => {
 
                         <div className="space-y-8">
                             <FooterHeading>Connect</FooterHeading>
-                            <FooterLinkList>
-                                <FooterLink href="https://instagram.com">Instagram</FooterLink>
-                                <FooterLink href="https://twitter.com">Twitter</FooterLink>
-                                <FooterLink href="https://linkedin.com">LinkedIn</FooterLink>
-                                <FooterLink href="https://facebook.com">Facebook</FooterLink>
-                            </FooterLinkList>
-                            <div className="pt-4">
-                                <Link href="/store/blog" className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-blue-600 transition-colors flex items-center gap-2">
-                                    READ OUR BLOG <ArrowRight size={12} />
+                            <div className="flex gap-2">
+                                <SocialIcon icon={<Instagram size={18} />} href="https://instagram.com" />
+                                <SocialIcon icon={<Twitter size={18} />} href="https://twitter.com" />
+                                <SocialIcon icon={<Linkedin size={18} />} href="https://linkedin.com" />
+                                <SocialIcon icon={<Facebook size={18} />} href="https://facebook.com" />
+                            </div>
+                            <div className="mt-6">
+                                <Link href="/store/blog" className="text-xs font-bold text-slate-500 hover:text-blue-600 transition-colors flex items-center gap-1 group">
+                                    <span>Read our Blog</span>
+                                    <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                                 </Link>
                             </div>
                         </div>

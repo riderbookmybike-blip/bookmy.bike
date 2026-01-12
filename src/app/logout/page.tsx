@@ -10,24 +10,27 @@ export default function LogoutPage() {
 
     useEffect(() => {
         const performLogout = async () => {
-            // 1. Sign out from Supabase
-            await supabase.auth.signOut();
+            try {
+                // 1. Sign out from Supabase (with timeout to prevent hanging)
+                const signOutPromise = supabase.auth.signOut();
+                const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 2000));
+                await Promise.race([signOutPromise, timeoutPromise]);
+            } catch (error) {
+                console.error('Logout error:', error);
+            } finally {
+                // 2. Clear local storage (Always run this)
+                localStorage.clear(); // Clear all app data
 
-            // 2. Clear local storage
-            localStorage.removeItem('user_name');
-            localStorage.removeItem('user_role');
-            localStorage.removeItem('active_role');
-            localStorage.removeItem('sb-access-token');
+                // 3. Clear cookies
+                document.cookie.split(";").forEach((c) => {
+                    document.cookie = c
+                        .replace(/^ +/, "")
+                        .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                });
 
-            // 3. Clear cookies (Supabase client usually handles this, but we force it)
-            document.cookie.split(";").forEach((c) => {
-                document.cookie = c
-                    .replace(/^ +/, "")
-                    .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-            });
-
-            // 4. Redirect to login
-            router.replace('/login');
+                // 4. Redirect to login
+                router.replace('/login');
+            }
         };
 
         performLogout();
