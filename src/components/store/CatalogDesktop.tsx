@@ -115,7 +115,7 @@ export function CatalogDesktop({ filters }: CatalogDesktopProps) {
                         <button
                             key={i}
                             onClick={() => toggleFilter(setSelectedMakes, brand.toUpperCase())}
-                            className={`text-4xl font-black italic tracking-tighter uppercase transition-all duration-500 ${selectedMakes.includes(brand.toUpperCase()) ? 'text-[#F4B000] scale-110' : 'text-[#F4B000]/40 hover:text-[#F4B000] scale-90'}`}
+                            className={`text-4xl font-black italic tracking-tighter uppercase transition-all duration-500 ${selectedMakes.includes(brand.toUpperCase()) ? 'text-slate-900 dark:text-white scale-110' : 'text-slate-300 dark:text-slate-800 scale-90 opacity-40 hover:opacity-100'}`}
                         >
                             {brand}
                         </button>
@@ -151,7 +151,8 @@ export function CatalogDesktop({ filters }: CatalogDesktopProps) {
                                         step="5000"
                                         value={downpayment}
                                         onChange={e => setDownpayment(parseInt(e.target.value))}
-                                        className="w-full h-1 bg-slate-200 dark:bg-slate-800 appearance-none rounded-full accent-brand-primary"
+                                        className="w-full h-1 bg-slate-200 dark:bg-slate-800 appearance-none rounded-full cursor-pointer"
+                                        style={{ accentColor: '#F4B000' }}
                                     />
                                 </div>
                                 <div className="grid grid-cols-4 gap-2">
