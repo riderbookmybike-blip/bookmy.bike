@@ -28,6 +28,12 @@ export const Footer = () => {
                             Redefining the era of mobility. India&apos;s premier marketplace for the next generation of
                             riders.
                         </p>
+                        <div className="flex gap-2">
+                            <SocialIcon icon={<Instagram size={18} />} href="https://instagram.com" />
+                            <SocialIcon icon={<Twitter size={18} />} href="https://twitter.com" />
+                            <SocialIcon icon={<Linkedin size={18} />} href="https://linkedin.com" />
+                            <SocialIcon icon={<Facebook size={18} />} href="https://facebook.com" />
+                        </div>
                     </div>
 
                     <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-6 gap-12">
@@ -89,21 +95,13 @@ export const Footer = () => {
 
                         <div className="space-y-8">
                             <FooterHeading>Connect</FooterHeading>
-                            <div className="flex gap-2">
-                                <SocialIcon icon={<Instagram size={18} />} href="https://instagram.com" />
-                                <SocialIcon icon={<Twitter size={18} />} href="https://twitter.com" />
-                                <SocialIcon icon={<Linkedin size={18} />} href="https://linkedin.com" />
-                                <SocialIcon icon={<Facebook size={18} />} href="https://facebook.com" />
-                            </div>
-                            <div className="mt-6">
-                                <Link
-                                    href="/store/blog"
-                                    className="text-xs font-bold text-slate-500 hover:text-brand-primary transition-colors flex items-center gap-1 group"
-                                >
-                                    <span>Read our Blog</span>
-                                    <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                                </Link>
-                            </div>
+                            <FooterLinkList>
+                                <FooterLink href="/store/blog">Read our Blog</FooterLink>
+                                <FooterLink href="#">Contact Support</FooterLink>
+                                <FooterLink href="https://twitter.com">Twitter</FooterLink>
+                                <FooterLink href="https://instagram.com">Instagram</FooterLink>
+                                <FooterLink href="https://linkedin.com">LinkedIn</FooterLink>
+                            </FooterLinkList>
                         </div>
                     </div>
                 </div>
