@@ -47,6 +47,7 @@ export function CatalogDesktop({ filters }: CatalogDesktopProps) {
                                 onClick={(e) => { e.stopPropagation(); onReset(); }}
                                 className="text-[9px] font-black uppercase text-brand-primary dark:text-brand-primary hover:text-slate-900 dark:hover:text-white transition-colors"
                             >Reset</button>
+                        )}
                         <ChevronDown size={14} className="text-slate-400 dark:text-slate-500 transition-transform duration-300 group-hover:text-brand-primary" />
                     </div>
                 </div>
