@@ -52,11 +52,13 @@ export function StoreMobile() {
                     </div>
                 </div>
 
-                <div className="mt-16 flex justify-center gap-6 opacity-30 pb-12">
-                    <Shield size={12} className="text-brand-primary" />
-                    <span className="text-[8px] font-black uppercase tracking-widest">Trust</span>
-                    <Shield size={12} className="text-brand-primary" />
-                    <span className="text-[8px] font-black uppercase tracking-widest">Speed</span>
+                <div className="mt-16 flex flex-wrap justify-center gap-4 opacity-60 pb-12 px-4">
+                    {['Transparency', 'Speed', 'Precision'].map(item => (
+                        <div key={item} className="flex items-center gap-1.5">
+                            <Shield size={10} className="text-brand-primary" />
+                            <span className="text-[8px] font-black uppercase tracking-widest">{item}</span>
+                        </div>
+                    ))}
                 </div>
             </section>
 
