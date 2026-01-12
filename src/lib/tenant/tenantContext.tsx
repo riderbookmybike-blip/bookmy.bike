@@ -181,6 +181,9 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                         setTenantName(guestTenant.name);
                         setTenantConfig(guestTenant.config);
                         setTenantTypeState(guestTenant.type?.toUpperCase() as TenantType);
+                        // FIX: Set tenantId for pre-login membership check
+                        setTenantId(guestTenant.id);
+                        localStorage.setItem('tenant_id', guestTenant.id);
                     }
                 }
 
