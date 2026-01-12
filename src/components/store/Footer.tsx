@@ -30,46 +30,32 @@ export const Footer = () => {
                         </p>
                     </div>
 
-                    <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-5 gap-12">
-                        <div className="col-span-2">
+                    <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-6 gap-12">
+                        <div className="space-y-8">
                             <FooterHeading>Collection</FooterHeading>
-                            <div className="grid grid-cols-2 gap-8">
-                                <div className="space-y-8">
-                                    <div>
-                                        <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-3">
-                                            Explore
-                                        </p>
-                                        <FooterLinkList>
-                                            <FooterLink href="/store/catalog">All Inventory</FooterLink>
-                                            <FooterLink href="/store/catalog?category=SCOOTER">Scooters</FooterLink>
-                                            <FooterLink href="/store/catalog?category=MOTORCYCLE">
-                                                Motorcycles
-                                            </FooterLink>
-                                            <FooterLink href="/store/catalog?category=MOPED">Moped</FooterLink>
-                                            <FooterLink href="/store/catalog?sort=price_asc">Low to High</FooterLink>
-                                            <FooterLink href="/store/catalog?sort=price_desc">High to Low</FooterLink>
-                                            <FooterLink href="/store/catalog?sort=mileage">Best Mileage</FooterLink>
-                                        </FooterLinkList>
-                                    </div>
-                                </div>
-                                <div className="space-y-8">
-                                    <div>
-                                        <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-3">
-                                            Makes
-                                        </p>
-                                        <FooterLinkList>
-                                            <FooterLink href="/store/honda">Honda</FooterLink>
-                                            <FooterLink href="/store/tvs">TVS</FooterLink>
-                                            <FooterLink href="/store/royal-enfield">Royal Enfield</FooterLink>
-                                            <FooterLink href="/store/hero">Hero MotoCorp</FooterLink>
-                                            <FooterLink href="/store/bajaj">Bajaj Auto</FooterLink>
-                                            <FooterLink href="/store/ktm">KTM</FooterLink>
-                                            <FooterLink href="/store/suzuki">Suzuki</FooterLink>
-                                            <FooterLink href="/store/yamaha">Yamaha</FooterLink>
-                                        </FooterLinkList>
-                                    </div>
-                                </div>
-                            </div>
+                            <FooterLinkList>
+                                <FooterLink href="/store/catalog">All Inventory</FooterLink>
+                                <FooterLink href="/store/catalog?category=SCOOTER">Scooters</FooterLink>
+                                <FooterLink href="/store/catalog?category=MOTORCYCLE">Motorcycles</FooterLink>
+                                <FooterLink href="/store/catalog?category=MOPED">Moped</FooterLink>
+                                <FooterLink href="/store/catalog?sort=price_asc">Low to High</FooterLink>
+                                <FooterLink href="/store/catalog?sort=price_desc">High to Low</FooterLink>
+                                <FooterLink href="/store/catalog?sort=mileage">Best Mileage</FooterLink>
+                            </FooterLinkList>
+                        </div>
+
+                        <div className="space-y-8">
+                            <FooterHeading>Makes</FooterHeading>
+                            <FooterLinkList>
+                                <FooterLink href="/store/honda">Honda</FooterLink>
+                                <FooterLink href="/store/tvs">TVS</FooterLink>
+                                <FooterLink href="/store/royal-enfield">Royal Enfield</FooterLink>
+                                <FooterLink href="/store/hero">Hero MotoCorp</FooterLink>
+                                <FooterLink href="/store/bajaj">Bajaj Auto</FooterLink>
+                                <FooterLink href="/store/ktm">KTM</FooterLink>
+                                <FooterLink href="/store/suzuki">Suzuki</FooterLink>
+                                <FooterLink href="/store/yamaha">Yamaha</FooterLink>
+                            </FooterLinkList>
                         </div>
 
                         <div className="space-y-8">
