@@ -4,6 +4,7 @@ import React from 'react';
 import { Zap, Download, Share2, Heart, ShieldCheck, ChevronRight, Info, Clock, CheckCircle2, Youtube } from 'lucide-react';
 
 interface SidebarHUDProps {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     product: any;
     variantName: string;
     activeColor: { name: string; hex: string };
@@ -54,8 +55,8 @@ export default function SidebarHUD({
             <div className="p-8 pb-4">
                 <div className="flex items-center justify-end gap-1">
                     <button onClick={onShowVideo} className="p-2.5 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl text-slate-400 hover:text-red-600 transition-all" title="Watch Video Review"><Youtube size={20} /></button>
-                    <button onClick={onDownload} className="p-2.5 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl text-slate-400 hover:text-blue-500 transition-all" title="Download Quote"><Download size={16} /></button>
-                    <button onClick={onShare} className="p-2.5 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl text-slate-400 hover:text-blue-500 transition-all" title="Share Configuration"><Share2 size={16} /></button>
+                    <button onClick={onDownload} className="p-2.5 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl text-slate-400 hover:text-brand-primary transition-all" title="Download Quote"><Download size={16} /></button>
+                    <button onClick={onShare} className="p-2.5 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl text-slate-400 hover:text-brand-primary transition-all" title="Share Configuration"><Share2 size={16} /></button>
                     <button onClick={onSave} className="p-2.5 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl text-slate-400 hover:text-rose-500 transition-all" title="Add to Favorites"><Heart size={16} /></button>
                 </div>
 
@@ -82,7 +83,7 @@ export default function SidebarHUD({
                         {priceBreakup.filter(item => !item.isTotal).map((item, idx) => (
                             <div key={idx} className="flex justify-between items-center text-[11px]">
                                 <span className="font-bold text-slate-500/80 uppercase tracking-widest">{item.label}</span>
-                                <span className={`font-mono font-black ${item.isDeduction ? 'text-emerald-500' : item.isInfo ? 'text-blue-500' : 'text-slate-700 dark:text-slate-300'}`}>
+                                <span className={`font-mono font-black ${item.isDeduction ? 'text-emerald-500' : item.isInfo ? 'text-brand-primary' : 'text-slate-700 dark:text-slate-300'}`}>
                                     {item.isDeduction ? '-' : ''}
                                     {typeof item.value === 'number' ? `₹${item.value.toLocaleString()}` : item.value}
                                 </span>
@@ -93,7 +94,7 @@ export default function SidebarHUD({
                     <div className="pt-6 border-t border-slate-100 dark:border-white/5 flex justify-between items-center group/price">
                         <span className="text-xs font-[900] uppercase italic tracking-wider text-slate-900 dark:text-white/40">Final Price</span>
                         <div className="text-right">
-                            <span className="text-3xl font-black italic tracking-tighter text-blue-600 dark:text-blue-500 font-mono block">₹{totalOnRoad.toLocaleString()}</span>
+                            <span className="text-3xl font-black italic tracking-tighter text-brand-primary dark:text-brand-primary font-mono block">₹{totalOnRoad.toLocaleString()}</span>
                         </div>
                     </div>
 
@@ -122,13 +123,13 @@ export default function SidebarHUD({
                                 label: 'Approval Probability',
                                 value: downPayment / totalOnRoad > 0.25 ? 'High' : downPayment / totalOnRoad > 0.15 ? 'Medium' : 'Low',
                                 isHighlight: true,
-                                colorClass: downPayment / totalOnRoad > 0.25 ? 'text-emerald-500' : downPayment / totalOnRoad > 0.15 ? 'text-blue-500' : 'text-amber-500'
+                                colorClass: downPayment / totalOnRoad > 0.25 ? 'text-emerald-500' : downPayment / totalOnRoad > 0.15 ? 'text-brand-primary' : 'text-amber-500'
                             },
-                            { label: 'Finance TAT', value: '30 Minutes', isHighlight: true, colorClass: 'text-blue-500' },
+                            { label: 'Finance TAT', value: '30 Minutes', isHighlight: true, colorClass: 'text-brand-primary' },
                         ].map((item, idx) => (
                             <div key={idx} className="flex justify-between items-center text-[10px]">
                                 <span className="font-bold text-slate-500/80 uppercase tracking-widest">{item.label}</span>
-                                <span className={`font-mono font-black tracking-tight uppercase ${item.isHighlight ? (item.colorClass || 'text-blue-500 italic') : 'text-slate-900 dark:text-white'}`}>{item.value}</span>
+                                <span className={`font-mono font-black tracking-tight uppercase ${item.isHighlight ? (item.colorClass || 'text-brand-primary italic') : 'text-slate-900 dark:text-white'}`}>{item.value}</span>
                             </div>
                         ))}
                     </div>
@@ -137,7 +138,7 @@ export default function SidebarHUD({
                     <div className="pt-6 border-t border-slate-100 dark:border-white/10 flex justify-between items-center group/price">
                         <span className="text-xs font-[900] uppercase italic tracking-wider text-slate-900 dark:text-white/40">Monthly EMI</span>
                         <div className="text-right">
-                            <span className="text-3xl font-black italic tracking-tighter text-blue-600 dark:text-blue-500 font-mono block">₹{emi.toLocaleString()}</span>
+                            <span className="text-3xl font-black italic tracking-tighter text-brand-primary dark:text-brand-primary font-mono block">₹{emi.toLocaleString()}</span>
                         </div>
                     </div>
                 </div>
@@ -155,7 +156,7 @@ export default function SidebarHUD({
                     </div>
                 </button>
                 <div className="flex items-center gap-2 justify-center text-[10px] font-bold text-slate-500 uppercase tracking-[0.1em]">
-                    <Clock size={12} className="text-blue-500" />
+                    <Clock size={12} className="text-brand-primary" />
                     <span>Estimated 2-hour approval</span>
                 </div>
             </div>

@@ -10,8 +10,8 @@ module.exports = {
     colors: {
         // Primary Brand Identity (The "Gold")
         aums: {
-            gold: '#F4B000',        // Main Brand Color (Locked Gold)
-            blue: '#2E6BFF',        // Secondary Blue (Royal Blue)
+            gold: '#FFD700',        // Main Brand Color (Cyber Yellow)
+            blue: '#000000',        // Replaced Blue with Black for primary actions
             dark: '#020617',        // Deep Background (Slate-950)
             light: '#FFFFFF',       // Pure White
             slate: '#64748B',       // Neutral Text (Slate-500)
@@ -21,9 +21,9 @@ module.exports = {
         },
         // Semantic Roles (How we use them - Aliases)
         brand: {
-            primary: '#F4B000',     // Use for Logo, Icon Color (Gold)
-            accent: '#2E6BFF',      // Use for Buttons, Links, Highlights (Blue)
-            secondary: '#020617',   // Use for Secondary actions
+            primary: '#FFD700',     // Use for Logo, Icon Color (Cyber Yellow)
+            accent: '#FFD700',      // Use for Buttons, Links, Highlights (Yellow)
+            secondary: '#020617',   // Use for Secondary actions (Black)
             surface: '#FFFFFF',     // Card backgrounds
             muted: '#F1F5F9',       // Muted backgrounds (Slate-100)
         }

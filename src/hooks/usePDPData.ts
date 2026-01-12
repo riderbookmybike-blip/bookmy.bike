@@ -56,7 +56,7 @@ export const offerOptions = [
     { id: 'off-bank', name: 'HDFC Bank Offer', price: 0, description: 'Instant cashback on credit card EMI transactions.', discountPrice: 2000 },
 ];
 
-export function usePDPData(initialPrice: any) {
+export function usePDPData(initialPrice: number | { exShowroom: number }) {
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -74,13 +74,17 @@ export function usePDPData(initialPrice: any) {
     const [selectedOffers, setSelectedOffers] = useState<string[]>([]);
     const [quantities, setQuantities] = useState<Record<string, number>>({});
     const [userDownPayment, setUserDownPayment] = useState<number | null>(null);
-    const [isReferralActive, setIsReferralActive] = useState(false);
 
-    useEffect(() => {
+    // Lazy initialization for local storage to avoid useEffect warning
+    const [isReferralActive, setIsReferralActive] = useState(() => {
         if (typeof window !== 'undefined') {
-            setIsReferralActive(localStorage.getItem('referral_activated') === 'true');
+            return localStorage.getItem('referral_activated') === 'true';
         }
-    }, []);
+        return false;
+    });
+
+    // Sync with storage if needed, but the read is already done safely.
+    // Removed the problematic useEffect that was just syncing on mount.
 
     const handleColorChange = (newColorId: string) => {
         setSelectedColor(newColorId);
@@ -90,7 +94,8 @@ export function usePDPData(initialPrice: any) {
     };
 
     const activeColorConfig = productColors.find(c => c.id === selectedColor) || productColors[0];
-    const baseExShowroom = activeColorConfig.pricingOverride?.exShowroom || initialPrice?.exShowroom || 78000;
+    const priceVal = typeof initialPrice === 'number' ? initialPrice : (initialPrice?.exShowroom || 78000);
+    const baseExShowroom = activeColorConfig.pricingOverride?.exShowroom || priceVal;
 
     let rtoEstimates = Math.round(baseExShowroom * 0.12);
     if (regType === 'BH') rtoEstimates = Math.round(baseExShowroom * 0.08);

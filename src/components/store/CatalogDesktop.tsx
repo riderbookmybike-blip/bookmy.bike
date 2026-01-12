@@ -7,6 +7,7 @@ import { slugify } from '@/utils/slugs';
 import { brands } from '@/hooks/useCatalogFilters';
 
 interface CatalogDesktopProps {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     filters: any;
 }
 
@@ -37,17 +38,16 @@ export function CatalogDesktop({ filters }: CatalogDesktopProps) {
                     onClick={() => setIsCollapsed(!isCollapsed)}
                 >
                     <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white flex items-center gap-2">
-                        <div className={`w-1 shadow-[0_0_8px_#3b82f6] h-1 rounded-full transition-colors ${selectedValues.length > 0 ? 'bg-blue-500' : 'bg-slate-300 dark:bg-slate-700'}`} />
+                        <div className={`w-1 shadow-[0_0_8px_#FFD700] h-1 rounded-full transition-colors ${selectedValues.length > 0 ? 'bg-brand-primary' : 'bg-slate-300 dark:bg-slate-700'}`} />
                         {title}
                     </h4>
                     <div className="flex items-center gap-3">
                         {showReset && selectedValues.length > 0 && (
                             <button
                                 onClick={(e) => { e.stopPropagation(); onReset(); }}
-                                className="text-[9px] font-black uppercase text-blue-600 dark:text-blue-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+                                className="text-[9px] font-black uppercase text-brand-primary dark:text-brand-primary hover:text-slate-900 dark:hover:text-white transition-colors"
                             >Reset</button>
-                        )}
-                        <ChevronDown size={14} className="text-slate-400 dark:text-slate-500 transition-transform duration-300 group-hover:text-blue-500" />
+                        <ChevronDown size={14} className="text-slate-400 dark:text-slate-500 transition-transform duration-300 group-hover:text-brand-primary" />
                     </div>
                 </div>
 
@@ -58,24 +58,25 @@ export function CatalogDesktop({ filters }: CatalogDesktopProps) {
                                 <button
                                     key={opt}
                                     onClick={() => onToggle(opt)}
-                                    className={`group relative flex items-center justify-between p-3 rounded-lg border transition-all duration-300 ${selectedValues.includes(opt) ? 'bg-blue-600/10 border-blue-500/50' : 'bg-transparent border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10'}`}
+                                    className={`group relative flex items-center justify-between p-3 rounded-lg border transition-all duration-300 ${selectedValues.includes(opt) ? 'bg-brand-primary/10 border-brand-primary/50' : 'bg-transparent border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10'}`}
                                 >
-                                    <span className={`text-[9px] font-black uppercase tracking-widest italic transition-colors ${selectedValues.includes(opt) ? 'text-blue-600 dark:text-white' : 'text-slate-500 group-hover:text-slate-800 dark:group-hover:text-slate-300'}`}>{opt}</span>
-                                    <div className={`w-1.5 h-1.5 rounded-full transition-all ${selectedValues.includes(opt) ? 'bg-blue-500 shadow-[0_0_8px_#3b82f6]' : 'bg-slate-200 dark:bg-slate-800'}`} />
+                                    <span className={`text-[9px] font-black uppercase tracking-widest italic transition-colors ${selectedValues.includes(opt) ? 'text-brand-primary dark:text-brand-primary' : 'text-slate-500 group-hover:text-slate-800 dark:group-hover:text-slate-300'}`}>{opt}</span>
+                                    <div className={`w-1.5 h-1.5 rounded-full transition-all ${selectedValues.includes(opt) ? 'bg-brand-primary shadow-[0_0_8px_#FFD700]' : 'bg-slate-200 dark:bg-slate-800'}`} />
                                 </button>
                             ))}
                         </div>
                         {options.length > 3 && (
                             <button
                                 onClick={() => setIsExpanded(!isExpanded)}
-                                className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-blue-600 dark:hover:text-blue-500 transition-colors w-full text-center py-1 border border-dashed border-slate-200 dark:border-white/5 rounded-md"
+                                className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-brand-primary dark:hover:text-brand-primary transition-colors w-full text-center py-1 border border-dashed border-slate-200 dark:border-white/5 rounded-md"
                             >
                                 {isExpanded ? 'Show Less' : `+ Show ${options.length - 3} More`}
                             </button>
                         )}
                     </div>
-                )}
-            </div>
+                )
+                }
+            </div >
         );
     };
 
@@ -88,7 +89,7 @@ export function CatalogDesktop({ filters }: CatalogDesktopProps) {
                         <button
                             key={i}
                             onClick={() => toggleFilter(setSelectedMakes, brand.toUpperCase())}
-                            className={`text-4xl font-black italic tracking-tighter uppercase transition-all duration-500 ${selectedMakes.includes(brand.toUpperCase()) ? 'text-blue-600 dark:text-white scale-110' : 'text-slate-300 dark:text-slate-800 scale-90 opacity-40 hover:opacity-100'}`}
+                            className={`text-4xl font-black italic tracking-tighter uppercase transition-all duration-500 ${selectedMakes.includes(brand.toUpperCase()) ? 'text-brand-primary dark:text-brand-primary scale-110' : 'text-slate-300 dark:text-slate-800 scale-90 opacity-40 hover:opacity-100'}`}
                         >
                             {brand}
                         </button>
@@ -131,13 +132,13 @@ export function CatalogDesktop({ filters }: CatalogDesktopProps) {
                         {/* Search HUD */}
                         <div className="space-y-6">
                             <div className="relative group">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors w-4 h-4" />
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-primary transition-colors w-4 h-4" />
                                 <input
                                     type="text"
                                     placeholder="FIND MACHINE..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-12 pr-4 py-4 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] outline-none focus:border-blue-500/50 transition-all text-slate-900 dark:text-white"
+                                    className="w-full pl-12 pr-4 py-4 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] outline-none focus:border-brand-primary/50 transition-all text-slate-900 dark:text-white"
                                 />
                             </div>
                         </div>
@@ -176,7 +177,7 @@ export function CatalogDesktop({ filters }: CatalogDesktopProps) {
                                     </div>
                                     <div className="p-6 space-y-5 flex-1 flex flex-col">
                                         <div>
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 italic">{v.make}</p>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-brand-primary italic">{v.make}</p>
                                             <h3 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white leading-none mt-1">
                                                 {v.model}
                                                 <span className="block text-[10px] font-bold text-slate-400 mt-1">{v.variant}</span>

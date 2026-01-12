@@ -38,7 +38,7 @@ export default function PriceBreakupTab({ items }: PriceBreakupTabProps) {
                             </div>
 
                             <span className={`font-mono tracking-tight ${item.isTotal
-                                ? 'text-xl font-black text-blue-600 dark:text-blue-400'
+                                ? 'text-xl font-black text-brand-primary dark:text-brand-primary'
                                 : item.isDeduction
                                     ? 'text-emerald-600 dark:text-emerald-500 font-bold'
                                     : 'text-slate-900 dark:text-white font-bold'

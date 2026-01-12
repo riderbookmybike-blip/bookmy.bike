@@ -26,14 +26,14 @@ export default function TabNavigation({ tabs, activeTab, onTabChange, className 
                             flex-1 w-full text-center px-2 md:px-4 py-2.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all duration-300
                             border flex items-center justify-center gap-2
                             ${isActive
-                                ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/25 scale-105 z-10'
+                                ? 'bg-brand-primary border-brand-primary text-black shadow-lg shadow-brand-primary/25 scale-105 z-10'
                                 : 'bg-transparent border-slate-200 dark:border-slate-800 text-slate-500 hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 dark:hover:border-slate-700'
                             }
                         `}
                     >
                         <span>{tab.label}</span>
                         {tab.count !== undefined && tab.count !== null && (
-                            <span className={`inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full text-[8px] font-bold ${isActive ? 'bg-white text-blue-600' : 'bg-slate-200 dark:bg-slate-800 text-slate-500'}`}>
+                            <span className={`inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full text-[8px] font-bold ${isActive ? 'bg-black text-brand-primary' : 'bg-slate-200 dark:bg-slate-800 text-slate-500'}`}>
                                 {tab.count}
                             </span>
                         )}

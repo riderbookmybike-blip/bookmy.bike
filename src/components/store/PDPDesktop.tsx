@@ -92,7 +92,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                 onClick={() => !isMandatory && onToggle && onToggle()}
                 className={`group relative p-4 rounded-[2.5rem] border transition-all duration-300 flex items-center justify-between gap-4 cursor-pointer overflow-hidden
                     ${isSelected
-                        ? 'bg-blue-600/5 border-blue-500/30'
+                        ? 'bg-brand-primary/5 border-brand-primary/30'
                         : 'bg-white/[0.03] border-slate-200 dark:border-white/5 hover:bg-white/[0.05] hover:border-slate-300 dark:hover:border-white/10'
                     }
                     ${isMandatory ? 'cursor-default opacity-90' : ''}
@@ -103,7 +103,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                     <div className="flex items-center gap-4 min-w-[200px]">
                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all shrink-0
                             ${isSelected
-                                ? 'bg-blue-600 border-blue-400 text-white shadow-[0_0_15px_rgba(37,99,235,0.25)]'
+                                ? 'bg-brand-primary border-brand-primary text-black shadow-[0_0_15px_rgba(255,215,0,0.25)]'
                                 : 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-400'
                             }`}
                         >
@@ -137,8 +137,8 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                             <span className="text-[10px] font-bold font-mono text-slate-500">{quantity || 1}</span>
                         </div>
                         <div className="text-right min-w-[80px]">
-                            <span className="block text-[7px] font-black text-blue-500 uppercase tracking-widest mb-0.5 opacity-50">Line Total</span>
-                            <span className={`text-sm font-black italic font-mono ${isSelected ? 'text-blue-500' : 'text-slate-400 opacity-20'}`} >
+                            <span className="block text-[7px] font-black text-brand-primary uppercase tracking-widest mb-0.5 opacity-50">Line Total</span>
+                            <span className={`text-sm font-black italic font-mono ${isSelected ? 'text-brand-primary' : 'text-slate-400 opacity-20'}`} >
                                 ₹{Math.max(billedAmount, finalPrice).toLocaleString()}
                             </span>
                         </div>
@@ -146,11 +146,11 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                         {/* Selection Checkbox/Radio */}
                         <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300
                             ${isSelected
-                                ? 'bg-blue-600 border-blue-600 scale-110 shadow-lg shadow-blue-500/30'
-                                : 'border-slate-300 dark:border-slate-700 bg-transparent group-hover:border-blue-400'
+                                ? 'bg-brand-primary border-brand-primary scale-110 shadow-lg shadow-brand-primary/30'
+                                : 'border-slate-300 dark:border-slate-700 bg-transparent group-hover:border-brand-primary'
                             }`}
                         >
-                            {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-white animate-in zoom-in spin-in-180 duration-300" strokeWidth={3} />}
+                            {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-black animate-in zoom-in spin-in-180 duration-300" strokeWidth={3} />}
                         </div>
                     </div>
                 </div>
@@ -165,7 +165,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
 
         const TabHeader = ({ icon: Icon, title, subtext }: any) => (
             <div className="flex items-center gap-6 px-4 mb-8">
-                <div className="w-14 h-14 bg-blue-600/10 rounded-2xl flex items-center justify-center border border-blue-500/30 text-blue-500 shrink-0">
+                <div className="w-14 h-14 bg-brand-primary/10 rounded-2xl flex items-center justify-center border border-brand-primary/30 text-brand-primary shrink-0">
                     <Icon className="w-8 h-8" />
                 </div>
                 <div>
@@ -186,7 +186,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                         <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-[2.5rem] p-6 space-y-3">
                             <div className="flex justify-between items-end">
                                 <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-500 opacity-80">How much you want to pay now?</h4>
-                                <div className="text-2xl font-black italic text-blue-600 font-mono">₹{downPayment.toLocaleString()}</div>
+                                <div className="text-2xl font-black italic text-brand-primary font-mono">₹{downPayment.toLocaleString()}</div>
                             </div>
                             <input
                                 type="range"
@@ -195,7 +195,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                                 step={1000}
                                 value={downPayment}
                                 onChange={(e) => setUserDownPayment(parseInt(e.target.value))}
-                                className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full appearance-none cursor-pointer accent-blue-600"
+                                className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full appearance-none cursor-pointer accent-brand-primary"
                             />
                         </div>
 

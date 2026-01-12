@@ -54,19 +54,19 @@ export function StoreDesktop() {
                 <div className="max-w-[1400px] mx-auto px-6 relative z-10 w-full text-center pt-24">
                     <div className="space-y-12 md:space-y-16">
                         <div className="space-y-10">
-                            <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-blue-600/5 dark:bg-blue-600/10 border border-blue-600/10 dark:border-blue-500/20 text-blue-600 dark:text-blue-400 rounded-full text-[11px] font-black uppercase tracking-[0.3em] mb-4">
-                                <span className="flex h-2 w-2 rounded-full bg-blue-600 animate-ping" />
+                            <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-brand-primary/5 dark:bg-brand-primary/10 border border-brand-primary/10 dark:border-brand-primary/20 text-brand-primary dark:text-brand-primary rounded-full text-[11px] font-black uppercase tracking-[0.3em] mb-4">
+                                <span className="flex h-2 w-2 rounded-full bg-brand-primary animate-ping" />
                                 India’s Lowest EMI Guarantee
                             </div>
 
                             <h1 className="text-6xl sm:text-8xl md:text-9xl lg:text-[8.5rem] font-black italic uppercase tracking-tighter leading-[0.85]">
                                 <span className="text-slate-900 dark:text-white transition-colors">Your Next</span> <br />
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-blue-400 to-indigo-600 transition-all">Legend Awaits.</span>
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary via-yellow-400 to-amber-500 transition-all">Legend Awaits.</span>
                             </h1>
 
                             <p className="max-w-3xl mx-auto text-base md:text-xl text-slate-500 dark:text-slate-400 font-medium tracking-wide transition-colors leading-relaxed italic">
-                                Stop Negotiating. Start Riding. India’s Best On-Road Price. <br className="hidden md:block" />
-                                Unified rates from verified dealers. Instant location-based quotes. The industry's lowest EMIs, unlocked.
+                                Stop Negotiating. Start Riding. India&apos;s Best On-Road Price. <br className="hidden md:block" />
+                                Unified rates from verified dealers. Instant location-based quotes. The industry&apos;s lowest EMIs, unlocked.
                             </p>
                         </div>
 
@@ -74,9 +74,9 @@ export function StoreDesktop() {
                         <div className="w-full max-w-4xl mx-auto space-y-10 relative z-50">
                             <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
                                 <div className="md:col-span-8 group relative" ref={searchRef}>
-                                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-1.5 rounded-[2rem] shadow-2xl shadow-blue-900/10 transition-all focus-within:shadow-blue-600/20 focus-within:border-blue-600/30">
+                                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-1.5 rounded-[2rem] shadow-2xl shadow-black/5 transition-all focus-within:shadow-brand-primary/20 focus-within:border-brand-primary/30">
                                         <div className="flex items-center px-6 h-16 bg-slate-50 dark:bg-white/5 rounded-[1.75rem] transition-colors">
-                                            <Search className="text-slate-400 group-focus-within:text-blue-600 transition-colors mr-4" size={22} />
+                                            <Search className="text-slate-400 group-focus-within:text-brand-primary transition-colors mr-4" size={22} />
                                             <input
                                                 type="text"
                                                 value={searchQuery}
@@ -94,13 +94,13 @@ export function StoreDesktop() {
                                                     <Link
                                                         key={vehicle.id}
                                                         href={`/store/catalog?search=${vehicle.model}`}
-                                                        className="flex items-center gap-5 p-4 hover:bg-slate-50 dark:hover:bg-white/5 rounded-2xl transition-all group/item mb-1 last:mb-0"
+                                                        className="flex items-center gap-5 p-4 hover:bg-white dark:hover:bg-white/5 rounded-2xl transition-all group/item mb-1 last:mb-0"
                                                     >
-                                                        <div className="w-14 h-14 bg-slate-100 dark:bg-white/10 rounded-2xl flex items-center justify-center text-xl font-black text-slate-400 dark:text-slate-500 group-hover/item:bg-blue-600 group-hover/item:text-white transition-all">
+                                                        <div className="w-14 h-14 bg-slate-100 dark:bg-white/10 rounded-2xl flex items-center justify-center text-xl font-black text-slate-400 dark:text-slate-500 group-hover/item:bg-brand-primary group-hover/item:text-black transition-all">
                                                             {vehicle.make[0]}
                                                         </div>
                                                         <div className="text-left flex-1">
-                                                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wide group-hover/item:text-blue-600 transition-colors">{vehicle.displayName}</p>
+                                                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wide group-hover/item:text-brand-primary transition-colors">{vehicle.displayName}</p>
                                                             <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-1 font-bold">{vehicle.make} • {vehicle.variant}</p>
                                                         </div>
                                                         <ChevronRight size={16} className="text-slate-300 group-hover/item:translate-x-1 transition-transform" />
@@ -112,10 +112,10 @@ export function StoreDesktop() {
                                 </div>
 
                                 <div className="md:col-span-4 h-full">
-                                    <Link href="/store/catalog" className="h-[76px] bg-slate-900 dark:bg-white text-white dark:text-black rounded-[2rem] flex items-center justify-center gap-3 px-8 hover:bg-blue-600 dark:hover:bg-blue-500 dark:hover:text-white transition-all shadow-xl group/btn overflow-hidden relative">
+                                    <Link href="/store/catalog" className="h-[76px] bg-slate-900 dark:bg-white text-white dark:text-black rounded-[2rem] flex items-center justify-center gap-3 px-8 hover:bg-brand-primary dark:hover:bg-brand-primary hover:text-black dark:hover:text-black transition-all shadow-xl group/btn overflow-hidden relative">
                                         <span className="text-xs font-black uppercase tracking-[0.2em] relative z-10">Explore Collection</span>
                                         <ArrowRight size={18} className="group-hover/btn:translate-x-2 transition-transform relative z-10" />
-                                        <div className="absolute inset-0 bg-blue-600 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-500" />
+                                        <div className="absolute inset-0 bg-brand-primary translate-y-full group-hover/btn:translate-y-0 transition-transform duration-500" />
                                     </Link>
                                 </div>
                             </div>
@@ -123,7 +123,7 @@ export function StoreDesktop() {
                             <div className="flex justify-center gap-12 opacity-40">
                                 {['Transparency', 'Speed', 'Precision'].map((item) => (
                                     <div key={item} className="flex items-center gap-2">
-                                        <Shield size={14} className="text-blue-600" />
+                                        <Shield size={14} className="text-brand-primary" />
                                         <span className="text-[10px] font-black uppercase tracking-[0.2em]">{item}</span>
                                     </div>
                                 ))}
@@ -142,7 +142,7 @@ export function StoreDesktop() {
                             </div>
                             <div className="text-center group cursor-default space-y-1">
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{">"} Delivery</p>
-                                <p className="text-5xl font-black italic text-slate-900 dark:text-white tracking-tighter underline decoration-blue-500 decoration-8 underline-offset-[-2px]">48h</p>
+                                <p className="text-5xl font-black italic text-slate-900 dark:text-white tracking-tighter underline decoration-brand-primary decoration-8 underline-offset-[-2px]">48h</p>
                             </div>
                         </div>
                     </div>
@@ -156,11 +156,11 @@ export function StoreDesktop() {
                 <div className="max-w-[1400px] mx-auto px-6">
                     <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-8 mb-24">
                         <div className="space-y-4">
-                            <p className="text-[12px] font-black text-blue-600 dark:text-blue-500 uppercase tracking-[0.5em] leading-none italic">Partner Ecosystem</p>
+                            <p className="text-[12px] font-black text-brand-primary dark:text-brand-primary uppercase tracking-[0.5em] leading-none italic">Partner Ecosystem</p>
                             <h2 className="text-7xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white transition-colors">The Manufacturers</h2>
                         </div>
-                        <Link href="/store/catalog" className="group flex items-center gap-4 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-blue-600 transition-all">
-                            View Full Directory <div className="w-10 h-10 rounded-full border border-slate-200 dark:border-white/10 flex items-center justify-center group-hover:bg-blue-600 group-hover:border-blue-600 group-hover:text-white transition-all"><ArrowRight size={14} /></div>
+                        <Link href="/store/catalog" className="group flex items-center gap-4 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-brand-primary transition-all">
+                            View Full Directory <div className="w-10 h-10 rounded-full border border-slate-200 dark:border-white/10 flex items-center justify-center group-hover:bg-brand-primary group-hover:border-brand-primary group-hover:text-black transition-all"><ArrowRight size={14} /></div>
                         </Link>
                     </div>
 
@@ -169,12 +169,11 @@ export function StoreDesktop() {
                             <Link
                                 key={brand}
                                 href={`/store/catalog?search=${brand.toLowerCase()}`}
-                                className="group relative h-40 bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 rounded-[2.5rem] flex items-center justify-center hover:bg-white dark:hover:bg-white/10 hover:shadow-2xl hover:shadow-blue-900/10 transition-all duration-500 overflow-hidden"
                             >
-                                <span className={`font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-600 group-hover:text-blue-600 dark:group-hover:text-white group-hover:scale-110 transition-all z-10 text-xs`}>{brand}</span>
-                                <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <span className={`font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-600 group-hover:text-brand-primary dark:group-hover:text-brand-primary group-hover:scale-110 transition-all z-10 text-xs`}>{brand}</span>
+                                <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                 <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all">
-                                    <Zap size={10} className="text-blue-600" fill="currentColor" />
+                                    <Zap size={10} className="text-brand-primary" fill="currentColor" />
                                 </div>
                             </Link>
                         ))}
@@ -183,16 +182,17 @@ export function StoreDesktop() {
             </section>
 
             {/* How it Works */}
+            {/* How it Works */}
             <section className="py-48 bg-slate-900 text-white relative overflow-hidden">
                 <div className="absolute inset-0 opacity-10">
-                    <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_120%,#3b82f6,transparent_70%)]" />
+                    <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_120%,#FFD700,transparent_70%)]" />
                 </div>
 
                 <div className="max-w-[1400px] mx-auto px-6 relative z-10">
                     <div className="grid grid-cols-12 gap-24 items-center">
                         <div className="col-span-5 space-y-12">
                             <div className="space-y-6">
-                                <p className="text-[12px] font-black text-blue-500 uppercase tracking-[0.5em] italic">The Protocol</p>
+                                <p className="text-[12px] font-black text-brand-primary uppercase tracking-[0.5em] italic">The Protocol</p>
                                 <h2 className="text-8xl font-black uppercase tracking-tighter italic leading-[0.9]">Select.<br />Quote.<br />Conquer.</h2>
                             </div>
                             <p className="text-xl text-slate-400 font-medium italic leading-relaxed">
@@ -208,12 +208,12 @@ export function StoreDesktop() {
                                 { step: '03', title: 'Own', desc: 'Secure the lowest EMI & get delivery in 48 hours.', icon: <Zap size={24} /> }
                             ].map((item, i) => (
                                 <div key={i} className="group p-10 bg-white/5 border border-white/5 rounded-[3rem] space-y-8 hover:bg-white/10 transition-all duration-500">
-                                    <div className="w-16 h-16 rounded-2xl bg-blue-600/20 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
+                                    <div className="w-16 h-16 rounded-2xl bg-brand-primary/20 flex items-center justify-center text-brand-primary group-hover:scale-110 transition-transform">
                                         {item.icon}
                                     </div>
                                     <div className="space-y-4">
                                         <div className="flex items-center gap-3">
-                                            <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">{item.step}</span>
+                                            <span className="text-[10px] font-black text-brand-primary uppercase tracking-widest">{item.step}</span>
                                             <div className="h-[1px] flex-1 bg-white/10" />
                                         </div>
                                         <h3 className="text-3xl font-black uppercase italic tracking-tighter">{item.title}</h3>
@@ -230,7 +230,7 @@ export function StoreDesktop() {
             <section className="py-48 bg-slate-50 dark:bg-[#020617] transition-colors">
                 <div className="max-w-[1400px] mx-auto px-6">
                     <div className="text-center max-w-3xl mx-auto mb-32 space-y-6">
-                        <p className="text-[12px] font-black text-blue-600 dark:text-blue-500 uppercase tracking-[0.5em] italic">Curated Collections</p>
+                        <p className="text-[12px] font-black text-brand-primary dark:text-brand-primary uppercase tracking-[0.5em] italic">Curated Collections</p>
                         <h2 className="text-8xl font-black uppercase tracking-tighter italic leading-none text-slate-900 dark:text-white transition-colors">Select Your Vibe</h2>
                     </div>
 
@@ -246,13 +246,13 @@ export function StoreDesktop() {
 
                                 <div className="relative z-20 space-y-6">
                                     <div className="space-y-2">
-                                        <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.3em] italic">{cat.subtitle}</p>
+                                        <p className="text-[10px] font-black text-brand-primary uppercase tracking-[0.3em] italic">{cat.subtitle}</p>
                                         <h3 className="text-4xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white">{cat.title}</h3>
                                         <p className="text-xs text-slate-500 dark:text-slate-400 font-medium tracking-wide">{cat.desc}</p>
                                     </div>
                                     <div className="pt-4 overflow-hidden">
                                         <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white translate-y-10 group-hover:translate-y-0 transition-transform duration-500">
-                                            Explore Now <ArrowRight size={14} className="text-blue-600" />
+                                            Explore Now <ArrowRight size={14} className="text-brand-primary" />
                                         </div>
                                     </div>
                                 </div>

@@ -6,7 +6,7 @@ import { ShieldCheck, Award, CreditCard, Facebook, Twitter, Linkedin, Instagram,
 export const Footer = () => {
     return (
         <footer className="bg-white dark:bg-[#020617] border-t border-slate-100 dark:border-white/5 pt-32 pb-16 transition-colors duration-500 overflow-hidden relative">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-600/20 to-transparent" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-brand-primary/20 to-transparent" />
 
             <div className="max-w-[1920px] mx-auto px-6 md:px-12 lg:px-20 relative z-10">
                 {/* Top Section: Trust & Brand */}
@@ -92,7 +92,7 @@ export const Footer = () => {
                                 <SocialIcon icon={<Facebook size={18} />} href="https://facebook.com" />
                             </div>
                             <div className="mt-6">
-                                <Link href="/store/blog" className="text-xs font-bold text-slate-500 hover:text-blue-600 transition-colors flex items-center gap-1 group">
+                                <Link href="/store/blog" className="text-xs font-bold text-slate-500 hover:text-brand-primary transition-colors flex items-center gap-1 group">
                                     <span>Read our Blog</span>
                                     <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                                 </Link>
@@ -104,7 +104,7 @@ export const Footer = () => {
                 {/* Bottom Section: Legal & Copyright Addressed */}
                 <div className="flex flex-col md:flex-row items-center justify-between pt-12 border-t border-slate-100 dark:border-white/5 gap-8">
                     <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
+                        <div className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />
                         <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">
                             © 2026 BookMyBike Technologies. Built for Excellence.
                         </p>
@@ -113,7 +113,7 @@ export const Footer = () => {
                     <div className="flex items-center gap-6">
                         <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-600 font-medium uppercase tracking-widest">
                             <span>Engineered with</span>
-                            <Heart size={10} className="text-blue-600 fill-blue-600" />
+                            <Heart size={10} className="text-brand-primary fill-brand-primary" />
                             <span>in India</span>
                         </div>
                     </div>
@@ -139,8 +139,8 @@ const FooterLinkList = ({ children }: { children: React.ReactNode }) => (
 const FooterLink = ({ href, children, highlight }: { href: string, children: React.ReactNode, highlight?: boolean }) => (
     <li>
         <Link href={href} className={`text-xs font-bold transition-colors ${highlight
-            ? "text-blue-600 dark:text-blue-500 hover:text-blue-700 dark:hover:text-blue-400"
-            : "text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-white"
+            ? "text-brand-primary dark:text-brand-primary hover:text-yellow-600 dark:hover:text-yellow-400"
+            : "text-slate-500 dark:text-slate-400 hover:text-brand-primary dark:hover:text-brand-primary"
             }`}>
             {children}
         </Link>
@@ -148,14 +148,14 @@ const FooterLink = ({ href, children, highlight }: { href: string, children: Rea
 );
 
 const SocialIcon = ({ icon, href }: { icon: React.ReactNode, href: string }) => (
-    <a href={href} className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white transition-all">
+    <a href={href} className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:bg-brand-primary hover:text-black dark:hover:bg-brand-primary dark:hover:text-black transition-all">
         {icon}
     </a>
 );
 
 const TrustBadge = ({ icon, title, desc }: { icon: React.ReactNode, title: string, desc: string }) => (
     <div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10 transition-colors">
-        <div className="p-2 bg-blue-100 dark:bg-blue-500/10 rounded-lg">
+        <div className="p-2 bg-brand-primary/10 dark:bg-brand-primary/10 rounded-lg">
             {icon}
         </div>
         <div>

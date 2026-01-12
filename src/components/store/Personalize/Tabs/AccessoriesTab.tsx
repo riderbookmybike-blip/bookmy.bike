@@ -32,7 +32,7 @@ export default function AccessoriesTab({ items, selectedIds, onToggle }: Accesso
                         className={`
                             group relative p-4 rounded-xl border transition-all duration-300 cursor-pointer overflow-hidden
                             ${isSelected
-                                ? 'bg-blue-900/10 border-blue-500/50 shadow-lg shadow-blue-500/10'
+                                ? 'bg-brand-primary/10 border-brand-primary/50 shadow-lg shadow-brand-primary/10'
                                 : 'bg-slate-900/40 border-slate-800 hover:border-slate-700'
                             }
                             ${isMandatory ? 'cursor-default opacity-80' : ''}
@@ -42,7 +42,7 @@ export default function AccessoriesTab({ items, selectedIds, onToggle }: Accesso
                             {/* Graphic / Icon Placeholder */}
                             <div className={`
                                 w-12 h-12 rounded-lg flex items-center justify-center shrink-0 transition-colors
-                                ${isSelected ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-500 group-hover:bg-slate-700'}
+                                ${isSelected ? 'bg-brand-primary text-black' : 'bg-slate-800 text-slate-500 group-hover:bg-slate-700'}
                             `}>
                                 {isSelected ? <Check size={20} className="stroke-[3]" /> : <Plus size={20} />}
                             </div>
@@ -66,7 +66,7 @@ export default function AccessoriesTab({ items, selectedIds, onToggle }: Accesso
 
                             {/* Price */}
                             <div className="text-right">
-                                <span className={`text-sm font-bold font-mono ${isSelected ? 'text-blue-400' : 'text-slate-400'}`}>
+                                <span className={`text-sm font-bold font-mono ${isSelected ? 'text-brand-primary' : 'text-slate-400'}`}>
                                     ₹{item.price.toLocaleString('en-IN')}
                                 </span>
                             </div>
@@ -74,7 +74,7 @@ export default function AccessoriesTab({ items, selectedIds, onToggle }: Accesso
 
                         {/* Active Glow Effect */}
                         {isSelected && (
-                            <div className="absolute inset-0 border-2 border-blue-500/20 rounded-xl pointer-events-none" />
+                            <div className="absolute inset-0 border-2 border-brand-primary/20 rounded-xl pointer-events-none" />
                         )}
                     </div>
                 );

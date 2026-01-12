@@ -11,7 +11,7 @@ interface PDPTabletProps {
     handlers: any;
 }
 
-export function PDPTablet({ product, variantParam, data, handlers }) {
+export function PDPTablet({ product, variantParam, data, handlers }: PDPTabletProps) {
     const {
         selectedColor,
         regType, setRegType,
@@ -50,13 +50,13 @@ export function PDPTablet({ product, variantParam, data, handlers }) {
                 {/* Visuals Side */}
                 <div className="space-y-12">
                     <div className="space-y-2">
-                        <p className="text-xs font-black uppercase tracking-widest text-blue-600 italic">{product.make}</p>
+                        <p className="text-xs font-black uppercase tracking-widest text-brand-primary italic">{product.make}</p>
                         <h1 className="text-5xl font-black uppercase italic tracking-tighter leading-none">{product.model}</h1>
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{variantParam}</p>
                     </div>
 
                     <div className="aspect-square bg-slate-50 dark:bg-slate-900/50 rounded-[3rem] flex items-center justify-center p-12 relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-radial from-blue-600/5 to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-radial from-brand-primary/5 to-transparent" />
                         <img src={getProductImage()} alt={product.model} className="relative z-10 w-full h-auto object-contain drop-shadow-2xl transition-transform duration-700 group-hover:scale-110" />
                     </div>
 
@@ -65,7 +65,7 @@ export function PDPTablet({ product, variantParam, data, handlers }) {
                             <button
                                 key={color.id}
                                 onClick={() => handleColorChange(color.id)}
-                                className={`w-14 h-14 rounded-full border-2 p-1.5 transition-all ${selectedColor === color.id ? 'border-blue-600 scale-110 shadow-xl' : 'border-transparent'}`}
+                                className={`w-14 h-14 rounded-full border-2 p-1.5 transition-all ${selectedColor === color.id ? 'border-brand-primary scale-110 shadow-xl' : 'border-transparent'}`}
                             >
                                 <div className={`w-full h-full rounded-full ${color.class}`} style={{ backgroundColor: color.hex }} />
                             </button>
@@ -84,8 +84,8 @@ export function PDPTablet({ product, variantParam, data, handlers }) {
                         ].map(tab => (
                             <button
                                 key={tab.id}
-                                onClick={() => setConfigTab(tab.id as any)}
-                                className={`flex-shrink-0 px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${configTab === tab.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'}`}
+                                onClick={() => setConfigTab(tab.id as 'PRICE_BREAKUP' | 'FINANCE' | 'ACCESSORIES' | 'INSURANCE')}
+                                className={`flex-shrink-0 px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${configTab === tab.id ? 'bg-brand-primary text-black shadow-lg' : 'text-slate-500'}`}
                             >
                                 {tab.label}
                             </button>
@@ -104,7 +104,7 @@ export function PDPTablet({ product, variantParam, data, handlers }) {
                                 ].map((item, idx) => (
                                     <div key={idx} className={`flex justify-between items-center ${item.isTotal ? 'pt-8 border-t border-slate-200 dark:border-white/10 mt-4' : ''}`}>
                                         <span className={`text-[12px] uppercase tracking-widest ${item.isTotal ? 'font-black' : 'font-bold text-slate-500'}`}>{item.label}</span>
-                                        <span className={`text-xl italic font-black ${item.isTotal ? 'text-blue-600 dark:text-white' : ''}`}>₹{item.value.toLocaleString()}</span>
+                                        <span className={`text-xl italic font-black ${item.isTotal ? 'text-brand-primary dark:text-brand-primary' : ''}`}>₹{item.value.toLocaleString()}</span>
                                     </div>
                                 ))}
                             </div>
@@ -133,13 +133,13 @@ export function PDPTablet({ product, variantParam, data, handlers }) {
                         {configTab === 'ACCESSORIES' && (
                             <div className="grid grid-cols-1 gap-3">
                                 {optionalAccessories.map(acc => (
-                                    <button key={acc.id} onClick={() => toggleAccessory(acc.id)} className={`p-6 rounded-3xl border transition-all flex items-center justify-between ${selectedAccessories.includes(acc.id) ? 'bg-blue-600/10 border-blue-500/50' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10'}`}>
+                                    <button key={acc.id} onClick={() => toggleAccessory(acc.id)} className={`p-6 rounded-3xl border transition-all flex items-center justify-between ${selectedAccessories.includes(acc.id) ? 'bg-brand-primary/10 border-brand-primary/50' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10'}`}>
                                         <div className="text-left">
                                             <p className="text-[10px] font-black uppercase text-slate-500">{acc.name}</p>
                                             <p className="text-sm font-black italic">₹{acc.price.toLocaleString()}</p>
                                         </div>
-                                        <div className={`w-8 h-8 rounded-full border flex items-center justify-center ${selectedAccessories.includes(acc.id) ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300'}`}>
-                                            {selectedAccessories.includes(acc.id) && <Zap size={14} fill="white" />}
+                                        <div className={`w-8 h-8 rounded-full border flex items-center justify-center ${selectedAccessories.includes(acc.id) ? 'bg-brand-primary border-brand-primary text-black' : 'border-slate-300'}`}>
+                                            {selectedAccessories.includes(acc.id) && <Zap size={14} fill="black" />}
                                         </div>
                                     </button>
                                 ))}

@@ -19,14 +19,14 @@ export function StoreMobile() {
                 </div>
 
                 <div className="relative z-10 w-full text-center space-y-8">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600/5 border border-blue-600/10 text-blue-600 rounded-full text-[9px] font-black uppercase tracking-[0.2em]">
-                        <span className="h-1.5 w-1.5 rounded-full bg-blue-600 animate-pulse" />
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-brand-primary/5 border border-brand-primary/10 text-brand-primary rounded-full text-[9px] font-black uppercase tracking-[0.2em]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-brand-primary animate-pulse" />
                         Lowest EMI Guaranteed
                     </div>
 
                     <h1 className="text-5xl font-black italic uppercase tracking-tighter leading-[0.85] text-slate-900 dark:text-white">
                         Your Next <br />
-                        <span className="text-blue-600">Legend</span> <br />
+                        <span className="text-brand-primary">Legend</span> <br />
                         Awaits.
                     </h1>
 
@@ -54,9 +54,9 @@ export function StoreMobile() {
                 </div>
 
                 <div className="mt-16 flex justify-center gap-6 opacity-30 pb-12">
-                    <Shield size={12} className="text-blue-600" />
+                    <Shield size={12} className="text-brand-primary" />
                     <span className="text-[8px] font-black uppercase tracking-widest">Trust</span>
-                    <Shield size={12} className="text-blue-600" />
+                    <Shield size={12} className="text-brand-primary" />
                     <span className="text-[8px] font-black uppercase tracking-widest">Speed</span>
                 </div>
             </section>
@@ -64,7 +64,7 @@ export function StoreMobile() {
             {/* Mobile Horizontal Carousel: Manufacturers */}
             <section className="py-20 bg-white dark:bg-[#020617]">
                 <div className="px-6 mb-10">
-                    <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest italic mb-2">Partner Ecosystem</p>
+                    <p className="text-[9px] font-black text-brand-primary uppercase tracking-widest italic mb-2">Partner Ecosystem</p>
                     <h2 className="text-4xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white">Manufacturers</h2>
                 </div>
 
@@ -93,7 +93,7 @@ export function StoreMobile() {
                             { step: '03', title: 'Own', icon: <Zap size={20} /> }
                         ].map((item, i) => (
                             <div key={i} className="p-6 bg-white/5 rounded-2xl flex items-center gap-6 border border-white/5">
-                                <div className="text-blue-500">{item.icon}</div>
+                                <div className="text-brand-primary">{item.icon}</div>
                                 <h3 className="text-xl font-black uppercase italic tracking-widest">{item.title}</h3>
                             </div>
                         ))}
@@ -104,7 +104,7 @@ export function StoreMobile() {
             {/* Mobile Horizontal Carousel: Vibe */}
             <section className="py-20 bg-slate-50 dark:bg-[#020617]">
                 <div className="px-6 mb-10">
-                    <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest italic mb-2">Curated Collections</p>
+                    <p className="text-[9px] font-black text-brand-primary uppercase tracking-widest italic mb-2">Curated Collections</p>
                     <h2 className="text-4xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white">Select Your Vibe</h2>
                 </div>
 

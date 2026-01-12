@@ -608,7 +608,7 @@ export const FormulaBlock = ({ component, onChange, onDelete, readOnly, availabl
                                             const toggleFuel = (fuel: string) => {
                                                 const current = range.applicableFuels || [];
                                                 const isSelected = current.includes(fuel as any);
-                                                let newFuels = isSelected
+                                                const newFuels = isSelected
                                                     ? current.filter(f => f !== fuel)
                                                     : [...current, fuel as any];
                                                 updateRange({ applicableFuels: newFuels });
