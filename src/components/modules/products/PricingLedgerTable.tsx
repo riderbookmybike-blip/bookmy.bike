@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { Landmark, Sparkles, TrendingUp, Info, Save, CheckCircle2, Car } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Landmark, Sparkles, TrendingUp, Info, Save, CheckCircle2, Car, Copy, Edit2, ArrowRight, ArrowUpDown, Search, Filter, Package } from 'lucide-react';
 import { calculateOnRoad } from '@/lib/utils/pricingUtility';
 import { RegistrationRule } from '@/types/registration';
 import { VehicleModel, ModelColor, ModelVariant } from '@/types/productMaster';
@@ -14,8 +14,12 @@ interface SKUPriceRow {
     color: string;
     engineCc: string | number;
     exShowroom: number;
+    originalExShowroom?: number; // For History Diff
     hsnCode?: string;
     gstRate?: number;
+    updatedAt?: string; // For History Time
+    brandLogo?: string;
+    stockCount?: number;
 }
 
 interface PricingLedgerTableProps {
@@ -30,7 +34,48 @@ interface PricingLedgerTableProps {
     brands: string[];
     selectedBrand: string;
     onBrandChange: (brand: string) => void;
+    onBulkUpdate?: (ids: string[], price: number) => void;
 }
+
+// Helper Component for Robust Brand Logo/Avatar
+const BrandAvatar = ({ name, logo }: { name: string, logo?: string }) => {
+    const [imgError, setImgError] = useState(false);
+
+    // 1. If no logo or image failed, render First Letter Avatar
+    if (!logo || imgError) {
+        return (
+            <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/10 flex items-center justify-center shrink-0">
+                <span className="text-[10px] font-black text-slate-500 dark:text-slate-400">
+                    {name.charAt(0).toUpperCase()}
+                </span>
+            </div>
+        );
+    }
+
+    // 2. If valid SVG string, render SVG
+    if (logo.includes('<svg')) {
+        return (
+            <div className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 flex items-center justify-center shrink-0 overflow-hidden p-1.5">
+                <div
+                    className="w-full h-full text-slate-900 dark:text-white [&>svg]:w-full [&>svg]:h-full object-contain"
+                    dangerouslySetInnerHTML={{ __html: logo }}
+                />
+            </div>
+        );
+    }
+
+    // 3. Render Image URL with Error Handler
+    return (
+        <div className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 flex items-center justify-center shrink-0 overflow-hidden p-1">
+            <img
+                src={logo}
+                alt={name}
+                className="w-full h-full object-contain"
+                onError={() => setImgError(true)}
+            />
+        </div>
+    );
+};
 
 export default function PricingLedgerTable({
     initialSkus,
@@ -42,10 +87,115 @@ export default function PricingLedgerTable({
     onStateChange,
     brands,
     selectedBrand,
-    onBrandChange
+    onBrandChange,
+    onBulkUpdate
 }: PricingLedgerTableProps) {
+    const [skus, setSkus] = useState<SKUPriceRow[]>(initialSkus);
     const [isSaving, setIsSaving] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
+    const [selectedSkuIds, setSelectedSkuIds] = useState<Set<string>>(new Set());
+    const [bulkPriceInput, setBulkPriceInput] = useState<string>('');
+    const [activeFilterColumn, setActiveFilterColumn] = useState<string | null>(null);
+
+    // Sort & Filter State
+    const [sortConfig, setSortConfig] = useState<{ key: keyof SKUPriceRow; direction: 'asc' | 'desc' } | null>(null);
+    const [filters, setFilters] = useState<Partial<Record<keyof SKUPriceRow, string>>>({});
+
+    // Toggle Sort
+    const handleSort = (key: keyof SKUPriceRow) => {
+        setSortConfig(current => {
+            if (current?.key === key) {
+                return current.direction === 'asc' ? { key, direction: 'desc' } : null;
+            }
+            return { key, direction: 'asc' };
+        });
+    };
+
+    // Update Filter
+    const handleFilter = (key: keyof SKUPriceRow, value: string) => {
+        setFilters(prev => ({ ...prev, [key]: value }));
+        setActiveFilterColumn(null); // Close dropdown on select
+    };
+
+    // Derived Logic: Filters -> Unique Values for Dropdown
+    const getUniqueValues = (key: keyof SKUPriceRow) => {
+        const values = new Set<string>();
+        initialSkus.forEach(sku => {
+            if (sku[key]) values.add(String(sku[key]));
+        });
+        return Array.from(values).sort();
+    };
+
+    // Derived Logic: Filter -> Sort
+    const processedSkus = useMemo(() => {
+        let result = [...initialSkus];
+
+        // 1. Filter
+        Object.keys(filters).forEach(key => {
+            const filterValue = filters[key as keyof SKUPriceRow]?.toLowerCase();
+            if (filterValue) {
+                result = result.filter(sku =>
+                    String(sku[key as keyof SKUPriceRow] || '').toLowerCase().includes(filterValue)
+                );
+            }
+        });
+
+        // 2. Sort
+        if (sortConfig) {
+            result.sort((a, b) => {
+                const aVal = a[sortConfig.key];
+                const bVal = b[sortConfig.key];
+
+                if (aVal === bVal) return 0;
+
+                // Handle numbers vs strings
+                if (typeof aVal === 'number' && typeof bVal === 'number') {
+                    return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
+                }
+
+                const valA = String(aVal || '').toLowerCase();
+                const valB = String(bVal || '').toLowerCase();
+                return sortConfig.direction === 'asc'
+                    ? valA.localeCompare(valB)
+                    : valB.localeCompare(valA);
+            });
+        }
+
+        return result;
+    }, [initialSkus, filters, sortConfig]);
+
+    // Selection Logic
+    const toggleSelection = (id: string) => {
+        const newSet = new Set(selectedSkuIds);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        setSelectedSkuIds(newSet);
+    };
+
+    const toggleAll = () => {
+        // Check if all VISIBLE rows are currently selected
+        const allVisibleSelected = processedSkus.length > 0 && processedSkus.every(s => selectedSkuIds.has(s.id));
+
+        const newSet = new Set(selectedSkuIds);
+
+        if (allVisibleSelected) {
+            // Deselect visible rows
+            processedSkus.forEach(s => newSet.delete(s.id));
+        } else {
+            // Select visible rows
+            processedSkus.forEach(s => newSet.add(s.id));
+        }
+        setSelectedSkuIds(newSet);
+    };
+
+    const handleBulkApply = () => {
+        if (!onBulkUpdate || !bulkPriceInput) return;
+        const price = parseFloat(bulkPriceInput);
+        if (isNaN(price)) return;
+        onBulkUpdate(Array.from(selectedSkuIds), price);
+        setBulkPriceInput('');
+        setSelectedSkuIds(new Set()); // Auto-clear selection after apply
+    };
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -60,58 +210,34 @@ export default function PricingLedgerTable({
             {/* Filter Toolbar (Replacing Search Bar) */}
             <div className="mb-6 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    {/* State Selector */}
-                    <div className="flex flex-col">
-                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">State</label>
-                        <select
-                            value={selectedStateId}
-                            onChange={(e) => onStateChange(e.target.value)}
-                            className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-widest focus:ring-4 focus:ring-blue-500/10 outline-none transition-all cursor-pointer min-w-[100px]"
-                        >
-                            {states.map(s => (
-                                <option key={s.id} value={s.id} className="bg-white dark:bg-slate-900">{s.stateCode || s.ruleName.split(' ')[0]}</option>
-                            ))}
-                        </select>
-                    </div>
+                    {/* Selectors moved to page control bar */}
 
-                    {/* Brand Selector */}
-                    <div className="flex flex-col">
-                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Focus Entity</label>
-                        <select
-                            value={selectedBrand}
-                            onChange={(e) => onBrandChange(e.target.value)}
-                            className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-widest focus:ring-4 focus:ring-blue-500/10 outline-none transition-all cursor-pointer min-w-[150px]"
-                        >
-                            <option value="ALL">ALL BRANDS</option>
-                            {brands.map(b => (
-                                <option key={b} value={b} className="bg-white dark:bg-slate-900">{b.toUpperCase()}</option>
-                            ))}
-                        </select>
-                    </div>
+                    {/* Bulk Edit Toolbar (Visible when selection > 0) */}
+                    {selectedSkuIds.size > 0 && (
+                        <div className="flex items-center gap-2 ml-4 animate-in fade-in slide-in-from-bottom-2">
+                            <div className="h-10 w-[1px] bg-slate-200 dark:bg-white/10 mx-2" />
+                            <div className="flex items-center gap-2 p-1 bg-blue-500/10 rounded-xl border border-blue-500/20">
+                                <span className="px-3 text-[10px] font-black text-blue-600 uppercase tracking-wider">{selectedSkuIds.size} Selected</span>
+                                <input
+                                    type="number"
+                                    placeholder="Enter Price"
+                                    value={bulkPriceInput}
+                                    onChange={e => setBulkPriceInput(e.target.value)}
+                                    className="w-24 bg-white dark:bg-slate-900 border border-blue-200 rounded-lg px-2 py-1.5 text-xs font-bold outline-none text-right"
+                                />
+                                <button
+                                    onClick={handleBulkApply}
+                                    className="p-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+                                >
+                                    <CheckCircle2 size={16} />
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex gap-4 self-end h-full">
-                    <button
-                        onClick={handleSave}
-                        disabled={isSaving}
-                        className={`flex items-center gap-3 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] transition-all shadow-xl active:scale-95 ${showSuccess
-                            ? 'bg-emerald-500 text-white shadow-emerald-500/20'
-                            : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20'
-                            }`}
-                    >
-                        {showSuccess ? (
-                            <>
-                                <CheckCircle2 size={16} /> Data Preserved
-                            </>
-                        ) : (
-                            <>
-                                <Save size={16} /> {isSaving ? 'Processing...' : 'Save Changes'}
-                            </>
-                        )}
-                    </button>
-                    <div className="flex items-center gap-2 px-5 py-2 bg-emerald-500/10 text-emerald-500 rounded-2xl border border-emerald-500/20 text-[10px] font-black uppercase tracking-widest">
-                        <TrendingUp size={14} /> Integrity Verified
-                    </div>
+                    {/* Save Button Removed (Moved to Global Control Bar) */}
                 </div>
             </div>
 
@@ -121,18 +247,86 @@ export default function PricingLedgerTable({
                     <table className="w-full text-left border-collapse min-w-[1200px]">
                         <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900/90 backdrop-blur-md">
                             <tr>
-                                <th className="px-6 py-5 w-12 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-200 dark:border-white/10 pl-8">#</th>
-                                <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10">Vehicle Profile (SKU)</th>
-                                <th className="px-6 py-5 text-[10px] font-black text-blue-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 bg-blue-500/5">Ex-Showroom</th>
-                                <th className="px-6 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10">RTO (State)</th>
-                                <th className="px-6 py-5 text-[10px] font-black text-amber-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 bg-amber-500/5">Insurance</th>
-                                <th className="px-8 py-5 text-[10px] font-black text-emerald-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 text-right">On-Road price</th>
+                                <th className="px-4 py-3 w-10 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-200 dark:border-white/10 pl-6">
+                                    <input
+                                        type="checkbox"
+                                        checked={processedSkus.length > 0 && processedSkus.every(s => selectedSkuIds.has(s.id))}
+                                        onChange={toggleAll}
+                                        className="rounded border-slate-300 text-blue-600 focus:ring-0 cursor-pointer w-3 h-3"
+                                    />
+                                </th>
+                                {['brand', 'model', 'variant', 'color'].map((key) => (
+                                    <th key={key} className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 align-top relative">
+                                        <div className="flex items-center justify-between gap-2 group cursor-pointer">
+                                            <div onClick={() => handleSort(key as keyof SKUPriceRow)} className="flex items-center gap-1 hover:text-blue-500 transition-colors">
+                                                {key}
+                                                <ArrowUpDown size={10} className={`opacity-50 ${sortConfig?.key === key ? 'text-blue-500 opacity-100' : ''}`} />
+                                            </div>
+                                            <div
+                                                className={`p-1 rounded hover:bg-slate-100 dark:hover:bg-white/10 ${filters[key as keyof SKUPriceRow] ? 'text-blue-500' : 'text-slate-400'}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setActiveFilterColumn(activeFilterColumn === key ? null : key);
+                                                }}
+                                            >
+                                                <Filter size={10} fill={filters[key as keyof SKUPriceRow] ? "currentColor" : "none"} />
+                                            </div>
+                                        </div>
+
+                                        {/* Filter Dropdown */}
+                                        {activeFilterColumn === key && (
+                                            <>
+                                                <div className="fixed inset-0 z-40" onClick={() => setActiveFilterColumn(null)} />
+                                                <div className="absolute top-full left-0 mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl shadow-xl z-50 p-2 animate-in fade-in zoom-in-95">
+                                                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 px-2">Filter by {key}</div>
+                                                    <div className="max-h-48 overflow-y-auto scrollbar-thin">
+                                                        <div
+                                                            className={`px-3 py-2 rounded-lg text-[10px] font-bold cursor-pointer hover:bg-blue-50 dark:hover:bg-white/5 transition-colors ${!filters[key as keyof SKUPriceRow] ? 'text-blue-500 bg-blue-50 dark:bg-white/5' : 'text-slate-600 dark:text-slate-300'}`}
+                                                            onClick={() => handleFilter(key as keyof SKUPriceRow, '')}
+                                                        >
+                                                            All
+                                                        </div>
+                                                        {getUniqueValues(key as keyof SKUPriceRow).map(val => (
+                                                            <div
+                                                                key={val}
+                                                                className={`px-3 py-2 rounded-lg text-[10px] font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors ${filters[key as keyof SKUPriceRow] === val ? 'text-blue-500 bg-blue-50 dark:bg-white/5 font-bold' : 'text-slate-600 dark:text-slate-300'}`}
+                                                                onClick={() => handleFilter(key as keyof SKUPriceRow, val)}
+                                                            >
+                                                                {val}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
+                                    </th>
+                                ))}
+
+                                <th className="px-4 py-3 text-[9px] font-black text-emerald-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 text-center align-top">
+                                    <div className="flex items-center justify-center gap-1">
+                                        Stock <Package size={10} />
+                                    </div>
+                                </th>
+
+                                <th className="px-4 py-3 text-[9px] font-black text-blue-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 bg-blue-500/5 text-right align-top">
+                                    <div className="flex flex-col gap-2 items-end">
+                                        <div
+                                            className="flex items-center gap-1 cursor-pointer hover:text-blue-600 transition-colors"
+                                            onClick={() => handleSort('exShowroom')}
+                                        >
+                                            Ex-Showroom <ArrowUpDown size={10} />
+                                        </div>
+                                    </div>
+                                </th>
+                                <th className="px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 text-right align-top">RTO</th>
+                                <th className="px-4 py-3 text-[9px] font-black text-amber-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 bg-amber-500/5 text-right align-top">Insurance</th>
+                                <th className="px-6 py-3 text-[9px] font-black text-emerald-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 text-right align-top">On-Road</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                            {initialSkus.map((sku, skuIdx) => {
+                            {processedSkus.map((sku, skuIdx) => {
                                 const calcs = activeRule
-                                    ? calculateOnRoad(sku.exShowroom, sku.engineCc, activeRule)
+                                    ? calculateOnRoad(sku.exShowroom, Number(sku.engineCc), activeRule)
                                     : null;
 
                                 const gstRate = sku.gstRate || 28;
@@ -141,107 +335,114 @@ export default function PricingLedgerTable({
                                 const cgst = totalGst / 2;
                                 const sgst = totalGst / 2;
 
+                                const isDirty = sku.originalExShowroom !== undefined && sku.exShowroom !== sku.originalExShowroom;
+                                const isSelected = selectedSkuIds.has(sku.id);
+
                                 return (
-                                    <tr key={sku.id} className="group hover:bg-blue-600/5 transition-colors">
-                                        <td className="px-6 py-4 pl-8 text-[10px] font-mono font-bold text-slate-500 group-hover:text-indigo-500 transition-colors">
-                                            {(skuIdx + 1).toString().padStart(2, '0')}
+                                    <tr
+                                        key={sku.id}
+                                        className={`group transition-all duration-300 ${isSelected ? 'bg-blue-50/50 dark:bg-blue-900/10' : 'hover:bg-blue-600/5'}`}
+                                    >
+                                        <td className="px-4 py-2 pl-6 border-l-4 border-transparent group-hover:border-blue-500 transition-all">
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                onChange={() => toggleSelection(sku.id)}
+                                                className="rounded border-slate-300 text-blue-600 focus:ring-0 cursor-pointer w-3 h-3 opacity-30 group-hover:opacity-100 transition-opacity"
+                                            />
                                         </td>
-                                        <td className="px-8 py-4">
+                                        <td className="px-4 py-2">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-white/5 flex items-center justify-center p-1.5 shadow-sm border border-slate-100 dark:border-white/10 transition-transform group-hover:scale-110">
-                                                    <Car size={16} className="text-slate-700 dark:text-slate-300" />
-                                                </div>
-                                                <div>
-                                                    <div className="font-black text-[12px] text-slate-900 dark:text-white group-hover:text-indigo-500 transition-colors uppercase tracking-tight italic">
-                                                        {sku.brand} {sku.model}
-                                                    </div>
-                                                    <div className="text-[9px] text-slate-500 font-bold uppercase tracking-widest opacity-60">
-                                                        {sku.variant} • {sku.color} • {sku.id}
-                                                    </div>
-                                                </div>
+                                                <BrandAvatar name={sku.brand} logo={sku.brandLogo} />
+                                                <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase hidden md:inline">{sku.brand}</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <div className="relative group/input">
+                                        <td className="px-4 py-2">
+                                            <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase">{sku.model}</span>
+                                        </td>
+                                        <td className="px-4 py-2">
+                                            <span className="text-[10px] font-medium text-slate-500 uppercase">{sku.variant}</span>
+                                        </td>
+                                        <td className="px-4 py-2">
+                                            <span className="text-[10px] font-medium text-slate-500 uppercase">{sku.color}</span>
+                                        </td>
+                                        <td className="px-4 py-2 text-center">
+                                            <div className="flex justify-center">
+                                                {sku.stockCount && sku.stockCount > 0 ? (
+                                                    <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-500/10 text-emerald-600 rounded-lg text-[10px] font-black">
+                                                        <CheckCircle2 size={10} />
+                                                        {sku.stockCount} UNIT{sku.stockCount > 1 ? 'S' : ''}
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 text-slate-400 dark:bg-white/5 rounded-lg text-[10px] font-black">
+                                                        OUT
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-2 text-right">
+                                            <div className="relative group/input flex justify-end items-center gap-2">
                                                 <input
                                                     type="number"
                                                     value={sku.exShowroom}
                                                     onChange={(e) => onUpdatePrice(sku.id, Number(e.target.value))}
-                                                    className="w-32 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm font-black text-slate-900 dark:text-white outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-right"
+                                                    className={`w-24 bg-slate-50 dark:bg-black/20 border rounded-lg px-2 py-1.5 text-xs font-black text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/10 transition-all text-right
+                                                        ${isDirty ? 'border-amber-500/50 bg-amber-500/5' : 'border-slate-200 dark:border-white/10 focus:border-blue-500'}
+                                                    `}
                                                 />
-                                                <div className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 group-focus-within/input:text-blue-500">₹</div>
+                                                {/* Dirty State Indicator */}
+                                                {isDirty && (
+                                                    <div className="relative group/history">
+                                                        <div className="w-4 h-4 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center cursor-help">
+                                                            <Sparkles size={8} />
+                                                        </div>
+                                                        {/* Context History Tooltip */}
+                                                        <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 w-48 p-3 bg-slate-900 border border-white/10 rounded-xl text-[9px] text-white shadow-xl z-50 hidden group-hover/history:block animate-in fade-in zoom-in-95 pointer-events-none">
+                                                            <div className="flex items-center justify-between font-mono bg-white/5 p-1.5 rounded-lg mb-1">
+                                                                <span className="text-slate-500 line-through">₹{sku.originalExShowroom?.toLocaleString()}</span>
+                                                                <ArrowRight size={10} className="text-slate-500" />
+                                                                <span className="text-amber-400">₹{sku.exShowroom.toLocaleString()}</span>
+                                                            </div>
+                                                        </div>
 
-                                                {/* Reverse GST Tooltip */}
-                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-3 bg-slate-900 border border-white/10 rounded-xl text-[9px] font-bold text-white uppercase tracking-wider hidden group-hover/input:block z-50 pointer-events-none shadow-2xl">
-                                                    <div className="flex justify-between items-center mb-1 pb-1 border-b border-white/5">
-                                                        <span className="text-slate-400">Ex-Showroom (Incl.)</span>
-                                                        <span className="text-blue-400 font-black">₹{sku.exShowroom.toLocaleString()}</span>
                                                     </div>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-2 text-right group/cell relative cursor-help">
+                                            <span className="font-bold text-[10px] text-slate-600 dark:text-slate-400">₹{calcs?.rtoState.total.toLocaleString() || '--'}</span>
+                                            {/* RTO Tooltip */}
+                                            {calcs && (
+                                                <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-slate-900 border border-white/10 rounded-xl hidden group-hover/cell:block z-50 shadow-xl pointer-events-none">
                                                     <div className="space-y-1">
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-slate-500 italic">Base Price</span>
-                                                            <span className="text-slate-200">₹{Math.round(basePrice).toLocaleString()}</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-slate-500 italic text-[8px]">CGST ({gstRate / 2}%)</span>
-                                                            <span className="text-slate-400">₹{Math.round(cgst).toLocaleString()}</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-slate-500 italic text-[8px]">SGST ({gstRate / 2}%)</span>
-                                                            <span className="text-slate-400">₹{Math.round(sgst).toLocaleString()}</span>
-                                                        </div>
-                                                    </div>
-                                                    <div className="mt-1.5 pt-1.5 border-t border-white/5 text-[7px] text-slate-500 text-center uppercase tracking-tighter">
-                                                        Auto Reverse Calculated from {gstRate}% GST
+                                                        {calcs.rtoState.items.map((item: any, idx: number) => (
+                                                            <div key={idx} className="flex justify-between text-[8px] text-slate-300">
+                                                                <span>{item.label}</span>
+                                                                <span className="font-mono">₹{item.amount}</span>
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 </div>
-                                            </div>
+                                            )}
                                         </td>
-                                        <td className="px-6 py-4 group/cell relative">
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-black text-xs text-slate-600 dark:text-slate-400 italic">₹{calcs?.rtoState.total.toLocaleString() || '--'}</span>
-                                                {calcs && (
-                                                    <div className="relative group/tip">
-                                                        <Info size={10} className="text-slate-400 cursor-help opacity-50 group-hover/cell:opacity-100 transition-opacity" />
-                                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-slate-900 border border-white/10 rounded-xl text-[9px] font-bold text-white uppercase tracking-wider hidden group-hover/tip:block z-50 pointer-events-none shadow-2xl">
-                                                            <div className="space-y-1.5">
-                                                                {calcs.rtoState.items.map((item: any, idx: number) => (
-                                                                    <div key={idx} className="flex flex-col gap-0.5 border-b border-white/5 pb-1.5 last:border-0 mb-1.5">
-                                                                        <div className="flex justify-between items-center gap-4">
-                                                                            <span className="text-slate-400 whitespace-nowrap">{item.label}</span>
-                                                                            <span className="text-blue-400 italic font-black">₹{item.amount.toLocaleString()}</span>
-                                                                        </div>
-                                                                        {item.detail && <span className="text-[7px] text-slate-500 tracking-tighter normal-case font-medium">{item.detail}</span>}
-                                                                    </div>
-                                                                ))}
+                                        <td className="px-4 py-2 text-right bg-amber-500/[0.02] group/cell relative cursor-help">
+                                            <span className="font-bold text-[10px] text-amber-600 dark:text-amber-400">₹{calcs?.insuranceComp.total.toLocaleString() || '--'}</span>
+                                            {/* Insurance Tooltip */}
+                                            {calcs && (
+                                                <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-slate-900 border border-white/10 rounded-xl hidden group-hover/cell:block z-50 shadow-xl pointer-events-none">
+                                                    <div className="space-y-1">
+                                                        {calcs.insuranceComp.items.map((item: any, idx: number) => (
+                                                            <div key={idx} className="flex justify-between text-[8px] text-amber-200">
+                                                                <span>{item.label}</span>
+                                                                <span className="font-mono">₹{item.amount}</span>
                                                             </div>
-                                                        </div>
+                                                        ))}
                                                     </div>
-                                                )}
-                                            </div>
+                                                </div>
+                                            )}
                                         </td>
-                                        <td className="px-6 py-4 bg-amber-500/[0.02] group/cell relative">
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-black text-xs text-amber-600 dark:text-amber-400 italic">₹{calcs?.insuranceComp.total.toLocaleString() || '--'}</span>
-                                                {calcs && (
-                                                    <div className="relative group/tip">
-                                                        <Info size={10} className="text-amber-400 cursor-help opacity-50 group-hover/cell:opacity-100 transition-opacity" />
-                                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-slate-900 border border-white/10 rounded-xl text-[9px] font-bold text-white uppercase tracking-wider hidden group-hover/tip:block z-50 pointer-events-none shadow-2xl">
-                                                            <div className="space-y-1.5">
-                                                                {calcs.insuranceComp.items.map((item: any, idx: number) => (
-                                                                    <div key={idx} className="flex justify-between items-center gap-4">
-                                                                        <span className="text-slate-400 whitespace-nowrap">{item.label}</span>
-                                                                        <span className="text-amber-400 italic">₹{item.amount.toLocaleString()}</span>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-8 py-6 text-right">
-                                            <span className="font-black text-sm text-emerald-600 dark:text-emerald-400 italic tracking-tighter">₹{calcs?.onRoadTotal.toLocaleString() || '--'}</span>
+                                        <td className="px-6 py-2 text-right">
+                                            <span className="font-black text-xs text-emerald-600 dark:text-emerald-400 italic tracking-tight">₹{calcs?.onRoadTotal.toLocaleString() || '--'}</span>
                                         </td>
                                     </tr>
                                 );

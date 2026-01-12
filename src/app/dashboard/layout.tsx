@@ -34,13 +34,13 @@ export default function DashboardLayout({
 
     // Intelligent Role Fallback
     const effectiveRole = activeRole || userRole || (() => {
-        if (tenantType === 'MARKETPLACE') return 'MARKETPLACE_ADMIN';
-        if (tenantType === 'BANK') return 'BANK_ADMIN';
-        return 'TENANT_ADMIN';
+        if (tenantType === 'MARKETPLACE') return 'OWNER';
+        return 'DEALERSHIP_ADMIN';
     })();
 
-    // DETECT REGULAR USER
-    const isRegularUser = activeRole === 'USER' || activeRole === 'MEMBER';
+    // DETECT REGULAR USER (BMB Visitors)
+    const isPowerRole = ['OWNER', 'DEALERSHIP_ADMIN', 'DEALERSHIP_STAFF', 'BANK_STAFF'].includes(activeRole || '');
+    const isRegularUser = activeRole === 'BMB_USER' || (!isPowerRole && activeRole !== undefined);
 
     // SETUP ENFORCEMENT
     React.useEffect(() => {
@@ -49,7 +49,7 @@ export default function DashboardLayout({
 
         if (tenantConfig && tenantConfig.setup?.isComplete === false) {
             // Only force setup for Admins
-            const isAdmin = effectiveRole?.includes('ADMIN') || effectiveRole?.includes('OWNER');
+            const isAdmin = effectiveRole === 'OWNER' || effectiveRole === 'DEALERSHIP_ADMIN';
             if (isAdmin) {
                 window.location.href = '/setup';
             }

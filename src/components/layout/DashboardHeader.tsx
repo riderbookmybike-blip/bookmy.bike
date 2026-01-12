@@ -14,13 +14,26 @@ interface DashboardHeaderProps {
 }
 
 export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHeaderProps) => {
-    const { tenantType, userRole, activeRole, switchRole, isSidebarExpanded, tenantName, userName, memberships, tenantId } = useTenant();
+    const { tenantType, userRole, activeRole, switchRole, isSidebarExpanded, tenantName, userName, memberships, tenantId, tenantConfig } = useTenant();
     const router = useRouter();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const handleSwitch = (subdomain: string) => {
-        const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
+        const hostname = window.location.hostname;
         const protocol = window.location.protocol;
         const port = window.location.port ? `:${window.location.port}` : '';
+
+        let rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
+
+        // Handle localhost development
+        if (hostname.includes('localhost')) {
+            rootDomain = 'localhost';
+        }
+
         const newUrl = `${protocol}//${subdomain}.${rootDomain}${port}/dashboard`;
         window.location.href = newUrl;
     };
@@ -85,19 +98,20 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
                     {/* User Profile + Role Switcher */}
                     <div className="relative group/avatar pl-4 border-l border-slate-200 dark:border-white/10 ml-2">
                         <button className="flex items-center gap-3 p-1 rounded-2xl hover:bg-slate-50 dark:hover:bg-white/5 transition-all">
-                            <div className="flex flex-col items-end hidden sm:flex">
+                            <div className="flex flex-col items-end hidden sm:flex min-w-[120px]">
                                 <span className="text-xs font-black text-slate-900 dark:text-white leading-none">
-                                    {userName || 'User'}
+                                    {mounted ? (userName || 'User') : '...'}
                                 </span>
-                                <span className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-tighter mt-1">
-                                    {tenantName || (activeRole === 'SUPER_ADMIN' ? 'Platform Control' : 'Marketplace View')}
-                                </span>
+                                <div className="text-right mt-0.5">
+                                    <span className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-wide">
+                                        ({mounted ? (tenantConfig?.brand?.displayName || tenantName || (activeRole === 'SUPER_ADMIN' ? 'Platform Control' : 'Marketplace View')).toUpperCase() : '...'})
+                                    </span>
+                                </div>
                             </div>
                             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-sm font-black text-white shadow-lg shadow-indigo-500/20">
-                                {userName ? userName.charAt(0) : 'U'}
+                                {mounted && userName ? userName.charAt(0) : 'U'}
                             </div>
                         </button>
-
                         {/* Enhanced Dropdown Menu */}
                         <div className="absolute right-0 top-full mt-3 w-72 opacity-0 invisible group-hover/avatar:opacity-100 group-hover/avatar:visible translate-y-2 group-hover/avatar:translate-y-0 transition-all duration-300 z-[100]">
                             <div className="bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl p-2 overflow-hidden ring-1 ring-black/5">
@@ -161,7 +175,7 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
                         </div>
                     </div>
                 </div>
-            </div>
-        </nav>
+            </div >
+        </nav >
     );
 };

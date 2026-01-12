@@ -29,7 +29,8 @@ import {
   Tags,
   FileOutput,
   Wallet,
-  Lock
+  Lock,
+  ArrowRightLeft
 } from 'lucide-react';
 import { TenantType } from '@/lib/tenant/tenantContext';
 
@@ -66,7 +67,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         icon: LayoutDashboard,
         color: 'text-indigo-600',
         allowedTenants: ['MARKETPLACE'],
-        allowedRoles: ['SUPER_ADMIN', 'MARKETPLACE_ADMIN']
+        allowedRoles: ['OWNER']
       },
       {
         title: 'Overview',
@@ -81,7 +82,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         icon: LayoutDashboard,
         color: 'text-indigo-500',
         allowedTenants: ['MARKETPLACE'], // Staff view
-        allowedRoles: ['MARKETPLACE_STAFF']
+        allowedRoles: ['DEALERSHIP_STAFF']
       }
     ]
   },
@@ -104,19 +105,34 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         allowedTenants: ['MARKETPLACE', 'DEALER']
       },
       {
+        title: 'Pricing Engine',
+        href: '/dashboard/catalog/pricing',
+        icon: Calculator,
+        color: 'text-amber-500',
+        allowedTenants: ['MARKETPLACE', 'DEALER'],
+        permissions: ['read']
+      },
+      {
+        title: 'RTO / Registration',
+        href: '/dashboard/catalog/registration',
+        icon: FileCheck,
+        color: 'text-slate-500',
+        allowedTenants: ['MARKETPLACE', 'DEALER']
+      },
+      {
+        title: 'Insurance Logic',
+        href: '/dashboard/catalog/insurance',
+        icon: ShieldCheck,
+        color: 'text-emerald-500',
+        allowedTenants: ['MARKETPLACE', 'DEALER']
+      },
+      {
         title: 'Service Areas',
         href: '/superadmin/service-area',
         icon: MapPin,
         color: 'text-red-500',
         allowedTenants: ['MARKETPLACE'],
-        allowedRoles: ['SUPER_ADMIN']
-      },
-      {
-        title: 'Inventory',
-        href: '/inventory',
-        icon: Warehouse,
-        color: 'text-purple-500',
-        allowedTenants: ['DEALER']
+        allowedRoles: ['OWNER']
       },
       {
         title: 'Finance Status',
@@ -124,6 +140,32 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         icon: BadgeIndianRupee,
         color: 'text-emerald-500',
         allowedTenants: ['DEALER', 'BANK']
+      },
+    ]
+  },
+  {
+    group: 'Inventory & Supply',
+    items: [
+      {
+        title: 'Vehicle Requisitions',
+        href: '/dashboard/inventory/requisitions',
+        icon: FileOutput,
+        color: 'text-purple-500',
+        allowedTenants: ['DEALER', 'MARKETPLACE']
+      },
+      {
+        title: 'Purchase Orders',
+        href: '/dashboard/inventory/orders',
+        icon: ShoppingBag,
+        color: 'text-indigo-500',
+        allowedTenants: ['DEALER', 'MARKETPLACE']
+      },
+      {
+        title: 'Live Stock',
+        href: '/dashboard/inventory/stock',
+        icon: Warehouse,
+        color: 'text-emerald-500',
+        allowedTenants: ['DEALER', 'MARKETPLACE']
       },
     ]
   },
@@ -169,7 +211,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         icon: Building2,
         color: 'text-blue-600',
         allowedTenants: ['MARKETPLACE'],
-        allowedRoles: ['SUPER_ADMIN', 'MARKETPLACE_ADMIN']
+        allowedRoles: ['OWNER']
       },
       {
         title: 'Finance Partners',
@@ -177,7 +219,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         icon: Landmark,
         color: 'text-emerald-600',
         allowedTenants: ['MARKETPLACE'],
-        allowedRoles: ['SUPER_ADMIN']
+        allowedRoles: ['OWNER']
       },
       {
         title: 'System Users',
@@ -185,7 +227,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         icon: Users,
         color: 'text-purple-600',
         allowedTenants: ['MARKETPLACE'],
-        allowedRoles: ['SUPER_ADMIN']
+        allowedRoles: ['OWNER']
       },
       {
         title: 'Bank Settings',
@@ -208,7 +250,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         icon: Tags,
         color: 'text-pink-500',
         allowedTenants: ['MARKETPLACE'],
-        allowedRoles: ['SUPER_ADMIN']
+        allowedRoles: ['OWNER']
       }
     ]
   }

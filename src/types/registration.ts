@@ -23,15 +23,10 @@ export interface SlabRange {
     max: number | null; // null = Infinity
     percentage: number;
     cessPercentage?: number; // Optional Cess on top of the calculated Tax
-    fuelMatrix?: {
-        PETROL?: number;
-        DIESEL?: number;
-        EV?: number;
-        CNG?: number;
-    };
-    // Universal Slab Fields
     applicableFuels?: string[]; // e.g. ['PETROL', 'DIESEL']
     slabBasis?: FormulaVariable; // e.g. 'ENGINE_CC' or 'KW_RATING'
+    amount?: number; // Fixed amount for this slab
+    meta?: string; // Descriptive text
 }
 
 export interface SwitchCase {
