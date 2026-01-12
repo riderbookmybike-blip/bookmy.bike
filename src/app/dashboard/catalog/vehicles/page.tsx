@@ -14,6 +14,7 @@ import {
     CheckCircle2,
     ShoppingBag
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import RoleGuard from '@/components/auth/RoleGuard';
@@ -22,85 +23,131 @@ import ListPanel from '@/components/templates/ListPanel';
 import { KPICard } from '@/components/dashboard/KPICard';
 import AddVehicleModal from '@/components/catalog/AddVehicleModal';
 import AddBrandModal from '@/components/catalog/AddBrandModal';
-import { MOCK_VEHICLES } from '@/types/productMaster';
+// Removed MOCK_VEHICLES import
+
 
 const VEHICLE_COLUMNS: any[] = [
-    { key: 'brand', header: 'Brand' },
-    { key: 'model', header: 'Model' },
-    { key: 'variant', header: 'Variant' },
+    {
+        key: 'brand',
+        header: 'Brand',
+        type: 'badge' // Clean badge look for brand names
+    },
+    {
+        key: 'model',
+        header: 'Model',
+        type: 'rich',
+        subtitle: (item: any) => 'Vehicle Family'
+    },
+    {
+        key: 'variant',
+        header: 'Variant',
+        type: 'rich',
+        subtitle: (item: any) => `${item.colorCount || 0} Colors / SKUs`
+    },
     { key: 'type', header: 'Type' },
     { key: 'price', header: 'Base Price', type: 'amount' },
     { key: 'status', header: 'Status', type: 'badge' }
 ];
 
 export default function VehicleCatalogPage() {
-    const { tenantType, tenantId } = useTenant();
+    const router = useRouter();
+    const { tenantType, tenantId, userRole } = useTenant();
     const [vehicles, setVehicles] = useState<any[]>([]);
     const [inventoryIds, setInventoryIds] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [stats, setStats] = useState({
+        brands: 0,
+        models: 0,
+        variants: 0,
+        skus: 0
+    });
 
     useEffect(() => {
         fetchVehicles();
     }, []);
 
     const fetchVehicles = async () => {
+        setLoading(true);
         try {
             const supabase = createClient();
-
-            // 1. Fetch Global Catalog from DB
-            const { data: dbItems, error: itemsError } = await supabase
-                .from('items')
+            // Fetch Brands
+            const { data: brands, error: brandsError } = await supabase
+                .from('brands')
                 .select('*')
-                .order('created_at', { ascending: false });
+                .order('name');
 
-            // 2. Map DB Items
-            const mappedDbItems = (dbItems || []).map(item => ({
-                ...item,
-                id: item.make, // Navigation expects Brand ID/Name
-                brand: item.make,
-                status: 'Active',
-                source: 'live'
-            }));
+            if (brandsError) throw brandsError;
 
-            // 3. Map Mock Items (to ensure user's previous work/data is visible)
-            const mappedMockItems = MOCK_VEHICLES.map(v => ({
-                id: v.make,
-                brand: v.make,
-                model: v.model,
-                variant: v.variant,
-                type: v.bodyType,
-                price: 0, // Mock price not specified in master
-                status: 'Active',
-                source: 'mock'
-            }));
+            // Fetch Models
+            const { data: models, error: modelsError } = await supabase
+                .from('vehicle_models')
+                .select('*');
 
-            // 4. Merge - Dedup by matching brand+model+variant if needed, or just combine
-            // For now, let's combine and priority to DB
-            const allItems = [...mappedDbItems, ...mappedMockItems];
+            if (modelsError) throw modelsError;
 
-            // Deduplicate by brand+model+variant to avoid confusion
-            const uniqueItems = Array.from(new Map(allItems.map(item => [
-                `${item.brand}-${item.model}-${item.variant}`, item
-            ])).values());
+            // Fetch Variants
+            const { data: variants, error: variantsError } = await supabase
+                .from('vehicle_variants')
+                .select('*');
 
-            setVehicles(uniqueItems);
+            if (variantsError) throw variantsError;
 
-            // 5. Fetch My Inventory (if Dealer)
-            if (tenantType === 'DEALER') {
-                const { data: inventory, error: invError } = await supabase
-                    .from('marketplace_inventory')
-                    .select('item_id');
+            // Fetch Colors
+            const { data: colors, error: colorsError } = await supabase
+                .from('vehicle_colors')
+                .select('*');
 
-                if (!invError && inventory) {
-                    setInventoryIds(new Set(inventory.map(i => i.item_id)));
-                }
-            }
+            if (colorsError) throw colorsError;
 
+            // Compute Stats
+            const totalModels = models?.length || 0;
+            const totalVariants = variants?.length || 0;
+            const totalSkus = colors?.length || 0;
+
+            setStats({
+                brands: brands?.length || 0,
+                models: totalModels,
+                variants: totalVariants,
+                skus: totalSkus
+            });
+
+            // GROUP BY BRAND - Refactored View
+            const mappedList: any[] = [];
+
+            (brands || []).forEach(brand => {
+                const brandModels = (models || []).filter(m => m.brand_id === brand.id);
+                const brandVariants = (variants || []).filter(v => brandModels.some(m => m.id === v.model_id));
+
+                let brandSkuCount = 0;
+                brandVariants.forEach(v => {
+                    const vColors = (colors || []).filter(c => c.variant_id === v.id);
+                    brandSkuCount += vColors.length;
+                });
+
+                // Only show brands that have models or if we want to show empty brands too
+                mappedList.push({
+                    id: brand.id,
+                    brandId: brand.id,
+                    brand: brand.name,
+                    brandLogo: brand.logo_svg,
+                    brandLogos: brand.brand_logos || {}, // Capture new field
+                    modelCount: brandModels.length,
+                    variantCount: brandVariants.length,
+                    skuCount: brandSkuCount,
+                    status: brand.is_active ? 'Active' : 'Draft',
+                    source: 'live'
+                });
+            });
+
+            setVehicles(mappedList);
+            setInventoryIds(new Set());
+
+            setVehicles(mappedList);
         } catch (error) {
-            console.error('Error fetching catalog:', error);
+            console.error('[Catalog] Error fetching hierarchical data:', error);
         } finally {
             setLoading(false);
         }
@@ -115,31 +162,31 @@ export default function VehicleCatalogPage() {
     const metrics = (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <KPICard
-                title="Total Brands"
-                value={Array.from(new Set(vehicles.map(s => s.brand))).length}
+                title="Brands"
+                value={stats.brands}
                 icon={ShieldCheck}
-                sub="Global Manufacturers"
+                sub="Manufacturers"
                 onClick={() => setSearchQuery('')}
             />
             <KPICard
-                title="Catalog Items"
-                value={vehicles.length}
+                title="Model Families"
+                value={stats.models}
                 icon={Box}
-                delta={vehicles.filter(v => v.source === 'live').length.toString()}
-                isUp={true}
-                sub="Live in Database"
-            />
-            <KPICard
-                title="Database Sync"
-                value={vehicles.filter(v => v.source === 'live').length}
-                icon={CheckCircle2}
-                sub="Verified Entities"
+                sub="Vehicle Groups"
             />
             <KPICard
                 title="Total Variants"
-                value={Array.from(new Set(vehicles.map(s => s.variant))).length}
+                value={stats.variants}
                 icon={Layers}
-                sub="Model Configurations"
+                sub="Equipment Specs"
+            />
+            <KPICard
+                title="Total SKUs"
+                value={stats.skus}
+                icon={CheckCircle2}
+                sub="Color-Variant Pairs"
+                delta={stats.skus.toString()}
+                isUp={true}
             />
         </div>
     );
@@ -164,13 +211,13 @@ export default function VehicleCatalogPage() {
                         </h1>
                     </div>
 
-                    {['SUPER_ADMIN', 'MARKETPLACE_ADMIN'].includes(tenantType || '') && (
+                    {['OWNER', 'DEALERSHIP_ADMIN'].includes(userRole || '') && (
                         <button
                             onClick={() => setIsAddModalOpen(true)}
-                            className="flex items-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl active:scale-95 border border-white/10"
+                            className="group flex items-center gap-3 bg-indigo-600 text-white px-8 py-4 rounded-[2rem] font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-2xl shadow-indigo-600/20 active:scale-95 border border-white/20 italic"
                         >
-                            <Plus size={18} strokeWidth={3} />
-                            Add Vehicle SKU
+                            <Plus className="text-white group-hover:rotate-90 transition-transform" size={20} strokeWidth={3} />
+                            Launch Vehicle Studio
                         </button>
                     )}
                 </div>
@@ -180,13 +227,81 @@ export default function VehicleCatalogPage() {
                 <MasterListDetailLayout mode="list-only">
                     <ListPanel
                         title="Vehicles Catalog"
-                        columns={VEHICLE_COLUMNS}
+                        columns={[
+                            {
+                                header: 'Manufacturer',
+                                key: 'brand',
+                                render: (row: any) => (
+                                    <div className="flex items-center gap-4 py-2">
+                                        {row.brandLogo || row.brandLogos?.original ? (
+                                            <div
+                                                className="w-12 h-12 bg-white dark:bg-white/10 rounded-2xl border border-slate-100 dark:border-white/5 flex items-center justify-center p-2 overflow-hidden shadow-sm group-hover:scale-110 transition-transform duration-500 relative"
+                                            >
+                                                {/* Light Mode / Default */}
+                                                <div
+                                                    className="w-full h-full flex items-center justify-center text-slate-900 dark:text-white [&>svg]:w-full [&>svg]:h-full [&>svg]:object-contain dark:hidden"
+                                                    dangerouslySetInnerHTML={{ __html: row.brandLogos?.light || row.brandLogos?.original || row.brandLogo }}
+                                                />
+                                                {/* Dark Mode */}
+                                                <div
+                                                    className="w-full h-full hidden dark:flex items-center justify-center text-slate-900 dark:text-white [&>svg]:w-full [&>svg]:h-full [&>svg]:object-contain"
+                                                    dangerouslySetInnerHTML={{ __html: row.brandLogos?.dark || row.brandLogos?.original || row.brandLogo }}
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-sm font-bold shadow-inner">
+                                                {row.brand[0]}
+                                            </div>
+                                        )}
+                                        <div className="flex flex-col">
+                                            <span className="font-black uppercase tracking-wider text-sm">{row.brand}</span>
+                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">OEM Partner</span>
+                                        </div>
+                                    </div>
+                                )
+                            },
+                            {
+                                header: 'Models',
+                                key: 'modelCount',
+                                render: (row: any) => (
+                                    <div className="flex flex-col">
+                                        <span className="font-black text-slate-900 dark:text-white text-lg">{row.modelCount}</span>
+                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Families</span>
+                                    </div>
+                                )
+                            },
+                            {
+                                header: 'Total Variants',
+                                key: 'variantCount',
+                                render: (row: any) => (
+                                    <div className="flex flex-col">
+                                        <span className="font-black text-slate-900 dark:text-white text-lg">{row.variantCount}</span>
+                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Configurations</span>
+                                    </div>
+                                )
+                            },
+                            {
+                                header: 'Total SKUs',
+                                key: 'skuCount',
+                                render: (row: any) => (
+                                    <div className="flex flex-col">
+                                        <span className="font-black text-indigo-500 text-lg">{row.skuCount}</span>
+                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Active Stock Units</span>
+                                    </div>
+                                )
+                            },
+                            { header: 'Status', key: 'status' },
+                        ]}
                         data={filteredVehicles}
                         actionLabel="Add Brand"
                         onActionClick={() => setIsBrandModalOpen(true)}
                         basePath="/dashboard/catalog/vehicles"
                         tight={true}
-                        onQuickAction={(action, item) => console.log(`Quick action ${action} on`, item)}
+                        onQuickAction={(action, item) => {
+                            if (action === 'edit') {
+                                router.push(`/dashboard/catalog/vehicles/studio?modelId=${item.modelId}&brandId=${item.brandId}`);
+                            }
+                        }}
                     />
                 </MasterListDetailLayout>
 

@@ -8,7 +8,7 @@ export function usePermission() {
 
     const can = (resource: Resource, action: Action, roleOverride?: string): boolean => {
         // Use activeRole from context, or fallback to override/default
-        const roleStr = roleOverride || activeRole || 'TENANT_ADMIN';
+        const roleStr = roleOverride || activeRole || 'DEALERSHIP_ADMIN';
         const role = roleStr as UserRole;
 
         // 1. Check Matrix

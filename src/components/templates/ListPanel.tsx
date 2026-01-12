@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Filter, Trash2, CheckSquare, Square, Package, Copy } from 'lucide-react';
+import { Search, Filter, Trash2, CheckSquare, Square, Package, Copy, Settings2, Edit } from 'lucide-react';
 import { useSearch } from '@/lib/context/SearchContext';
 
 interface ColumnDef {
@@ -13,6 +13,8 @@ interface ColumnDef {
     align?: 'left' | 'right' | 'center';
     icon?: any; // For 'rich' type
     subtitle?: (item: any) => string; // For 'rich' type
+    render?: (item: any) => React.ReactNode; // Custom rendering
+    className?: string;
 }
 
 interface ListPanelProps {
@@ -230,7 +232,7 @@ export default function ListPanel({
                                     <th
                                         key={col.key}
                                         className={`p-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-200 dark:border-white/10 ${col.align === 'right' ? 'text-right' : ''
-                                            }`}
+                                            } ${col.className || ''}`}
                                         style={{ width: col.width }}
                                     >
                                         {col.header}
@@ -297,9 +299,11 @@ export default function ListPanel({
                                                 className={`p-4 text-xs font-bold ${col.align === 'right' ? 'text-right' : ''
                                                     } ${isIdColumn(col.key) || col.type === 'id'
                                                         ? 'font-mono text-[10px] text-indigo-600 dark:text-indigo-400 opacity-80'
-                                                        : 'text-slate-700 dark:text-slate-300'}`}
+                                                        : 'text-slate-700 dark:text-slate-300'} ${col.className || ''}`}
                                             >
-                                                {col.type === 'rich' ? (
+                                                {col.render ? (
+                                                    col.render(item)
+                                                ) : col.type === 'rich' ? (
                                                     <div className="flex items-center gap-3">
                                                         {col.icon && (
                                                             <div className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-white/5 flex items-center justify-center p-1.5 shadow-sm border border-slate-100 dark:border-white/10 transition-transform group-hover:scale-110">
@@ -333,7 +337,7 @@ export default function ListPanel({
                                                             <Copy size={10} className="text-indigo-400" />
                                                         </button>
                                                     </div>
-                                                ) : col.key === 'status' || col.type === 'badge' ? (
+                                                ) : col.type === 'badge' || col.key === 'status' ? (
                                                     <span className={`inline-flex items-center px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest border ${getBadgeClass(item[col.key] || item.status)} shadow-sm`}>
                                                         {getDotColor(item[col.key]) && (
                                                             <span className="flex h-1.5 w-1.5 mr-1.5 relative">
@@ -371,7 +375,7 @@ export default function ListPanel({
                                                         className="p-1.5 hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                                                         title="Edit"
                                                     >
-                                                        <Search size={14} />
+                                                        <Settings2 size={14} />
                                                     </button>
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); onQuickAction('delete', item); }}

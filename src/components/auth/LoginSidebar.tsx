@@ -15,7 +15,8 @@ interface LoginSidebarProps {
 
 export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: LoginSidebarProps) {
     const router = useRouter();
-    const { setTenantType } = useTenant();
+    const { setTenantType, tenantId } = useTenant();
+    const [loginError, setLoginError] = useState<string | null>(null);
     const [step, setStep] = useState<'PHONE' | 'NAME' | 'OTP'>('PHONE');
     const [phone, setPhone] = useState('');
     const [otp, setOtp] = useState('');
@@ -121,31 +122,33 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
         setLoading(true);
 
         try {
-            // 1. Check if user exists
-            const checkRes = await fetch('/api/auth/check-user', {
+            setLoginError(null);
+            // 1. Check Membership / Authorization for this specific Tenant
+            const checkRes = await fetch('/api/auth/check-membership', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone })
+                body: JSON.stringify({ phone, tenantId })
             });
-            const { exists, name } = await checkRes.json();
+            const checkData = await checkRes.json();
 
-            // 2. Handle New User Flow
-            if (!exists) {
+            if (!checkData.success) {
+                setLoginError(checkData.message || 'Access Denied.');
+                setLoading(false);
+                return;
+            }
+
+            // 2. Handle New User Flow (Progressive Profiling)
+            // If user doesn't exist yet but is allowed to join (Marketplace only)
+            if (checkData.isNew) {
                 if (!showNameField) {
-                    // REVEAL NAME FIELD
                     setShowNameField(true);
                     setLoading(false);
                     return;
                 }
-
-                // If field is visible but empty
                 if (fullName.length < 3) {
                     setLoading(false);
                     return;
                 }
-            } else {
-                // User exists - ensure we don't ask for name
-                if (name) setFullName(name);
             }
 
             // 3. Send OTP
@@ -253,8 +256,8 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
             setTenantType('MARKETPLACE'); // Default role
             localStorage.setItem('user_name', displayName);
             localStorage.setItem('tenant_type', 'MARKETPLACE');
-            localStorage.setItem('user_role', 'USER'); // Explicitly set role
-            localStorage.setItem('active_role', 'USER'); // Explicitly set role
+            localStorage.setItem('user_role', 'BMB_USER'); // Explicitly set role
+            localStorage.setItem('active_role', 'BMB_USER'); // Explicitly set role
             window.dispatchEvent(new Event('storage'));
             document.cookie = 'aums_session=true; path=/;';
 
@@ -340,6 +343,15 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                 <div className="absolute inset-0 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[32px] transition-all group-focus-within:border-blue-600 group-focus-within:ring-[16px] group-focus-within:ring-blue-600/5" />
 
                                 <div className="relative p-2">
+                                    {loginError && (
+                                        <div className="mx-2 mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <AlertCircle size={18} className="text-red-500 shrink-0" />
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-red-500 italic">
+                                                {loginError}
+                                            </p>
+                                        </div>
+                                    )}
+
                                     {step === 'PHONE' ? (
                                         <div className="space-y-4">
                                             {/* Name Input - Conditionally Rendered */}

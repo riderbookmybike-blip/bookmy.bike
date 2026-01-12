@@ -28,8 +28,8 @@ export default function DashboardPage() {
             {/* Tenant specific Dashboard */}
             {tenantType === 'DEALER' && <DealerDashboard />}
             {tenantType === 'BANK' && <BankDashboard />}
-            {(tenantType === 'MARKETPLACE' || tenantType === 'SUPER_ADMIN' as any) && (
-                (activeRole === 'SUPER_ADMIN' || activeRole === 'MARKETPLACE_ADMIN')
+            {(tenantType === 'MARKETPLACE' || tenantType === 'OWNER' as any) && (
+                (['OWNER', 'DEALERSHIP_ADMIN', 'DEALERSHIP_STAFF'].includes(activeRole || ''))
                     ? <AdminDashboard />
                     : <UserDashboard />
             )}

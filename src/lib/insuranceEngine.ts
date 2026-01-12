@@ -1,63 +1,75 @@
-import { InsuranceRule, InsuranceCalculationContext, InsuranceCalculationResult } from '@/types/insurance';
+import { InsuranceRule, InsuranceCalculationContext, InsuranceCalculationResult, InsuranceVariable } from '@/types/insurance';
+import { FormulaComponent, CalculationResultItem, SlabRange } from '@/types/registration';
 
 export function calculateInsurance(rule: InsuranceRule, ctx: InsuranceCalculationContext): InsuranceCalculationResult {
-    // 1. Calculate IDV
     const idv = ctx.customIdv || Math.round(ctx.exShowroom * (rule.idvPercentage / 100));
 
-    // 2. Calculate OD Premium
-    const odBreakdown = (rule.odComponents || []).map(c => ({
-        label: c.label || 'Basic OD',
-        amount: c.amount || Math.round(idv * 0.018), // Fallback logic if component is just a placeholder
-        meta: 'OD Component'
-    }));
+    const resolveBasisValue = (basis: InsuranceVariable | undefined): number => {
+        switch (basis) {
+            case 'IDV': return idv;
+            case 'ENGINE_CC': return ctx.engineCc;
+            case 'EX_SHOWROOM':
+            default: return ctx.exShowroom;
+        }
+    };
 
-    const odTotal = odBreakdown.reduce((sum, i) => sum + i.amount, 0);
+    const processComponents = (components: FormulaComponent[]): { items: CalculationResultItem[], total: number } => {
+        const items: CalculationResultItem[] = [];
+        let total = 0;
 
-    // 3. Calculate TP Premium
-    const tpRate = ctx.engineCc < 150 ? 714 : (ctx.engineCc < 350 ? 1366 : 2804);
-    const tpBreakdown = (rule.tpComponents || []).map(c => ({
-        label: c.label || 'Third Party Liability',
-        amount: c.amount || tpRate,
-        meta: 'Statutory'
-    }));
+        components.forEach(comp => {
+            let amount = 0;
+            const basisValue = resolveBasisValue(comp.basis as any);
 
-    // Add PA Cover if not present in components but required
-    if (!tpBreakdown.some(x => x.label.includes('PA Cover'))) {
-        tpBreakdown.push({
-            label: 'PA Cover (Owner Driver)',
-            amount: 350,
-            meta: 'Mandatory'
+            if (comp.type === 'PERCENTAGE') {
+                amount = Math.round(basisValue * ((comp.percentage || 0) / 100));
+            } else if (comp.type === 'FIXED') {
+                amount = comp.amount || 0;
+            } else if (comp.type === 'SLAB') {
+                const val = basisValue;
+                const range = comp.ranges?.find((r: SlabRange) => {
+                    const min = r.min || 0;
+                    const max = r.max === null ? Infinity : r.max;
+                    return val >= min && val <= max;
+                });
+                if (range) {
+                    // Range-based fixed amount or percentage of basis
+                    amount = range.amount || Math.round(basisValue * ((range.percentage || 0) / 100));
+                }
+            }
+
+            if (amount > 0) {
+                items.push({
+                    label: comp.label,
+                    amount,
+                    meta: comp.type === 'PERCENTAGE' ? `${comp.percentage}% of ${comp.basis || 'EX_SHOWROOM'}` : 'Formula Applied'
+                });
+                total += amount;
+            }
         });
-    }
 
-    const tpTotal = tpBreakdown.reduce((sum, i) => sum + i.amount, 0);
+        return { items, total };
+    };
 
-    // 4. Add-ons
-    const addonBreakdown = (rule.addons || []).map(a => ({
-        label: a.label,
-        amount: a.amount || 0,
-        meta: 'Optional'
-    }));
-    const addonsTotal = addonBreakdown.reduce((sum, i) => sum + i.amount, 0);
+    const od = processComponents(rule.odComponents || []);
+    const tp = processComponents(rule.tpComponents || []);
+    const addons = processComponents(rule.addons || []);
 
-    // 5. Totals
-    const netPremium = odTotal + tpTotal + addonsTotal;
+    const netPremium = od.total + tp.total + addons.total;
     const gstAmount = Math.round(netPremium * (rule.gstPercentage / 100));
     const totalPremium = netPremium + gstAmount;
 
     return {
         idv,
+        odBreakdown: od.items,
+        tpBreakdown: tp.items,
+        addonBreakdown: addons.items,
+        odTotal: od.total,
+        tpTotal: tp.total,
+        addonsTotal: addons.total,
         netPremium,
         gstAmount,
         totalPremium,
-        odBreakdown,
-        tpBreakdown,
-        addonBreakdown,
-
-        // Missing fields fixed:
-        odTotal,
-        tpTotal,
-        addonsTotal,
         ruleId: rule.id
     };
 }

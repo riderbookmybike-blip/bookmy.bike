@@ -17,17 +17,17 @@ import {
 // --- SHARED WIDGETS ---
 
 export const KpiCard = ({ title, value, sub, trend = 'neutral', icon: Icon }: any) => (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 p-8 rounded-[32px] shadow-sm hover:shadow-xl transition-all duration-500 group relative overflow-hidden">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 p-5 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-500 group relative overflow-hidden">
         {/* Decor */}
         <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 dark:bg-indigo-500/10 blur-3xl -z-0 group-hover:bg-indigo-500/15 transition-colors" />
 
         <div className="relative z-10">
-            <div className="flex justify-between items-start mb-6">
-                <div className="p-3 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform duration-500 border border-indigo-100 dark:border-indigo-500/10">
-                    <Icon size={22} strokeWidth={1.5} />
+            <div className="flex justify-between items-start mb-4">
+                <div className="p-2.5 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform duration-500 border border-indigo-100 dark:border-indigo-500/10">
+                    <Icon size={18} strokeWidth={1.5} />
                 </div>
                 {trend !== 'neutral' && (
-                    <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest border ${trend === 'up'
+                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest border ${trend === 'up'
                         ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/10'
                         : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-500/10'
                         }`}>
@@ -35,9 +35,9 @@ export const KpiCard = ({ title, value, sub, trend = 'neutral', icon: Icon }: an
                     </span>
                 )}
             </div>
-            <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">{title}</h3>
-            <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter italic">{value}</p>
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-600 mt-3 uppercase tracking-wider">{sub}</p>
+            <h3 className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">{title}</h3>
+            <p className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter italic">{value}</p>
+            <p className="text-[9px] font-bold text-slate-400 dark:text-slate-600 mt-2 uppercase tracking-wider">{sub}</p>
         </div>
     </div>
 );

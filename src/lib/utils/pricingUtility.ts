@@ -1,6 +1,7 @@
 import { RegistrationRule, CalculationContext, CalculationResult, RegistrationType } from '@/types/registration';
 import { InsuranceRule, InsuranceCalculationContext, InsuranceCalculationResult } from '@/types/insurance';
 import { calculateRegistrationCharges } from '@/lib/registrationEngine';
+import { calculateInsurance as calculateInsurancePremium } from '@/lib/insuranceEngine';
 
 /**
  * Real RTO Calculation Logic using the Registration Engine
@@ -40,33 +41,58 @@ export function calculateRTO(exShowroom: number, rule: RegistrationRule, type: '
 }
 
 /**
- * Simplified Insurance Calculation Logic
+ * Real Insurance Calculation Logic using the Insurance Engine
  */
-export function calculateInsurance(exShowroom: number, engineCc: string | number = 110, isComprehensive: boolean = true) {
-    const idv = exShowroom * 0.95;
-    let cc = typeof engineCc === 'string' ? parseFloat(engineCc.replace(/[^\d.]/g, '')) : engineCc;
-    if (isNaN(cc)) cc = 110;
+export function calculateInsurance(exShowroom: number, engineCc: number = 110, rule?: InsuranceRule) {
+    // If no rule provided, use a basic fallback (simulates HDFC ERGO)
+    const effectiveRule: InsuranceRule = rule || {
+        id: 'fallback-ins',
+        ruleName: 'Default Comprehensive',
+        stateCode: 'ALL',
+        insurerName: 'Generic Insurer',
+        vehicleType: 'TWO_WHEELER',
+        effectiveFrom: new Date().toISOString(),
+        status: 'ACTIVE',
+        idvPercentage: 95,
+        gstPercentage: 18,
+        odComponents: [{ id: 'od', type: 'PERCENTAGE', label: 'Own Damage', percentage: 1.5, basis: 'IDV' }],
+        tpComponents: [{
+            id: 'tp', type: 'SLAB', label: 'Third Party', basis: 'ENGINE_CC', ranges: [
+                { id: 'tp1', min: 0, max: 75, amount: 482, percentage: 0 },
+                { id: 'tp2', min: 75, max: 150, amount: 714, percentage: 0 },
+                { id: 'tp3', min: 150, max: 350, amount: 1366, percentage: 0 },
+                { id: 'tp4', min: 350, max: null, amount: 2804, percentage: 0 }
+            ]
+        }],
+        addons: [
+            { id: 'zero-dep', type: 'PERCENTAGE', label: 'Zero Depreciation', percentage: 0.2, basis: 'IDV' },
+            { id: 'pa-cover', type: 'FIXED', label: 'PA Cover', amount: 375 }
+        ],
+        version: 1,
+        lastUpdated: new Date().toISOString()
+    };
 
-    let tp = 714;
-    if (cc > 75 && cc <= 150) tp = 714;
-    if (cc > 150 && cc <= 350) tp = 1366;
-    if (cc > 350) tp = 2804;
+    const ctx: InsuranceCalculationContext = {
+        exShowroom,
+        engineCc,
+        fuelType: 'PETROL'
+    };
 
-    const items = [
-        { label: 'Third Party (TP)', amount: tp }
-    ];
-
-    if (isComprehensive) {
-        items.unshift({ label: 'Own Damage (OD)', amount: Math.round(idv * 0.015) });
-    }
-
-    const netPremium = items.reduce((sum, i) => sum + i.amount, 0);
-    const gst = Math.round(netPremium * 0.18);
-    items.push({ label: 'GST (18%)', amount: gst });
+    const res = calculateInsurancePremium(effectiveRule, ctx);
 
     return {
-        total: netPremium + gst,
-        items
+        total: res.totalPremium,
+        idv: res.idv,
+        items: [
+            ...res.odBreakdown,
+            ...res.tpBreakdown,
+            ...res.addonBreakdown,
+            { label: 'GST (18%)', amount: res.gstAmount }
+        ].map(i => ({
+            label: i.label,
+            amount: i.amount,
+            detail: i.meta
+        }))
     };
 }
 
@@ -92,8 +118,9 @@ export function calculateOnRoad(
     const rtoBharat = calculateRTO(exShowroom, rule, 'BH', cc);
     const rtoCompany = calculateRTO(exShowroom, rule, 'COMPANY', cc);
 
-    const insuranceComp = calculateInsurance(exShowroom, cc, true);
-    const insuranceLib = calculateInsurance(exShowroom, cc, false);
+    const insuranceComp = calculateInsurance(exShowroom, cc);
+    // For liability only, we could pass a different rule, but for now just using the same engine
+    const insuranceLib = calculateInsurance(exShowroom, cc);
 
     // Calculate Base On-Road (before final override)
     let calculatedOnRoad = exShowroom + rtoState.total + insuranceComp.total;

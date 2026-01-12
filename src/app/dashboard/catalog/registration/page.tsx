@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 import { Landmark, Shield, Globe, Info } from 'lucide-react';
 import { KpiCard } from '@/components/dashboard/DashboardWidgets';
 
-import { MOCK_REGISTRATION_RULES } from '@/lib/mock/catalogMocks';
+import { createClient } from '@/lib/supabase/client';
 
 const COLUMNS = [
     { key: 'displayId', header: 'Rule ID', type: 'id' as const, width: '120px' },
@@ -32,25 +32,21 @@ export default function RegistrationMasterPage() {
     const [checkedIds, setCheckedIds] = useState<any[]>([]);
     const [isMounted, setIsMounted] = useState(false);
 
-    const STORAGE_KEY = 'aums_registration_rules_v2';
+    const fetchRules = async () => {
+        const supabase = createClient();
+        const { data, error } = await supabase
+            .from('registration_rules')
+            .select('*')
+            .order('state_code', { ascending: true });
 
-    // Helper: Load Rules from Storage or Mock
-    const loadRulesFromStorage = () => {
-        try {
-            const stored = localStorage.getItem(STORAGE_KEY);
-            if (stored) {
-                return JSON.parse(stored);
-            }
-        } catch (e) {
-            console.error("Failed to load from storage", e);
+        if (!error && data) {
+            setRuleList(data);
         }
-        return MOCK_REGISTRATION_RULES; // Fallback to initial mock
     };
 
     useEffect(() => {
         setIsMounted(true);
-        const rules = loadRulesFromStorage();
-        setRuleList(rules);
+        fetchRules();
     }, []);
 
     const metrics = (
@@ -72,12 +68,20 @@ export default function RegistrationMasterPage() {
         </div>
     );
 
-    const handleBulkDelete = (ids: any[]) => {
+    const handleBulkDelete = async (ids: any[]) => {
         if (confirm(`Are you sure you want to delete ${ids.length} registration rules?`)) {
-            const newList = ruleList.filter(item => !ids.includes(item.id));
-            setRuleList(newList);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(newList));
-            setCheckedIds([]);
+            const supabase = createClient();
+            const { error } = await supabase
+                .from('registration_rules')
+                .delete()
+                .in('id', ids);
+
+            if (!error) {
+                fetchRules();
+                setCheckedIds([]);
+            } else {
+                alert('Failed to delete rules');
+            }
         }
     };
 

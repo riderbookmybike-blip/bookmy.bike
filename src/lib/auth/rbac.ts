@@ -1,11 +1,9 @@
 export type Role =
-    | 'SUPER_ADMIN'
-    | 'MARKETPLACE_ADMIN'
-    | 'DEALER_OWNER'
-    | 'DEALER_ADMIN'
-    | 'SALES_EXEC'
-    | 'OPERATIONS'
-    | 'VIEWER';
+    | 'OWNER'
+    | 'DEALERSHIP_ADMIN'
+    | 'DEALERSHIP_STAFF'
+    | 'BANK_STAFF'
+    | 'BMB_USER';
 
 export type Permission =
     | 'manage_organization'
@@ -18,50 +16,42 @@ export type Permission =
     | 'view_leads'
     | 'access_marketplace'
     | 'manage_marketplace'
-    | 'transfer_ownership'; // New Permission
+    | 'transfer_ownership';
 
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
-    SUPER_ADMIN: [
+    OWNER: [
         'manage_organization', 'manage_team', 'manage_billing', 'view_analytics',
         'manage_inventory', 'manage_leads', 'access_marketplace', 'manage_marketplace', 'view_inventory', 'view_leads',
         'transfer_ownership'
     ],
-    MARKETPLACE_ADMIN: [
-        'access_marketplace', 'manage_marketplace', 'view_analytics'
-    ],
-    DEALER_OWNER: [
+    DEALERSHIP_ADMIN: [
         'manage_organization', 'manage_team', 'manage_billing', 'view_analytics',
         'manage_inventory', 'manage_leads', 'view_inventory', 'view_leads',
         'transfer_ownership'
     ],
-    DEALER_ADMIN: [
-        'manage_team', 'view_analytics',
+    DEALERSHIP_STAFF: [
+        'view_analytics',
         'manage_inventory', 'manage_leads', 'view_inventory', 'view_leads'
     ],
-    SALES_EXEC: [
-        'manage_leads', 'view_leads', 'view_inventory'
+    BANK_STAFF: [
+        'view_analytics',
+        'manage_organization' // For bank-level tenant management
     ],
-    OPERATIONS: [
-        'manage_inventory', 'view_inventory', 'view_leads'
-    ],
-    VIEWER: [
-        'view_inventory', 'view_leads'
+    BMB_USER: [
+        'view_inventory', 'view_leads', 'access_marketplace'
     ]
 };
 
 export function can(role: string | undefined, permission: Permission): boolean {
     if (!role) return false;
-    // Normalize string to Role type if possible, else return false
-    const permissions = ROLE_PERMISSIONS[role as Role];
+    const permissions = ROLE_PERMISSIONS[role.toUpperCase() as Role];
     return permissions ? permissions.includes(permission) : false;
 }
 
 export const ROLES_LABEL: Record<Role, string> = {
-    SUPER_ADMIN: 'Super Admin',
-    MARKETPLACE_ADMIN: 'Marketplace Admin',
-    DEALER_OWNER: 'Owner',
-    DEALER_ADMIN: 'Admin',
-    SALES_EXEC: 'Staff',
-    OPERATIONS: 'Operations', // Keeping for backward compatibility or future use
-    VIEWER: 'Viewer'
+    OWNER: 'System Owner',
+    DEALERSHIP_ADMIN: 'Dealership Admin',
+    DEALERSHIP_STAFF: 'Dealership Staff',
+    BANK_STAFF: 'Bank Staff',
+    BMB_USER: 'BMB User'
 };

@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
                     id: userId,
                     full_name: displayName,
                     phone: phone, // Storing raw 10 digit in profile for display
-                    role: 'USER', // Default role
+                    role: 'BMB_USER', // Default role
                     referral_code: referralCode,
                     pincode: pincode || null,
                     city: city || null,
