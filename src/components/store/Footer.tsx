@@ -12,6 +12,7 @@ import {
     Youtube,
     Heart,
     ArrowRight,
+    Newspaper,
 } from 'lucide-react';
 
 export const Footer = () => {
@@ -29,6 +30,7 @@ export const Footer = () => {
                             riders.
                         </p>
                         <div className="flex gap-2">
+                            <SocialIcon icon={<Newspaper size={18} />} href="/store/blog" />
                             <SocialIcon icon={<Instagram size={18} />} href="https://instagram.com" />
                             <SocialIcon icon={<Twitter size={18} />} href="https://twitter.com" />
                             <SocialIcon icon={<Linkedin size={18} />} href="https://linkedin.com" />
@@ -36,7 +38,7 @@ export const Footer = () => {
                         </div>
                     </div>
 
-                    <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-6 gap-12">
+                    <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-5 gap-12">
                         <div className="space-y-8">
                             <FooterHeading>Collection</FooterHeading>
                             <FooterLinkList>
@@ -90,17 +92,6 @@ export const Footer = () => {
                                 <FooterLink href="#">Privacy</FooterLink>
                                 <FooterLink href="#">Terms</FooterLink>
                                 <FooterLink href="#">Compliance</FooterLink>
-                            </FooterLinkList>
-                        </div>
-
-                        <div className="space-y-8">
-                            <FooterHeading>Connect</FooterHeading>
-                            <FooterLinkList>
-                                <FooterLink href="/store/blog">Read our Blog</FooterLink>
-                                <FooterLink href="#">Contact Support</FooterLink>
-                                <FooterLink href="https://twitter.com">Twitter</FooterLink>
-                                <FooterLink href="https://instagram.com">Instagram</FooterLink>
-                                <FooterLink href="https://linkedin.com">LinkedIn</FooterLink>
                             </FooterLinkList>
                         </div>
                     </div>
