@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { DashboardHeader } from '@/components/layout/DashboardHeader';
 import { useTenant } from '@/lib/tenant/tenantContext';
