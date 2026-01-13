@@ -114,10 +114,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
     }, []);
 
     const handleSendOtp = async () => {
-        if (!msg91Loaded) {
-            alert('Security System Loading... Please wait.');
-            return;
-        }
+        // REMOVED: msg91Loaded check. Server-side API is independent.
 
         setLoading(true);
 
@@ -128,7 +125,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ phone, tenantId })
-            });
+            }); // Continuing logic...
             const checkData = await checkRes.json();
 
             if (!checkData.success) {
