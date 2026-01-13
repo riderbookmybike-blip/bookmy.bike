@@ -209,36 +209,61 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
         if (true) { // Successfully verified via Client SDK
             console.log('Completing login with fullName:', fullName);
             // Better fallback logic
-            const displayName = fullName && fullName.trim().length > 0
-                ? fullName
-                : `Rider ${phone.slice(-4)}`;
+            const isSignup = showNameField; // Determined earlier by check-membership API
+            const displayName = fullName && fullName.trim().length > 0 ? fullName : `Rider ${phone.slice(-4)}`;
 
-            // SYNC WITH BACKEND
             try {
-                const syncRes = await fetch('/api/auth/msg91/sync', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        phone,
-                        displayName,
-                        pincode: location.pincode,
-                        city: location.city,
-                        state: location.state,
-                        country: location.country,
-                        latitude: location.latitude,
-                        longitude: location.longitude
-                    })
-                });
+                let authRes;
 
-                if (!syncRes.ok) {
-                    const errData = await syncRes.json();
-                    console.error('Sync API Error:', errData);
-                    alert(`Login System Error: ${errData.message || 'Sync Failed'}. Please contact support.`);
-                    // Optional: return; to stop login if strict strictness is required
+                if (isSignup) {
+                    // NEW USER: Explicit Signup Flow
+                    authRes = await fetch('/api/auth/signup', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            phone,
+                            displayName,
+                            pincode: location.pincode
+                        })
+                    });
+                } else {
+                    // EXISTING USER: Login/Sync Flow (Read-Only)
+                    authRes = await fetch('/api/auth/msg91/sync', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            phone,
+                            // Location data purely for session logs, not profile update
+                            pincode: location.pincode,
+                            city: location.city,
+                            state: location.state,
+                            country: location.country,
+                            latitude: location.latitude,
+                            longitude: location.longitude
+                        })
+                    });
                 }
+
+                if (!authRes.ok) {
+                    const errData = await authRes.json();
+                    console.error('Auth System Error:', errData);
+
+                    if (authRes.status === 404 && !isSignup) {
+                        alert('Account not found. Please sign up on the main website.');
+                    } else if (authRes.status === 409 && isSignup) {
+                        alert('User already exists. Please login instead.');
+                    } else {
+                        alert(`Authentication Error: ${errData.message || 'System error'}.`);
+                    }
+                    setLoading(false);
+                    return; // Stop execution
+                }
+
             } catch (err) {
-                console.error('Background Sync Network Error', err);
-                alert('Connection Error with Login Server. Please try again.');
+                console.error('Auth Network Error', err);
+                alert('Connection Error with Auth Server. Please try again.');
+                setLoading(false);
+                return;
             }
 
             setTenantType('MARKETPLACE'); // Default role
