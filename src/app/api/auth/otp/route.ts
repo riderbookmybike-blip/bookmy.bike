@@ -22,15 +22,17 @@ export async function POST(request: NextRequest) {
         const formattedPhone = phone.startsWith('91') ? phone : `91${phone}`;
 
         // MSG91 Credentials
-        const AUTH_KEY = process.env.MSG91_AUTH_KEY || '477985Az5dYpYUze6965fd67P1';
-        const TEMPLATE_ID = '6966079a8e1222c164607d3'; // OTP Template
+        // MSG91 Credentials (Restored from working Client Widget)
+        const AUTH_KEY = process.env.MSG91_AUTH_KEY || '477985T3uAd4stn6963525fP1';
+        // const TEMPLATE_ID = '6966079a8e1222c164607d3'; // Commenting out to check if Default works better (like send-otp route)
         const OTP_EXPIRY = 15; // minutes
 
         console.log(`[Server OTP] Action: ${action}, Phone: ${formattedPhone}`);
 
         if (action === 'send') {
             // Send OTP using MSG91's OTP API with Template ID
-            const url = `https://api.msg91.com/api/v5/otp?authkey=${AUTH_KEY}&template_id=${TEMPLATE_ID}&mobile=${formattedPhone}&otp_length=4&otp_expiry=${OTP_EXPIRY}`;
+            // Send OTP using MSG91's OTP API (Implicit Template ID, referencing send-otp/route.ts)
+            const url = `https://api.msg91.com/api/v5/otp?authkey=${AUTH_KEY}&mobile=${formattedPhone}&otp_length=4&otp_expiry=${OTP_EXPIRY}`;
 
             const response = await fetch(url, {
                 method: 'POST',
