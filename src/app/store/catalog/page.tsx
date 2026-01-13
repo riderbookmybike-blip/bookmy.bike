@@ -7,8 +7,19 @@ import { CatalogMobile } from '@/components/store/CatalogMobile';
 import { CatalogTablet } from '@/components/store/CatalogTablet';
 import { CatalogDesktop } from '@/components/store/CatalogDesktop';
 
+import { useCatalog } from '@/hooks/useCatalog';
+
 function CatalogContent() {
-    const filters = useCatalogFilters();
+    const { items, isLoading } = useCatalog();
+    const filters = useCatalogFilters(items);
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-white dark:bg-[#020617] text-slate-900 dark:text-white text-center pt-20">
+                Loading Catalog Data...
+            </div>
+        );
+    }
 
     return (
         <DeviceLayout
@@ -21,7 +32,13 @@ function CatalogContent() {
 
 export default function CatalogPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen bg-white dark:bg-[#020617] text-slate-900 dark:text-white text-center pt-20">Loading Catalog...</div>}>
+        <Suspense
+            fallback={
+                <div className="min-h-screen bg-white dark:bg-[#020617] text-slate-900 dark:text-white text-center pt-20">
+                    Loading Catalog...
+                </div>
+            }
+        >
             <CatalogContent />
         </Suspense>
     );
