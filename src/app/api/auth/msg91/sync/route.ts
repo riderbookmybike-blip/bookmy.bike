@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
         const password = `MSG91_${phone}_${process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(0, 8)}`; // Secure-ish password bypass
 
         // 1. Check if User Exists in Supabase Auth
-        const { data: existingUsers } = await adminClient.auth.admin.listUsers();
+        const { data: existingUsers } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 });
 
         // Find user by phone OR synthesized email
         const foundUser = existingUsers?.users.find(

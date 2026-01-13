@@ -86,7 +86,6 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
             setLoginError(null);
             setIsStaff(false);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen, ROOT_DOMAIN]);
 
     const detectLocation = () => {
@@ -95,11 +94,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
             navigator.geolocation.getCurrentPosition(
                 async position => {
                     const { latitude, longitude } = position.coords;
-                    const result = await getSmartPincode(
-                        latitude,
-                        longitude,
-                        process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY
-                    );
+                    const result = await getSmartPincode(latitude, longitude, process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY);
 
                     setLocation(prev => ({
                         ...prev,
@@ -147,7 +142,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                 body: JSON.stringify({
                     phone: method === 'PHONE' ? phoneVal : undefined,
                     email: method === 'EMAIL' ? identifier : undefined,
-                    tenantId
+                    tenantId,
                 }),
             });
             const checkData = await checkRes.json();
@@ -285,35 +280,39 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
 
     const completeLogin = async (user: AuthUser) => {
         const isEmail = identifier.includes('@');
-        const phoneVal = !isEmail ? identifier.replace(/\D/g, '') : (user?.phone || '');
-        const emailVal = isEmail ? identifier : (user?.email || '');
+        const phoneVal = !isEmail ? identifier.replace(/\D/g, '') : user?.phone || '';
+        const emailVal = isEmail ? identifier : user?.email || '';
 
         try {
-            let syncRes;
+            let syncData: { role?: string; displayName?: string } = {};
+
             if (step === 'SIGNUP') {
-                syncRes = await fetch('/api/auth/signup', {
+                const syncRes = await fetch('/api/auth/signup', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         phone: phoneVal,
                         email: emailVal,
                         displayName: fullName || `Rider ${phoneVal.slice(-4)}`,
-                        pincode: location.pincode
+                        pincode: location.pincode,
                     }),
                 });
-            } else {
-                syncRes = await fetch('/api/auth/msg91/sync', {
+                syncData = await syncRes.json();
+            } else if (authMethod === 'PHONE') {
+                // PHONE: Sync profile/role (migration handled in verify, but this refreshes state)
+                // Note: 'verify' already returns user/session, so strict dependence on sync is reduced.
+                // We mainly keep this if sync returns specific role data not present in verify.
+                const syncRes = await fetch('/api/auth/msg91/sync', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         phone: phoneVal,
-                        email: emailVal,
-                        pincode: isStaff ? null : location.pincode // Skip location sync for staff
+                        pincode: isStaff ? null : location.pincode,
                     }),
                 });
+                syncData = await syncRes.json();
             }
-
-            const syncData = await syncRes.json();
+            // EMAIL: No sync needed, user is already authenticated via password
 
             // Finalize State
             const isMarketplaceDomain =
@@ -322,9 +321,14 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                 window.location.hostname === 'localhost';
 
             const finalRole = detectedRole || syncData.role || 'BMB_USER';
-            setTenantType('MARKETPLACE');
-            localStorage.setItem('user_name', syncData.displayName || fullName || user?.user_metadata?.full_name || 'User');
-            localStorage.setItem('tenant_type', isMarketplaceDomain ? 'MARKETPLACE' : 'DEALER');
+            const finalTenantType = isMarketplaceDomain ? 'MARKETPLACE' : 'DEALER'; // Fixed Tenant Type Logic
+
+            setTenantType(finalTenantType);
+            localStorage.setItem(
+                'user_name',
+                syncData.displayName || fullName || user?.user_metadata?.full_name || 'User'
+            );
+            localStorage.setItem('tenant_type', finalTenantType);
             localStorage.setItem('user_role', finalRole);
             localStorage.setItem('active_role', finalRole);
 
@@ -365,24 +369,37 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                     <div className="space-y-4">
                         <div className="flex items-center gap-3">
                             <div className={`h-0.5 w-12 rounded-full ${isStaff ? 'bg-blue-600' : 'bg-slate-300'}`} />
-                            <span className={`text-[10px] font-black uppercase tracking-[0.3em] italic ${isStaff ? 'text-blue-600' : 'text-slate-400'}`}>
+                            <span
+                                className={`text-[10px] font-black uppercase tracking-[0.3em] italic ${isStaff ? 'text-blue-600' : 'text-slate-400'}`}
+                            >
                                 {isStaff ? 'System Uplink' : 'Account Access'}
                             </span>
                         </div>
-                        <h2 className={`font-black uppercase tracking-tighter italic leading-[0.9] text-slate-900 dark:text-white ${variant === 'TERMINAL' ? 'text-5xl' : 'text-4xl'}`}>
-                            {step === 'INITIAL' || step === 'SIGNUP' ? (
-                                isStaff ? 'Initialize Access' : (step === 'SIGNUP' ? 'Create Account' : 'Welcome Back')
-                            ) : 'Verify Protocol'}
+                        <h2
+                            className={`font-black uppercase tracking-tighter italic leading-[0.9] text-slate-900 dark:text-white ${variant === 'TERMINAL' ? 'text-5xl' : 'text-4xl'}`}
+                        >
+                            {step === 'INITIAL' || step === 'SIGNUP'
+                                ? isStaff
+                                    ? 'Initialize Access'
+                                    : step === 'SIGNUP'
+                                      ? 'Create Account'
+                                      : 'Welcome Back'
+                                : 'Verify Protocol'}
                         </h2>
                         <p className="text-xs text-slate-500 font-medium tracking-wide leading-relaxed max-w-[280px]">
                             {step === 'INITIAL'
-                                ? (isStaff ? 'Staff authentication required for administrative access.' : 'Enter your mobile number or corporate email to continue.')
+                                ? isStaff
+                                    ? 'Staff authentication required for administrative access.'
+                                    : 'Enter your mobile number or corporate email to continue.'
                                 : step === 'SIGNUP'
-                                    ? 'Join the community of riders. Start your journey.'
-                                    : `Code sent to your ${authMethod === 'PHONE' ? 'mobile' : 'email'}.`}
+                                  ? 'Join the community of riders. Start your journey.'
+                                  : `Code sent to your ${authMethod === 'PHONE' ? 'mobile' : 'email'}.`}
                         </p>
                     </div>
-                    <button onClick={onClose} className="p-3 hover:bg-slate-100 rounded-2xl transition-all group active:scale-90 self-start">
+                    <button
+                        onClick={onClose}
+                        className="p-3 hover:bg-slate-100 rounded-2xl transition-all group active:scale-90 self-start"
+                    >
                         <X size={24} className="text-slate-300 group-hover:text-slate-900 transition-colors" />
                     </button>
                 </div>
@@ -395,7 +412,9 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                             {loginError && (
                                 <div className="mx-2 mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
                                     <AlertCircle size={18} className="text-red-500 shrink-0" />
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-red-500 italic">{loginError}</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-red-500 italic">
+                                        {loginError}
+                                    </p>
                                 </div>
                             )}
 
@@ -422,7 +441,11 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                         )}
                                         <input
                                             type="text"
-                                            placeholder={showEmailPath || !isMarketplace ? "Mobile or Corporate Email" : "Enter Mobile Number"}
+                                            placeholder={
+                                                showEmailPath || !isMarketplace
+                                                    ? 'Mobile or Corporate Email'
+                                                    : 'Enter Mobile Number'
+                                            }
                                             value={identifier}
                                             onChange={e => setIdentifier(e.target.value)}
                                             className="bg-transparent border-none outline-none text-lg font-bold text-slate-900 w-full placeholder:text-slate-300"
@@ -483,10 +506,11 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                 else if (step === 'PASSWORD') handlePasswordLogin();
                             }}
                             disabled={loading || identifier.length < 3}
-                            className={`w-full py-6 rounded-[32px] text-xs font-black uppercase tracking-[0.3em] italic flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-[0.98] ${loading ? 'bg-blue-600/50 cursor-wait' : 'bg-slate-900 dark:bg-blue-600'
-                                } text-white disabled:opacity-50`}
+                            className={`w-full py-6 rounded-[32px] text-xs font-black uppercase tracking-[0.3em] italic flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-[0.98] ${
+                                loading ? 'bg-blue-600/50 cursor-wait' : 'bg-slate-900 dark:bg-blue-600'
+                            } text-white disabled:opacity-50`}
                         >
-                            {loading ? 'Processing...' : (step === 'INITIAL' ? 'Continue' : 'Verify')}
+                            {loading ? 'Processing...' : step === 'INITIAL' ? 'Continue' : 'Verify'}
                             <ArrowRight size={16} />
                         </button>
 
@@ -499,7 +523,10 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                 >
                                     {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend OTP'}
                                 </button>
-                                <button onClick={() => setStep('INITIAL')} className="text-[10px] font-black text-slate-400 hover:text-blue-600 uppercase tracking-widest">
+                                <button
+                                    onClick={() => setStep('INITIAL')}
+                                    className="text-[10px] font-black text-slate-400 hover:text-blue-600 uppercase tracking-widest"
+                                >
                                     Use Different Account
                                 </button>
                             </div>
@@ -509,7 +536,9 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
 
                 <div className="p-10 border-t border-slate-100 flex items-center justify-between opacity-50 mt-auto">
                     <div className="flex items-center gap-3">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 italic">Secure Endpoint</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 italic">
+                            Secure Endpoint
+                        </span>
                     </div>
                 </div>
             </div>
