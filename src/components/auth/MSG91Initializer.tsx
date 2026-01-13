@@ -8,7 +8,7 @@ export default function MSG91Initializer() {
         // Define configuration on window
         const config = {
             widgetId: '356a61726564303832343238',
-            tokenAuth: '451395A5xCupqOIY6966490cP1', // bmbauthphone key
+            tokenAuth: '451395TUHQUl3H696647feP1', // Widget Token (NOT API Key)
             identifier: '', // Optional
             exposeMethods: true,
             success: (data: unknown) => {
