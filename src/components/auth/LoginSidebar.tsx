@@ -61,7 +61,13 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
         if (!projectRef) return;
 
         const baseName = `sb-${projectRef}-auth-token`;
-        const cookieOptions = 'path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+        const isLocalhost =
+            window.location.hostname.includes('localhost') ||
+            window.location.hostname.startsWith('127.') ||
+            window.location.hostname.startsWith('0.0.0.0');
+        const domainAttr = isLocalhost ? '' : `; domain=.${ROOT_DOMAIN}`;
+        const secureAttr = isLocalhost ? '' : '; Secure';
+        const cookieOptions = `path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secureAttr}${domainAttr}`;
 
         // Clear all potential cookie variants
         ['', '.0', '.1', '.2'].forEach(suffix => {
