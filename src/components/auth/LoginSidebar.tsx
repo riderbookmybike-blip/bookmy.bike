@@ -130,7 +130,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
             setShowEmailPath(isInTenantPath); // Default to Email for tenant portals
 
             // Background location capture for marketplace only
-            if (isMarketplaceDomain) {
+            if (!isInTenantPath) {
                 detectLocation();
             }
 
