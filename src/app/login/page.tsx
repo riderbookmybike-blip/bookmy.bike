@@ -30,9 +30,41 @@ export default function LoginPage() {
         return false;
     });
 
-    // Branding Defaults
-    const brandName = tenantConfig?.brand?.displayName || tenantName || 'BookMyBike';
-    const primaryColor = tenantConfig?.brand?.primaryColor || '#4F46E5';
+    // Independent Tenant Branding Fetch (doesn't rely on context)
+    const [localBrandName, setLocalBrandName] = useState<string | null>(null);
+    const [localPrimaryColor, setLocalPrimaryColor] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchBranding = async () => {
+            const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+            const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
+            let subdomain = '';
+
+            if (hostname.endsWith(`.${ROOT_DOMAIN}`)) {
+                subdomain = hostname.replace(`.${ROOT_DOMAIN}`, '');
+            } else if (hostname.includes('localhost')) {
+                const parts = hostname.split('.');
+                if (parts.length > 1 && parts[0] !== 'www') subdomain = parts[0];
+            }
+
+            if (subdomain && subdomain !== 'www' && subdomain !== 'we') {
+                const { data: tenant } = await supabase
+                    .from('tenants')
+                    .select('name, config')
+                    .eq('subdomain', subdomain)
+                    .maybeSingle();
+                if (tenant) {
+                    setLocalBrandName(tenant.name);
+                    setLocalPrimaryColor(tenant.config?.brand?.primaryColor || null);
+                }
+            }
+        };
+        fetchBranding();
+    }, [supabase]);
+
+    // Branding Defaults - Prefer local fetch, then context, then fallback
+    const brandName = localBrandName || tenantConfig?.brand?.displayName || tenantName || 'BookMyBike';
+    const primaryColor = localPrimaryColor || tenantConfig?.brand?.primaryColor || '#4F46E5';
     const logoUrl = tenantConfig?.brand?.logoUrl;
 
     // Load saved phone on mount
