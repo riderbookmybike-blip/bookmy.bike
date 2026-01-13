@@ -120,7 +120,18 @@ export async function POST(req: NextRequest) {
                             return cookieStore.getAll();
                         },
                         setAll(cookiesToSet) {
-                            cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
+                            cookiesToSet.forEach(({ name, value, options }) => {
+                                // CRITICAL: Override domain to enable cross-subdomain access
+                                const finalOptions = {
+                                    ...options,
+                                    domain: cookieDomain,
+                                    secure: isSecure,
+                                    sameSite: 'lax' as const,
+                                    httpOnly: true,
+                                    path: '/',
+                                };
+                                cookieStore.set(name, value, finalOptions);
+                            });
                         },
                     },
                 }
