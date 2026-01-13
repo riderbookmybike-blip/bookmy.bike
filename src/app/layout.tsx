@@ -33,8 +33,6 @@ export async function generateMetadata(): Promise<Metadata> {
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { TenantProvider } from "@/lib/tenant/tenantContext";
 
-import MSG91Initializer from "@/components/auth/MSG91Initializer";
-
 import { Suspense } from 'react';
 import AnalyticsProvider from '@/components/analytics/AnalyticsProvider';
 
@@ -53,7 +51,7 @@ export default function RootLayout({
           <TenantProvider>
             <Suspense fallback={null}>
               <AnalyticsProvider>
-                <MSG91Initializer />
+                {/* MSG91 Widget Removed: Server-side API used exclusively */}
                 {children}
               </AnalyticsProvider>
             </Suspense>
