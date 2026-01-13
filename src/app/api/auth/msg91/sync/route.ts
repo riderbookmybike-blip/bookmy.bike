@@ -16,9 +16,15 @@ export async function POST(req: NextRequest) {
 
         // 1. Check if User Exists in Supabase Auth
         const { data: existingUsers, error: listError } = await adminClient.auth.admin.listUsers();
-        let userId = existingUsers?.users.find(u => u.phone === formattedPhone || u.email === email)?.id;
 
-        if (!userId) {
+        // Find user by phone OR synthesized email
+        const foundUser = existingUsers?.users.find(u =>
+            u.phone === formattedPhone ||
+            u.phone === phone || // Check unformatted too just in case
+            u.email === email
+        );
+
+        if (!foundUser) {
             // 2. User MUST exist for Login flow
             return NextResponse.json({
                 success: false,
@@ -27,10 +33,14 @@ export async function POST(req: NextRequest) {
             }, { status: 404 });
         }
 
+        const userId = foundUser.id;
+        const actualEmail = foundUser.email || email; // Use real email if exists, else synthesized
+
         // 3. Update Last Seen (Optional) - No Profiler Overwrite
 
         // 3.5 MIGRATION FIX: Ensure Password is Set for Legacy Users
-        // Old users created via Phone Auth won't have this password. We set it now.
+        // We set the synthesized password for ANY user logging in via Phone, 
+        // ensuring we can sign them in programmatically even if they are Gmail users.
         const { error: updateError } = await adminClient.auth.admin.updateUserById(
             userId,
             {
@@ -42,13 +52,12 @@ export async function POST(req: NextRequest) {
 
         if (updateError) {
             console.error('Migration Error:', updateError);
-            // Verify if it's "New password should be different" error, ignoring if so.
         }
 
         // 4. GENERATE SESSION
-        // Since we synthesized the password, we can use it to sign in on behalf of the user
+        // Use the ACTUAL email to sign in
         const { data: signInData, error: signInError } = await adminClient.auth.signInWithPassword({
-            email: email,
+            email: actualEmail,
             password: password
         });
 
