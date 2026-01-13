@@ -362,6 +362,13 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                     const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL?.split('.')[0].split('//')[1];
                     if (projectRef) {
                         const cookieName = `sb-${projectRef}-auth-token`;
+
+                        // 1. CLEAR POTENTIAL ZOMBIE COOKIES (Chunks)
+                        document.cookie = `${cookieName}.0=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure`;
+                        document.cookie = `${cookieName}.1=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure`;
+                        document.cookie = `${cookieName}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure`;
+
+                        // 2. WRITE NEW CLEAN COOKIE
                         const tokenStr = JSON.stringify([
                             session.access_token,
                             session.refresh_token,
