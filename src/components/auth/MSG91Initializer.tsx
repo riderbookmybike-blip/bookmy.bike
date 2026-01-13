@@ -4,20 +4,19 @@ import Script from 'next/script';
 import { useEffect } from 'react';
 
 export default function MSG91Initializer() {
-
     useEffect(() => {
         // Define configuration on window
         const config = {
-            widgetId: "356a61726564303832343238",
-            tokenAuth: "123123123", // Validated on server
-            identifier: "", // Optional
+            widgetId: '356a61726564303832343238',
+            tokenAuth: '123123123', // Validated on server
+            identifier: '', // Optional
             exposeMethods: true,
-            success: (data: any) => {
+            success: (data: unknown) => {
                 console.log('[MSG91] Widget Success:', data);
             },
-            failure: (error: any) => {
+            failure: (error: unknown) => {
                 console.log('[MSG91] Widget Failure:', error);
-            }
+            },
         };
 
         // Assign to window
