@@ -21,7 +21,8 @@ export async function POST(request: NextRequest) {
         // Configuration
         // FALLBACK UPDATED: "vercelotp" Key (IP Security OFF) - 13 Jan 2026
         const AUTH_KEY = process.env.MSG91_AUTH_KEY || '477985AKrYM3Z2qGB69663f79P1';
-        const TEMPLATE_ID = process.env.MSG91_TEMPLATE_ID || '6966079a8e1222c164607d3';
+        // FALLBACK UPDATED: Verified by User (Fixed Typo: 8e -> 8ee) - 13 Jan 2026
+        const TEMPLATE_ID = process.env.MSG91_TEMPLATE_ID || '6966079a8ee1222c164607d3';
 
         if (!AUTH_KEY) {
             console.error('[MSG91] Critical: Missing MSG91_AUTH_KEY env variable');
