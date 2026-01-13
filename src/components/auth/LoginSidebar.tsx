@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import React, { useState, useEffect } from 'react';
-import { Phone, ArrowRight, Lock, User, X, ShieldCheck, CheckCircle2, AlertCircle, Globe } from 'lucide-react';
+import { Phone, ArrowRight, Lock, User, X, AlertCircle, Globe, RefreshCcw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { createClient } from '@/lib/supabase/client';
@@ -17,17 +17,17 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
     const router = useRouter();
     const { setTenantType, tenantId } = useTenant();
     const [loginError, setLoginError] = useState<string | null>(null);
-    const [step, setStep] = useState<'INITIAL' | 'SIGNUP' | 'OTP' | 'PASSWORD'>('INITIAL');
+    const [step, setStep] = useState<'INITIAL' | 'SIGNUP' | 'OTP'>('INITIAL');
     const [authMethod, setAuthMethod] = useState<'PHONE' | 'EMAIL'>('PHONE');
     const [isMarketplace, setIsMarketplace] = useState(true);
 
     const [identifier, setIdentifier] = useState('');
-    const [password, setPassword] = useState('');
     const [otp, setOtp] = useState('');
     const [fullName, setFullName] = useState('');
     const [loading, setLoading] = useState(false);
     const [resendTimer, setResendTimer] = useState(0);
-    const [showEmailPath, setShowEmailPath] = useState(false); // Enable email for Staff on Root
+    const [showEmailPath, setShowEmailPath] = useState(false); // Enable email for Staff on Root or explicit selection
+    const [otpFallbackVisible, setOtpFallbackVisible] = useState(false);
 
     // Existence Info
     const [detectedRole, setDetectedRole] = useState<string | null>(null);
@@ -61,9 +61,11 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
             interval = setInterval(() => {
                 setResendTimer(prev => prev - 1);
             }, 1000);
+        } else if (step === 'OTP' && resendTimer === 0) {
+            setOtpFallbackVisible(true);
         }
         return () => clearInterval(interval);
-    }, [resendTimer]);
+    }, [resendTimer, step]);
 
     useEffect(() => {
         if (isOpen) {
@@ -73,6 +75,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                 hostname === ROOT_DOMAIN || hostname === `www.${ROOT_DOMAIN}` || hostname === 'localhost';
 
             setIsMarketplace(isMarketplaceDomain);
+            setShowEmailPath(!isMarketplaceDomain); // Default to Email UI for CRM/AUMS
 
             // Background location capture for marketplace only
             if (isMarketplaceDomain) {
@@ -81,10 +84,10 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
 
             setIdentifier('');
             setOtp('');
-            setPassword('');
             setFullName('');
             setLoginError(null);
             setIsStaff(false);
+            setOtpFallbackVisible(false);
         }
     }, [isOpen, ROOT_DOMAIN]);
 
@@ -173,16 +176,16 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                 }
                 setStep('SIGNUP');
             } else {
-                if (staffDetected && method === 'EMAIL') {
-                    setStep('PASSWORD');
+                // Route everyone to OTP
+                if (method === 'EMAIL') {
+                    await handleSendEmailOtp(identifier);
                 } else {
-                    handleSendPhoneOtp(phoneVal);
+                    await handleSendPhoneOtp(phoneVal);
                 }
             }
         } catch (err) {
             console.error('Check User Error:', err);
             setLoginError('Network Error.');
-        } finally {
             setLoading(false);
         }
     };
@@ -202,11 +205,40 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
             if (data.success) {
                 setStep('OTP');
                 setResendTimer(30);
+                setOtpFallbackVisible(false);
             } else {
                 setLoginError(data.message || 'Failed to send OTP.');
             }
         } catch (err) {
             console.error('OTP Send Error:', err);
+            setLoginError('Connection failed.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSendEmailOtp = async (email: string) => {
+        setLoading(true);
+        try {
+            const supabase = createClient();
+            const { error } = await supabase.auth.signInWithOtp({
+                email,
+                options: {
+                    shouldCreateUser: false, // Ensure we don't implicitly create users here if not desired
+                },
+            });
+
+            if (error) {
+                setLoginError(error.message);
+                setLoading(false);
+                return;
+            }
+
+            setStep('OTP');
+            setResendTimer(30);
+            setOtpFallbackVisible(false);
+        } catch (err) {
+            console.error('Email OTP Send Error:', err);
             setLoginError('Connection failed.');
         } finally {
             setLoading(false);
@@ -221,50 +253,43 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
         const phoneVal = identifier.replace(/\D/g, '');
 
         try {
-            const res = await fetch('/api/auth/msg91/verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone: phoneVal, otp }),
-            });
+            const supabase = createClient();
 
-            const verifyData = await res.json();
-            if (verifyData.success && verifyData.session) {
-                const supabase = createClient();
-                await supabase.auth.setSession(verifyData.session);
-                await completeLogin(verifyData.user);
+            if (authMethod === 'PHONE') {
+                const res = await fetch('/api/auth/msg91/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: phoneVal, otp }),
+                });
+
+                const verifyData = await res.json();
+                if (verifyData.success && verifyData.session) {
+                    await supabase.auth.setSession(verifyData.session);
+                    await completeLogin(verifyData.user);
+                } else {
+                    setLoginError(verifyData.message || 'Verification failed.');
+                    setOtpFallbackVisible(true);
+                }
             } else {
-                setLoginError(verifyData.message || 'Verification failed.');
+                // Email Verification
+                const { data, error } = await supabase.auth.verifyOtp({
+                    email: identifier,
+                    token: otp,
+                    type: 'email',
+                });
+
+                if (error) {
+                    setLoginError(error.message);
+                    setOtpFallbackVisible(true);
+                } else if (data.session) {
+                    await supabase.auth.setSession(data.session);
+                    await completeLogin(data.user);
+                }
             }
         } catch (err) {
             console.error('OTP Verify Error:', err);
             setLoginError('Service unavailable.');
         } finally {
-            setLoading(false);
-        }
-    };
-
-    const handlePasswordLogin = async () => {
-        if (!password) return;
-        setLoading(true);
-        setLoginError(null);
-
-        try {
-            const supabase = createClient();
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email: identifier,
-                password,
-            });
-
-            if (error) {
-                setLoginError(error.message);
-                setLoading(false);
-            } else if (data.session) {
-                await supabase.auth.setSession(data.session);
-                await completeLogin(data.user);
-            }
-        } catch (err) {
-            console.error('Password Login Error:', err);
-            setLoginError('Authentication failed.');
             setLoading(false);
         }
     };
@@ -293,15 +318,12 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                     body: JSON.stringify({
                         phone: phoneVal,
                         email: emailVal,
-                        displayName: fullName || `Rider ${phoneVal.slice(-4)}`,
+                        displayName: fullName || `Rider ${phoneVal?.slice(-4) || 'User'}`,
                         pincode: location.pincode,
                     }),
                 });
                 syncData = await syncRes.json();
             } else if (authMethod === 'PHONE') {
-                // PHONE: Sync profile/role (migration handled in verify, but this refreshes state)
-                // Note: 'verify' already returns user/session, so strict dependence on sync is reduced.
-                // We mainly keep this if sync returns specific role data not present in verify.
                 const syncRes = await fetch('/api/auth/msg91/sync', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -312,7 +334,6 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                 });
                 syncData = await syncRes.json();
             }
-            // EMAIL: No sync needed, user is already authenticated via password
 
             // Finalize State
             const isMarketplaceDomain =
@@ -321,7 +342,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                 window.location.hostname === 'localhost';
 
             const finalRole = detectedRole || syncData.role || 'BMB_USER';
-            const finalTenantType = isMarketplaceDomain ? 'MARKETPLACE' : 'DEALER'; // Fixed Tenant Type Logic
+            const finalTenantType = isMarketplaceDomain ? 'MARKETPLACE' : 'DEALER';
 
             setTenantType(finalTenantType);
             localStorage.setItem(
@@ -376,7 +397,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                             </span>
                         </div>
                         <h2
-                            className={`font-black uppercase tracking-tighter italic leading-[0.9] text-slate-900 dark:text-white ${variant === 'TERMINAL' ? 'text-5xl' : 'text-4xl'}`}
+                            className={`font-black uppercase tracking-tighter italic leading-[0.9] text-slate-900 dark:text-flow-white ${variant === 'TERMINAL' ? 'text-5xl' : 'text-4xl'}`}
                         >
                             {step === 'INITIAL' || step === 'SIGNUP'
                                 ? isStaff
@@ -434,7 +455,9 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                         </div>
                                     )}
                                     <div className="flex items-center px-6 py-4">
-                                        {showEmailPath || !isMarketplace ? (
+                                        {authMethod === 'EMAIL' ||
+                                        (!isMarketplace && showEmailPath) ||
+                                        identifier.includes('@') ? (
                                             <Globe size={18} className="text-slate-400 mr-6" />
                                         ) : (
                                             <Phone size={18} className="text-slate-400 mr-6" />
@@ -453,13 +476,16 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                             disabled={step === 'SIGNUP'}
                                         />
                                     </div>
+
+                                    {/* Fallback Switcher for Initial Step if needed? No, logic handles types. 
+                                        But we can add a helper for Marketplace users. */}
                                     {isMarketplace && step === 'INITIAL' && !showEmailPath && (
                                         <div className="px-6 pb-4">
                                             <button
                                                 onClick={() => setShowEmailPath(true)}
                                                 className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-blue-600 transition-colors"
                                             >
-                                                Are you Staff? Login with Email
+                                                Use Email ID
                                             </button>
                                         </div>
                                     )}
@@ -467,38 +493,28 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                             ) : (
                                 <>
                                     {step === 'OTP' && (
-                                        <div className="flex items-center px-6 py-4">
-                                            <Lock size={18} className="text-slate-400 mr-6" />
-                                            <input
-                                                type="tel"
-                                                placeholder="Enter 4-digit code"
-                                                value={otp}
-                                                onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                                                className="w-full bg-transparent text-lg font-bold tracking-widest focus:outline-none"
-                                                autoFocus
-                                            />
-                                        </div>
-                                    )}
-                                    {step === 'PASSWORD' && (
                                         <>
                                             <div className="flex items-center px-6 py-4">
                                                 <Lock size={18} className="text-slate-400 mr-6" />
                                                 <input
-                                                    type="password"
-                                                    placeholder="Enter Password"
-                                                    value={password}
-                                                    onChange={e => setPassword(e.target.value)}
-                                                    className={`w-full bg-transparent text-lg font-bold focus:outline-none ${isStaff || !isMarketplace ? 'text-white' : 'text-slate-900'}`}
+                                                    type="tel"
+                                                    placeholder={
+                                                        authMethod === 'PHONE'
+                                                            ? 'Enter 4-digit code'
+                                                            : 'Enter 6-digit code'
+                                                    }
+                                                    value={otp}
+                                                    onChange={e =>
+                                                        setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))
+                                                    }
+                                                    className={`w-full bg-transparent text-lg font-bold tracking-widest focus:outline-none ${isStaff || !isMarketplace ? 'text-white placeholder:text-slate-500' : 'text-slate-900 placeholder:text-slate-300'}`}
                                                     autoFocus
                                                 />
                                             </div>
-                                            <div className="px-6 pb-4 flex justify-end">
-                                                <Link
-                                                    href="/forgot-password"
-                                                    className="text-[10px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300 transition-colors"
-                                                >
-                                                    Forgot password?
-                                                </Link>
+                                            <div className="px-6 pb-4 text-center">
+                                                <span className="text-[10px] font-bold text-slate-400">
+                                                    Sent to {identifier}
+                                                </span>
                                             </div>
                                         </>
                                     )}
@@ -511,9 +527,9 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                         <button
                             onClick={() => {
                                 if (step === 'INITIAL') handleCheckUser();
-                                else if (step === 'SIGNUP') handleSendPhoneOtp();
+                                else if (step === 'SIGNUP')
+                                    authMethod === 'EMAIL' ? handleSendEmailOtp(identifier) : handleSendPhoneOtp();
                                 else if (step === 'OTP') handleLogin();
-                                else if (step === 'PASSWORD') handlePasswordLogin();
                             }}
                             disabled={loading || identifier.length < 3}
                             className={`w-full py-6 rounded-[32px] text-xs font-black uppercase tracking-[0.3em] italic flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-[0.98] ${
@@ -527,7 +543,9 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                         {step === 'OTP' && (
                             <div className="flex flex-col gap-3 items-center">
                                 <button
-                                    onClick={() => handleSendPhoneOtp()}
+                                    onClick={() =>
+                                        authMethod === 'EMAIL' ? handleSendEmailOtp(identifier) : handleSendPhoneOtp()
+                                    }
                                     disabled={loading || resendTimer > 0}
                                     className="text-[10px] font-black text-blue-600 disabled:text-slate-400 uppercase tracking-widest"
                                 >
@@ -539,6 +557,26 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                 >
                                     Use Different Account
                                 </button>
+
+                                {otpFallbackVisible && (
+                                    <div className="pt-2 animate-in fade-in slide-in-from-bottom-2">
+                                        <button
+                                            onClick={() => {
+                                                setStep('INITIAL');
+                                                setIdentifier('');
+                                                // Toggle specific help text or just reset?
+                                                // User wants "Try Email OTP" or "Try Phone OTP".
+                                                // Realistically that means starting over with a different identifier.
+                                            }}
+                                            className="flex items-center gap-2 text-[10px] font-black text-amber-500 hover:text-amber-600 uppercase tracking-widest p-2 bg-amber-500/10 rounded-lg"
+                                        >
+                                            <RefreshCcw size={12} />
+                                            {authMethod === 'PHONE'
+                                                ? 'Try Email Verification'
+                                                : 'Try Phone Verification'}
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
