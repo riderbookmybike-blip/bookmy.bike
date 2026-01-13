@@ -96,16 +96,7 @@ export async function POST(req: NextRequest) {
                             return cookieStore.getAll();
                         },
                         setAll(cookiesToSet) {
-                            cookiesToSet.forEach(({ name, value, options }) => {
-                                const cookieOptions = {
-                                    ...options,
-                                    path: '/',
-                                    sameSite: 'lax' as const,
-                                    secure: isSecure,
-                                    ...(cookieDomain ? { domain: cookieDomain } : {}),
-                                };
-                                cookieStore.set(name, value, cookieOptions);
-                            });
+                            cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
                         },
                     },
                 }
