@@ -104,6 +104,28 @@ export async function proxy(request: NextRequest) {
                     `[Proxy] Debug: Cookies present:`,
                     request.cookies.getAll().map(c => c.name)
                 );
+
+                // ZOMBIE COOKIE KILLER: Clear potentially corrupt chunked cookies
+                const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL?.split('.')[0].split('//')[1];
+                if (projectRef) {
+                    const baseName = `sb-${projectRef}-auth-token`;
+                    const loginUrl = new URL('/login', request.url);
+                    const redirectResponse = NextResponse.redirect(loginUrl);
+
+                    // Force-expire all auth token variants
+                    ['', '.0', '.1', '.2'].forEach(suffix => {
+                        redirectResponse.cookies.set(`${baseName}${suffix}`, '', {
+                            path: '/',
+                            expires: new Date(0),
+                            httpOnly: true,
+                            secure: true,
+                            sameSite: 'lax',
+                        });
+                    });
+
+                    return redirectResponse;
+                }
+
                 const loginUrl = new URL('/login', request.url);
                 return NextResponse.redirect(loginUrl);
             }
