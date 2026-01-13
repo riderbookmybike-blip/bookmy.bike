@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import { Session } from '@supabase/supabase-js';
 import { Phone, ArrowRight, Lock, User, X, AlertCircle, Globe, RefreshCcw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTenant } from '@/lib/tenant/tenantContext';
@@ -264,7 +265,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                 const verifyData = await res.json();
                 if (verifyData.success && verifyData.session) {
                     await supabase.auth.setSession(verifyData.session);
-                    await completeLogin(verifyData.user);
+                    await completeLogin(verifyData.user, verifyData.session);
                 } else {
                     setLoginError(verifyData.message || 'Verification failed.');
                     setOtpFallbackVisible(true);
@@ -302,7 +303,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
         };
     }
 
-    const completeLogin = async (user: AuthUser) => {
+    const completeLogin = async (user: AuthUser, session?: Session) => {
         const isEmail = identifier.includes('@');
         const phoneVal = !isEmail ? identifier.replace(/\D/g, '') : user?.phone || '';
         const emailVal = isEmail ? identifier : user?.email || '';
@@ -355,6 +356,23 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
             if (isMarketplaceDomain) {
                 window.location.reload();
             } else {
+                // FALLBACK: Manually ensure cookie is set for the current domain before reload
+                // This helps if Supabase client hasn't flushed to storage/cookie yet
+                if (session?.access_token) {
+                    const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL?.split('.')[0].split('//')[1];
+                    if (projectRef) {
+                        const cookieName = `sb-${projectRef}-auth-token`;
+                        const tokenStr = JSON.stringify([
+                            session.access_token,
+                            session.refresh_token,
+                            null,
+                            null,
+                            session.expires_at,
+                        ]);
+                        document.cookie = `${cookieName}=${encodeURIComponent(tokenStr)}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax; Secure`;
+                    }
+                }
+
                 // Force hard navigation to ensure cookies are sent to server middleware
                 window.location.href = '/dashboard';
             }
