@@ -1,5 +1,5 @@
 'use client';
-
+import Link from 'next/link';
 import React, { useState, useEffect } from 'react';
 import { Phone, ArrowRight, Lock, User, X, ShieldCheck, CheckCircle2, AlertCircle, Globe } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -448,7 +448,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                             }
                                             value={identifier}
                                             onChange={e => setIdentifier(e.target.value)}
-                                            className="bg-transparent border-none outline-none text-lg font-bold text-slate-900 w-full placeholder:text-slate-300"
+                                            className={`bg-transparent border-none outline-none text-lg font-bold w-full ${isStaff || !isMarketplace ? 'text-white placeholder:text-slate-500' : 'text-slate-900 placeholder:text-slate-300'}`}
                                             autoFocus={step === 'INITIAL'}
                                             disabled={step === 'SIGNUP'}
                                         />
@@ -480,17 +480,27 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                         </div>
                                     )}
                                     {step === 'PASSWORD' && (
-                                        <div className="flex items-center px-6 py-4">
-                                            <Lock size={18} className="text-slate-400 mr-6" />
-                                            <input
-                                                type="password"
-                                                placeholder="Enter Password"
-                                                value={password}
-                                                onChange={e => setPassword(e.target.value)}
-                                                className="w-full bg-transparent text-lg font-bold focus:outline-none"
-                                                autoFocus
-                                            />
-                                        </div>
+                                        <>
+                                            <div className="flex items-center px-6 py-4">
+                                                <Lock size={18} className="text-slate-400 mr-6" />
+                                                <input
+                                                    type="password"
+                                                    placeholder="Enter Password"
+                                                    value={password}
+                                                    onChange={e => setPassword(e.target.value)}
+                                                    className={`w-full bg-transparent text-lg font-bold focus:outline-none ${isStaff || !isMarketplace ? 'text-white' : 'text-slate-900'}`}
+                                                    autoFocus
+                                                />
+                                            </div>
+                                            <div className="px-6 pb-4 flex justify-end">
+                                                <Link
+                                                    href="/forgot-password"
+                                                    className="text-[10px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300 transition-colors"
+                                                >
+                                                    Forgot password?
+                                                </Link>
+                                            </div>
+                                        </>
                                     )}
                                 </>
                             )}
