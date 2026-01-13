@@ -176,6 +176,34 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
         }
     };
 
+    const handleResendOtp = async () => {
+        setLoading(true);
+        try {
+            const resendRes = await fetch('/api/auth/otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    phone,
+                    action: 'resend',
+                    retryType: 'voice' // Force Voice Call for better delivery
+                })
+            });
+            const resendData = await resendRes.json();
+
+            if (resendData.success) {
+                alert('Expecting a call with your OTP shortly.');
+                setResendTimer(60);
+            } else {
+                setLoginError(resendData.message || 'Resend failed.');
+            }
+        } catch (err) {
+            console.error('Resend Error:', err);
+            alert('Failed to resend.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleLogin = async () => {
         if (otp.length < 4) return;
         setLoading(true);
@@ -590,11 +618,11 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                 {step === 'OTP' && (
                                     <div className="flex flex-col gap-3 items-center">
                                         <button
-                                            onClick={authMethod === 'PHONE' ? handleSendOtp : handleEmailOtp}
+                                            onClick={authMethod === 'PHONE' ? handleResendOtp : handleEmailOtp}
                                             disabled={loading || resendTimer > 0}
                                             className="text-[10px] font-black text-blue-600 disabled:text-slate-400 uppercase tracking-widest transition-colors"
                                         >
-                                            {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend OTP'}
+                                            {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Get OTP via Call'}
                                         </button>
                                         <button
                                             onClick={() => setStep('PHONE')}
