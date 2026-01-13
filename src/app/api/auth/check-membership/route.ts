@@ -20,10 +20,13 @@ export async function POST(request: NextRequest) {
             } else if (cleaned.length === 11 && cleaned.startsWith('0')) {
                 formattedPhone = `91${cleaned.substring(1)}`;
             } else {
-                return NextResponse.json({
-                    success: false,
-                    message: 'Invalid Phone Number. Please enter a valid 10-digit Indian number.'
-                }, { status: 400 });
+                return NextResponse.json(
+                    {
+                        success: false,
+                        message: 'Invalid Phone Number. Please enter a valid 10-digit Indian number.',
+                    },
+                    { status: 400 }
+                );
             }
         }
 
@@ -58,17 +61,20 @@ export async function POST(request: NextRequest) {
         }
 
         // 1. Find User by Phone or Email
-        const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+        const {
+            data: { users },
+            error: listError,
+        } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
         if (listError) throw listError;
 
         const user = users.find(u => {
             const hasEmail = email && u.email?.toLowerCase() === email.toLowerCase();
-            const hasPhone = phone && (
-                u.phone === formattedPhone ||
-                u.phone === `+${formattedPhone}` ||
-                u.user_metadata?.phone === formattedPhone ||
-                u.user_metadata?.phone === phone
-            );
+            const hasPhone =
+                phone &&
+                (u.phone === formattedPhone ||
+                    u.phone === `+${formattedPhone}` ||
+                    u.user_metadata?.phone === formattedPhone ||
+                    u.user_metadata?.phone === phone);
             return hasEmail || hasPhone;
         });
 
@@ -77,7 +83,7 @@ export async function POST(request: NextRequest) {
                 success: true,
                 isMember: false,
                 isNew: true,
-                message: tenantId ? 'Account not pre-registered for this portal.' : 'Account not found.'
+                message: tenantId ? 'Account not pre-registered for this portal.' : 'Account not found.',
             });
         }
 
@@ -108,9 +114,8 @@ export async function POST(request: NextRequest) {
             isMember,
             isNew: false,
             role: userRole,
-            userId: user.id
+            userId: user.id,
         });
-
     } catch (err: unknown) {
         console.error('[CheckMembership] Error:', err);
         return NextResponse.json({ success: false, message: 'Check failed.' }, { status: 500 });
