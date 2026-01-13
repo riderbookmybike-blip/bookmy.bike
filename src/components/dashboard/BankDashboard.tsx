@@ -10,7 +10,7 @@ import { KpiCard, RecentActivity } from './DashboardWidgets';
 
 export default function BankDashboard() {
     return (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-6">
             <div className="flex items-center gap-4 mb-6">
                 <div className="p-3 bg-violet-600 text-white rounded-2xl shadow-lg shadow-violet-500/30">
                     <Landmark size={24} strokeWidth={1.5} />

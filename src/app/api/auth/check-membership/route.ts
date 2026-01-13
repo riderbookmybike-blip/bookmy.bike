@@ -3,30 +3,28 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
     try {
-        const { phone, tenantId: providedTenantId } = await request.json();
+        const { phone, email, tenantId: providedTenantId } = await request.json();
 
-        if (!phone) {
-            return NextResponse.json({ success: false, message: 'Phone is required' }, { status: 400 });
+        if (!phone && !email) {
+            return NextResponse.json({ success: false, message: 'Phone or Email is required' }, { status: 400 });
         }
 
-        // STRICT NORMALIZATION & VALIDATION (Synced with otp/route.ts)
-        // 1. Strip all non-numeric characters
-        const cleaned = phone.replace(/\D/g, '');
         let formattedPhone = '';
-
-        // 2. Strict Logic for Indian Mobiles
-        if (cleaned.length === 10) {
-            formattedPhone = `91${cleaned}`;
-        } else if (cleaned.length === 12 && cleaned.startsWith('91')) {
-            formattedPhone = cleaned;
-        } else if (cleaned.length === 11 && cleaned.startsWith('0')) {
-            formattedPhone = `91${cleaned.substring(1)}`;
-        } else {
-            // REJECT invalid formats (e.g. 0091..., 11 digit non-zero, etc)
-            return NextResponse.json({
-                success: false,
-                message: 'Invalid Phone Number. Please enter a valid 10-digit Indian number.'
-            }, { status: 400 });
+        if (phone) {
+            // STRICT NORMALIZATION
+            const cleaned = phone.replace(/\D/g, '');
+            if (cleaned.length === 10) {
+                formattedPhone = `91${cleaned}`;
+            } else if (cleaned.length === 12 && cleaned.startsWith('91')) {
+                formattedPhone = cleaned;
+            } else if (cleaned.length === 11 && cleaned.startsWith('0')) {
+                formattedPhone = `91${cleaned.substring(1)}`;
+            } else {
+                return NextResponse.json({
+                    success: false,
+                    message: 'Invalid Phone Number. Please enter a valid 10-digit Indian number.'
+                }, { status: 400 });
+            }
         }
 
         const supabaseAdmin = createClient(
@@ -35,38 +33,21 @@ export async function POST(request: NextRequest) {
             { auth: { autoRefreshToken: false, persistSession: false } }
         );
 
-        // === CRITICAL: Subdomain Detection from Headers ===
-        let tenantId = providedTenantId;
+        // Subdomain Detection
+        let tenantId: string | undefined = providedTenantId;
         if (!tenantId) {
-            const host = request.headers.get('host') || request.headers.get('x-forwarded-host') || '';
-            const origin = request.headers.get('origin') || '';
+            const host = request.headers.get('host') || '';
             const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
 
             let subdomain = '';
-            // Check host header
             if (host.endsWith(`.${ROOT_DOMAIN}`)) {
                 subdomain = host.replace(`.${ROOT_DOMAIN}`, '').split(':')[0];
-            } else if (host.includes('localhost') || host.includes('127.0.0.1')) {
-                const parts = host.split('.')[0];
-                if (parts && parts !== 'localhost' && parts !== 'www') subdomain = parts;
-            }
-            // Fallback to origin
-            if (!subdomain && origin) {
-                try {
-                    const originUrl = new URL(origin);
-                    if (originUrl.hostname.endsWith(`.${ROOT_DOMAIN}`)) {
-                        subdomain = originUrl.hostname.replace(`.${ROOT_DOMAIN}`, '');
-                    } else if (originUrl.hostname.includes('localhost')) {
-                        const parts = originUrl.hostname.split('.');
-                        if (parts.length > 1 && parts[0] !== 'www') subdomain = parts[0];
-                    }
-                } catch { }
+            } else if (host.includes('localhost')) {
+                const parts = host.split('.');
+                if (parts.length > 1 && parts[0] !== 'www') subdomain = parts[0];
             }
 
-            console.log(`[CheckMembership] Host: ${host} | Origin: ${origin} | Subdomain: ${subdomain || 'NONE'}`);
-
-            // Lookup tenantId from subdomain
-            if (subdomain && subdomain !== 'we' && subdomain !== 'www') {
+            if (subdomain && !['we', 'www', 'aums'].includes(subdomain)) {
                 const { data: tenant } = await supabaseAdmin
                     .from('tenants')
                     .select('id')
@@ -76,63 +57,62 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // 1. Find User
+        // 1. Find User by Phone or Email
         const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers();
         if (listError) throw listError;
 
-        const user = users.find(u =>
-            u.phone === formattedPhone ||
-            u.phone === `+${formattedPhone}` ||
-            u.user_metadata?.phone === formattedPhone ||
-            u.user_metadata?.phone === phone
-        );
+        const user = users.find(u => {
+            const hasEmail = email && u.email?.toLowerCase() === email.toLowerCase();
+            const hasPhone = phone && (
+                u.phone === formattedPhone ||
+                u.phone === `+${formattedPhone}` ||
+                u.user_metadata?.phone === formattedPhone ||
+                u.user_metadata?.phone === phone
+            );
+            return hasEmail || hasPhone;
+        });
 
-        // If user doesn't exist
         if (!user) {
-            if (tenantId) {
-                // Subdomain: TEMPORARILY ALLOW SIGNUP (User Request)
-                // Was: Block - only existing authorized members can login
-                return NextResponse.json({ success: true, isMember: false, isNew: true });
-            }
-            // Main domain (Marketplace): Allow signup flow
-            return NextResponse.json({ success: true, isMember: false, isNew: true });
+            return NextResponse.json({
+                success: true,
+                isMember: false,
+                isNew: true,
+                message: tenantId ? 'Account not pre-registered for this portal.' : 'Account not found.'
+            });
         }
 
-        // 2. If on a subdomain, check membership
+        // 2. Check Membership
+        let userRole = 'BMB_USER';
+        let isMember = false;
+
         if (tenantId) {
-            const { data: membership, error: memError } = await supabaseAdmin
+            const { data: membership } = await supabaseAdmin
                 .from('memberships')
-                .select('status')
+                .select('role, status')
                 .eq('user_id', user.id)
                 .eq('tenant_id', tenantId)
                 .eq('status', 'ACTIVE')
                 .maybeSingle();
 
-            if (memError) throw memError;
-
-            if (!membership) {
-                // Check if user is an OWNER (Core), they can access everything
-                const { data: profile } = await supabaseAdmin
-                    .from('profiles')
-                    .select('role')
-                    .eq('id', user.id)
-                    .single();
-
-                if (profile?.role === 'OWNER') {
-                    return NextResponse.json({ success: true, isMember: true });
-                }
-
-                return NextResponse.json({
-                    success: false,
-                    isMember: false,
-                    message: `Mobile number not linked to this dealership.`
-                });
+            if (membership) {
+                isMember = true;
+                userRole = membership.role;
             }
+        } else {
+            // Root domain
+            isMember = true;
         }
 
-        return NextResponse.json({ success: true, isMember: true });
-    } catch (error: any) {
-        console.error('[CheckMembership] Error:', error);
-        return NextResponse.json({ success: false, message: 'Authorization check failed.' }, { status: 500 });
+        return NextResponse.json({
+            success: true,
+            isMember,
+            isNew: false,
+            role: userRole,
+            userId: user.id
+        });
+
+    } catch (err: unknown) {
+        console.error('[CheckMembership] Error:', err);
+        return NextResponse.json({ success: false, message: 'Check failed.' }, { status: 500 });
     }
 }

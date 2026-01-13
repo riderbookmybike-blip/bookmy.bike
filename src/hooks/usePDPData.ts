@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { slugify } from '@/utils/slugs';
 
 export interface LocalColorConfig {
     id: string;
     name: string;
     hex: string;
     class: string;
+    image?: string;
     pricingOverride?: {
         exShowroom?: number;
         dealerOffer?: number;
@@ -56,13 +58,22 @@ export const offerOptions = [
     { id: 'off-bank', name: 'HDFC Bank Offer', price: 0, description: 'Instant cashback on credit card EMI transactions.', discountPrice: 2000 },
 ];
 
-export function usePDPData(initialPrice: number | { exShowroom: number }) {
+export function usePDPData(initialPrice: number | { exShowroom: number }, dbColors: { name: string; hex: string; image: string }[] = []) {
     const router = useRouter();
     const searchParams = useSearchParams();
 
+    // Map DB colors to LocalColorConfig format
+    const colors = dbColors.length > 0 ? dbColors.map(c => ({
+        id: slugify(c.name),
+        name: c.name,
+        hex: c.hex,
+        image: c.image,
+        class: '' // Not needed if using hex directly
+    })) : productColors;
+
     const colorFromQuery = searchParams.get('color');
-    const isValidColor = colorFromQuery && productColors.some(c => c.id === colorFromQuery);
-    const initialColor = isValidColor ? colorFromQuery : productColors[0].id;
+    const isValidColor = colorFromQuery && colors.some(c => c.id === colorFromQuery);
+    const initialColor = isValidColor ? colorFromQuery : colors[0].id;
 
     const [selectedColor, setSelectedColor] = useState(initialColor);
     const [regType, setRegType] = useState<'STATE' | 'BH' | 'COMPANY'>('STATE');
@@ -83,9 +94,7 @@ export function usePDPData(initialPrice: number | { exShowroom: number }) {
         return false;
     });
 
-    // Sync with storage if needed, but the read is already done safely.
-    // Removed the problematic useEffect that was just syncing on mount.
-
+    // Handle Color Change
     const handleColorChange = (newColorId: string) => {
         setSelectedColor(newColorId);
         const newParams = new URLSearchParams(searchParams.toString());
@@ -93,8 +102,9 @@ export function usePDPData(initialPrice: number | { exShowroom: number }) {
         router.replace(`?${newParams.toString()}`, { scroll: false });
     };
 
-    const activeColorConfig = productColors.find(c => c.id === selectedColor) || productColors[0];
+    const activeColorConfig = (colors as LocalColorConfig[]).find(c => c.id === selectedColor) || (colors[0] as LocalColorConfig);
     const priceVal = typeof initialPrice === 'number' ? initialPrice : (initialPrice?.exShowroom || 78000);
+    // Use override if exists, else use the priceVal passed from server component
     const baseExShowroom = activeColorConfig.pricingOverride?.exShowroom || priceVal;
 
     let rtoEstimates = Math.round(baseExShowroom * 0.12);
@@ -146,7 +156,9 @@ export function usePDPData(initialPrice: number | { exShowroom: number }) {
     const emi = Math.round((loanAmount * monthlyRate * Math.pow(1 + monthlyRate, emiTenure)) / (Math.pow(1 + monthlyRate, emiTenure) - 1));
 
     return {
+        colors,
         selectedColor, setSelectedColor: handleColorChange,
+        initialLocation: initialPrice && typeof initialPrice === 'object' ? initialPrice : null,
         regType, setRegType,
         selectedAccessories, setSelectedAccessories,
         selectedInsuranceAddons, setSelectedInsuranceAddons,

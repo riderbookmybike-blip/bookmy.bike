@@ -42,6 +42,23 @@ export default function Sidebar({
     const EXPANDED_WIDTH = 280;
     const COLLAPSED_WIDTH = 80;
 
+    const sidebarGroups = useMemo(() => {
+        if (!tenantType) return [];
+        const groups = getSidebarConfig(tenantType, role);
+
+        // RBAC Filter
+        return groups.map(group => ({
+            ...group,
+            items: group.items.filter(item => {
+                const perm = (item as any).permission;
+                if (perm) {
+                    return can(role, perm);
+                }
+                return true;
+            })
+        }));
+    }, [tenantType, role]);
+
     if (!tenantType) {
         return (
             <aside className="fixed z-40 inset-y-0 left-0 bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-white/5 w-20 transition-all">
@@ -51,28 +68,6 @@ export default function Sidebar({
             </aside>
         );
     }
-
-    const sidebarGroups = useMemo(() => {
-        const groups = getSidebarConfig(tenantType, role);
-
-        // RBAC Filter
-        return groups.map(group => ({
-            ...group,
-            items: group.items.filter(item => {
-                // If item has a permission property, check it
-                // Note: Current sidebarConfig might not have permissions attached to items yet.
-                // We assume items *might* have a 'permission' field.
-                // If we haven't updated sidebarConfig to include 'permission', this filter is a no-op 
-                // unless we cast item to any or update the type. 
-                // For safety, we check if property exists.
-                const perm = (item as any).permission;
-                if (perm) {
-                    return can(role, perm);
-                }
-                return true;
-            })
-        }));
-    }, [tenantType, role]);
 
     return (
         <>

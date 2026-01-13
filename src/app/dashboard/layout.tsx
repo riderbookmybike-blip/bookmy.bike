@@ -6,27 +6,26 @@ import { DashboardHeader } from '@/components/layout/DashboardHeader';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import LoginSidebar from '@/components/auth/LoginSidebar';
 import { MarketplaceHeader } from '@/components/layout/MarketplaceHeader';
+import { UserRole } from '@/config/permissions';
 
 export default function DashboardLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
-    const { tenantType, userRole, activeRole, isSidebarExpanded, setIsSidebarExpanded, tenantConfig } = useTenant();
+    const { userRole, activeRole, isSidebarExpanded, setIsSidebarExpanded, tenantConfig } = useTenant();
     const [isSidebarPinned, setIsSidebarPinned] = useState(false);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [isLoginOpen, setIsLoginOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setMounted(true);
     }, []);
 
-    if (!mounted) return null; // Prevent hydration mismatch
-
     // BRANDING INJECTION
     const primaryColor = tenantConfig?.brand?.primaryColor;
-    const displayName = tenantConfig?.brand?.displayName;
 
     const handleSidebarHoverChange = (isHovered: boolean) => {
         if (!isSidebarPinned) {
@@ -39,18 +38,14 @@ export default function DashboardLayout({
         setIsSidebarExpanded(!isSidebarPinned);
     };
 
-    // Intelligent Role Fallback
-    const effectiveRole = activeRole || userRole || (() => {
-        if (tenantType === 'MARKETPLACE') return 'OWNER';
-        return 'DEALERSHIP_ADMIN';
-    })();
+    // Intelligent Role Fallback (Only fallback within safe boundaries)
+    const effectiveRole = activeRole || userRole || 'BMB_USER';
 
     // DETECT REGULAR USER (BMB Visitors)
-    const isPowerRole = ['OWNER', 'DEALERSHIP_ADMIN', 'DEALERSHIP_STAFF', 'BANK_STAFF'].includes(activeRole || '');
-    const isRegularUser = activeRole === 'BMB_USER' || (!isPowerRole && activeRole !== undefined);
+    const isRegularUser = activeRole === 'BMB_USER' || !(['OWNER', 'DEALERSHIP_ADMIN', 'DEALERSHIP_STAFF', 'BANK_STAFF'].includes((activeRole as string) || ''));
 
     // SETUP ENFORCEMENT
-    React.useEffect(() => {
+    useEffect(() => {
         // Regular users have nothing to "setup", so ignore them
         if (isRegularUser) return;
 
@@ -62,6 +57,8 @@ export default function DashboardLayout({
             }
         }
     }, [tenantConfig, effectiveRole, isRegularUser]);
+
+    if (!mounted) return null; // Prevent hydration mismatch
 
     // --- REGULAR USER LAYOUT ---
     if (isRegularUser) {
@@ -85,7 +82,6 @@ export default function DashboardLayout({
         <div
             className="min-h-screen bg-slate-50 dark:bg-slate-950"
             style={{
-                // @ts-ignore
                 '--primary': primaryColor || '#4F46E5', // Indigo-600 default
             } as React.CSSProperties}
         >
@@ -98,7 +94,7 @@ export default function DashboardLayout({
             <div className="flex pt-16">
                 {/* Sidebar Component */}
                 <Sidebar
-                    role={effectiveRole as any}
+                    role={effectiveRole as UserRole}
                     isExpanded={isSidebarExpanded}
                     isPinned={isSidebarPinned}
                     onHoverChange={handleSidebarHoverChange}

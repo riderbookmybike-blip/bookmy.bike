@@ -6,6 +6,7 @@ interface DBVariant {
     id: string;
     name: string;
     slug: string;
+    position: number;
     base_price_ex_showroom: number;
     braking_system: string | null;
     vehicle_models: {
@@ -25,6 +26,10 @@ interface DBVariant {
         name: string;
         hex_code: string;
         image_url: string | null;
+        vehicle_prices: Array<{
+            ex_showroom_price: number;
+            state_code: string;
+        }>;
     }>;
 }
 
@@ -46,6 +51,7 @@ export function useCatalog() {
                         id,
                         name,
                         slug,
+                        position,
                         base_price_ex_showroom,
                         braking_system,
                         vehicle_models (
@@ -64,11 +70,16 @@ export function useCatalog() {
                             id,
                             name,
                             hex_code,
-                            image_url
+                            image_url,
+                            vehicle_prices (
+                                ex_showroom_price,
+                                state_code
+                            )
                         )
                     `
                     )
-                    .eq('is_active', true);
+                    .eq('is_active', true)
+                    .order('position', { ascending: true });
 
                 if (error) throw error;
 
@@ -78,6 +89,11 @@ export function useCatalog() {
                         const model = variant.vehicle_models;
                         const brand = model?.brands;
                         const firstColor = variant.vehicle_colors?.[0];
+
+                        // Pricing Logic: Try to find MH price, fallback to first available
+                        const prices = firstColor?.vehicle_prices || [];
+                        const mhPrice = prices.find(p => p.state_code === 'MH')?.ex_showroom_price;
+                        const finalExPrice = mhPrice || prices[0]?.ex_showroom_price || variant.base_price_ex_showroom || 0;
 
                         return {
                             id: variant.id,
@@ -97,6 +113,11 @@ export function useCatalog() {
                             segment: 'COMMUTER',
                             specifications: {},
                             features: [],
+                            price: {
+                                exShowroom: Number(finalExPrice),
+                                onRoad: Math.round(Number(finalExPrice) * 1.15) // Mock 15% on-road addition
+                            },
+                            imageUrl: firstColor?.image_url || undefined
                         };
                     });
                     setItems(mappedItems);

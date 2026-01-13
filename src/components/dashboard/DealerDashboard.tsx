@@ -11,7 +11,7 @@ import { InventoryTable } from './InventoryTable';
 
 export default function DealerDashboard() {
     return (
-        <div className="space-y-8 animate-in fade-in duration-700">
+        <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-200 dark:border-white/5 pb-8">
                 <div className="space-y-1">
                     <div className="flex items-center gap-2 px-2.5 py-1 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 rounded-lg w-fit">
