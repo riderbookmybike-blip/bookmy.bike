@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Phone, ArrowRight, Lock, User, MapPin, Loader2, X, ShieldCheck, CheckCircle2, AlertCircle, Globe } from 'lucide-react';
+import { Phone, ArrowRight, Lock, User, X, ShieldCheck, CheckCircle2, AlertCircle, Globe } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { createClient } from '@/lib/supabase/client';

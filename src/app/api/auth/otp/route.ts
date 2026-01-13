@@ -18,41 +18,41 @@ export async function POST(request: NextRequest) {
         }
 
         // Configuration
+        // Configuration
         const AUTH_KEY = process.env.MSG91_AUTH_KEY;
-        if (!AUTH_KEY) {
-            console.error('[MSG91] Critical: Missing MSG91_AUTH_KEY env variable');
+        const TEMPLATE_ID = process.env.MSG91_TEMPLATE_ID;
+
+        if (!AUTH_KEY || !TEMPLATE_ID) {
+            console.error('[MSG91] Critical: Missing MSG91_AUTH_KEY or MSG91_TEMPLATE_ID env variable');
             return NextResponse.json({ success: false, message: 'Server Configuration Error' }, { status: 500 });
         }
 
-        const TEMPLATE_ID = '6966079a8e1222c164607d3'; // Valid Template ID (v5 Required)
         const EXPIRY = 15; // Minutes
 
-        // Robust Normalization:
+        // STRICT NORMALIZATION & VALIDATION
         // 1. Strip all non-numeric characters
         const cleaned = phone.replace(/\D/g, '');
+        let formattedPhone = '';
 
-        let formattedPhone = cleaned;
-
-        // Heuristic Logic:
-        // If 10 digits (e.g., 9876543210) -> Add 91 prefix -> 919876543210
-        // If 12 digits starting with 91 -> Keep as is
-        // If 11 digits starting with 0 -> Replace 0 with 91
-        // Fallback: If not starting with 91, prepend it.
-
+        // 2. Strict Logic for Indian Mobiles
         if (cleaned.length === 10) {
             formattedPhone = `91${cleaned}`;
         } else if (cleaned.length === 12 && cleaned.startsWith('91')) {
             formattedPhone = cleaned;
         } else if (cleaned.length === 11 && cleaned.startsWith('0')) {
             formattedPhone = `91${cleaned.substring(1)}`;
-        } else if (!cleaned.startsWith('91')) {
-            formattedPhone = `91${cleaned}`;
+        } else {
+            // REJECT invalid formats (e.g. 0091..., 11 digit non-zero, etc)
+            return NextResponse.json({
+                success: false,
+                message: 'Invalid Phone Number. Please enter a valid 10-digit Indian number.'
+            }, { status: 400 });
         }
 
         let apiUrl = '';
         let method = 'POST';
 
-        console.log(`[MSG91] Action: ${action} | Phone: ${formattedPhone}`);
+        console.log(`[MSG91] Action: ${action} | Phone: ${formattedPhone} | Cleaned: ${cleaned}`);
 
         // 1. SEND OTP
         if (action === 'send') {

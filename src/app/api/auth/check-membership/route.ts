@@ -9,7 +9,25 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: false, message: 'Phone is required' }, { status: 400 });
         }
 
-        const formattedPhone = phone.startsWith('91') ? phone : `91${phone}`;
+        // STRICT NORMALIZATION & VALIDATION (Synced with otp/route.ts)
+        // 1. Strip all non-numeric characters
+        const cleaned = phone.replace(/\D/g, '');
+        let formattedPhone = '';
+
+        // 2. Strict Logic for Indian Mobiles
+        if (cleaned.length === 10) {
+            formattedPhone = `91${cleaned}`;
+        } else if (cleaned.length === 12 && cleaned.startsWith('91')) {
+            formattedPhone = cleaned;
+        } else if (cleaned.length === 11 && cleaned.startsWith('0')) {
+            formattedPhone = `91${cleaned.substring(1)}`;
+        } else {
+            // REJECT invalid formats (e.g. 0091..., 11 digit non-zero, etc)
+            return NextResponse.json({
+                success: false,
+                message: 'Invalid Phone Number. Please enter a valid 10-digit Indian number.'
+            }, { status: 400 });
+        }
 
         const supabaseAdmin = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
