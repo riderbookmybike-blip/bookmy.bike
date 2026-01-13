@@ -8,8 +8,8 @@ export default function MSG91Initializer() {
             if (typeof window === 'undefined') return;
 
             const configuration = {
-                widgetId: "36616b677853323939363231",
-                tokenAuth: "477985T3uAd4stn6963525fP1",
+                widgetId: "36616d686f4c313839363933",
+                tokenAuth: "477985Az5dYpYUze6965fd67P1",
                 identifier: "mobile",
                 exposeMethods: true,
                 success: (data: any) => {
