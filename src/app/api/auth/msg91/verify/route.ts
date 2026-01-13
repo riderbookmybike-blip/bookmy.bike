@@ -93,58 +93,9 @@ export async function POST(req: NextRequest) {
                 },
                 message: 'Login successful',
             };
-            const cookieStore = await cookies();
 
-            // 6. CRITICAL: Clear potential zombie chunked cookies (HttpOnly) server-side
-            // These cannot be cleared by client-side JS if they are HttpOnly.
-            const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL?.split('.')[0].split('//')[1];
-            if (projectRef) {
-                const baseName = `sb-${projectRef}-auth-token`;
-                // Delete common chunk indices to force clean slate
-                cookieStore.delete(`${baseName}.0`);
-                cookieStore.delete(`${baseName}.1`);
-                cookieStore.delete(`${baseName}.2`);
-            }
-
-            const host = req.headers.get('host') || '';
-            const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
-            const isLocalhost = host.includes('localhost') || host.startsWith('127.') || host.startsWith('0.0.0.0');
-            const cookieDomain = !isLocalhost ? `.${rootDomain}` : undefined;
-            const isSecure = !isLocalhost;
-            const supabase = createServerClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-                {
-                    cookies: {
-                        getAll() {
-                            return cookieStore.getAll();
-                        },
-                        setAll(cookiesToSet) {
-                            cookiesToSet.forEach(({ name, value, options }) => {
-                                // CRITICAL: Override domain to enable cross-subdomain access
-                                const finalOptions = {
-                                    ...options,
-                                    domain: cookieDomain,
-                                    secure: isSecure,
-                                    sameSite: 'lax' as const,
-                                    httpOnly: true,
-                                    path: '/',
-                                };
-                                cookieStore.set(name, value, finalOptions);
-                            });
-                        },
-                    },
-                }
-            );
-
-            const { error: sessionError } = await supabase.auth.setSession({
-                access_token: signInData.session.access_token,
-                refresh_token: signInData.session.refresh_token,
-            });
-            if (sessionError) {
-                console.error('MSG91 Verify Session Error:', sessionError);
-            }
-
+            // Don't set cookies server-side - let the client handle it via browser Supabase client
+            // This avoids domain conflicts and ensures consistent cookie scope
             return NextResponse.json(payload);
         } else {
             return NextResponse.json({ success: false, message: data.message || 'Invalid OTP' }, { status: 400 });
