@@ -18,12 +18,36 @@ export async function POST(request: NextRequest) {
         }
 
         // Configuration
-        const AUTH_KEY = process.env.MSG91_AUTH_KEY || '477985T3uAd4stn6963525fP1'; // Valid Widget Key
+        const AUTH_KEY = process.env.MSG91_AUTH_KEY;
+        if (!AUTH_KEY) {
+            console.error('[MSG91] Critical: Missing MSG91_AUTH_KEY env variable');
+            return NextResponse.json({ success: false, message: 'Server Configuration Error' }, { status: 500 });
+        }
+
         const TEMPLATE_ID = '6966079a8e1222c164607d3'; // Valid Template ID (v5 Required)
         const EXPIRY = 15; // Minutes
 
-        // Format Phone (Force 91 prefix if missing, though typically handled by UI)
-        const formattedPhone = phone.startsWith('91') ? phone : `91${phone}`;
+        // Robust Normalization:
+        // 1. Strip all non-numeric characters
+        const cleaned = phone.replace(/\D/g, '');
+
+        let formattedPhone = cleaned;
+
+        // Heuristic Logic:
+        // If 10 digits (e.g., 9876543210) -> Add 91 prefix -> 919876543210
+        // If 12 digits starting with 91 -> Keep as is
+        // If 11 digits starting with 0 -> Replace 0 with 91
+        // Fallback: If not starting with 91, prepend it.
+
+        if (cleaned.length === 10) {
+            formattedPhone = `91${cleaned}`;
+        } else if (cleaned.length === 12 && cleaned.startsWith('91')) {
+            formattedPhone = cleaned;
+        } else if (cleaned.length === 11 && cleaned.startsWith('0')) {
+            formattedPhone = `91${cleaned.substring(1)}`;
+        } else if (!cleaned.startsWith('91')) {
+            formattedPhone = `91${cleaned}`;
+        }
 
         let apiUrl = '';
         let method = 'POST';
