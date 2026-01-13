@@ -28,12 +28,27 @@ export async function POST(req: NextRequest) {
         }
 
         // 3. Update Last Seen (Optional) - No Profiler Overwrite
-        // We can update last_login or location here if needed, but strictly NO overwriting critical profile data.
 
-        // For now, we just return success to confirm session validity
-        return NextResponse.json({ success: true, userId });
+        // 4. GENERATE SESSION
+        // Since we synthesized the password, we can use it to sign in on behalf of the user
+        const { data: signInData, error: signInError } = await adminClient.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
 
-        return NextResponse.json({ success: true, userId });
+        if (signInError || !signInData.session) {
+            console.error('Session Generation Error:', signInError);
+            return NextResponse.json({
+                success: false,
+                message: 'Failed to generate session token.'
+            }, { status: 500 });
+        }
+
+        return NextResponse.json({
+            success: true,
+            userId,
+            session: signInData.session
+        });
 
     } catch (error) {
         console.error('Sync API Error:', error);
