@@ -29,6 +29,22 @@ export async function POST(req: NextRequest) {
 
         // 3. Update Last Seen (Optional) - No Profiler Overwrite
 
+        // 3.5 MIGRATION FIX: Ensure Password is Set for Legacy Users
+        // Old users created via Phone Auth won't have this password. We set it now.
+        const { error: updateError } = await adminClient.auth.admin.updateUserById(
+            userId,
+            {
+                password: password,
+                email_confirm: true,
+                user_metadata: { phone_login_migrated: true }
+            }
+        );
+
+        if (updateError) {
+            console.error('Migration Error:', updateError);
+            // Verify if it's "New password should be different" error, ignoring if so.
+        }
+
         // 4. GENERATE SESSION
         // Since we synthesized the password, we can use it to sign in on behalf of the user
         const { data: signInData, error: signInError } = await adminClient.auth.signInWithPassword({
