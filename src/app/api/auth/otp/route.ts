@@ -32,7 +32,8 @@ export async function POST(request: NextRequest) {
         if (action === 'send') {
             // Send OTP using MSG91's OTP API with Template ID
             // Send OTP using MSG91's OTP API (Implicit Template ID, referencing send-otp/route.ts)
-            const url = `https://control.msg91.com/api/v5/otp?authkey=${AUTH_KEY}&mobile=${formattedPhone}&otp_length=4&otp_expiry=${OTP_EXPIRY}`;
+            // Note: 'expiry' is used in legacy working code, not 'otp_expiry'
+            const url = `https://control.msg91.com/api/v5/otp?authkey=${AUTH_KEY}&mobile=${formattedPhone}&otp_length=4&expiry=${OTP_EXPIRY}`;
 
             const response = await fetch(url, {
                 method: 'POST',
