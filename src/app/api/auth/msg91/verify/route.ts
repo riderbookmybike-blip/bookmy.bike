@@ -94,6 +94,18 @@ export async function POST(req: NextRequest) {
                 message: 'Login successful',
             };
             const cookieStore = await cookies();
+
+            // 6. CRITICAL: Clear potential zombie chunked cookies (HttpOnly) server-side
+            // These cannot be cleared by client-side JS if they are HttpOnly.
+            const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL?.split('.')[0].split('//')[1];
+            if (projectRef) {
+                const baseName = `sb-${projectRef}-auth-token`;
+                // Delete common chunk indices to force clean slate
+                cookieStore.delete(`${baseName}.0`);
+                cookieStore.delete(`${baseName}.1`);
+                cookieStore.delete(`${baseName}.2`);
+            }
+
             const host = req.headers.get('host') || '';
             const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
             const isLocalhost = host.includes('localhost') || host.startsWith('127.') || host.startsWith('0.0.0.0');
