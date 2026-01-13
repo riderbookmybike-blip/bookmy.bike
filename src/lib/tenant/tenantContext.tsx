@@ -76,56 +76,48 @@ const TenantContext = createContext<TenantContextProps>({
 });
 
 export const TenantProvider = ({ children }: { children: ReactNode }) => {
-    // Lazy Initialize State
-    const [tenantType, setTenantTypeState] = useState<TenantType | undefined>(() => {
-        if (typeof window !== 'undefined') {
-            return (localStorage.getItem('tenant_type') as TenantType) || undefined;
-        }
-        return undefined;
-    });
-
-    const [tenantName, setTenantName] = useState(() => {
-        if (typeof window !== 'undefined') return localStorage.getItem('tenant_name') || '';
-        return '';
-    });
-
+    // Lazy Initialize State - Fixed for Hydration (No localStorage in SSR)
+    const [tenantType, setTenantTypeState] = useState<TenantType | undefined>(undefined);
+    const [tenantName, setTenantName] = useState('');
     const [tenantConfig, setTenantConfig] = useState<TenantConfig | null>(null);
-
-    const [userName, setUserName] = useState(() => {
-        if (typeof window !== 'undefined') return localStorage.getItem('user_name') || '';
-        return '';
-    });
-
-    const [tenantId, setTenantId] = useState<string | undefined>(() => {
-        if (typeof window !== 'undefined') return localStorage.getItem('tenant_id') || undefined;
-        return undefined;
-    });
-
-    const [userRole, setUserRole] = useState<string | undefined>(() => {
-        if (typeof window !== 'undefined') return localStorage.getItem('user_role') || undefined;
-        return undefined;
-    });
-
-    const [activeRole, setActiveRole] = useState<string | undefined>(() => {
-        if (typeof window !== 'undefined') return localStorage.getItem('active_role') || undefined;
-        return undefined;
-    });
-
-    const [referralCode, setReferralCode] = useState<string | undefined>(() => {
-        if (typeof window !== 'undefined') return localStorage.getItem('referral_code') || undefined;
-        return undefined;
-    });
-
+    const [userName, setUserName] = useState('');
+    const [tenantId, setTenantId] = useState<string | undefined>(undefined);
+    const [userRole, setUserRole] = useState<string | undefined>(undefined);
+    const [activeRole, setActiveRole] = useState<string | undefined>(undefined);
+    const [referralCode, setReferralCode] = useState<string | undefined>(undefined);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [memberships, setMembershipsState] = useState<any[]>(() => {
+    const [memberships, setMembershipsState] = useState<any[]>([]);
+
+    // Hydration Effect: Restore from LocalStorage after mount
+    useEffect(() => {
         if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('user_memberships');
-            if (saved) {
-                try { return JSON.parse(saved); } catch (e) { return []; }
+            const tType = localStorage.getItem('tenant_type') as TenantType;
+            if (tType) setTenantTypeState(tType);
+
+            const tName = localStorage.getItem('tenant_name');
+            if (tName) setTenantName(tName);
+
+            const uName = localStorage.getItem('user_name');
+            if (uName) setUserName(uName);
+
+            const tId = localStorage.getItem('tenant_id');
+            if (tId) setTenantId(tId);
+
+            const uRole = localStorage.getItem('user_role');
+            if (uRole) setUserRole(uRole);
+
+            const aRole = localStorage.getItem('active_role');
+            if (aRole) setActiveRole(aRole);
+
+            const rCode = localStorage.getItem('referral_code');
+            if (rCode) setReferralCode(rCode);
+
+            const savedMems = localStorage.getItem('user_memberships');
+            if (savedMems) {
+                try { setMembershipsState(JSON.parse(savedMems)); } catch (e) { }
             }
         }
-        return [];
-    });
+    }, []);
 
     const setMemberships = (data: any[]) => {
         setMembershipsState(data);
