@@ -3,15 +3,28 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
+    const hostname = request.headers.get('host') || '';
 
-    // Parse Tenant Slug from URL Path (NEW: Path-based routing)
-    // Pattern: /app/{slug}/... → extract slug
-    let tenantSlug: string | null = null;
+    // 1. Define Domains and Constants
+    const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
 
-    if (pathname.startsWith('/app/')) {
-        const pathSegments = pathname.split('/').filter(Boolean); // ['app', 'aums', 'dashboard']
-        if (pathSegments.length >= 2) {
-            tenantSlug = pathSegments[1]; // 'aums', 'myoody', etc.
+    // Parse Subdomain
+    let currentSubdomain: string | null = null;
+    if (hostname.endsWith(`.${ROOT_DOMAIN}`)) {
+        const diff = hostname.replace(`.${ROOT_DOMAIN}`, '');
+        if (diff && diff !== 'www') currentSubdomain = diff;
+    } else if (hostname === `www.${ROOT_DOMAIN}` || hostname === ROOT_DOMAIN) {
+        currentSubdomain = null; // Public Site
+    } else if (hostname.includes('localhost')) {
+        const parts = hostname.split('.');
+        // Support aums.localhost:3000 etc.
+        if (
+            parts.length > 1 &&
+            (parts[parts.length - 1].includes('localhost') || parts[parts.length - 2].includes('localhost'))
+        ) {
+            currentSubdomain = parts[0] === 'www' ? null : parts[0];
+        } else {
+            currentSubdomain = null;
         }
     }
 
@@ -27,9 +40,20 @@ export async function proxy(request: NextRequest) {
         return NextResponse.next();
     }
 
-    // B. ROOT DOMAIN GUARD - Allow public marketplace
-    if (!tenantSlug) {
-        // Allow public routes (marketplace, login, etc.)
+    // B. ROOT DOMAIN GUARD (#1 Requirement)
+    if (!currentSubdomain) {
+        // HARD BLOCK /dashboard on bookmy.bike
+        if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
+            console.log(`[Proxy] Hard-blocking /dashboard on root domain: ${hostname}`);
+            return NextResponse.redirect(new URL('/', request.url));
+        }
+
+        // OAuth code handling
+        const code = request.nextUrl.searchParams.get('code');
+        if (code && pathname === '/') {
+            return NextResponse.redirect(new URL(`/auth/callback?code=${code}`, request.url));
+        }
+
         return NextResponse.next();
     }
 
@@ -71,8 +95,8 @@ export async function proxy(request: NextRequest) {
         pathname.startsWith('/reset-password') ||
         pathname.startsWith('/invite');
 
-    // 1. Protected Tenant Routes - Require Authentication
-    if (tenantSlug && ['aums', 'marketplace'].includes(tenantSlug)) {
+    // 1. Internal Portals (AUMS, WE, LTFINANCE) - STRICT
+    if (['aums', 'we', 'ltfinance'].includes(currentSubdomain)) {
         if (!user) {
             if (!isAuthRoute) {
                 const loginUrl = new URL('/login', request.url);
@@ -81,7 +105,7 @@ export async function proxy(request: NextRequest) {
             return response;
         }
     }
-    // 2. Dealer/Partner Portals
+    // 2. Partner Portals
     else {
         const isLandingPage = pathname === '/';
         if (!user) {
@@ -97,12 +121,12 @@ export async function proxy(request: NextRequest) {
     if (pathname === '/login' || pathname === '/logout' || isAuthRoute) return response;
 
     // 1. AUMS (Super Admin)
-    if (tenantSlug === 'aums') {
+    if (currentSubdomain === 'aums') {
         const { data: membership } = await supabase
             .from('memberships')
-            .select('role, tenants!inner(slug)')
+            .select('role, tenants!inner(subdomain)')
             .eq('user_id', user.id)
-            .eq('tenants.slug', 'aums')
+            .eq('tenants.subdomain', 'aums')
             .eq('status', 'ACTIVE')
             .maybeSingle();
 
@@ -115,10 +139,10 @@ export async function proxy(request: NextRequest) {
     // Dynamic Partner Check
     const { data: tenantMembership } = await supabase
         .from('memberships')
-        .select('id, tenants!inner(slug)')
+        .select('id, tenants!inner(subdomain)')
         .eq('user_id', user.id)
         .eq('status', 'ACTIVE')
-        .eq('tenants.slug', tenantSlug)
+        .eq('tenants.subdomain', currentSubdomain)
         .maybeSingle();
 
     if (!tenantMembership) {
@@ -137,5 +161,3 @@ export async function proxy(request: NextRequest) {
 export const config = {
     matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
-
-export default proxy;
