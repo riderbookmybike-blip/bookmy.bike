@@ -373,31 +373,8 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
             if (isMarketplaceDomain) {
                 window.location.reload();
             } else {
-                // FALLBACK: Manually ensure cookie is set for the current domain before reload
-                // This helps if Supabase client hasn't flushed to storage/cookie yet
-                if (session?.access_token) {
-                    const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL?.split('.')[0].split('//')[1];
-                    if (projectRef) {
-                        const cookieName = `sb-${projectRef}-auth-token`;
-
-                        // 1. CLEAR POTENTIAL ZOMBIE COOKIES (Chunks)
-                        document.cookie = `${cookieName}.0=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure`;
-                        document.cookie = `${cookieName}.1=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure`;
-                        document.cookie = `${cookieName}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure`;
-
-                        // 2. WRITE NEW CLEAN COOKIE
-                        const tokenStr = JSON.stringify([
-                            session.access_token,
-                            session.refresh_token,
-                            null,
-                            null,
-                            session.expires_at,
-                        ]);
-                        document.cookie = `${cookieName}=${encodeURIComponent(tokenStr)}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax; Secure`;
-                    }
-                }
-
-                // Force hard navigation to ensure cookies are sent to server middleware
+                // Server has already set cookies via setSession in verify API
+                // Just force navigation to ensure they're sent to middleware
                 window.location.href = '/dashboard';
             }
             onClose();
