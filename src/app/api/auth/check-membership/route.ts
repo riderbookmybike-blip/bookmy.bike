@@ -72,12 +72,9 @@ export async function POST(request: NextRequest) {
         // If user doesn't exist
         if (!user) {
             if (tenantId) {
-                // Subdomain: Block - only existing authorized members can login
-                return NextResponse.json({
-                    success: false,
-                    isMember: false,
-                    message: `Account not found. Please contact admin for access.`
-                });
+                // Subdomain: TEMPORARILY ALLOW SIGNUP (User Request)
+                // Was: Block - only existing authorized members can login
+                return NextResponse.json({ success: true, isMember: false, isNew: true });
             }
             // Main domain (Marketplace): Allow signup flow
             return NextResponse.json({ success: true, isMember: false, isNew: true });
