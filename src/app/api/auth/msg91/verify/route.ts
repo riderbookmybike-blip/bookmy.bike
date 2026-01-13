@@ -94,8 +94,44 @@ export async function POST(req: NextRequest) {
                 message: 'Login successful',
             };
 
-            // Don't set cookies server-side - let the client handle it via browser Supabase client
-            // This avoids domain conflicts and ensures consistent cookie scope
+            const cookieStore = await cookies();
+            const host = req.headers.get('host') || '';
+            const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
+            const isLocalhost = host.includes('localhost') || host.startsWith('127.') || host.startsWith('0.0.0.0');
+            const cookieDomain = !isLocalhost ? `.${rootDomain}` : undefined;
+            const isSecure = !isLocalhost;
+
+            const supabase = createServerClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+                {
+                    cookies: {
+                        getAll() {
+                            return cookieStore.getAll();
+                        },
+                        setAll(cookiesToSet) {
+                            cookiesToSet.forEach(({ name, value, options }) => {
+                                cookieStore.set(name, value, {
+                                    ...options,
+                                    path: '/',
+                                    sameSite: 'lax',
+                                    secure: isSecure,
+                                    ...(cookieDomain ? { domain: cookieDomain } : {}),
+                                });
+                            });
+                        },
+                    },
+                }
+            );
+
+            const { error: sessionError } = await supabase.auth.setSession({
+                access_token: signInData.session.access_token,
+                refresh_token: signInData.session.refresh_token,
+            });
+            if (sessionError) {
+                console.error('MSG91 Verify Session Error:', sessionError);
+            }
+
             return NextResponse.json(payload);
         } else {
             return NextResponse.json({ success: false, message: data.message || 'Invalid OTP' }, { status: 400 });
