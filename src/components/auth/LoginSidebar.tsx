@@ -392,8 +392,8 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
             // CRITICAL: Wait for cookies to be written before reload
             await new Promise(resolve => setTimeout(resolve, 1000));
 
-            // Reload current page - user will access dashboards via profile menu
-            window.location.reload();
+            // Navigate instead of reload to preserve session
+            window.location.href = '/';
             onClose();
         } catch (err) {
             console.error('Final Sync Error:', err);
