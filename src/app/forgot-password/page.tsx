@@ -9,6 +9,16 @@ export default function ForgotPasswordPage() {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+    const getResetRedirectTo = () => {
+        if (typeof window === 'undefined') return '';
+        const hostname = window.location.hostname;
+        const isLocal = hostname.includes('localhost');
+        const base = isLocal ? window.location.origin : `https://${hostname}`;
+
+        // Force explicit host to avoid Supabase falling back to Site URL.
+        return `${base}/auth/callback?next=/reset-password`;
+    };
+
     const handleReset = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -16,7 +26,7 @@ export default function ForgotPasswordPage() {
 
         const supabase = createClient();
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+            redirectTo: getResetRedirectTo(),
         });
 
         if (error) {
@@ -70,7 +80,7 @@ export default function ForgotPasswordPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-brand-primary hover:bg-brand-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary disabled:opacity-50"
+                            className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-lg text-black bg-[#F4B000] hover:bg-[#F4B000]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#F4B000] disabled:opacity-50 transition-colors uppercase tracking-wide"
                         >
                             {loading ? 'Sending...' : 'Send Reset Link'}
                         </button>
