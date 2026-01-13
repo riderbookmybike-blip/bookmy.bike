@@ -9,7 +9,7 @@ export default function MSG91Initializer() {
 
             const configuration = {
                 widgetId: "36616d686f4c313839363933",
-                tokenAuth: "477985Az5dYpYUze6965fd67P1",
+                tokenAuth: "477985ToWuAVknd5B3696600d5P1",
                 identifier: "mobile",
                 exposeMethods: true,
                 success: (data: any) => {
