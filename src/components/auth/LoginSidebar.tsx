@@ -121,12 +121,13 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
             clearAuthCookies();
 
             setStep('INITIAL');
-            const hostname = window.location.hostname;
-            const isMarketplaceDomain =
-                hostname === ROOT_DOMAIN || hostname === `www.${ROOT_DOMAIN}` || hostname === 'localhost';
 
-            setIsMarketplace(isMarketplaceDomain);
-            setShowEmailPath(!isMarketplaceDomain); // Default to Email UI for CRM/AUMS
+            // Check if we're in a tenant path or on marketplace
+            const pathname = window.location.pathname;
+            const isInTenantPath = pathname.startsWith('/app/');
+
+            setIsMarketplace(!isInTenantPath);
+            setShowEmailPath(isInTenantPath); // Default to Email for tenant portals
 
             // Background location capture for marketplace only
             if (isMarketplaceDomain) {
@@ -361,31 +362,37 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                 syncData = await syncRes.json();
             }
 
-            // Finalize State
-            const isMarketplaceDomain =
-                window.location.hostname === ROOT_DOMAIN ||
-                window.location.hostname === `www.${ROOT_DOMAIN}` ||
-                window.location.hostname === 'localhost';
+            // Get user's tenant memberships to determine redirect
+            const supabase = createClient();
+            const { data: memberships } = await supabase
+                .from('memberships')
+                .select('*, tenants!inner(*)')
+                .eq('user_id', user.id)
+                .eq('status', 'ACTIVE');
 
             const finalRole = detectedRole || syncData.role || 'BMB_USER';
-            const finalTenantType = isMarketplaceDomain ? 'MARKETPLACE' : 'DEALER';
 
-            setTenantType(finalTenantType);
+            setTenantType('MARKETPLACE'); // Default
             localStorage.setItem(
                 'user_name',
                 syncData.displayName || fullName || user?.user_metadata?.full_name || 'User'
             );
-            localStorage.setItem('tenant_type', finalTenantType);
             localStorage.setItem('user_role', finalRole);
             localStorage.setItem('active_role', finalRole);
 
-            if (isMarketplaceDomain) {
-                window.location.reload();
+            // Redirect based on memberships
+            if (memberships && memberships.length > 0) {
+                const firstTenant = memberships[0].tenants;
+                localStorage.setItem('tenant_type', firstTenant.type);
+
+                // Redirect to tenant dashboard
+                window.location.href = `/app/${firstTenant.slug}/dashboard`;
             } else {
-                // Server has already set cookies via setSession in verify API
-                // Just force navigation to ensure they're sent to middleware
-                window.location.href = '/dashboard';
+                // No tenant membership - marketplace user
+                localStorage.setItem('tenant_type', 'MARKETPLACE');
+                window.location.reload();
             }
+
             onClose();
         } catch (err) {
             console.error('Final Sync Error:', err);
