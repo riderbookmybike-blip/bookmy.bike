@@ -82,7 +82,12 @@ export async function proxy(request: NextRequest) {
 
     const {
         data: { user },
+        error: userError,
     } = await supabase.auth.getUser();
+
+    if (userError) {
+        console.log(`[Proxy] Debug: getUser Error:`, userError);
+    }
 
     // D. ROUTE ALLOWLISTS (Unauthenticated Access)
     const isAuthRoute =
