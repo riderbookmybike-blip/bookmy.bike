@@ -382,19 +382,15 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
             localStorage.setItem('user_role', finalRole);
             localStorage.setItem('active_role', finalRole);
 
-            // Redirect based on memberships
+            // Store tenant memberships for profile menu
             if (memberships && memberships.length > 0) {
-                const firstTenant = memberships[0].tenants;
-                localStorage.setItem('tenant_type', firstTenant.type);
-
-                // Redirect to tenant dashboard
-                window.location.href = `/app/${firstTenant.slug}/dashboard`;
+                localStorage.setItem('tenant_type', memberships[0].tenants.type);
             } else {
-                // No tenant membership - marketplace user
                 localStorage.setItem('tenant_type', 'MARKETPLACE');
-                window.location.reload();
             }
 
+            // Reload current page - user will access dashboards via profile menu
+            window.location.reload();
             onClose();
         } catch (err) {
             console.error('Final Sync Error:', err);
