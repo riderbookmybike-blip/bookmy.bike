@@ -275,7 +275,17 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                 localStorage.setItem('user_role', 'BMB_USER');
                 document.cookie = 'aums_session=true; path=/;';
 
-                window.location.reload(); // Simple reload to refresh context
+                // STRICT DOMAIN SEPARATION logic (Copied from completeLogin)
+                const isMarketplaceDomain = window.location.hostname === 'bookmy.bike' || window.location.hostname === 'www.bookmy.bike' || window.location.hostname === 'localhost';
+
+                if (isMarketplaceDomain) {
+                    // CONSUMER SITE: Stay on page, just refresh auth
+                    window.location.reload();
+                } else {
+                    // OPS SITE (we.bookmy.bike etc): Go to dashboard
+                    router.push('/dashboard');
+                }
+
                 onClose();
             }
         } catch (err) {
