@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 import { adminClient } from '@/lib/supabase/admin';
 
 export async function POST(req: NextRequest) {
@@ -70,7 +71,7 @@ export async function POST(req: NextRequest) {
 
             const { data: profile } = await adminClient.from('profiles').select('full_name').eq('id', userId).single();
 
-            return NextResponse.json({
+            const payload = {
                 success: true,
                 session: signInData.session,
                 user: {
@@ -78,7 +79,33 @@ export async function POST(req: NextRequest) {
                     user_metadata: { ...signInData.user.user_metadata, full_name: profile?.full_name },
                 },
                 message: 'Login successful',
+            };
+
+            const response = NextResponse.json(payload);
+            const supabase = createServerClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+                {
+                    cookies: {
+                        getAll() {
+                            return req.cookies.getAll();
+                        },
+                        setAll(cookiesToSet) {
+                            cookiesToSet.forEach(({ name, value, options }) => {
+                                response.cookies.set({ name, value, ...options });
+                            });
+                        },
+                    },
+                }
+            );
+
+            // Ensure auth cookies exist for edge proxy checks.
+            await supabase.auth.setSession({
+                access_token: signInData.session.access_token,
+                refresh_token: signInData.session.refresh_token,
             });
+
+            return response;
         } else {
             return NextResponse.json({ success: false, message: data.message || 'Invalid OTP' }, { status: 400 });
         }
