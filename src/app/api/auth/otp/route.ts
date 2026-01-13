@@ -23,14 +23,14 @@ export async function POST(request: NextRequest) {
 
         // MSG91 Credentials
         const AUTH_KEY = process.env.MSG91_AUTH_KEY || '477985Az5dYpYUze6965fd67P1';
-        const SENDER_ID = 'BMBBIK'; // 6 char sender ID
+        const TEMPLATE_ID = '6966079a8e1222c164607d3'; // OTP Template
         const OTP_EXPIRY = 15; // minutes
 
         console.log(`[Server OTP] Action: ${action}, Phone: ${formattedPhone}`);
 
         if (action === 'send') {
-            // Send OTP using MSG91's OTP API
-            const url = `https://api.msg91.com/api/v5/otp?authkey=${AUTH_KEY}&mobile=${formattedPhone}&otp_length=4&otp_expiry=${OTP_EXPIRY}`;
+            // Send OTP using MSG91's OTP API with Template ID
+            const url = `https://api.msg91.com/api/v5/otp?authkey=${AUTH_KEY}&template_id=${TEMPLATE_ID}&mobile=${formattedPhone}&otp_length=4&otp_expiry=${OTP_EXPIRY}`;
 
             const response = await fetch(url, {
                 method: 'POST',
