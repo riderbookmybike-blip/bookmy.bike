@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminClient } from '@/lib/supabase/admin';
-import { generateDisplayId } from '@/utils/displayId';
 
 export async function POST(req: NextRequest) {
     try {
-        const { phone, displayName, pincode, city, state, country, latitude, longitude, address } = await req.json();
+        const { phone } = await req.json();
 
         if (!phone) {
             return NextResponse.json({ success: false, message: 'Phone number required' }, { status: 400 });
@@ -15,7 +14,7 @@ export async function POST(req: NextRequest) {
         const password = `MSG91_${phone}_${process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(0, 8)}`; // Secure-ish password bypass
 
         // 1. Check if User Exists in Supabase Auth
-        const { data: existingUsers, error: listError } = await adminClient.auth.admin.listUsers();
+        const { data: existingUsers } = await adminClient.auth.admin.listUsers();
 
         // Find user by phone OR synthesized email
         const foundUser = existingUsers?.users.find(
@@ -40,11 +39,7 @@ export async function POST(req: NextRequest) {
         const userId = foundUser.id;
         const actualEmail = foundUser.email || email; // Use real email if exists, else synthesized
 
-        // 3. Update Last Seen (Optional) - No Profiler Overwrite
-
-        // 3.5 MIGRATION FIX: Ensure Password is Set for Legacy Users
-        // We set the synthesized password for ANY user logging in via Phone,
-        // ensuring we can sign them in programmatically even if they are Gmail users.
+        // 3. MIGRATION FIX: Ensure Password is Set for Legacy Users
         const { error: updateError } = await adminClient.auth.admin.updateUserById(userId, {
             password: password,
             email_confirm: true,
@@ -56,7 +51,6 @@ export async function POST(req: NextRequest) {
         }
 
         // 4. GENERATE SESSION
-        // Use the ACTUAL email to sign in
         const { data: signInData, error: signInError } = await adminClient.auth.signInWithPassword({
             email: actualEmail,
             password: password,
@@ -74,13 +68,13 @@ export async function POST(req: NextRequest) {
         }
 
         // 5. Fetch Profile Name for Header Display
-        const { data: profile } = await adminClient.from('profiles').select('display_name').eq('id', userId).single();
+        const { data: profile } = await adminClient.from('profiles').select('full_name').eq('id', userId).single();
 
         return NextResponse.json({
             success: true,
             userId,
             session: signInData.session,
-            displayName: profile?.display_name || foundUser.user_metadata?.name || null,
+            displayName: profile?.full_name || foundUser.user_metadata?.name || null,
         });
     } catch (error) {
         console.error('Sync API Error:', error);
