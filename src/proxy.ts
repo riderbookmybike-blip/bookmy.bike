@@ -99,44 +99,6 @@ export async function proxy(request: NextRequest) {
     if (['aums', 'we', 'ltfinance'].includes(currentSubdomain)) {
         if (!user) {
             if (!isAuthRoute) {
-                console.log(`[Proxy] Debug: User missing for strictly protected subdomain: ${currentSubdomain}`);
-                console.log(
-                    `[Proxy] Debug: Cookies present:`,
-                    request.cookies.getAll().map(c => c.name)
-                );
-
-                // ZOMBIE COOKIE KILLER: Clear potentially corrupt chunked cookies
-                const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL?.split('.')[0].split('//')[1];
-                if (projectRef) {
-                    const baseName = `sb-${projectRef}-auth-token`;
-                    const loginUrl = new URL('/login', request.url);
-                    const redirectResponse = NextResponse.redirect(loginUrl);
-
-                    const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
-                    const hostname = request.headers.get('host') || '';
-                    const isLocalhost = hostname.includes('localhost');
-
-                    // Force-expire all auth token variants with matching domain
-                    ['', '.0', '.1', '.2'].forEach(suffix => {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        const cookieOptions: Record<string, any> = {
-                            path: '/',
-                            expires: new Date(0),
-                            httpOnly: true,
-                            secure: !isLocalhost,
-                            sameSite: 'lax',
-                        };
-
-                        if (!isLocalhost) {
-                            cookieOptions.domain = `.${ROOT_DOMAIN}`;
-                        }
-
-                        redirectResponse.cookies.set(`${baseName}${suffix}`, '', cookieOptions);
-                    });
-
-                    return redirectResponse;
-                }
-
                 const loginUrl = new URL('/login', request.url);
                 return NextResponse.redirect(loginUrl);
             }

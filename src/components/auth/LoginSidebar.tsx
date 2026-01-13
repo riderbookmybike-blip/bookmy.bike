@@ -55,41 +55,19 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
 
     const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
 
-    useEffect(() => {
-        let interval: NodeJS.Timeout;
-        if (resendTimer > 0) {
-            interval = setInterval(() => {
-                setResendTimer(prev => prev - 1);
-            }, 1000);
-        } else if (step === 'OTP' && resendTimer === 0) {
-            setOtpFallbackVisible(true);
-        }
-        return () => clearInterval(interval);
-    }, [resendTimer, step]);
+    // Utility: Clear all Supabase auth cookies (zombie killer)
+    const clearAuthCookies = () => {
+        const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL?.split('.')[0].split('//')[1];
+        if (!projectRef) return;
 
-    useEffect(() => {
-        if (isOpen) {
-            setStep('INITIAL');
-            const hostname = window.location.hostname;
-            const isMarketplaceDomain =
-                hostname === ROOT_DOMAIN || hostname === `www.${ROOT_DOMAIN}` || hostname === 'localhost';
+        const baseName = `sb-${projectRef}-auth-token`;
+        const cookieOptions = 'path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
 
-            setIsMarketplace(isMarketplaceDomain);
-            setShowEmailPath(!isMarketplaceDomain); // Default to Email UI for CRM/AUMS
-
-            // Background location capture for marketplace only
-            if (isMarketplaceDomain) {
-                detectLocation();
-            }
-
-            setIdentifier('');
-            setOtp('');
-            setFullName('');
-            setLoginError(null);
-            setIsStaff(false);
-            setOtpFallbackVisible(false);
-        }
-    }, [isOpen, ROOT_DOMAIN]);
+        // Clear all potential cookie variants
+        ['', '.0', '.1', '.2'].forEach(suffix => {
+            document.cookie = `${baseName}${suffix}=; ${cookieOptions}`;
+        });
+    };
 
     const detectLocation = () => {
         if ('geolocation' in navigator) {
@@ -118,6 +96,45 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
             );
         }
     };
+
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (resendTimer > 0) {
+            interval = setInterval(() => {
+                setResendTimer(prev => prev - 1);
+            }, 1000);
+        } else if (step === 'OTP' && resendTimer === 0) {
+            setOtpFallbackVisible(true);
+        }
+        return () => clearInterval(interval);
+    }, [resendTimer, step]);
+
+    useEffect(() => {
+        if (isOpen) {
+            // Clear any existing auth cookies when opening login sidebar
+            clearAuthCookies();
+
+            setStep('INITIAL');
+            const hostname = window.location.hostname;
+            const isMarketplaceDomain =
+                hostname === ROOT_DOMAIN || hostname === `www.${ROOT_DOMAIN}` || hostname === 'localhost';
+
+            setIsMarketplace(isMarketplaceDomain);
+            setShowEmailPath(!isMarketplaceDomain); // Default to Email UI for CRM/AUMS
+
+            // Background location capture for marketplace only
+            if (isMarketplaceDomain) {
+                detectLocation();
+            }
+
+            setIdentifier('');
+            setOtp('');
+            setFullName('');
+            setLoginError(null);
+            setIsStaff(false);
+            setOtpFallbackVisible(false);
+        }
+    }, [isOpen, ROOT_DOMAIN]);
 
     const handleCheckUser = async () => {
         if (!identifier || identifier.length < 3) return;
