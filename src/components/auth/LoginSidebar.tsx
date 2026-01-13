@@ -203,21 +203,91 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
         }
     };
 
+    const [authMethod, setAuthMethod] = useState<'PHONE' | 'EMAIL'>('PHONE'); // Toggle state
+    const [email, setEmail] = useState('');
+
     useEffect(() => {
         if (isOpen) {
             setStep('PHONE');
+            setAuthMethod('PHONE'); // Reset to default
             setPhone('');
+            setEmail('');
             setOtp('');
             setLoginError('');
             setShowNameField(false);
-            console.log('LoginSidebar Version: v2.1.1 (Fix Build Error)'); // Cache Buster
+            console.log('LoginSidebar Version: v2.2.0 (Email Login Added)'); // Cache Buster
         }
     }, [isOpen]);
 
+    const handleEmailOtp = async () => {
+        setLoading(true);
+        setLoginError(null);
+
+        try {
+            const supabase = createClient();
+            const { error } = await supabase.auth.signInWithOtp({
+                email: email,
+                options: {
+                    // For subdomains, better to rely on general OTP flow or explicit link if configured
+                    shouldCreateUser: false, // Only allow existing users via Email for now? Or allow all? Let's allow all for now.
+                }
+            });
+
+            if (error) {
+                console.error('Email OTP Error:', error);
+                setLoginError(error.message);
+            } else {
+                setStep('OTP');
+                setResendTimer(30);
+            }
+        } catch (err: any) {
+            console.error('Email Auth Error:', err);
+            setLoginError('Failed to send Email OTP.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleEmailVerify = async () => {
+        setLoading(true);
+        try {
+            const supabase = createClient();
+            const { data, error } = await supabase.auth.verifyOtp({
+                email,
+                token: otp,
+                type: 'email'
+            });
+
+            if (error) {
+                setLoginError(error.message);
+                setLoading(false);
+            } else if (data.session) {
+                console.log('Email Login Successful', data);
+                // Set session
+                await supabase.auth.setSession(data.session);
+
+                // Finalize Setup
+                setTenantType('MARKETPLACE');
+                localStorage.setItem('user_name', data.user?.user_metadata?.name || email.split('@')[0]);
+                localStorage.setItem('tenant_type', 'MARKETPLACE');
+                localStorage.setItem('user_role', 'BMB_USER');
+                document.cookie = 'aums_session=true; path=/;';
+
+                window.location.reload(); // Simple reload to refresh context
+                onClose();
+            }
+        } catch (err) {
+            setLoginError('Verification failed.');
+            setLoading(false);
+        }
+    };
+
     const completeLogin = async () => {
         // Finalize login session on our backend
+        // ... (Phone Logic remains same)
 
-        if (true) { // Successfully verified via Client SDK
+        if (true) {
+            // ... existing phone logic ...
             console.log('Completing login with fullName:', fullName);
             // Better fallback logic
             const isSignup = showNameField; // Determined earlier by check-membership API
@@ -393,8 +463,26 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
 
                                     {step === 'PHONE' ? (
                                         <div className="space-y-4">
+                                            {/* AUTH METHOD TOGGLE (Terminal Only) */}
+                                            {variant === 'TERMINAL' && (
+                                                <div className="flex bg-slate-100 dark:bg-slate-900 rounded-lg p-1 mb-2">
+                                                    <button
+                                                        onClick={() => setAuthMethod('PHONE')}
+                                                        className={`flex-1 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${authMethod === 'PHONE' ? 'bg-white dark:bg-white/10 shadow-sm text-blue-600' : 'text-slate-400'}`}
+                                                    >
+                                                        Phone Access
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setAuthMethod('EMAIL')}
+                                                        className={`flex-1 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${authMethod === 'EMAIL' ? 'bg-white dark:bg-white/10 shadow-sm text-blue-600' : 'text-slate-400'}`}
+                                                    >
+                                                        Email Access
+                                                    </button>
+                                                </div>
+                                            )}
+
                                             {/* Name Input - Conditionally Rendered */}
-                                            {showNameField && (
+                                            {showNameField && authMethod === 'PHONE' && (
                                                 <div className="flex items-center px-6 py-4 border-b border-slate-100 dark:border-white/5 animate-in slide-in-from-top-4 duration-500 fade-in">
                                                     <div className="flex items-center gap-3 pr-6 border-r border-slate-200 dark:border-white/10">
                                                         <User size={18} className="text-slate-400 group-focus-within:text-blue-600 transition-colors" />
@@ -411,34 +499,52 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                             )}
 
                                             {/* Phone Input */}
-                                            <div className="flex items-center px-6 py-4">
-                                                <div className="flex items-center gap-3 pr-6 border-r border-slate-200 dark:border-white/10">
-                                                    <Phone size={18} className="text-slate-400 group-focus-within:text-blue-600 transition-colors" />
-                                                    <span className="text-xs font-black text-slate-500">+91</span>
+                                            {authMethod === 'PHONE' && (
+                                                <div className="flex items-center px-6 py-4">
+                                                    <div className="flex items-center gap-3 pr-6 border-r border-slate-200 dark:border-white/10">
+                                                        <Phone size={18} className="text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                                                        <span className="text-xs font-black text-slate-500">+91</span>
+                                                    </div>
+                                                    <input
+                                                        type="tel"
+                                                        placeholder="Mobile Number"
+                                                        value={phone}
+                                                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                                                        className="bg-transparent border-none outline-none text-xl font-black tracking-[0.3em] text-slate-900 dark:text-white w-full pl-6 placeholder:text-slate-300 dark:placeholder:text-slate-700 placeholder:tracking-normal"
+                                                    />
                                                 </div>
-                                                <input
-                                                    type="tel"
-                                                    placeholder="Mobile Number"
-                                                    value={phone}
-                                                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                                                    className="bg-transparent border-none outline-none text-xl font-black tracking-[0.3em] text-slate-900 dark:text-white w-full pl-6 placeholder:text-slate-300 dark:placeholder:text-slate-700 placeholder:tracking-normal"
-                                                />
-                                            </div>
+                                            )}
+
+                                            {/* Email Input */}
+                                            {authMethod === 'EMAIL' && (
+                                                <div className="flex items-center px-6 py-4">
+                                                    <div className="flex items-center gap-3 pr-6 border-r border-slate-200 dark:border-white/10">
+                                                        <User size={18} className="text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                                                    </div>
+                                                    <input
+                                                        type="email"
+                                                        placeholder="Corporate Email ID"
+                                                        value={email}
+                                                        onChange={(e) => setEmail(e.target.value)}
+                                                        className="bg-transparent border-none outline-none text-lg font-bold text-slate-900 dark:text-white w-full pl-6 placeholder:text-slate-300 dark:placeholder:text-slate-700 placeholder:tracking-normal"
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
                                     ) : (
                                         <div className="flex items-center px-6 py-4">
                                             <Lock size={18} className="text-slate-400 group-focus-within:text-blue-600 transition-colors mr-6" />
                                             <input
-                                                type="tel"
-                                                inputMode="numeric"
-                                                pattern="[0-9]*"
-                                                placeholder="Enter OTP"
+                                                type={authMethod === 'EMAIL' ? 'text' : 'tel'}
+                                                inputMode={authMethod === 'EMAIL' ? 'text' : 'numeric'}
+                                                pattern={authMethod === 'EMAIL' ? undefined : "[0-9]*"}
+                                                placeholder={authMethod === 'EMAIL' ? "Enter Email OTP" : "Enter Mobile OTP"}
                                                 value={otp}
                                                 onChange={(e) => {
-                                                    const val = e.target.value.replace(/\D/g, '');
-                                                    if (val.length <= 4) setOtp(val);
+                                                    const val = authMethod === 'EMAIL' ? e.target.value.slice(0, 6) : e.target.value.replace(/\D/g, '').slice(0, 4);
+                                                    setOtp(val);
                                                 }}
-                                                className="w-full bg-transparent text-lg font-bold placeholder:text-slate-400 focus:outline-none tracking-widest"
+                                                className={`w-full bg-transparent text-lg font-bold placeholder:text-slate-400 focus:outline-none ${authMethod === 'PHONE' ? 'tracking-widest' : 'tracking-normal'}`}
                                                 autoFocus
                                             />
                                         </div>
@@ -448,15 +554,24 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
 
                             <div className="space-y-6">
                                 <button
-                                    onClick={step === 'PHONE' ? handleSendOtp : handleLogin}
+                                    onClick={() => {
+                                        if (step === 'PHONE') {
+                                            authMethod === 'PHONE' ? handleSendOtp() : handleEmailOtp();
+                                        } else {
+                                            authMethod === 'PHONE' ? handleLogin() : handleEmailVerify();
+                                        }
+                                    }}
                                     disabled={
                                         loading ||
                                         (step === 'PHONE'
-                                            ? (phone.length < 10 || (showNameField && fullName.length < 3) || !msg91Loaded)
-                                            : otp.length < 4
+                                            ? (authMethod === 'PHONE'
+                                                ? (phone.length < 10 || (showNameField && fullName.length < 3) || !msg91Loaded)
+                                                : (!email.includes('@') || email.length < 5)
+                                            )
+                                            : (authMethod === 'PHONE' ? otp.length < 4 : otp.length < 6)
                                         )
                                     }
-                                    className={`w-full py-6 rounded-[32px] text-xs font-black uppercase tracking-[0.3em] italic flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-[0.98] ${loading || !msg91Loaded ? 'bg-blue-600/50 cursor-wait' : 'bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-500'
+                                    className={`w-full py-6 rounded-[32px] text-xs font-black uppercase tracking-[0.3em] italic flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-[0.98] ${loading || (!msg91Loaded && authMethod === 'PHONE') ? 'bg-blue-600/50 cursor-wait' : 'bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-500'
                                         } text-white shadow-blue-600/20 disabled:opacity-50`}
                                 >
                                     {loading ? (
@@ -465,7 +580,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                             <span className="w-1.5 h-1.5 rounded-full bg-white animate-bounce [animation-delay:0.2s]" />
                                             <span className="w-1.5 h-1.5 rounded-full bg-white animate-bounce [animation-delay:0.4s]" />
                                         </div>
-                                    ) : !msg91Loaded && step === 'PHONE' ? (
+                                    ) : (!msg91Loaded && authMethod === 'PHONE' && step === 'PHONE') ? (
                                         <span>Connecting Secure Server...</span>
                                     ) : (
                                         <>{step === 'PHONE' ? 'Initialize' : 'Authorize Protocol'} <ArrowRight size={16} /></>
@@ -475,7 +590,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                 {step === 'OTP' && (
                                     <div className="flex flex-col gap-3 items-center">
                                         <button
-                                            onClick={handleSendOtp}
+                                            onClick={authMethod === 'PHONE' ? handleSendOtp : handleEmailOtp}
                                             disabled={loading || resendTimer > 0}
                                             className="text-[10px] font-black text-blue-600 disabled:text-slate-400 uppercase tracking-widest transition-colors"
                                         >
