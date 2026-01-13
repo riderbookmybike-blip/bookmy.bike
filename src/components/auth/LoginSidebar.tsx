@@ -282,6 +282,8 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                 const verifyData = await res.json();
                 if (verifyData.success && verifyData.session) {
                     await supabase.auth.setSession(verifyData.session);
+                    // Small delay to ensure cookies are fully written to browser storage
+                    await new Promise(resolve => setTimeout(resolve, 500));
                     await completeLogin(verifyData.user, verifyData.session);
                 } else {
                     setLoginError(verifyData.message || 'Verification failed.');
