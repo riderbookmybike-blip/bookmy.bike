@@ -82,6 +82,11 @@ export async function POST(req: NextRequest) {
                 message: 'Login successful',
             };
             const cookieStore = await cookies();
+            const host = req.headers.get('host') || '';
+            const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
+            const isLocalhost = host.includes('localhost') || host.startsWith('127.') || host.startsWith('0.0.0.0');
+            const cookieDomain = !isLocalhost ? `.${rootDomain}` : undefined;
+            const isSecure = !isLocalhost;
             const supabase = createServerClient(
                 process.env.NEXT_PUBLIC_SUPABASE_URL!,
                 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -91,14 +96,16 @@ export async function POST(req: NextRequest) {
                             return cookieStore.getAll();
                         },
                         setAll(cookiesToSet) {
-                            cookiesToSet.forEach(({ name, value, options }) =>
-                                cookieStore.set(name, value, {
+                            cookiesToSet.forEach(({ name, value, options }) => {
+                                const cookieOptions = {
                                     ...options,
-                                    domain: process.env.NEXT_PUBLIC_ROOT_DOMAIN || '.bookmy.bike',
-                                    sameSite: 'lax',
-                                    secure: true,
-                                })
-                            );
+                                    path: '/',
+                                    sameSite: 'lax' as const,
+                                    secure: isSecure,
+                                    ...(cookieDomain ? { domain: cookieDomain } : {}),
+                                };
+                                cookieStore.set(name, value, cookieOptions);
+                            });
                         },
                     },
                 }
