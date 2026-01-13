@@ -310,7 +310,9 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                     setOtpFallbackVisible(true);
                 } else if (data.session) {
                     await supabase.auth.setSession(data.session);
-                    await completeLogin(data.user, data.session);
+                    if (data.user) {
+                        await completeLogin(data.user, data.session);
+                    }
                 }
             }
         } catch (err) {
