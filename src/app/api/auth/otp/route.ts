@@ -19,8 +19,8 @@ export async function POST(request: NextRequest) {
 
         // Configuration
         // Configuration
-        // FALLBACK RESTORED: To prevent production downtime if Env var is missing
-        const AUTH_KEY = process.env.MSG91_AUTH_KEY || '477985T3uAd4stn6963525fP1'; // Valid Widget Key
+        // FALLBACK UPDATED: Verified by User (13 Jan 2026)
+        const AUTH_KEY = process.env.MSG91_AUTH_KEY || '477985Az5dYpYUze6965fd67P1'; // Valid Widget Key
         const TEMPLATE_ID = process.env.MSG91_TEMPLATE_ID || '6966079a8e1222c164607d3';
 
         if (!AUTH_KEY) {
