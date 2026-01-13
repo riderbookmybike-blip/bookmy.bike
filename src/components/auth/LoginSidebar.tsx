@@ -618,11 +618,11 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                 {step === 'OTP' && (
                                     <div className="flex flex-col gap-3 items-center">
                                         <button
-                                            onClick={authMethod === 'PHONE' ? handleResendOtp : handleEmailOtp}
+                                            onClick={authMethod === 'PHONE' ? handleSendOtp : handleEmailOtp}
                                             disabled={loading || resendTimer > 0}
                                             className="text-[10px] font-black text-blue-600 disabled:text-slate-400 uppercase tracking-widest transition-colors"
                                         >
-                                            {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Get OTP via Call'}
+                                            {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend OTP'}
                                         </button>
                                         <button
                                             onClick={() => setStep('PHONE')}
