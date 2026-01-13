@@ -99,6 +99,11 @@ export async function proxy(request: NextRequest) {
     if (['aums', 'we', 'ltfinance'].includes(currentSubdomain)) {
         if (!user) {
             if (!isAuthRoute) {
+                console.log(`[Proxy] Debug: User missing for strictly protected subdomain: ${currentSubdomain}`);
+                console.log(
+                    `[Proxy] Debug: Cookies present:`,
+                    request.cookies.getAll().map(c => c.name)
+                );
                 const loginUrl = new URL('/login', request.url);
                 return NextResponse.redirect(loginUrl);
             }
