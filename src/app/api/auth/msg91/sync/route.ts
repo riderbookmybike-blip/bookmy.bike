@@ -47,22 +47,23 @@ export async function POST(req: NextRequest) {
 
             const referralCode = existingProfile?.referral_code || generateDisplayId();
 
-            // Get existing full name to preserve it if it's a real name
-            const { data: existingNameProfile } = await adminClient
+            // Get existing profile to preserve role and name
+            const { data: existingFullProfile } = await adminClient
                 .from('profiles')
-                .select('full_name')
+                .select('full_name, role')
                 .eq('id', userId)
                 .single();
 
-            // Only update name if:
-            // 1. No existing profile, OR
-            // 2. Existing name is a placeholder (like 'Rider 0596', 'Partner', etc.)
-            const isPlaceholderName = !existingNameProfile?.full_name ||
-                existingNameProfile.full_name.startsWith('Rider ') ||
-                existingNameProfile.full_name === 'Partner' ||
-                existingNameProfile.full_name === 'Guest';
+            // Only update name if it's a placeholder
+            const isPlaceholderName = !existingFullProfile?.full_name ||
+                existingFullProfile.full_name.startsWith('Rider ') ||
+                existingFullProfile.full_name === 'Partner' ||
+                existingFullProfile.full_name === 'Guest';
 
-            const finalName = isPlaceholderName ? (displayName || existingNameProfile?.full_name || 'Partner') : existingNameProfile?.full_name;
+            const finalName = isPlaceholderName ? (displayName || existingFullProfile?.full_name || 'Partner') : existingFullProfile?.full_name;
+
+            // CRITICAL: Preserve existing role - only set BMB_USER for NEW users
+            const finalRole = existingFullProfile?.role || 'BMB_USER';
 
             const { error: profileError } = await adminClient
                 .from('profiles')
@@ -70,7 +71,7 @@ export async function POST(req: NextRequest) {
                     id: userId,
                     full_name: finalName,
                     phone: phone, // Storing raw 10 digit in profile for display
-                    role: 'BMB_USER', // Default role
+                    role: finalRole, // Preserve existing role!
                     referral_code: referralCode,
                     pincode: pincode || null,
                     city: city || null,
