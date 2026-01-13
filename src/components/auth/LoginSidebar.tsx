@@ -151,31 +151,24 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                 }
             }
 
-            // 3. Send OTP
-            // REVERT: Use simple string identifier as per original working code.
-            // The template ID is handled by the widget configuration loaded in MSG91Initializer.
+            // 3. Send OTP via Server-Side API (bypasses widget CORS issues on subdomains)
+            const otpRes = await fetch('/api/auth/otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone, action: 'send' })
+            });
+            const otpData = await otpRes.json();
 
-            if (!(window as any).sendOtp) {
-                console.error('MSG91 sendOtp not found on window');
-                alert('OTP service not ready.');
+            if (otpData.success) {
+                console.log('OTP Sent Success:', otpData);
+                setStep('OTP');
+                setResendTimer(30);
                 setLoading(false);
-                return;
+            } else {
+                console.error('OTP Send Error:', otpData);
+                setLoginError(otpData.message || 'Failed to send OTP');
+                setLoading(false);
             }
-
-            (window as any).sendOtp(
-                `91${phone}`,
-                (data: any) => {
-                    console.log('OTP Sent Success:', data);
-                    setStep('OTP');
-                    setResendTimer(30);
-                    setLoading(false);
-                },
-                (error: any) => {
-                    console.error('OTP Send Error:', error);
-                    alert('Failed to send OTP. Please check the number.');
-                    setLoading(false);
-                }
-            );
         } catch (err) {
             console.error('Check User/Send OTP Error:', err);
             setLoading(false);
@@ -188,29 +181,24 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
         setLoading(true);
 
         try {
-            // Verify via MSG91 SDK
-            if (!(window as any).verifyOtp) {
-                alert('Validation service not ready.');
-                setLoading(false);
-                return;
-            }
+            // Verify OTP via Server-Side API (bypasses widget CORS issues)
+            const verifyRes = await fetch('/api/auth/otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone, action: 'verify', otp })
+            });
+            const verifyData = await verifyRes.json();
 
-            (window as any).verifyOtp(
-                otp,
-                async (data: any) => {
-                    // Success callback from MSG91
-                    console.log('OTP Verified:', data);
-                    await completeLogin();
-                },
-                (error: any) => {
-                    // Failure callback
-                    console.error('OTP Verify Error:', error);
-                    alert('Invalid OTP. Please try again.');
-                    setLoading(false);
-                }
-            );
+            if (verifyData.success) {
+                console.log('OTP Verified:', verifyData);
+                await completeLogin();
+            } else {
+                console.error('OTP Verify Error:', verifyData);
+                setLoginError(verifyData.message || 'Invalid OTP. Please try again.');
+                setLoading(false);
+            }
         } catch (err) {
-            alert('Verification error.');
+            setLoginError('Verification error.');
             setLoading(false);
         }
     };
