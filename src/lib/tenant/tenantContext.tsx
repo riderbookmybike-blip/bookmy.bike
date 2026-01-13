@@ -3,10 +3,25 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
-export type TenantType = 'DEALER' | 'BANK' | 'MARKETPLACE';
+export type TenantType = 'DEALER' | 'MARKETPLACE' | 'AUMS' | 'BANK';
 
 // Enhanced TenantContext with Status props
 export type TenantStatus = 'ACTIVE' | 'SUSPENDED' | 'TRIAL_EXPIRED';
+
+export interface Membership {
+    id: string;
+    role: string;
+    status: string;
+    tenant_id: string;
+    user_id: string;
+    tenants?: {
+        id: string;
+        name: string;
+        subdomain: string;
+        type: string;
+        config?: Record<string, unknown>;
+    };
+}
 
 export interface TenantConfig {
     brand: {
@@ -24,78 +39,65 @@ export interface TenantConfig {
         isComplete: boolean;
         step: number;
     };
-    auth?: {
-        msg91_widget_id?: string;
-        msg91_auth_key?: string;
-    };
-    // Legacy support if needed
-    landing?: {
-        title?: string;
-        subtitle?: string;
-        ctaText?: string;
-    };
 }
 
-interface TenantContextProps {
-    tenantType: TenantType | undefined;
-    setTenantType: (type: TenantType) => void;
+interface TenantContextType {
+    tenantType?: TenantType;
     tenantName: string;
-    tenantConfig: TenantConfig | null; // NEW
+    tenantConfig: TenantConfig | null;
     userName: string;
-    tenantId: string | undefined;
-    userRole: string | undefined;
-    activeRole: string | undefined;
-    referralCode: string | undefined;
+    tenantId?: string;
+    userRole?: string;
+    activeRole?: string;
+    referralCode?: string;
+    memberships: Membership[];
+    setTenantType: (type: TenantType) => void;
+    setTenantName: (name: string) => void;
+    setTenantConfig: (config: TenantConfig | null) => void;
+    setUserName: (name: string) => void;
+    setTenantId: (id: string) => void;
+    setUserRole: (role: string) => void;
+    setActiveRole: (role: string) => void;
+    setReferralCode: (code: string) => void;
+    setMemberships: (data: Membership[]) => void;
     switchRole: (role: string) => void;
-    // Sidebar State
     isSidebarExpanded: boolean;
     setIsSidebarExpanded: (expanded: boolean) => void;
-    // Legacy / Status props
-    status: TenantStatus;
     isReadOnly: boolean;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    memberships: Record<string, any>[]; // List of memberships
+    status: TenantStatus;
 }
 
-const TenantContext = createContext<TenantContextProps>({
-    tenantType: undefined,
-    setTenantType: () => { },
-    tenantName: 'Loading...',
-    tenantConfig: null,
-    userName: 'Guest User',
-    tenantId: undefined,
-    userRole: undefined,
-    activeRole: undefined,
-    referralCode: undefined,
-    switchRole: () => { },
-    isSidebarExpanded: false,
-    setIsSidebarExpanded: () => { },
-    status: 'ACTIVE',
-    isReadOnly: false,
-    memberships: [],
-});
+const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
 export const TenantProvider = ({ children }: { children: ReactNode }) => {
-    // Lazy Initialize State - Fixed for Hydration (No localStorage in SSR)
     const [tenantType, setTenantTypeState] = useState<TenantType | undefined>(undefined);
-    const [tenantName, setTenantName] = useState('');
+    const [tenantName, setTenantNameState] = useState('');
     const [tenantConfig, setTenantConfig] = useState<TenantConfig | null>(null);
     const [userName, setUserName] = useState('');
     const [tenantId, setTenantId] = useState<string | undefined>(undefined);
     const [userRole, setUserRole] = useState<string | undefined>(undefined);
     const [activeRole, setActiveRole] = useState<string | undefined>(undefined);
     const [referralCode, setReferralCode] = useState<string | undefined>(undefined);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [memberships, setMembershipsState] = useState<any[]>([]);
+    const [memberships, setMembershipsState] = useState<Membership[]>([]);
 
-    // Hydration Effect: Restore from LocalStorage after mount
+    // Hydration Effect
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const tType = localStorage.getItem('tenant_type') as TenantType;
-            if (tType) setTenantTypeState(tType);
+            if (tType) {
+                // eslint-disable-next-line react-hooks/set-state-in-effect
+                setTenantTypeState(tType);
+            }
 
             const tName = localStorage.getItem('tenant_name');
-            if (tName) setTenantName(tName);
+            if (tName) {
+                // eslint-disable-next-line react-hooks/set-state-in-effect
+                setTenantNameState(tName);
+            }
+
+            const hostname = window.location.hostname;
+            const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
+            const isRoot = hostname === ROOT_DOMAIN || hostname === `www.${ROOT_DOMAIN}` || hostname === 'localhost';
 
             const uName = localStorage.getItem('user_name');
             if (uName) setUserName(uName);
@@ -104,236 +106,74 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
             if (tId) setTenantId(tId);
 
             const uRole = localStorage.getItem('user_role');
-            if (uRole) setUserRole(uRole);
-
             const aRole = localStorage.getItem('active_role');
-            if (aRole) setActiveRole(aRole);
+
+            if (isRoot) {
+                if (uRole && !['BMB_USER'].includes(uRole)) {
+                    setUserRole('BMB_USER');
+                    setActiveRole('BMB_USER');
+                } else {
+                    if (uRole) setUserRole(uRole);
+                    if (aRole) setActiveRole(aRole);
+                }
+            } else {
+                if (uRole) setUserRole(uRole);
+                if (aRole) setActiveRole(aRole);
+            }
 
             const rCode = localStorage.getItem('referral_code');
             if (rCode) setReferralCode(rCode);
 
             const savedMems = localStorage.getItem('user_memberships');
             if (savedMems) {
-                try { setMembershipsState(JSON.parse(savedMems)); } catch (e) { }
+                try {
+                    setMembershipsState(JSON.parse(savedMems) as Membership[]);
+                } catch { /* ignore */ }
             }
         }
     }, []);
 
-    const setMemberships = (data: any[]) => {
+    const setMemberships = (data: Membership[]) => {
         setMembershipsState(data);
         if (typeof window !== 'undefined') {
             localStorage.setItem('user_memberships', JSON.stringify(data));
         }
     };
 
-    const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
-
-    const status: TenantStatus = 'ACTIVE';
-    const isReadOnly = status !== 'ACTIVE';
-
     const switchRole = (role: string) => {
         setActiveRole(role);
         localStorage.setItem('active_role', role);
-        console.log('[TenantContext] Switched role to:', role);
     };
 
-    useEffect(() => {
-        let mounted = true;
+    const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+    const status: TenantStatus = 'ACTIVE';
+    const isReadOnly = status !== 'ACTIVE';
 
-        const fetchTenantDetails = async () => {
-            try {
-                const supabase = createClient();
-                let { data: { user } } = await supabase.auth.getUser();
+    const setTenantType = (type: TenantType) => {
+        setTenantTypeState(type);
+        localStorage.setItem('tenant_type', type);
+    };
 
-                if (!user) {
-                    const { data: sessionData } = await supabase.auth.getSession();
-                    if (sessionData?.session?.user) {
-                        user = sessionData.session.user;
-                    }
-                }
-
-                // Subdomain Detection (Needed for both Guest & Auth users)
-                const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
-                const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
-                let currentSubdomain = '';
-                if (hostname.endsWith(`.${ROOT_DOMAIN}`)) {
-                    const sub = hostname.replace(`.${ROOT_DOMAIN}`, '');
-                    if (sub !== 'www' && sub !== '') currentSubdomain = sub;
-                } else if (hostname.includes('localhost')) {
-                    const parts = hostname.split('.');
-                    if (parts.length > 1 && parts[0] !== 'www') currentSubdomain = parts[0];
-                }
-                console.log(`[TenantContext] Hostname: ${hostname} | Subdomain: ${currentSubdomain || 'NONE'}`);
-
-                // GUEST BRANDING FETCH
-                if (!user && currentSubdomain) {
-                    console.log(`[TenantContext] Guest access. Fetching branding for: ${currentSubdomain}`);
-                    const { data: guestTenant } = await supabase.from('tenants').select('*').eq('subdomain', currentSubdomain).maybeSingle();
-                    if (guestTenant && mounted) {
-                        setTenantName(guestTenant.name);
-                        setTenantConfig(guestTenant.config);
-                        setTenantTypeState(guestTenant.type?.toUpperCase() as TenantType);
-                        // FIX: Set tenantId for pre-login membership check
-                        setTenantId(guestTenant.id);
-                        localStorage.setItem('tenant_id', guestTenant.id);
-                    }
-                }
-
-                // Disaster Recovery
-                if (!user) {
-                    const fallbackAccess = localStorage.getItem('sb-access-token');
-                    const fallbackRefresh = localStorage.getItem('sb-refresh-token');
-                    if (fallbackAccess && fallbackRefresh) {
-                        console.warn('[TenantContext] Recovery attempt...');
-                        const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-                            access_token: fallbackAccess,
-                            refresh_token: fallbackRefresh
-                        });
-                        if (!sessionError && sessionData.session) {
-                            user = sessionData.session.user;
-                        }
-                    }
-                }
-
-                if (user) {
-                    // Fetch Core Data
-                    const [membershipsResult, profileResult] = await Promise.all([
-                        supabase.from('memberships').select('*, tenants(*)').eq('user_id', user.id).eq('status', 'ACTIVE'),
-                        supabase.from('profiles').select('*').eq('id', user.id).single()
-                    ]);
-
-                    if (!mounted) return;
-
-                    // Identity Sync
-                    const fullName = profileResult.data?.full_name || user.phone || 'User';
-                    setUserName(fullName);
-                    localStorage.setItem('user_name', fullName);
-                    if (profileResult.data?.referral_code) {
-                        setReferralCode(profileResult.data.referral_code);
-                        localStorage.setItem('referral_code', profileResult.data.referral_code);
-                    }
-
-                    // Tenant Resolution
-                    const memberships = membershipsResult.data || [];
-                    setMemberships(memberships);
-                    const godModeMember = memberships.find(m => ['OWNER'].includes(m.role));
-                    let activeMembership = null;
-
-                    if (currentSubdomain) {
-                        activeMembership = memberships.find(m => {
-                            const mSub = m.tenants?.subdomain?.toLowerCase()?.replace(/\s+/g, '');
-                            return mSub && mSub === currentSubdomain.toLowerCase().replace(/\s+/g, '');
-                        });
-
-                        if (!activeMembership && godModeMember) {
-                            console.log(`[GodMode] Searching for tenant: ${currentSubdomain}`);
-                            const { data: virtualTenant } = await supabase.from('tenants').select('*').eq('subdomain', currentSubdomain).maybeSingle();
-                            if (virtualTenant) {
-                                activeMembership = { tenant_id: virtualTenant.id, role: godModeMember.role, tenants: virtualTenant, user_id: user.id };
-                            }
-                        }
-                    }
-
-                    if (!activeMembership) {
-                        const hintId = localStorage.getItem('last_active_tenant_id');
-                        activeMembership = memberships.find(m => m.tenant_id === hintId) || memberships[0];
-                    }
-
-                    if (activeMembership) {
-                        const resolvedTenant = activeMembership.tenants;
-                        const resolvedRole = activeMembership.role;
-                        const tId = activeMembership.tenant_id;
-
-                        setTenantName(resolvedTenant?.name || 'Portal');
-                        setTenantId(tId);
-                        setUserRole(resolvedRole);
-                        localStorage.setItem('tenant_name', resolvedTenant?.name || '');
-                        localStorage.setItem('tenant_id', tId);
-                        localStorage.setItem('user_role', resolvedRole);
-                        localStorage.setItem('last_active_tenant_id', tId);
-
-                        // Role Logic & Access Enforcement
-                        const isPowerRole = ['OWNER', 'DEALERSHIP_ADMIN', 'DEALERSHIP_STAFF', 'BANK_STAFF'].includes(resolvedRole);
-                        const savedActiveRole = localStorage.getItem('active_role');
-
-                        // [Phase 12.1] Subdomain Restriction: USERs cannot access dealer subdomains
-                        if (resolvedRole === 'BMB_USER' && currentSubdomain) {
-                            console.warn(`[TenantContext] Access Denied: BMB_USER role found on subdomain ${currentSubdomain}`);
-                            setTenantTypeState('MARKETPLACE');
-                            setUserRole('BMB_USER');
-                            setActiveRole('BMB_USER');
-                            setTenantName('BookMyBike');
-                            setTenantId(undefined);
-                            return;
-                        }
-
-                        if (isPowerRole) {
-                            // FORCE power role for owners/admins
-                            setActiveRole(resolvedRole);
-                            localStorage.setItem('active_role', resolvedRole);
-                        } else if (savedActiveRole) {
-                            setActiveRole(savedActiveRole);
-                        } else {
-                            setActiveRole(resolvedRole);
-                            localStorage.setItem('active_role', resolvedRole);
-                        }
-
-                        // Tenant Type Logic
-                        const rawType = (resolvedTenant?.type || 'DEALER').toUpperCase() as TenantType;
-                        const isSuperOrMp = ['OWNER'].includes(resolvedRole);
-                        if (isSuperOrMp && !currentSubdomain) {
-                            setTenantTypeState('MARKETPLACE');
-                            localStorage.setItem('tenant_type', 'MARKETPLACE');
-                        } else {
-                            setTenantTypeState(rawType);
-                            localStorage.setItem('tenant_type', rawType);
-                        }
-
-                        if (resolvedTenant?.config) setTenantConfig(resolvedTenant.config);
-                        console.log(`[TenantContext] Resolved: ${resolvedTenant?.name} | Role: ${resolvedRole}`);
-                    } else {
-                        // Retail Fallback
-                        setTenantTypeState('MARKETPLACE');
-                        setUserRole('MEMBER');
-                        setActiveRole('MEMBER');
-                        setTenantName('BookMyBike');
-                    }
-                } else {
-                    if (window.location.pathname.startsWith('/dashboard')) {
-                        setTenantName('Unauthorized');
-                    }
-                }
-            } catch (err) {
-                console.error('[TenantContext] Error:', err);
-                setTenantName('Connection Lost');
-            }
-        };
-
-        fetchTenantDetails();
-        return () => { mounted = false; };
-    }, []);
+    const setTenantName = (name: string) => {
+        setTenantNameState(name);
+        localStorage.setItem('tenant_name', name);
+    };
 
     return (
         <TenantContext.Provider value={{
-            tenantType,
-            setTenantType: setTenantTypeState,
-            tenantName,
-            tenantConfig,
-            userName,
-            tenantId,
-            userRole,
-            activeRole,
-            referralCode,
-            switchRole,
-            isSidebarExpanded,
-            setIsSidebarExpanded,
-            status,
-            isReadOnly,
-            memberships
+            tenantType, tenantName, tenantConfig, userName, tenantId, userRole, activeRole, referralCode, memberships,
+            setTenantType, setTenantName, setTenantConfig, setUserName, setTenantId, setUserRole, setActiveRole, setReferralCode, setMemberships,
+            switchRole, isSidebarExpanded, setIsSidebarExpanded, isReadOnly, status
         }}>
             {children}
         </TenantContext.Provider>
     );
 };
 
-export const useTenant = () => useContext(TenantContext);
+export const useTenant = () => {
+    const context = useContext(TenantContext);
+    if (context === undefined) {
+        throw new Error('useTenant must be used within a TenantProvider');
+    }
+    return context;
+};

@@ -20,7 +20,6 @@ import TabNavigation from './Personalize/Tabs/TabNavigation';
 import AccessoriesTab from './Personalize/Tabs/AccessoriesTab';
 import SidebarHUD from './Personalize/SidebarHUD';
 import {
-    productColors,
     mandatoryAccessories,
     optionalAccessories,
     mandatoryInsurance,
@@ -31,9 +30,9 @@ import {
 } from '@/hooks/usePDPData';
 
 interface PDPDesktopProps {
-    product: any;
+    product: any; // eslint-disable-line @typescript-eslint/no-explicit-any
     variantParam: string;
-    data: any;
+    data: any; // eslint-disable-line @typescript-eslint/no-explicit-any
     handlers: {
         handleColorChange: (id: string) => void;
         handleShareQuote: () => void;
@@ -49,6 +48,7 @@ interface PDPDesktopProps {
 
 export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktopProps) {
     const {
+        colors,
         selectedColor,
         regType,
         setRegType,
@@ -100,7 +100,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
         }
     }, []);
 
-    const activeColorConfig = productColors.find(c => c.id === selectedColor) || productColors[0];
+    const activeColorConfig = colors.find((c: any) => c.id === selectedColor) || colors[0]; // eslint-disable-line @typescript-eslint/no-explicit-any
     const totalMRP =
         (product.mrp || baseExShowroom + 5000) +
         rtoEstimates +
@@ -125,6 +125,8 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
     ];
 
     const getProductImage = () => {
+        if (activeColorConfig?.image) return activeColorConfig.image;
+
         switch (product.bodyType) {
             case 'SCOOTER':
                 return '/images/categories/scooter_nobg.png';
@@ -137,7 +139,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
         }
     };
 
-    const ConfigItemRow = ({ item, isSelected, onToggle, isMandatory = false, isRadio = false }: any) => {
+    const ConfigItemRow = ({ item, isSelected, onToggle, isMandatory = false, isRadio = false }: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
         const quantity = isSelected ? quantities[item.id] || 1 : 0;
         const finalPrice = item.discountPrice > 0 ? item.discountPrice : item.price;
         const billedAmount = isSelected ? finalPrice * quantity : 0;
@@ -146,10 +148,9 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
             <div
                 onClick={() => !isMandatory && onToggle && onToggle()}
                 className={`group relative p-4 rounded-[2.5rem] border transition-all duration-300 flex items-center justify-between gap-4 cursor-pointer overflow-hidden
-                    ${
-                        isSelected
-                            ? 'bg-brand-primary/5 border-brand-primary/30'
-                            : 'bg-white/[0.03] border-slate-200 dark:border-white/5 hover:bg-white/[0.05] hover:border-slate-300 dark:hover:border-white/10'
+                    ${isSelected
+                        ? 'bg-brand-primary/5 border-brand-primary/30'
+                        : 'bg-white/[0.03] border-slate-200 dark:border-white/5 hover:bg-white/[0.05] hover:border-slate-300 dark:hover:border-white/10'
                     }
                     ${isMandatory ? 'cursor-default opacity-90' : ''}
                 `}
@@ -159,11 +160,10 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                     <div className="flex items-center gap-4 min-w-[200px]">
                         <div
                             className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all shrink-0
-                            ${
-                                isSelected
+                            ${isSelected
                                     ? 'bg-brand-primary border-brand-primary text-black shadow-[0_0_15px_rgba(255,215,0,0.25)]'
                                     : 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-400'
-                            }`}
+                                }`}
                         >
                             {configTab === 'INSURANCE' ? <ShieldIcon size={20} /> : <Zap size={20} />}
                         </div>
@@ -230,11 +230,10 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                         {/* Selection Checkbox/Radio */}
                         <div
                             className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300
-                            ${
-                                isSelected
+                            ${isSelected
                                     ? 'bg-brand-primary border-brand-primary scale-110 shadow-lg shadow-brand-primary/30'
                                     : 'border-slate-300 dark:border-slate-700 bg-transparent group-hover:border-brand-primary'
-                            }`}
+                                }`}
                         >
                             {isSelected && (
                                 <CheckCircle2
@@ -302,7 +301,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                             {[60, 48, 36, 24].map(tenure => {
                                 const emiValue = Math.round(
                                     (loanAmount * (annualInterest / 12) * Math.pow(1 + annualInterest / 12, tenure)) /
-                                        (Math.pow(1 + annualInterest / 12, tenure) - 1)
+                                    (Math.pow(1 + annualInterest / 12, tenure) - 1)
                                 );
                                 return (
                                     <ConfigItemRow
@@ -334,7 +333,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                                     key={acc.id}
                                     item={{ ...acc, maxQty: acc.maxQty || 1 }}
                                     isSelected={true}
-                                    onToggle={() => {}}
+                                    onToggle={() => { }}
                                     isMandatory={true}
                                 />
                             ))}
@@ -478,7 +477,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                                     key={srv.id}
                                     item={srv}
                                     isSelected={true}
-                                    onToggle={() => {}}
+                                    onToggle={() => { }}
                                     isMandatory={true}
                                 />
                             ))}
@@ -564,7 +563,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                     <div className="flex-1 space-y-12 min-w-0">
                         <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
                             <VisualsRow
-                                colors={productColors}
+                                colors={colors}
                                 selectedColor={selectedColor}
                                 onColorSelect={handleColorChange}
                                 productImage={getProductImage()}
@@ -618,7 +617,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                         onGetQuote={handleBookingRequest}
                         onShare={handleShareQuote}
                         onSave={handleSaveQuote}
-                        onDownload={() => {}}
+                        onDownload={() => { }}
                         onShowVideo={() => setIsVideoOpen(true)}
                         productImage={getProductImage()}
                         downPayment={userDownPayment}

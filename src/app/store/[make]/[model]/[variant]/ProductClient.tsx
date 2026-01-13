@@ -11,12 +11,12 @@ import { EmailUpdateModal } from '@/components/auth/EmailUpdateModal';
 import { createClient } from '@/lib/supabase/client';
 
 interface ProductClientProps {
-    product: any;
+    product: any; // eslint-disable-line @typescript-eslint/no-explicit-any
     makeParam: string;
     modelParam: string;
     variantParam: string;
-    initialLocation: any;
-    initialPrice: any;
+    initialLocation: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    initialPrice: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 export default function ProductClient({
@@ -27,7 +27,7 @@ export default function ProductClient({
     initialLocation,
     initialPrice
 }: ProductClientProps) {
-    const data = usePDPData(initialPrice);
+    const data = usePDPData(initialPrice, product.colors);
     const {
         setSelectedColor,
         selectedColor,
@@ -154,6 +154,7 @@ export default function ProductClient({
             <EmailUpdateModal
                 isOpen={showEmailModal}
                 onClose={() => setShowEmailModal(false)}
+                onSuccess={() => setShowEmailModal(false)}
             />
         </>
     );

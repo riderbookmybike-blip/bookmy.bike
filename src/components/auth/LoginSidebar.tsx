@@ -17,12 +17,22 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
     const router = useRouter();
     const { setTenantType, tenantId } = useTenant();
     const [loginError, setLoginError] = useState<string | null>(null);
-    const [step, setStep] = useState<'PHONE' | 'NAME' | 'OTP'>('PHONE');
-    const [phone, setPhone] = useState('');
+    const [step, setStep] = useState<'INITIAL' | 'SIGNUP' | 'OTP' | 'PASSWORD'>('INITIAL');
+    const [authMethod, setAuthMethod] = useState<'PHONE' | 'EMAIL'>('PHONE');
+    const [isMarketplace, setIsMarketplace] = useState(true);
+
+    const [identifier, setIdentifier] = useState('');
+    const [password, setPassword] = useState('');
     const [otp, setOtp] = useState('');
     const [fullName, setFullName] = useState('');
     const [loading, setLoading] = useState(false);
-    const [showNameField, setShowNameField] = useState(false); // New state for progressive profiling
+    const [resendTimer, setResendTimer] = useState(0);
+    const [showEmailPath, setShowEmailPath] = useState(false); // Enable email for Staff on Root
+
+    // Existence Info
+    const [detectedRole, setDetectedRole] = useState<string | null>(null);
+    const [isStaff, setIsStaff] = useState(false);
+
     const [location, setLocation] = useState<{
         pincode: string | null;
         city: string | null;
@@ -42,7 +52,8 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
         loading: false,
         isServiceable: null,
     });
-    const [resendTimer, setResendTimer] = useState(0);
+
+    const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
@@ -55,25 +66,41 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
     }, [resendTimer]);
 
     useEffect(() => {
-        if (variant !== 'TERMINAL' && isOpen && !location.pincode) {
-            detectLocation();
+        if (isOpen) {
+            setStep('INITIAL');
+            const hostname = window.location.hostname;
+            const isMarketplaceDomain =
+                hostname === ROOT_DOMAIN || hostname === `www.${ROOT_DOMAIN}` || hostname === 'localhost';
+
+            setIsMarketplace(isMarketplaceDomain);
+
+            // Background location capture for marketplace only
+            if (isMarketplaceDomain) {
+                detectLocation();
+            }
+
+            setIdentifier('');
+            setOtp('');
+            setPassword('');
+            setFullName('');
+            setLoginError(null);
+            setIsStaff(false);
         }
-    }, [isOpen]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, ROOT_DOMAIN]);
 
     const detectLocation = () => {
         if ('geolocation' in navigator) {
             setLocation(prev => ({ ...prev, loading: true }));
             navigator.geolocation.getCurrentPosition(
                 async position => {
-                    // Smart Geocoding (Cache First -> Google API -> Mock)
                     const { latitude, longitude } = position.coords;
                     const result = await getSmartPincode(
                         latitude,
                         longitude,
-                        process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY // Safe to pass undefined (will trigger Mock)
+                        process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY
                     );
 
-                    // Silently update state with whatever we got
                     setLocation(prev => ({
                         ...prev,
                         loading: false,
@@ -88,97 +115,105 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                 },
                 error => {
                     console.error('Geolocation error:', error);
-                    // Silently fail, just stop loading
                     setLocation(prev => ({ ...prev, loading: false }));
                 }
             );
         }
     };
 
-    // Removed handlePincodeSubmit and related manual edit state for silent mode
-
-    // MSG91 SDK Integration (Removed: Server-side API used exclusively)
-    // const [msg91Loaded, setMsg91Loaded] = useState(false);
-
-    const handleSendOtp = async () => {
-        // REMOVED: msg91Loaded check. Server-side API is independent.
+    const handleCheckUser = async () => {
+        if (!identifier || identifier.length < 3) return;
 
         setLoading(true);
+        setLoginError(null);
+
+        // Automatic Detection
+        const isEmail = identifier.includes('@');
+        const phoneVal = !isEmail ? identifier.replace(/\D/g, '') : '';
+
+        if (!isEmail && phoneVal.length < 10) {
+            setLoginError('Please enter a valid 10-digit mobile number.');
+            setLoading(false);
+            return;
+        }
+
+        const method = isEmail ? 'EMAIL' : 'PHONE';
+        setAuthMethod(method);
 
         try {
-            setLoginError(null);
-            // 1. Check Membership / Authorization for this specific Tenant
             const checkRes = await fetch('/api/auth/check-membership', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone, tenantId }),
-            }); // Continuing logic...
+                body: JSON.stringify({
+                    phone: method === 'PHONE' ? phoneVal : undefined,
+                    email: method === 'EMAIL' ? identifier : undefined,
+                    tenantId
+                }),
+            });
             const checkData = await checkRes.json();
 
-            if (!checkData.success) {
+            if (!checkData.success && !checkData.isNew) {
                 setLoginError(checkData.message || 'Access Denied.');
                 setLoading(false);
                 return;
             }
 
-            // 2. Handle New User Flow (Progressive Profiling)
-            // If user doesn't exist yet but is allowed to join (Marketplace only)
-            if (checkData.isNew) {
-                if (!showNameField) {
-                    setShowNameField(true);
-                    setLoading(false);
-                    return;
-                }
-                if (fullName.length < 3) {
-                    setLoading(false);
-                    return;
-                }
+            // GUARD: Prevent email signup on Marketplace (Root Domain)
+            if (checkData.isNew && method === 'EMAIL' && !tenantId) {
+                setLoginError('Email signup is restricted to authorized staff. Please use a mobile number.');
+                setLoading(false);
+                return;
             }
 
-            // Proceed to Client-Side Widget Flow
-            setLoading(true);
-            setLoginError(null);
+            if (checkData.role) setDetectedRole(checkData.role);
 
-            // 1. Normalized Phone for Widget
-            // Ensure strictly 12 digits (91 + 10 digits)
-            const cleaned = phone.replace(/\D/g, '');
-            const formattedPhone = '91' + (cleaned.length === 10 ? cleaned : cleaned.substring(cleaned.length - 10));
+            const staffDetected = (checkData.role && checkData.role !== 'BMB_USER') || !!tenantId;
+            setIsStaff(staffDetected);
 
-            try {
-                // 2. Use MSG91 Widget
-                if (typeof window !== 'undefined' && window.sendOtp) {
-                    console.log('[MSG91] Sending OTP via Widget to:', formattedPhone);
-
-                    // Config definition removed (unused)
-
-                    // If initSendOTP is available, re-init (optional but safer)
-                    // window.initSendOTP(config);
-
-                    window.sendOtp(
-                        formattedPhone,
-                        (data: unknown) => {
-                            console.log('[MSG91] Send Success:', data);
-                            setStep('OTP');
-                            setResendTimer(30);
-                            setLoading(false);
-                        },
-                        (error: unknown) => {
-                            console.error('[MSG91] Send Failure:', error);
-                            setLoginError('Failed to send OTP. Please check the number.');
-                            setLoading(false);
-                        }
-                    );
-                } else {
-                    setLoginError('OTP Service not initialized. Please refresh.');
+            if (checkData.isNew) {
+                if (tenantId) {
+                    setLoginError('Account not found. Staff access requires manual pre-registration.');
                     setLoading(false);
+                    return;
                 }
-            } catch (err) {
-                console.error('Widget Error:', err);
-                setLoginError('Network Error.');
-                setLoading(false);
+                setStep('SIGNUP');
+            } else {
+                if (staffDetected && method === 'EMAIL') {
+                    setStep('PASSWORD');
+                } else {
+                    handleSendPhoneOtp(phoneVal);
+                }
             }
         } catch (err) {
-            console.error('Top Level Auth Error:', err);
+            console.error('Check User Error:', err);
+            setLoginError('Network Error.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSendPhoneOtp = async (phoneOverride?: string) => {
+        const phoneVal = phoneOverride || identifier.replace(/\D/g, '');
+        if (!phoneVal || phoneVal.length < 10) return;
+
+        setLoading(true);
+        try {
+            const res = await fetch('/api/auth/msg91/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: phoneVal }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                setStep('OTP');
+                setResendTimer(30);
+            } else {
+                setLoginError(data.message || 'Failed to send OTP.');
+            }
+        } catch (err) {
+            console.error('OTP Send Error:', err);
+            setLoginError('Connection failed.');
+        } finally {
             setLoading(false);
         }
     };
@@ -188,249 +223,122 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
         setLoading(true);
         setLoginError(null);
 
-        try {
-            if (typeof window !== 'undefined' && window.verifyOtp) {
-                console.log('[MSG91] Verifying OTP via Widget...');
-
-                window.verifyOtp(
-                    otp,
-                    async (data: unknown) => {
-                        console.log('[MSG91] Verify Success (Token received):', data);
-                        // Msg91 Widget returns the token string or object.
-                        // We use this token to securely authenticate on the backend.
-                        // Safe casting for the widget response
-                        const token =
-                            typeof data === 'object' && data !== null && 'message' in data
-                                ? (data as { message: string }).message
-                                : String(data);
-                        await completeLogin(token);
-                    },
-                    (error: unknown) => {
-                        console.error('[MSG91] Verify Failure:', error);
-                        setLoginError('Invalid OTP.');
-                        setLoading(false);
-                    }
-                );
-            } else {
-                setLoginError('Verification Service Unavailable.');
-                setLoading(false);
-            }
-        } catch {
-            setLoginError('Verification error.');
-            setLoading(false);
-        }
-    };
-
-    const [authMethod, setAuthMethod] = useState<'PHONE' | 'EMAIL'>('PHONE'); // Toggle state
-    const [email, setEmail] = useState('');
-    const [isMarketplace, setIsMarketplace] = useState(true); // For UI switching
-
-    useEffect(() => {
-        if (isOpen) {
-            setStep('PHONE');
-
-            // HYBRID AUTH STRATEGY:
-            // Marketplace (Consumers) -> Default to PHONE
-            // AUMS/Dealer (Staff) -> Default to EMAIL (100% Reliable)
-            const hostname = window.location.hostname;
-            const isMarketplaceDomain =
-                hostname === 'bookmy.bike' || hostname === 'www.bookmy.bike' || hostname === 'localhost';
-
-            setIsMarketplace(isMarketplaceDomain);
-            setAuthMethod(isMarketplaceDomain ? 'PHONE' : 'EMAIL');
-
-            setPhone('');
-            setEmail('');
-            setOtp('');
-            setLoginError('');
-            setShowNameField(false);
-            console.log('LoginSidebar Version: v2.3.0 (Hybrid Strategy Activated)');
-        }
-    }, [isOpen]);
-
-    const handleEmailOtp = async () => {
-        setLoading(true);
-        setLoginError(null);
+        const phoneVal = identifier.replace(/\D/g, '');
 
         try {
-            const supabase = createClient();
-            const { error } = await supabase.auth.signInWithOtp({
-                email: email,
-                options: {
-                    // For subdomains, better to rely on general OTP flow or explicit link if configured
-                    shouldCreateUser: false, // Only allow existing users via Email for now? Or allow all? Let's allow all for now.
-                },
+            const res = await fetch('/api/auth/msg91/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: phoneVal, otp }),
             });
 
-            if (error) {
-                console.error('Email OTP Error:', error);
-                setLoginError(error.message);
+            const verifyData = await res.json();
+            if (verifyData.success && verifyData.session) {
+                const supabase = createClient();
+                await supabase.auth.setSession(verifyData.session);
+                await completeLogin(verifyData.user);
             } else {
-                setStep('OTP');
-                setResendTimer(30);
+                setLoginError(verifyData.message || 'Verification failed.');
             }
-        } catch (err: unknown) {
-            console.error('Email Auth Error:', err);
-            setLoginError('Failed to send Email OTP.');
+        } catch (err) {
+            console.error('OTP Verify Error:', err);
+            setLoginError('Service unavailable.');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleEmailVerify = async () => {
+    const handlePasswordLogin = async () => {
+        if (!password) return;
         setLoading(true);
+        setLoginError(null);
+
         try {
             const supabase = createClient();
-            const { data, error } = await supabase.auth.verifyOtp({
-                email,
-                token: otp,
-                type: 'email',
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: identifier,
+                password,
             });
 
             if (error) {
                 setLoginError(error.message);
                 setLoading(false);
             } else if (data.session) {
-                console.log('Email Login Successful', data);
-                // Set session
                 await supabase.auth.setSession(data.session);
-
-                // Finalize Setup
-                setTenantType('MARKETPLACE');
-                localStorage.setItem('user_name', data.user?.user_metadata?.name || email.split('@')[0]);
-                localStorage.setItem('tenant_type', 'MARKETPLACE');
-                localStorage.setItem('user_role', 'BMB_USER');
-                document.cookie = 'aums_session=true; path=/;';
-
-                // STRICT DOMAIN SEPARATION logic (Copied from completeLogin)
-                const isMarketplaceDomain =
-                    window.location.hostname === 'bookmy.bike' ||
-                    window.location.hostname === 'www.bookmy.bike' ||
-                    window.location.hostname === 'localhost';
-
-                if (isMarketplaceDomain) {
-                    // CONSUMER SITE: Stay on page, just refresh auth
-                    window.location.reload();
-                } else {
-                    // OPS SITE (we.bookmy.bike etc): Go to dashboard
-                    router.push('/dashboard');
-                }
-
-                onClose();
+                await completeLogin(data.user);
             }
-        } catch {
-            setLoginError('Verification failed.');
+        } catch (err) {
+            console.error('Password Login Error:', err);
+            setLoginError('Authentication failed.');
             setLoading(false);
         }
     };
 
-    const completeLogin = async (accessToken?: string) => {
-        // Finalize login session on our backend
-        // ... (Phone Logic remains same)
+    interface AuthUser {
+        id: string;
+        phone?: string;
+        email?: string;
+        user_metadata?: {
+            full_name?: string;
+        };
+    }
 
-        if (true) {
-            // ... existing phone logic ...
-            console.log('Completing login with fullName:', fullName);
-            // Better fallback logic
-            const isSignup = showNameField; // Determined earlier by check-membership API
-            const displayName = fullName && fullName.trim().length > 0 ? fullName : `Rider ${phone.slice(-4)}`;
+    const completeLogin = async (user: AuthUser) => {
+        const isEmail = identifier.includes('@');
+        const phoneVal = !isEmail ? identifier.replace(/\D/g, '') : (user?.phone || '');
+        const emailVal = isEmail ? identifier : (user?.email || '');
 
-            try {
-                let authRes;
-
-                if (isSignup) {
-                    // NEW USER: Explicit Signup Flow
-                    authRes = await fetch('/api/auth/signup', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            phone,
-                            displayName,
-                            pincode: location.pincode,
-                            accessToken, // Pass Widget Token for Verification
-                        }),
-                    });
-                } else {
-                    // EXISTING USER: Login/Sync Flow (Read-Only)
-                    authRes = await fetch('/api/auth/msg91/sync', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            phone,
-                            // Location data purely for session logs, not profile update
-                            pincode: location.pincode,
-                            city: location.city,
-                            state: location.state,
-                            country: location.country,
-                            latitude: location.latitude,
-                            longitude: location.longitude,
-                            accessToken, // Pass Widget Token for Verification
-                        }),
-                    });
-                }
-
-                if (!authRes.ok) {
-                    const errData = await authRes.json();
-                    console.error('Auth System Error:', errData);
-
-                    if (authRes.status === 404 && !isSignup) {
-                        alert('Account not found. Please sign up on the main website.');
-                    } else if (authRes.status === 409 && isSignup) {
-                        alert('User already exists. Please login instead.');
-                    } else {
-                        // alert(`Authentication Error: ${errData.message || 'System error'}.`);
-                    }
-                    setLoading(false);
-                    return; // Stop execution
-                }
-
-                // === CRITICAL: ESTABLISH SESSION ===
-                const authData = await authRes.json();
-                if (authData.session) {
-                    const supabase = createClient();
-                    const { error: sessionError } = await supabase.auth.setSession(authData.session);
-                    if (sessionError) {
-                        console.error('Client Session set error', sessionError);
-                    } else {
-                        console.log('Client Session Active');
-                    }
-                } else {
-                    console.warn('Backend did not return session. Using basic session cookies.');
-                }
-                // ===================================
-
-                // Use name from API response if available (for existing users)
-                const finalDisplayName = authData.displayName || displayName;
-
-                setTenantType('MARKETPLACE'); // Default role
-                localStorage.setItem('user_name', finalDisplayName);
-                localStorage.setItem('tenant_type', 'MARKETPLACE');
-                localStorage.setItem('user_role', 'BMB_USER'); // Explicitly set role
-                localStorage.setItem('active_role', 'BMB_USER'); // Explicitly set role
-                window.dispatchEvent(new Event('storage'));
-                document.cookie = 'aums_session=true; path=/;';
-
-                // STRICT DOMAIN SEPARATION
-                const isMarketplaceDomain =
-                    window.location.hostname === 'bookmy.bike' ||
-                    window.location.hostname === 'www.bookmy.bike' ||
-                    window.location.hostname === 'localhost';
-
-                if (isMarketplaceDomain) {
-                    // CONSUMER SITE: Stay on page, just refresh auth
-                    window.location.reload();
-                } else {
-                    // OPS SITE (we.bookmy.bike etc): Go to dashboard
-                    router.push('/dashboard');
-                }
-
-                onClose();
-            } catch (err) {
-                console.error('Auth Network Error', err);
-                alert('Connection Error with Auth Server. Please try again.');
-                setLoading(false);
-                return;
+        try {
+            let syncRes;
+            if (step === 'SIGNUP') {
+                syncRes = await fetch('/api/auth/signup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phone: phoneVal,
+                        email: emailVal,
+                        displayName: fullName || `Rider ${phoneVal.slice(-4)}`,
+                        pincode: location.pincode
+                    }),
+                });
+            } else {
+                syncRes = await fetch('/api/auth/msg91/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phone: phoneVal,
+                        email: emailVal,
+                        pincode: isStaff ? null : location.pincode // Skip location sync for staff
+                    }),
+                });
             }
+
+            const syncData = await syncRes.json();
+
+            // Finalize State
+            const isMarketplaceDomain =
+                window.location.hostname === ROOT_DOMAIN ||
+                window.location.hostname === `www.${ROOT_DOMAIN}` ||
+                window.location.hostname === 'localhost';
+
+            const finalRole = detectedRole || syncData.role || 'BMB_USER';
+            setTenantType('MARKETPLACE');
+            localStorage.setItem('user_name', syncData.displayName || fullName || user?.user_metadata?.full_name || 'User');
+            localStorage.setItem('tenant_type', isMarketplaceDomain ? 'MARKETPLACE' : 'DEALER');
+            localStorage.setItem('user_role', finalRole);
+            localStorage.setItem('active_role', finalRole);
+
+            if (isMarketplaceDomain) {
+                window.location.reload();
+            } else {
+                router.push('/dashboard');
+            }
+            onClose();
+        } catch (err) {
+            console.error('Final Sync Error:', err);
+            setLoginError('Session established, but profile sync failed.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -438,316 +346,170 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
 
     return (
         <div className="fixed inset-0 z-[100] flex justify-end items-start pt-28 pr-6 overflow-hidden pointer-events-none">
-            {/* Backdrop with ultra-subtle blur and transparency */}
             <div
                 className="absolute inset-0 bg-black/10 backdrop-blur-[2px] animate-in fade-in duration-500 pointer-events-auto"
                 onClick={onClose}
             />
 
-            {/* Sidebar Container - Glassmorphic Floating Island */}
-            <div className="relative w-full max-w-xl h-fit max-h-[calc(100vh-8rem)] bg-white/90 dark:bg-slate-950/20 backdrop-blur-3xl shadow-[0_0_100px_rgba(0,0,0,0.2)] flex flex-col animate-in slide-in-from-right duration-700 cubic-bezier(0.16, 1, 0.3, 1) border border-slate-200 dark:border-white/5 rounded-[48px] overflow-hidden pointer-events-auto">
-                {/* Grainy Texture Overlay */}
-                <div className="absolute inset-0 pointer-events-none opacity-[0.03] dark:opacity-[0.05] grayscale bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+            <div className="relative w-full max-w-xl h-fit max-h-[calc(100vh-8rem)] bg-white/90 dark:bg-slate-950/20 backdrop-blur-3xl shadow-[0_0_100px_rgba(0,0,0,0.2)] flex flex-col animate-in slide-in-from-right duration-700 border border-slate-200 dark:border-white/5 rounded-[48px] overflow-hidden pointer-events-auto">
+                <div className="absolute inset-0 pointer-events-none opacity-[0.03] grayscale bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
 
-                {/* Top Interactive Progress/Status */}
                 <div className="h-1.5 w-full bg-slate-100 dark:bg-white/5 overflow-hidden">
                     <div
                         className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-1000 ease-out"
-                        style={{ width: step === 'PHONE' ? '40%' : '80%' }}
+                        style={{ width: step === 'INITIAL' ? '40%' : '80%' }}
                     />
                 </div>
 
-                {/* Header Section */}
                 <div className="p-10 pb-6 flex items-center justify-between">
                     <div className="space-y-4">
                         <div className="flex items-center gap-3">
-                            <div
-                                className={`h-0.5 w-12 rounded-full ${variant === 'TERMINAL' ? 'bg-blue-600' : 'bg-slate-300'}`}
-                            />
-                            <span
-                                className={`text-[10px] font-black uppercase tracking-[0.3em] italic ${variant === 'TERMINAL' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'}`}
-                            >
-                                {variant === 'TERMINAL' ? 'Terminal Uplink' : 'Account Access'}
+                            <div className={`h-0.5 w-12 rounded-full ${isStaff ? 'bg-blue-600' : 'bg-slate-300'}`} />
+                            <span className={`text-[10px] font-black uppercase tracking-[0.3em] italic ${isStaff ? 'text-blue-600' : 'text-slate-400'}`}>
+                                {isStaff ? 'System Uplink' : 'Account Access'}
                             </span>
                         </div>
-                        <h2
-                            className={`font-black uppercase tracking-tighter italic leading-[0.9] text-slate-900 dark:text-white ${variant === 'TERMINAL' ? 'text-5xl' : 'text-4xl'}`}
-                        >
-                            {step === 'PHONE' ? (
-                                variant === 'TERMINAL' ? (
-                                    <>
-                                        Initialize <br /> Access
-                                    </>
-                                ) : (
-                                    <>
-                                        Welcome <br /> Back
-                                    </>
-                                )
-                            ) : variant === 'TERMINAL' ? (
-                                <>
-                                    Verify <br /> Protocol
-                                </>
-                            ) : (
-                                <>
-                                    Verify <br /> It&apos;s You
-                                </>
-                            )}
+                        <h2 className={`font-black uppercase tracking-tighter italic leading-[0.9] text-slate-900 dark:text-white ${variant === 'TERMINAL' ? 'text-5xl' : 'text-4xl'}`}>
+                            {step === 'INITIAL' || step === 'SIGNUP' ? (
+                                isStaff ? 'Initialize Access' : (step === 'SIGNUP' ? 'Create Account' : 'Welcome Back')
+                            ) : 'Verify Protocol'}
                         </h2>
                         <p className="text-xs text-slate-500 font-medium tracking-wide leading-relaxed max-w-[280px]">
-                            {step === 'PHONE'
-                                ? variant === 'TERMINAL'
-                                    ? 'Handshake required for AUMS administrative session. Restricted area.'
-                                    : 'Enter your mobile number to sign in to your BookMyBike account.'
-                                : `Verification code sent to +91 ${phone.slice(-4)}.`}
+                            {step === 'INITIAL'
+                                ? (isStaff ? 'Staff authentication required for administrative access.' : 'Enter your mobile number or corporate email to continue.')
+                                : step === 'SIGNUP'
+                                    ? 'Join the community of riders. Start your journey.'
+                                    : `Code sent to your ${authMethod === 'PHONE' ? 'mobile' : 'email'}.`}
                         </p>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="p-3 hover:bg-slate-100 dark:hover:bg-white/5 rounded-2xl transition-all group active:scale-90 self-start"
-                    >
-                        <X
-                            size={24}
-                            className="text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors"
-                        />
+                    <button onClick={onClose} className="p-3 hover:bg-slate-100 rounded-2xl transition-all group active:scale-90 self-start">
+                        <X size={24} className="text-slate-300 group-hover:text-slate-900 transition-colors" />
                     </button>
                 </div>
 
-                {/* Pincode / Serviceability Section - SILENT MODE ACTIVATED (Hidden from UI) */}
-                {/* We are still capturing location in background but not showing it here to reduce friction */}
-
-                {/* Core Authentication Interface */}
                 <div className="flex-1 overflow-y-auto px-10 space-y-8 pt-10">
-                    <div className="space-y-8">
-                        <div className="space-y-8">
-                            <div className="relative group overflow-hidden">
-                                <div className="absolute inset-0 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[32px] transition-all group-focus-within:border-blue-600 group-focus-within:ring-[16px] group-focus-within:ring-blue-600/5" />
+                    <div className="relative group overflow-hidden">
+                        <div className="absolute inset-0 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[32px] transition-all group-focus-within:border-blue-600 group-focus-within:ring-[16px] group-focus-within:ring-blue-600/5" />
 
-                                <div className="relative p-2">
-                                    {loginError && (
-                                        <div className="mx-2 mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                                            <AlertCircle size={18} className="text-red-500 shrink-0" />
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-red-500 italic">
-                                                {loginError}
-                                            </p>
-                                        </div>
-                                    )}
+                        <div className="relative p-2">
+                            {loginError && (
+                                <div className="mx-2 mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                                    <AlertCircle size={18} className="text-red-500 shrink-0" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-red-500 italic">{loginError}</p>
+                                </div>
+                            )}
 
-                                    {step === 'PHONE' ? (
-                                        <div className="space-y-4">
-                                            {/* Removed toggle - now using 'Try Another Method' link below */}
-
-                                            {/* Name Input - Conditionally Rendered */}
-                                            {showNameField && authMethod === 'PHONE' && (
-                                                <div className="flex items-center px-6 py-4 border-b border-slate-100 dark:border-white/5 animate-in slide-in-from-top-4 duration-500 fade-in">
-                                                    <div className="flex items-center gap-3 pr-6 border-r border-slate-200 dark:border-white/10">
-                                                        <User
-                                                            size={18}
-                                                            className="text-slate-400 group-focus-within:text-blue-600 transition-colors"
-                                                        />
-                                                    </div>
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Your Full Name"
-                                                        value={fullName}
-                                                        onChange={e => setFullName(e.target.value)}
-                                                        className="bg-transparent border-none outline-none text-lg font-bold text-slate-900 dark:text-white w-full pl-6 placeholder:text-slate-300 dark:placeholder:text-slate-700"
-                                                        autoFocus
-                                                    />
-                                                </div>
-                                            )}
-
-                                            {/* Phone Input */}
-                                            {authMethod === 'PHONE' && (
-                                                <div className="flex items-center px-6 py-4">
-                                                    <div className="flex items-center gap-3 pr-6 border-r border-slate-200 dark:border-white/10">
-                                                        <Phone
-                                                            size={18}
-                                                            className="text-slate-400 group-focus-within:text-blue-600 transition-colors"
-                                                        />
-                                                        <span className="text-xs font-black text-slate-500">+91</span>
-                                                    </div>
-                                                    <input
-                                                        type="tel"
-                                                        placeholder="Mobile Number"
-                                                        value={phone}
-                                                        onChange={e =>
-                                                            setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))
-                                                        }
-                                                        className="bg-transparent border-none outline-none text-xl font-black tracking-[0.3em] text-slate-900 dark:text-white w-full pl-6 placeholder:text-slate-300 dark:placeholder:text-slate-700 placeholder:tracking-normal"
-                                                    />
-                                                </div>
-                                            )}
-
-                                            {/* Email Input */}
-                                            {authMethod === 'EMAIL' && (
-                                                <div className="flex items-center px-6 py-4">
-                                                    <div className="flex items-center gap-3 pr-6 border-r border-slate-200 dark:border-white/10">
-                                                        <User
-                                                            size={18}
-                                                            className="text-slate-400 group-focus-within:text-blue-600 transition-colors"
-                                                        />
-                                                    </div>
-                                                    <input
-                                                        type="email"
-                                                        placeholder="Corporate Email ID"
-                                                        value={email}
-                                                        onChange={e => setEmail(e.target.value)}
-                                                        className="bg-transparent border-none outline-none text-lg font-bold text-slate-900 dark:text-white w-full pl-6 placeholder:text-slate-300 dark:placeholder:text-slate-700 placeholder:tracking-normal"
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center px-6 py-4">
-                                            <Lock
-                                                size={18}
-                                                className="text-slate-400 group-focus-within:text-blue-600 transition-colors mr-6"
-                                            />
+                            {step === 'INITIAL' || step === 'SIGNUP' ? (
+                                <div className="space-y-4">
+                                    {step === 'SIGNUP' && (
+                                        <div className="flex items-center px-6 py-4 border-b border-slate-100">
+                                            <User size={18} className="text-slate-400 mr-6" />
                                             <input
-                                                type={authMethod === 'EMAIL' ? 'text' : 'tel'}
-                                                inputMode={authMethod === 'EMAIL' ? 'text' : 'numeric'}
-                                                pattern={authMethod === 'EMAIL' ? undefined : '[0-9]*'}
-                                                placeholder={
-                                                    authMethod === 'EMAIL' ? 'Enter Email OTP' : 'Enter Mobile OTP'
-                                                }
-                                                value={otp}
-                                                onChange={e => {
-                                                    // Allow up to 10 digits/chars for Email OTP (Supabase can send 6-10 sometimes)
-                                                    const val =
-                                                        authMethod === 'EMAIL'
-                                                            ? e.target.value.slice(0, 10)
-                                                            : e.target.value.replace(/\D/g, '').slice(0, 4);
-                                                    setOtp(val);
-                                                }}
-                                                className={`w-full bg-transparent text-lg font-bold placeholder:text-slate-400 focus:outline-none ${authMethod === 'PHONE' ? 'tracking-widest' : 'tracking-normal'}`}
+                                                type="text"
+                                                placeholder="Your Full Name"
+                                                value={fullName}
+                                                onChange={e => setFullName(e.target.value)}
+                                                className="bg-transparent border-none outline-none text-lg font-bold text-slate-900 w-full"
                                                 autoFocus
                                             />
                                         </div>
                                     )}
-                                </div>
-                            </div>
-
-                            <div className="space-y-6">
-                                <button
-                                    onClick={() => {
-                                        if (step === 'PHONE') {
-                                            if (authMethod === 'PHONE') handleSendOtp();
-                                            else handleEmailOtp();
-                                        } else {
-                                            if (authMethod === 'PHONE') handleLogin();
-                                            else handleEmailVerify();
-                                        }
-                                    }}
-                                    disabled={
-                                        loading ||
-                                        (step === 'PHONE'
-                                            ? authMethod === 'PHONE'
-                                                ? phone.length < 10 || (showNameField && fullName.length < 3)
-                                                : !email.includes('@') || email.length < 5
-                                            : authMethod === 'PHONE'
-                                              ? otp.length < 4
-                                              : otp.length < 6)
-                                    }
-                                    className={`w-full py-6 rounded-[32px] text-xs font-black uppercase tracking-[0.3em] italic flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-[0.98] ${
-                                        loading
-                                            ? 'bg-blue-600/50 cursor-wait'
-                                            : 'bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-500'
-                                    } text-white shadow-blue-600/20 disabled:opacity-50`}
-                                >
-                                    {loading ? (
-                                        <div className="flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-bounce" />
-                                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-bounce [animation-delay:0.2s]" />
-                                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-bounce [animation-delay:0.4s]" />
-                                        </div>
-                                    ) : (
-                                        <>
-                                            {variant === 'TERMINAL'
-                                                ? step === 'PHONE'
-                                                    ? 'Initialize'
-                                                    : 'Authorize Protocol'
-                                                : step === 'PHONE'
-                                                  ? authMethod === 'PHONE'
-                                                      ? 'Get OTP'
-                                                      : 'Send Code'
-                                                  : 'Verify & Continue'}
-                                            <ArrowRight size={16} />
-                                        </>
-                                    )}
-                                </button>
-
-                                {/* Try Another Method Link - Only on PHONE step */}
-                                {step === 'PHONE' && (
-                                    <button
-                                        onClick={() => setAuthMethod(authMethod === 'PHONE' ? 'EMAIL' : 'PHONE')}
-                                        className="w-full text-center text-[10px] font-bold text-slate-400 hover:text-blue-600 uppercase tracking-widest transition-colors py-2"
-                                    >
-                                        {isMarketplace
-                                            ? authMethod === 'PHONE'
-                                                ? 'Trouble? Try Email Instead'
-                                                : '← Back to Phone Login'
-                                            : authMethod === 'EMAIL'
-                                              ? 'Trouble? Try Phone Instead'
-                                              : '← Back to Email Login'}
-                                    </button>
-                                )}
-
-                                {step === 'OTP' && (
-                                    <div className="flex flex-col gap-3 items-center">
-                                        <button
-                                            onClick={authMethod === 'PHONE' ? handleSendOtp : handleEmailOtp}
-                                            disabled={loading || resendTimer > 0}
-                                            className="text-[10px] font-black text-blue-600 disabled:text-slate-400 uppercase tracking-widest transition-colors"
-                                        >
-                                            {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend OTP'}
-                                        </button>
-                                        <button
-                                            onClick={() => setStep('PHONE')}
-                                            className="text-[10px] font-black text-slate-400 hover:text-blue-600 uppercase tracking-widest transition-colors"
-                                        >
-                                            Change {authMethod === 'PHONE' ? 'Number' : 'Email'}
-                                        </button>
+                                    <div className="flex items-center px-6 py-4">
+                                        {showEmailPath || !isMarketplace ? (
+                                            <Globe size={18} className="text-slate-400 mr-6" />
+                                        ) : (
+                                            <Phone size={18} className="text-slate-400 mr-6" />
+                                        )}
+                                        <input
+                                            type="text"
+                                            placeholder={showEmailPath || !isMarketplace ? "Mobile or Corporate Email" : "Enter Mobile Number"}
+                                            value={identifier}
+                                            onChange={e => setIdentifier(e.target.value)}
+                                            className="bg-transparent border-none outline-none text-lg font-bold text-slate-900 w-full placeholder:text-slate-300"
+                                            autoFocus={step === 'INITIAL'}
+                                            disabled={step === 'SIGNUP'}
+                                        />
                                     </div>
-                                )}
-                            </div>
+                                    {isMarketplace && step === 'INITIAL' && !showEmailPath && (
+                                        <div className="px-6 pb-4">
+                                            <button
+                                                onClick={() => setShowEmailPath(true)}
+                                                className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-blue-600 transition-colors"
+                                            >
+                                                Are you Staff? Login with Email
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <>
+                                    {step === 'OTP' && (
+                                        <div className="flex items-center px-6 py-4">
+                                            <Lock size={18} className="text-slate-400 mr-6" />
+                                            <input
+                                                type="tel"
+                                                placeholder="Enter 4-digit code"
+                                                value={otp}
+                                                onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                                                className="w-full bg-transparent text-lg font-bold tracking-widest focus:outline-none"
+                                                autoFocus
+                                            />
+                                        </div>
+                                    )}
+                                    {step === 'PASSWORD' && (
+                                        <div className="flex items-center px-6 py-4">
+                                            <Lock size={18} className="text-slate-400 mr-6" />
+                                            <input
+                                                type="password"
+                                                placeholder="Enter Password"
+                                                value={password}
+                                                onChange={e => setPassword(e.target.value)}
+                                                className="w-full bg-transparent text-lg font-bold focus:outline-none"
+                                                autoFocus
+                                            />
+                                        </div>
+                                    )}
+                                </>
+                            )}
                         </div>
+                    </div>
 
-                        {/* Infrastructure Insights - Only for TERMINAL (Staff) */}
-                        {variant === 'TERMINAL' && (
-                            <div className="pt-12 border-t border-slate-100 dark:border-white/5 grid grid-cols-2 gap-8 opacity-60">
-                                <div className="space-y-3">
-                                    <CheckCircle2 size={20} className="text-emerald-500" />
-                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-900 dark:text-white">
-                                        Store Clearance
-                                    </p>
-                                </div>
-                                <div className="space-y-3">
-                                    <ShieldCheck size={20} className="text-indigo-500" />
-                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-900 dark:text-white">
-                                        Secure Pipeline
-                                    </p>
-                                </div>
+                    <div className="space-y-6">
+                        <button
+                            onClick={() => {
+                                if (step === 'INITIAL') handleCheckUser();
+                                else if (step === 'SIGNUP') handleSendPhoneOtp();
+                                else if (step === 'OTP') handleLogin();
+                                else if (step === 'PASSWORD') handlePasswordLogin();
+                            }}
+                            disabled={loading || identifier.length < 3}
+                            className={`w-full py-6 rounded-[32px] text-xs font-black uppercase tracking-[0.3em] italic flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-[0.98] ${loading ? 'bg-blue-600/50 cursor-wait' : 'bg-slate-900 dark:bg-blue-600'
+                                } text-white disabled:opacity-50`}
+                        >
+                            {loading ? 'Processing...' : (step === 'INITIAL' ? 'Continue' : 'Verify')}
+                            <ArrowRight size={16} />
+                        </button>
+
+                        {step === 'OTP' && (
+                            <div className="flex flex-col gap-3 items-center">
+                                <button
+                                    onClick={() => handleSendPhoneOtp()}
+                                    disabled={loading || resendTimer > 0}
+                                    className="text-[10px] font-black text-blue-600 disabled:text-slate-400 uppercase tracking-widest"
+                                >
+                                    {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend OTP'}
+                                </button>
+                                <button onClick={() => setStep('INITIAL')} className="text-[10px] font-black text-slate-400 hover:text-blue-600 uppercase tracking-widest">
+                                    Use Different Account
+                                </button>
                             </div>
                         )}
                     </div>
+                </div>
 
-                    {/* Infrastructure Footer */}
-                    <div className="p-10 border-t border-slate-100 dark:border-white/5 flex items-center justify-between opacity-50">
-                        <div className="flex items-center gap-3">
-                            {variant === 'TERMINAL' ? (
-                                <>
-                                    <ShieldCheck size={16} className="text-emerald-500" />
-                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 italic">
-                                        SOC2-v2 Secure
-                                    </span>
-                                </>
-                            ) : (
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                                    Secure Retail Gateway
-                                </span>
-                            )}
-                        </div>
-                        <Globe size={16} className="text-slate-300" />
+                <div className="p-10 border-t border-slate-100 flex items-center justify-between opacity-50 mt-auto">
+                    <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 italic">Secure Endpoint</span>
                     </div>
                 </div>
             </div>

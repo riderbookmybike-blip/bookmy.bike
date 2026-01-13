@@ -105,11 +105,23 @@ export default function SidebarHUD({
                 <div className="flex gap-6 items-center pt-2">
                     <div className="w-32 h-32 flex items-center justify-center group overflow-hidden relative">
                         <div className="absolute inset-0 bg-gradient-to-tr from-slate-100 to-white dark:from-white/5 dark:to-white/10 rounded-[2rem] opacity-50" />
-                        <img
-                            src={productImage}
-                            alt="thumb"
-                            className="w-[120%] h-[120%] object-contain group-hover:scale-110 transition-transform duration-500 drop-shadow-xl z-10"
-                        />
+                        {productImage && !productImage.includes('categories/') ? (
+                            <img
+                                src={productImage}
+                                alt="thumb"
+                                className="w-[120%] h-[120%] object-contain group-hover:scale-110 transition-transform duration-500 drop-shadow-xl z-10"
+                            />
+                        ) : (
+                            <div
+                                className="w-full h-full rounded-[2rem] z-10 p-4 flex flex-col items-center justify-center text-center opacity-80"
+                                style={{
+                                    background: `linear-gradient(135deg, ${activeColor.hex}dd, ${activeColor.hex}44)`,
+                                    border: `1px solid ${activeColor.hex}33`
+                                }}
+                            >
+                                <Zap size={40} className="text-white/20 mb-2" />
+                            </div>
+                        )}
                     </div>
                     <div className="flex-1 text-right">
                         <h3 className="text-2xl font-black italic tracking-tighter uppercase leading-none text-slate-900 dark:text-white">
@@ -190,15 +202,15 @@ export default function SidebarHUD({
                                     downPayment / totalOnRoad > 0.25
                                         ? 'High'
                                         : downPayment / totalOnRoad > 0.15
-                                          ? 'Medium'
-                                          : 'Low',
+                                            ? 'Medium'
+                                            : 'Low',
                                 isHighlight: true,
                                 colorClass:
                                     downPayment / totalOnRoad > 0.25
                                         ? 'text-emerald-500'
                                         : downPayment / totalOnRoad > 0.15
-                                          ? 'text-brand-primary'
-                                          : 'text-amber-500',
+                                            ? 'text-brand-primary'
+                                            : 'text-amber-500',
                             },
                             {
                                 label: 'Finance TAT',

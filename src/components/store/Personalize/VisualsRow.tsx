@@ -32,7 +32,7 @@ export default function VisualsRow({
     videoSource,
     className = '',
     isVideoOpen = false,
-    onCloseVideo = () => {},
+    onCloseVideo = () => { },
 }: VisualsRowProps) {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const activeColorName = colors.find(c => c.id === selectedColor)?.name;
@@ -52,30 +52,49 @@ export default function VisualsRow({
 
                 {/* Main Product Image (Static & Stable) */}
                 <div className="absolute inset-0 z-10 p-12 flex items-center justify-center">
-                    <img
-                        src={
-                            galaxyImages[currentImageIndex] ||
-                            'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?q=80&w=2000&auto=format&fit=crop'
-                        }
-                        alt="Product Visual"
-                        className="w-full max-w-[85%] h-auto object-contain brightness-[1.1] contrast-[1.05] drop-shadow-[0_30px_60px_rgba(0,0,0,0.2)] dark:drop-shadow-[0_40px_80px_rgba(0,0,0,0.9)] animate-in fade-in zoom-in-95 duration-500"
-                        key={currentImageIndex} // Force re-render for anim
-                    />
+                    {productImage && !productImage.includes('categories/') ? (
+                        <img
+                            src={galaxyImages[currentImageIndex]}
+                            alt="Product Visual"
+                            className="w-full max-w-[85%] h-auto object-contain brightness-[1.1] contrast-[1.05] drop-shadow-[0_30px_60px_rgba(0,0,0,0.2)] dark:drop-shadow-[0_40px_80px_rgba(0,0,0,0.9)] animate-in fade-in zoom-in-95 duration-500"
+                            key={currentImageIndex} // Force re-render for anim
+                        />
+                    ) : (
+                        <div
+                            className="w-full h-full rounded-[3rem] animate-in fade-in zoom-in-95 duration-1000 flex flex-col items-center justify-center text-center p-20"
+                            style={{
+                                background: `radial-gradient(circle at center, ${colors.find(c => c.id === selectedColor)?.hex}66, ${colors.find(c => c.id === selectedColor)?.hex}22)`,
+                                border: `1px solid ${colors.find(c => c.id === selectedColor)?.hex}44`
+                            }}
+                        >
+                            <div
+                                className="w-64 h-64 rounded-full blur-[100px] opacity-50 animate-pulse"
+                                style={{ backgroundColor: colors.find(c => c.id === selectedColor)?.hex }}
+                            />
+                            <div className="relative z-10 mt-12">
+                                <Maximize2 size={80} className="mx-auto mb-6 text-white/20" />
+                                <h3 className="text-5xl font-black uppercase italic tracking-tighter text-white/10"> No Image Available </h3>
+                                <p className="text-white/5 font-black uppercase tracking-[0.5em] mt-4"> Showing {activeColorName} finish </p>
+                            </div>
+                        </div>
+                    )}
                     {/* Shadow/Reflections */}
-                    <div className="absolute bottom-[18%] w-[70%] h-6 bg-black/10 dark:bg-black/50 blur-[40px] dark:blur-[50px] rounded-full scale-x-125" />
+                    {productImage && !productImage.includes('categories/') && (
+                        <div className="absolute bottom-[18%] w-[70%] h-6 bg-black/10 dark:bg-black/50 blur-[40px] dark:blur-[50px] rounded-full scale-x-125" />
+                    )}
                 </div>
 
                 {/* Gallery Navigation Controls */}
                 <div className="absolute inset-x-12 top-1/2 -translate-y-1/2 z-20 flex justify-between pointer-events-none">
                     <button
                         onClick={prevImage}
-                        className="w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-slate-900 dark:text-white pointer-events-auto transition-all active:scale-95 hover:scale-110"
+                        className={`w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-slate-900 dark:text-white pointer-events-auto transition-all active:scale-95 hover:scale-110 ${!productImage || productImage.includes('categories/') ? 'hidden' : ''}`}
                     >
                         <ChevronLeft size={24} />
                     </button>
                     <button
                         onClick={nextImage}
-                        className="w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-slate-900 dark:text-white pointer-events-auto transition-all active:scale-95 hover:scale-110"
+                        className={`w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-slate-900 dark:text-white pointer-events-auto transition-all active:scale-95 hover:scale-110 ${!productImage || productImage.includes('categories/') ? 'hidden' : ''}`}
                     >
                         <ChevronRight size={24} />
                     </button>
@@ -115,6 +134,7 @@ export default function VisualsRow({
                                         />
                                         <div
                                             className={`w-full h-full rounded-full border border-black/10 dark:border-white/20 shadow-inner ${color.class}`}
+                                            style={{ backgroundColor: color.hex }}
                                         />
                                         {/* Tooltip */}
                                         <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-slate-900 text-white text-[8px] font-black uppercase tracking-widest rounded opacity-0 group-hover/color:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">

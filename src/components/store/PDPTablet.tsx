@@ -2,17 +2,18 @@
 
 import React from 'react';
 import { ShieldCheck, Share, Heart, Zap, Info, ArrowRight } from 'lucide-react';
-import { productColors, mandatoryAccessories, optionalAccessories, mandatoryInsurance, insuranceAddons, serviceOptions, offerOptions } from '@/hooks/usePDPData';
+import { mandatoryAccessories, optionalAccessories, mandatoryInsurance, insuranceAddons, serviceOptions, offerOptions } from '@/hooks/usePDPData';
 
 interface PDPTabletProps {
-    product: any;
+    product: any; // eslint-disable-line @typescript-eslint/no-explicit-any
     variantParam: string;
-    data: any;
-    handlers: any;
+    data: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    handlers: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 export function PDPTablet({ product, variantParam, data, handlers }: PDPTabletProps) {
     const {
+        colors,
         selectedColor,
         regType, setRegType,
         selectedAccessories,
@@ -33,9 +34,10 @@ export function PDPTablet({ product, variantParam, data, handlers }: PDPTabletPr
         toggleAccessory, toggleInsuranceAddon, toggleService, toggleOffer, updateQuantity
     } = handlers;
 
-    const activeColorConfig = productColors.find(c => c.id === selectedColor) || productColors[0];
+    const activeColorConfig = colors.find((c: any) => c.id === selectedColor) || colors[0]; // eslint-disable-line @typescript-eslint/no-explicit-any
 
     const getProductImage = () => {
+        if (activeColorConfig?.image) return activeColorConfig.image;
         switch (product.bodyType) {
             case 'SCOOTER': return '/images/categories/scooter_nobg.png';
             case 'MOTORCYCLE': return '/images/categories/motorcycle_nobg.png';
@@ -57,17 +59,33 @@ export function PDPTablet({ product, variantParam, data, handlers }: PDPTabletPr
 
                     <div className="aspect-square bg-slate-50 dark:bg-slate-900/50 rounded-[3rem] flex items-center justify-center p-12 relative overflow-hidden group">
                         <div className="absolute inset-0 bg-gradient-radial from-brand-primary/5 to-transparent" />
-                        <img src={getProductImage()} alt={product.model} className="relative z-10 w-full h-auto object-contain drop-shadow-2xl transition-transform duration-700 group-hover:scale-110" />
+                        {getProductImage() && !getProductImage().includes('categories/') ? (
+                            <img src={getProductImage()} alt={product.model} className="relative z-10 w-full h-auto object-contain drop-shadow-2xl transition-transform duration-700 group-hover:scale-110" />
+                        ) : (
+                            <div
+                                className="relative z-10 w-full h-full rounded-[2rem] flex flex-col items-center justify-center p-8 text-center"
+                                style={{
+                                    background: `radial-gradient(circle at center, ${activeColorConfig.hex}44, ${activeColorConfig.hex}11)`,
+                                    border: `1px solid ${activeColorConfig.hex}33`
+                                }}
+                            >
+                                <div className="w-48 h-48 rounded-full blur-[80px] opacity-40 animate-pulse" style={{ backgroundColor: activeColorConfig.hex }} />
+                                <p className="text-[12px] font-black uppercase tracking-[0.4em] text-white/20 mt-10">Finish Preview Only</p>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex gap-4 p-8 bg-slate-50 dark:bg-white/5 rounded-[2.5rem] justify-center">
-                        {productColors.map(color => (
+                        {colors.map((color: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) => (
                             <button
                                 key={color.id}
                                 onClick={() => handleColorChange(color.id)}
                                 className={`w-14 h-14 rounded-full border-2 p-1.5 transition-all ${selectedColor === color.id ? 'border-brand-primary scale-110 shadow-xl' : 'border-transparent'}`}
                             >
-                                <div className={`w-full h-full rounded-full ${color.class}`} style={{ backgroundColor: color.hex }} />
+                                <div
+                                    className={`w-full h-full rounded-full ${color.class}`}
+                                    style={{ backgroundColor: color.hex }}
+                                />
                             </button>
                         ))}
                     </div>

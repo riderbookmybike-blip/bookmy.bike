@@ -114,6 +114,13 @@ export interface ProductVariant {
     specifications?: VehicleSpecifications;
     features?: string[];
 
+    // Pricing & Media
+    price?: {
+        exShowroom: number;
+        onRoad?: number;
+    };
+    imageUrl?: string;
+
     // Meta
     status: VehicleStatus;
 

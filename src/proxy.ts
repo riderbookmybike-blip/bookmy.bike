@@ -6,7 +6,7 @@ export async function proxy(request: NextRequest) {
     const hostname = request.headers.get('host') || '';
 
     // 1. Define Domains and Constants
-    const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike'; // e.g. localhost:3000 in dev or bookmy.bike
+    const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
 
     // Parse Subdomain
     let currentSubdomain: string | null = null;
@@ -15,10 +15,12 @@ export async function proxy(request: NextRequest) {
         if (diff && diff !== 'www') currentSubdomain = diff;
     } else if (hostname === `www.${ROOT_DOMAIN}` || hostname === ROOT_DOMAIN) {
         currentSubdomain = null; // Public Site
-    } else {
-        // Handle localhost cases or distinct domains if needed
-        // For development: localhost might be treated as root or passed via header
-        if (hostname.includes('localhost') && !hostname.endsWith(`.${ROOT_DOMAIN}`)) {
+    } else if (hostname.includes('localhost')) {
+        const parts = hostname.split('.');
+        // Support aums.localhost:3000 etc.
+        if (parts.length > 1 && (parts[parts.length - 1].includes('localhost') || parts[parts.length - 2].includes('localhost'))) {
+            currentSubdomain = parts[0] === 'www' ? null : parts[0];
+        } else {
             currentSubdomain = null;
         }
     }
@@ -28,36 +30,34 @@ export async function proxy(request: NextRequest) {
         pathname.startsWith('/_next') ||
         pathname.startsWith('/api/public') ||
         pathname.startsWith('/static') ||
-        pathname.includes('.') || // public files like .svg, .ico, .png
+        pathname.includes('.') ||
         pathname === '/robots.txt' ||
         pathname === '/sitemap.xml'
     ) {
         return NextResponse.next();
     }
 
-    // B. SEO & HEADERS (Strict NoIndex for Subdomains)
-    // We create a "base" response. If we redirect later, this header might be lost, 
-    // but successful responses for internal portals must have it.
-    const response = NextResponse.next();
-
-    if (currentSubdomain) {
-        response.headers.set('X-Robots-Tag', 'noindex, nofollow');
-    }
-
-    // C. PUBLIC SITE (Apex / WWW / Vercel Previews)
+    // B. ROOT DOMAIN GUARD (#1 Requirement)
     if (!currentSubdomain) {
-        // [FIX] If we landed on the home page with an OAuth code, redirect to the callback handler
-        // This happens if the Supabase redirectTo wasn't respected or was set to root.
+        // HARD BLOCK /dashboard on bookmy.bike
+        if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
+            console.log(`[Proxy] Hard-blocking /dashboard on root domain: ${hostname}`);
+            return NextResponse.redirect(new URL('/', request.url));
+        }
+
+        // OAuth code handling
         const code = request.nextUrl.searchParams.get('code');
         if (code && pathname === '/') {
             return NextResponse.redirect(new URL(`/auth/callback?code=${code}`, request.url));
         }
 
-        // Allow all access (SEO allowed by default omission of header)
-        return response;
+        return NextResponse.next();
     }
 
-    // D. INTERNAL & PARTNER PORTALS
+    // C. INTERNAL & PARTNER PORTALS (Subdomains)
+    const response = NextResponse.next();
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+
     // Initialize Supabase to check Auth
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -77,13 +77,13 @@ export async function proxy(request: NextRequest) {
 
     const { data: { user } } = await supabase.auth.getUser();
 
-    // E. ROUTE ALLOWLISTS (Unauthenticated Access)
+    // D. ROUTE ALLOWLISTS (Unauthenticated Access)
     const isAuthRoute =
         pathname.startsWith('/login') ||
         pathname.startsWith('/logout') ||
-        pathname.startsWith('/auth') || // Supabase Auth Callbacks (e.g. /auth/callback)
+        pathname.startsWith('/auth') ||
         pathname.startsWith('/api/auth') ||
-        pathname.startsWith('/api/admin') || // API routes handled internally
+        pathname.startsWith('/api/admin') ||
         pathname.startsWith('/forgot-password') ||
         pathname.startsWith('/reset-password') ||
         pathname.startsWith('/invite');
@@ -92,34 +92,25 @@ export async function proxy(request: NextRequest) {
     if (['aums', 'we', 'ltfinance'].includes(currentSubdomain)) {
         if (!user) {
             if (!isAuthRoute) {
-                // Redirect to Login on SAME Subdomain
                 const loginUrl = new URL('/login', request.url);
                 return NextResponse.redirect(loginUrl);
             }
-            return response; // Allow access to login
-        }
-        // If User is Authenticated, proceed to Role Check (below)
-    }
-    // 2. Partner Portals (Addbike, etc.) - Landing Page Allowed
-    else {
-        // Allow Public Landing Page logic
-        const isLandingPage = pathname === '/';
-
-        if (!user) {
-            if (!isAuthRoute && !isLandingPage) {
-                // Protect Dashboard, etc.
-                const loginUrl = new URL('/login', request.url);
-                loginUrl.searchParams.set('redirect_to', request.url);
-                return NextResponse.redirect(loginUrl);
-            }
-            // Allow Landing or Login
             return response;
         }
-        // User is Auth -> Fall through to Membership Check
+    }
+    // 2. Partner Portals
+    else {
+        const isLandingPage = pathname === '/';
+        if (!user) {
+            if (!isAuthRoute && !isLandingPage) {
+                const loginUrl = new URL('/login', request.url);
+                return NextResponse.redirect(loginUrl);
+            }
+            return response;
+        }
     }
 
-    // F. AUTHORIZATION (Authenticated User Checks)
-    // Always allow auth routes to bypass role checks (enables Switching Accounts)
+    // E. AUTHORIZATION (Authenticated User Checks)
     if (pathname === '/login' || pathname === '/logout' || isAuthRoute) return response;
 
     // 1. AUMS (Super Admin)
@@ -130,7 +121,7 @@ export async function proxy(request: NextRequest) {
             .eq('user_id', user.id)
             .eq('tenants.subdomain', 'aums')
             .eq('status', 'ACTIVE')
-            .single();
+            .maybeSingle();
 
         if (!membership || !['SUPER_ADMIN', 'OWNER'].includes(membership.role)) {
             return NextResponse.rewrite(new URL('/403', request.url));
@@ -138,78 +129,26 @@ export async function proxy(request: NextRequest) {
         return response;
     }
 
-    // 2. WE (Marketplace) - Replaces 'team'
-    if (currentSubdomain === 'we') {
-        // Strict check: must be a member of 'we' (or 'team' if slug migration is delayed, but document says done)
-        const { data: membership } = await supabase
-            .from('memberships')
-            .select('id, tenants!inner(subdomain)')
-            .eq('user_id', user.id)
-            .eq('tenants.subdomain', 'we')
-            .eq('status', 'ACTIVE') // Must be Active
-            .single();
-
-        if (!validMembership(membership)) {
-            return NextResponse.rewrite(new URL('/403', request.url));
-        }
-        return response;
-    }
-
-    // 3. LTFINANCE (Bank)
-    if (currentSubdomain === 'ltfinance') {
-        // Similar check
-        const { data: membership } = await supabase
-            .from('memberships')
-            .select('id, tenants!inner(subdomain)')
-            .eq('user_id', user.id)
-            .eq('tenants.subdomain', 'ltfinance')
-            .eq('status', 'ACTIVE')
-            .single();
-
-        if (!validMembership(membership)) {
-            return NextResponse.rewrite(new URL('/403', request.url));
-        }
-        return response;
-    }
-
-    // 4. PARTNER PORTALS (Dynamic Slugs e.g. addbike, myscooty)
-    // Check if user has membership for THIS specific subdomain
+    // Dynamic Partner Check
     const { data: tenantMembership } = await supabase
         .from('memberships')
         .select('id, tenants!inner(subdomain)')
         .eq('user_id', user.id)
         .eq('status', 'ACTIVE')
         .eq('tenants.subdomain', currentSubdomain)
-        .single();
+        .maybeSingle();
 
     if (!tenantMembership) {
-        // Allow access to Login/Auth routes to enable "Switch Account" or "Logout"
-        // Also allow Landing Page ('/') to render if available (page.tsx handles config check)
-        if (isAuthRoute || pathname === '/') {
-            return response;
-        }
-
-        // Logged in, but not a member of this partner
+        if (isAuthRoute || pathname === '/') return response;
         return NextResponse.rewrite(new URL('/403', request.url));
     }
 
-    // 5. Landing Page Redirect (for Partners)
-    // If Auth & Member, and they hit '/', send to /dashboard
+    // Direct to dashboard if hitting root of subdomain
     if (pathname === '/') {
         return NextResponse.redirect(new URL('/dashboard', request.url));
     }
 
     return response;
-}
-
-// Helper for cleaner membership check
-function validMembership(data: { tenants?: { subdomain: string } | { subdomain: string }[] } | null) {
-    if (!data || !data.tenants) return false;
-    const tenants = data.tenants;
-    if (Array.isArray(tenants)) {
-        return tenants.length > 0 && !!tenants[0].subdomain;
-    }
-    return !!(tenants as { subdomain: string }).subdomain;
 }
 
 export const config = {

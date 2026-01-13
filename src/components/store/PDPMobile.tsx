@@ -2,17 +2,18 @@
 
 import React, { useState } from 'react';
 import { ShieldCheck, Share, Heart, Zap, Info, ArrowRight, ChevronDown, SlidersHorizontal } from 'lucide-react';
-import { productColors, mandatoryAccessories, optionalAccessories, mandatoryInsurance, insuranceAddons, serviceOptions, offerOptions } from '@/hooks/usePDPData';
+import { mandatoryAccessories, optionalAccessories, mandatoryInsurance, insuranceAddons, serviceOptions, offerOptions } from '@/hooks/usePDPData';
 
 interface PDPMobileProps {
-    product: any;
+    product: any; // eslint-disable-line @typescript-eslint/no-explicit-any
     variantParam: string;
-    data: any;
-    handlers: any;
+    data: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    handlers: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 export function PDPMobile({ product, variantParam, data, handlers }: PDPMobileProps) {
     const {
+        colors,
         selectedColor,
         regType, setRegType,
         selectedAccessories,
@@ -33,10 +34,11 @@ export function PDPMobile({ product, variantParam, data, handlers }: PDPMobilePr
         toggleAccessory, toggleInsuranceAddon, toggleService, toggleOffer, updateQuantity
     } = handlers;
 
-    const activeColorConfig = productColors.find(c => c.id === selectedColor) || productColors[0];
+    const activeColorConfig = colors.find((c: any) => c.id === selectedColor) || colors[0]; // eslint-disable-line @typescript-eslint/no-explicit-any
     const totalMRP = (product.mrp || (baseExShowroom + 5000)) + rtoEstimates + (mandatoryInsurance.reduce((sum, i) => sum + i.price, 0)) + roadTax + accessoriesPrice + servicesPrice;
 
     const getProductImage = () => {
+        if (activeColorConfig?.image) return activeColorConfig.image;
         switch (product.bodyType) {
             case 'SCOOTER': return '/images/categories/scooter_nobg.png';
             case 'MOTORCYCLE': return '/images/categories/motorcycle_nobg.png';
@@ -46,7 +48,7 @@ export function PDPMobile({ product, variantParam, data, handlers }: PDPMobilePr
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const ConfigItemRowMobile = ({ item, isSelected, onToggle, isMandatory = false }: { item: any, isSelected: boolean, onToggle?: () => void, isMandatory?: boolean }) => {
+    const ConfigItemRowMobile = ({ item, isSelected, onToggle, isMandatory = false }: { item: any /* eslint-disable-line @typescript-eslint/no-explicit-any */, isSelected: boolean, onToggle?: () => void, isMandatory?: boolean }) => {
         const finalPrice = item.discountPrice > 0 ? item.discountPrice : item.price;
         return (
             <div className={`p-4 rounded-2xl border transition-all ${isSelected ? 'bg-brand-primary/10 border-brand-primary/50' : 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/5'}`} onClick={() => !isMandatory && onToggle && onToggle()}>
@@ -86,18 +88,34 @@ export function PDPMobile({ product, variantParam, data, handlers }: PDPMobilePr
 
                 <div className="relative w-full h-full flex items-center justify-center group">
                     <div className="absolute inset-0 bg-gradient-radial from-brand-primary/10 to-transparent opacity-50" />
-                    <img src={getProductImage()} alt={product.model} className="relative z-10 w-full h-auto object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.15)] group-hover:scale-105 transition-transform duration-700" />
+                    {getProductImage() && !getProductImage().includes('categories/') ? (
+                        <img src={getProductImage()} alt={product.model} className="relative z-10 w-full h-auto object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.15)] group-hover:scale-105 transition-transform duration-700" />
+                    ) : (
+                        <div
+                            className="relative z-10 w-full aspect-square rounded-[2rem] flex flex-col items-center justify-center p-8 text-center"
+                            style={{
+                                background: `radial-gradient(circle at center, ${activeColorConfig.hex}44, ${activeColorConfig.hex}11)`,
+                                border: `1px solid ${activeColorConfig.hex}33`
+                            }}
+                        >
+                            <div className="w-32 h-32 rounded-full blur-[60px] opacity-40 animate-pulse" style={{ backgroundColor: activeColorConfig.hex }} />
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mt-6">Finish Preview Only</p>
+                        </div>
+                    )}
                 </div>
 
                 <div className="absolute bottom-8 left-8 right-8">
                     <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
-                        {productColors.map(color => (
+                        {colors.map((color: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) => (
                             <button
                                 key={color.id}
                                 onClick={() => handleColorChange(color.id)}
                                 className={`flex-shrink-0 w-12 h-12 rounded-full border-2 p-1 transition-all ${selectedColor === color.id ? 'border-brand-primary scale-110 shadow-lg' : 'border-transparent'}`}
                             >
-                                <div className={`w-full h-full rounded-full ${color.class}`} style={{ backgroundColor: color.hex }} />
+                                <div
+                                    className={`w-full h-full rounded-full ${color.class}`}
+                                    style={{ backgroundColor: color.hex }}
+                                />
                             </button>
                         ))}
                     </div>
@@ -138,7 +156,7 @@ export function PDPMobile({ product, variantParam, data, handlers }: PDPMobilePr
                     ].map(tab => (
                         <button
                             key={tab.id}
-                            onClick={() => setConfigTab(tab.id as any)}
+                            onClick={() => setConfigTab(tab.id as 'PRICE_BREAKUP' | 'FINANCE' | 'ACCESSORIES' | 'TECH_SPECS')}
                             className={`flex-shrink-0 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${configTab === tab.id ? 'bg-slate-900 text-white dark:bg-white dark:text-black shadow-lg' : 'text-slate-400'}`}
                         >
                             {tab.label}

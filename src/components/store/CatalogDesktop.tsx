@@ -107,21 +107,7 @@ export function CatalogDesktop({ filters }: CatalogDesktopProps) {
     };
 
     return (
-        <div className="max-w-[1920px] mx-auto px-6 md:px-12 lg:px-20 pt-32 pb-20 space-y-12 bg-white dark:bg-[#020617] transition-colors duration-500">
-            {/* 1. Brand elimination Ribbon */}
-            <div className="relative py-8 border-b border-slate-200 dark:border-white/5 overflow-hidden group">
-                <div className="flex whitespace-nowrap animate-marquee gap-24">
-                    {[...brands, ...brands].map((brand, i) => (
-                        <button
-                            key={i}
-                            onClick={() => toggleFilter(setSelectedMakes, brand.toUpperCase())}
-                            className={`text-4xl font-black italic tracking-tighter uppercase transition-all duration-500 ${selectedMakes.includes(brand.toUpperCase()) ? 'text-slate-900 dark:text-white scale-110' : 'text-slate-300 dark:text-slate-800 scale-90 opacity-40 hover:opacity-100'}`}
-                        >
-                            {brand}
-                        </button>
-                    ))}
-                </div>
-            </div>
+        <div className="max-w-[1920px] mx-auto px-6 md:px-12 lg:px-20 pt-20 pb-20 space-y-12 bg-white dark:bg-[#020617] transition-colors duration-500">
 
             <div className="grid grid-cols-4 gap-16">
                 {/* 2. Advanced Sidebar HUD */}
@@ -216,10 +202,6 @@ export function CatalogDesktop({ filters }: CatalogDesktopProps) {
                     <div className="grid grid-cols-3 gap-8">
                         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                         {filteredVehicles.map((v: any, idx: number) => {
-                            const basePrice = (v.make === 'Royal Enfield' ? 2.15 : 0.85) * 100000;
-                            const onRoadPrice = Math.round(basePrice * 1.15);
-                            const offerPrice = Math.round(onRoadPrice * 0.94);
-                            const emiValue = Math.round((offerPrice - downpayment) * 0.035); // Simple mock emi
 
                             return (
                                 <div
@@ -243,9 +225,10 @@ export function CatalogDesktop({ filters }: CatalogDesktopProps) {
                                         {/* Dynamic Image with Fallback */}
                                         <img
                                             src={
-                                                v.bodyType === 'SCOOTER'
+                                                v.imageUrl ||
+                                                (v.bodyType === 'SCOOTER'
                                                     ? '/images/categories/scooter_nobg.png'
-                                                    : '/images/categories/motorcycle_nobg.png'
+                                                    : '/images/categories/motorcycle_nobg.png')
                                             }
                                             alt={v.model}
                                             className="absolute w-[80%] h-[80%] object-contain z-10 transition-transform duration-500 group-hover:scale-105"
@@ -273,14 +256,11 @@ export function CatalogDesktop({ filters }: CatalogDesktopProps) {
                                         <div className="flex items-end justify-between border-t border-slate-100 dark:border-white/5 pt-4">
                                             <div className="space-y-1">
                                                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                                                    On-Road Price
+                                                    Ex-Showroom Price
                                                 </p>
                                                 <div className="flex items-baseline gap-2">
                                                     <span className="text-lg font-black text-slate-900 dark:text-white">
-                                                        ₹{offerPrice.toLocaleString('en-IN')}
-                                                    </span>
-                                                    <span className="text-xs font-bold text-slate-400 line-through decoration-red-500/50">
-                                                        ₹{onRoadPrice.toLocaleString('en-IN')}
+                                                        ₹{(v.price?.exShowroom || 0).toLocaleString('en-IN')}
                                                     </span>
                                                 </div>
                                             </div>
@@ -289,7 +269,7 @@ export function CatalogDesktop({ filters }: CatalogDesktopProps) {
                                                     EMI / {tenure}mo
                                                 </p>
                                                 <p className="text-lg font-black text-brand-primary">
-                                                    ₹{emiValue.toLocaleString('en-IN')}
+                                                    ₹{(Math.round(((v.price?.exShowroom || 0) - downpayment) * 0.035)).toLocaleString('en-IN')}
                                                 </p>
                                             </div>
                                         </div>
