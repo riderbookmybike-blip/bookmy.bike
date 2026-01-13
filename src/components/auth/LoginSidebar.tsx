@@ -223,6 +223,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
 
     const [authMethod, setAuthMethod] = useState<'PHONE' | 'EMAIL'>('PHONE'); // Toggle state
     const [email, setEmail] = useState('');
+    const [isMarketplace, setIsMarketplace] = useState(true); // For UI switching
 
     useEffect(() => {
         if (isOpen) {
@@ -232,10 +233,11 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
             // Marketplace (Consumers) -> Default to PHONE
             // AUMS/Dealer (Staff) -> Default to EMAIL (100% Reliable)
             const hostname = window.location.hostname;
-            const isMarketplace =
+            const isMarketplaceDomain =
                 hostname === 'bookmy.bike' || hostname === 'www.bookmy.bike' || hostname === 'localhost';
 
-            setAuthMethod(isMarketplace ? 'PHONE' : 'EMAIL');
+            setIsMarketplace(isMarketplaceDomain);
+            setAuthMethod(isMarketplaceDomain ? 'PHONE' : 'EMAIL');
 
             setPhone('');
             setEmail('');
@@ -396,36 +398,39 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                     console.warn('Backend did not return session. Using basic session cookies.');
                 }
                 // ===================================
+
+                // Use name from API response if available (for existing users)
+                const finalDisplayName = authData.displayName || displayName;
+
+                setTenantType('MARKETPLACE'); // Default role
+                localStorage.setItem('user_name', finalDisplayName);
+                localStorage.setItem('tenant_type', 'MARKETPLACE');
+                localStorage.setItem('user_role', 'BMB_USER'); // Explicitly set role
+                localStorage.setItem('active_role', 'BMB_USER'); // Explicitly set role
+                window.dispatchEvent(new Event('storage'));
+                document.cookie = 'aums_session=true; path=/;';
+
+                // STRICT DOMAIN SEPARATION
+                const isMarketplaceDomain =
+                    window.location.hostname === 'bookmy.bike' ||
+                    window.location.hostname === 'www.bookmy.bike' ||
+                    window.location.hostname === 'localhost';
+
+                if (isMarketplaceDomain) {
+                    // CONSUMER SITE: Stay on page, just refresh auth
+                    window.location.reload();
+                } else {
+                    // OPS SITE (we.bookmy.bike etc): Go to dashboard
+                    router.push('/dashboard');
+                }
+
+                onClose();
             } catch (err) {
                 console.error('Auth Network Error', err);
                 alert('Connection Error with Auth Server. Please try again.');
                 setLoading(false);
                 return;
             }
-
-            setTenantType('MARKETPLACE'); // Default role
-            localStorage.setItem('user_name', displayName);
-            localStorage.setItem('tenant_type', 'MARKETPLACE');
-            localStorage.setItem('user_role', 'BMB_USER'); // Explicitly set role
-            localStorage.setItem('active_role', 'BMB_USER'); // Explicitly set role
-            window.dispatchEvent(new Event('storage'));
-            document.cookie = 'aums_session=true; path=/;';
-
-            // STRICT DOMAIN SEPARATION
-            const isMarketplaceDomain =
-                window.location.hostname === 'bookmy.bike' ||
-                window.location.hostname === 'www.bookmy.bike' ||
-                window.location.hostname === 'localhost';
-
-            if (isMarketplaceDomain) {
-                // CONSUMER SITE: Stay on page, just refresh auth
-                window.location.reload();
-            } else {
-                // OPS SITE (we.bookmy.bike etc): Go to dashboard
-                router.push('/dashboard');
-            }
-
-            onClose();
         }
     };
 
@@ -529,21 +534,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
 
                                     {step === 'PHONE' ? (
                                         <div className="space-y-4">
-                                            {/* AUTH METHOD TOGGLE (Global) */}
-                                            <div className="flex bg-slate-100 dark:bg-slate-900 rounded-lg p-1 mb-2">
-                                                <button
-                                                    onClick={() => setAuthMethod('PHONE')}
-                                                    className={`flex-1 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${authMethod === 'PHONE' ? 'bg-white dark:bg-white/10 shadow-sm text-blue-600' : 'text-slate-400'}`}
-                                                >
-                                                    Phone Access
-                                                </button>
-                                                <button
-                                                    onClick={() => setAuthMethod('EMAIL')}
-                                                    className={`flex-1 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${authMethod === 'EMAIL' ? 'bg-white dark:bg-white/10 shadow-sm text-blue-600' : 'text-slate-400'}`}
-                                                >
-                                                    Email Access
-                                                </button>
-                                            </div>
+                                            {/* Removed toggle - now using 'Try Another Method' link below */}
 
                                             {/* Name Input - Conditionally Rendered */}
                                             {showNameField && authMethod === 'PHONE' && (
@@ -684,6 +675,22 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                         </>
                                     )}
                                 </button>
+
+                                {/* Try Another Method Link - Only on PHONE step */}
+                                {step === 'PHONE' && (
+                                    <button
+                                        onClick={() => setAuthMethod(authMethod === 'PHONE' ? 'EMAIL' : 'PHONE')}
+                                        className="w-full text-center text-[10px] font-bold text-slate-400 hover:text-blue-600 uppercase tracking-widest transition-colors py-2"
+                                    >
+                                        {isMarketplace
+                                            ? authMethod === 'PHONE'
+                                                ? 'Trouble? Try Email Instead'
+                                                : '← Back to Phone Login'
+                                            : authMethod === 'EMAIL'
+                                              ? 'Trouble? Try Phone Instead'
+                                              : '← Back to Email Login'}
+                                    </button>
+                                )}
 
                                 {step === 'OTP' && (
                                     <div className="flex flex-col gap-3 items-center">
