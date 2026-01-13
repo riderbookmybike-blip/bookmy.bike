@@ -1,7 +1,18 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Phone, Lock, ArrowRight, ShieldCheck, AlertTriangle, Check, Globe, ChevronRight, BarChart3, Zap } from 'lucide-react';
+import {
+    Phone,
+    Lock,
+    ArrowRight,
+    ShieldCheck,
+    AlertTriangle,
+    Check,
+    Globe,
+    ChevronRight,
+    BarChart3,
+    Zap,
+} from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import { useTenant, TenantType } from '@/lib/tenant/tenantContext';
 import { createClient } from '@/lib/supabase/client';
@@ -26,27 +37,33 @@ export default function LoginPage() {
 
     useEffect(() => {
         const fetchBranding = async () => {
-            const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
-            const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
-            let subdomain = '';
+            try {
+                const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+                const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
+                let subdomain = '';
 
-            if (hostname.endsWith(`.${ROOT_DOMAIN}`)) {
-                subdomain = hostname.replace(`.${ROOT_DOMAIN}`, '');
-            } else if (hostname.includes('localhost')) {
-                const parts = hostname.split('.');
-                if (parts.length > 1 && parts[0] !== 'www') subdomain = parts[0];
-            }
-
-            if (subdomain && subdomain !== 'www' && subdomain !== 'we') {
-                const { data: tenant } = await supabase
-                    .from('tenants')
-                    .select('name, config')
-                    .eq('subdomain', subdomain)
-                    .maybeSingle();
-                if (tenant) {
-                    setLocalBrandName(tenant.name);
-                    setLocalPrimaryColor(tenant.config?.brand?.primaryColor || null);
+                if (hostname.endsWith(`.${ROOT_DOMAIN}`)) {
+                    subdomain = hostname.replace(`.${ROOT_DOMAIN}`, '');
+                } else if (hostname.includes('localhost')) {
+                    const parts = hostname.split('.');
+                    if (parts.length > 1 && parts[0] !== 'www') subdomain = parts[0];
                 }
+
+                if (subdomain && subdomain !== 'www' && subdomain !== 'we') {
+                    const { data: tenant } = await supabase
+                        .from('tenants')
+                        .select('name, config')
+                        .eq('subdomain', subdomain)
+                        .maybeSingle();
+                    if (tenant) {
+                        setLocalBrandName(tenant.name);
+                        setLocalPrimaryColor(tenant.config?.brand?.primaryColor || null);
+                    }
+                }
+            } catch (error) {
+                // Suppress auth errors on login page - they're expected if user has corrupt cookies
+                // This is harmless as we're just fetching public branding info
+                console.debug('[Login Page] Branding fetch skipped due to auth state');
             }
         };
         fetchBranding();
@@ -68,7 +85,8 @@ export default function LoginPage() {
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col md:flex-row font-sans relative overflow-hidden">
             {/* Background Magic */}
             <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_0%_0%,var(--primary-color-alpha,rgba(79,70,229,0.05)),transparent_70%)]"
+                <div
+                    className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_0%_0%,var(--primary-color-alpha,rgba(79,70,229,0.05)),transparent_70%)]"
                     style={{ '--primary-color-alpha': `${primaryColor}1A` } as React.CSSProperties}
                 />
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,#00000005_1px,transparent_1px),linear-gradient(to_bottom,#00000005_1px,transparent_1px)] bg-[size:40px_40px] opacity-30" />
@@ -84,10 +102,13 @@ export default function LoginPage() {
                     )}
                     <h1 className="text-5xl font-black uppercase tracking-tighter italic text-white leading-tight">
                         {brandName} <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">Portal</span>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">
+                            Portal
+                        </span>
                     </h1>
                     <p className="text-slate-400 max-w-sm leading-relaxed border-l-2 border-indigo-500/30 pl-6">
-                        Welcome to the next generation of dealership management. Authenticate to access your secure terminal.
+                        Welcome to the next generation of dealership management. Authenticate to access your secure
+                        terminal.
                     </p>
                 </div>
                 <div className="relative z-10 text-[10px] font-black uppercase tracking-widest text-slate-500 flex gap-6">
@@ -108,11 +129,7 @@ export default function LoginPage() {
                 )}
             </div>
 
-            <LoginSidebar
-                isOpen={isSidebarOpen}
-                onClose={handleClose}
-                variant="TERMINAL"
-            />
+            <LoginSidebar isOpen={isSidebarOpen} onClose={handleClose} variant="TERMINAL" />
         </div>
     );
 }
