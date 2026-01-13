@@ -196,13 +196,21 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
     useEffect(() => {
         if (isOpen) {
             setStep('PHONE');
-            setAuthMethod('PHONE'); // Reset to default
+
+            // HYBRID AUTH STRATEGY:
+            // Marketplace (Consumers) -> Default to PHONE
+            // AUMS/Dealer (Staff) -> Default to EMAIL (100% Reliable)
+            const hostname = window.location.hostname;
+            const isMarketplace = hostname === 'bookmy.bike' || hostname === 'www.bookmy.bike' || hostname === 'localhost';
+
+            setAuthMethod(isMarketplace ? 'PHONE' : 'EMAIL');
+
             setPhone('');
             setEmail('');
             setOtp('');
             setLoginError('');
             setShowNameField(false);
-            console.log('LoginSidebar Version: v2.2.0 (Email Login Added)'); // Cache Buster
+            console.log('LoginSidebar Version: v2.3.0 (Hybrid Strategy Activated)');
         }
     }, [isOpen]);
 
