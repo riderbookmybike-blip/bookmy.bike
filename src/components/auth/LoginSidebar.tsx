@@ -585,7 +585,13 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                             <span className="w-1.5 h-1.5 rounded-full bg-white animate-bounce [animation-delay:0.4s]" />
                                         </div>
                                     ) : (
-                                        <>{step === 'PHONE' ? 'Initialize' : 'Authorize Protocol'} <ArrowRight size={16} /></>
+                                        <>
+                                            {variant === 'TERMINAL'
+                                                ? (step === 'PHONE' ? 'Initialize' : 'Authorize Protocol')
+                                                : (step === 'PHONE' ? (authMethod === 'PHONE' ? 'Get OTP' : 'Send Code') : 'Verify & Continue')
+                                            }
+                                            <ArrowRight size={16} />
+                                        </>
                                     )}
                                 </button>
 
@@ -602,24 +608,26 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                             onClick={() => setStep('PHONE')}
                                             className="text-[10px] font-black text-slate-400 hover:text-blue-600 uppercase tracking-widest transition-colors"
                                         >
-                                            Edit Endpoint
+                                            Change {authMethod === 'PHONE' ? 'Number' : 'Email'}
                                         </button>
                                     </div>
                                 )}
                             </div>
                         </div>
 
-                        {/* Infrastructure Insights */}
-                        <div className="pt-12 border-t border-slate-100 dark:border-white/5 grid grid-cols-2 gap-8 opacity-60">
-                            <div className="space-y-3">
-                                <CheckCircle2 size={20} className="text-emerald-500" />
-                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-900 dark:text-white">Store Clearance</p>
+                        {/* Infrastructure Insights - Only for TERMINAL (Staff) */}
+                        {variant === 'TERMINAL' && (
+                            <div className="pt-12 border-t border-slate-100 dark:border-white/5 grid grid-cols-2 gap-8 opacity-60">
+                                <div className="space-y-3">
+                                    <CheckCircle2 size={20} className="text-emerald-500" />
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-900 dark:text-white">Store Clearance</p>
+                                </div>
+                                <div className="space-y-3">
+                                    <ShieldCheck size={20} className="text-indigo-500" />
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-900 dark:text-white">Secure Pipeline</p>
+                                </div>
                             </div>
-                            <div className="space-y-3">
-                                <ShieldCheck size={20} className="text-indigo-500" />
-                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-900 dark:text-white">Secure Pipeline</p>
-                            </div>
-                        </div>
+                        )}
                     </div>
 
                     {/* Infrastructure Footer */}
