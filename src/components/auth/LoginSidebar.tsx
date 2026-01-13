@@ -541,7 +541,8 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                                 placeholder={authMethod === 'EMAIL' ? "Enter Email OTP" : "Enter Mobile OTP"}
                                                 value={otp}
                                                 onChange={(e) => {
-                                                    const val = authMethod === 'EMAIL' ? e.target.value.slice(0, 6) : e.target.value.replace(/\D/g, '').slice(0, 4);
+                                                    // Allow up to 10 digits/chars for Email OTP (Supabase can send 6-10 sometimes)
+                                                    const val = authMethod === 'EMAIL' ? e.target.value.slice(0, 10) : e.target.value.replace(/\D/g, '').slice(0, 4);
                                                     setOtp(val);
                                                 }}
                                                 className={`w-full bg-transparent text-lg font-bold placeholder:text-slate-400 focus:outline-none ${authMethod === 'PHONE' ? 'tracking-widest' : 'tracking-normal'}`}
