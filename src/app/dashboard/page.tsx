@@ -15,8 +15,8 @@ export default function DashboardPage() {
     return (
         <div className="p-6 lg:p-12 max-w-[1600px] mx-auto bg-transparent min-h-screen transition-colors duration-500">
 
-            {/* Loading State */}
-            {!tenantType && (
+            {/* Loading State - Wait for Tenant Type AND Active Role (to avoid Guest flash) */}
+            {(!tenantType || !activeRole) && (
                 <div className="flex h-[80vh] items-center justify-center">
                     <div className="flex flex-col items-center gap-4">
                         <div className="w-12 h-12 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin" />
