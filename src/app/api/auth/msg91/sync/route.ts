@@ -47,11 +47,28 @@ export async function POST(req: NextRequest) {
 
             const referralCode = existingProfile?.referral_code || generateDisplayId();
 
+            // Get existing full name to preserve it if it's a real name
+            const { data: existingNameProfile } = await adminClient
+                .from('profiles')
+                .select('full_name')
+                .eq('id', userId)
+                .single();
+
+            // Only update name if:
+            // 1. No existing profile, OR
+            // 2. Existing name is a placeholder (like 'Rider 0596', 'Partner', etc.)
+            const isPlaceholderName = !existingNameProfile?.full_name ||
+                existingNameProfile.full_name.startsWith('Rider ') ||
+                existingNameProfile.full_name === 'Partner' ||
+                existingNameProfile.full_name === 'Guest';
+
+            const finalName = isPlaceholderName ? (displayName || existingNameProfile?.full_name || 'Partner') : existingNameProfile?.full_name;
+
             const { error: profileError } = await adminClient
                 .from('profiles')
                 .upsert({
                     id: userId,
-                    full_name: displayName,
+                    full_name: finalName,
                     phone: phone, // Storing raw 10 digit in profile for display
                     role: 'BMB_USER', // Default role
                     referral_code: referralCode,
