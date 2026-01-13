@@ -18,19 +18,23 @@ export async function POST(req: NextRequest) {
         const { data: existingUsers, error: listError } = await adminClient.auth.admin.listUsers();
 
         // Find user by phone OR synthesized email
-        const foundUser = existingUsers?.users.find(u =>
-            u.phone === formattedPhone ||
-            u.phone === phone || // Check unformatted too just in case
-            u.email === email
+        const foundUser = existingUsers?.users.find(
+            u =>
+                u.phone === formattedPhone ||
+                u.phone === phone || // Check unformatted too just in case
+                u.email === email
         );
 
         if (!foundUser) {
             // 2. User MUST exist for Login flow
-            return NextResponse.json({
-                success: false,
-                message: 'Account not found. Please create an account first.',
-                code: 'USER_NOT_FOUND'
-            }, { status: 404 });
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: 'Account not found. Please create an account first.',
+                    code: 'USER_NOT_FOUND',
+                },
+                { status: 404 }
+            );
         }
 
         const userId = foundUser.id;
@@ -39,16 +43,13 @@ export async function POST(req: NextRequest) {
         // 3. Update Last Seen (Optional) - No Profiler Overwrite
 
         // 3.5 MIGRATION FIX: Ensure Password is Set for Legacy Users
-        // We set the synthesized password for ANY user logging in via Phone, 
+        // We set the synthesized password for ANY user logging in via Phone,
         // ensuring we can sign them in programmatically even if they are Gmail users.
-        const { error: updateError } = await adminClient.auth.admin.updateUserById(
-            userId,
-            {
-                password: password,
-                email_confirm: true,
-                user_metadata: { phone_login_migrated: true }
-            }
-        );
+        const { error: updateError } = await adminClient.auth.admin.updateUserById(userId, {
+            password: password,
+            email_confirm: true,
+            user_metadata: { phone_login_migrated: true },
+        });
 
         if (updateError) {
             console.error('Migration Error:', updateError);
@@ -58,23 +59,29 @@ export async function POST(req: NextRequest) {
         // Use the ACTUAL email to sign in
         const { data: signInData, error: signInError } = await adminClient.auth.signInWithPassword({
             email: actualEmail,
-            password: password
+            password: password,
         });
 
         if (signInError || !signInData.session) {
             console.error('Session Generation Error:', signInError);
-            return NextResponse.json({
-                success: false,
-                message: 'Failed to generate session token.'
-            }, { status: 500 });
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: 'Failed to generate session token.',
+                },
+                { status: 500 }
+            );
         }
+
+        // 5. Fetch Profile Name for Header Display
+        const { data: profile } = await adminClient.from('profiles').select('display_name').eq('id', userId).single();
 
         return NextResponse.json({
             success: true,
             userId,
-            session: signInData.session
+            session: signInData.session,
+            displayName: profile?.display_name || foundUser.user_metadata?.name || null,
         });
-
     } catch (error) {
         console.error('Sync API Error:', error);
         return NextResponse.json({ success: false, message: 'Internal Server Error' }, { status: 500 });
