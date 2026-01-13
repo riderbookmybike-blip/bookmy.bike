@@ -1,5 +1,4 @@
 'use client';
-import Link from 'next/link';
 import React, { useState, useEffect } from 'react';
 import { Phone, ArrowRight, Lock, User, X, AlertCircle, Globe, RefreshCcw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -397,7 +396,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                             </span>
                         </div>
                         <h2
-                            className={`font-black uppercase tracking-tighter italic leading-[0.9] text-slate-900 dark:text-flow-white ${variant === 'TERMINAL' ? 'text-5xl' : 'text-4xl'}`}
+                            className={`font-black uppercase tracking-tighter italic leading-[0.9] text-slate-900 dark:text-white ${variant === 'TERMINAL' ? 'text-5xl' : 'text-4xl'}`}
                         >
                             {step === 'INITIAL' || step === 'SIGNUP'
                                 ? isStaff
@@ -505,7 +504,11 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                                     }
                                                     value={otp}
                                                     onChange={e =>
-                                                        setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))
+                                                        setOtp(
+                                                            e.target.value
+                                                                .replace(/\D/g, '')
+                                                                .slice(0, authMethod === 'PHONE' ? 4 : 6)
+                                                        )
                                                     }
                                                     className={`w-full bg-transparent text-lg font-bold tracking-widest focus:outline-none ${isStaff || !isMarketplace ? 'text-white placeholder:text-slate-500' : 'text-slate-900 placeholder:text-slate-300'}`}
                                                     autoFocus
@@ -562,11 +565,12 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                     <div className="pt-2 animate-in fade-in slide-in-from-bottom-2">
                                         <button
                                             onClick={() => {
+                                                const newMethod = authMethod === 'PHONE' ? 'EMAIL' : 'PHONE';
+                                                setAuthMethod(newMethod);
+                                                setShowEmailPath(newMethod === 'EMAIL');
                                                 setStep('INITIAL');
                                                 setIdentifier('');
-                                                // Toggle specific help text or just reset?
-                                                // User wants "Try Email OTP" or "Try Phone OTP".
-                                                // Realistically that means starting over with a different identifier.
+                                                setOtp('');
                                             }}
                                             className="flex items-center gap-2 text-[10px] font-black text-amber-500 hover:text-amber-600 uppercase tracking-widest p-2 bg-amber-500/10 rounded-lg"
                                         >
