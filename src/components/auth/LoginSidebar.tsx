@@ -465,23 +465,21 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
 
                                     {step === 'PHONE' ? (
                                         <div className="space-y-4">
-                                            {/* AUTH METHOD TOGGLE (Terminal Only) */}
-                                            {variant === 'TERMINAL' && (
-                                                <div className="flex bg-slate-100 dark:bg-slate-900 rounded-lg p-1 mb-2">
-                                                    <button
-                                                        onClick={() => setAuthMethod('PHONE')}
-                                                        className={`flex-1 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${authMethod === 'PHONE' ? 'bg-white dark:bg-white/10 shadow-sm text-blue-600' : 'text-slate-400'}`}
-                                                    >
-                                                        Phone Access
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setAuthMethod('EMAIL')}
-                                                        className={`flex-1 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${authMethod === 'EMAIL' ? 'bg-white dark:bg-white/10 shadow-sm text-blue-600' : 'text-slate-400'}`}
-                                                    >
-                                                        Email Access
-                                                    </button>
-                                                </div>
-                                            )}
+                                            {/* AUTH METHOD TOGGLE (Global) */}
+                                            <div className="flex bg-slate-100 dark:bg-slate-900 rounded-lg p-1 mb-2">
+                                                <button
+                                                    onClick={() => setAuthMethod('PHONE')}
+                                                    className={`flex-1 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${authMethod === 'PHONE' ? 'bg-white dark:bg-white/10 shadow-sm text-blue-600' : 'text-slate-400'}`}
+                                                >
+                                                    Phone Access
+                                                </button>
+                                                <button
+                                                    onClick={() => setAuthMethod('EMAIL')}
+                                                    className={`flex-1 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${authMethod === 'EMAIL' ? 'bg-white dark:bg-white/10 shadow-sm text-blue-600' : 'text-slate-400'}`}
+                                                >
+                                                    Email Access
+                                                </button>
+                                            </div>
 
                                             {/* Name Input - Conditionally Rendered */}
                                             {showNameField && authMethod === 'PHONE' && (
