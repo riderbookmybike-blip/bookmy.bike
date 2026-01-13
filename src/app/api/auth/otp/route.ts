@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { SignJWT } from 'jose';
 
 /**
  * MSG91 OTP Integration (Clean Implementation)
@@ -81,8 +83,66 @@ export async function POST(request: NextRequest) {
             });
             apiUrl = `${baseUrl}?${params.toString()}`;
 
+            // Execute MSG91 Verification
+            const response = await fetch(apiUrl, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await response.json();
+
+            if (data.type === 'success') {
+                // BRIDGE: Create Supabase Session
+                const supabaseAdmin = createClient(
+                    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+                    { auth: { autoRefreshToken: false, persistSession: false } }
+                );
+
+                // 1. Find User
+                const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+                const user = users?.find(u =>
+                    u.phone === formattedPhone ||
+                    u.phone === `+${formattedPhone}` ||
+                    u.user_metadata?.phone === formattedPhone
+                );
+
+                if (!user) {
+                    return NextResponse.json({ success: false, message: 'User not found. Please Sign Up first.' }, { status: 404 });
+                }
+
+                // 2. Mint Custom JWT (Session)
+                const secret = new TextEncoder().encode(process.env.SUPABASE_JWT_SECRET);
+                const token = await new SignJWT({
+                    aud: 'authenticated',
+                    sub: user.id,
+                    role: 'authenticated',
+                    phone: user.phone
+                })
+                    .setProtectedHeader({ alg: 'HS256' })
+                    .setIssuedAt()
+                    .setExpirationTime('1h') // Short-lived custom token
+                    .sign(secret);
+
+                console.log(`[Auth Bridge] Session created for ${user.id}`);
+
+                return NextResponse.json({
+                    success: true,
+                    message: 'Verified & Logged In',
+                    session: {
+                        access_token: token,
+                        token_type: 'bearer',
+                        user: user,
+                        refresh_token: null // Custom flow doesn't support refresh yet (Client handles re-auth)
+                    }
+                });
+
+            } else {
+                return NextResponse.json({ success: false, message: data.message || 'Invalid OTP', error: data });
+            }
+
             // 3. RESEND OTP
         } else if (action === 'resend') {
+            // ... (rest remains same)
             const type = retryType || 'text'; // 'text' or 'voice'
 
             const baseUrl = `https://control.msg91.com/api/v5/otp/retry`;
@@ -93,38 +153,30 @@ export async function POST(request: NextRequest) {
             });
             apiUrl = `${baseUrl}?${params.toString()}`;
 
-        } else {
-            return NextResponse.json({ success: false, message: 'Invalid Action' }, { status: 400 });
-        }
-
-        // Execute Request
-        const response = await fetch(apiUrl, {
-            method: method,
-            headers: { 'Content-Type': 'application/json' }
-        });
-
-        const data = await response.json();
-        console.log(`[MSG91] Response (${action}):`, JSON.stringify(data));
-
-        // Normalize Response
-        if (data.type === 'success') {
-            return NextResponse.json({
-                success: true,
-                message: data.message || 'Success',
-                data: data
+            // Execute Request (Consolidated for Resend/Send only)
+            const response = await fetch(apiUrl, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' }
             });
-        } else {
-            // Handle "Already Sent" as success to prevent blocking UI
-            if (data.message?.toLowerCase().includes('already sent')) {
-                return NextResponse.json({ success: true, message: 'OTP already sent', data: data });
+
+            const data = await response.json();
+            // ... (Log & Return)
+            if (data.type === 'success') {
+                return NextResponse.json({
+                    success: true,
+                    message: data.message || 'Success',
+                    data: data
+                });
+            } else {
+                if (data.message?.toLowerCase().includes('already sent')) {
+                    return NextResponse.json({ success: true, message: 'OTP already sent', data: data });
+                }
+                return NextResponse.json({ success: false, message: data.message || 'MSG91 Error', error: data });
             }
-
-            return NextResponse.json({
-                success: false,
-                message: data.message || 'MSG91 Error',
-                error: data
-            });
         }
+
+        // Final fallback for safety
+        return NextResponse.json({ success: false, message: 'Unknown Action' }, { status: 400 });
 
     } catch (error: any) {
         console.error('[MSG91] Server Error:', error);
