@@ -20,10 +20,11 @@ export async function POST(request: NextRequest) {
         // Configuration
         // Configuration
         const AUTH_KEY = process.env.MSG91_AUTH_KEY;
-        const TEMPLATE_ID = process.env.MSG91_TEMPLATE_ID;
+        // FALLBACK RESTORED: To prevent production downtime if Env var is missing
+        const TEMPLATE_ID = process.env.MSG91_TEMPLATE_ID || '6966079a8e1222c164607d3';
 
-        if (!AUTH_KEY || !TEMPLATE_ID) {
-            console.error('[MSG91] Critical: Missing MSG91_AUTH_KEY or MSG91_TEMPLATE_ID env variable');
+        if (!AUTH_KEY) {
+            console.error('[MSG91] Critical: Missing MSG91_AUTH_KEY env variable');
             return NextResponse.json({ success: false, message: 'Server Configuration Error' }, { status: 500 });
         }
 
