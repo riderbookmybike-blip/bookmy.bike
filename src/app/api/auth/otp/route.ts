@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
         if (action === 'send') {
             // Send OTP using MSG91's OTP API with Template ID
             // Send OTP using MSG91's OTP API (Implicit Template ID, referencing send-otp/route.ts)
-            const url = `https://api.msg91.com/api/v5/otp?authkey=${AUTH_KEY}&mobile=${formattedPhone}&otp_length=4&otp_expiry=${OTP_EXPIRY}`;
+            const url = `https://control.msg91.com/api/v5/otp?authkey=${AUTH_KEY}&mobile=${formattedPhone}&otp_length=4&otp_expiry=${OTP_EXPIRY}`;
 
             const response = await fetch(url, {
                 method: 'POST',
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
             }
 
             // Verify OTP using MSG91's verify API
-            const url = `https://api.msg91.com/api/v5/otp/verify?authkey=${AUTH_KEY}&mobile=${formattedPhone}&otp=${otp}`;
+            const url = `https://control.msg91.com/api/v5/otp/verify?authkey=${AUTH_KEY}&mobile=${formattedPhone}&otp=${otp}`;
 
             const response = await fetch(url, {
                 method: 'POST',
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
         } else if (action === 'resend') {
             // Resend OTP using MSG91's retry API
             const retryType = body.retryType || 'text'; // 'text' or 'voice'
-            const url = `https://api.msg91.com/api/v5/otp/retry?authkey=${AUTH_KEY}&mobile=${formattedPhone}&retrytype=${retryType}`;
+            const url = `https://control.msg91.com/api/v5/otp/retry?authkey=${AUTH_KEY}&mobile=${formattedPhone}&retrytype=${retryType}`;
 
             const response = await fetch(url, {
                 method: 'POST',
