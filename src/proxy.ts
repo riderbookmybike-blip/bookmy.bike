@@ -132,7 +132,7 @@ export async function proxy(request: NextRequest) {
             .eq('status', 'ACTIVE')
             .single();
 
-        if (!membership || membership.role !== 'SUPER_ADMIN') {
+        if (!membership || !['SUPER_ADMIN', 'OWNER'].includes(membership.role)) {
             return NextResponse.rewrite(new URL('/403', request.url));
         }
         return response;
