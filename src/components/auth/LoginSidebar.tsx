@@ -264,11 +264,26 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                     } else if (authRes.status === 409 && isSignup) {
                         alert('User already exists. Please login instead.');
                     } else {
-                        alert(`Authentication Error: ${errData.message || 'System error'}.`);
+                        // alert(`Authentication Error: ${errData.message || 'System error'}.`);
                     }
                     setLoading(false);
                     return; // Stop execution
                 }
+
+                // === CRITICAL: ESTABLISH SESSION ===
+                const authData = await authRes.json();
+                if (authData.session) {
+                    const supabase = createClient();
+                    const { error: sessionError } = await supabase.auth.setSession(authData.session);
+                    if (sessionError) {
+                        console.error('Client Session set error', sessionError);
+                    } else {
+                        console.log('Client Session Active');
+                    }
+                } else {
+                    console.warn('Backend did not return session. Using basic session cookies.');
+                }
+                // ===================================
 
             } catch (err) {
                 console.error('Auth Network Error', err);
