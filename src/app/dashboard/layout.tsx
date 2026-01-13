@@ -16,6 +16,13 @@ export default function DashboardLayout({
     const [isSidebarPinned, setIsSidebarPinned] = useState(false);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [isLoginOpen, setIsLoginOpen] = useState(false);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    if (!mounted) return null; // Prevent hydration mismatch
 
     // BRANDING INJECTION
     const primaryColor = tenantConfig?.brand?.primaryColor;
