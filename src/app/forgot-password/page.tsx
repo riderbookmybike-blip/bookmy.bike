@@ -16,7 +16,7 @@ export default function ForgotPasswordPage() {
         const base = isLocal ? window.location.origin : `https://${hostname}`;
 
         // Force explicit host to avoid Supabase falling back to Site URL.
-        return `${base}/auth/callback?next=/reset-password`;
+        return `${base}/auth/callback`;
     };
 
     const handleReset = async (e: React.FormEvent) => {
