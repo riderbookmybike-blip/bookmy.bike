@@ -355,7 +355,8 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
             if (isMarketplaceDomain) {
                 window.location.reload();
             } else {
-                router.push('/dashboard');
+                // Force hard navigation to ensure cookies are sent to server middleware
+                window.location.href = '/dashboard';
             }
             onClose();
         } catch (err) {
