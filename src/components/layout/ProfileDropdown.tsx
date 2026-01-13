@@ -26,7 +26,13 @@ interface Membership {
     };
 }
 
-export function ProfileDropdown() {
+interface ProfileDropdownProps {
+    onLoginClick: () => void;
+    scrolled: boolean;
+    theme: string;
+}
+
+export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdownProps) {
     const [user, setUser] = useState<User | null>(null);
     const [memberships, setMemberships] = useState<Membership[]>([]);
     const [isOpen, setIsOpen] = useState(false);
@@ -49,7 +55,13 @@ export function ProfileDropdown() {
                     .eq('status', 'ACTIVE');
 
                 if (data) {
-                    setMemberships(data as Membership[]);
+                    // Fix type casting: ensure tenants is treated as a single object
+                    setMemberships(
+                        data.map(m => ({
+                            role: m.role,
+                            tenants: Array.isArray(m.tenants) ? m.tenants[0] : m.tenants,
+                        }))
+                    );
                 }
             }
         };
@@ -87,18 +99,55 @@ export function ProfileDropdown() {
         return labels[role] || role;
     };
 
-    if (!user) return null;
+    if (!user) {
+        return (
+            <button
+                onClick={onLoginClick}
+                className={`flex items-center gap-2 md:gap-3 p-2 md:pl-3 md:pr-4 md:py-1.5 rounded-full border transition-all group ${
+                    scrolled || theme === 'light'
+                        ? 'border-blue-600/20 dark:border-blue-600/40 bg-slate-100 dark:bg-black/40'
+                        : 'border-blue-600/60 bg-black/40'
+                }`}
+            >
+                <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <UserIcon size={12} className="text-white" />
+                </div>
+                <span
+                    className={`text-[10px] font-black uppercase tracking-widest ${
+                        scrolled || theme === 'light' ? 'text-slate-900 dark:text-white' : 'text-white'
+                    }`}
+                >
+                    Sign In
+                </span>
+            </button>
+        );
+    }
 
     return (
         <div className="relative">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className={`flex items-center gap-2 md:gap-3 p-2 md:pl-3 md:pr-2 md:py-1.5 rounded-full border transition-all group ${
+                    scrolled || theme === 'light'
+                        ? 'border-blue-600/20 dark:border-blue-600/40 bg-slate-100 dark:bg-black/40'
+                        : 'border-blue-600/60 bg-black/40'
+                }`}
             >
-                <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center text-white font-semibold">
+                <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold">
                     {user.email?.[0].toUpperCase()}
                 </div>
-                <ChevronDown className="w-4 h-4" />
+                <span
+                    className={`text-[10px] font-black uppercase tracking-[0.2em] ${
+                        scrolled || theme === 'light' ? 'text-slate-900 dark:text-white' : 'text-white'
+                    }`}
+                >
+                    Hi, {user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0]}
+                </span>
+                <div
+                    className={`transition-transform duration-300 ${isOpen ? 'rotate-180 text-blue-500' : 'text-slate-500'}`}
+                >
+                    <ChevronDown size={14} />
+                </div>
             </button>
 
             {isOpen && (
