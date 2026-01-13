@@ -276,6 +276,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                 const res = await fetch('/api/auth/msg91/verify', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify({ phone: phoneVal, otp }),
                 });
 
@@ -302,7 +303,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                     setOtpFallbackVisible(true);
                 } else if (data.session) {
                     await supabase.auth.setSession(data.session);
-                    await completeLogin(data.user);
+                    await completeLogin(data.user, data.session);
                 }
             }
         } catch (err) {
