@@ -69,16 +69,18 @@ export async function POST(request: NextRequest) {
             u.user_metadata?.phone === phone
         );
 
-        // If user doesn't exist, they can only proceed on the Marketplace (no tenantId)
+        // If user doesn't exist
         if (!user) {
             if (tenantId) {
+                // Subdomain: Block - only existing authorized members can login
                 return NextResponse.json({
                     success: false,
                     isMember: false,
-                    message: `Mobile number not linked to this dealership.`
+                    message: `Account not found. Please contact admin for access.`
                 });
             }
-            return NextResponse.json({ success: true, isMember: true, isNew: true });
+            // Main domain (Marketplace): Allow signup flow
+            return NextResponse.json({ success: true, isMember: false, isNew: true });
         }
 
         // 2. If on a subdomain, check membership
