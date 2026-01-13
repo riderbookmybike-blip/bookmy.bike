@@ -112,15 +112,26 @@ export async function proxy(request: NextRequest) {
                     const loginUrl = new URL('/login', request.url);
                     const redirectResponse = NextResponse.redirect(loginUrl);
 
-                    // Force-expire all auth token variants
+                    const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
+                    const hostname = request.headers.get('host') || '';
+                    const isLocalhost = hostname.includes('localhost');
+
+                    // Force-expire all auth token variants with matching domain
                     ['', '.0', '.1', '.2'].forEach(suffix => {
-                        redirectResponse.cookies.set(`${baseName}${suffix}`, '', {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const cookieOptions: Record<string, any> = {
                             path: '/',
                             expires: new Date(0),
                             httpOnly: true,
-                            secure: true,
+                            secure: !isLocalhost,
                             sameSite: 'lax',
-                        });
+                        };
+
+                        if (!isLocalhost) {
+                            cookieOptions.domain = `.${ROOT_DOMAIN}`;
+                        }
+
+                        redirectResponse.cookies.set(`${baseName}${suffix}`, '', cookieOptions);
                     });
 
                     return redirectResponse;
