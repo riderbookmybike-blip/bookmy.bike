@@ -70,6 +70,18 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ success: false, message: 'Session generation failed' }, { status: 500 });
             }
 
+            // SELF-VERIFY: Check if the token is actually valid right now
+            const { error: verifyError } = await adminClient.auth.getUser(signInData.session.access_token);
+            if (verifyError) {
+                console.error('CRITICAL: Generated Token is Invalid at Birth:', verifyError);
+                return NextResponse.json(
+                    { success: false, message: 'Security token generation failed. Please try again.' },
+                    { status: 500 }
+                );
+            } else {
+                console.log('Token Birth Verification Passed.');
+            }
+
             const { data: profile } = await adminClient.from('profiles').select('full_name').eq('id', userId).single();
 
             const payload = {
