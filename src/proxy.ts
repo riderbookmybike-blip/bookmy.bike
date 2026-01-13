@@ -81,27 +81,8 @@ export async function proxy(request: NextRequest) {
     );
 
     const {
-        data: { session },
-        error: sessionError,
-    } = await supabase.auth.getSession();
-    console.log(
-        `[Proxy] Debug: getSession result: ${session ? 'Session Found' : 'No Session'}, Error: ${sessionError?.message}`
-    );
-
-    const {
         data: { user },
-        error: userError,
     } = await supabase.auth.getUser();
-
-    if (userError) {
-        console.log(`[Proxy] Debug: getUser Error:`, userError);
-        const cookies = request.cookies.getAll();
-        cookies.forEach(c => {
-            if (c.name.includes('auth-token')) {
-                console.log(`[Proxy] Debug: Cookie ${c.name} (len=${c.value.length}): ${c.value.substring(0, 20)}...`);
-            }
-        });
-    }
 
     // D. ROUTE ALLOWLISTS (Unauthenticated Access)
     const isAuthRoute =
