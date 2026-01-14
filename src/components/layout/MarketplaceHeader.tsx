@@ -32,18 +32,29 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         };
         window.addEventListener('scroll', handleScroll);
 
-        const handleLoginSync = () => {
-            const name = localStorage.getItem('user_name');
-            setUserName(name);
+        const syncAuth = async () => {
+            const supabase = createClient();
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
+            if (user) {
+                const name =
+                    user.user_metadata?.full_name || localStorage.getItem('user_name') || user.email?.split('@')[0];
+                setUserName(name);
+            } else {
+                setUserName(null);
+            }
         };
+
+        syncAuth();
+
         const handleAuthSync = ((e: CustomEvent) => {
             if (e.detail?.name) setUserName(e.detail.name);
         }) as EventListener;
-        window.addEventListener('storage', handleLoginSync);
+
         window.addEventListener('auth_sync', handleAuthSync);
         return () => {
             window.removeEventListener('scroll', handleScroll);
-            window.removeEventListener('storage', handleLoginSync);
             window.removeEventListener('auth_sync', handleAuthSync);
         };
     }, []);
@@ -90,7 +101,10 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                         <Link href="/" className={navLinkClass}>
                             Home
                         </Link>
-                        <Link href="/compare" className={navLinkClass}>
+                        <Link href="/store/catalog" className={navLinkClass}>
+                            Catalog
+                        </Link>
+                        <Link href="/store/compare" className={navLinkClass}>
                             Compare
                         </Link>
                         <Link href="/zero" className={navLinkClass}>
@@ -132,7 +146,14 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                             Home
                         </Link>
                         <Link
-                            href="/compare"
+                            href="/store/catalog"
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="text-xl font-black uppercase tracking-tighter text-slate-500 dark:text-slate-400"
+                        >
+                            Catalog
+                        </Link>
+                        <Link
+                            href="/store/compare"
                             onClick={() => setIsMobileMenuOpen(false)}
                             className="text-xl font-black uppercase tracking-tighter text-slate-500 dark:text-slate-400"
                         >
