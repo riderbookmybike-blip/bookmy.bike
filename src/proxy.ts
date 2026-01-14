@@ -3,17 +3,10 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
-
-    // Parse Tenant Slug from URL Path (NEW: Path-based routing)
-    // Pattern: /app/{slug}/... → extract slug
-    let tenantSlug: string | null = null;
-
-    if (pathname.startsWith('/app/')) {
-        const pathSegments = pathname.split('/').filter(Boolean); // ['app', 'aums', 'dashboard']
-        if (pathSegments.length >= 2) {
-            tenantSlug = pathSegments[1]; // 'aums', 'myoody', etc.
-        }
-    }
+    const host = request.headers.get('host') || '';
+    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
+    const isLocalhost = host.includes('localhost') || host.startsWith('127.') || host.startsWith('0.0.0.0');
+    const cookieDomain = !isLocalhost ? `.${rootDomain}` : undefined;
 
     // A. PUBLIC/STATIC ASSETS -> PASS
     if (
@@ -27,15 +20,7 @@ export async function proxy(request: NextRequest) {
         return NextResponse.next();
     }
 
-    // B. ROOT DOMAIN GUARD - Allow public marketplace
-    if (!tenantSlug) {
-        // Allow public routes (marketplace, login, etc.)
-        return NextResponse.next();
-    }
-
-    // C. INTERNAL & PARTNER PORTALS (Subdomains)
     const response = NextResponse.next();
-    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
 
     // Initialize Supabase to check Auth
     const supabase = createServerClient(
@@ -47,10 +32,14 @@ export async function proxy(request: NextRequest) {
                     return request.cookies.getAll();
                 },
                 setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-                    cookiesToSet.forEach(({ name, value, options }) =>
-                        response.cookies.set({ name, value, ...options })
-                    );
+                    cookiesToSet.forEach(({ name, value, options }) => {
+                        response.cookies.set({
+                            name,
+                            value,
+                            ...options,
+                            ...(cookieDomain && !options?.domain ? { domain: cookieDomain } : {}),
+                        });
+                    });
                 },
             },
         }
@@ -59,6 +48,26 @@ export async function proxy(request: NextRequest) {
     const {
         data: { user },
     } = await supabase.auth.getUser();
+
+    // Parse Tenant Slug from URL Path (NEW: Path-based routing)
+    // Pattern: /app/{slug}/... → extract slug
+    let tenantSlug: string | null = null;
+
+    if (pathname.startsWith('/app/')) {
+        const pathSegments = pathname.split('/').filter(Boolean); // ['app', 'aums', 'dashboard']
+        if (pathSegments.length >= 2) {
+            tenantSlug = pathSegments[1]; // 'aums', 'myoody', etc.
+        }
+    }
+
+    // B. ROOT DOMAIN GUARD - Allow public marketplace
+    if (!tenantSlug) {
+        // Allow public routes (marketplace, login, etc.)
+        return response;
+    }
+
+    // C. INTERNAL & PARTNER PORTALS
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
 
     // D. ROUTE ALLOWLISTS (Unauthenticated Access)
     const isAuthRoute =
