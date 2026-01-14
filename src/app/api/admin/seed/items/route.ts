@@ -23,7 +23,7 @@ export async function POST(_request: NextRequest) {
 }
 
 async function handleSeedItems(_request: NextRequest) {
-    console.log('[SEED-ITEMS] Request received');
+
 
     const itemsToUpsert = MOCK_VEHICLES.map(v => {
         const displacement = parseFloat(v.specifications?.engine?.displacement || '0');

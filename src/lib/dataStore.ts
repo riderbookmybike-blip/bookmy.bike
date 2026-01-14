@@ -1,4 +1,4 @@
-// TODO: TEMP STUB - Replace with real implementation
+
 import { VehicleUnit } from '@/types/vehicleUnit';
 import { LedgerEntry } from '@/types/ledger';
 import { Booking } from '@/types/booking';
@@ -30,11 +30,11 @@ export const getVins = (): VehicleUnit[] => {
 export const getVehicleUnit = (vin: string): VehicleUnit | undefined => undefined;
 
 export const getPartyLedger = (partyId: string): LedgerEntry[] => {
-    // TODO: TEMP STUB - Replace with real implementation
+
     return [];
 };
 
-// TODO: TEMP STUBS - Replace with real implementation
+
 export const updateBookingStatus = (id: string, updates: any, reason?: string) => { };
 export const deliverBooking = (id: string, deliveryDetails: any) => { };
 export const completePDI = (id: string, pdiDetails: any) => { };

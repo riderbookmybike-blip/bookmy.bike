@@ -75,9 +75,9 @@ export default function DetailPanel({
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => {
-                                console.log('Edit clicked');
+
                                 if (onEdit) onEdit();
-                                else console.log('onEdit prop missing');
+
                             }}
                             className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                         >
@@ -85,9 +85,9 @@ export default function DetailPanel({
                         </button>
                         <button
                             onClick={() => {
-                                console.log('Actions clicked');
+
                                 if (onAction) onAction();
-                                else console.log('onAction prop missing');
+
                             }}
                             className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm hover:bg-indigo-700 font-semibold shadow-lg shadow-indigo-500/20 transition-all hover:shadow-xl hover:shadow-indigo-500/30"
                         >

@@ -17,7 +17,7 @@ export interface Membership {
     tenants?: {
         id: string;
         name: string;
-        subdomain: string;
+        slug: string;
         type: string;
         config?: Record<string, unknown>;
     };
@@ -80,6 +80,19 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     const [referralCode, setReferralCode] = useState<string | undefined>(undefined);
     const [memberships, setMembershipsState] = useState<Membership[]>([]);
 
+    const mapTenantType = (type?: string): TenantType => {
+        switch (type) {
+            case 'SUPER_ADMIN':
+                return 'AUMS';
+            case 'DEALER':
+                return 'DEALER';
+            case 'BANK':
+                return 'BANK';
+            default:
+                return 'MARKETPLACE';
+        }
+    };
+
     // Hydration Effect
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -95,9 +108,8 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                 setTenantNameState(tName);
             }
 
-            const hostname = window.location.hostname;
-            const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
-            const isRoot = hostname === ROOT_DOMAIN || hostname === `www.${ROOT_DOMAIN}` || hostname === 'localhost';
+            const pathname = window.location.pathname;
+            const isMarketplaceRoute = !pathname.startsWith('/app/');
 
             const uName = localStorage.getItem('user_name');
             if (uName) setUserName(uName);
@@ -108,7 +120,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
             const uRole = localStorage.getItem('user_role');
             const aRole = localStorage.getItem('active_role');
 
-            if (isRoot) {
+            if (isMarketplaceRoute) {
                 if (uRole && !['BMB_USER'].includes(uRole)) {
                     setUserRole('BMB_USER');
                     setActiveRole('BMB_USER');
@@ -129,6 +141,31 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                 try {
                     setMembershipsState(JSON.parse(savedMems) as Membership[]);
                 } catch { /* ignore */ }
+            }
+
+            const pathMatch = window.location.pathname.match(/^\/app\/([^/]+)/);
+            const slug = pathMatch ? pathMatch[1] : null;
+            if (slug) {
+                const supabase = createClient();
+                supabase
+                    .from('tenants')
+                    .select('id, name, slug, type, config')
+                    .eq('slug', slug)
+                    .maybeSingle()
+                    .then(({ data }) => {
+                        if (!data) return;
+                        setTenantId(data.id);
+                        setTenantNameState(data.name);
+                        setTenantTypeState(mapTenantType(data.type));
+                        setTenantConfig(data.config || null);
+                        localStorage.setItem('tenant_id', data.id);
+                        localStorage.setItem('tenant_name', data.name);
+                        localStorage.setItem('tenant_type', mapTenantType(data.type));
+                        localStorage.setItem('tenant_slug', data.slug);
+                    })
+                    .catch(() => {
+                        // Swallow to avoid blocking UI
+                    });
             }
         }
     }, []);

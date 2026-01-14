@@ -9,7 +9,7 @@ export async function GET() {
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         );
 
-        console.log(`Starting migration of ${MAHARASHTRA_PINCODES.length} pincodes...`);
+
 
         // Insert in batches of 100 to avoid request size limits
         const batchSize = 100;

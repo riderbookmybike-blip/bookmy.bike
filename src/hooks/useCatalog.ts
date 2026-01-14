@@ -123,7 +123,7 @@ export function useCatalog() {
                     setItems(mappedItems);
                 } else {
                     // Fallback to mock data if DB is empty
-                    console.log('[Catalog] No DB data, using MOCK_VEHICLES fallback');
+
                     setItems(MOCK_VEHICLES);
                 }
             } catch (err: unknown) {

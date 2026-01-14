@@ -223,7 +223,7 @@ export const VariantSpecificationEditor = ({
                 <div className="flex justify-end pt-4 border-t border-white/10">
                     <button
                         onClick={() => {
-                            console.log('Saving specifications...', { variantId: currentVariant.id });
+
                             // Show success feedback
                             const btn = document.activeElement as HTMLButtonElement;
                             if (btn) {

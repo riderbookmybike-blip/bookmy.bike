@@ -12,10 +12,10 @@ export default function MSG91Initializer() {
             identifier: '', // Optional
             exposeMethods: true,
             success: (data: unknown) => {
-                console.log('[MSG91] Widget Success:', data);
+
             },
             failure: (error: unknown) => {
-                console.log('[MSG91] Widget Failure:', error);
+
             },
         };
 
@@ -34,7 +34,7 @@ export default function MSG91Initializer() {
             strategy="afterInteractive"
             src="https://verify.msg91.com/otp-provider.js"
             onLoad={() => {
-                console.log('[MSG91] Script Loaded');
+
                 if (window.initSendOTP && window.configuration) {
                     window.initSendOTP(window.configuration);
                 }

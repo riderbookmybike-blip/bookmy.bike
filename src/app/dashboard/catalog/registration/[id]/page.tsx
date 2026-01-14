@@ -92,7 +92,7 @@ export default function RegistrationDetailPage() {
     useEffect(() => {
         if (!isMounted || !id) return;
 
-        console.log("Loading Rule for ID:", id); // Debug
+
 
         if (id === 'new') {
             setRule({
@@ -206,7 +206,7 @@ export default function RegistrationDetailPage() {
 
         saveRulesToStorage(newRules);
 
-        console.log("Saving Rule to Storage:", rule);
+
         alert("Rule Saved Successfully! (Persisted to Browser Storage)");
         router.push('/catalog/registration');
     };

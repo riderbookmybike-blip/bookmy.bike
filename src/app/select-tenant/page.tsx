@@ -13,11 +13,10 @@ const MOCK_TENANTS = [
 export default function SelectTenantPage() {
     const router = useRouter();
 
-    const handleSelect = (tenantId: string) => {
-        // In real world, redirect to subdomain: https://{tenantId}.aums.bookmy.bike
-        // For now, redirect to dashboard with query param or just simple redirect
-        console.log('Selected tenant:', tenantId);
-        router.push('/dashboard');
+    const handleSelect = (tenantSlug: string) => {
+        // Path-based: redirect to /app/{slug}/dashboard
+
+        router.push(`/app/${tenantSlug}/dashboard`);
     };
 
     return (
@@ -46,8 +45,8 @@ export default function SelectTenantPage() {
                                             <p className="text-sm font-medium text-blue-600 truncate">{tenant.name}</p>
                                             <div className="ml-2 flex-shrink-0 flex">
                                                 <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${tenant.status === 'Active' ? 'bg-green-100 text-green-800' :
-                                                        tenant.status === 'Trial' ? 'bg-blue-100 text-blue-800' :
-                                                            'bg-red-100 text-red-800'
+                                                    tenant.status === 'Trial' ? 'bg-blue-100 text-blue-800' :
+                                                        'bg-red-100 text-red-800'
                                                     }`}>
                                                     {tenant.status}
                                                 </span>

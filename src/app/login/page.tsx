@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     Phone,
     Lock,
@@ -14,8 +14,9 @@ import {
     Zap,
 } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
-import { useTenant, TenantType } from '@/lib/tenant/tenantContext';
+import { useTenant } from '@/lib/tenant/tenantContext';
 import { createClient } from '@/lib/supabase/client';
+import { useSearchParams } from 'next/navigation';
 
 declare global {
     interface Window {
@@ -29,6 +30,14 @@ import LoginSidebar from '@/components/auth/LoginSidebar';
 
 export default function LoginPage() {
     const { tenantConfig, tenantName } = useTenant();
+    const searchParams = useSearchParams();
+    const nextPath = searchParams.get('next');
+    const tenantSlug = useMemo(() => {
+        const direct = searchParams.get('tenant');
+        if (direct) return direct;
+        const match = nextPath?.match(/^\/app\/([^/]+)/);
+        return match ? match[1] : null;
+    }, [nextPath, searchParams]);
 
     // Independent Tenant Branding Fetch (doesn't rely on context)
     const [localBrandName, setLocalBrandName] = useState<string | null>(null);
@@ -38,22 +47,11 @@ export default function LoginPage() {
     useEffect(() => {
         const fetchBranding = async () => {
             try {
-                const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
-                const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
-                let subdomain = '';
-
-                if (hostname.endsWith(`.${ROOT_DOMAIN}`)) {
-                    subdomain = hostname.replace(`.${ROOT_DOMAIN}`, '');
-                } else if (hostname.includes('localhost')) {
-                    const parts = hostname.split('.');
-                    if (parts.length > 1 && parts[0] !== 'www') subdomain = parts[0];
-                }
-
-                if (subdomain && subdomain !== 'www' && subdomain !== 'we') {
+                if (tenantSlug) {
                     const { data: tenant } = await supabase
                         .from('tenants')
                         .select('name, config')
-                        .eq('subdomain', subdomain)
+                        .eq('slug', tenantSlug)
                         .maybeSingle();
                     if (tenant) {
                         setLocalBrandName(tenant.name);
@@ -67,7 +65,7 @@ export default function LoginPage() {
             }
         };
         fetchBranding();
-    }, [supabase]);
+    }, [supabase, tenantSlug]);
 
     // Branding Defaults
     const brandName = localBrandName || tenantConfig?.brand?.displayName || tenantName || 'BookMyBike';
@@ -129,7 +127,13 @@ export default function LoginPage() {
                 )}
             </div>
 
-            <LoginSidebar isOpen={isSidebarOpen} onClose={handleClose} variant="TERMINAL" />
+            <LoginSidebar
+                isOpen={isSidebarOpen}
+                onClose={handleClose}
+                variant="TERMINAL"
+                redirectTo={nextPath || undefined}
+                tenantSlug={tenantSlug || undefined}
+            />
         </div>
     );
 }

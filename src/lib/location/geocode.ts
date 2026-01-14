@@ -34,7 +34,7 @@ export async function getSmartPincode(
                 const data = JSON.parse(cached) as GeocodeResult;
                 // Only return if we have valid data (prevent stuck nulls from previous errors)
                 if (data.city && data.pincode) {
-                    console.log('📍 Location from Cache:', data);
+
                     return data;
                 }
             } catch (e) {
@@ -52,7 +52,7 @@ export async function getSmartPincode(
 
     // 3. Call Google Maps API
     try {
-        console.log('Fetching location from Google Maps API...');
+
         const res = await fetch(
             `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${googleMapsKey}`
         );

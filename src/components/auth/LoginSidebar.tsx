@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { Phone, ArrowRight, Lock, User, X, AlertCircle, Globe, RefreshCcw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useTenant } from '@/lib/tenant/tenantContext';
+import { useTenant, TenantType } from '@/lib/tenant/tenantContext';
 import { createClient } from '@/lib/supabase/client';
 import { getSmartPincode } from '@/lib/location/geocode';
 
@@ -11,9 +11,17 @@ interface LoginSidebarProps {
     isOpen: boolean;
     onClose: () => void;
     variant?: 'TERMINAL' | 'RETAIL';
+    redirectTo?: string;
+    tenantSlug?: string;
 }
 
-export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: LoginSidebarProps) {
+export default function LoginSidebar({
+    isOpen,
+    onClose,
+    variant = 'TERMINAL',
+    redirectTo,
+    tenantSlug: tenantSlugProp,
+}: LoginSidebarProps) {
     const router = useRouter();
     const { setTenantType, tenantId } = useTenant();
     const [loginError, setLoginError] = useState<string | null>(null);
@@ -28,6 +36,10 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
     const [resendTimer, setResendTimer] = useState(0);
     const [showEmailPath, setShowEmailPath] = useState(false); // Enable email for Staff on Root or explicit selection
     const [otpFallbackVisible, setOtpFallbackVisible] = useState(false);
+    const [redirectPath, setRedirectPath] = useState<string | null>(redirectTo ?? null);
+    const [tenantSlug, setTenantSlug] = useState<string | null>(
+        tenantSlugProp ?? (redirectTo ? redirectTo.match(/^\/app\/([^/]+)/)?.[1] ?? null : null)
+    );
 
     // Existence Info
     const [detectedRole, setDetectedRole] = useState<string | null>(null);
@@ -54,6 +66,12 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
     });
 
     const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
+
+    const extractTenantSlug = (path?: string | null) => {
+        if (!path) return null;
+        const match = path.match(/^\/app\/([^/]+)/);
+        return match ? match[1] : null;
+    };
 
     // Utility: Clear all Supabase auth cookies (zombie killer)
     const clearAuthCookies = () => {
@@ -124,10 +142,17 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
 
             // Check if we're in a tenant path or on marketplace
             const pathname = window.location.pathname;
-            const isInTenantPath = pathname.startsWith('/app/');
+            const searchParams = new URLSearchParams(window.location.search);
+            const nextParam = searchParams.get('next');
+            const tenantParam = searchParams.get('tenant');
+            const derivedSlug =
+                tenantSlugProp || tenantParam || extractTenantSlug(redirectTo) || extractTenantSlug(nextParam);
+            const isInTenantPath = pathname.startsWith('/app/') || !!derivedSlug;
 
             setIsMarketplace(!isInTenantPath);
             setShowEmailPath(isInTenantPath); // Default to Email for tenant portals
+            setTenantSlug(derivedSlug ?? null);
+            setRedirectPath(redirectTo ?? nextParam ?? null);
 
             // Background location capture for marketplace only
             if (!isInTenantPath) {
@@ -141,7 +166,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
             setIsStaff(false);
             setOtpFallbackVisible(false);
         }
-    }, [isOpen, ROOT_DOMAIN]);
+    }, [isOpen, ROOT_DOMAIN, redirectTo, tenantSlugProp]);
 
     const handleCheckUser = async () => {
         if (!identifier || identifier.length < 3) return;
@@ -170,6 +195,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                     phone: method === 'PHONE' ? phoneVal : undefined,
                     email: method === 'EMAIL' ? identifier : undefined,
                     tenantId,
+                    tenantSlug,
                 }),
             });
             const checkData = await checkRes.json();
@@ -181,7 +207,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
             }
 
             // GUARD: Prevent email signup on Marketplace (Root Domain)
-            if (checkData.isNew && method === 'EMAIL' && !tenantId) {
+            if (checkData.isNew && method === 'EMAIL' && !tenantId && !tenantSlug) {
                 setLoginError('Email signup is restricted to authorized staff. Please use a mobile number.');
                 setLoading(false);
                 return;
@@ -189,11 +215,11 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
 
             if (checkData.role) setDetectedRole(checkData.role);
 
-            const staffDetected = (checkData.role && checkData.role !== 'BMB_USER') || !!tenantId;
+            const staffDetected = (checkData.role && checkData.role !== 'BMB_USER') || !!tenantId || !!tenantSlug;
             setIsStaff(staffDetected);
 
             if (checkData.isNew) {
-                if (tenantId) {
+                if (tenantId || tenantSlug) {
                     setLoginError('Account not found. Staff access requires manual pre-registration.');
                     setLoading(false);
                     return;
@@ -332,6 +358,30 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
         };
     }
 
+    const mapTenantType = (type?: string): TenantType => {
+        switch (type) {
+            case 'SUPER_ADMIN':
+                return 'AUMS';
+            case 'DEALER':
+                return 'DEALER';
+            case 'BANK':
+                return 'BANK';
+            default:
+                return 'MARKETPLACE';
+        }
+    };
+
+    const resolveRedirectPath = (memberships: any[] | null, nextPath: string | null) => {
+        const safeNext = nextPath && nextPath.startsWith('/') ? nextPath : null;
+        if (safeNext) return safeNext;
+        if (memberships && memberships.length > 1) return '/profile';
+        if (memberships && memberships.length === 1) {
+            const slug = memberships[0]?.tenants?.slug;
+            if (slug) return `/app/${slug}/dashboard`;
+        }
+        return '/';
+    };
+
     const completeLogin = async (user: AuthUser, session?: Session) => {
         const isEmail = identifier.includes('@');
         const phoneVal = !isEmail ? identifier.replace(/\D/g, '') : user?.phone || '';
@@ -374,7 +424,6 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
 
             const finalRole = detectedRole || syncData.role || 'BMB_USER';
 
-            setTenantType('MARKETPLACE'); // Default
             localStorage.setItem(
                 'user_name',
                 syncData.displayName || fullName || user?.user_metadata?.full_name || 'User'
@@ -384,16 +433,25 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
 
             // Store tenant memberships for profile menu
             if (memberships && memberships.length > 0) {
-                localStorage.setItem('tenant_type', memberships[0].tenants.type);
+                const primaryTenant = memberships[0].tenants;
+                localStorage.setItem('tenant_type', primaryTenant.type);
+                localStorage.setItem('tenant_id', primaryTenant.id);
+                localStorage.setItem('tenant_name', primaryTenant.name);
+                localStorage.setItem('user_memberships', JSON.stringify(memberships));
+                setTenantType(mapTenantType(primaryTenant.type));
             } else {
                 localStorage.setItem('tenant_type', 'MARKETPLACE');
+                localStorage.removeItem('tenant_id');
+                localStorage.removeItem('tenant_name');
+                localStorage.removeItem('user_memberships');
+                setTenantType('MARKETPLACE');
             }
 
             // CRITICAL: Wait for cookies to be written before reload
             await new Promise(resolve => setTimeout(resolve, 1000));
 
             // Navigate instead of reload to preserve session
-            window.location.href = '/';
+            window.location.href = resolveRedirectPath(memberships, redirectPath);
             onClose();
         } catch (err) {
             console.error('Final Sync Error:', err);

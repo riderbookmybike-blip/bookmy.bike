@@ -153,7 +153,7 @@ const evaluateComponent = (
         const numTarget = Number(targetValue);
         const isNumeric = !isNaN(numActual) && !isNaN(numTarget) && targetValue !== '';
 
-        console.log(`[Eval] Condition: ${comp.conditionVariable} (${actualValue}) ${comp.conditionOperator} ${targetValue}`);
+
 
         // Compare
         switch (comp.conditionOperator) {
@@ -177,7 +177,7 @@ const evaluateComponent = (
                 break;
         }
 
-        console.log(`[Eval] Result: ${isMatch}`);
+
 
         const blockToRun = isMatch ? comp.thenBlock : comp.elseBlock;
 

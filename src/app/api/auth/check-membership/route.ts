@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
     try {
-        const { phone, email, tenantId: providedTenantId } = await request.json();
+        const { phone, email, tenantId: providedTenantId, tenantSlug } = await request.json();
 
         if (!phone && !email) {
             return NextResponse.json({ success: false, message: 'Phone or Email is required' }, { status: 400 });
@@ -36,28 +36,15 @@ export async function POST(request: NextRequest) {
             { auth: { autoRefreshToken: false, persistSession: false } }
         );
 
-        // Subdomain Detection
+        // Resolve tenant by slug if provided
         let tenantId: string | undefined = providedTenantId;
-        if (!tenantId) {
-            const host = request.headers.get('host') || '';
-            const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
-
-            let subdomain = '';
-            if (host.endsWith(`.${ROOT_DOMAIN}`)) {
-                subdomain = host.replace(`.${ROOT_DOMAIN}`, '').split(':')[0];
-            } else if (host.includes('localhost')) {
-                const parts = host.split('.');
-                if (parts.length > 1 && parts[0] !== 'www') subdomain = parts[0];
-            }
-
-            if (subdomain && !['we', 'www', 'aums'].includes(subdomain)) {
-                const { data: tenant } = await supabaseAdmin
-                    .from('tenants')
-                    .select('id')
-                    .eq('subdomain', subdomain)
-                    .maybeSingle();
-                if (tenant) tenantId = tenant.id;
-            }
+        if (!tenantId && tenantSlug) {
+            const { data: tenant } = await supabaseAdmin
+                .from('tenants')
+                .select('id')
+                .eq('slug', tenantSlug)
+                .maybeSingle();
+            if (tenant) tenantId = tenant.id;
         }
 
         // 1. Find User by Phone or Email

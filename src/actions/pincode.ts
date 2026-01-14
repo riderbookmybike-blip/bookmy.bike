@@ -22,12 +22,12 @@ export async function getPincodeDetails(pincode: string) {
             .single();
 
         if (cached && !error) {
-            console.log('Pincode found in Cache:', pincode);
+
             return { success: true, data: cached };
         }
 
         // 2. Fetch from External API (Fallback)
-        console.log('Fetching from External API:', pincode);
+
         const res = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
         const apiData = await res.json();
 
