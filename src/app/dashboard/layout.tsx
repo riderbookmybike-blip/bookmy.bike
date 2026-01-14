@@ -42,7 +42,10 @@ export default function DashboardLayout({
     const effectiveRole = activeRole || userRole || 'BMB_USER';
 
     // DETECT REGULAR USER (BMB Visitors)
-    const isRegularUser = activeRole === 'BMB_USER' || !(['OWNER', 'DEALERSHIP_ADMIN', 'DEALERSHIP_STAFF', 'BANK_STAFF'].includes((activeRole as string) || ''));
+    // Fix: check based on effectiveRole to avoid flicker during initial undefined state
+    const isRegularUser = effectiveRole === 'BMB_USER' || !(['OWNER', 'DEALERSHIP_ADMIN', 'DEALERSHIP_STAFF', 'BANK_STAFF'].includes(effectiveRole));
+
+    console.log('DashboardLayout Role Debug:', { userRole, activeRole, effectiveRole, isRegularUser });
 
     // SETUP ENFORCEMENT
     useEffect(() => {

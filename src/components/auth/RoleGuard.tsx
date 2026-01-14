@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { usePermission } from '@/hooks/usePermission';
+import { useTenant } from '@/lib/tenant/tenantContext';
 import { Resource, Action } from '@/config/permissions';
 import { useRouter } from 'next/navigation';
 
@@ -19,6 +20,7 @@ export default function RoleGuard({
     children
 }: RoleGuardProps) {
     const { can, role } = usePermission();
+    const { tenantSlug } = useTenant();
     const router = useRouter();
 
     if (!can(resource, action)) {
@@ -35,7 +37,7 @@ export default function RoleGuard({
                     Current Role: <span className="font-mono font-bold">{role}</span>
                 </p>
                 <button
-                    onClick={() => router.push('/dashboard')}
+                    onClick={() => router.push(tenantSlug ? `/app/${tenantSlug}/dashboard` : '/dashboard')}
                     className="mt-6 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
                 >
                     Back to Dashboard

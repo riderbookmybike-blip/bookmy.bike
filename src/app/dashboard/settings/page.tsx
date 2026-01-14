@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 export default function SettingsPage() {
-    const { tenantConfig, tenantName, tenantId, userRole } = useTenant();
+    const { tenantConfig, tenantName, tenantId, userRole, tenantSlug } = useTenant();
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'ORG' | 'BRAND'>('ORG');
     const [saving, setSaving] = useState(false);
@@ -115,13 +115,13 @@ export default function SettingsPage() {
                         <Palette size={18} /> Branding
                     </button>
                     <Link
-                        href="/dashboard/settings/team"
+                        href={`${basePath}/settings/team`}
                         className="w-full text-left px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5 text-sm font-bold flex items-center gap-3 transition-colors"
                     >
                         <Users size={18} /> Team Members
                     </Link>
                     <Link
-                        href="/dashboard/settings/profile"
+                        href={`${basePath}/settings/profile`}
                         className="w-full text-left px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5 text-sm font-bold flex items-center gap-3 transition-colors"
                     >
                         <Users size={18} /> My Profile
@@ -208,3 +208,4 @@ export default function SettingsPage() {
         </div>
     );
 }
+    const basePath = tenantSlug ? `/app/${tenantSlug}/dashboard` : '/dashboard';

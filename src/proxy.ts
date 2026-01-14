@@ -49,6 +49,35 @@ export async function proxy(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser();
 
+    const isLegacyDashboard = pathname === '/dashboard' || pathname.startsWith('/dashboard/');
+
+    if (isLegacyDashboard) {
+        if (!user) {
+            const loginUrl = new URL('/login', request.url);
+            loginUrl.searchParams.set('next', `${pathname}${request.nextUrl.search}`);
+            return NextResponse.redirect(loginUrl);
+        }
+
+        const { data: legacyMembership } = await supabase
+            .from('memberships')
+            .select('tenants!inner(slug)')
+            .eq('user_id', user.id)
+            .eq('status', 'ACTIVE')
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+        const legacyTenant = legacyMembership?.tenants;
+        const legacySlug = Array.isArray(legacyTenant)
+            ? legacyTenant[0]?.slug
+            : legacyTenant?.slug;
+        if (legacySlug) {
+            return NextResponse.redirect(new URL(`/app/${legacySlug}/dashboard`, request.url));
+        }
+
+        return NextResponse.redirect(new URL('/', request.url));
+    }
+
     // Parse Tenant Slug from URL Path (NEW: Path-based routing)
     // Pattern: /app/{slug}/... → extract slug
     let tenantSlug: string | null = null;

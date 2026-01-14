@@ -3,7 +3,11 @@ export type Role =
     | 'DEALERSHIP_ADMIN'
     | 'DEALERSHIP_STAFF'
     | 'BANK_STAFF'
-    | 'BMB_USER';
+    | 'BMB_USER'
+    | 'SUPER_ADMIN'
+    | 'SUPERADMIN'
+    | 'ADMIN'
+    | 'MARKETPLACE_ADMIN';
 
 export type Permission =
     | 'manage_organization'
@@ -16,13 +20,16 @@ export type Permission =
     | 'view_leads'
     | 'access_marketplace'
     | 'manage_marketplace'
-    | 'transfer_ownership';
+    | 'transfer_ownership'
+    // Generic actions for sidebar filtering
+    | 'read' | 'write' | 'delete' | 'approve' | 'manage';
 
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     OWNER: [
         'manage_organization', 'manage_team', 'manage_billing', 'view_analytics',
         'manage_inventory', 'manage_leads', 'access_marketplace', 'manage_marketplace', 'view_inventory', 'view_leads',
-        'transfer_ownership'
+        'transfer_ownership',
+        'read', 'write', 'delete', 'approve', 'manage'
     ],
     DEALERSHIP_ADMIN: [
         'manage_organization', 'manage_team', 'manage_billing', 'view_analytics',
@@ -39,6 +46,30 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     ],
     BMB_USER: [
         'view_inventory', 'view_leads', 'access_marketplace'
+    ],
+    SUPER_ADMIN: [
+        'manage_organization', 'manage_team', 'manage_billing', 'view_analytics',
+        'manage_inventory', 'manage_leads', 'access_marketplace', 'manage_marketplace', 'view_inventory', 'view_leads',
+        'transfer_ownership',
+        'read', 'write', 'delete', 'approve', 'manage'
+    ],
+    SUPERADMIN: [
+        'manage_organization', 'manage_team', 'manage_billing', 'view_analytics',
+        'manage_inventory', 'manage_leads', 'access_marketplace', 'manage_marketplace', 'view_inventory', 'view_leads',
+        'transfer_ownership',
+        'read', 'write', 'delete', 'approve', 'manage'
+    ],
+    ADMIN: [
+        'manage_organization', 'manage_team', 'manage_billing', 'view_analytics',
+        'manage_inventory', 'manage_leads', 'access_marketplace', 'manage_marketplace', 'view_inventory', 'view_leads',
+        'transfer_ownership',
+        'read', 'write', 'delete', 'approve', 'manage'
+    ],
+    MARKETPLACE_ADMIN: [
+        'manage_organization', 'manage_team', 'manage_billing', 'view_analytics',
+        'manage_inventory', 'manage_leads', 'access_marketplace', 'manage_marketplace', 'view_inventory', 'view_leads',
+        'transfer_ownership',
+        'read', 'write', 'delete', 'approve', 'manage'
     ]
 };
 
@@ -53,5 +84,9 @@ export const ROLES_LABEL: Record<Role, string> = {
     DEALERSHIP_ADMIN: 'Dealership Admin',
     DEALERSHIP_STAFF: 'Dealership Staff',
     BANK_STAFF: 'Bank Staff',
-    BMB_USER: 'BMB User'
+    BMB_USER: 'BMB User',
+    SUPER_ADMIN: 'Super Admin',
+    SUPERADMIN: 'Super Admin',
+    ADMIN: 'Admin',
+    MARKETPLACE_ADMIN: 'Marketplace Admin'
 };

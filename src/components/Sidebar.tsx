@@ -36,7 +36,7 @@ export default function Sidebar({
     onMobileClose
 }: SidebarProps) {
     const pathname = usePathname();
-    const { tenantType, tenantName } = useTenant();
+    const { tenantType, tenantName, tenantSlug } = useTenant();
 
     // Width constants
     const EXPANDED_WIDTH = 280;
@@ -50,7 +50,7 @@ export default function Sidebar({
         return groups.map(group => ({
             ...group,
             items: group.items.filter(item => {
-                const perm = (item as any).permission;
+                const perm = (item as any).permission || (item as any).permissions?.[0];
                 if (perm) {
                     return can(role, perm);
                 }
@@ -103,7 +103,7 @@ export default function Sidebar({
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             onClick={onPinToggle}
-                            className={`p-2 rounded-lg transition-colors ${isPinned ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-500/10' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5'}`}
+                            className={`p-2 rounded-lg transition-colors ${isPinned ? 'text-brand-primary bg-brand-primary/10 dark:bg-brand-primary/5' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5'}`}
                         >
                             {isPinned ? <Pin size={16} fill="currentColor" /> : <PinOff size={16} />}
                         </motion.button>
@@ -140,20 +140,39 @@ export default function Sidebar({
 
                             <ul className="space-y-1">
                                 {section.items.map((item) => {
-                                    const isActive = pathname === item.href;
+                                    // Rewrite URL for Tenant Context
+                                    let href = item.href;
+                                    const shouldPrefix = tenantSlug && (
+                                        href.startsWith('/dashboard') ||
+                                        href.startsWith('/leads') ||
+                                        href.startsWith('/customers') ||
+                                        href.startsWith('/quotes') ||
+                                        href.startsWith('/sales-orders') ||
+                                        href.startsWith('/finance-applications') ||
+                                        href.startsWith('/audit-logs') ||
+                                        href.startsWith('/finance') ||
+                                        href.startsWith('/superadmin') ||
+                                        href.startsWith('/inventory') ||
+                                        href.startsWith('/catalog')
+                                    );
+                                    if (shouldPrefix) {
+                                        href = `/app/${tenantSlug}${href}`;
+                                    }
+
+                                    const isActive = pathname === href;
                                     const Icon = item.icon;
                                     return (
                                         <li key={item.href} className="relative group/item">
                                             <Link
-                                                href={item.href}
+                                                href={href}
                                                 className={`
                                                     flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-200
                                                     ${isActive
-                                                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25 border border-indigo-500/20'
+                                                        ? 'bg-brand-primary text-slate-900 shadow-lg shadow-brand-primary/25 border border-brand-primary/20'
                                                         : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'}
                                                 `}
                                             >
-                                                <div className={`shrink-0 ${isActive ? 'text-white' : item.color || 'text-slate-400'}`}>
+                                                <div className={`shrink-0 ${isActive ? 'text-slate-900' : item.color || 'text-slate-400'}`}>
                                                     {Icon && <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />}
                                                 </div>
 
@@ -222,12 +241,34 @@ export default function Sidebar({
                                 <div key={idx} className="space-y-3">
                                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">{section.group}</h3>
                                     <div className="space-y-1">
-                                        {section.items.map(item => (
-                                            <Link key={item.href} href={item.href} onClick={onMobileClose} className={`flex items-center gap-3 p-3 rounded-xl text-sm font-bold ${pathname === item.href ? 'bg-indigo-600 text-white' : 'text-slate-600'}`}>
-                                                {item.icon && <item.icon size={20} />}
-                                                {item.title}
-                                            </Link>
-                                        ))}
+                                        {section.items.map(item => {
+                                            let href = item.href;
+                                            const shouldPrefix = tenantSlug && (
+                                                href.startsWith('/dashboard') ||
+                                                href.startsWith('/leads') ||
+                                                href.startsWith('/customers') ||
+                                                href.startsWith('/quotes') ||
+                                                href.startsWith('/sales-orders') ||
+                                                href.startsWith('/finance-applications') ||
+                                                href.startsWith('/audit-logs') ||
+                                                href.startsWith('/finance') ||
+                                                href.startsWith('/superadmin')
+                                            );
+                                            if (shouldPrefix) {
+                                                href = `/app/${tenantSlug}${href}`;
+                                            }
+                                            return (
+                                                <Link
+                                                    key={item.href}
+                                                    href={href}
+                                                    onClick={onMobileClose}
+                                                    className={`flex items-center gap-3 p-3 rounded-xl text-sm font-bold ${pathname === href ? 'bg-brand-primary text-slate-900 shadow-lg shadow-brand-primary/20' : 'text-slate-600 dark:text-slate-400'}`}
+                                                >
+                                                    {item.icon && <item.icon size={20} />}
+                                                    {item.title}
+                                                </Link>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             ))}

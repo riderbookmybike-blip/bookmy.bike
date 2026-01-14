@@ -15,7 +15,7 @@ interface AumsHeaderProps {
 }
 
 export const AumsHeader = ({ onLoginClick, onMenuClick, showSearch = false }: AumsHeaderProps) => {
-    const { tenantType, activeRole, tenantName, userName: contextUserName, memberships } = useTenant();
+    const { tenantType, activeRole, tenantName, userName: contextUserName, memberships, tenantSlug } = useTenant();
     const router = useRouter();
     const [localUserName, setLocalUserName] = useState<string | null>(null);
 
@@ -96,15 +96,15 @@ export const AumsHeader = ({ onLoginClick, onMenuClick, showSearch = false }: Au
                                     </div>
 
                                     <div className="space-y-1">
-                                        <Link href="/dashboard" className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold text-slate-500 dark:text-slate-400 hover:bg-blue-500/10 hover:text-blue-600 transition-all">
+                                        <Link href={tenantSlug ? `/app/${tenantSlug}/dashboard` : '/dashboard'} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold text-slate-500 dark:text-slate-400 hover:bg-blue-500/10 hover:text-blue-600 transition-all">
                                             <Terminal size={16} />
                                             <span>Dashboard</span>
                                         </Link>
-                                        <Link href="/dashboard/profile" className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold text-slate-500 dark:text-slate-400 hover:bg-blue-500/10 hover:text-blue-600 transition-all">
+                                        <Link href={tenantSlug ? `/app/${tenantSlug}/dashboard/profile` : '/dashboard/profile'} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold text-slate-500 dark:text-slate-400 hover:bg-blue-500/10 hover:text-blue-600 transition-all">
                                             <User size={16} />
                                             <span>Profile</span>
                                         </Link>
-                                        <Link href="/dashboard/settings" className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold text-slate-500 dark:text-slate-400 hover:bg-blue-500/10 hover:text-blue-600 transition-all">
+                                        <Link href={tenantSlug ? `/app/${tenantSlug}/dashboard/settings` : '/dashboard/settings'} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold text-slate-500 dark:text-slate-400 hover:bg-blue-500/10 hover:text-blue-600 transition-all">
                                             <Settings size={16} />
                                             <span>Settings</span>
                                         </Link>

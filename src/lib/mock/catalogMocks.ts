@@ -4,7 +4,7 @@ export const MOCK_REGISTRATION_RULES: RegistrationRule[] = [
     {
         id: 'R-7F3QX7M2A',
         displayId: '7F3QX7M2A',
-        ruleName: 'MH (Individual)',
+        ruleName: 'Maharashtra (MH)',
         stateCode: 'MH',
         vehicleType: 'TWO_WHEELER',
         effectiveFrom: '2023-01-01',
@@ -12,22 +12,78 @@ export const MOCK_REGISTRATION_RULES: RegistrationRule[] = [
         stateTenure: 15,
         bhTenure: 2,
         companyMultiplier: 3,
-        components: [], // Empty for brevity in master mock, detailed in local state
+        components: [
+            {
+                id: 'c1',
+                type: 'PERCENTAGE',
+                label: 'Road Tax (Individual)',
+                basis: 'EX_SHOWROOM',
+                fuelMatrix: {
+                    PETROL: 12,
+                    CNG: 12,
+                    EV: 0
+                },
+                variantTreatment: 'PRO_RATA',
+                isRoadTax: true
+            },
+            {
+                id: 'c2',
+                type: 'FIXED',
+                label: 'Registration Fee',
+                fuelMatrix: {
+                    PETROL: 300,
+                    CNG: 300,
+                    EV: 0
+                }
+            },
+            {
+                id: 'c4',
+                type: 'FIXED',
+                label: 'Smart Card Fee',
+                amount: 200, // Common for all fuels
+                variantTreatment: 'NONE'
+            },
+            {
+                id: 'c3',
+                type: 'PERCENTAGE',
+                label: 'Safety Cess',
+                percentage: 1,
+                basis: 'TARGET_COMPONENT',
+                targetComponentId: 'c1', // 1% of Road Tax
+                variantTreatment: 'PRO_RATA'
+            }
+        ],
         version: 1,
         lastUpdated: new Date().toISOString()
     },
     {
         id: 'R-9K3V5B1NX',
         displayId: '9K3V5B1NX',
-        ruleName: 'KA (Individual)',
+        ruleName: 'Karnataka (KA)',
         stateCode: 'KA',
         vehicleType: 'TWO_WHEELER',
         effectiveFrom: '2023-01-01',
         status: 'ACTIVE',
         stateTenure: 15,
         bhTenure: 2,
-        companyMultiplier: 3,
-        components: [],
+        companyMultiplier: 2,
+        components: [
+            {
+                id: 'ka-1',
+                type: 'PERCENTAGE',
+                label: 'Road Tax (LTT)',
+                percentage: 18.2,
+                basis: 'EX_SHOWROOM',
+                variantTreatment: 'PRO_RATA',
+                isRoadTax: true
+            },
+            {
+                id: 'ka-2',
+                type: 'FIXED',
+                label: 'Registration Fee',
+                amount: 1500
+            }
+        ],
         version: 1,
         lastUpdated: new Date().toISOString()
     },

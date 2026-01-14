@@ -29,7 +29,12 @@ export const Logo: React.FC<LogoProps> = ({
     size = 'md',
     style = {}
 }) => {
+    const [mounted, setMounted] = React.useState(false);
     const { theme } = useTheme();
+
+    React.useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const heights = useMemo(() => {
         let h: number;
@@ -53,9 +58,10 @@ export const Logo: React.FC<LogoProps> = ({
 
     // Determine target mode (handle auto)
     const activeMode = useMemo(() => {
+        if (!mounted) return mode === 'auto' ? 'light' : mode;
         if (mode !== 'auto') return mode;
         return (theme === 'dark' || theme === 'system') ? 'dark' : 'light';
-    }, [mode, theme]);
+    }, [mode, theme, mounted]);
 
     // Color Logic based on Variants and Monochrome overrides
     const colors = useMemo(() => {

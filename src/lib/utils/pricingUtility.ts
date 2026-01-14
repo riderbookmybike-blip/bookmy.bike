@@ -1,6 +1,6 @@
 import { RegistrationRule, CalculationContext, CalculationResult, RegistrationType } from '@/types/registration';
 import { InsuranceRule, InsuranceCalculationContext, InsuranceCalculationResult } from '@/types/insurance';
-import { calculateRegistrationCharges } from '@/lib/registrationEngine';
+import { calculateRegistrationCharges } from '@/lib/aums/registrationEngine';
 import { calculateInsurance as calculateInsurancePremium } from '@/lib/insuranceEngine';
 
 /**

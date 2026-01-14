@@ -36,6 +36,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
     const [user, setUser] = useState<User | null>(null);
     const [memberships, setMemberships] = useState<Membership[]>([]);
     const [isOpen, setIsOpen] = useState(false);
+    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
         const supabase = createClient();
@@ -88,6 +89,10 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
         };
     }, []);
 
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
     const handleLogout = async () => {
         const supabase = createClient();
         await supabase.auth.signOut();
@@ -124,23 +129,24 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
         return labels[role] || role;
     };
 
+    const isLight = mounted ? theme === 'light' : true;
+
     if (!user) {
         return (
             <button
                 onClick={onLoginClick}
-                className={`flex items-center gap-2 md:gap-3 p-2 md:pl-3 md:pr-4 md:py-1.5 rounded-full border transition-all group ${
-                    scrolled || theme === 'light'
-                        ? 'border-blue-600/20 dark:border-blue-600/40 bg-slate-100 dark:bg-black/40'
-                        : 'border-blue-600/60 bg-black/40'
-                }`}
+                className={`flex items-center gap-2 md:gap-3 p-2 md:pl-3 md:pr-4 md:py-1.5 rounded-full border transition-all group ${scrolled || isLight
+                    ? 'border-blue-600/20 dark:border-blue-600/40 bg-slate-100 dark:bg-black/40'
+                    : 'border-blue-600/60 bg-black/40'
+                    }`}
             >
                 <div className="w-5 h-5 bg-brand-primary rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
                     <UserIcon size={12} className="text-black" />
                 </div>
                 <span
-                    className={`text-[10px] font-black uppercase tracking-widest ${
-                        scrolled || theme === 'light' ? 'text-slate-900 dark:text-white' : 'text-white'
-                    }`}
+                    suppressHydrationWarning
+                    className={`text-[10px] font-black uppercase tracking-widest ${(mounted && theme === 'dark') ? 'text-white' : (scrolled || theme === 'light' ? 'text-slate-900 dark:text-white' : 'text-white')
+                        }`}
                 >
                     Sign In
                 </span>
@@ -149,25 +155,28 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
     }
 
     const displayName =
-        user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0] || 'User';
+        user.user_metadata?.full_name?.split(' ')[0] || user.user_metadata?.name?.split(' ')[0] || user.email?.split('@')[0] || 'User';
 
     return (
         <div className="relative">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`flex items-center gap-2 md:gap-3 p-2 md:pl-3 md:pr-2 md:py-1.5 rounded-full border transition-all group ${
-                    scrolled || theme === 'light'
-                        ? 'border-blue-600/20 dark:border-blue-600/40 bg-slate-100 dark:bg-black/40'
-                        : 'border-blue-600/60 bg-black/40'
-                }`}
+                className={`flex items-center gap-2 md:gap-3 p-2 md:pl-3 md:pr-2 md:py-1.5 rounded-full border transition-all group ${scrolled || isLight
+                    ? 'border-blue-600/20 dark:border-blue-600/40 bg-slate-100 dark:bg-black/40'
+                    : 'border-blue-600/60 bg-black/40'
+                    }`}
             >
-                <div className="w-6 h-6 bg-brand-primary rounded-full flex items-center justify-center text-black text-[10px] font-bold">
-                    {(user.email?.[0] || user.user_metadata?.full_name?.[0] || 'U').toUpperCase()}
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black shadow-lg shadow-brand-primary/20 bg-gradient-to-br from-brand-primary to-[#F4B000] border-2 border-white dark:border-slate-800 overflow-hidden shrink-0">
+                    {user.user_metadata?.avatar_url ? (
+                        <img src={user.user_metadata.avatar_url} alt={displayName} className="w-full h-full object-cover" />
+                    ) : (
+                        <span>{(user.user_metadata?.full_name?.[0] || user.user_metadata?.name?.[0] || user.email?.[0] || 'U').toUpperCase()}</span>
+                    )}
                 </div>
                 <span
-                    className={`text-[10px] font-black uppercase tracking-[0.2em] ${
-                        scrolled || theme === 'light' ? 'text-slate-900 dark:text-white' : 'text-white'
-                    }`}
+                    suppressHydrationWarning
+                    className={`text-[10px] font-black uppercase tracking-[0.2em] ${(mounted && theme === 'dark') ? 'text-white' : (scrolled || theme === 'light' ? 'text-slate-900 dark:text-white' : 'text-white')
+                        }`}
                 >
                     Hi, {displayName}
                 </span>
@@ -181,101 +190,102 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
             {isOpen && (
                 <>
                     <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+                    <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 z-50 overflow-hidden">
                         {/* User Info */}
-                        <div className="p-4 border-b border-gray-200">
-                            <p className="font-semibold text-gray-900">{user.user_metadata?.full_name || 'User'}</p>
-                            <p className="text-sm text-gray-500">{user.email}</p>
+                        <div className="p-6 bg-slate-50 dark:bg-white/[0.02] border-b border-gray-100 dark:border-white/5 flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-primary to-[#F4B000] flex items-center justify-center text-white text-xl font-black shadow-inner overflow-hidden uppercase">
+                                {user.user_metadata?.avatar_url ? (
+                                    <img src={user.user_metadata.avatar_url} alt={user.user_metadata?.full_name} className="w-full h-full object-cover" />
+                                ) : (
+                                    <span>{(user.user_metadata?.full_name?.[0] || user.user_metadata?.name?.[0] || user.email?.[0] || 'U').toUpperCase()}</span>
+                                )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="font-black text-slate-900 dark:text-white truncate uppercase tracking-tight">
+                                    {user.user_metadata?.full_name || 'BookMyBike User'}
+                                </p>
+                                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 truncate uppercase tracking-widest leading-none mt-1">
+                                    {user.email}
+                                </p>
+                            </div>
                         </div>
 
                         {/* Member Access */}
                         {memberships.length > 0 && (
-                            <>
-                                <div className="px-4 py-2 bg-gray-50">
-                                    <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            <div className="p-2">
+                                <div className="px-4 py-3 flex items-center justify-between">
+                                    <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
                                         Member Access
                                     </p>
+                                    <div className="h-px flex-1 ml-4 bg-slate-100 dark:bg-white/5" />
                                 </div>
-                                <div className="py-2">
+                                <div className="space-y-1">
                                     {memberships.map(m => (
                                         <a
                                             key={m.tenants.slug}
                                             href={`/app/${m.tenants.slug}/dashboard`}
-                                            className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="group flex items-center justify-between px-4 py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-all border border-transparent hover:border-slate-100 dark:hover:border-white/5"
                                         >
                                             <div className="flex items-center gap-3">
-                                                {getTenantIcon(m.tenants.type)}
-                                                <span className="text-gray-900">{m.tenants.name}</span>
+                                                <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-400 group-hover:text-brand-primary transition-colors">
+                                                    {getTenantIcon(m.tenants.type)}
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-tight">{m.tenants.name}</span>
+                                                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{m.tenants.type.replace('_', ' ')}</span>
+                                                </div>
                                             </div>
-                                            <span className="text-xs px-2 py-1 bg-brand-primary/10 text-brand-primary border border-brand-primary/20 rounded-full">
+                                            <span className="text-[8px] font-black px-2 py-1 bg-brand-primary/10 text-brand-primary border border-brand-primary/20 rounded-full uppercase tracking-widest">
                                                 {getRoleLabel(m.role)}
                                             </span>
                                         </a>
                                     ))}
                                 </div>
-                                <div className="border-t border-gray-200" />
-                            </>
+                            </div>
                         )}
 
                         {/* My Account */}
-                        <div className="px-4 py-2 bg-gray-50">
-                            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider">My Account</p>
+                        <div className="p-2 border-t border-slate-100 dark:border-white/5">
+                            <div className="px-4 py-3 flex items-center justify-between">
+                                <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">My Account</p>
+                                <div className="h-px flex-1 ml-4 bg-slate-100 dark:bg-white/10" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-1 px-2">
+                                {[
+                                    { label: 'Profile', icon: UserIcon, href: '/profile' },
+                                    { label: 'Orders', icon: Package, href: '/orders' },
+                                    { label: 'Wishlist', icon: Heart, href: '/wishlist' },
+                                    { label: 'Alerts', icon: Bell, href: '/notifications' },
+                                ].map((item) => (
+                                    <a
+                                        key={item.label}
+                                        href={item.href}
+                                        className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-all group border border-transparent hover:border-slate-100 dark:hover:border-white/5 text-center"
+                                    >
+                                        <item.icon className="w-4 h-4 text-slate-400 group-hover:text-brand-primary transition-colors" />
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">{item.label}</span>
+                                    </a>
+                                ))}
+                            </div>
                         </div>
-                        <div className="py-2">
-                            <a
-                                href="/profile"
-                                className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
-                            >
-                                <UserIcon className="w-4 h-4 text-gray-600" />
-                                <span className="text-gray-900">My Profile</span>
-                            </a>
-                            <a
-                                href="/orders"
-                                className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
-                            >
-                                <Package className="w-4 h-4 text-gray-600" />
-                                <span className="text-gray-900">My Orders</span>
-                            </a>
-                            <a
-                                href="/wishlist"
-                                className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
-                            >
-                                <Heart className="w-4 h-4 text-gray-600" />
-                                <span className="text-gray-900">My Wishlist</span>
-                            </a>
-                            <a
-                                href="/notifications"
-                                className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
-                            >
-                                <Bell className="w-4 h-4 text-gray-600" />
-                                <span className="text-gray-900">Notifications</span>
-                            </a>
-                            <a
-                                href="/settings"
-                                className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
-                            >
-                                <Settings className="w-4 h-4 text-gray-600" />
-                                <span className="text-gray-900">Settings</span>
-                            </a>
-                        </div>
-
-                        <div className="border-t border-gray-200" />
 
                         {/* Help & Logout */}
-                        <div className="py-2">
+                        <div className="p-4 bg-slate-50 dark:bg-white/[0.01] border-t border-slate-100 dark:border-white/5 flex items-center justify-between gap-2">
                             <a
                                 href="/help"
-                                className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-slate-200 dark:border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all bg-white dark:bg-slate-800/50"
                             >
-                                <HelpCircle className="w-4 h-4 text-gray-600" />
-                                <span className="text-gray-900">Help & Support</span>
+                                <HelpCircle className="w-3.5 h-3.5" />
+                                Help
                             </a>
                             <button
                                 onClick={handleLogout}
-                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border border-rose-500/20"
                             >
-                                <LogOut className="w-4 h-4 text-red-600" />
-                                <span className="text-red-600">Logout</span>
+                                <LogOut className="w-3.5 h-3.5" />
+                                Logout
                             </button>
                         </div>
                     </div>

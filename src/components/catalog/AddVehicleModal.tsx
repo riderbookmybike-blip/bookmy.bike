@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Plus, ChevronRight } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import { useTenant } from '@/lib/tenant/tenantContext';
 
 interface AddVehicleModalProps {
     isOpen: boolean;
@@ -13,6 +14,7 @@ interface AddVehicleModalProps {
 
 export default function AddVehicleModal({ isOpen, onClose, onSuccess }: AddVehicleModalProps) {
     const router = useRouter();
+    const { tenantSlug } = useTenant();
 
     if (!isOpen) return null;
 
@@ -45,7 +47,7 @@ export default function AddVehicleModal({ isOpen, onClose, onSuccess }: AddVehic
                         </button>
                         <button
                             onClick={() => {
-                                router.push('/dashboard/catalog/vehicles/studio');
+                                router.push(tenantSlug ? `/app/${tenantSlug}/dashboard/catalog/vehicles/studio` : '/dashboard/catalog/vehicles/studio');
                                 onClose();
                             }}
                             className="flex-[2] px-8 py-5 rounded-[2rem] bg-blue-600 text-white font-black uppercase tracking-widest text-[11px] hover:scale-105 transition-all shadow-xl shadow-blue-500/20 active:scale-95 flex items-center justify-center gap-3 italic"

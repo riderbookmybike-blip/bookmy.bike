@@ -1,15 +1,19 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Landmark, Sparkles, TrendingUp, Info, Save, CheckCircle2, Car, Copy, Edit2, ArrowRight, ArrowUpDown, Search, Filter, Package } from 'lucide-react';
+import { Landmark, Sparkles, TrendingUp, Info, Save, CheckCircle2, Car, Copy, Edit2, ArrowRight, ArrowUpDown, Search, Filter, Package, ExternalLink } from 'lucide-react';
 import { calculateOnRoad } from '@/lib/utils/pricingUtility';
+import { useRouter } from 'next/navigation';
+import { useTenant } from '@/lib/tenant/tenantContext';
 import { RegistrationRule } from '@/types/registration';
 import { VehicleModel, ModelColor, ModelVariant } from '@/types/productMaster';
 
 interface SKUPriceRow {
     id: string;
     brand: string;
+    brandId?: string;
     model: string;
+    modelId?: string;
     variant: string;
     color: string;
     engineCc: string | number;
@@ -90,6 +94,8 @@ export default function PricingLedgerTable({
     onBrandChange,
     onBulkUpdate
 }: PricingLedgerTableProps) {
+    const router = useRouter();
+    const { tenantSlug } = useTenant();
     const [skus, setSkus] = useState<SKUPriceRow[]>(initialSkus);
     const [isSaving, setIsSaving] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
@@ -223,6 +229,7 @@ export default function PricingLedgerTable({
                                     placeholder="Enter Price"
                                     value={bulkPriceInput}
                                     onChange={e => setBulkPriceInput(e.target.value)}
+                                    onFocus={(e) => e.target.select()}
                                     className="w-24 bg-white dark:bg-slate-900 border border-blue-200 rounded-lg px-2 py-1.5 text-xs font-bold outline-none text-right"
                                 />
                                 <button
@@ -358,10 +365,37 @@ export default function PricingLedgerTable({
                                             </div>
                                         </td>
                                         <td className="px-4 py-2">
-                                            <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase">{sku.model}</span>
+                                            <button
+                                                onClick={() => {
+                                                    const base = tenantSlug ? `/app/${tenantSlug}/dashboard` : '/dashboard';
+                                                    router.push(`${base}/catalog/vehicles/${sku.brand}`);
+                                                }}
+                                                className="text-left group/edit hover:text-blue-600 transition-colors"
+                                            >
+                                                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase block">{sku.model}</span>
+                                                <span className="text-[9px] font-medium text-slate-400 uppercase hidden group-hover/edit:inline-flex items-center gap-1">
+                                                    Edit Model <ExternalLink size={8} />
+                                                </span>
+                                            </button>
                                         </td>
                                         <td className="px-4 py-2">
                                             <span className="text-[10px] font-medium text-slate-500 uppercase">{sku.variant}</span>
+                                            {!sku.variant && (
+                                                <button
+                                                    onClick={() => {
+                                                        const base = tenantSlug ? `/app/${tenantSlug}/dashboard` : '/dashboard';
+                                                        // Navigate to studio if we have IDs, otherwise fallback to brand page
+                                                        if (sku.brandId && sku.modelId) {
+                                                            router.push(`${base}/catalog/vehicles/studio?brandId=${sku.brandId}&modelId=${sku.modelId}`);
+                                                        } else {
+                                                            router.push(`${base}/catalog/vehicles/${sku.brand}`);
+                                                        }
+                                                    }}
+                                                    className="inline-flex items-center gap-1 text-[9px] font-bold text-rose-500 hover:text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-100 uppercase tracking-wide opacity-80 hover:opacity-100 transition-all"
+                                                >
+                                                    Fix Data <Edit2 size={8} />
+                                                </button>
+                                            )}
                                         </td>
                                         <td className="px-4 py-2">
                                             <span className="text-[10px] font-medium text-slate-500 uppercase">{sku.color}</span>
@@ -386,6 +420,12 @@ export default function PricingLedgerTable({
                                                     type="number"
                                                     value={sku.exShowroom}
                                                     onChange={(e) => onUpdatePrice(sku.id, Number(e.target.value))}
+                                                    onFocus={(e) => e.target.select()}
+                                                    onBlur={(e) => {
+                                                        if (!e.target.value || Number(e.target.value) <= 0) {
+                                                            onUpdatePrice(sku.id, sku.originalExShowroom || 0);
+                                                        }
+                                                    }}
                                                     className={`w-24 bg-slate-50 dark:bg-black/20 border rounded-lg px-2 py-1.5 text-xs font-black text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/10 transition-all text-right
                                                         ${isDirty ? 'border-amber-500/50 bg-amber-500/5' : 'border-slate-200 dark:border-white/10 focus:border-blue-500'}
                                                     `}

@@ -30,7 +30,7 @@ export const Footer = () => {
                             riders.
                         </p>
                         <div className="flex gap-2">
-                            <SocialIcon icon={<Newspaper size={18} />} href="/store/blog" />
+                            <SocialIcon icon={<Newspaper size={18} />} href="/blog" />
                             <SocialIcon icon={<Instagram size={18} />} href="https://instagram.com" />
                             <SocialIcon icon={<Twitter size={18} />} href="https://twitter.com" />
                             <SocialIcon icon={<Linkedin size={18} />} href="https://linkedin.com" />
@@ -70,6 +70,7 @@ export const Footer = () => {
                             <FooterHeading>Ecosystem</FooterHeading>
                             <FooterLinkList>
                                 <FooterLink href="#">About</FooterLink>
+                                <FooterLink href="/blog">Blog</FooterLink>
                                 <FooterLink href="/login">Partners</FooterLink>
                                 <FooterLink href="/mediakit">Media Kit</FooterLink>
                                 <FooterLink href="#">Careers</FooterLink>
@@ -140,11 +141,10 @@ const FooterLink = ({
     <li>
         <Link
             href={href}
-            className={`text-xs font-bold transition-colors ${
-                highlight
+            className={`text-xs font-bold transition-colors ${highlight
                     ? 'text-brand-primary dark:text-brand-primary hover:text-yellow-600 dark:hover:text-yellow-400'
                     : 'text-slate-500 dark:text-slate-400 hover:text-brand-primary dark:hover:text-brand-primary'
-            }`}
+                }`}
         >
             {children}
         </Link>

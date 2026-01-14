@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { RegistrationRule, CalculationContext, CalculationResult, RegistrationType } from '@/types/registration';
-import { calculateRegistrationCharges } from '@/lib/registrationEngine';
+import { calculateRegistrationCharges } from '@/lib/aums/registrationEngine';
 import { Calculator, RefreshCw, ChevronDown, ChevronRight, Building2, User, Globe } from 'lucide-react';
 
 interface PreviewCalculatorProps {
