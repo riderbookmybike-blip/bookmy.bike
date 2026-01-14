@@ -72,7 +72,13 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
     const handleLogout = async () => {
         const supabase = createClient();
         await supabase.auth.signOut();
-        localStorage.clear();
+
+        // Only clear auth-related keys
+        localStorage.removeItem('user_name');
+        localStorage.removeItem('user_role');
+        localStorage.removeItem('active_role');
+        localStorage.removeItem('tenant_type');
+
         window.location.href = '/';
     };
 
@@ -134,7 +140,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                 }`}
             >
                 <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold">
-                    {user.email?.[0].toUpperCase()}
+                    {(user.email?.[0] || user.user_metadata?.full_name?.[0] || 'U').toUpperCase()}
                 </div>
                 <span
                     className={`text-[10px] font-black uppercase tracking-[0.2em] ${
