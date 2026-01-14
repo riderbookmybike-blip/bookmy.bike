@@ -412,8 +412,8 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                 onClick={onClose}
             />
 
-            <div className="relative w-full max-w-xl h-fit max-h-[calc(100vh-8rem)] bg-white/90 dark:bg-slate-950/20 backdrop-blur-3xl shadow-[0_0_100px_rgba(0,0,0,0.2)] flex flex-col animate-in slide-in-from-right duration-700 border border-slate-200 dark:border-white/5 rounded-[48px] overflow-hidden pointer-events-auto">
-                <div className="absolute inset-0 pointer-events-none opacity-[0.03] grayscale bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+            <div className="relative w-full max-w-xl h-fit max-h-[calc(100vh-8rem)] bg-[#0B1121]/95 backdrop-blur-3xl shadow-[0_0_100px_rgba(0,0,0,0.5)] flex flex-col animate-in slide-in-from-right duration-700 border border-white/10 rounded-[48px] overflow-hidden pointer-events-auto">
+                <div className="absolute inset-0 pointer-events-none opacity-[0.05] grayscale bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
 
                 <div className="h-1.5 w-full bg-slate-100 dark:bg-white/5 overflow-hidden">
                     <div
@@ -425,15 +425,17 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                 <div className="p-10 pb-6 flex items-center justify-between">
                     <div className="space-y-4">
                         <div className="flex items-center gap-3">
-                            <div className={`h-0.5 w-12 rounded-full ${isStaff ? 'bg-blue-600' : 'bg-slate-300'}`} />
+                            <div
+                                className={`h-0.5 w-12 rounded-full ${isStaff ? 'bg-brand-primary' : 'bg-white/20'}`}
+                            />
                             <span
-                                className={`text-[10px] font-black uppercase tracking-[0.3em] italic ${isStaff ? 'text-blue-600' : 'text-slate-400'}`}
+                                className={`text-[10px] font-black uppercase tracking-[0.3em] italic ${isStaff ? 'text-brand-primary' : 'text-slate-400'}`}
                             >
                                 {isStaff ? 'System Uplink' : 'Account Access'}
                             </span>
                         </div>
                         <h2
-                            className={`font-black uppercase tracking-tighter italic leading-[0.9] text-slate-900 dark:text-white ${variant === 'TERMINAL' ? 'text-5xl' : 'text-4xl'}`}
+                            className={`font-black uppercase tracking-tighter italic leading-[0.9] text-white ${variant === 'TERMINAL' ? 'text-5xl' : 'text-4xl'}`}
                         >
                             {step === 'INITIAL' || step === 'SIGNUP'
                                 ? isStaff
@@ -455,15 +457,15 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-3 hover:bg-slate-100 rounded-2xl transition-all group active:scale-90 self-start"
+                        className="p-3 hover:bg-white/10 rounded-2xl transition-all group active:scale-90 self-start"
                     >
-                        <X size={24} className="text-slate-300 group-hover:text-slate-900 transition-colors" />
+                        <X size={24} className="text-white/30 group-hover:text-white transition-colors" />
                     </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-10 space-y-8 pt-10">
                     <div className="relative group overflow-hidden">
-                        <div className="absolute inset-0 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[32px] transition-all group-focus-within:border-blue-600 group-focus-within:ring-[16px] group-focus-within:ring-blue-600/5" />
+                        <div className="absolute inset-0 bg-white/5 border border-white/10 rounded-[32px] transition-all group-focus-within:border-brand-primary group-focus-within:ring-[16px] group-focus-within:ring-brand-primary/5" />
 
                         <div className="relative p-2">
                             {loginError && (
@@ -478,14 +480,14 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                             {step === 'INITIAL' || step === 'SIGNUP' ? (
                                 <div className="space-y-4">
                                     {step === 'SIGNUP' && (
-                                        <div className="flex items-center px-6 py-4 border-b border-slate-100">
+                                        <div className="flex items-center px-6 py-4 border-b border-white/10">
                                             <User size={18} className="text-slate-400 mr-6" />
                                             <input
                                                 type="text"
                                                 placeholder="Your Full Name"
                                                 value={fullName}
                                                 onChange={e => setFullName(e.target.value)}
-                                                className="bg-transparent border-none outline-none text-lg font-bold text-slate-900 w-full"
+                                                className="bg-transparent border-none outline-none text-lg font-bold text-white w-full placeholder:text-slate-500"
                                                 autoFocus
                                             />
                                         </div>
@@ -507,7 +509,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                             }
                                             value={identifier}
                                             onChange={e => setIdentifier(e.target.value)}
-                                            className={`bg-transparent border-none outline-none text-lg font-bold w-full ${isStaff || !isMarketplace ? 'text-white placeholder:text-slate-500' : 'text-slate-900 placeholder:text-slate-300'}`}
+                                            className="bg-transparent border-none outline-none text-lg font-bold w-full text-white placeholder:text-slate-500"
                                             autoFocus={step === 'INITIAL'}
                                             disabled={step === 'SIGNUP'}
                                         />
@@ -519,7 +521,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                         <div className="px-6 pb-4">
                                             <button
                                                 onClick={() => setShowEmailPath(true)}
-                                                className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-blue-600 transition-colors"
+                                                className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-brand-primary transition-colors"
                                             >
                                                 Use Email ID
                                             </button>
@@ -547,7 +549,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                                                 .slice(0, authMethod === 'PHONE' ? 4 : 6)
                                                         )
                                                     }
-                                                    className={`w-full bg-transparent text-lg font-bold tracking-widest focus:outline-none ${isStaff || !isMarketplace ? 'text-white placeholder:text-slate-500' : 'text-slate-900 placeholder:text-slate-300'}`}
+                                                    className="w-full bg-transparent text-lg font-bold tracking-widest focus:outline-none text-white placeholder:text-slate-500"
                                                     autoFocus
                                                 />
                                             </div>
@@ -573,8 +575,10 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                             }}
                             disabled={loading || identifier.length < 3}
                             className={`w-full py-6 rounded-[32px] text-xs font-black uppercase tracking-[0.3em] italic flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-[0.98] ${
-                                loading ? 'bg-blue-600/50 cursor-wait' : 'bg-slate-900 dark:bg-blue-600'
-                            } text-white disabled:opacity-50`}
+                                loading
+                                    ? 'bg-brand-primary/50 cursor-wait'
+                                    : 'bg-brand-primary text-black hover:bg-[#F4B000]'
+                            } disabled:opacity-50`}
                         >
                             {loading ? 'Processing...' : step === 'INITIAL' ? 'Continue' : 'Verify'}
                             <ArrowRight size={16} />
@@ -587,13 +591,13 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                                         authMethod === 'EMAIL' ? handleSendEmailOtp(identifier) : handleSendPhoneOtp()
                                     }
                                     disabled={loading || resendTimer > 0}
-                                    className="text-[10px] font-black text-blue-600 disabled:text-slate-400 uppercase tracking-widest"
+                                    className="text-[10px] font-black text-brand-primary disabled:text-slate-400 uppercase tracking-widest"
                                 >
                                     {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend OTP'}
                                 </button>
                                 <button
                                     onClick={() => setStep('INITIAL')}
-                                    className="text-[10px] font-black text-slate-400 hover:text-blue-600 uppercase tracking-widest"
+                                    className="text-[10px] font-black text-slate-400 hover:text-brand-primary uppercase tracking-widest"
                                 >
                                     Use Different Account
                                 </button>
@@ -623,7 +627,7 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
                     </div>
                 </div>
 
-                <div className="p-10 border-t border-slate-100 flex items-center justify-between opacity-50 mt-auto">
+                <div className="p-10 border-t border-white/5 flex items-center justify-between opacity-50 mt-auto">
                     <div className="flex items-center gap-3">
                         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 italic">
                             Secure Endpoint

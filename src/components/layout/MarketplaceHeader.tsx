@@ -179,7 +179,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                             {userName ? (
                                 <div className="space-y-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
+                                        <div className="w-12 h-12 rounded-full bg-brand-primary flex items-center justify-center text-black font-bold">
                                             {userName.charAt(0).toUpperCase()}
                                         </div>
                                         <div>
@@ -200,7 +200,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                                         onLoginClick();
                                         setIsMobileMenuOpen(false);
                                     }}
-                                    className="w-full py-4 bg-blue-600 text-white rounded-xl text-sm font-black uppercase tracking-widest"
+                                    className="w-full py-4 bg-brand-primary text-black rounded-xl text-sm font-black uppercase tracking-widest hover:bg-[#F4B000] transition-colors"
                                 >
                                     Login / Sign Up
                                 </button>

@@ -115,8 +115,8 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                         : 'border-blue-600/60 bg-black/40'
                 }`}
             >
-                <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
-                    <UserIcon size={12} className="text-white" />
+                <div className="w-5 h-5 bg-brand-primary rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <UserIcon size={12} className="text-black" />
                 </div>
                 <span
                     className={`text-[10px] font-black uppercase tracking-widest ${
@@ -139,7 +139,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                         : 'border-blue-600/60 bg-black/40'
                 }`}
             >
-                <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold">
+                <div className="w-6 h-6 bg-brand-primary rounded-full flex items-center justify-center text-black text-[10px] font-bold">
                     {(user.email?.[0] || user.user_metadata?.full_name?.[0] || 'U').toUpperCase()}
                 </div>
                 <span
@@ -185,7 +185,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                                                 {getTenantIcon(m.tenants.type)}
                                                 <span className="text-gray-900">{m.tenants.name}</span>
                                             </div>
-                                            <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+                                            <span className="text-xs px-2 py-1 bg-brand-primary/10 text-brand-primary border border-brand-primary/20 rounded-full">
                                                 {getRoleLabel(m.role)}
                                             </span>
                                         </a>
