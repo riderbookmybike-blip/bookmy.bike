@@ -117,8 +117,8 @@ export default function LoginSidebar({ isOpen, onClose, variant = 'TERMINAL' }: 
 
     useEffect(() => {
         if (isOpen) {
-            // Clear any existing auth cookies when opening login sidebar
-            clearAuthCookies();
+            // DO NOT clear auth cookies automatically - that causes logout on sidebar open
+            // clearAuthCookies();
 
             setStep('INITIAL');
 

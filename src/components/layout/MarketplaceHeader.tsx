@@ -17,7 +17,6 @@ interface MarketplaceHeaderProps {
 export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const { memberships } = useTenant();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [userName, setUserName] = useState<string | null>(() => {
         if (typeof window !== 'undefined') {
             return localStorage.getItem('user_name');
@@ -59,28 +58,17 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
           ? 'text-slate-900 hover:bg-slate-900/5'
           : 'text-white hover:bg-white/10';
 
-    const profileRef = React.useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
-                setIsProfileOpen(false);
-            }
-        };
-        if (isProfileOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [isProfileOpen]);
-
     const handleSignOut = async () => {
         const supabase = createClient();
         await supabase.auth.signOut();
+
+        // Match the cleanup logic in ProfileDropdown
         localStorage.removeItem('user_name');
+        localStorage.removeItem('user_role');
+        localStorage.removeItem('active_role');
+        localStorage.removeItem('tenant_type');
+
         setUserName(null);
-        setIsProfileOpen(false);
         window.location.reload();
     };
 
