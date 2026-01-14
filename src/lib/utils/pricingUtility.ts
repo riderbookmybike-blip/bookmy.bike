@@ -28,7 +28,7 @@ export function calculateRTO(exShowroom: number, rule: RegistrationRule, type: '
 
     const res = calculateRegistrationCharges(rule, ctx);
 
-    console.log(`[PricingUtility] Calculation for ${type} (${ctx.regType}): Total = ₹${res.totalAmount}`);
+
 
     return {
         total: res.totalAmount,

@@ -38,35 +38,54 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
     const [isOpen, setIsOpen] = useState(false);
 
     useEffect(() => {
+        const supabase = createClient();
+
+        const loadMemberships = async (userId: string) => {
+            const { data } = await supabase
+                .from('memberships')
+                .select('role, tenants!inner(slug, name, type)')
+                .eq('user_id', userId)
+                .eq('status', 'ACTIVE');
+
+            if (data) {
+                setMemberships(
+                    data.map(m => ({
+                        role: m.role,
+                        tenants: Array.isArray(m.tenants) ? m.tenants[0] : m.tenants,
+                    }))
+                );
+            }
+        };
+
         const fetchData = async () => {
-            const supabase = createClient();
             const {
                 data: { user },
             } = await supabase.auth.getUser();
 
             if (user) {
                 setUser(user);
-
-                // Fetch memberships
-                const { data } = await supabase
-                    .from('memberships')
-                    .select('role, tenants!inner(slug, name, type)')
-                    .eq('user_id', user.id)
-                    .eq('status', 'ACTIVE');
-
-                if (data) {
-                    // Fix type casting: ensure tenants is treated as a single object
-                    setMemberships(
-                        data.map(m => ({
-                            role: m.role,
-                            tenants: Array.isArray(m.tenants) ? m.tenants[0] : m.tenants,
-                        }))
-                    );
-                }
+                await loadMemberships(user.id);
+            } else {
+                setUser(null);
+                setMemberships([]);
             }
         };
 
         fetchData();
+
+        const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+            if (session?.user) {
+                setUser(session.user);
+                loadMemberships(session.user.id);
+            } else {
+                setUser(null);
+                setMemberships([]);
+            }
+        });
+
+        return () => {
+            data.subscription.unsubscribe();
+        };
     }, []);
 
     const handleLogout = async () => {
@@ -129,6 +148,9 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
         );
     }
 
+    const displayName =
+        user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0] || 'User';
+
     return (
         <div className="relative">
             <button
@@ -147,7 +169,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                         scrolled || theme === 'light' ? 'text-slate-900 dark:text-white' : 'text-white'
                     }`}
                 >
-                    Hi, {user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0]}
+                    Hi, {displayName}
                 </span>
                 <div
                     className={`transition-transform duration-300 ${isOpen ? 'rotate-180 text-blue-500' : 'text-slate-500'}`}

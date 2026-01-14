@@ -1,4 +1,4 @@
-// TODO: TEMP STUB - Replace with real implementation
+
 import { PriceSnapshot } from '@/types/pricing';
 
 export const generateMockSnapshot = (product: any, stateCode?: string, rtoCode?: string): PriceSnapshot => {

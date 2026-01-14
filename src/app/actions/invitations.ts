@@ -82,7 +82,7 @@ export async function createInvite(prevState: any, formData: FormData) {
     });
 
     // 4. Send Email (Stub for now, or real if provider exists)
-    // In real app: await sendEmail({ to: email, link: `https://${subdomain}.bookmy.bike/invite?token=${rawToken}` })
+    // In real app: await sendEmail({ to: email, link: `https://bookmy.bike/invite?token=${rawToken}` })
 
     // Return the raw token for UI display (since email is stubbed)
     return { success: true, message: 'Invite created', debugToken: rawToken };
@@ -93,7 +93,7 @@ export async function verifyInviteToken(token: string) {
 
     const { data: invite, error } = await adminClient
         .from('invitations')
-        .select('*, tenants(name, subdomain)')
+        .select('*, tenants(name, slug)')
         .eq('token_hash', tokenHash)
         .gt('expires_at', new Date().toISOString())
         .eq('status', 'PENDING')

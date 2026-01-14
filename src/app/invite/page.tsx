@@ -80,12 +80,10 @@ function InviteContent() {
             // 2. Once Logged In, we attach the invite.
 
             // Let's change flow:
-            // "Please Login to Accept" -> Redirect to /login?redirect_to=/invite?token=...
-            // But /login is on subdomain...
+            // "Please Login to Accept" -> Redirect to /login?next=/invite?token=...
 
             // SIMPLIFICATION:
-            // For this "No Hub" architecture, we are on `slug.bookmy.bike/invite`.
-            // We must Login on this subdomain.
+            // Path-based: /invite stays on the main domain.
         } catch (err) {
             console.error(err);
         }
@@ -116,7 +114,7 @@ function InviteContent() {
         if (!currentUser) {
             // Redirect to Login
             const returnUrl = encodeURIComponent(`/invite?token=${token}`);
-            router.push(`/login?redirect_to=${returnUrl}`);
+            router.push(`/login?next=${returnUrl}`);
             return;
         }
 
@@ -127,7 +125,9 @@ function InviteContent() {
 
             if (result.success) {
                 setStatus('SUCCESS');
-                setTimeout(() => router.push('/dashboard'), 1500);
+                const slug = inviteData?.tenants?.slug;
+                const destination = slug ? `/app/${slug}/dashboard` : '/dashboard';
+                setTimeout(() => router.push(destination), 1500);
             } else {
                 setStatus('INVALID');
                 setError(result.message || 'Failed to accept.');

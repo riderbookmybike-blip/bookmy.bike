@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
                     { status: 500 }
                 );
             } else {
-                console.log('Token Birth Verification Passed.');
+
             }
 
             const { data: profile } = await adminClient.from('profiles').select('full_name').eq('id', userId).single();

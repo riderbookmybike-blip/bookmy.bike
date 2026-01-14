@@ -24,7 +24,7 @@ export async function POST(_request: NextRequest) {
 
 async function handleSeed(_request: NextRequest) {
     // 1. Security Check - Temporarily relaxed for root setup
-    console.log('[SEED] Request received');
+
 
     // 2. Resolve Admin User
     // Use the Phone Number provided by the user
@@ -47,7 +47,7 @@ async function handleSeed(_request: NextRequest) {
     let tenantsUpserted = 0;
     let membershipsUpserted = 0;
 
-    console.log(`[SEED] Starting seed for ${tenantsConfig.length} tenants...`);
+
 
     for (const tConfig of tenantsConfig) {
         // A. Upsert Tenant
@@ -105,13 +105,13 @@ async function handleSeed(_request: NextRequest) {
             console.error(`[SEED] Failed membership ${tConfig.slug}:`, memberError);
             results.push({ slug: tConfig.slug, status: 'membership_error', error: memberError.message });
         } else {
-            console.log(`[SEED] Success ${tConfig.slug}`);
+
             membershipsUpserted++;
             results.push({ slug: tConfig.slug, status: 'success', tenantId: tenant.id });
         }
     }
 
-    console.log(`[SEED] Completed. Tenants: ${tenantsUpserted}, Memberships: ${membershipsUpserted}`);
+
 
     return NextResponse.json({
         ok: true,

@@ -117,9 +117,8 @@ export const AumsHeader = ({ onLoginClick, onMenuClick, showSearch = false }: Au
                                                         <button
                                                             key={m.tenant_id}
                                                             onClick={() => {
-                                                                // Logic to switch: redirected to the tenant's subdomain if exists, or change tenant context
-                                                                // For now, let's assume we redirect if we have subdomain info, or just log
-                                                                console.log('Switching to tenant:', m.tenant_id);
+                                                                // Logic to switch: redirect to the tenant path if available
+
                                                                 // This needs a proper domain resolution logic
                                                             }}
                                                             className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-[10px] font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 transition-all"
@@ -162,4 +161,3 @@ export const AumsHeader = ({ onLoginClick, onMenuClick, showSearch = false }: Au
         />
     );
 };
-

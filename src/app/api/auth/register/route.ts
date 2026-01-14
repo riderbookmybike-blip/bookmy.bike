@@ -19,7 +19,7 @@ export async function POST() {
 
     const { data: { user } } = await supabase.auth.getUser();
 
-    console.log('[RegisterAPI] Attempting registration for user:', user?.email);
+
 
     if (!user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

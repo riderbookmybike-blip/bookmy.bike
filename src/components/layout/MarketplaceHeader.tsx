@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ShoppingCart, User, Menu, X, ChevronDown, LogOut, Zap, Briefcase } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useTheme } from '@/components/providers/ThemeProvider';
 import { createClient } from '@/lib/supabase/client';
-import { useTenant } from '@/lib/tenant/tenantContext';
 
 import { AppHeaderShell } from './AppHeaderShell';
 import { ProfileDropdown } from './ProfileDropdown';
@@ -15,12 +14,8 @@ interface MarketplaceHeaderProps {
 }
 
 export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
-    const { memberships } = useTenant();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [userName, setUserName] = useState<string | null>(() => {
-        if (typeof window !== 'undefined') {
-            return localStorage.getItem('user_name');
-        }
         return null;
     });
     const [scrolled, setScrolled] = useState(false);
@@ -32,30 +27,27 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         };
         window.addEventListener('scroll', handleScroll);
 
+        const supabase = createClient();
         const syncAuth = async () => {
-            const supabase = createClient();
             const {
                 data: { user },
             } = await supabase.auth.getUser();
-            if (user) {
-                const name =
-                    user.user_metadata?.full_name || localStorage.getItem('user_name') || user.email?.split('@')[0];
-                setUserName(name);
-            } else {
-                setUserName(null);
-            }
+            const fallbackName = typeof window !== 'undefined' ? localStorage.getItem('user_name') : null;
+            const name = user?.user_metadata?.full_name || user?.email?.split('@')[0] || fallbackName || null;
+            setUserName(name);
         };
 
         syncAuth();
 
-        const handleAuthSync = ((e: CustomEvent) => {
-            if (e.detail?.name) setUserName(e.detail.name);
-        }) as EventListener;
-
-        window.addEventListener('auth_sync', handleAuthSync);
+        const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+            const fallbackName = typeof window !== 'undefined' ? localStorage.getItem('user_name') : null;
+            const name =
+                session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0] || fallbackName || null;
+            setUserName(name);
+        });
         return () => {
             window.removeEventListener('scroll', handleScroll);
-            window.removeEventListener('auth_sync', handleAuthSync);
+            data.subscription.unsubscribe();
         };
     }, []);
 

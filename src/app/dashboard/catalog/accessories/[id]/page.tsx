@@ -49,15 +49,7 @@ export default function AccessoryDetailPage() {
                     basePath="/catalog/accessories"
                 />
             </MasterListDetailLayout>
-            {/* 
-                TODO: Add DetailPanel here if we want Split View.
-                For now, adhering to 'list-only' mode in Detail page is a valid interim 
-                if we don't have a complex detail view ready, 
-                BUT the UX rule says list-detail.
-                
-                Let's stick to list-only for this MVP step until Detail logic is defined.
-                The prompt asked for "Master Data System".
-            */}
+
         </RoleGuard>
     );
 }

@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-    console.log('Seed API Started');
+
 
     const missingVars = [];
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL) missingVars.push('NEXT_PUBLIC_SUPABASE_URL');
@@ -25,7 +25,7 @@ export async function GET() {
         );
 
         // 1. Create Tenants
-        console.log('Creating Tenants...');
+
         const tenantsData = [
             { name: 'BookMyBike HQ', type: 'MARKETPLACE', phone: '9820760596' },
             { name: 'Addbike Automobiles Pvt Ltd', type: 'DEALER', phone: '7447403491', pincode: '401203' },

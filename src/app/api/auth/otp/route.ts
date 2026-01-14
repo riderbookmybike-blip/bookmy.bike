@@ -31,13 +31,13 @@ export async function POST(request: NextRequest) {
         else if (cleaned.length === 11 && cleaned.startsWith('0')) formattedPhone = `91${cleaned.substring(1)}`;
         else formattedPhone = `91${cleaned}`; // Default fallback
 
-        console.log(`[MSG91] Action: ${action} | ClientPhone: ${formattedPhone}`);
+
 
         // 1. VERIFY WIDGET TOKEN
         if (action === 'verify') {
             if (!otp) return NextResponse.json({ success: false, message: 'Token Required' }, { status: 400 });
 
-            console.log('[Auth] Verifying Widget Token...');
+
             const verifyUrl = `https://control.msg91.com/api/v5/widget/verifyAccessToken`;
 
             const response = await fetch(verifyUrl, {
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
                     );
                 }
 
-                console.log(`[Auth Security] Verified Identity: ${verifiedMobileNum}`);
+
 
                 // BRIDGE: Create Supabase Session
                 const supabaseAdmin = createClient(
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
                     .setExpirationTime('1h')
                     .sign(secret);
 
-                console.log(`[Auth Bridge] Session created for ${user.id}`);
+
 
                 return NextResponse.json({
                     success: true,

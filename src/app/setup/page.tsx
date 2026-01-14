@@ -36,7 +36,7 @@ export default function SetupWizard() {
             setOrgData(prev => ({
                 ...prev,
                 displayName: tenantConfig.brand?.displayName || tenantName,
-                location: '', // TODO: Fetch from tenants table if needed
+                location: '',
             }));
             const savedStep = tenantConfig.setup?.step;
             if (savedStep) {

@@ -22,20 +22,8 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
         setMounted(true);
     }, []);
 
-    const handleSwitch = (subdomain: string) => {
-        const hostname = window.location.hostname;
-        const protocol = window.location.protocol;
-        const port = window.location.port ? `:${window.location.port}` : '';
-
-        let rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
-
-        // Handle localhost development
-        if (hostname.includes('localhost')) {
-            rootDomain = 'localhost';
-        }
-
-        const newUrl = `${protocol}//${subdomain}.${rootDomain}${port}/dashboard`;
-        window.location.href = newUrl;
+    const handleSwitch = (slug: string) => {
+        router.push(`/app/${slug}/dashboard`);
     };
 
     const handleLogout = async () => {
@@ -127,7 +115,7 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
                                                 return (
                                                     <button
                                                         key={m.id}
-                                                        onClick={() => handleSwitch(t.subdomain)}
+                                                        onClick={() => handleSwitch(t.slug)}
                                                         className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all ${isActive
                                                             ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold'
                                                             : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'

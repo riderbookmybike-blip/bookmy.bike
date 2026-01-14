@@ -85,6 +85,7 @@ export async function proxy(request: NextRequest) {
         if (!user) {
             if (!isAuthRoute) {
                 const loginUrl = new URL('/login', request.url);
+                loginUrl.searchParams.set('next', `${pathname}${request.nextUrl.search}`);
                 return NextResponse.redirect(loginUrl);
             }
             return response;
@@ -96,6 +97,7 @@ export async function proxy(request: NextRequest) {
         if (!user) {
             if (!isAuthRoute && !isLandingPage) {
                 const loginUrl = new URL('/login', request.url);
+                loginUrl.searchParams.set('next', `${pathname}${request.nextUrl.search}`);
                 return NextResponse.redirect(loginUrl);
             }
             return response;
@@ -133,11 +135,6 @@ export async function proxy(request: NextRequest) {
     if (!tenantMembership) {
         if (isAuthRoute || pathname === '/') return response;
         return NextResponse.rewrite(new URL('/403', request.url));
-    }
-
-    // Direct to dashboard if hitting root of subdomain
-    if (pathname === '/') {
-        return NextResponse.redirect(new URL('/dashboard', request.url));
     }
 
     return response;
