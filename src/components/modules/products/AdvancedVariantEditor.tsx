@@ -1,22 +1,24 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Box, ChevronDown, ChevronRight, Copy, Trash2, Plus, Info, Settings2, ShieldCheck, Zap, FileCheck } from 'lucide-react';
+import { Box, ChevronDown, ChevronRight, Copy, Trash2, Plus, Info, Settings2, ShieldCheck, Zap, FileCheck, Check } from 'lucide-react';
 
 // Local Spec interface for the editor's internal logic
 interface Specification {
     [key: string]: string | number;
 }
 
-import { ModelVariant } from '@/types/productMaster';
+import { ModelVariant, ModelColor } from '@/types/productMaster';
 
 interface AdvancedVariantEditorProps {
     modelName: string;
     variants: ModelVariant[];
+    brandColors: ModelColor[];
     onAddVariant: (data: Partial<ModelVariant>) => void;
     onUpdateVariant: (variantId: string, field: string, value: any) => void;
     onDeleteVariant: (variantId: string) => void;
     onCloneVariant: (variantId: string) => void;
+    onUpdateColor: (colorId: string, field: string, value: any) => void;
 }
 
 const SPEC_CATEGORIES = [
@@ -55,12 +57,26 @@ const SPEC_CATEGORIES = [
 export default function AdvancedVariantEditor({
     modelName,
     variants,
+    brandColors,
     onAddVariant,
     onUpdateVariant,
     onDeleteVariant,
-    onCloneVariant
+    onCloneVariant,
+    onUpdateColor
 }: AdvancedVariantEditorProps) {
     const [expandedSections, setExpandedSections] = useState<string[]>([]);
+    const [editingColorsForVariantId, setEditingColorsForVariantId] = useState<string | null>(null);
+
+    const handleToggleColorForVariant = (color: ModelColor, variantId: string) => {
+        const currentVariantIds = color.variantIds || [];
+        let newVariantIds;
+        if (currentVariantIds.includes(variantId)) {
+            newVariantIds = currentVariantIds.filter(id => id !== variantId);
+        } else {
+            newVariantIds = [...currentVariantIds, variantId];
+        }
+        onUpdateColor(color.id, 'variantIds', newVariantIds);
+    };
 
     const toggleSection = (id: string) => {
         setExpandedSections(prev =>
@@ -163,6 +179,70 @@ export default function AdvancedVariantEditor({
                                                         <p className="text-[7px] font-black text-slate-400 uppercase tracking-[0.2em] mb-0.5">Inventory</p>
                                                         <p className="text-[10px] font-black text-emerald-500 uppercase italic tracking-wider">In Stock</p>
                                                     </div>
+                                                </div>
+
+                                                {/* Color Availability Circles */}
+                                                {/* Color Availability Circles */}
+                                                <div className="relative">
+                                                    {/* Collapsed View */}
+                                                    {editingColorsForVariantId !== v.id && (
+                                                        <div
+                                                            onClick={(e) => { e.stopPropagation(); setEditingColorsForVariantId(v.id); }}
+                                                            className="flex -space-x-2 mr-4 group-hover/var:mr-2 transition-all cursor-pointer hover:scale-105"
+                                                            title="Manage Colors"
+                                                        >
+                                                            {brandColors.filter(c => c.variantIds.includes(v.id)).length > 0 ? (
+                                                                brandColors.filter(c => c.variantIds.includes(v.id)).map(c => (
+                                                                    <div
+                                                                        key={c.id}
+                                                                        title={c.name}
+                                                                        className="w-5 h-5 rounded-full border-2 border-white dark:border-slate-800 shadow-sm"
+                                                                        style={{ backgroundColor: c.code }}
+                                                                    />
+                                                                ))
+                                                            ) : (
+                                                                <div className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-white/10 flex items-center justify-center">
+                                                                    <Plus size={10} className="text-slate-400" />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Expanded 'Edit Mode' Popover (Inline) */}
+                                                    {editingColorsForVariantId === v.id && (
+                                                        <div
+                                                            className="absolute right-0 top-1/2 -translate-y-1/2 z-50 flex items-center gap-2 p-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-white/10 animate-in zoom-in-95 duration-200"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            <div className="flex gap-1.5 max-w-[200px] flex-wrap">
+                                                                {brandColors.map(c => {
+                                                                    const isActive = c.variantIds.includes(v.id);
+                                                                    return (
+                                                                        <button
+                                                                            key={c.id}
+                                                                            onClick={() => handleToggleColorForVariant(c, v.id)}
+                                                                            title={c.name}
+                                                                            className={`w-6 h-6 rounded-full border-2 transition-all relative ${isActive ? 'border-blue-500 scale-110 shadow-md' : 'border-transparent opacity-50 hover:opacity-100 hover:scale-105'}`}
+                                                                            style={{ backgroundColor: c.code }}
+                                                                        >
+                                                                            {isActive && (
+                                                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                                                    <div className="w-1.5 h-1.5 bg-white rounded-full shadow-sm" />
+                                                                                </div>
+                                                                            )}
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                            <div className="w-[1px] h-6 bg-slate-200 dark:bg-white/10 mx-1" />
+                                                            <button
+                                                                onClick={() => setEditingColorsForVariantId(null)}
+                                                                className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors"
+                                                            >
+                                                                <Check size={14} className="text-green-500" />
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 <button

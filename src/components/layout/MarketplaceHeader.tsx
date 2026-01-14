@@ -5,6 +5,7 @@ import { Logo } from '@/components/brand/Logo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useTheme } from '@/components/providers/ThemeProvider';
 import { createClient } from '@/lib/supabase/client';
+import { usePathname } from 'next/navigation';
 
 import { AppHeaderShell } from './AppHeaderShell';
 import { ProfileDropdown } from './ProfileDropdown';
@@ -15,13 +16,14 @@ interface MarketplaceHeaderProps {
 
 export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [userName, setUserName] = useState<string | null>(() => {
-        return null;
-    });
+    const [userName, setUserName] = useState<string | null>(null);
     const [scrolled, setScrolled] = useState(false);
+    const [mounted, setMounted] = useState(false);
     const { theme } = useTheme();
+    const pathname = usePathname();
 
     useEffect(() => {
+        setMounted(true);
         const handleScroll = () => {
             setScrolled(window.scrollY > 100);
         };
@@ -33,7 +35,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                 data: { user },
             } = await supabase.auth.getUser();
             const fallbackName = typeof window !== 'undefined' ? localStorage.getItem('user_name') : null;
-            const name = user?.user_metadata?.full_name || user?.email?.split('@')[0] || fallbackName || null;
+            const name = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || fallbackName || null;
             setUserName(name);
         };
 
@@ -42,7 +44,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         const { data } = supabase.auth.onAuthStateChange((_event, session) => {
             const fallbackName = typeof window !== 'undefined' ? localStorage.getItem('user_name') : null;
             const name =
-                session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0] || fallbackName || null;
+                session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || session?.user?.email?.split('@')[0] || fallbackName || null;
             setUserName(name);
         });
         return () => {
@@ -51,15 +53,20 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         };
     }, []);
 
+    const isLight = mounted ? theme === 'light' : true; // Default to light on SSR for marketplace
+
     const navLinkClass = scrolled
         ? 'text-[11px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-white transition-all duration-300'
-        : `${theme === 'light' ? 'text-slate-900/90 hover:text-blue-600' : 'text-white/90 hover:text-blue-400'} text-[11px] font-black uppercase tracking-[0.3em] transition-all duration-300 drop-shadow-md`;
+        : `${isLight ? 'text-slate-900/90 hover:text-blue-600' : 'text-white/90 hover:text-blue-400'} text-[11px] font-black uppercase tracking-[0.3em] transition-all duration-300 drop-shadow-md`;
+    const activeNavClass =
+        'relative text-slate-900 dark:text-white after:absolute after:-bottom-2 after:left-0 after:right-0 after:h-[2px] after:bg-brand-primary after:rounded-full';
+    const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
     const mobileMenuButtonClass = scrolled
         ? 'text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/5'
-        : theme === 'light'
-          ? 'text-slate-900 hover:bg-slate-900/5'
-          : 'text-white hover:bg-white/10';
+        : isLight
+            ? 'text-slate-900 hover:bg-slate-900/5'
+            : 'text-white hover:bg-white/10';
 
     const handleSignOut = async () => {
         const supabase = createClient();
@@ -74,6 +81,8 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         setUserName(null);
         window.location.reload();
     };
+
+
 
     return (
         <AppHeaderShell
@@ -90,16 +99,22 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                 <div className="flex items-center gap-4 lg:gap-10">
                     {/* Desktop Navigation */}
                     <div className="hidden lg:flex items-center gap-14 mr-6">
-                        <Link href="/" className={navLinkClass}>
+                        <Link href="/" className={`${navLinkClass} ${isActive('/') ? activeNavClass : ''}`}>
                             Home
                         </Link>
-                        <Link href="/store/catalog" className={navLinkClass}>
+                        <Link
+                            href="/store/catalog"
+                            className={`${navLinkClass} ${isActive('/store') ? activeNavClass : ''}`}
+                        >
                             Catalog
                         </Link>
-                        <Link href="/store/compare" className={navLinkClass}>
+                        <Link
+                            href="/store/compare"
+                            className={`${navLinkClass} ${isActive('/store/compare') ? activeNavClass : ''}`}
+                        >
                             Compare
                         </Link>
-                        <Link href="/zero" className={navLinkClass}>
+                        <Link href="/zero" className={`${navLinkClass} ${isActive('/zero') ? activeNavClass : ''}`}>
                             Zero
                         </Link>
                     </div>
@@ -172,7 +187,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                                 <div className="space-y-4">
                                     <div className="flex items-center gap-3">
                                         <div className="w-12 h-12 rounded-full bg-brand-primary flex items-center justify-center text-black font-bold">
-                                            {userName.charAt(0).toUpperCase()}
+                                            {(userName?.[0] || 'U').toUpperCase()}
                                         </div>
                                         <div>
                                             <p className="font-bold text-slate-900 dark:text-white">{userName}</p>

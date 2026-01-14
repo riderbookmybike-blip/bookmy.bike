@@ -66,8 +66,8 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         href: '/dashboard',
         icon: LayoutDashboard,
         color: 'text-indigo-600',
-        allowedTenants: ['MARKETPLACE'],
-        allowedRoles: ['OWNER']
+        allowedTenants: ['MARKETPLACE', 'AUMS'],
+        allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN']
       },
       {
         title: 'Overview',
@@ -82,7 +82,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         icon: LayoutDashboard,
         color: 'text-indigo-500',
         allowedTenants: ['MARKETPLACE'], // Staff view
-        allowedRoles: ['DEALERSHIP_STAFF']
+        allowedRoles: ['DEALERSHIP_STAFF', 'OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN']
       }
     ]
   },
@@ -94,7 +94,8 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         href: '/dashboard/catalog/vehicles',
         icon: Box,
         color: 'text-indigo-500',
-        allowedTenants: ['MARKETPLACE', 'DEALER'],
+        allowedTenants: ['MARKETPLACE', 'DEALER', 'AUMS'],
+        allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN'],
         permissions: ['read']
       },
       {
@@ -102,14 +103,15 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         href: '/dashboard/catalog/accessories',
         icon: ShoppingBag,
         color: 'text-pink-500',
-        allowedTenants: ['MARKETPLACE', 'DEALER']
+        allowedTenants: ['MARKETPLACE', 'DEALER', 'AUMS']
       },
       {
         title: 'Pricing Engine',
         href: '/dashboard/catalog/pricing',
         icon: Calculator,
         color: 'text-amber-500',
-        allowedTenants: ['MARKETPLACE', 'DEALER'],
+        allowedTenants: ['MARKETPLACE', 'DEALER', 'AUMS'],
+        allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN'],
         permissions: ['read']
       },
       {
@@ -117,22 +119,30 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         href: '/dashboard/catalog/registration',
         icon: FileCheck,
         color: 'text-slate-500',
-        allowedTenants: ['MARKETPLACE', 'DEALER']
+        allowedTenants: ['MARKETPLACE', 'DEALER', 'AUMS']
       },
       {
         title: 'Insurance Logic',
         href: '/dashboard/catalog/insurance',
         icon: ShieldCheck,
         color: 'text-emerald-500',
-        allowedTenants: ['MARKETPLACE', 'DEALER']
+        allowedTenants: ['MARKETPLACE', 'DEALER', 'AUMS']
       },
       {
         title: 'Service Areas',
         href: '/superadmin/service-area',
         icon: MapPin,
         color: 'text-red-500',
-        allowedTenants: ['MARKETPLACE'],
-        allowedRoles: ['OWNER']
+        allowedTenants: ['MARKETPLACE', 'AUMS'],
+        allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN']
+      },
+      {
+        title: 'Blog Management',
+        href: '/dashboard/blog',
+        icon: ScrollText,
+        color: 'text-orange-500',
+        allowedTenants: ['MARKETPLACE', 'AUMS'],
+        allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN']
       },
       {
         title: 'Finance Status',
@@ -151,21 +161,24 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         href: '/dashboard/inventory/requisitions',
         icon: FileOutput,
         color: 'text-purple-500',
-        allowedTenants: ['DEALER', 'MARKETPLACE']
+        allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+        allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN']
       },
       {
         title: 'Purchase Orders',
         href: '/dashboard/inventory/orders',
         icon: ShoppingBag,
         color: 'text-indigo-500',
-        allowedTenants: ['DEALER', 'MARKETPLACE']
+        allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+        allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN']
       },
       {
         title: 'Live Stock',
         href: '/dashboard/inventory/stock',
         icon: Warehouse,
         color: 'text-emerald-500',
-        allowedTenants: ['DEALER', 'MARKETPLACE']
+        allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+        allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN']
       },
     ]
   },
@@ -176,29 +189,33 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         title: 'Leads & Enquiries',
         href: '/leads',
         icon: Users,
-        color: 'text-blue-500',
-        allowedTenants: ['DEALER']
+        color: 'text-brand-gold',
+        allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+        allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN', 'DEALERSHIP_STAFF']
       },
       {
         title: 'Customers',
         href: '/customers',
         icon: UserCheck,
         color: 'text-blue-400',
-        allowedTenants: ['DEALER']
+        allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+        allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN', 'DEALERSHIP_STAFF']
       },
       {
         title: 'Quotes',
         href: '/quotes',
         icon: FileText,
         color: 'text-blue-300',
-        allowedTenants: ['DEALER']
+        allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+        allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN', 'DEALERSHIP_STAFF']
       },
       {
         title: 'Sales Orders',
         href: '/sales-orders',
         icon: ShoppingCart,
         color: 'text-cyan-500',
-        allowedTenants: ['DEALER']
+        allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+        allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN', 'DEALERSHIP_STAFF']
       },
     ]
   },
@@ -210,28 +227,28 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         href: '/dashboard/dealers',
         icon: Building2,
         color: 'text-blue-600',
-        allowedTenants: ['MARKETPLACE'],
-        allowedRoles: ['OWNER']
+        allowedTenants: ['MARKETPLACE', 'AUMS'],
+        allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN']
       },
       {
         title: 'Finance Partners',
         href: '/dashboard/finance-partners',
         icon: Landmark,
         color: 'text-emerald-600',
-        allowedTenants: ['MARKETPLACE'],
-        allowedRoles: ['OWNER']
+        allowedTenants: ['MARKETPLACE', 'AUMS'],
+        allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN']
       },
       {
         title: 'System Users',
         href: '/dashboard/users',
         icon: Users,
         color: 'text-purple-600',
-        allowedTenants: ['MARKETPLACE'],
-        allowedRoles: ['OWNER']
+        allowedTenants: ['MARKETPLACE', 'AUMS'],
+        allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN']
       },
       {
         title: 'Bank Settings',
-        href: '/settings',
+        href: '/dashboard/settings',
         icon: Settings,
         color: 'text-slate-400',
         allowedTenants: ['BANK']
@@ -241,7 +258,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         href: '/audit-logs',
         icon: HistoryIcon,
         color: 'text-slate-400',
-        allowedTenants: ['MARKETPLACE', 'DEALER', 'BANK'],
+        allowedTenants: ['MARKETPLACE', 'DEALER', 'BANK', 'AUMS'],
         permissions: ['read']
       },
       {
@@ -249,8 +266,8 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         href: '/dashboard/design-system',
         icon: Tags,
         color: 'text-pink-500',
-        allowedTenants: ['MARKETPLACE'],
-        allowedRoles: ['OWNER']
+        allowedTenants: ['MARKETPLACE', 'AUMS'],
+        allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN']
       }
     ]
   }
@@ -258,16 +275,28 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
 
 // Helper to check if item is allowed
 const isItemAllowed = (item: SidebarItem, tenantType: TenantType, userRole?: string): boolean => {
-  // 1. Check Tenant
+  const role = userRole?.toUpperCase();
+  const type = tenantType?.toUpperCase();
+
+  // 1. SUPERADMIN OVERRIDE: If user is in AUMS tenant, show everything allowed for AUMS regardless of role
+  // This is a safety measure to ensure Superadmins never lose access to their tools.
+  if (type === 'AUMS' && item.allowedTenants?.includes('AUMS')) return true;
+
+  // 2. Check Tenant
   if (item.allowedTenants && !item.allowedTenants.includes(tenantType)) return false;
 
-  // 2. Check Role (if specified)
-  if (item.allowedRoles && userRole) {
-    if (!item.allowedRoles.includes(userRole)) return false;
+  // 3. Check Role (if specified)
+  if (item.allowedRoles && role) {
+    // Explicit list of variants to handle legacy or typoed roles
+    const roleVariants = [role];
+    if (role === 'SUPER_ADMIN') roleVariants.push('SUPERADMIN', 'ADMIN');
+    if (role === 'SUPERADMIN') roleVariants.push('SUPER_ADMIN', 'ADMIN');
+    if (role === 'ADMIN') roleVariants.push('SUPER_ADMIN', 'SUPERADMIN');
+
+    if (!item.allowedRoles.some(r => roleVariants.includes(r.toUpperCase()))) return false;
   }
 
-  // 3. Fallback for legacy behavior: If strict filtering is ON, we might want to hide items without explicit config
-  // For now, if no restrictions are present, we assume it's NOT allowed to prevent leaking
+  // 4. Fallback: If no restrictions are present, we assume it's NOT allowed for safety
   if (!item.allowedTenants && !item.allowedRoles) return false;
 
   return true;

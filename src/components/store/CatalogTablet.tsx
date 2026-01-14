@@ -11,6 +11,93 @@ interface CatalogTabletProps {
     filters: any;
 }
 
+const TabletProductCard = ({ v, downpayment }: { v: any; downpayment: number }) => {
+    const [isSaved, setIsSaved] = useState(false);
+    const basePrice = v.price?.offerPrice || v.price?.onRoad || v.price?.exShowroom || 0;
+    const emiValue = Math.max(0, Math.round((basePrice - downpayment) * 0.035));
+
+    return (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden flex flex-col shadow-sm group">
+            <div className="aspect-[4/3] bg-slate-50 dark:bg-slate-800/50 flex flex-col items-center justify-center p-8 relative overflow-hidden group/card">
+
+                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-white/10 dark:to-black/30 z-0" />
+
+
+
+                <div className="absolute top-4 left-4 z-10">
+                    <div className="px-3 py-1 bg-brand-primary text-black rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg shadow-brand-primary/20 italic">
+                        EMI STARTING ₹{emiValue.toLocaleString('en-IN')}
+                    </div>
+                </div>
+                <img
+                    src={v.imageUrl || (v.bodyType === 'SCOOTER' ? '/images/categories/scooter_nobg.png' : '/images/categories/motorcycle_nobg.png')}
+                    alt={v.model}
+                    className="w-[85%] h-[85%] object-contain z-10 transition-transform duration-500 group-hover/card:scale-110"
+                />
+                <span className="absolute font-black text-[8vw] uppercase tracking-[0.3em] opacity-5 italic text-slate-900 dark:text-white select-none z-0">
+                    {v.make}
+                </span>
+            </div>
+            <div className="p-8 space-y-6 flex-1 flex flex-col">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h3 className="text-2xl font-black uppercase tracking-tighter italic leading-none text-slate-900 dark:text-white">{v.model}</h3>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase mt-2">
+                            {v.make} • {v.variant} • <span className="text-brand-primary">{v.color}</span>
+                        </p>
+                        {/* Compact Color Availability option A */}
+                        {v.availableColors && v.availableColors.length > 0 && (
+                            <div className="flex items-center gap-2 mt-3">
+                                <div className="flex -space-x-1.5">
+                                    {v.availableColors.slice(0, 3).map((c: any, i: number) => (
+                                        <div
+                                            key={i}
+                                            className="w-3 h-3 rounded-full border border-white dark:border-slate-900 shadow-sm"
+                                            style={{ backgroundColor: typeof c === 'string' ? c : c.hexCode }}
+                                        />
+                                    ))}
+                                </div>
+                                {v.availableColors.length > 3 && (
+                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                                        +{v.availableColors.length - 3} Colors
+                                    </span>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    <button
+                        onClick={() => setIsSaved(!isSaved)}
+                        className={`p-2 transition-colors ${isSaved ? 'text-rose-500' : 'text-slate-300'}`}
+                    >
+                        <Heart size={20} className={isSaved ? 'fill-current' : ''} />
+                    </button>
+                </div>
+                <div className="p-5 bg-brand-primary/5 border border-brand-primary/10 rounded-[1.5rem] flex items-center justify-between">
+                    <div className="space-y-1">
+                        <p className="text-[9px] font-black uppercase text-brand-primary italic tracking-widest">EMI Starting at</p>
+                        <p className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white">
+                            ₹{emiValue.toLocaleString('en-IN')}<span className="text-[10px] text-slate-400">/mo</span>
+                        </p>
+                    </div>
+                    <div className="w-10 h-10 rounded-full bg-brand-primary text-black flex items-center justify-center shadow-lg"><Zap size={18} fill="black" /></div>
+                </div>
+                <div className="mt-auto pt-4 flex items-center justify-between border-t border-slate-100 dark:border-white/10">
+                    <div className="space-y-1">
+                        <p className="text-xl font-black tracking-tighter text-slate-900 dark:text-white">₹{basePrice.toLocaleString('en-IN')}</p>
+                        <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest italic">Final On-Road</p>
+                    </div>
+                    <Link
+                        href={`/store/${slugify(v.make)}/${slugify(v.model)}/${slugify(v.variant)}`}
+                        className="px-8 py-4 bg-brand-primary text-black rounded-2xl text-[10px] font-black uppercase tracking-widest italic shadow-xl shadow-brand-primary/20 transition-transform active:scale-95"
+                    >
+                        Learn More
+                    </Link>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export function CatalogTablet({ filters }: CatalogTabletProps) {
     const {
         searchQuery, setSearchQuery,
@@ -85,43 +172,9 @@ export function CatalogTablet({ filters }: CatalogTabletProps) {
 
             {/* Gallery Grid: 2 columns for Tablet */}
             <div className="grid grid-cols-2 gap-10">
-                {filteredVehicles.map((v: any, idx: number) => {
-                    const basePrice = (v.make === 'Royal Enfield' ? 2.15 : 0.85) * 100000;
-                    const onRoadPrice = Math.round(basePrice * 1.15);
-                    const offerPrice = Math.round(onRoadPrice * 0.94);
-                    const emiValue = Math.round((offerPrice - downpayment) * 0.035);
-
-                    return (
-                        <div key={v.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden flex flex-col shadow-sm">
-                            <div className="aspect-[4/3] bg-slate-50 dark:bg-slate-800/50 flex flex-col items-center justify-center p-8 relative">
-                                <div className="absolute top-4 left-4">
-                                    <div className="px-3 py-1 bg-green-500 text-white rounded-full text-[9px] font-black uppercase tracking-widest">Lowest EMI</div>
-                                </div>
-                                <span className="font-black text-[12px] uppercase tracking-[0.3em] opacity-30">{v.make} <br /> {v.model}</span>
-                            </div>
-                            <div className="p-8 space-y-6 flex-1 flex flex-col">
-                                <div>
-                                    <h3 className="text-2xl font-black uppercase tracking-tighter italic leading-none">{v.model}</h3>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase mt-2">{v.make} • {v.variant}</p>
-                                </div>
-                                <div className="p-5 bg-green-500/5 border border-green-500/10 rounded-[1.5rem] flex items-center justify-between">
-                                    <div className="space-y-1">
-                                        <p className="text-[9px] font-black uppercase text-green-600 italic tracking-widest">EMI Starting at</p>
-                                        <p className="text-2xl font-black tracking-tighter">₹{emiValue.toLocaleString('en-IN')}<span className="text-[10px] text-slate-400">/mo</span></p>
-                                    </div>
-                                    <div className="w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center shadow-lg"><Zap size={18} fill="white" /></div>
-                                </div>
-                                <div className="mt-auto pt-4 flex items-center justify-between border-t border-slate-100 dark:border-white/5">
-                                    <div className="space-y-1">
-                                        <p className="text-xl font-black tracking-tighter">₹{offerPrice.toLocaleString('en-IN')}</p>
-                                        <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest italic">Final On-Road</p>
-                                    </div>
-                                    <Link href={`/store/${slugify(v.make)}/${slugify(v.model)}/${slugify(v.variant)}`} className="px-8 py-4 bg-red-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest italic shadow-xl shadow-red-500/20">Book Now</Link>
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })}
+                {filteredVehicles.map((v: any) => (
+                    <TabletProductCard key={v.id} v={v} downpayment={downpayment} />
+                ))}
             </div>
         </div>
     );

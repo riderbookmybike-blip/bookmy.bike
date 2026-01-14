@@ -1,8 +1,21 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { MAHARASHTRA_PINCODES } from '@/data/maharashtraPincodes';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+    const adminSecret = process.env.ADMIN_API_SECRET;
+    const headerSecret = request.headers.get('x-admin-secret') || '';
+    const bearerToken = request.headers.get('authorization')?.replace('Bearer ', '') || '';
+    const provided = headerSecret || bearerToken;
+
+    if (process.env.NODE_ENV === 'production') {
+        if (!adminSecret || provided !== adminSecret) {
+            return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 });
+        }
+    } else if (adminSecret && provided !== adminSecret) {
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 });
+    }
+
     try {
         const supabase = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,

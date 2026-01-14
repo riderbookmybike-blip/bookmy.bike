@@ -23,7 +23,18 @@ export async function POST(_request: NextRequest) {
 }
 
 async function handleSeed(_request: NextRequest) {
-    // 1. Security Check - Temporarily relaxed for root setup
+    const adminSecret = process.env.ADMIN_API_SECRET;
+    const headerSecret = _request.headers.get('x-admin-secret') || '';
+    const bearerToken = _request.headers.get('authorization')?.replace('Bearer ', '') || '';
+    const provided = headerSecret || bearerToken;
+
+    if (process.env.NODE_ENV === 'production') {
+        if (!adminSecret || provided !== adminSecret) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+        }
+    } else if (adminSecret && provided !== adminSecret) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
 
 
     // 2. Resolve Admin User

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ProductBrand } from '@/types/productMaster';
-import { ShieldCheck, Layers, Tag, ChevronRight, Plus, Trash2, MapPin } from 'lucide-react';
+import { ShieldCheck, Layers, Tag, ChevronRight, Plus, Trash2, MapPin, Check } from 'lucide-react';
 
 // --- MODALS ---
 export const ModelCreationModal = ({
@@ -324,11 +324,18 @@ export const ProductBrandOverview = ({ brand }: { brand: ProductBrand }) => {
 
                 <div className="relative z-10 space-y-12">
                     <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-[10px] font-black text-blue-500 dark:text-blue-400 uppercase tracking-[0.4em] mb-4 leading-none italic">Master Brand Entity</p>
-                            <h2 className="text-7xl font-black tracking-tighter text-slate-900 dark:text-white uppercase italic leading-[0.8]">
-                                {brand.name}
-                            </h2>
+                        <div className="flex items-center gap-6">
+                            {brand.logoUrl && (
+                                <div className="w-20 h-20 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 p-2 flex items-center justify-center overflow-hidden">
+                                    <img src={brand.logoUrl} alt={brand.name} className="max-w-full max-h-full object-contain" />
+                                </div>
+                            )}
+                            <div>
+                                <p className="text-[10px] font-black text-blue-500 dark:text-blue-400 uppercase tracking-[0.4em] mb-4 leading-none italic">Master Brand Entity</p>
+                                <h2 className="text-7xl font-black tracking-tighter text-slate-900 dark:text-white uppercase italic leading-[0.8]">
+                                    {brand.name}
+                                </h2>
+                            </div>
                         </div>
                         <div className="px-6 py-3 bg-slate-100 dark:bg-white/5 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400 italic">
                             {brand.type}
@@ -417,63 +424,71 @@ export const ProductModelsTab = ({
             />
 
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pt-2">
                 {models.map(model => (
                     <div
                         key={model.id}
                         onClick={() => onSelectModel(model)}
-                        className={`relative p-8 rounded-[2.5rem] border-[3px] transition-all text-left overflow-hidden group cursor-pointer ${selectedModelId === model.id
-                            ? 'bg-blue-500/5 border-blue-600 shadow-[0_0_50px_-10px_rgba(59,130,246,0.3)] scale-[1.02] dark:bg-blue-500/[0.04]'
-                            : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-white/5 hover:border-blue-500/50 hover:shadow-xl'
+                        className={`relative p-5 rounded-3xl border-2 transition-all text-left overflow-hidden group cursor-pointer ${selectedModelId === model.id
+                            ? 'bg-blue-600/5 border-blue-600 shadow-xl shadow-blue-500/10 scale-[1.02]'
+                            : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-white/5 hover:border-blue-500/30'
                             }`}
                     >
-                        {/* Selected Indicator Badge */}
-                        {selectedModelId === model.id && (
-                            <div className="absolute top-0 right-0 p-4 animate-in fade-in zoom-in duration-300">
-                                <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-blue-500/40">
-                                    <ShieldCheck size={16} strokeWidth={3} />
-                                </div>
+                        {/* Background Ornament */}
+                        <div className={`absolute -right-4 -top-4 w-24 h-24 blur-3xl rounded-full transition-opacity duration-500 ${selectedModelId === model.id ? 'bg-blue-500/20 opacity-100' : 'bg-slate-500/5 opacity-0 group-hover:opacity-100'}`} />
+
+                        <div className="flex justify-between items-start mb-4 relative z-10">
+                            <div className={`p-2 rounded-xl ${selectedModelId === model.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-slate-50 dark:bg-white/5 text-slate-400 group-hover:text-blue-500 group-hover:bg-blue-50 dark:group-hover:bg-blue-500/10 transition-all'}`}>
+                                <Layers size={18} strokeWidth={selectedModelId === model.id ? 2.5 : 2} />
                             </div>
-                        )}
 
-                        {/* Edit Button */}
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingModel(model);
-                                setIsEditModalOpen(true);
-                            }}
-                            className={`absolute top-4 right-4 p-2 bg-amber-500/10 text-amber-500 rounded-xl hover:bg-amber-500 hover:text-white hover:scale-110 transition-all z-10 ${selectedModelId === model.id ? 'mr-10 opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-                            title="Edit Model"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-                        </button>
-
-                        {selectedModelId === model.id && (
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 blur-[60px] rounded-full -mr-16 -mt-16" />
-                        )}
-                        <Layers size={24} className={selectedModelId === model.id ? 'text-blue-500 mb-6' : 'text-slate-300 dark:text-slate-700 mb-6'} />
-                        <h3 className={`text-lg font-black mb-2 tracking-tight uppercase italic leading-none ${selectedModelId === model.id ? 'text-blue-600 dark:text-blue-400' : 'text-slate-900 dark:text-white'}`}>
-                            {model.name}
-                        </h3>
-
-                        {/* Metadata Pills */}
-                        <div className="flex flex-wrap gap-2 mb-3">
-                            {model.category && (
-                                <span className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider border ${selectedModelId === model.id ? 'bg-white/10 text-white border-white/20' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/30'}`}>
-                                    {model.category}
-                                </span>
-                            )}
-                            {model.fuelType && (
-                                <span className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider border ${selectedModelId === model.id ? 'bg-white/10 text-white border-white/20' : 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border-green-100 dark:border-green-900/30'}`}>
-                                    {model.fuelType}
-                                </span>
-                            )}
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingModel(model);
+                                        setIsEditModalOpen(true);
+                                    }}
+                                    className="p-1.5 bg-slate-50 dark:bg-white/5 text-slate-400 rounded-lg hover:bg-amber-500 hover:text-white transition-all opacity-0 group-hover:opacity-100"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                                </button>
+                                {selectedModelId === model.id && (
+                                    <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-blue-500/40">
+                                        <Check size={12} strokeWidth={4} />
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
-                        <p className={`text-[9px] font-black uppercase tracking-widest ${selectedModelId === model.id ? 'text-slate-400' : 'text-slate-400 dark:text-slate-500'}`}>
-                            {model.variants?.length || 0} Variants
-                        </p>
+                        <div className="relative z-10">
+                            <h3 className={`text-sm font-black tracking-tight uppercase italic leading-none mb-2 ${selectedModelId === model.id ? 'text-blue-600 dark:text-blue-400' : 'text-slate-900 dark:text-white'}`}>
+                                {model.name}
+                            </h3>
+
+                            <div className="flex flex-wrap gap-1.5 mb-3">
+                                {model.category && (
+                                    <span className="px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider bg-slate-50 dark:bg-white/5 text-slate-500 border border-slate-100 dark:border-white/5">
+                                        {model.category}
+                                    </span>
+                                )}
+                                <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider border transition-colors ${model.status === 'Discontinue'
+                                    ? 'bg-rose-50 text-rose-500 border-rose-100 dark:bg-rose-500/10 dark:border-rose-500/30'
+                                    : model.status === 'Newly Launch'
+                                        ? 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-600/10 dark:border-blue-600/30'
+                                        : model.status === 'Re Launch'
+                                            ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-600/10 dark:border-amber-600/30'
+                                            : 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-600/10 dark:border-emerald-600/30'
+                                    }`}>
+                                    {model.status || 'Active'}
+                                </span>
+                            </div>
+
+                            <p className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500/50" />
+                                {model.variants?.length || 0} Variants Configured
+                            </p>
+                        </div>
                     </div>
                 ))}
             </div>

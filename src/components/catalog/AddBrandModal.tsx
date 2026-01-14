@@ -22,7 +22,7 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData 
 
     const [activeTheme, setActiveTheme] = useState<'original' | 'dark' | 'light'>('original');
 
-    const [isAdaptive, setIsAdaptive] = useState(true);
+    const [isAdaptive, setIsAdaptive] = useState(false);
 
     React.useEffect(() => {
         if (initialData) {
@@ -32,8 +32,8 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData 
                 logo_svg: initialData.logo_svg || '',
                 brand_logos: initialData.brand_logos || { original: initialData.logo_svg || '', dark: '', light: '' }
             });
-            // If it already has currentColor, assume it was adaptive
-            setIsAdaptive(initialData.logo_svg?.includes('currentColor'));
+            // FIX: Always default to raw colors for Original tab to prevent auto-dark conversion
+            setIsAdaptive(false);
         } else {
             setFormData({
                 name: '',
@@ -41,6 +41,7 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData 
                 logo_svg: '',
                 brand_logos: { original: '', dark: '', light: '' }
             });
+            setIsAdaptive(false);
         }
     }, [initialData, isOpen]);
 
@@ -180,7 +181,11 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData 
                                         <button
                                             key={theme}
                                             type="button"
-                                            onClick={() => setActiveTheme(theme)}
+                                            onClick={() => {
+                                                setActiveTheme(theme);
+                                                // Auto-toggle adaptive depending on theme
+                                                setIsAdaptive(theme !== 'original');
+                                            }}
                                             className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all ${activeTheme === theme
                                                 ? 'bg-white dark:bg-indigo-500 text-indigo-600 dark:text-white shadow-md'
                                                 : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'

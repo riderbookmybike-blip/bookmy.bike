@@ -9,6 +9,7 @@ interface DBVariant {
     position: number;
     base_price_ex_showroom: number;
     braking_system: string | null;
+    specifications: any | null;
     vehicle_models: {
         id: string;
         name: string;
@@ -25,7 +26,10 @@ interface DBVariant {
         id: string;
         name: string;
         hex_code: string;
+        finish?: string | null;
         image_url: string | null;
+        gallery_urls?: string[] | null;
+        is_primary?: boolean | null;
         vehicle_prices: Array<{
             ex_showroom_price: number;
             state_code: string;
@@ -54,6 +58,7 @@ export function useCatalog() {
                         position,
                         base_price_ex_showroom,
                         braking_system,
+                        specifications,
                         vehicle_models (
                             id,
                             name,
@@ -70,7 +75,10 @@ export function useCatalog() {
                             id,
                             name,
                             hex_code,
+                            finish,
                             image_url,
+                            gallery_urls,
+                            is_primary,
                             vehicle_prices (
                                 ex_showroom_price,
                                 state_code
@@ -85,23 +93,85 @@ export function useCatalog() {
 
                 if (data && data.length > 0) {
                     // Map DB structure to ProductVariant format
-                    const mappedItems: ProductVariant[] = (data as unknown as DBVariant[]).map(variant => {
+                    const usedImages = new Set<string>();
+                    const usedColorCounts = new Map<string, number>();
+                    const mappedItems: ProductVariant[] = [];
+
+                    for (const variant of data as unknown as DBVariant[]) {
                         const model = variant.vehicle_models;
                         const brand = model?.brands;
-                        const firstColor = variant.vehicle_colors?.[0];
+                        const colors = variant.vehicle_colors || [];
+
+                        type ColorCandidate = {
+                            color: DBVariant['vehicle_colors'][number];
+                            key: string;
+                            images: string[];
+                            unusedImage?: string;
+                            isPrimary: boolean;
+                        };
+
+                        const colorCandidates: ColorCandidate[] = colors.map(color => {
+                            const gallery = Array.isArray(color.gallery_urls) ? color.gallery_urls : [];
+                            const images = [color.image_url, ...gallery].filter(Boolean) as string[];
+                            const key = color.id || color.hex_code || color.name;
+                            return {
+                                color,
+                                key,
+                                images,
+                                unusedImage: images.find(url => !usedImages.has(url)),
+                                isPrimary: Boolean(color.is_primary)
+                            };
+                        });
+
+                        const pickBestCandidate = (candidates: ColorCandidate[]) => {
+                            let best: ColorCandidate | undefined;
+                            let bestScore = Number.NEGATIVE_INFINITY;
+
+                            for (const candidate of candidates) {
+                                const isUnusedColor = !usedColorCounts.has(candidate.key);
+                                const hasUnusedImage = Boolean(candidate.unusedImage);
+                                const hasImage = candidate.images.length > 0;
+                                const colorCount = usedColorCounts.get(candidate.key) ?? 0;
+                                const score = (isUnusedColor ? 100 : 0)
+                                    + (hasUnusedImage ? 10 : 0)
+                                    + (hasImage ? 1 : 0)
+                                    - colorCount;
+
+                                if (!best || score > bestScore) {
+                                    best = candidate;
+                                    bestScore = score;
+                                }
+                            }
+
+                            return best;
+                        };
+
+                        const primaryCandidates = colorCandidates.filter(candidate => candidate.isPrimary);
+                        const chosenCandidate = primaryCandidates.length > 0
+                            ? pickBestCandidate(primaryCandidates)
+                            : pickBestCandidate(colorCandidates);
+                        const chosenColor = chosenCandidate?.color || colors[0];
+                        const resolvedImage = chosenCandidate?.unusedImage || chosenCandidate?.images[0];
+
+                        if (chosenCandidate?.key) {
+                            usedColorCounts.set(
+                                chosenCandidate.key,
+                                (usedColorCounts.get(chosenCandidate.key) ?? 0) + 1
+                            );
+                        }
+                        if (resolvedImage) usedImages.add(resolvedImage);
 
                         // Pricing Logic: Try to find MH price, fallback to first available
-                        const prices = firstColor?.vehicle_prices || [];
+                        const prices = chosenColor?.vehicle_prices || [];
                         const mhPrice = prices.find(p => p.state_code === 'MH')?.ex_showroom_price;
                         const finalExPrice = mhPrice || prices[0]?.ex_showroom_price || variant.base_price_ex_showroom || 0;
-
-                        return {
+                        mappedItems.push({
                             id: variant.id,
                             type: 'VEHICLE' as const,
                             make: brand?.name || 'Unknown',
                             model: model?.name || 'Unknown',
                             variant: variant.name,
-                            color: firstColor?.name || 'Standard',
+                            color: chosenColor?.name || 'Standard',
                             displayName: `${brand?.name || ''} ${model?.name || ''} ${variant.name}`.trim(),
                             label: `${brand?.name || ''} / ${model?.name || ''} / ${variant.name}`,
                             sku: `${(brand?.name || 'UNK').slice(0, 3)}-${(model?.name || 'UNK').slice(0, 3)}-${variant.slug}`.toUpperCase(),
@@ -111,25 +181,31 @@ export function useCatalog() {
                             displacement: model?.displacement_cc || undefined,
                             powerUnit: 'CC' as const,
                             segment: 'COMMUTER',
-                            specifications: {},
+                            specifications: variant.specifications || {},
                             features: [],
                             price: {
                                 exShowroom: Number(finalExPrice),
                                 onRoad: Math.round(Number(finalExPrice) * 1.15) // Mock 15% on-road addition
                             },
-                            imageUrl: firstColor?.image_url || undefined
-                        };
-                    });
+                            imageUrl: resolvedImage || undefined,
+                            availableColors: variant.vehicle_colors.map(vc => ({
+                                id: vc.id,
+                                name: vc.name,
+                                hexCode: vc.hex_code,
+                                finish: vc.finish as any,
+                                imageUrl: vc.image_url || undefined
+                            }))
+                        });
+                    }
                     setItems(mappedItems);
                 } else {
-                    // Fallback to mock data if DB is empty
-
-                    setItems(MOCK_VEHICLES);
+                    // Fallback to empty list if DB is empty (MOCK removed as per request)
+                    setItems([]);
                 }
             } catch (err: unknown) {
                 console.error('Error fetching catalog:', err);
                 setError(err instanceof Error ? err.message : 'Unknown error');
-                setItems(MOCK_VEHICLES); // Fallback on error
+                setItems([]); // Fallback to empty on error
             } finally {
                 setIsLoading(false);
             }

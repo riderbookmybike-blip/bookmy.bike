@@ -74,6 +74,7 @@ export interface VehicleSpecifications {
 export interface ProductBrand {
     id: string;
     name: string;
+    logoUrl?: string;
     type: ProductType;
     modelCount: number;
     skuCount: number;
@@ -118,11 +119,23 @@ export interface ProductVariant {
     price?: {
         exShowroom: number;
         onRoad?: number;
+        offerPrice?: number;
+        discount?: number;
+        surge?: number;
     };
     imageUrl?: string;
+    availableColors?: Array<{
+        id: string;
+        name: string;
+        hexCode: string;
+        finish?: 'MATT' | 'GLOSSY' | 'METALLIC' | 'SATIN';
+        imageUrl?: string;
+    }>;
 
     // Meta
     status: VehicleStatus;
+    rating?: number;
+    isNew?: boolean;
 
     // For Accessories/Services Only
     compatibility?: CompatibilityRule;
@@ -148,6 +161,13 @@ export const MOCK_VEHICLES: ProductVariant[] = [
         gstRate: 28,
         label: 'Honda / Activa 6G / Standard / Matte Axis Grey',
         status: 'ACTIVE',
+        rating: 4.8,
+        price: {
+            exShowroom: 74851,
+            onRoad: 88500,
+            offerPrice: 85500,
+            discount: 3000
+        },
         specifications: {
             engine: {
                 displacement: '109.51 cc',
@@ -192,6 +212,34 @@ export const MOCK_VEHICLES: ProductVariant[] = [
         features: ['Silent Start with ACG', 'Double Lid External Fuel Fill', 'LED DC Headlamp']
     },
     {
+        id: 'v1b',
+        type: 'VEHICLE',
+        make: 'Honda',
+        model: 'Activa 6G',
+        variant: 'Standard',
+        bodyType: 'SCOOTER',
+        fuelType: 'PETROL',
+        displacement: 109.51,
+        powerUnit: 'CC',
+        segment: 'COMMUTER',
+        displayName: 'Honda Activa 6G Standard',
+        color: 'Decent Blue',
+        sku: 'HND-ACT-6G-STD-DBL',
+        hsnCode: '871120',
+        gstRate: 28,
+        label: 'Honda / Activa 6G / Standard / Decent Blue',
+        status: 'ACTIVE',
+        rating: 4.8,
+        price: {
+            exShowroom: 75250,
+            onRoad: 89000
+        },
+        specifications: {
+            engine: { displacement: '109.51 cc' },
+            transmission: { type: 'CVT' }
+        }
+    },
+    {
         id: 'v2',
         type: 'VEHICLE',
         make: 'Royal Enfield',
@@ -209,6 +257,13 @@ export const MOCK_VEHICLES: ProductVariant[] = [
         gstRate: 28,
         label: 'Royal Enfield / Classic 350 / Dark / Stealth Black',
         status: 'ACTIVE',
+        rating: 4.7,
+        price: {
+            exShowroom: 220991,
+            onRoad: 255000,
+            offerPrice: 249000,
+            discount: 6000
+        },
         specifications: {
             engine: {
                 displacement: '349.34 cc',
@@ -223,6 +278,35 @@ export const MOCK_VEHICLES: ProductVariant[] = [
         },
         features: ['Dual Channel ABS', 'Tripper Navigation', 'USB Charging Port']
     },
+    {
+        id: 'v2b',
+        type: 'VEHICLE',
+        make: 'Royal Enfield',
+        model: 'Classic 350',
+        variant: 'Dark',
+        bodyType: 'MOTORCYCLE',
+        fuelType: 'PETROL',
+        displacement: 349.34,
+        powerUnit: 'CC',
+        segment: 'CRUISER',
+        displayName: 'Royal Enfield Classic 350 Dark',
+        color: 'Gunmetal Grey',
+        sku: 'RE-CLS-350-DRK-GRY',
+        hsnCode: '871120',
+        gstRate: 28,
+        label: 'Royal Enfield / Classic 350 / Dark / Gunmetal Grey',
+        status: 'ACTIVE',
+        rating: 4.7,
+        price: {
+            exShowroom: 222000,
+            onRoad: 257000,
+            surge: 2000
+        },
+        specifications: {
+            engine: { displacement: '349.34 cc' },
+            transmission: { type: 'Manual', gears: 5 }
+        }
+    },
     // Yamaha R15M V4 - Actual Specifications from Yamaha Motor India
     {
         id: 'v3',
@@ -236,12 +320,17 @@ export const MOCK_VEHICLES: ProductVariant[] = [
         powerUnit: 'CC',
         segment: 'SPORT',
         displayName: 'Yamaha R15M V4',
-        color: 'Racing Blue',
-        sku: 'YMH-R15M-V4-RBL',
+        color: 'Metallic Grey',
+        sku: 'YMH-R15M-V4-GRY',
         hsnCode: '871120',
         gstRate: 28,
-        label: 'Yamaha / R15M / V4 / Racing Blue',
+        label: 'Yamaha / R15M / V4 / Metallic Grey',
         status: 'ACTIVE',
+        rating: 4.9,
+        price: {
+            exShowroom: 196500,
+            onRoad: 228000
+        },
         specifications: {
             engine: {
                 displacement: '155 cc',
@@ -404,6 +493,7 @@ export interface MediaItem {
     id: string;
     type: 'image' | 'video';
     url: string;
+    isShared?: boolean; // UI indicator for inherited media
     thumbnail?: string;
 }
 
@@ -419,8 +509,11 @@ export interface ModelVariant {
 export interface ModelColor {
     id: string;
     name: string;
+    finish?: 'MATT' | 'GLOSSY' | 'METALLIC' | 'SATIN';
     code: string;
     variantIds: string[];
+    allIds?: string[]; // Multiple DB rows for the same UI color group
+    primaryVariantIds?: string[]; // Variant IDs where this color is primary
     media: MediaItem[];
     variantOverrides?: Record<string, { media?: MediaItem[] }>;
     pricingOverride?: {

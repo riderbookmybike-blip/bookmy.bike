@@ -18,12 +18,12 @@ interface LoginSidebarProps {
 export default function LoginSidebar({
     isOpen,
     onClose,
-    variant = 'TERMINAL',
+    variant = 'RETAIL',
     redirectTo,
     tenantSlug: tenantSlugProp,
 }: LoginSidebarProps) {
     const router = useRouter();
-    const { setTenantType, tenantId } = useTenant();
+    const { setTenantType, tenantId, activeRole, userRole } = useTenant();
     const [loginError, setLoginError] = useState<string | null>(null);
     const [step, setStep] = useState<'INITIAL' | 'SIGNUP' | 'OTP'>('INITIAL');
     const [authMethod, setAuthMethod] = useState<'PHONE' | 'EMAIL'>('PHONE');
@@ -37,6 +37,7 @@ export default function LoginSidebar({
     const [showEmailPath, setShowEmailPath] = useState(false); // Enable email for Staff on Root or explicit selection
     const [otpFallbackVisible, setOtpFallbackVisible] = useState(false);
     const [redirectPath, setRedirectPath] = useState<string | null>(redirectTo ?? null);
+    const [fallbackPath, setFallbackPath] = useState<string | null>(null);
     const [tenantSlug, setTenantSlug] = useState<string | null>(
         tenantSlugProp ?? (redirectTo ? redirectTo.match(/^\/app\/([^/]+)/)?.[1] ?? null : null)
     );
@@ -133,6 +134,23 @@ export default function LoginSidebar({
         return () => clearInterval(interval);
     }, [resendTimer, step]);
 
+
+    // 1. Immediate Redirect if already authenticated
+    useEffect(() => {
+        if (isOpen && (activeRole || userRole)) {
+            const effectiveRole = activeRole || userRole;
+            const pathname = window.location.pathname;
+            const searchParams = new URLSearchParams(window.location.search);
+            const nextParam = searchParams.get('next');
+            const target = nextParam || (effectiveRole !== 'BMB_USER' ? '/app/aums/dashboard' : '/');
+
+            // Only redirect if we aren't already at the target to avoid loops
+            if (pathname !== target) {
+                window.location.href = target;
+            }
+        }
+    }, [isOpen, activeRole, userRole]);
+
     useEffect(() => {
         if (isOpen) {
             // DO NOT clear auth cookies automatically - that causes logout on sidebar open
@@ -148,11 +166,14 @@ export default function LoginSidebar({
             const derivedSlug =
                 tenantSlugProp || tenantParam || extractTenantSlug(redirectTo) || extractTenantSlug(nextParam);
             const isInTenantPath = pathname.startsWith('/app/') || !!derivedSlug;
+            const currentPath = `${pathname}${window.location.search || ''}`;
+            const safeFallback = pathname === '/login' ? '/' : currentPath;
 
             setIsMarketplace(!isInTenantPath);
             setShowEmailPath(isInTenantPath); // Default to Email for tenant portals
             setTenantSlug(derivedSlug ?? null);
             setRedirectPath(redirectTo ?? nextParam ?? null);
+            setFallbackPath(safeFallback);
 
             // Background location capture for marketplace only
             if (!isInTenantPath) {
@@ -371,15 +392,16 @@ export default function LoginSidebar({
         }
     };
 
-    const resolveRedirectPath = (memberships: any[] | null, nextPath: string | null) => {
+    const resolveRedirectPath = (memberships: any[] | null, nextPath: string | null, fallback: string | null) => {
         const safeNext = nextPath && nextPath.startsWith('/') ? nextPath : null;
-        if (safeNext) return safeNext;
-        if (memberships && memberships.length > 1) return '/profile';
-        if (memberships && memberships.length === 1) {
-            const slug = memberships[0]?.tenants?.slug;
-            if (slug) return `/app/${slug}/dashboard`;
+        if (safeNext) {
+            if (safeNext === '/dashboard' || safeNext.startsWith('/dashboard/')) {
+                const slug = memberships?.[0]?.tenants?.slug;
+                return slug ? `/app/${slug}/dashboard` : '/';
+            }
+            return safeNext;
         }
-        return '/';
+        return fallback || '/';
     };
 
     const completeLogin = async (user: AuthUser, session?: Session) => {
@@ -451,7 +473,7 @@ export default function LoginSidebar({
             await new Promise(resolve => setTimeout(resolve, 1000));
 
             // Navigate instead of reload to preserve session
-            window.location.href = resolveRedirectPath(memberships, redirectPath);
+            window.location.href = resolveRedirectPath(memberships, redirectPath, fallbackPath);
             onClose();
         } catch (err) {
             console.error('Final Sync Error:', err);
@@ -493,14 +515,14 @@ export default function LoginSidebar({
                             </span>
                         </div>
                         <h2
-                            className={`font-black uppercase tracking-tighter italic leading-[0.9] text-white ${variant === 'TERMINAL' ? 'text-5xl' : 'text-4xl'}`}
+                            className="font-black uppercase tracking-tighter italic leading-[0.9] text-white text-4xl"
                         >
                             {step === 'INITIAL' || step === 'SIGNUP'
                                 ? isStaff
                                     ? 'Initialize Access'
                                     : step === 'SIGNUP'
-                                      ? 'Create Account'
-                                      : 'Welcome Back'
+                                        ? 'Create Account'
+                                        : 'Welcome Back'
                                 : 'Verify Protocol'}
                         </h2>
                         <p className="text-xs text-slate-500 font-medium tracking-wide leading-relaxed max-w-[280px]">
@@ -509,8 +531,8 @@ export default function LoginSidebar({
                                     ? 'Staff authentication required for administrative access.'
                                     : 'Enter your mobile number or corporate email to continue.'
                                 : step === 'SIGNUP'
-                                  ? 'Join the community of riders. Start your journey.'
-                                  : `Code sent to your ${authMethod === 'PHONE' ? 'mobile' : 'email'}.`}
+                                    ? 'Join the community of riders. Start your journey.'
+                                    : `Code sent to your ${authMethod === 'PHONE' ? 'mobile' : 'email'}.`}
                         </p>
                     </div>
                     <button
@@ -552,8 +574,8 @@ export default function LoginSidebar({
                                     )}
                                     <div className="flex items-center px-6 py-4">
                                         {authMethod === 'EMAIL' ||
-                                        (!isMarketplace && showEmailPath) ||
-                                        identifier.includes('@') ? (
+                                            (!isMarketplace && showEmailPath) ||
+                                            identifier.includes('@') ? (
                                             <Globe size={18} className="text-slate-400 mr-6" />
                                         ) : (
                                             <Phone size={18} className="text-slate-400 mr-6" />
@@ -632,11 +654,10 @@ export default function LoginSidebar({
                                 else if (step === 'OTP') handleLogin();
                             }}
                             disabled={loading || identifier.length < 3}
-                            className={`w-full py-6 rounded-[32px] text-xs font-black uppercase tracking-[0.3em] italic flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-[0.98] ${
-                                loading
-                                    ? 'bg-brand-primary/50 cursor-wait'
-                                    : 'bg-brand-primary text-black hover:bg-[#F4B000]'
-                            } disabled:opacity-50`}
+                            className={`w-full py-6 rounded-[32px] text-xs font-black uppercase tracking-[0.3em] italic flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-[0.98] ${loading
+                                ? 'bg-brand-primary/50 cursor-wait'
+                                : 'bg-brand-primary text-black hover:bg-[#F4B000]'
+                                } disabled:opacity-50`}
                         >
                             {loading ? 'Processing...' : step === 'INITIAL' ? 'Continue' : 'Verify'}
                             <ArrowRight size={16} />

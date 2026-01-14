@@ -19,6 +19,7 @@ declare global {
         ) => void;
         getWidgetData: () => any;
         isCaptchaVerified: () => boolean;
+        isMsg91Ready?: boolean;
         initSendOTP: (config: any) => void;
         configuration: any;
     }

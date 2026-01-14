@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 
 export default function ProfileSettingsPage() {
-    const { tenantName } = useTenant();
+    const { tenantName, tenantSlug } = useTenant();
     const [user, setUser] = useState<SupabaseUser | null>(null);
     const [loading, setLoading] = useState(true);
     const [identities, setIdentities] = useState<any[]>([]);
@@ -41,7 +41,7 @@ export default function ProfileSettingsPage() {
         await supabase.auth.linkIdentity({
             provider: 'google',
             options: {
-                redirectTo: `${origin}/auth/callback?next=/dashboard/settings/profile`,
+                redirectTo: `${origin}/auth/callback?next=${basePath}/settings/profile`,
             }
         });
     };
@@ -102,7 +102,7 @@ export default function ProfileSettingsPage() {
         <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Header */}
             <div className="flex items-center gap-4">
-                <Link href="/dashboard/settings" className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-colors">
+                <Link href={`${basePath}/settings`} className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-colors">
                     <User size={24} className="text-slate-900 dark:text-white" />
                 </Link>
                 <div>
@@ -261,3 +261,4 @@ export default function ProfileSettingsPage() {
         </div>
     );
 }
+    const basePath = tenantSlug ? `/app/${tenantSlug}/dashboard` : '/dashboard';

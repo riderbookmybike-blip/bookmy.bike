@@ -47,6 +47,7 @@ interface TenantContextType {
     tenantConfig: TenantConfig | null;
     userName: string;
     tenantId?: string;
+    tenantSlug?: string;
     userRole?: string;
     activeRole?: string;
     referralCode?: string;
@@ -75,6 +76,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     const [tenantConfig, setTenantConfig] = useState<TenantConfig | null>(null);
     const [userName, setUserName] = useState('');
     const [tenantId, setTenantId] = useState<string | undefined>(undefined);
+    const [tenantSlug, setTenantSlug] = useState<string | undefined>(undefined);
     const [userRole, setUserRole] = useState<string | undefined>(undefined);
     const [activeRole, setActiveRole] = useState<string | undefined>(undefined);
     const [referralCode, setReferralCode] = useState<string | undefined>(undefined);
@@ -146,26 +148,29 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
             const pathMatch = window.location.pathname.match(/^\/app\/([^/]+)/);
             const slug = pathMatch ? pathMatch[1] : null;
             if (slug) {
+                setTenantSlug(slug);
                 const supabase = createClient();
-                supabase
-                    .from('tenants')
-                    .select('id, name, slug, type, config')
-                    .eq('slug', slug)
-                    .maybeSingle()
-                    .then(({ data }) => {
+                (async () => {
+                    try {
+                        const { data } = await supabase
+                            .from('tenants')
+                            .select('id, name, slug, type, config')
+                            .eq('slug', slug)
+                            .maybeSingle();
                         if (!data) return;
+                        const mappedType = mapTenantType(data.type);
                         setTenantId(data.id);
                         setTenantNameState(data.name);
-                        setTenantTypeState(mapTenantType(data.type));
+                        setTenantTypeState(mappedType);
                         setTenantConfig(data.config || null);
                         localStorage.setItem('tenant_id', data.id);
                         localStorage.setItem('tenant_name', data.name);
-                        localStorage.setItem('tenant_type', mapTenantType(data.type));
+                        localStorage.setItem('tenant_type', mappedType);
                         localStorage.setItem('tenant_slug', data.slug);
-                    })
-                    .catch(() => {
+                    } catch {
                         // Swallow to avoid blocking UI
-                    });
+                    }
+                })();
             }
         }
     }, []);
@@ -198,7 +203,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
     return (
         <TenantContext.Provider value={{
-            tenantType, tenantName, tenantConfig, userName, tenantId, userRole, activeRole, referralCode, memberships,
+            tenantType, tenantName, tenantConfig, userName, tenantId, tenantSlug, userRole, activeRole, referralCode, memberships,
             setTenantType, setTenantName, setTenantConfig, setUserName, setTenantId, setUserRole, setActiveRole, setReferralCode, setMemberships,
             switchRole, isSidebarExpanded, setIsSidebarExpanded, isReadOnly, status
         }}>

@@ -12,7 +12,7 @@ type SetupStep = 'INFO' | 'BRAND' | 'TEAM' | 'FINISH';
 
 export default function SetupWizard() {
     const router = useRouter();
-    const { tenantConfig, tenantName, tenantId } = useTenant();
+    const { tenantConfig, tenantName, tenantId, tenantSlug } = useTenant();
     const [step, setStep] = useState<SetupStep>('INFO');
     const [isLoading, setIsLoading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -137,7 +137,7 @@ export default function SetupWizard() {
         });
 
         if (success) {
-            window.location.href = '/dashboard';
+            window.location.href = tenantSlug ? `/app/${tenantSlug}/dashboard` : '/dashboard';
         } else {
             setSaving(false);
         }

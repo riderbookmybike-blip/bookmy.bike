@@ -14,7 +14,7 @@ interface DashboardHeaderProps {
 }
 
 export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHeaderProps) => {
-    const { tenantType, userRole, activeRole, switchRole, isSidebarExpanded, tenantName, userName, memberships, tenantId, tenantConfig } = useTenant();
+    const { tenantType, userRole, activeRole, switchRole, isSidebarExpanded, tenantName, userName, memberships, tenantId, tenantConfig, tenantSlug } = useTenant();
     const router = useRouter();
     const [mounted, setMounted] = useState(false);
 
@@ -23,7 +23,7 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
     }, []);
 
     const handleSwitch = (slug: string) => {
-        router.push(`/app/${slug}/dashboard`);
+        window.open(`/app/${slug}/dashboard`, '_blank');
     };
 
     const handleLogout = async () => {
@@ -91,13 +91,17 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
                                     {mounted ? (userName || 'User') : '...'}
                                 </span>
                                 <div className="text-right mt-0.5">
-                                    <span className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-wide">
+                                    <span className="text-[10px] font-bold text-brand-primary uppercase tracking-wide">
                                         ({mounted ? (tenantConfig?.brand?.displayName || tenantName || (activeRole === 'SUPER_ADMIN' ? 'Platform Control' : 'Marketplace View')).toUpperCase() : '...'})
                                     </span>
                                 </div>
                             </div>
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-sm font-black text-white shadow-lg shadow-indigo-500/20">
-                                {mounted && userName ? userName.charAt(0) : 'U'}
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#F4B000] to-[#B38728] flex items-center justify-center text-sm font-black text-white shadow-lg shadow-[#F4B000]/20">
+                                {mounted ? (
+                                    <span>{((tenantConfig?.brand?.displayName || userName)?.[0] || 'U').toUpperCase()}</span>
+                                ) : (
+                                    <span>U</span>
+                                )}
                             </div>
                         </button>
                         {/* Enhanced Dropdown Menu */}
@@ -142,11 +146,11 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
                                 )}
 
                                 <div className="space-y-0.5">
-                                    <Link href="/dashboard/profile" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-white transition-all">
+                                    <Link href={tenantSlug ? `/app/${tenantSlug}/dashboard/profile` : '/dashboard/profile'} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-white transition-all">
                                         <User size={14} />
                                         <span>User Profile</span>
                                     </Link>
-                                    <Link href="/dashboard/settings" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-white transition-all">
+                                    <Link href={tenantSlug ? `/app/${tenantSlug}/dashboard/settings` : '/dashboard/settings'} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-white transition-all">
                                         <Settings size={14} />
                                         <span>System Settings</span>
                                     </Link>

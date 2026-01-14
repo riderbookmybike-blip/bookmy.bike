@@ -23,7 +23,8 @@ type Member = {
 };
 
 export default function TeamPage() {
-    const { tenantId, userRole } = useTenant();
+    const { tenantId, userRole, tenantSlug } = useTenant();
+    const basePath = tenantSlug ? `/app/${tenantSlug}/dashboard` : '/dashboard';
     const [members, setMembers] = useState<Member[]>([]);
     const [loading, setLoading] = useState(true);
     const [isInviteOpen, setIsInviteOpen] = useState(false);
@@ -119,7 +120,7 @@ export default function TeamPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <Link href="/dashboard/settings" className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-colors">
+                    <Link href={`${basePath}/settings`} className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-colors">
                         <Users size={24} className="text-slate-900 dark:text-white" />
                     </Link>
                     <div>
