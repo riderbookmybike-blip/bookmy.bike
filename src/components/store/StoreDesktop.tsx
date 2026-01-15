@@ -94,7 +94,7 @@ export function StoreDesktop() {
             <section className="py-16 md:py-24 lg:py-32 bg-white dark:bg-[#020617] transition-colors relative overflow-hidden">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-200 dark:via-white/10 to-transparent" />
 
-                <div className="max-w-[1400px] mx-auto px-6 md:px-12 lg:px-20">
+                <div className="max-w-[1440px] mx-auto px-6 md:px-12 lg:px-20">
                     <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-8 mb-24">
                         <div className="space-y-4">
                             <p className="text-[12px] font-black text-brand-primary dark:text-brand-primary uppercase tracking-[0.5em] leading-none italic">
@@ -115,7 +115,7 @@ export function StoreDesktop() {
                         </Link>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8 md:gap-12">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6 gap-8 md:gap-12">
                         {['HONDA', 'TVS', 'ROYAL ENFIELD', 'BAJAJ', 'SUZUKI', 'YAMAHA'].map(brand => (
                             <Link
                                 key={brand}
@@ -143,7 +143,7 @@ export function StoreDesktop() {
                     <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_120%,#FFD700,transparent_70%)]" />
                 </div>
 
-                <div className="max-w-[1400px] mx-auto px-6 relative z-10">
+                <div className="max-w-[1440px] mx-auto px-6 md:px-12 lg:px-20 relative z-10">
                     <div className="grid grid-cols-12 gap-24 items-center">
                         <div className="col-span-5 space-y-12">
                             <div className="space-y-6">
@@ -215,17 +215,17 @@ export function StoreDesktop() {
 
             {/* Featured Categories */}
             <section className="py-16 md:py-24 lg:py-32 bg-slate-50 dark:bg-[#020617] transition-colors">
-                <div className="max-w-[1400px] mx-auto px-6">
-                    <div className="text-center max-w-3xl mx-auto mb-32 space-y-6">
+                <div className="max-w-[1440px] mx-auto px-6 md:px-12 lg:px-20">
+                    <div className="text-center max-w-3xl mx-auto mb-20 md:mb-32 space-y-6">
                         <p className="text-[12px] font-black text-brand-primary dark:text-brand-primary uppercase tracking-[0.5em] italic">
                             Curated Collections
                         </p>
-                        <h2 className="text-8xl font-black uppercase tracking-tighter italic leading-none text-slate-900 dark:text-white transition-colors">
+                        <h2 className="text-6xl md:text-8xl font-black uppercase tracking-tighter italic leading-none text-slate-900 dark:text-white transition-colors">
                             Select Your Vibe
                         </h2>
                     </div>
 
-                    <div className="grid grid-cols-4 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-8">
                         {[
                             {
                                 title: 'Scooters',
@@ -274,7 +274,7 @@ export function StoreDesktop() {
                                         <p className="text-[10px] font-black text-brand-primary uppercase tracking-[0.3em] italic">
                                             {cat.subtitle}
                                         </p>
-                                        <h3 className="text-4xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white">
+                                        <h3 className="text-3xl md:text-4xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white">
                                             {cat.title}
                                         </h3>
                                         <p className="text-xs text-slate-500 dark:text-slate-400 font-medium tracking-wide">
