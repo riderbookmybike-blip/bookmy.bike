@@ -3,10 +3,8 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, Search, Zap, MapPin } from 'lucide-react';
+import { ArrowRight, Search, Zap, MapPin, ArrowUpRight, Play, Star } from 'lucide-react';
 export function StoreDesktop() {
-
-
     return (
         <div className="flex flex-col pb-40 transition-colors duration-300">
             {/* Premium Photography Hero Section */}
@@ -56,8 +54,6 @@ export function StoreDesktop() {
                                     </div>
                                     <div className="absolute inset-0 bg-brand-primary translate-y-full group-hover/btn:translate-y-0 transition-transform duration-500" />
                                 </Link>
-
-
                             </div>
                         </div>
 
@@ -98,7 +94,7 @@ export function StoreDesktop() {
             <section className="py-16 md:py-24 lg:py-32 bg-white dark:bg-[#020617] transition-colors relative overflow-hidden">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-200 dark:via-white/10 to-transparent" />
 
-                <div className="max-w-[1400px] mx-auto px-6">
+                <div className="max-w-[1400px] mx-auto px-6 md:px-12 lg:px-20">
                     <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-8 mb-24">
                         <div className="space-y-4">
                             <p className="text-[12px] font-black text-brand-primary dark:text-brand-primary uppercase tracking-[0.5em] leading-none italic">
@@ -119,20 +115,20 @@ export function StoreDesktop() {
                         </Link>
                     </div>
 
-                    <div className="grid grid-cols-6 gap-6">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8 md:gap-12">
                         {['HONDA', 'TVS', 'ROYAL ENFIELD', 'BAJAJ', 'SUZUKI', 'YAMAHA'].map(brand => (
-                            <Link key={brand} href={`/store/catalog?search=${brand.toLowerCase()}`}>
-                                <div className="relative w-16 h-16 grayscale group-hover:grayscale-0 opacity-50 group-hover:opacity-100 transition-all duration-300">
+                            <Link
+                                key={brand}
+                                href={`/store/catalog?search=${brand.toLowerCase()}`}
+                                className="group flex items-center justify-center p-4"
+                            >
+                                <div className="relative w-24 h-24 transition-all duration-300 transform group-hover:scale-110">
                                     <Image
                                         src={`/images/brands/${brand.toLowerCase()}.svg`}
                                         alt={brand}
                                         fill
-                                        className="object-contain"
+                                        className="object-contain filter dark:invert dark:brightness-200"
                                     />
-                                </div>
-                                <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                                <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all">
-                                    <Zap size={10} className="text-brand-primary" fill="currentColor" />
                                 </div>
                             </Link>
                         ))}
@@ -304,7 +300,7 @@ export function StoreDesktop() {
                         ))}
                     </div>
                 </div>
-            </section >
-        </div >
+            </section>
+        </div>
     );
 }

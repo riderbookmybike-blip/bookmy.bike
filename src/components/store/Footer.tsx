@@ -1,21 +1,14 @@
 import React from 'react';
 import Link from 'next/link';
 import { Logo } from '@/components/brand/Logo';
-import {
-    Facebook,
-    Twitter,
-    Linkedin,
-    Instagram,
-    Heart,
-    Newspaper,
-} from 'lucide-react';
+import { Facebook, Twitter, Linkedin, Instagram, Heart, Newspaper } from 'lucide-react';
 
 export const Footer = () => {
     return (
         <footer className="bg-white dark:bg-[#020617] border-t border-slate-100 dark:border-white/5 pt-24 pb-12 transition-colors duration-500 overflow-hidden relative">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-brand-primary/20 to-transparent" />
 
-            <div className="max-w-[1440px] mx-auto px-6 md:px-12 lg:px-20 relative z-10">
+            <div className="max-w-[1440px] mx-auto px-4 md:px-12 lg:px-20 relative z-10">
                 {/* Top Section: Trust & Brand */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 mb-20">
                     <div className="lg:col-span-4 space-y-8">
@@ -136,10 +129,11 @@ const FooterLink = ({
     <li>
         <Link
             href={href}
-            className={`text-xs font-bold transition-colors ${highlight
-                ? 'text-brand-primary dark:text-brand-primary hover:text-yellow-600 dark:hover:text-yellow-400'
-                : 'text-slate-500 dark:text-slate-400 hover:text-brand-primary dark:hover:text-brand-primary'
-                }`}
+            className={`text-xs font-bold transition-colors ${
+                highlight
+                    ? 'text-brand-primary dark:text-brand-primary hover:text-yellow-600 dark:hover:text-yellow-400'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-brand-primary dark:hover:text-brand-primary'
+            }`}
         >
             {children}
         </Link>
@@ -154,5 +148,3 @@ const SocialIcon = ({ icon, href }: { icon: React.ReactNode; href: string }) => 
         {icon}
     </a>
 );
-
-
