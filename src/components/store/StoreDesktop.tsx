@@ -35,7 +35,7 @@ export function StoreDesktop({ variant = 'default' }: StoreDesktopProps) {
                 </div>
 
                 <div
-                    className={`mx-auto px-6 md:px-12 lg:px-20 2xl:px-24 relative z-10 w-full text-center ${isTv ? 'max-w-[1600px] pt-6 pb-4' : 'max-w-[1440px] 2xl:max-w-[1700px] pt-12 pb-8 2xl:pt-8 2xl:pb-4'}`}
+                    className={`mx-auto px-6 md:px-12 lg:px-20 relative z-10 w-full text-center ${isTv ? 'max-w-[1680px] pt-6 pb-4' : 'max-w-[1440px] pt-12 pb-8'}`}
                 >
                     <div className={isTv ? 'space-y-8' : 'space-y-10 md:space-y-12'}>
                         <div className={isTv ? 'space-y-4' : 'space-y-6'}>
