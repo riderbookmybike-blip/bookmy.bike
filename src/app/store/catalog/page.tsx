@@ -71,6 +71,8 @@ const CatalogSkeleton = () => (
     </div>
 );
 
+import { CatalogTV } from '@/components/store/tv/CatalogTV';
+
 function CatalogContent() {
     const { items, isLoading } = useCatalog();
     const filters = useCatalogFilters(items);
@@ -84,7 +86,7 @@ function CatalogContent() {
             mobile={<CatalogMobile filters={filters} />}
             tablet={<CatalogTablet filters={filters} />}
             desktop={<CatalogDesktop filters={filters} />}
-            tv={<CatalogDesktop filters={filters} variant="tv" />}
+            tv={<CatalogTV />}
         />
     );
 }
