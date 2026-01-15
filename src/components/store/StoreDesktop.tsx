@@ -8,14 +8,21 @@ import { CATEGORIES, MARKET_METRICS, BRANDS } from '@/config/market';
 import { useCatalog } from '@/hooks/useCatalog';
 import { RiderPulse } from '@/components/store/RiderPulse';
 
-export function StoreDesktop() {
+interface StoreDesktopProps {
+    variant?: 'default' | 'tv';
+}
+
+export function StoreDesktop({ variant = 'default' }: StoreDesktopProps) {
     const { items } = useCatalog();
     const totalModels = items.length || 500; // Fallback to 500 if loading or empty
+    const isTv = variant === 'tv';
 
     return (
         <div className="flex flex-col pb-40 transition-colors duration-300">
             {/* Premium Photography Hero Section */}
-            <section className="relative flex flex-col justify-end overflow-hidden bg-white dark:bg-[#020617] isolate transition-colors duration-500 pt-32 pb-20">
+            <section
+                className={`relative flex flex-col justify-end overflow-hidden bg-white dark:bg-[#020617] isolate transition-colors duration-500 ${isTv ? 'pt-20 pb-12' : 'pt-32 pb-20'}`}
+            >
                 <div className="absolute inset-0 z-0 opacity-40 dark:opacity-50">
                     <Image
                         src="/images/hero/lifestyle_1.png"
@@ -27,35 +34,45 @@ export function StoreDesktop() {
                     <div className="absolute inset-0 bg-gradient-to-b from-white via-white/40 to-white dark:from-[#020617] dark:via-[#020617]/40 dark:to-[#020617]" />
                 </div>
 
-                <div className="max-w-[1440px] 2xl:max-w-[1700px] mx-auto px-6 md:px-12 lg:px-20 2xl:px-24 relative z-10 w-full text-center pt-12 pb-8 2xl:pt-8 2xl:pb-4">
-                    <div className="space-y-10 md:space-y-12">
-                        <div className="space-y-6">
-                            <div className="inline-flex items-center gap-3 px-6 py-3 bg-brand-primary/5 dark:bg-brand-primary/10 border border-brand-primary/10 dark:border-brand-primary/20 text-brand-primary dark:text-brand-primary rounded-full text-[11px] font-black uppercase tracking-[0.3em] mb-8 backdrop-blur-md shadow-sm">
+                <div
+                    className={`mx-auto px-6 md:px-12 lg:px-20 2xl:px-24 relative z-10 w-full text-center ${isTv ? 'max-w-[1600px] pt-6 pb-4' : 'max-w-[1440px] 2xl:max-w-[1700px] pt-12 pb-8 2xl:pt-8 2xl:pb-4'}`}
+                >
+                    <div className={isTv ? 'space-y-8' : 'space-y-10 md:space-y-12'}>
+                        <div className={isTv ? 'space-y-4' : 'space-y-6'}>
+                            <div
+                                className={`inline-flex items-center gap-3 px-6 py-3 bg-brand-primary/5 dark:bg-brand-primary/10 border border-brand-primary/10 dark:border-brand-primary/20 text-brand-primary dark:text-brand-primary rounded-full text-[11px] font-black uppercase tracking-[0.3em] backdrop-blur-md shadow-sm ${isTv ? 'mb-6' : 'mb-8'}`}
+                            >
                                 <span className="flex h-2 w-2 rounded-full bg-brand-primary animate-ping" />
                                 India’s Lowest EMI Guarantee
                             </div>
 
-                            <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-8xl xl:text-[7rem] 2xl:text-[7.5rem] font-black italic uppercase tracking-tight md:tracking-tighter lg:tracking-[-0.04em] leading-none xl:leading-[0.9] 2xl:leading-tight pb-4">
+                            <h1
+                                className={`${isTv ? 'text-5xl sm:text-6xl md:text-7xl lg:text-[5.5rem] xl:text-[6rem] 2xl:text-[6.5rem] pb-2' : 'text-6xl sm:text-7xl md:text-8xl lg:text-8xl xl:text-[7rem] 2xl:text-[7.5rem] pb-4'} font-black italic uppercase tracking-tight md:tracking-tighter lg:tracking-[-0.04em] leading-none xl:leading-[0.9] 2xl:leading-tight`}
+                            >
                                 <span className="text-slate-900 dark:text-white transition-colors">Your Next</span>{' '}
                                 <br />
                                 <span className="text-[#F4B000] drop-shadow-md transition-all">Legend Awaits.</span>
                             </h1>
 
-                            <p className="max-w-[60ch] mx-auto text-lg sm:text-xl font-medium text-slate-700 dark:text-slate-300 leading-relaxed tracking-wide drop-shadow-sm">
+                            <p
+                                className={`max-w-[60ch] mx-auto font-medium text-slate-700 dark:text-slate-300 leading-relaxed tracking-wide drop-shadow-sm ${isTv ? 'text-base sm:text-lg' : 'text-lg sm:text-xl'}`}
+                            >
                                 Unified prices from verified dealers. Instant quotes. Lowest EMI guarantee.
                             </p>
                         </div>
 
                         {/* Search + Drive Cluster */}
-                        <div className="w-full max-w-2xl mx-auto space-y-8 relative z-50">
+                        <div className={`w-full max-w-2xl mx-auto relative z-50 ${isTv ? 'space-y-6' : 'space-y-8'}`}>
                             <div className="flex flex-col items-center gap-6">
                                 <Link
                                     href="/store/catalog"
-                                    className="h-20 bg-slate-900 dark:bg-white text-white dark:text-black rounded-full flex items-center justify-center gap-4 px-12 hover:bg-brand-primary dark:hover:bg-brand-primary hover:text-black dark:hover:text-black transition-all shadow-[0_20px_40px_rgba(244,176,0,0.25)] hover:shadow-[0_24px_60px_rgba(244,176,0,0.35)] group/btn overflow-hidden relative min-w-[280px] sm:min-w-[320px]"
+                                    className={`${isTv ? 'h-16 px-10 min-w-[240px] sm:min-w-[280px]' : 'h-20 px-12 min-w-[280px] sm:min-w-[320px]'} bg-slate-900 dark:bg-white text-white dark:text-black rounded-full flex items-center justify-center gap-4 hover:bg-brand-primary dark:hover:bg-brand-primary hover:text-black dark:hover:text-black transition-all shadow-[0_20px_40px_rgba(244,176,0,0.25)] hover:shadow-[0_24px_60px_rgba(244,176,0,0.35)] group/btn overflow-hidden relative`}
                                 >
                                     <div className="relative z-10 flex items-center gap-3">
-                                        <Search size={22} className="opacity-80 relative -top-[1px]" />
-                                        <span className="text-lg font-black uppercase tracking-[0.15em] leading-none">
+                                        <Search size={isTv ? 18 : 22} className="opacity-80 relative -top-[1px]" />
+                                        <span
+                                            className={`${isTv ? 'text-base' : 'text-lg'} font-black uppercase tracking-[0.15em] leading-none`}
+                                        >
                                             Search Bikes & Scooters
                                         </span>
                                     </div>
@@ -65,12 +82,16 @@ export function StoreDesktop() {
                         </div>
 
                         {/* Metrics Section */}
-                        <div className="w-full max-w-5xl mx-auto grid grid-cols-3 gap-4 md:gap-0 py-6 border-t border-slate-200/50 dark:border-white/5 transition-colors mt-8">
+                        <div
+                            className={`w-full max-w-5xl mx-auto grid grid-cols-3 gap-4 md:gap-0 border-t border-slate-200/50 dark:border-white/5 transition-colors ${isTv ? 'py-4 mt-6' : 'py-6 mt-8'}`}
+                        >
                             <div className="text-center group cursor-default space-y-1">
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
                                     {'>'} Models
                                 </p>
-                                <p className="text-4xl md:text-5xl font-black italic text-slate-900 dark:text-white tracking-tighter">
+                                <p
+                                    className={`${isTv ? 'text-3xl md:text-4xl' : 'text-4xl md:text-5xl'} font-black italic text-slate-900 dark:text-white tracking-tighter`}
+                                >
                                     {totalModels}+
                                 </p>
                             </div>
@@ -80,7 +101,9 @@ export function StoreDesktop() {
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
                                     Avg savings vs market quote
                                 </p>
-                                <p className="text-4xl md:text-5xl font-black italic text-slate-900 dark:text-white tracking-tighter">
+                                <p
+                                    className={`${isTv ? 'text-3xl md:text-4xl' : 'text-4xl md:text-5xl'} font-black italic text-slate-900 dark:text-white tracking-tighter`}
+                                >
                                     {MARKET_METRICS.avgSavings}
                                 </p>
                             </div>
@@ -88,7 +111,9 @@ export function StoreDesktop() {
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
                                     Fast delivery options available
                                 </p>
-                                <p className="text-4xl md:text-5xl font-black italic text-slate-900 dark:text-white tracking-tighter underline decoration-brand-primary decoration-4 underline-offset-4">
+                                <p
+                                    className={`${isTv ? 'text-3xl md:text-4xl' : 'text-4xl md:text-5xl'} font-black italic text-slate-900 dark:text-white tracking-tighter underline decoration-brand-primary decoration-4 underline-offset-4`}
+                                >
                                     {MARKET_METRICS.deliveryTime}
                                 </p>
                             </div>

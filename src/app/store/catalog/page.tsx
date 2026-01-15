@@ -84,6 +84,7 @@ function CatalogContent() {
             mobile={<CatalogMobile filters={filters} />}
             tablet={<CatalogTablet filters={filters} />}
             desktop={<CatalogDesktop filters={filters} />}
+            tv={<CatalogDesktop filters={filters} variant="tv" />}
         />
     );
 }
