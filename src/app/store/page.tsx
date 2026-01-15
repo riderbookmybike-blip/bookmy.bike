@@ -12,6 +12,7 @@ export default function StorePage() {
             mobile={<StoreMobile />}
             tablet={<StoreTablet />}
             desktop={<StoreDesktop />}
+            tv={<StoreDesktop variant="tv" />}
         />
     );
 }
