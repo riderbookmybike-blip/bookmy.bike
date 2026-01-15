@@ -28,16 +28,18 @@ export const DeviceLayout: React.FC<DeviceLayoutProps> = ({ mobile, tablet, desk
     const isTv = width >= 1536;
 
     // 768px - 1023px for Tablet (if provided, fallback to mobile or desktop)
-    const content = isTv && tv ? tv : width >= 1024 ? desktop : width >= 768 && tablet ? tablet : mobile;
+    if (isTv && tv) {
+        return <>{tv}</>;
+    }
 
-    return (
-        <>
-            {/* DEBUG OVERLAY: REMOVE AFTER DIAGNOSIS */}
-            <div className="fixed top-0 left-0 bg-black/80 text-white p-2 z-[9999] text-xs font-mono border border-white/20">
-                VP: {width}x{viewport.height} | Mode:{' '}
-                {isTv ? 'TV' : width >= 1024 ? 'Desktop' : width >= 768 ? 'Tablet' : 'Mobile'}
-            </div>
-            {content}
-        </>
-    );
+    if (width >= 1024) {
+        return <>{desktop}</>;
+    }
+
+    if (width >= 768 && tablet) {
+        return <>{tablet}</>;
+    }
+
+    // Default to Mobile
+    return <>{mobile}</>;
 };

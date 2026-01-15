@@ -104,7 +104,35 @@ export const Footer = () => {
                     </div>
                 </div>
             </div>
+            <ViewportDebug />
         </footer>
+    );
+};
+
+// Internal Debug Component for Production Verification
+const ViewportDebug = () => {
+    const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
+    const [mounted, setMounted] = React.useState(false);
+
+    React.useEffect(() => {
+        setMounted(true);
+        const handleResize = () => setDimensions({ width: window.innerWidth, height: window.innerHeight });
+        handleResize();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    if (!mounted) return null;
+
+    const { width } = dimensions;
+    const mode = width >= 1536 ? 'TV' : width >= 1024 ? 'DESKTOP' : width >= 768 ? 'TABLET' : 'MOBILE';
+
+    return (
+        <div className="absolute bottom-1 right-2 z-50 pointer-events-none opacity-30 hover:opacity-100 transition-opacity">
+            <div className="text-[10px] font-mono text-slate-400 bg-white/80 dark:bg-black/80 px-2 py-1 rounded border border-slate-200 dark:border-white/10">
+                VP: {width}x{dimensions.height} | {mode}
+            </div>
+        </div>
     );
 };
 
