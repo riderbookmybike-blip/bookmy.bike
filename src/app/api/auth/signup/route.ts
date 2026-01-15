@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
             }, { status: 400 });
         }
 
-        const formattedPhone = `91${phone}`;
+        const formattedPhone = `+91${phone}`;
         const email = `${phone}@bookmy.bike`;
         const password = `MSG91_${phone}_${process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(0, 8)}`;
 
@@ -68,9 +68,21 @@ export async function POST(req: NextRequest) {
             // For now, allow it, but log error.
         }
 
+        // 4. Auto-Login
+        const { data: signInData, error: signInError } = await adminClient.auth.signInWithPassword({
+            email: email,
+            password: password,
+        });
+
+        if (signInError) {
+            console.error('Signup Auto-Login Error:', signInError);
+        }
+
         return NextResponse.json({
             success: true,
             userId,
+            session: signInData?.session,
+            user: signInData?.user,
             message: 'Account created successfully'
         });
 

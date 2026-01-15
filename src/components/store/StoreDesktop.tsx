@@ -2,181 +2,90 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ChevronRight, ArrowRight, Zap, Shield, Star, Search, MapPin } from 'lucide-react';
-import { MOCK_VEHICLES } from '@/types/productMaster';
-
+import Image from 'next/image';
+import { ArrowRight, Search, Zap, MapPin } from 'lucide-react';
 export function StoreDesktop() {
-    const [searchQuery, setSearchQuery] = React.useState('');
-    const [searchResults, setSearchResults] = React.useState<typeof MOCK_VEHICLES>([]);
-    const [showResults, setShowResults] = React.useState(false);
-    const searchRef = React.useRef<HTMLDivElement>(null);
 
-    React.useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-                setShowResults(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-    const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const query = e.target.value;
-        setSearchQuery(query);
-        if (query.length > 1) {
-            const filtered = MOCK_VEHICLES.filter(
-                v =>
-                    v.displayName?.toLowerCase().includes(query.toLowerCase()) ||
-                    v.make.toLowerCase().includes(query.toLowerCase()) ||
-                    v.model.toLowerCase().includes(query.toLowerCase())
-            );
-            setSearchResults(filtered);
-            setShowResults(true);
-        } else {
-            setSearchResults([]);
-            setShowResults(false);
-        }
-    };
 
     return (
         <div className="flex flex-col pb-40 transition-colors duration-300">
             {/* Premium Photography Hero Section */}
-            <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden bg-white dark:bg-[#020617] isolate transition-colors duration-500 -mt-24">
+            <section className="relative flex flex-col justify-end overflow-hidden bg-white dark:bg-[#020617] isolate transition-colors duration-500 pt-32 pb-20">
                 <div className="absolute inset-0 z-0 opacity-40 dark:opacity-50">
-                    <img
+                    <Image
                         src="/images/hero/lifestyle_1.png"
                         alt="Premium Superbike Lifestyle"
-                        className="w-full h-full object-cover"
+                        fill
+                        className="object-cover"
+                        priority
                     />
                     <div className="absolute inset-0 bg-gradient-to-b from-white via-white/40 to-white dark:from-[#020617] dark:via-[#020617]/40 dark:to-[#020617]" />
                 </div>
 
-                <div className="max-w-[1920px] mx-auto px-6 md:px-12 lg:px-20 relative z-10 w-full text-center pt-32 pb-12">
-                    <div className="space-y-12 md:space-y-16">
-                        <div className="space-y-10">
-                            <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-brand-primary/5 dark:bg-brand-primary/10 border border-brand-primary/10 dark:border-brand-primary/20 text-brand-primary dark:text-brand-primary rounded-full text-[11px] font-black uppercase tracking-[0.3em] mb-4">
+                <div className="max-w-[1440px] mx-auto px-6 md:px-12 lg:px-20 relative z-10 w-full text-center pt-12 pb-8">
+                    <div className="space-y-10 md:space-y-12">
+                        <div className="space-y-6">
+                            <div className="inline-flex items-center gap-3 px-6 py-3 bg-brand-primary/5 dark:bg-brand-primary/10 border border-brand-primary/10 dark:border-brand-primary/20 text-brand-primary dark:text-brand-primary rounded-full text-[11px] font-black uppercase tracking-[0.3em] mb-8 backdrop-blur-md shadow-sm">
                                 <span className="flex h-2 w-2 rounded-full bg-brand-primary animate-ping" />
                                 India’s Lowest EMI Guarantee
                             </div>
 
-                            <h1 className="text-6xl sm:text-8xl md:text-9xl lg:text-[8.5rem] font-black italic uppercase tracking-tighter leading-[0.85]">
+                            <h1 className="text-6xl sm:text-8xl md:text-9xl lg:text-[8.5rem] font-black italic uppercase tracking-tight md:tracking-tighter lg:tracking-[-0.04em] leading-[0.9]">
                                 <span className="text-slate-900 dark:text-white transition-colors">Your Next</span>{' '}
                                 <br />
                                 <span className="text-[#F4B000] drop-shadow-md transition-all">Legend Awaits.</span>
                             </h1>
 
-                            <p className="max-w-3xl mx-auto text-base md:text-xl text-slate-500 dark:text-slate-400 font-medium tracking-wide transition-colors leading-relaxed italic">
-                                Stop Negotiating. Start Riding. India&apos;s Best On-Road Price.{' '}
-                                <br className="hidden md:block" />
-                                Unified rates from verified dealers. Instant location-based quotes. The industry&apos;s
-                                lowest EMIs, unlocked.
+                            <p className="max-w-[60ch] mx-auto text-lg sm:text-xl font-medium text-slate-700 dark:text-slate-300 leading-relaxed tracking-wide drop-shadow-sm">
+                                Unified prices from verified dealers. Instant quotes. Lowest EMI guarantee.
                             </p>
                         </div>
 
                         {/* Search + Drive Cluster */}
-                        <div className="w-full max-w-4xl mx-auto space-y-10 relative z-50">
-                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                                <div className="md:col-span-8 group relative" ref={searchRef}>
-                                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-1.5 rounded-[2rem] shadow-2xl shadow-black/5 transition-all focus-within:shadow-brand-primary/20 focus-within:border-brand-primary/30">
-                                        <div className="flex items-center px-6 h-16 bg-slate-50 dark:bg-white/5 rounded-[1.75rem] transition-colors">
-                                            <Search
-                                                className="text-slate-400 group-focus-within:text-brand-primary transition-colors mr-4"
-                                                size={22}
-                                            />
-                                            <input
-                                                type="text"
-                                                value={searchQuery}
-                                                onChange={handleSearch}
-                                                placeholder="Model, Make or Category..."
-                                                className="w-full bg-transparent border-none outline-none text-slate-900 dark:text-white placeholder:text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] md:text-xs"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {showResults && searchResults.length > 0 && (
-                                        <div className="absolute top-full left-0 right-0 mt-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-3xl border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden shadow-3xl z-[100]">
-                                            <div className="max-h-[350px] overflow-y-auto custom-scrollbar p-4">
-                                                {searchResults.map(vehicle => (
-                                                    <Link
-                                                        key={vehicle.id}
-                                                        href={`/store/catalog?search=${vehicle.model}`}
-                                                        className="flex items-center gap-5 p-4 hover:bg-white dark:hover:bg-white/5 rounded-2xl transition-all group/item mb-1 last:mb-0"
-                                                    >
-                                                        <div className="w-14 h-14 bg-slate-100 dark:bg-white/10 rounded-2xl flex items-center justify-center text-xl font-black text-slate-400 dark:text-slate-500 group-hover/item:bg-brand-primary group-hover/item:text-black transition-all">
-                                                            {vehicle.make[0]}
-                                                        </div>
-                                                        <div className="text-left flex-1">
-                                                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wide group-hover/item:text-brand-primary transition-colors">
-                                                                {vehicle.displayName}
-                                                            </p>
-                                                            <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-1 font-bold">
-                                                                {vehicle.make} • {vehicle.variant}
-                                                            </p>
-                                                        </div>
-                                                        <ChevronRight
-                                                            size={16}
-                                                            className="text-slate-300 group-hover/item:translate-x-1 transition-transform"
-                                                        />
-                                                    </Link>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="md:col-span-4 h-full">
-                                    <Link
-                                        href="/store/catalog"
-                                        className="h-[76px] bg-slate-900 dark:bg-white text-white dark:text-black rounded-[2rem] flex items-center justify-center gap-3 px-8 hover:bg-brand-primary dark:hover:bg-brand-primary hover:text-black dark:hover:text-black transition-all shadow-xl group/btn overflow-hidden relative"
-                                    >
-                                        <span className="text-xs font-black uppercase tracking-[0.2em] relative z-10">
-                                            Explore Collection
-                                        </span>
-                                        <ArrowRight
-                                            size={18}
-                                            className="group-hover/btn:translate-x-2 transition-transform relative z-10"
-                                        />
-                                        <div className="absolute inset-0 bg-brand-primary translate-y-full group-hover/btn:translate-y-0 transition-transform duration-500" />
-                                    </Link>
-                                </div>
-                            </div>
-
-                            <div className="flex justify-center gap-12 opacity-40">
-                                {['Transparency', 'Speed', 'Precision'].map(item => (
-                                    <div key={item} className="flex items-center gap-2">
-                                        <Shield size={14} className="text-brand-primary" />
-                                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">
-                                            {item}
+                        <div className="w-full max-w-2xl mx-auto space-y-8 relative z-50">
+                            <div className="flex flex-col items-center gap-6">
+                                <Link
+                                    href="/store/catalog"
+                                    className="h-20 bg-slate-900 dark:bg-white text-white dark:text-black rounded-full flex items-center justify-center gap-4 px-12 hover:bg-brand-primary dark:hover:bg-brand-primary hover:text-black dark:hover:text-black transition-all shadow-[0_20px_40px_rgba(244,176,0,0.25)] hover:shadow-[0_24px_60px_rgba(244,176,0,0.35)] group/btn overflow-hidden relative min-w-[280px] sm:min-w-[320px]"
+                                >
+                                    <div className="relative z-10 flex items-center gap-3">
+                                        <Search size={22} className="opacity-80 relative -top-[1px]" />
+                                        <span className="text-lg font-black uppercase tracking-[0.15em] leading-none">
+                                            Search Bikes & Scooters
                                         </span>
                                     </div>
-                                ))}
+                                    <div className="absolute inset-0 bg-brand-primary translate-y-full group-hover/btn:translate-y-0 transition-transform duration-500" />
+                                </Link>
+
+
                             </div>
                         </div>
 
                         {/* Metrics Section */}
-                        <div className="w-full max-w-5xl mx-auto grid grid-cols-3 gap-4 md:gap-0 py-8 border-t border-slate-200 dark:border-white/5 transition-colors">
+                        <div className="w-full max-w-5xl mx-auto grid grid-cols-3 gap-4 md:gap-0 py-6 border-t border-slate-200/50 dark:border-white/5 transition-colors mt-8">
                             <div className="text-center group cursor-default space-y-1">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
                                     {'>'} Models
                                 </p>
-                                <p className="text-5xl font-black italic text-slate-900 dark:text-white tracking-tighter">
+                                <p className="text-4xl md:text-5xl font-black italic text-slate-900 dark:text-white tracking-tighter">
                                     500+
                                 </p>
                             </div>
-                            <div className="text-center group cursor-default space-y-1 border-x border-slate-200 dark:border-white/5">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                    {'>'} Savings
+                            <div className="text-center group cursor-default space-y-1 relative">
+                                <div className="hidden md:block absolute left-0 top-1/2 -translate-y-1/2 w-px h-8 bg-slate-200/70 dark:bg-white/10" />
+                                <div className="hidden md:block absolute right-0 top-1/2 -translate-y-1/2 w-px h-8 bg-slate-200/70 dark:bg-white/10" />
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                                    Avg savings vs market quote
                                 </p>
-                                <p className="text-5xl font-black italic text-slate-900 dark:text-white tracking-tighter">
+                                <p className="text-4xl md:text-5xl font-black italic text-slate-900 dark:text-white tracking-tighter">
                                     ₹12k+
                                 </p>
                             </div>
                             <div className="text-center group cursor-default space-y-1">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                    {'>'} Delivery
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                                    Fast delivery options available
                                 </p>
-                                <p className="text-5xl font-black italic text-slate-900 dark:text-white tracking-tighter underline decoration-brand-primary decoration-8 underline-offset-[-2px]">
+                                <p className="text-4xl md:text-5xl font-black italic text-slate-900 dark:text-white tracking-tighter underline decoration-brand-primary decoration-4 underline-offset-4">
                                     48h
                                 </p>
                             </div>
@@ -186,7 +95,7 @@ export function StoreDesktop() {
             </section>
 
             {/* Brand Directory */}
-            <section className="py-48 bg-white dark:bg-[#020617] transition-colors relative overflow-hidden">
+            <section className="py-16 md:py-24 lg:py-32 bg-white dark:bg-[#020617] transition-colors relative overflow-hidden">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-200 dark:via-white/10 to-transparent" />
 
                 <div className="max-w-[1400px] mx-auto px-6">
@@ -213,11 +122,14 @@ export function StoreDesktop() {
                     <div className="grid grid-cols-6 gap-6">
                         {['HONDA', 'TVS', 'ROYAL ENFIELD', 'BAJAJ', 'SUZUKI', 'YAMAHA'].map(brand => (
                             <Link key={brand} href={`/store/catalog?search=${brand.toLowerCase()}`}>
-                                <span
-                                    className={`font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-600 group-hover:text-brand-primary dark:group-hover:text-brand-primary group-hover:scale-110 transition-all z-10 text-xs`}
-                                >
-                                    {brand}
-                                </span>
+                                <div className="relative w-16 h-16 grayscale group-hover:grayscale-0 opacity-50 group-hover:opacity-100 transition-all duration-300">
+                                    <Image
+                                        src={`/images/brands/${brand.toLowerCase()}.svg`}
+                                        alt={brand}
+                                        fill
+                                        className="object-contain"
+                                    />
+                                </div>
                                 <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                 <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all">
                                     <Zap size={10} className="text-brand-primary" fill="currentColor" />
@@ -230,7 +142,7 @@ export function StoreDesktop() {
 
             {/* How it Works */}
             {/* How it Works */}
-            <section className="py-48 bg-slate-900 text-white relative overflow-hidden">
+            <section className="py-16 md:py-24 lg:py-32 bg-slate-900 text-white relative overflow-hidden">
                 <div className="absolute inset-0 opacity-10">
                     <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_120%,#FFD700,transparent_70%)]" />
                 </div>
@@ -306,7 +218,7 @@ export function StoreDesktop() {
             </section>
 
             {/* Featured Categories */}
-            <section className="py-48 bg-slate-50 dark:bg-[#020617] transition-colors">
+            <section className="py-16 md:py-24 lg:py-32 bg-slate-50 dark:bg-[#020617] transition-colors">
                 <div className="max-w-[1400px] mx-auto px-6">
                     <div className="text-center max-w-3xl mx-auto mb-32 space-y-6">
                         <p className="text-[12px] font-black text-brand-primary dark:text-brand-primary uppercase tracking-[0.5em] italic">
@@ -355,7 +267,7 @@ export function StoreDesktop() {
                             <Link
                                 key={i}
                                 href={cat.link}
-                                className="group relative h-[600px] overflow-hidden rounded-[4rem] border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 flex flex-col justify-end p-10 hover:shadow-3xl transition-all duration-700"
+                                className="group relative h-[520px] overflow-hidden rounded-[4rem] border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 flex flex-col justify-end p-10 hover:shadow-3xl transition-all duration-700"
                             >
                                 <div
                                     className={`absolute inset-0 bg-gradient-to-b ${cat.color} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700`}
@@ -381,17 +293,18 @@ export function StoreDesktop() {
                                 </div>
 
                                 <div className="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full flex items-center justify-center opacity-100 group-hover:scale-110 group-hover:-rotate-3 transition-all duration-1000 pointer-events-none">
-                                    <img
+                                    <Image
                                         src={cat.img}
                                         alt={cat.title}
-                                        className="w-[90%] h-auto object-contain filter drop-shadow-[0_50px_100px_rgba(0,0,0,0.1)] dark:drop-shadow-[0_20px_100px_rgba(255,255,255,0.05)]"
+                                        fill
+                                        className="object-contain filter drop-shadow-[0_50px_100px_rgba(0,0,0,0.1)] dark:drop-shadow-[0_20px_100px_rgba(255,255,255,0.05)]"
                                     />
                                 </div>
                             </Link>
                         ))}
                     </div>
                 </div>
-            </section>
-        </div>
+            </section >
+        </div >
     );
 }

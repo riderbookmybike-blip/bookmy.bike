@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import AdminDashboard from '@/components/dashboard/AdminDashboard';
 
-export default async function TenantDashboard({ params }: { params: { slug: string } }) {
+export default async function TenantDashboard(props: { params: Promise<{ slug: string }> }) {
+    const params = await props.params;
     const { slug } = params;
     const supabase = await createClient();
 
@@ -86,6 +88,10 @@ export default async function TenantDashboard({ params }: { params: { slug: stri
         SUPERADMIN: 'Super Admin',
     };
     const roleLabel = roleMap[effectiveMembership.role] || effectiveMembership.role;
+
+    if (slug === 'aums') {
+        return <AdminDashboard />;
+    }
 
     return (
         <div className="p-8">

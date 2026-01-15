@@ -12,7 +12,10 @@ export async function POST(req: NextRequest) {
         }
 
         const authKey = process.env.MSG91_AUTH_KEY;
-        const mobile = `91${phone}`;
+        // Normalize phone: remove non-digits, take last 10, prefix 91
+        const cleanedPhone = phone.replace(/\D/g, '');
+        const tenDigitPhone = cleanedPhone.slice(-10);
+        const mobile = `91${tenDigitPhone}`;
         let isVerified = false;
         let errorMessage = 'Invalid OTP';
 
@@ -32,24 +35,24 @@ export async function POST(req: NextRequest) {
             // logic reused from sync/route.ts
 
             // 1. Check if User Exists
-            const { data: existingUsers } = await adminClient.auth.admin.listUsers();
+            const { data: existingUsers } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 });
 
-            // Create synthesized email consistently
+            // Standardize on E.164 for Supabase Lookup
+            const e164Phone = `+${mobile}`; // +91XXXXXXXXXX
             const email = `${phone}@bookmy.bike`;
-            const formattedPhone = mobile;
 
             const foundUser = existingUsers?.users.find(
-                u => u.phone === formattedPhone || u.phone === phone || u.email === email
+                u => u.phone === e164Phone || u.phone === mobile || u.email === email
             );
 
             if (!foundUser) {
-                return NextResponse.json(
-                    {
-                        success: false,
-                        message: 'Account not found. Please create an account first.',
-                    },
-                    { status: 404 }
-                );
+                // Allow new users to proceed to signup (Deadlock Fix)
+                return NextResponse.json({
+                    success: true,
+                    isNew: true,
+                    session: null,
+                    message: 'Verification successful. Please complete signup.',
+                });
             }
 
             const userId = foundUser.id;

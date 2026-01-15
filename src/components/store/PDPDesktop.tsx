@@ -547,7 +547,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                 }}
             />
 
-            <div className="max-w-[1550px] mx-auto px-6 md:px-12 py-4 space-y-6 relative z-10">
+            <div className="max-w-[1440px] mx-auto px-6 md:px-12 py-4 space-y-6 relative z-10">
                 {/* 1. Context Navigation Row (Minimal) */}
                 <DynamicHeader
                     breadcrumb={
@@ -558,7 +558,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                 />
 
                 {/* 2. Main Flux Layout (Configurator | Sidebar Master) */}
-                <div className="flex gap-16 items-start">
+                <div className="flex gap-12 items-start">
                     {/* Left Column: Visuals & Selection Engine */}
                     <div className="flex-1 space-y-12 min-w-0">
                         <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
@@ -573,7 +573,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                             />
                         </div>
 
-                        <div className="bg-white dark:bg-slate-900/20 border border-slate-200 dark:border-white/5 rounded-[4rem] p-12 space-y-12 animate-in fade-in slide-in-from-bottom-12 duration-700 delay-100 shadow-2xl">
+                        <div className="bg-white dark:bg-slate-900/20 border border-slate-200 dark:border-white/5 rounded-[4rem] p-8 space-y-12 animate-in fade-in slide-in-from-bottom-12 duration-700 delay-100 shadow-2xl">
                             <TabNavigation
                                 activeTab={configTab}
                                 onTabChange={id => setConfigTab(id as any)}

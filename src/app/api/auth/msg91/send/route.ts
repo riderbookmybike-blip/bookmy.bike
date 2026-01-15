@@ -21,8 +21,11 @@ export async function POST(req: NextRequest) {
         }
 
         // 91 prefix is standard for India
+        // Normalize phone number: remove non-digits, take last 10 chars, add 91
         const cleanedPhone = phone.replace(/\D/g, '');
-        const mobile = `91${cleanedPhone}`;
+        // Take the last 10 digits to handle cases like 098..., +9198..., 9198...
+        const tenDigitPhone = cleanedPhone.slice(-10);
+        const mobile = `91${tenDigitPhone}`;
         const url = `https://control.msg91.com/api/v5/otp?template_id=${templateId}&mobile=${mobile}&authkey=${authKey}`;
 
         const res = await fetch(url, { method: 'POST' });

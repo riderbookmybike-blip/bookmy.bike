@@ -20,7 +20,7 @@ export default function BrandPage() {
         <div className="min-h-screen bg-white dark:bg-black transition-colors">
             <main>
                 {/* Hero Section */}
-                <section className="relative min-h-[60vh] flex flex-col pt-32 pb-16 overflow-hidden">
+                <section className="relative min-h-[60vh] flex flex-col pt-28 pb-16 overflow-hidden">
                     <div className="absolute inset-0 z-0">
                         <div className="absolute inset-0 bg-gradient-to-r from-white via-white/80 to-transparent dark:from-black dark:via-black/80 dark:to-transparent z-10" />
                         <div className="absolute inset-0 bg-slate-100 dark:bg-slate-900 transition-colors" />
@@ -112,7 +112,7 @@ export default function BrandPage() {
                 </section>
 
                 {/* Featured Models Section */}
-                <section className="py-24 md:py-40 bg-white dark:bg-black transition-colors">
+                <section className="py-24 md:py-32 bg-white dark:bg-black transition-colors">
                     <div className="max-w-[1400px] mx-auto px-6">
                         <div className="text-center mb-20 space-y-4">
                             <p className="text-[12px] font-black text-blue-600 dark:text-blue-500 uppercase tracking-[0.5em] italic">The Lineup</p>
@@ -162,7 +162,7 @@ export default function BrandPage() {
                 </section>
 
                 {/* CTA Section */}
-                <section className="py-24 md:py-40 relative overflow-hidden bg-slate-900 dark:bg-[#050505] text-white">
+                <section className="py-24 md:py-32 relative overflow-hidden bg-slate-900 dark:bg-[#050505] text-white">
                     <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-transparent pointer-events-none" />
                     <div className="max-w-5xl mx-auto px-6 text-center space-y-12 relative z-10">
                         <div className="space-y-6">

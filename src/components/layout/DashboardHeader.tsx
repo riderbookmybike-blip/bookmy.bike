@@ -87,7 +87,7 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
                     <div className="relative group/avatar pl-4 border-l border-slate-200 dark:border-white/10 ml-2">
                         <button className="flex items-center gap-3 p-1 rounded-2xl hover:bg-slate-50 dark:hover:bg-white/5 transition-all">
                             <div className="flex flex-col items-end hidden sm:flex min-w-[120px]">
-                                <span className="text-xs font-black text-slate-900 dark:text-white leading-none">
+                                <span className="text-xs font-black text-slate-900 dark:text-white leading-none uppercase">
                                     {mounted ? (userName || 'User') : '...'}
                                 </span>
                                 <div className="text-right mt-0.5">
