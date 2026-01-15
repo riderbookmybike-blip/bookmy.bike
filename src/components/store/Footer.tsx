@@ -94,6 +94,10 @@ export const Footer = () => {
                             © 2026 BookMyBike Technologies. Built for Excellence.
                         </p>
                     </div>
+
+                    <div className="flex items-center gap-6">
+                        <ViewportDebug />
+                    </div>
                 </div>
             </div>
         </footer>
