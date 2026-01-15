@@ -184,9 +184,9 @@ const ProductCard = ({
     return (
         <div
             key={v.id}
-            className="group bg-white dark:bg-slate-900/40 dark:backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden flex flex-col shadow-sm hover:shadow-2xl dark:hover:shadow-brand-primary/5 transition-all duration-500 dark:hover:border-white/20 min-h-[580px]"
+            className="group bg-white dark:bg-slate-900/40 dark:backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden flex flex-col shadow-sm hover:shadow-2xl dark:hover:shadow-brand-primary/5 transition-all duration-500 dark:hover:border-white/20 min-h-[580px] 2xl:min-h-[480px]"
         >
-            <div className="h-[300px] bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center relative p-4 border-b border-slate-100 dark:border-white/5 overflow-hidden group/card">
+            <div className="h-[300px] 2xl:h-[220px] bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center relative p-4 border-b border-slate-100 dark:border-white/5 overflow-hidden group/card">
                 <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-white/10 dark:to-black/30 z-0" />
 
                 <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
