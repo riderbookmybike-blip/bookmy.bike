@@ -69,7 +69,7 @@ const ProductCard = ({ v, viewMode, downpayment, tenure }: {
                         <div className="space-y-1.5">
                             <div className="flex items-center gap-4">
                                 <h3 className="text-3xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white leading-none">
-                                    {v.variant}
+                                    {v.model}
                                 </h3>
                                 <div className="flex items-center gap-2 bg-slate-100 dark:bg-white/10 px-2 py-1 rounded-md">
                                     <StarRating rating={v.rating || 4.5} size={10} />
@@ -79,7 +79,7 @@ const ProductCard = ({ v, viewMode, downpayment, tenure }: {
                                 </div>
                             </div>
                             <p className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-widest">
-                                {v.make} • {v.model} • <span className="text-brand-primary">{v.color || 'Standard Color'}</span>
+                                {v.variant} • <span className="text-brand-primary">{v.color || 'Standard Color'}</span>
                             </p>
                         </div>
                         <button
@@ -202,7 +202,7 @@ const ProductCard = ({ v, viewMode, downpayment, tenure }: {
                 <div className="relative z-10">
                     <div className="flex items-center justify-between">
                         <h3 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white leading-none">
-                            {v.variant}
+                            {v.model}
                         </h3>
                         <div className="flex items-center gap-2">
                             {v.availableColors && v.availableColors.length > 0 && (
@@ -224,7 +224,7 @@ const ProductCard = ({ v, viewMode, downpayment, tenure }: {
                         </div>
                     </div>
                     <p className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-widest mt-2">
-                        {v.make} • {v.model}
+                        {v.variant}
                     </p>
 
                     {/* Specs Grid (Grid View) */}
@@ -441,7 +441,7 @@ export function CatalogDesktop({ filters }: CatalogDesktopProps) {
     }, [filteredVehicles, sortBy, downpayment]);
 
     return (
-        <div className="max-w-[1920px] mx-auto px-6 md:px-12 lg:px-20 pt-32 pb-20 space-y-8 bg-white dark:bg-[#020617] transition-colors duration-500">
+        <div className="max-w-[1440px] mx-auto px-6 md:px-12 lg:px-12 pt-28 pb-20 space-y-8 bg-white dark:bg-[#020617] transition-colors duration-500">
             {/* Header Section - Spans Full Width */}
             {/* Header Section - Spans Full Width */}
             {/* Header Section */}
@@ -510,10 +510,10 @@ export function CatalogDesktop({ filters }: CatalogDesktopProps) {
                 </div>
             </div>
 
-            <div className={`flex gap-12 xl:gap-20 transition-all duration-700 ${viewMode === 'grid' ? 'max-w-full' : ''}`}>
+            <div className={`flex gap-8 xl:gap-20 transition-all duration-700 ${viewMode === 'grid' ? 'max-w-full' : ''}`}>
                 {/* Sidebar Filter - Left Column (Only List View) */}
                 {viewMode === 'list' && (
-                    <aside className="w-80 flex-shrink-0 space-y-8 sticky top-48 self-start pt-4 transition-all animate-in fade-in slide-in-from-left-4">
+                    <aside className="w-80 flex-shrink-0 space-y-8 sticky top-28 self-start pt-4 transition-all animate-in fade-in slide-in-from-left-4">
                         <div className="flex flex-col gap-10 p-8 bg-white/60 dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/5 rounded-[3rem] backdrop-blur-3xl shadow-2xl">
                             {/* EMI Calculator Accordion */}
                             <div className="space-y-4">

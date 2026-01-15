@@ -14,7 +14,7 @@ interface AppHeaderShellProps {
 
 /**
  * Canonical Header Shell for BookMyBike.
- * Locks the header height to 80px (h-20) and provides theme-aware separation.
+ * Compact preset defaults to 80px height with tighter content width.
  */
 export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
     left,
@@ -25,6 +25,14 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
     transparentAtTop = false,
     className = '',
 }) => {
+    // Quick rollback: switch to 'spacious' for the previous 96px height + wider container.
+    const headerPreset: 'compact' | 'spacious' = 'compact';
+    const heightClass = headerPreset === 'compact' ? 'h-20' : 'h-24';
+    const containerClass =
+        headerPreset === 'compact'
+            ? 'max-w-[1440px] px-4 md:px-8 lg:px-12'
+            : 'max-w-[1920px] px-6 md:px-12 lg:px-20';
+
     // Standard separation and background based on theme and scroll state
     const bgClass =
         transparentAtTop && !scrolled
@@ -34,9 +42,9 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
     return (
         <>
             <header
-                className={`sticky top-0 z-50 h-24 w-full flex items-center transition-all duration-300 ${bgClass} ${className}`}
+                className={`sticky top-0 z-50 w-full flex items-center transition-all duration-300 ${heightClass} ${bgClass} ${className}`}
             >
-                <div className="w-full max-w-[1920px] mx-auto px-6 md:px-12 lg:px-20 flex items-center justify-between h-full">
+                <div className={`w-full mx-auto flex items-center justify-between h-full ${containerClass}`}>
                     {/* Left Slot: Logo / Brand */}
                     <div className="flex-shrink-0 flex items-center h-full">{left}</div>
 

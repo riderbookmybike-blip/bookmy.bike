@@ -9,8 +9,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, message: 'Phone number required' }, { status: 400 });
         }
 
-        const formattedPhone = `91${phone}`; // Ensure E.164 format (India)
-        const email = `${phone}@bookmy.bike`; // Synthesized email for Supabase Auth
+        const formattedPhone = `91${phone}`; // Legacy numeric format
+        const e164Phone = `+91${phone}`; // E.164 format
+        const email = `${phone}@bookmy.bike`; // Synthesized email
         const password = `MSG91_${phone}_${process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(0, 8)}`; // Secure-ish password bypass
 
         // 1. Check if User Exists in Supabase Auth
@@ -19,6 +20,7 @@ export async function POST(req: NextRequest) {
         // Find user by phone OR synthesized email
         const foundUser = existingUsers?.users.find(
             u =>
+                u.phone === e164Phone ||
                 u.phone === formattedPhone ||
                 u.phone === phone || // Check unformatted too just in case
                 u.email === email

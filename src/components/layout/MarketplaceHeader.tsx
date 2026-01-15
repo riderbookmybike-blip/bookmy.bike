@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Heart } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useTheme } from '@/components/providers/ThemeProvider';
@@ -55,9 +55,18 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
 
     const isLight = mounted ? theme === 'light' : true; // Default to light on SSR for marketplace
 
+    // Quick rollback: set navPreset to 'wide'.
+    const navPreset: 'tight' | 'wide' = 'tight';
+    const navTextClass =
+        navPreset === 'tight'
+            ? 'text-[12px] font-black uppercase tracking-[0.18em]'
+            : 'text-[11px] font-black uppercase tracking-[0.3em]';
+    const navGapClass = navPreset === 'tight' ? 'gap-8 mr-4' : 'gap-14 mr-6';
+    const rightGapClass = navPreset === 'tight' ? 'gap-3 lg:gap-6' : 'gap-4 lg:gap-10';
+
     const navLinkClass = scrolled
-        ? 'text-[11px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-white transition-all duration-300'
-        : `${isLight ? 'text-slate-900/90 hover:text-blue-600' : 'text-white/90 hover:text-blue-400'} text-[11px] font-black uppercase tracking-[0.3em] transition-all duration-300 drop-shadow-md`;
+        ? `${navTextClass} text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-white transition-all duration-300`
+        : `${isLight ? 'text-slate-900/90 hover:text-blue-600' : 'text-white/90 hover:text-blue-400'} ${navTextClass} transition-all duration-300 drop-shadow-md`;
     const activeNavClass =
         'relative text-slate-900 dark:text-white after:absolute after:-bottom-2 after:left-0 after:right-0 after:h-[2px] after:bg-brand-primary after:rounded-full';
     const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
@@ -96,9 +105,9 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
             }
             center={null}
             right={
-                <div className="flex items-center gap-4 lg:gap-10">
+                <div className={`flex items-center ${rightGapClass}`}>
                     {/* Desktop Navigation */}
-                    <div className="hidden lg:flex items-center gap-14 mr-6">
+                    <div className={`hidden lg:flex items-center ${navGapClass}`}>
                         <Link href="/" className={`${navLinkClass} ${isActive('/') ? activeNavClass : ''}`}>
                             Home
                         </Link>
@@ -119,9 +128,15 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                         </Link>
                     </div>
 
-                    {/* Theme Toggle */}
-                    <div className="hidden md:block">
-                        <ThemeToggle />
+                    {/* Favorites & Theme Toggle */}
+                    <div className="hidden md:flex items-center gap-4">
+                        {/* Hide Wishlist on Home (/) if user is not logged in, or purely for aesthetic minimalism as requested */}
+                        {(!pathname.endsWith('/') || userName) && (
+                            <Link href="/store/wishlist" className="w-10 h-10 rounded-full bg-slate-100 dark:bg-white/5 hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors flex items-center justify-center group">
+                                <Heart size={18} className="group-hover:fill-current transition-all" />
+                            </Link>
+                        )}
+                        <ThemeToggle className="w-10 h-10" />
                     </div>
 
                     {/* User Dropdown */}
@@ -136,7 +151,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
 
                     {/* Mobile Theme Toggle (Visible only on mobile) */}
                     <div className="md:hidden">
-                        <ThemeToggle />
+                        <ThemeToggle className="w-10 h-10" />
                     </div>
                 </div>
             }

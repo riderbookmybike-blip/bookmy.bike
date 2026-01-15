@@ -2,27 +2,22 @@ import React from 'react';
 import Link from 'next/link';
 import { Logo } from '@/components/brand/Logo';
 import {
-    ShieldCheck,
-    Award,
-    CreditCard,
     Facebook,
     Twitter,
     Linkedin,
     Instagram,
-    Youtube,
     Heart,
-    ArrowRight,
     Newspaper,
 } from 'lucide-react';
 
 export const Footer = () => {
     return (
-        <footer className="bg-white dark:bg-[#020617] border-t border-slate-100 dark:border-white/5 pt-48 pb-24 transition-colors duration-500 overflow-hidden relative">
+        <footer className="bg-white dark:bg-[#020617] border-t border-slate-100 dark:border-white/5 pt-24 pb-12 transition-colors duration-500 overflow-hidden relative">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-brand-primary/20 to-transparent" />
 
-            <div className="max-w-[1920px] mx-auto px-6 md:px-12 lg:px-20 relative z-10">
+            <div className="max-w-[1440px] mx-auto px-6 md:px-12 lg:px-20 relative z-10">
                 {/* Top Section: Trust & Brand */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-20 mb-32">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 mb-20">
                     <div className="lg:col-span-4 space-y-8">
                         <Logo mode="auto" size={32} className="justify-start" />
                         <p className="text-base text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm font-medium italic">
@@ -38,7 +33,7 @@ export const Footer = () => {
                         </div>
                     </div>
 
-                    <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-5 gap-12">
+                    <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-5 gap-8">
                         <div className="space-y-8">
                             <FooterHeading>Collection</FooterHeading>
                             <FooterLinkList>
@@ -142,8 +137,8 @@ const FooterLink = ({
         <Link
             href={href}
             className={`text-xs font-bold transition-colors ${highlight
-                    ? 'text-brand-primary dark:text-brand-primary hover:text-yellow-600 dark:hover:text-yellow-400'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-brand-primary dark:hover:text-brand-primary'
+                ? 'text-brand-primary dark:text-brand-primary hover:text-yellow-600 dark:hover:text-yellow-400'
+                : 'text-slate-500 dark:text-slate-400 hover:text-brand-primary dark:hover:text-brand-primary'
                 }`}
         >
             {children}
@@ -160,21 +155,4 @@ const SocialIcon = ({ icon, href }: { icon: React.ReactNode; href: string }) => 
     </a>
 );
 
-const TrustBadge = ({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) => (
-    <div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10 transition-colors">
-        <div className="p-2 bg-brand-primary/10 dark:bg-brand-primary/10 rounded-lg">{icon}</div>
-        <div>
-            <h5 className="text-sm font-black text-slate-900 dark:text-slate-200 mb-1">{title}</h5>
-            <p className="text-xs text-slate-500 leading-relaxed font-medium">{desc}</p>
-        </div>
-    </div>
-);
 
-const LegalLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
-    <Link
-        href={href}
-        className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-300 transition-colors"
-    >
-        {children}
-    </Link>
-);

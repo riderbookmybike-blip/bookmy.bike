@@ -32,7 +32,7 @@ export async function generateMetadata(): Promise<Metadata> {
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { TenantProvider } from '@/lib/tenant/tenantContext';
 import MSG91Initializer from '@/components/auth/MSG91Initializer';
-import { FaviconProvider } from '@/hooks/useFavicon';
+// import { FaviconProvider } from '@/hooks/useFavicon';
 
 import { Suspense } from 'react';
 import AnalyticsProvider from '@/components/analytics/AnalyticsProvider';
@@ -53,7 +53,7 @@ export default function RootLayout({
                         <Suspense fallback={null}>
                             <AnalyticsProvider>
                                 <MSG91Initializer />
-                                <FaviconProvider />
+                                {/* <FaviconProvider /> */}
                                 {children}
                             </AnalyticsProvider>
                         </Suspense>

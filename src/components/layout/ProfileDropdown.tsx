@@ -145,7 +145,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                 </div>
                 <span
                     suppressHydrationWarning
-                    className={`text-[10px] font-black uppercase tracking-widest ${(mounted && theme === 'dark') ? 'text-white' : (scrolled || theme === 'light' ? 'text-slate-900 dark:text-white' : 'text-white')
+                    className={`text-[11px] font-black uppercase tracking-[0.18em] ${(mounted && theme === 'dark') ? 'text-white' : (scrolled || theme === 'light' ? 'text-slate-900 dark:text-white' : 'text-white')
                         }`}
                 >
                     Sign In
@@ -175,7 +175,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                 </div>
                 <span
                     suppressHydrationWarning
-                    className={`text-[10px] font-black uppercase tracking-[0.2em] ${(mounted && theme === 'dark') ? 'text-white' : (scrolled || theme === 'light' ? 'text-slate-900 dark:text-white' : 'text-white')
+                    className={`text-[11px] font-black uppercase tracking-[0.18em] ${(mounted && theme === 'dark') ? 'text-white' : (scrolled || theme === 'light' ? 'text-slate-900 dark:text-white' : 'text-white')
                         }`}
                 >
                     Hi, {displayName}

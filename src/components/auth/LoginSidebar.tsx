@@ -1,11 +1,13 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Session } from '@supabase/supabase-js';
-import { Phone, ArrowRight, Lock, User, X, AlertCircle, Globe, RefreshCcw } from 'lucide-react';
+import { Phone, ArrowRight, Lock, User, X, AlertCircle, Globe, RefreshCcw, ChevronRight, CheckCircle2, Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
+import { Logo } from '@/components/brand/Logo';
 import { useRouter } from 'next/navigation';
 import { useTenant, TenantType } from '@/lib/tenant/tenantContext';
 import { createClient } from '@/lib/supabase/client';
 import { getSmartPincode } from '@/lib/location/geocode';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface LoginSidebarProps {
     isOpen: boolean;
@@ -28,14 +30,19 @@ export default function LoginSidebar({
     const [step, setStep] = useState<'INITIAL' | 'SIGNUP' | 'OTP'>('INITIAL');
     const [authMethod, setAuthMethod] = useState<'PHONE' | 'EMAIL'>('PHONE');
     const [isMarketplace, setIsMarketplace] = useState(true);
+    const [isNewUser, setIsNewUser] = useState(false);
 
     const [identifier, setIdentifier] = useState('');
     const [otp, setOtp] = useState('');
     const [fullName, setFullName] = useState('');
+    const [showSignupPrompt, setShowSignupPrompt] = useState(false);
     const [loading, setLoading] = useState(false);
+
+    // Timer & Delayed Fallback
     const [resendTimer, setResendTimer] = useState(0);
-    const [showEmailPath, setShowEmailPath] = useState(false); // Enable email for Staff on Root or explicit selection
-    const [otpFallbackVisible, setOtpFallbackVisible] = useState(false);
+    const [securityTimer, setSecurityTimer] = useState(0);
+    const [showEmailFallback, setShowEmailFallback] = useState(false);
+
     const [redirectPath, setRedirectPath] = useState<string | null>(redirectTo ?? null);
     const [fallbackPath, setFallbackPath] = useState<string | null>(null);
     const [tenantSlug, setTenantSlug] = useState<string | null>(
@@ -48,173 +55,109 @@ export default function LoginSidebar({
 
     const [location, setLocation] = useState<{
         pincode: string | null;
-        city: string | null;
-        state: string | null;
-        country: string | null;
         latitude: number | null;
         longitude: number | null;
-        loading: boolean;
-        isServiceable: boolean | null;
     }>({
         pincode: null,
-        city: null,
-        state: null,
-        country: null,
         latitude: null,
         longitude: null,
-        loading: false,
-        isServiceable: null,
     });
 
-    const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
+    const inputRef = useRef<HTMLInputElement>(null);
 
-    const extractTenantSlug = (path?: string | null) => {
-        if (!path) return null;
-        const match = path.match(/^\/app\/([^/]+)/);
-        return match ? match[1] : null;
-    };
-
-    // Utility: Clear all Supabase auth cookies (zombie killer)
-    const clearAuthCookies = () => {
-        const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL?.split('.')[0].split('//')[1];
-        if (!projectRef) return;
-
-        const baseName = `sb-${projectRef}-auth-token`;
-        const isLocalhost =
-            window.location.hostname.includes('localhost') ||
-            window.location.hostname.startsWith('127.') ||
-            window.location.hostname.startsWith('0.0.0.0');
-        const domainAttr = isLocalhost ? '' : `; domain=.${ROOT_DOMAIN}`;
-        const secureAttr = isLocalhost ? '' : '; Secure';
-        const cookieOptions = `path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secureAttr}${domainAttr}`;
-
-        // Clear all potential cookie variants
-        ['', '.0', '.1', '.2'].forEach(suffix => {
-            document.cookie = `${baseName}${suffix}=; ${cookieOptions}`;
-        });
-    };
-
-    const detectLocation = () => {
-        if ('geolocation' in navigator) {
-            setLocation(prev => ({ ...prev, loading: true }));
-            navigator.geolocation.getCurrentPosition(
-                async position => {
-                    const { latitude, longitude } = position.coords;
-                    const result = await getSmartPincode(latitude, longitude, process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY);
-
-                    setLocation(prev => ({
-                        ...prev,
-                        loading: false,
-                        pincode: result.pincode,
-                        city: result.city,
-                        state: result.state || null,
-                        country: result.country || null,
-                        latitude: result.latitude || latitude,
-                        longitude: result.longitude || longitude,
-                        isServiceable: result.pincode ? result.pincode.startsWith('400') : null,
-                    }));
-                },
-                error => {
-                    console.error('Geolocation error:', error);
-                    setLocation(prev => ({ ...prev, loading: false }));
-                }
-            );
+    // AUTO-SUBMIT LOGIC: Trigger check when Phone is 10 digits
+    useEffect(() => {
+        if (step === 'INITIAL' && authMethod === 'PHONE') {
+            const cleanPhone = identifier.replace(/\D/g, '');
+            if (cleanPhone.length === 10 && !loading) {
+                handleCheckUser(cleanPhone);
+            }
         }
-    };
+    }, [identifier, step, authMethod]);
 
+    // OTP Timer
     useEffect(() => {
         let interval: NodeJS.Timeout;
-        if (resendTimer > 0) {
+        if (step === 'OTP') {
             interval = setInterval(() => {
-                setResendTimer(prev => prev - 1);
+                if (resendTimer > 0) setResendTimer(prev => prev - 1);
+                setSecurityTimer(prev => {
+                    const newVal = prev + 1;
+                    if (newVal >= 30) setShowEmailFallback(true);
+                    return newVal;
+                });
             }, 1000);
-        } else if (step === 'OTP' && resendTimer === 0) {
-            setOtpFallbackVisible(true);
         }
         return () => clearInterval(interval);
     }, [resendTimer, step]);
 
-
-    // 1. Immediate Redirect if already authenticated
-    useEffect(() => {
-        if (isOpen && (activeRole || userRole)) {
-            const effectiveRole = activeRole || userRole;
-            const pathname = window.location.pathname;
-            const searchParams = new URLSearchParams(window.location.search);
-            const nextParam = searchParams.get('next');
-            const target = nextParam || (effectiveRole !== 'BMB_USER' ? '/app/aums/dashboard' : '/');
-
-            // Only redirect if we aren't already at the target to avoid loops
-            if (pathname !== target) {
-                window.location.href = target;
-            }
-        }
-    }, [isOpen, activeRole, userRole]);
-
     useEffect(() => {
         if (isOpen) {
-            // DO NOT clear auth cookies automatically - that causes logout on sidebar open
-            // clearAuthCookies();
-
             setStep('INITIAL');
-
-            // Check if we're in a tenant path or on marketplace
+            setAuthMethod('PHONE');
+            // Determine Marketplace vs Tenant context
             const pathname = window.location.pathname;
             const searchParams = new URLSearchParams(window.location.search);
-            const nextParam = searchParams.get('next');
-            const tenantParam = searchParams.get('tenant');
-            const derivedSlug =
-                tenantSlugProp || tenantParam || extractTenantSlug(redirectTo) || extractTenantSlug(nextParam);
+            const derivedSlug = tenantSlugProp || searchParams.get('tenant') || (redirectTo?.match(/^\/app\/([^/]+)/)?.[1]);
             const isInTenantPath = pathname.startsWith('/app/') || !!derivedSlug;
-            const currentPath = `${pathname}${window.location.search || ''}`;
-            const safeFallback = pathname === '/login' ? '/' : currentPath;
 
             setIsMarketplace(!isInTenantPath);
-            setShowEmailPath(isInTenantPath); // Default to Email for tenant portals
             setTenantSlug(derivedSlug ?? null);
-            setRedirectPath(redirectTo ?? nextParam ?? null);
-            setFallbackPath(safeFallback);
+            setRedirectPath(redirectTo ?? searchParams.get('next') ?? null);
+            setFallbackPath(pathname === '/login' ? '/' : `${pathname}${window.location.search}`);
 
-            // Background location capture for marketplace only
-            if (!isInTenantPath) {
-                detectLocation();
-            }
+            if (!isInTenantPath) detectLocation();
 
             setIdentifier('');
             setOtp('');
             setFullName('');
             setLoginError(null);
+            setShowSignupPrompt(false);
             setIsStaff(false);
-            setOtpFallbackVisible(false);
-        }
-    }, [isOpen, ROOT_DOMAIN, redirectTo, tenantSlugProp]);
+            setShowEmailFallback(false);
+            setSecurityTimer(0);
 
-    const handleCheckUser = async () => {
-        if (!identifier || identifier.length < 3) return;
+            setTimeout(() => inputRef.current?.focus(), 300); // Slightly longer delay for slide-in
+        }
+    }, [isOpen, redirectTo, tenantSlugProp]);
+
+    const detectLocation = () => {
+        if ('geolocation' in navigator) {
+            navigator.geolocation.getCurrentPosition(async position => {
+                const { latitude, longitude } = position.coords;
+                const result = await getSmartPincode(latitude, longitude, process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY);
+                setLocation({
+                    pincode: result.pincode,
+                    latitude: result.latitude || latitude,
+                    longitude: result.longitude || longitude,
+                });
+            });
+        }
+    };
+
+    const handleCheckUser = async (overrideId?: string) => {
+        const idToCheck = overrideId || identifier;
+        const cleanId = idToCheck.trim();
+
+        if (!cleanId || cleanId.length < 3) return;
+
+        // Basic Length Check for Phone
+        const isEmail = cleanId.includes('@');
+        const phoneVal = !isEmail ? cleanId.replace(/\D/g, '') : '';
+
+        if (!isEmail && phoneVal.length !== 10) return; // Strict 10 digit check for auto-submit
 
         setLoading(true);
         setLoginError(null);
-
-        // Automatic Detection
-        const isEmail = identifier.includes('@');
-        const phoneVal = !isEmail ? identifier.replace(/\D/g, '') : '';
-
-        if (!isEmail && phoneVal.length < 10) {
-            setLoginError('Please enter a valid 10-digit mobile number.');
-            setLoading(false);
-            return;
-        }
-
-        const method = isEmail ? 'EMAIL' : 'PHONE';
-        setAuthMethod(method);
+        setAuthMethod(isEmail ? 'EMAIL' : 'PHONE');
 
         try {
             const checkRes = await fetch('/api/auth/check-membership', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    phone: method === 'PHONE' ? phoneVal : undefined,
-                    email: method === 'EMAIL' ? identifier : undefined,
+                    phone: !isEmail ? phoneVal : undefined,
+                    email: isEmail ? cleanId : undefined,
                     tenantId,
                     tenantSlug,
                 }),
@@ -227,44 +170,34 @@ export default function LoginSidebar({
                 return;
             }
 
-            // GUARD: Prevent email signup on Marketplace (Root Domain)
-            if (checkData.isNew && method === 'EMAIL' && !tenantId && !tenantSlug) {
-                setLoginError('Email signup is restricted to authorized staff. Please use a mobile number.');
+            if (checkData.isNew && isEmail && !tenantId) {
+                setLoginError('Public email signup is not supported. Use mobile.');
                 setLoading(false);
                 return;
             }
 
             if (checkData.role) setDetectedRole(checkData.role);
-
-            const staffDetected = (checkData.role && checkData.role !== 'BMB_USER') || !!tenantId || !!tenantSlug;
-            setIsStaff(staffDetected);
+            setIsStaff((checkData.role && checkData.role !== 'BMB_USER') || !!tenantId);
 
             if (checkData.isNew) {
-                if (tenantId || tenantSlug) {
-                    setLoginError('Account not found. Staff access requires manual pre-registration.');
-                    setLoading(false);
-                    return;
-                }
-                setStep('SIGNUP');
+                // setIsNewUser(true); // Don't set yet
+                // setStep('SIGNUP'); // Don't auto-transition
+                setShowSignupPrompt(true);
+                setLoginError('Account not found. Create a new account?');
             } else {
-                // Route everyone to OTP
-                if (method === 'EMAIL') {
-                    await handleSendEmailOtp(identifier);
-                } else {
-                    await handleSendPhoneOtp(phoneVal);
-                }
+                setIsNewUser(false);
+                if (isEmail) await handleSendEmailOtp(cleanId);
+                else await handleSendPhoneOtp(phoneVal);
             }
         } catch (err) {
-            console.error('Check User Error:', err);
+            console.error(err);
             setLoginError('Network Error.');
+        } finally {
             setLoading(false);
         }
     };
 
-    const handleSendPhoneOtp = async (phoneOverride?: string) => {
-        const phoneVal = phoneOverride || identifier.replace(/\D/g, '');
-        if (!phoneVal || phoneVal.length < 10) return;
-
+    const handleSendPhoneOtp = async (phoneVal: string) => {
         setLoading(true);
         try {
             const res = await fetch('/api/auth/msg91/send', {
@@ -276,13 +209,11 @@ export default function LoginSidebar({
             if (data.success) {
                 setStep('OTP');
                 setResendTimer(30);
-                setOtpFallbackVisible(false);
             } else {
-                setLoginError(data.message || 'Failed to send OTP.');
+                setLoginError(data.message);
             }
-        } catch (err) {
-            console.error('OTP Send Error:', err);
-            setLoginError('Connection failed.');
+        } catch {
+            setLoginError('Failed to send OTP.');
         } finally {
             setLoading(false);
         }
@@ -290,430 +221,411 @@ export default function LoginSidebar({
 
     const handleSendEmailOtp = async (email: string) => {
         setLoading(true);
-        try {
-            const supabase = createClient();
-            const { error } = await supabase.auth.signInWithOtp({
-                email,
-                options: {
-                    shouldCreateUser: false, // Ensure we don't implicitly create users here if not desired
-                },
-            });
-
-            if (error) {
-                setLoginError(error.message);
-                setLoading(false);
-                return;
-            }
-
+        const supabase = createClient();
+        const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+        setLoading(false);
+        if (error) setLoginError(error.message);
+        else {
             setStep('OTP');
             setResendTimer(30);
-            setOtpFallbackVisible(false);
-        } catch (err) {
-            console.error('Email OTP Send Error:', err);
-            setLoginError('Connection failed.');
-        } finally {
-            setLoading(false);
         }
     };
 
     const handleLogin = async () => {
         if (otp.length < 4) return;
         setLoading(true);
-        setLoginError(null);
-
+        const supabase = createClient();
         const phoneVal = identifier.replace(/\D/g, '');
 
         try {
-            const supabase = createClient();
+            let sessionData = null;
+            let userData = null;
 
             if (authMethod === 'PHONE') {
                 const res = await fetch('/api/auth/msg91/verify', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
                     body: JSON.stringify({ phone: phoneVal, otp }),
                 });
-
                 const verifyData = await res.json();
-                if (verifyData.success && verifyData.session) {
-                    await supabase.auth.setSession(verifyData.session);
-                    // Small delay to ensure cookies are fully written to browser storage
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    await completeLogin(verifyData.user, verifyData.session);
-                } else {
-                    setLoginError(verifyData.message || 'Verification failed.');
-                    setOtpFallbackVisible(true);
+                if (!verifyData.success) throw new Error(verifyData.message);
+
+                // If isNew, session will be null. This is expected. 
+                // We proceed to completeLogin which will trigger signup -> auto-login.
+                sessionData = verifyData.session;
+                userData = verifyData.user;
+
+                if (sessionData) {
+                    await supabase.auth.setSession(sessionData as any);
                 }
             } else {
-                // Email Verification
-                const { data, error } = await supabase.auth.verifyOtp({
-                    email: identifier,
-                    token: otp,
-                    type: 'email',
-                });
-
-                if (error) {
-                    setLoginError(error.message);
-                    setOtpFallbackVisible(true);
-                } else if (data.session) {
-                    await supabase.auth.setSession(data.session);
-                    if (data.user) {
-                        await completeLogin(data.user, data.session);
-                    }
-                }
+                const { data, error } = await supabase.auth.verifyOtp({ email: identifier, token: otp, type: 'email' });
+                if (error) throw error;
+                sessionData = data.session;
+                userData = data.user;
+                await supabase.auth.setSession(sessionData); // Ensure session is set
             }
-        } catch (err) {
-            console.error('OTP Verify Error:', err);
-            setLoginError('Service unavailable.');
+
+            // Sync & Complete
+            await completeLogin(userData, sessionData);
+
+        } catch (err: any) {
+            setLoginError(err.message || 'Verification failed.');
+            if (securityTimer > 15) setShowEmailFallback(true);
         } finally {
             setLoading(false);
         }
     };
 
-    interface AuthUser {
-        id: string;
-        phone?: string;
-        email?: string;
-        user_metadata?: {
-            full_name?: string;
-        };
-    }
+    const completeLogin = async (user: any, session: any) => {
+        const supabase = createClient();
 
-    const mapTenantType = (type?: string): TenantType => {
-        switch (type) {
-            case 'SUPER_ADMIN':
-                return 'AUMS';
-            case 'DEALER':
-                return 'DEALER';
-            case 'BANK':
-                return 'BANK';
-            default:
-                return 'MARKETPLACE';
+        // Sync User Data
+        const isEmail = authMethod === 'EMAIL';
+        const phoneVal = !isEmail ? identifier.replace(/\D/g, '') : '';
+
+        if (isNewUser) {
+            const signupRes = await fetch('/api/auth/signup', {
+                method: 'POST',
+                body: JSON.stringify({
+                    phone: phoneVal,
+                    email: isEmail ? identifier : '',
+                    displayName: fullName || 'Rider',
+                    pincode: location.pincode
+                })
+            });
+            const signupData = await signupRes.json();
+            if (!signupData.success) throw new Error(signupData.message || 'Signup failed');
+
+            // Capture session from signup response
+            if (signupData.session) {
+                await supabase.auth.setSession(signupData.session);
+                user = signupData.user; // Update user object for membership check below
+            }
+        } else if (authMethod === 'PHONE') {
+            await fetch('/api/auth/msg91/sync', {
+                method: 'POST',
+                body: JSON.stringify({ phone: phoneVal, pincode: isStaff ? null : location.pincode })
+            });
+        }
+
+        // Fetch Memberships & Redirect
+        const { data: memberships } = await supabase
+            .from('memberships')
+            .select('*, tenants!inner(*)')
+            .eq('user_id', user.id)
+            .eq('status', 'ACTIVE');
+
+        // Session Set
+        const finalRole = detectedRole || 'BMB_USER';
+        localStorage.setItem('user_role', finalRole);
+
+        // Tenant Context
+        if (memberships?.length && (tenantSlugProp || window.location.pathname.startsWith('/app/'))) {
+            const t = memberships[0].tenants;
+            localStorage.setItem('tenant_type', t.type === 'SUPER_ADMIN' ? 'AUMS' : t.type);
+            setTenantType(t.type);
+        } else {
+            localStorage.setItem('tenant_type', 'MARKETPLACE');
+            setTenantType('MARKETPLACE');
+        }
+
+        await new Promise(r => setTimeout(r, 800)); // Cookie Wait
+        window.location.href = redirectPath || fallbackPath || '/';
+        onClose();
+    };
+
+    /** Animation Variants for Sidebar */
+    const overlayVariants = {
+        hidden: { opacity: 0 },
+        visible: { opacity: 1 },
+        exit: { opacity: 0 }
+    };
+
+    // Sidebar Slide-In from Right
+    const sidebarVariants: any = {
+        hidden: { x: '100%', opacity: 0, scale: 0.95 },
+        visible: {
+            x: 0,
+            opacity: 1,
+            scale: 1,
+            transition: {
+                type: 'spring',
+                damping: 25,
+                stiffness: 300,
+                mass: 0.8
+            }
+        },
+        exit: {
+            x: '100%',
+            opacity: 0,
+            scale: 0.95,
+            transition: { duration: 0.2, ease: 'easeIn' }
         }
     };
 
-    const resolveRedirectPath = (memberships: any[] | null, nextPath: string | null, fallback: string | null) => {
-        const safeNext = nextPath && nextPath.startsWith('/') ? nextPath : null;
-        if (safeNext) {
-            if (safeNext === '/dashboard' || safeNext.startsWith('/dashboard/')) {
-                const slug = memberships?.[0]?.tenants?.slug;
-                return slug ? `/app/${slug}/dashboard` : '/';
-            }
-            return safeNext;
-        }
-        return fallback || '/';
+    const contentVariants = {
+        hidden: { opacity: 0, x: 20 },
+        visible: { opacity: 1, x: 0, transition: { delay: 0.2, duration: 0.4 } },
+        exit: { opacity: 0, x: -20 }
     };
-
-    const completeLogin = async (user: AuthUser, session?: Session) => {
-        const isEmail = identifier.includes('@');
-        const phoneVal = !isEmail ? identifier.replace(/\D/g, '') : user?.phone || '';
-        const emailVal = isEmail ? identifier : user?.email || '';
-
-        try {
-            let syncData: { role?: string; displayName?: string } = {};
-
-            if (step === 'SIGNUP') {
-                const syncRes = await fetch('/api/auth/signup', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        phone: phoneVal,
-                        email: emailVal,
-                        displayName: fullName || `Rider ${phoneVal?.slice(-4) || 'User'}`,
-                        pincode: location.pincode,
-                    }),
-                });
-                syncData = await syncRes.json();
-            } else if (authMethod === 'PHONE') {
-                const syncRes = await fetch('/api/auth/msg91/sync', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        phone: phoneVal,
-                        pincode: isStaff ? null : location.pincode,
-                    }),
-                });
-                syncData = await syncRes.json();
-            }
-
-            // Get user's tenant memberships to determine redirect
-            const supabase = createClient();
-            const { data: memberships } = await supabase
-                .from('memberships')
-                .select('*, tenants!inner(*)')
-                .eq('user_id', user.id)
-                .eq('status', 'ACTIVE');
-
-            const finalRole = detectedRole || syncData.role || 'BMB_USER';
-
-            localStorage.setItem(
-                'user_name',
-                syncData.displayName || fullName || user?.user_metadata?.full_name || 'User'
-            );
-            localStorage.setItem('user_role', finalRole);
-            localStorage.setItem('active_role', finalRole);
-
-            // Store tenant memberships for profile menu
-            if (memberships && memberships.length > 0) {
-                const primaryTenant = memberships[0].tenants;
-                localStorage.setItem('tenant_type', primaryTenant.type);
-                localStorage.setItem('tenant_id', primaryTenant.id);
-                localStorage.setItem('tenant_name', primaryTenant.name);
-                localStorage.setItem('user_memberships', JSON.stringify(memberships));
-                setTenantType(mapTenantType(primaryTenant.type));
-            } else {
-                localStorage.setItem('tenant_type', 'MARKETPLACE');
-                localStorage.removeItem('tenant_id');
-                localStorage.removeItem('tenant_name');
-                localStorage.removeItem('user_memberships');
-                setTenantType('MARKETPLACE');
-            }
-
-            // CRITICAL: Wait for cookies to be written before reload
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            // Navigate instead of reload to preserve session
-            window.location.href = resolveRedirectPath(memberships, redirectPath, fallbackPath);
-            onClose();
-        } catch (err) {
-            console.error('Final Sync Error:', err);
-            setLoginError('Session established, but profile sync failed.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex justify-end items-start pt-28 pr-6 overflow-hidden pointer-events-none">
-            <div
-                className="absolute inset-0 bg-black/10 backdrop-blur-[2px] animate-in fade-in duration-500 pointer-events-auto"
-                onClick={onClose}
-            />
-
-            <div className="relative w-full max-w-xl h-fit max-h-[calc(100vh-8rem)] bg-[#0B1121]/95 backdrop-blur-3xl shadow-[0_0_100px_rgba(0,0,0,0.5)] flex flex-col animate-in slide-in-from-right duration-700 border border-white/10 rounded-[48px] overflow-hidden pointer-events-auto">
-                <div className="absolute inset-0 pointer-events-none opacity-[0.05] grayscale bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
-
-                <div className="h-1.5 w-full bg-slate-100 dark:bg-white/5 overflow-hidden">
-                    <div
-                        className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-1000 ease-out"
-                        style={{ width: step === 'INITIAL' ? '40%' : '80%' }}
-                    />
-                </div>
-
-                <div className="p-10 pb-6 flex items-center justify-between">
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                            <div
-                                className={`h-0.5 w-12 rounded-full ${isStaff ? 'bg-brand-primary' : 'bg-white/20'}`}
-                            />
-                            <span
-                                className={`text-[10px] font-black uppercase tracking-[0.3em] italic ${isStaff ? 'text-brand-primary' : 'text-slate-400'}`}
-                            >
-                                {isStaff ? 'System Uplink' : 'Account Access'}
-                            </span>
-                        </div>
-                        <h2
-                            className="font-black uppercase tracking-tighter italic leading-[0.9] text-white text-4xl"
-                        >
-                            {step === 'INITIAL' || step === 'SIGNUP'
-                                ? isStaff
-                                    ? 'Initialize Access'
-                                    : step === 'SIGNUP'
-                                        ? 'Create Account'
-                                        : 'Welcome Back'
-                                : 'Verify Protocol'}
-                        </h2>
-                        <p className="text-xs text-slate-500 font-medium tracking-wide leading-relaxed max-w-[280px]">
-                            {step === 'INITIAL'
-                                ? isStaff
-                                    ? 'Staff authentication required for administrative access.'
-                                    : 'Enter your mobile number or corporate email to continue.'
-                                : step === 'SIGNUP'
-                                    ? 'Join the community of riders. Start your journey.'
-                                    : `Code sent to your ${authMethod === 'PHONE' ? 'mobile' : 'email'}.`}
-                        </p>
-                    </div>
-                    <button
+        <AnimatePresence>
+            {isOpen && (
+                <div className="fixed inset-0 z-[100] flex justify-end items-center overflow-hidden sm:p-4">
+                    {/* Backdrop */}
+                    <motion.div
+                        variants={overlayVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
                         onClick={onClose}
-                        className="p-3 hover:bg-white/10 rounded-2xl transition-all group active:scale-90 self-start"
+                        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+                    />
+
+                    {/* Sidebar Drawer */}
+                    <motion.div
+                        variants={sidebarVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
+                        className="relative w-full sm:w-[480px] h-full sm:h-[96vh] bg-white/95 dark:bg-[#0F172A]/95 backdrop-blur-3xl border border-white/20 shadow-2xl flex flex-col overflow-hidden sm:rounded-[2.5rem]"
                     >
-                        <X size={24} className="text-white/30 group-hover:text-white transition-colors" />
-                    </button>
-                </div>
+                        {/* Decorative Glows - Gold Only */}
+                        <div className="absolute top-[-20%] right-[-20%] w-[500px] h-[500px] bg-[#F4B000]/10 rounded-full blur-[100px] pointer-events-none" />
 
-                <div className="flex-1 overflow-y-auto px-10 space-y-8 pt-10">
-                    <div className="relative group overflow-hidden">
-                        <div className="absolute inset-0 bg-white/5 border border-white/10 rounded-[32px] transition-all group-focus-within:border-brand-primary group-focus-within:ring-[16px] group-focus-within:ring-brand-primary/5" />
+                        {/* Header */}
+                        <div className="flex-none p-8 flex items-center justify-between z-10">
+                            <div className="scale-90 origin-left">
+                                <Logo mode="auto" size={32} variant="full" />
+                            </div>
+                            <button
+                                onClick={onClose}
+                                className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors text-slate-500 dark:text-slate-400"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
 
-                        <div className="relative p-2">
-                            {loginError && (
-                                <div className="mx-2 mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
-                                    <AlertCircle size={18} className="text-red-500 shrink-0" />
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-red-500 italic">
-                                        {loginError}
-                                    </p>
-                                </div>
-                            )}
-
-                            {step === 'INITIAL' || step === 'SIGNUP' ? (
-                                <div className="space-y-4">
-                                    {step === 'SIGNUP' && (
-                                        <div className="flex items-center px-6 py-4 border-b border-white/10">
-                                            <User size={18} className="text-slate-400 mr-6" />
-                                            <input
-                                                type="text"
-                                                placeholder="Your Full Name"
-                                                value={fullName}
-                                                onChange={e => setFullName(e.target.value)}
-                                                className="bg-transparent border-none outline-none text-lg font-bold text-white w-full placeholder:text-slate-500"
-                                                autoFocus
-                                            />
-                                        </div>
-                                    )}
-                                    <div className="flex items-center px-6 py-4">
-                                        {authMethod === 'EMAIL' ||
-                                            (!isMarketplace && showEmailPath) ||
-                                            identifier.includes('@') ? (
-                                            <Globe size={18} className="text-slate-400 mr-6" />
-                                        ) : (
-                                            <Phone size={18} className="text-slate-400 mr-6" />
-                                        )}
-                                        <input
-                                            type="text"
-                                            placeholder={
-                                                showEmailPath || !isMarketplace
-                                                    ? 'Mobile or Corporate Email'
-                                                    : 'Enter Mobile Number'
-                                            }
-                                            value={identifier}
-                                            onChange={e => setIdentifier(e.target.value)}
-                                            className="bg-transparent border-none outline-none text-lg font-bold w-full text-white placeholder:text-slate-500"
-                                            autoFocus={step === 'INITIAL'}
-                                            disabled={step === 'SIGNUP'}
-                                        />
+                        {/* Main Content (Scrollable) */}
+                        <div className="flex-1 overflow-y-auto px-8 z-10 flex flex-col justify-center min-h-[400px]">
+                            <AnimatePresence mode="wait">
+                                <motion.div
+                                    key={step}
+                                    variants={contentVariants}
+                                    initial="hidden"
+                                    animate="visible"
+                                    exit="exit"
+                                    className="space-y-8"
+                                >
+                                    {/* HEADLINES */}
+                                    <div className="space-y-3">
+                                        <h2 className="text-4xl xs:text-5xl font-black italic uppercase tracking-tighter text-slate-900 dark:text-white leading-[0.9]">
+                                            {step === 'INITIAL'
+                                                ? 'Start Your'
+                                                : (step === 'SIGNUP' ? 'Create' : 'Verify')}
+                                            <span className="block text-[#F4B000]">
+                                                {step === 'INITIAL'
+                                                    ? 'Journey.'
+                                                    : (step === 'SIGNUP' ? 'Profile.' : 'Identity.')}
+                                            </span>
+                                        </h2>
+                                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 max-w-xs leading-relaxed">
+                                            {step === 'INITIAL' && "Enter your 10-digit mobile number to login or create a new account instantly."}
+                                            {step === 'SIGNUP' && (authMethod === 'EMAIL' ? 'Enter your name to complete signup.' : "We just need your name to set up your rider profile.")}
+                                            {step === 'OTP' && `Enter the verification code sent to ${identifier}.`}
+                                        </p>
                                     </div>
 
-                                    {/* Fallback Switcher for Initial Step if needed? No, logic handles types. 
-                                        But we can add a helper for Marketplace users. */}
-                                    {isMarketplace && step === 'INITIAL' && !showEmailPath && (
-                                        <div className="px-6 pb-4">
-                                            <button
-                                                onClick={() => setShowEmailPath(true)}
-                                                className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-brand-primary transition-colors"
-                                            >
-                                                Use Email ID
-                                            </button>
+                                    {/* ERROR */}
+                                    {loginError && (
+                                        <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 flex items-start gap-3">
+                                            <AlertCircle size={18} className="text-red-500 mt-0.5" />
+                                            <div>
+                                                <p className="text-xs font-black uppercase text-red-600 dark:text-red-400 tracking-wider">Authentication Error</p>
+                                                <p className="text-xs text-red-500 mt-1">{loginError}</p>
+                                            </div>
                                         </div>
                                     )}
-                                </div>
-                            ) : (
-                                <>
-                                    {step === 'OTP' && (
-                                        <>
-                                            <div className="flex items-center px-6 py-4">
-                                                <Lock size={18} className="text-slate-400 mr-6" />
+
+                                    {/* INPUTS */}
+                                    <div className="space-y-6">
+
+                                        {step === 'SIGNUP' && (
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Full Name</label>
                                                 <input
-                                                    type="tel"
-                                                    placeholder={
-                                                        authMethod === 'PHONE'
-                                                            ? 'Enter 4-digit code'
-                                                            : 'Enter 6-digit code'
-                                                    }
-                                                    value={otp}
-                                                    onChange={e =>
-                                                        setOtp(
-                                                            e.target.value
-                                                                .replace(/\D/g, '')
-                                                                .slice(0, authMethod === 'PHONE' ? 4 : 6)
-                                                        )
-                                                    }
-                                                    className="w-full bg-transparent text-lg font-bold tracking-widest focus:outline-none text-white placeholder:text-slate-500"
+                                                    type="text"
+                                                    value={fullName}
+                                                    onChange={e => setFullName(e.target.value)}
+                                                    placeholder="Your Name"
+                                                    className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl p-5 text-lg font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all"
                                                     autoFocus
                                                 />
                                             </div>
-                                            <div className="px-6 pb-4 text-center">
-                                                <span className="text-[10px] font-bold text-slate-400">
-                                                    Sent to {identifier}
-                                                </span>
+                                        )}
+
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+                                                {step === 'OTP' ? 'OTP Code' : (authMethod === 'EMAIL' ? 'Email Address' : 'Mobile Number')}
+                                            </label>
+                                            <div className="relative group">
+                                                <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-brand-primary transition-colors">
+                                                    {step === 'OTP' ? <Lock size={20} /> : (authMethod === 'EMAIL' ? <Globe size={20} /> : <Phone size={20} />)}
+                                                </div>
+                                                <input
+                                                    ref={inputRef}
+                                                    type={step === 'OTP' ? 'tel' : (authMethod === 'PHONE' ? 'tel' : 'text')}
+                                                    value={step === 'OTP' ? otp : identifier}
+                                                    onChange={e => {
+                                                        const val = e.target.value;
+                                                        if (step === 'OTP') {
+                                                            setOtp(val.replace(/\D/g, '').slice(0, 6)); // OTP usually 4-6
+                                                        } else {
+                                                            if (authMethod === 'PHONE') {
+                                                                // Numeric Only
+                                                                if (/^\d*$/.test(val) && val.length <= 10) {
+                                                                    setIdentifier(val);
+                                                                    setShowSignupPrompt(false);
+                                                                    setLoginError(null);
+                                                                }
+                                                            } else {
+                                                                setIdentifier(val);
+                                                                setShowSignupPrompt(false);
+                                                                setLoginError(null);
+                                                            }
+                                                        }
+                                                    }}
+                                                    placeholder={step === 'OTP' ? '• • • •' : '98765 43210'}
+                                                    maxLength={step === 'INITIAL' && authMethod === 'PHONE' ? 10 : undefined}
+                                                    disabled={step !== 'INITIAL' && step !== 'OTP'}
+                                                    className={`w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl py-5 pl-14 pr-5 text-xl font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all ${step === 'OTP' ? 'tracking-[0.5em]' : 'tracking-wide'}`}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            if (step === 'INITIAL' && authMethod === 'EMAIL') handleCheckUser();
+                                                            if (step === 'SIGNUP') authMethod === 'EMAIL' ? handleSendEmailOtp(identifier) : handleSendPhoneOtp(identifier);
+                                                            if (step === 'OTP') handleLogin();
+                                                        }
+                                                    }}
+                                                />
+                                                {loading && (
+                                                    <div className="absolute inset-y-0 right-5 flex items-center">
+                                                        <div className="w-5 h-5 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
+                                                    </div>
+                                                )}
                                             </div>
-                                        </>
-                                    )}
-                                </>
-                            )}
-                        </div>
-                    </div>
+                                        </div>
 
-                    <div className="space-y-6">
-                        <button
-                            onClick={() => {
-                                if (step === 'INITIAL') handleCheckUser();
-                                else if (step === 'SIGNUP')
-                                    authMethod === 'EMAIL' ? handleSendEmailOtp(identifier) : handleSendPhoneOtp();
-                                else if (step === 'OTP') handleLogin();
-                            }}
-                            disabled={loading || identifier.length < 3}
-                            className={`w-full py-6 rounded-[32px] text-xs font-black uppercase tracking-[0.3em] italic flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-[0.98] ${loading
-                                ? 'bg-brand-primary/50 cursor-wait'
-                                : 'bg-brand-primary text-black hover:bg-[#F4B000]'
-                                } disabled:opacity-50`}
-                        >
-                            {loading ? 'Processing...' : step === 'INITIAL' ? 'Continue' : 'Verify'}
-                            <ArrowRight size={16} />
-                        </button>
+                                        {/* Continue Button (For Steps other than INITIAL PHONE which auto-submits) */}
+                                        {(step !== 'INITIAL' || authMethod === 'EMAIL') && (
+                                            <button
+                                                onClick={() => {
+                                                    if (step === 'INITIAL') handleCheckUser();
+                                                    else if (step === 'SIGNUP') authMethod === 'EMAIL' ? handleSendEmailOtp(identifier) : handleSendPhoneOtp(identifier);
+                                                    else if (step === 'OTP') handleLogin();
+                                                }}
+                                                disabled={loading || (step === 'OTP' && otp.length < 4)}
+                                                className="w-full py-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl text-xs font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-xl disabled:opacity-50"
+                                            >
+                                                {step === 'SIGNUP' ? 'Complete Signup' : 'Proceed'} <ChevronRight size={16} />
+                                            </button>
+                                        )}
 
-                        {step === 'OTP' && (
-                            <div className="flex flex-col gap-3 items-center">
-                                <button
-                                    onClick={() =>
-                                        authMethod === 'EMAIL' ? handleSendEmailOtp(identifier) : handleSendPhoneOtp()
-                                    }
-                                    disabled={loading || resendTimer > 0}
-                                    className="text-[10px] font-black text-brand-primary disabled:text-slate-400 uppercase tracking-widest"
-                                >
-                                    {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend OTP'}
-                                </button>
-                                <button
-                                    onClick={() => setStep('INITIAL')}
-                                    className="text-[10px] font-black text-slate-400 hover:text-brand-primary uppercase tracking-widest"
-                                >
-                                    Use Different Account
-                                </button>
+                                        {/* Create Account Button (Explicit Prompt) */}
+                                        {step === 'INITIAL' && showSignupPrompt && (
+                                            <button
+                                                onClick={() => {
+                                                    setIsNewUser(true);
+                                                    setStep('SIGNUP');
+                                                    setShowSignupPrompt(false);
+                                                    setLoginError(null);
+                                                }}
+                                                className="w-full py-5 bg-[#F4B000] text-black rounded-2xl text-xs font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-xl animate-in fade-in slide-in-from-bottom-4"
+                                            >
+                                                Create Account <ArrowRight size={16} />
+                                            </button>
+                                        )}
 
-                                {otpFallbackVisible && (
-                                    <div className="pt-2 animate-in fade-in slide-in-from-bottom-2">
-                                        <button
-                                            onClick={() => {
-                                                const newMethod = authMethod === 'PHONE' ? 'EMAIL' : 'PHONE';
-                                                setAuthMethod(newMethod);
-                                                setShowEmailPath(newMethod === 'EMAIL');
-                                                setStep('INITIAL');
-                                                setIdentifier('');
-                                                setOtp('');
-                                            }}
-                                            className="flex items-center gap-2 text-[10px] font-black text-amber-500 hover:text-amber-600 uppercase tracking-widest p-2 bg-amber-500/10 rounded-lg"
-                                        >
-                                            <RefreshCcw size={12} />
-                                            {authMethod === 'PHONE'
-                                                ? 'Try Email Verification'
-                                                : 'Try Phone Verification'}
-                                        </button>
+                                        {/* OTP ACTIONS */}
+                                        {step === 'OTP' && (
+                                            <div className="flex justify-between items-center px-1">
+                                                <button onClick={() => setStep('INITIAL')} className="text-[10px] font-bold text-slate-500 hover:text-brand-primary transition-colors uppercase tracking-wider">
+                                                    Change Number
+                                                </button>
+                                                <button
+                                                    onClick={() => authMethod === 'EMAIL' ? handleSendEmailOtp(identifier) : handleSendPhoneOtp(identifier)}
+                                                    disabled={resendTimer > 0}
+                                                    className="text-[10px] font-bold text-slate-900 dark:text-white hover:text-brand-primary transition-colors uppercase tracking-wider disabled:opacity-50"
+                                                >
+                                                    {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend Code'}
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {/* Fallback to Email (Delayed) */}
+                                        {showEmailFallback && step === 'OTP' && (
+                                            <div className="pt-4 flex justify-center">
+                                                <button
+                                                    onClick={() => {
+                                                        const n = authMethod === 'PHONE' ? 'EMAIL' : 'PHONE';
+                                                        setAuthMethod(n);
+                                                        setStep('INITIAL');
+                                                        setIdentifier('');
+                                                        setOtp('');
+                                                        setTimeout(() => inputRef.current?.focus(), 100);
+                                                    }}
+                                                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+                                                >
+                                                    <RefreshCcw size={12} />
+                                                    Try {authMethod === 'PHONE' ? 'Email' : 'Phone'} Login
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                </div>
 
-                <div className="p-10 border-t border-white/5 flex items-center justify-between opacity-50 mt-auto">
-                    <div className="flex items-center gap-3">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 italic">
-                            Secure Endpoint
-                        </span>
-                    </div>
+                                    {/* New User Prompt */}
+                                    {step === 'INITIAL' && (
+                                        <div className="pt-2 text-center">
+                                            <p className="text-xs text-slate-500 font-medium">
+                                                New here?{' '}
+                                                <span className="text-brand-primary font-bold cursor-default">
+                                                    Sign up is free.
+                                                </span>
+                                            </p>
+                                            <p className="text-[10px] text-slate-400 mt-1">
+                                                Just enter your number above.
+                                            </p>
+                                        </div>
+                                    )}
+                                </motion.div>
+                            </AnimatePresence>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex-none p-8 z-10 border-t border-slate-100 dark:border-white/5 space-y-6">
+                            {/* Socials */}
+                            <div className="flex justify-center gap-6">
+                                {[Facebook, Twitter, Instagram, Linkedin].map((Icon, i) => (
+                                    <a key={i} href="#" className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 hover:bg-brand-primary hover:text-black transition-all">
+                                        <Icon size={14} />
+                                    </a>
+                                ))}
+                            </div>
+
+                            {/* Links */}
+                            <div className="flex justify-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                                <a href="#" className="hover:text-brand-primary transition-colors">Terms</a>
+                                <span className="text-slate-200 dark:text-slate-800">•</span>
+                                <a href="#" className="hover:text-brand-primary transition-colors">Privacy</a>
+                                <span className="text-slate-200 dark:text-slate-800">•</span>
+                                <a href="#" className="hover:text-brand-primary transition-colors">Support</a>
+                            </div>
+                        </div>
+
+                    </motion.div>
                 </div>
-            </div>
-        </div>
+            )}
+        </AnimatePresence>
     );
 }
