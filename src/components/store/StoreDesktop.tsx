@@ -21,7 +21,7 @@ export function StoreDesktop({ variant = 'default' }: StoreDesktopProps) {
         <div className="flex flex-col pb-40 transition-colors duration-300">
             {/* Premium Photography Hero Section */}
             <section
-                className={`relative flex flex-col justify-end overflow-hidden bg-white dark:bg-[#020617] isolate transition-colors duration-500 ${isTv ? 'pt-20 pb-12' : 'pt-32 pb-20'}`}
+                className={`relative flex flex-col justify-end overflow-hidden bg-white dark:bg-[#020617] isolate transition-colors duration-500 ${isTv ? 'pt-20 pb-12' : 'pt-24 pb-12'}`}
             >
                 <div className="absolute inset-0 z-0 opacity-40 dark:opacity-50">
                     <Image
@@ -35,9 +35,9 @@ export function StoreDesktop({ variant = 'default' }: StoreDesktopProps) {
                 </div>
 
                 <div
-                    className={`mx-auto relative z-10 w-full text-center max-w-[1440px] px-6 md:px-12 lg:px-20 ${isTv ? 'pt-6 pb-4' : 'pt-12 pb-8'}`}
+                    className={`mx-auto relative z-10 w-full text-center max-w-[1440px] px-6 md:px-12 lg:px-20 ${isTv ? 'pt-6 pb-4' : 'pt-8 pb-6'}`}
                 >
-                    <div className={isTv ? 'space-y-8' : 'space-y-10 md:space-y-12'}>
+                    <div className={isTv ? 'space-y-6' : 'space-y-8'}>
                         <div className={isTv ? 'space-y-4' : 'space-y-6'}>
                             <div
                                 className={`inline-flex items-center gap-3 px-6 py-3 bg-brand-primary/5 dark:bg-brand-primary/10 border border-brand-primary/10 dark:border-brand-primary/20 text-brand-primary dark:text-brand-primary rounded-full text-[11px] font-black uppercase tracking-[0.3em] backdrop-blur-md shadow-sm ${isTv ? 'mb-6' : 'mb-8'}`}
