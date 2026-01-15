@@ -916,7 +916,7 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
                             className={`grid ${
                                 viewMode === 'list'
                                     ? 'grid-cols-1 w-full gap-6'
-                                    : `grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 ${isTv ? 'gap-10 xl:gap-16' : 'gap-8 xl:gap-12'} w-full`
+                                    : `grid-cols-1 md:grid-cols-2 lg:grid-cols-3 ${isTv ? 'gap-10 xl:gap-16' : 'gap-8 xl:gap-12'} w-full`
                             }`}
                         >
                             {/* Results Grid */}
