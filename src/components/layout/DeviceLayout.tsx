@@ -42,5 +42,14 @@ export const DeviceLayout: React.FC<DeviceLayoutProps> = ({ mobile, tablet, desk
     }
 
     // Default to Mobile
-    return <>{mobile}</>;
+    return (
+        <>
+            {/* DEBUG OVERLAY: REMOVE AFTER DIAGNOSIS */}
+            <div className="fixed top-0 left-0 bg-black/80 text-white p-2 z-[9999] text-xs font-mono border border-white/20">
+                VP: {width}x{viewport.height} | Mode:{' '}
+                {isTv ? 'TV' : width >= 1024 ? 'Desktop' : width >= 768 ? 'Tablet' : 'Mobile'}
+            </div>
+            {mobile}
+        </>
+    );
 };
