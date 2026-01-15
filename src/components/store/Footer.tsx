@@ -94,17 +94,8 @@ export const Footer = () => {
                             © 2026 BookMyBike Technologies. Built for Excellence.
                         </p>
                     </div>
-
-                    <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-600 font-medium uppercase tracking-widest">
-                            <span>Engineered with</span>
-                            <Heart size={10} className="text-brand-primary fill-brand-primary" />
-                            <span>in India</span>
-                        </div>
-                    </div>
                 </div>
             </div>
-            <ViewportDebug />
         </footer>
     );
 };
@@ -113,6 +104,7 @@ export const Footer = () => {
 const ViewportDebug = () => {
     const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
     const [mounted, setMounted] = React.useState(false);
+    const [time] = React.useState(new Date().toLocaleTimeString());
 
     React.useEffect(() => {
         setMounted(true);
@@ -125,12 +117,39 @@ const ViewportDebug = () => {
     if (!mounted) return null;
 
     const { width } = dimensions;
-    const mode = width >= 1536 ? 'TV' : width >= 1024 ? 'DESKTOP' : width >= 768 ? 'TABLET' : 'MOBILE';
+    const mode = width >= 1536 ? 'TV (4K/2K)' : width >= 1024 ? 'DESKTOP' : width >= 768 ? 'TABLET' : 'MOBILE';
+    const commitSha = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA || 'DEV';
 
     return (
-        <div className="absolute bottom-1 right-2 z-50 pointer-events-none opacity-30 hover:opacity-100 transition-opacity">
-            <div className="text-[10px] font-mono text-slate-400 bg-white/80 dark:bg-black/80 px-2 py-1 rounded border border-slate-200 dark:border-white/10">
-                VP: {width}x{dimensions.height} | {mode}
+        <div className="group relative cursor-help">
+            <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-600 font-medium uppercase tracking-widest hover:text-brand-primary transition-colors">
+                <span>Engineered with</span>
+                <Heart size={10} className="text-brand-primary fill-brand-primary animate-pulse" />
+                <span>in India</span>
+            </div>
+
+            <div className="absolute bottom-full right-0 mb-3 w-64 p-3 bg-slate-900/95 text-white text-[10px] font-mono rounded-lg border border-white/10 shadow-xl opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all pointer-events-none z-50 backdrop-blur-md">
+                <div className="space-y-1.5">
+                    <div className="flex justify-between border-b border-white/10 pb-1">
+                        <span className="text-slate-400">Viewport</span>
+                        <span className="font-bold text-brand-primary">
+                            {width}x{dimensions.height}
+                        </span>
+                    </div>
+                    <div className="flex justify-between border-b border-white/10 pb-1">
+                        <span className="text-slate-400">Mode</span>
+                        <span className="font-bold">{mode}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-white/10 pb-1">
+                        <span className="text-slate-400">Build</span>
+                        <span className="font-mono text-xs">{commitSha.slice(0, 7)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-slate-400">Loaded</span>
+                        <span>{time}</span>
+                    </div>
+                </div>
+                <div className="absolute -bottom-1 right-8 w-2 h-2 bg-slate-900 rotate-45 border-r border-b border-white/10"></div>
             </div>
         </div>
     );
