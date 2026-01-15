@@ -35,7 +35,7 @@ export function StoreDesktop({ variant = 'default' }: StoreDesktopProps) {
                 </div>
 
                 <div
-                    className={`mx-auto px-6 md:px-12 lg:px-20 relative z-10 w-full text-center ${isTv ? 'max-w-[1680px] pt-6 pb-4' : 'max-w-[1440px] pt-12 pb-8'}`}
+                    className={`mx-auto relative z-10 w-full text-center ${isTv ? 'max-w-[1800px] px-24 xl:px-44 pt-6 pb-4' : 'max-w-[1440px] px-6 md:px-12 lg:px-20 pt-12 pb-8'}`}
                 >
                     <div className={isTv ? 'space-y-8' : 'space-y-10 md:space-y-12'}>
                         <div className={isTv ? 'space-y-4' : 'space-y-6'}>
@@ -47,7 +47,7 @@ export function StoreDesktop({ variant = 'default' }: StoreDesktopProps) {
                             </div>
 
                             <h1
-                                className={`${isTv ? 'text-5xl sm:text-6xl md:text-7xl lg:text-[5.5rem] xl:text-[6rem] 2xl:text-[6.5rem] pb-2' : 'text-6xl sm:text-7xl md:text-8xl lg:text-8xl xl:text-[7rem] 2xl:text-[7.5rem] pb-4'} font-black italic uppercase tracking-tight md:tracking-tighter lg:tracking-[-0.04em] leading-none xl:leading-[0.9] 2xl:leading-tight`}
+                                className={`${isTv ? 'text-6xl sm:text-7xl md:text-8xl lg:text-8xl xl:text-[7rem] pb-4' : 'text-6xl sm:text-7xl md:text-8xl lg:text-8xl xl:text-[7rem] 2xl:text-[7.5rem] pb-4'} font-black italic uppercase tracking-tight md:tracking-tighter lg:tracking-[-0.04em] leading-none xl:leading-[0.9] 2xl:leading-tight`}
                             >
                                 <span className="text-slate-900 dark:text-white transition-colors">Your Next</span>{' '}
                                 <br />
