@@ -32,7 +32,7 @@ export const DeviceLayout: React.FC<DeviceLayoutProps> = ({ mobile, tablet, desk
         return <>{tv}</>;
     }
 
-    if (width >= 950) {
+    if (width >= 1024) {
         return <>{desktop}</>;
     }
 

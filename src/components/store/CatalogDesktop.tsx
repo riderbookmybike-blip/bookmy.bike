@@ -489,15 +489,13 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-black transition-colors duration-500 font-sans">
             {/* Main Content Area - Visual Rest (No Container Box) */}
-            <main className={`flex-1 mx-auto w-full max-w-[1440px] px-6 md:px-12 lg:px-20 ${isTv ? 'py-4' : 'py-8'}`}>
+            <main className="flex-1 mx-auto w-full max-w-[1440px] px-6 md:px-12 lg:px-20 py-12">
                 {/* Header Section - Aligned with Global Header */}
-                <header className={`${isTv ? 'mb-6' : 'mb-12'} px-2`}>
+                <header className="mb-12 px-2">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div className="space-y-2">
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Catalog</p>
-                            <h1
-                                className={`${isTv ? 'text-3xl md:text-4xl' : 'text-4xl md:text-5xl'} font-black text-slate-900 dark:text-white tracking-tighter italic`}
-                            >
+                            <h1 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tighter italic">
                                 {results.length} Results
                             </h1>
                         </div>
@@ -913,8 +911,8 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
                         <div
                             className={`grid ${
                                 viewMode === 'list'
-                                    ? 'grid-cols-1 w-full gap-6'
-                                    : `grid-cols-1 md:grid-cols-2 min-[900px]:grid-cols-3 ${isTv ? 'gap-10 xl:gap-16' : 'gap-8 xl:gap-12'} w-full`
+                                    ? 'grid-cols-1 w-full gap-8'
+                                    : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 xl:gap-12 w-full'
                             }`}
                         >
                             {/* Results Grid */}
