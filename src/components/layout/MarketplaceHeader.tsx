@@ -23,6 +23,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const pathname = usePathname();
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setMounted(true);
         const handleScroll = () => {
             setScrolled(window.scrollY > 100);
@@ -35,7 +36,12 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                 data: { user },
             } = await supabase.auth.getUser();
             const fallbackName = typeof window !== 'undefined' ? localStorage.getItem('user_name') : null;
-            const name = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || fallbackName || null;
+            const name =
+                user?.user_metadata?.full_name ||
+                user?.user_metadata?.name ||
+                user?.email?.split('@')[0] ||
+                fallbackName ||
+                null;
             setUserName(name);
         };
 
@@ -44,7 +50,11 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         const { data } = supabase.auth.onAuthStateChange((_event, session) => {
             const fallbackName = typeof window !== 'undefined' ? localStorage.getItem('user_name') : null;
             const name =
-                session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || session?.user?.email?.split('@')[0] || fallbackName || null;
+                session?.user?.user_metadata?.full_name ||
+                session?.user?.user_metadata?.name ||
+                session?.user?.email?.split('@')[0] ||
+                fallbackName ||
+                null;
             setUserName(name);
         });
         return () => {
@@ -74,8 +84,8 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const mobileMenuButtonClass = scrolled
         ? 'text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/5'
         : isLight
-            ? 'text-slate-900 hover:bg-slate-900/5'
-            : 'text-white hover:bg-white/10';
+          ? 'text-slate-900 hover:bg-slate-900/5'
+          : 'text-white hover:bg-white/10';
 
     const handleSignOut = async () => {
         const supabase = createClient();
@@ -90,8 +100,6 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         setUserName(null);
         window.location.reload();
     };
-
-
 
     return (
         <AppHeaderShell
@@ -132,15 +140,20 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                     <div className="hidden md:flex items-center gap-4">
                         {/* Hide Wishlist on Home (/) if user is not logged in, or purely for aesthetic minimalism as requested */}
                         {(!pathname.endsWith('/') || userName) && (
-                            <Link href="/store/wishlist" className="w-10 h-10 rounded-full bg-slate-100 dark:bg-white/5 hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors flex items-center justify-center group">
+                            <Link
+                                href="/store/wishlist"
+                                className="w-10 h-10 rounded-full bg-slate-100 dark:bg-white/5 hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors flex items-center justify-center group"
+                            >
                                 <Heart size={18} className="group-hover:fill-current transition-all" />
                             </Link>
                         )}
                         <ThemeToggle className="w-10 h-10" />
                     </div>
 
-                    {/* User Dropdown */}
-                    <ProfileDropdown onLoginClick={onLoginClick} scrolled={scrolled} theme={theme} />
+                    {/* User Dropdown - Hidden on Mobile */}
+                    <div className="hidden md:block">
+                        <ProfileDropdown onLoginClick={onLoginClick} scrolled={scrolled} theme={theme} />
+                    </div>
 
                     <button
                         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -148,11 +161,6 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                     >
                         {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
                     </button>
-
-                    {/* Mobile Theme Toggle (Visible only on mobile) */}
-                    <div className="md:hidden">
-                        <ThemeToggle className="w-10 h-10" />
-                    </div>
                 </div>
             }
         >
@@ -200,14 +208,18 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                         <div className="pt-6 mt-6 border-t border-slate-200 dark:border-white/10">
                             {userName ? (
                                 <div className="space-y-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-12 h-12 rounded-full bg-brand-primary flex items-center justify-center text-black font-bold">
-                                            {(userName?.[0] || 'U').toUpperCase()}
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-12 h-12 rounded-full bg-brand-primary flex items-center justify-center text-black font-bold">
+                                                {(userName?.[0] || 'U').toUpperCase()}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-slate-900 dark:text-white">{userName}</p>
+                                                <p className="text-xs text-slate-500">Member</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="font-bold text-slate-900 dark:text-white">{userName}</p>
-                                            <p className="text-xs text-slate-500">Member</p>
-                                        </div>
+                                        {/* Mobile Menu Theme Toggle */}
+                                        <ThemeToggle className="w-10 h-10" />
                                     </div>
                                     <button
                                         onClick={handleSignOut}
@@ -217,15 +229,21 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                                     </button>
                                 </div>
                             ) : (
-                                <button
-                                    onClick={() => {
-                                        onLoginClick();
-                                        setIsMobileMenuOpen(false);
-                                    }}
-                                    className="w-full py-4 bg-brand-primary text-black rounded-xl text-sm font-black uppercase tracking-widest hover:bg-[#F4B000] transition-colors"
-                                >
-                                    Login / Sign Up
-                                </button>
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm font-medium text-slate-500">Appearance</span>
+                                        <ThemeToggle className="w-10 h-10" />
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            onLoginClick();
+                                            setIsMobileMenuOpen(false);
+                                        }}
+                                        className="w-full py-4 bg-brand-primary text-black rounded-xl text-sm font-black uppercase tracking-widest hover:bg-[#F4B000] transition-colors"
+                                    >
+                                        Login / Sign Up
+                                    </button>
+                                </div>
                             )}
                         </div>
                     </nav>
