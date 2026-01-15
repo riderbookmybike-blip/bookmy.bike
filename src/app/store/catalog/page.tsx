@@ -24,9 +24,12 @@ const CatalogSkeleton = () => (
         </div>
 
         {/* Grid Skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                <div key={i} className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden flex flex-col h-[520px]">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                <div
+                    key={i}
+                    className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden flex flex-col h-[520px]"
+                >
                     <div className="aspect-[16/10] bg-slate-50 dark:bg-white/5 animate-pulse relative border-b border-slate-100 dark:border-white/5">
                         <div className="absolute inset-0 flex items-center justify-center">
                             <div className="w-32 h-32 bg-slate-200 dark:bg-white/5 rounded-full opacity-50" />
@@ -49,7 +52,9 @@ const CatalogSkeleton = () => (
                             </div>
 
                             <div className="flex gap-2">
-                                {[1, 2, 3].map(d => <div key={d} className="w-4 h-4 rounded-full bg-slate-200 dark:bg-white/5" />)}
+                                {[1, 2, 3].map(d => (
+                                    <div key={d} className="w-4 h-4 rounded-full bg-slate-200 dark:bg-white/5" />
+                                ))}
                             </div>
                         </div>
                         <div className="mt-auto pt-6 border-t border-slate-100 dark:border-white/5 space-y-4">
@@ -85,9 +90,7 @@ function CatalogContent() {
 
 export default function CatalogPage() {
     return (
-        <Suspense
-            fallback={<CatalogSkeleton />}
-        >
+        <Suspense fallback={<CatalogSkeleton />}>
             <CatalogContent />
         </Suspense>
     );

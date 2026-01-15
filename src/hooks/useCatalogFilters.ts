@@ -4,18 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { ProductVariant } from '@/types/productMaster';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 
-export const brands = [
-    'HONDA',
-    'TVS',
-    'ROYAL ENFIELD',
-    'BAJAJ',
-    'SUZUKI',
-    'YAMAHA',
-    'KTM',
-    'HERO',
-    'TRIUMPH',
-    'APRILIA',
-];
+import { BRANDS as brands } from '@/config/market';
 
 export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
     const searchParams = useSearchParams();
@@ -65,7 +54,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
     const [selectedSeatHeight, setSelectedSeatHeight] = useState<string[]>([]);
     const [selectedFinishes, setSelectedFinishes] = useState<string[]>([]);
     const [maxPrice, setMaxPrice] = useState<number>(1000000); // 10 Lakh default
-    const [maxEMI, setMaxEMI] = useState<number>(20000);     // 20k default
+    const [maxEMI, setMaxEMI] = useState<number>(20000); // 20k default
 
     // Dynamic EMI States
     const [downpayment, setDownpayment] = useState(() => {
@@ -81,7 +70,8 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
     useEffect(() => {
         const params = new URLSearchParams(searchParams.toString());
 
-        if (debouncedSearch) params.set('q', debouncedSearch); else params.delete('q');
+        if (debouncedSearch) params.set('q', debouncedSearch);
+        else params.delete('q');
 
         // Only set brand if it's not the full brands list (default)
         if (selectedMakes.length > 0 && selectedMakes.length < brands.length) {
@@ -90,22 +80,43 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
             params.delete('brand');
         }
 
-        if (selectedFuels.length > 0) params.set('fuel', selectedFuels.join(',')); else params.delete('fuel');
-        if (selectedSegments.length > 0) params.set('segment', selectedSegments.join(',')); else params.delete('segment');
-        if (selectedBodyTypes.length > 0) params.set('category', selectedBodyTypes.join(',')); else params.delete('category');
-        if (selectedCC.length > 0) params.set('cc', selectedCC.join(',')); else params.delete('cc');
-        if (selectedFinishes.length > 0) params.set('finish', selectedFinishes.join(',')); else params.delete('finish');
-        if (downpayment !== 15000) params.set('dp', downpayment.toString()); else params.delete('dp');
-        if (tenure !== 36) params.set('tenure', tenure.toString()); else params.delete('tenure');
-        if (maxPrice < 1000000) params.set('maxPrice', maxPrice.toString()); else params.delete('maxPrice');
-        if (maxEMI < 20000) params.set('maxEMI', maxEMI.toString()); else params.delete('maxEMI');
+        if (selectedFuels.length > 0) params.set('fuel', selectedFuels.join(','));
+        else params.delete('fuel');
+        if (selectedSegments.length > 0) params.set('segment', selectedSegments.join(','));
+        else params.delete('segment');
+        if (selectedBodyTypes.length > 0) params.set('category', selectedBodyTypes.join(','));
+        else params.delete('category');
+        if (selectedCC.length > 0) params.set('cc', selectedCC.join(','));
+        else params.delete('cc');
+        if (selectedFinishes.length > 0) params.set('finish', selectedFinishes.join(','));
+        else params.delete('finish');
+        if (downpayment !== 15000) params.set('dp', downpayment.toString());
+        else params.delete('dp');
+        if (tenure !== 36) params.set('tenure', tenure.toString());
+        else params.delete('tenure');
+        if (maxPrice < 1000000) params.set('maxPrice', maxPrice.toString());
+        else params.delete('maxPrice');
+        if (maxEMI < 20000) params.set('maxEMI', maxEMI.toString());
+        else params.delete('maxEMI');
 
         const queryString = params.toString();
         const url = queryString ? `${pathname}?${queryString}` : pathname;
 
         // Use replace to avoid filling up history stack during typing/sliding
         router.replace(url, { scroll: false });
-    }, [debouncedSearch, selectedMakes, selectedFuels, selectedSegments, selectedBodyTypes, selectedCC, selectedFinishes, downpayment, tenure, pathname, router]);
+    }, [
+        debouncedSearch,
+        selectedMakes,
+        selectedFuels,
+        selectedSegments,
+        selectedBodyTypes,
+        selectedCC,
+        selectedFinishes,
+        downpayment,
+        tenure,
+        pathname,
+        router,
+    ]);
 
     const filteredVehicles = useMemo(() => {
         return initialVehicles.filter((v: ProductVariant) => {
@@ -129,10 +140,10 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
                 displacement < 125
                     ? '< 125cc'
                     : displacement < 250
-                        ? '125-250cc'
-                        : displacement < 500
-                            ? '250-500cc'
-                            : '> 500cc';
+                      ? '125-250cc'
+                      : displacement < 500
+                        ? '250-500cc'
+                        : '> 500cc';
             const matchesCC = selectedCC.length === 0 || selectedCC.includes(ccTag);
 
             const brakeType = v.specifications?.brakes?.front?.toLowerCase().includes('disc') ? 'Disc (Front)' : 'Drum';
@@ -151,7 +162,9 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
                 seatHeight < 780 ? '< 780mm' : seatHeight >= 780 && seatHeight <= 810 ? '780-810mm' : '> 810mm';
             const matchesSeatHeight = selectedSeatHeight.length === 0 || selectedSeatHeight.includes(seatHeightTag);
 
-            const matchesFinish = selectedFinishes.length === 0 || v.availableColors?.some(c => c.finish && selectedFinishes.includes(c.finish));
+            const matchesFinish =
+                selectedFinishes.length === 0 ||
+                v.availableColors?.some(c => c.finish && selectedFinishes.includes(c.finish));
 
             const basePrice = v.price?.offerPrice || v.price?.onRoad || v.price?.exShowroom || 0;
             const matchesPrice = basePrice <= maxPrice;
@@ -190,7 +203,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         selectedFinishes,
         maxPrice,
         maxEMI,
-        downpayment // Added dependency for EMI calculation
+        downpayment, // Added dependency for EMI calculation
     ]);
 
     const toggleFilter = (setter: React.Dispatch<React.SetStateAction<string[]>>, value: string) => {

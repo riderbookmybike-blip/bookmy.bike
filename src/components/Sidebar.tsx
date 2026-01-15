@@ -12,8 +12,6 @@ import { useTheme } from '@/components/providers/ThemeProvider';
 import { Logo } from '@/components/brand/Logo';
 import { can } from '@/lib/auth/rbac';
 
-
-
 interface SidebarProps {
     role: UserRole;
     className?: string;
@@ -33,7 +31,7 @@ export default function Sidebar({
     onHoverChange,
     onPinToggle,
     isMobileOpen = false,
-    onMobileClose
+    onMobileClose,
 }: SidebarProps) {
     const pathname = usePathname();
     const { tenantType, tenantName, tenantSlug } = useTenant();
@@ -50,12 +48,16 @@ export default function Sidebar({
         return groups.map(group => ({
             ...group,
             items: group.items.filter(item => {
+                // SUPERADMIN OVERRIDE: If in AUMS tenant, show everything that passed sidebarConfig check
+                if (tenantType === 'AUMS') return true;
+
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const perm = (item as any).permission || (item as any).permissions?.[0];
                 if (perm) {
                     return can(role, perm);
                 }
                 return true;
-            })
+            }),
         }));
     }, [tenantType, role]);
 
@@ -139,22 +141,22 @@ export default function Sidebar({
                             </div>
 
                             <ul className="space-y-1">
-                                {section.items.map((item) => {
+                                {section.items.map(item => {
                                     // Rewrite URL for Tenant Context
                                     let href = item.href;
-                                    const shouldPrefix = tenantSlug && (
-                                        href.startsWith('/dashboard') ||
-                                        href.startsWith('/leads') ||
-                                        href.startsWith('/customers') ||
-                                        href.startsWith('/quotes') ||
-                                        href.startsWith('/sales-orders') ||
-                                        href.startsWith('/finance-applications') ||
-                                        href.startsWith('/audit-logs') ||
-                                        href.startsWith('/finance') ||
-                                        href.startsWith('/superadmin') ||
-                                        href.startsWith('/inventory') ||
-                                        href.startsWith('/catalog')
-                                    );
+                                    const shouldPrefix =
+                                        tenantSlug &&
+                                        (href.startsWith('/dashboard') ||
+                                            href.startsWith('/leads') ||
+                                            href.startsWith('/customers') ||
+                                            href.startsWith('/quotes') ||
+                                            href.startsWith('/sales-orders') ||
+                                            href.startsWith('/finance-applications') ||
+                                            href.startsWith('/audit-logs') ||
+                                            href.startsWith('/finance') ||
+                                            href.startsWith('/superadmin') ||
+                                            href.startsWith('/inventory') ||
+                                            href.startsWith('/catalog'));
                                     if (shouldPrefix) {
                                         href = `/app/${tenantSlug}${href}`;
                                     }
@@ -167,12 +169,16 @@ export default function Sidebar({
                                                 href={href}
                                                 className={`
                                                     flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-200
-                                                    ${isActive
-                                                        ? 'bg-brand-primary text-slate-900 shadow-lg shadow-brand-primary/25 border border-brand-primary/20'
-                                                        : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'}
+                                                    ${
+                                                        isActive
+                                                            ? 'bg-brand-primary text-slate-900 shadow-lg shadow-brand-primary/25 border border-brand-primary/20'
+                                                            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
+                                                    }
                                                 `}
                                             >
-                                                <div className={`shrink-0 ${isActive ? 'text-slate-900' : item.color || 'text-slate-400'}`}>
+                                                <div
+                                                    className={`shrink-0 ${isActive ? 'text-slate-900' : item.color || 'text-slate-400'}`}
+                                                >
                                                     {Icon && <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />}
                                                 </div>
 
@@ -207,19 +213,21 @@ export default function Sidebar({
 
                 {/* Footer / System Status */}
                 <div className="p-4 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2">
-                    <div className={`flex items-center gap-3 px-2 py-2 rounded-xl border border-transparent hover:border-slate-200 dark:hover:border-white/10 transition-all cursor-pointer`}>
+                    <div
+                        className={`flex items-center gap-3 px-2 py-2 rounded-xl border border-transparent hover:border-slate-200 dark:hover:border-white/10 transition-all cursor-pointer`}
+                    >
                         <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center shrink-0">
                             <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
                         </div>
                         <AnimatePresence>
                             {isExpanded && (
-                                <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    className="flex flex-col"
-                                >
-                                    <span className="text-xs font-bold text-slate-900 dark:text-white leading-tight">System Status</span>
-                                    <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-tighter">99.9% Operational</span>
+                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col">
+                                    <span className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
+                                        System Status
+                                    </span>
+                                    <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-tighter">
+                                        99.9% Operational
+                                    </span>
                                 </motion.div>
                             )}
                         </AnimatePresence>
@@ -234,26 +242,30 @@ export default function Sidebar({
                     <div className="relative w-72 bg-white dark:bg-slate-950 h-full shadow-2xl flex flex-col p-6 space-y-6">
                         <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-6">
                             <Logo mode="auto" variant="icon" />
-                            <button onClick={onMobileClose} className="p-2 bg-slate-100 dark:bg-white/5 rounded-xl"><ChevronRight size={20} /></button>
+                            <button onClick={onMobileClose} className="p-2 bg-slate-100 dark:bg-white/5 rounded-xl">
+                                <ChevronRight size={20} />
+                            </button>
                         </div>
                         <nav className="flex-1 overflow-y-auto space-y-6">
                             {sidebarGroups.map((section, idx) => (
                                 <div key={idx} className="space-y-3">
-                                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">{section.group}</h3>
+                                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">
+                                        {section.group}
+                                    </h3>
                                     <div className="space-y-1">
                                         {section.items.map(item => {
                                             let href = item.href;
-                                            const shouldPrefix = tenantSlug && (
-                                                href.startsWith('/dashboard') ||
-                                                href.startsWith('/leads') ||
-                                                href.startsWith('/customers') ||
-                                                href.startsWith('/quotes') ||
-                                                href.startsWith('/sales-orders') ||
-                                                href.startsWith('/finance-applications') ||
-                                                href.startsWith('/audit-logs') ||
-                                                href.startsWith('/finance') ||
-                                                href.startsWith('/superadmin')
-                                            );
+                                            const shouldPrefix =
+                                                tenantSlug &&
+                                                (href.startsWith('/dashboard') ||
+                                                    href.startsWith('/leads') ||
+                                                    href.startsWith('/customers') ||
+                                                    href.startsWith('/quotes') ||
+                                                    href.startsWith('/sales-orders') ||
+                                                    href.startsWith('/finance-applications') ||
+                                                    href.startsWith('/audit-logs') ||
+                                                    href.startsWith('/finance') ||
+                                                    href.startsWith('/superadmin'));
                                             if (shouldPrefix) {
                                                 href = `/app/${tenantSlug}${href}`;
                                             }

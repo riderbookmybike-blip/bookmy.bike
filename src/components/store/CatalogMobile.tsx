@@ -4,13 +4,14 @@ import React, { useState } from 'react';
 import { ChevronRight, ArrowRight, Zap, Search, SlidersHorizontal, Heart, Star, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { slugify } from '@/utils/slugs';
-import { brands } from '@/hooks/useCatalogFilters';
+import { BRANDS as brands } from '@/config/market';
 
 interface CatalogMobileProps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     filters: any;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const MobileProductCard = ({ v, downpayment }: { v: any; downpayment: number }) => {
     const [isSaved, setIsSaved] = useState(false);
     const basePrice = v.price?.offerPrice || v.price?.onRoad || v.price?.exShowroom || 0;
@@ -19,10 +20,7 @@ const MobileProductCard = ({ v, downpayment }: { v: any; downpayment: number }) 
     return (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden shadow-sm flex flex-col group">
             <div className="aspect-video bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center p-8 relative overflow-hidden group/card">
-
                 <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-black/30 z-0" />
-
-
 
                 <div className="absolute top-4 left-4 z-10">
                     <div className="px-3 py-1 bg-brand-primary text-black rounded-full text-[8px] font-black tracking-widest shadow-lg shadow-brand-primary/20 italic">
@@ -30,7 +28,12 @@ const MobileProductCard = ({ v, downpayment }: { v: any; downpayment: number }) 
                     </div>
                 </div>
                 <img
-                    src={v.imageUrl || (v.bodyType === 'SCOOTER' ? '/images/categories/scooter_nobg.png' : '/images/categories/motorcycle_nobg.png')}
+                    src={
+                        v.imageUrl ||
+                        (v.bodyType === 'SCOOTER'
+                            ? '/images/categories/scooter_nobg.png'
+                            : '/images/categories/motorcycle_nobg.png')
+                    }
                     alt={v.model}
                     className="w-full h-full object-contain z-10 transition-transform duration-500 group-hover/card:scale-110"
                 />
@@ -41,7 +44,9 @@ const MobileProductCard = ({ v, downpayment }: { v: any; downpayment: number }) 
             <div className="p-8 space-y-6">
                 <div className="flex justify-between items-start">
                     <div>
-                        <h3 className="text-3xl font-black uppercase italic tracking-tighter leading-none text-slate-900 dark:text-white">{v.model}</h3>
+                        <h3 className="text-3xl font-black uppercase italic tracking-tighter leading-none text-slate-900 dark:text-white">
+                            {v.model}
+                        </h3>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">
                             {v.make} • {v.variant} • <span className="text-brand-primary">{v.color}</span>
                         </p>
@@ -49,13 +54,18 @@ const MobileProductCard = ({ v, downpayment }: { v: any; downpayment: number }) 
                         {v.availableColors && v.availableColors.length > 0 && (
                             <div className="flex items-center gap-2 mt-3">
                                 <div className="flex -space-x-1.5">
-                                    {v.availableColors.slice(0, 3).map((c: any, i: number) => (
-                                        <div
-                                            key={i}
-                                            className="w-3 h-3 rounded-full border border-white dark:border-slate-900 shadow-sm"
-                                            style={{ backgroundColor: typeof c === 'string' ? c : c.hexCode }}
-                                        />
-                                    ))}
+                                    {v.availableColors.slice(0, 3).map(
+                                        (
+                                            c: any,
+                                            i: number // eslint-disable-line @typescript-eslint/no-explicit-any
+                                        ) => (
+                                            <div
+                                                key={i}
+                                                className="w-3 h-3 rounded-full border border-white dark:border-slate-900 shadow-sm"
+                                                style={{ backgroundColor: typeof c === 'string' ? c : c.hexCode }}
+                                            />
+                                        )
+                                    )}
                                 </div>
                                 {v.availableColors.length > 3 && (
                                     <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
@@ -76,11 +86,15 @@ const MobileProductCard = ({ v, downpayment }: { v: any; downpayment: number }) 
                 <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5 space-y-1">
                         <p className="text-[8px] font-black text-slate-400 uppercase italic">On-Road</p>
-                        <p className="text-lg font-black tracking-tighter text-slate-900 dark:text-white">₹{basePrice.toLocaleString('en-IN')}</p>
+                        <p className="text-lg font-black tracking-tighter text-slate-900 dark:text-white">
+                            ₹{basePrice.toLocaleString('en-IN')}
+                        </p>
                     </div>
                     <div className="p-4 bg-brand-primary/10 rounded-2xl border border-brand-primary/20 space-y-1">
                         <p className="text-[8px] font-black text-brand-primary uppercase italic">Per Month</p>
-                        <p className="text-lg font-black tracking-tighter text-brand-primary">₹{emiValue.toLocaleString('en-IN')}</p>
+                        <p className="text-lg font-black tracking-tighter text-brand-primary">
+                            ₹{emiValue.toLocaleString('en-IN')}
+                        </p>
                     </div>
                 </div>
 
@@ -97,17 +111,23 @@ const MobileProductCard = ({ v, downpayment }: { v: any; downpayment: number }) 
 
 export function CatalogMobile({ filters }: CatalogMobileProps) {
     const {
-        searchQuery, setSearchQuery,
-        selectedMakes, setSelectedMakes,
-        selectedCC, setSelectedCC,
-        downpayment, setDownpayment,
-        tenure, setTenure,
+        searchQuery,
+        setSearchQuery,
+        selectedMakes,
+        setSelectedMakes,
+        selectedCC,
+        setSelectedCC,
+        downpayment,
+        setDownpayment,
+        tenure,
+        setTenure,
         filteredVehicles,
-        toggleFilter
+        toggleFilter,
     } = filters;
 
     const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const FilterGroup = ({ title, options, selectedValues, onToggle }: any) => {
         const [isCollapsed, setIsCollapsed] = useState(false);
         return (
@@ -119,7 +139,10 @@ export function CatalogMobile({ filters }: CatalogMobileProps) {
                     <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white flex items-center gap-2">
                         {title}
                     </h4>
-                    <ChevronDown size={14} className={`text-slate-400 transition-transform ${isCollapsed ? '-rotate-90' : ''}`} />
+                    <ChevronDown
+                        size={14}
+                        className={`text-slate-400 transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
+                    />
                 </div>
                 {!isCollapsed && (
                     <div className="flex flex-wrap gap-2 pt-2">
@@ -149,7 +172,7 @@ export function CatalogMobile({ filters }: CatalogMobileProps) {
                             type="text"
                             placeholder="SEARCH MACHINES..."
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onChange={e => setSearchQuery(e.target.value)}
                             className="w-full pl-12 h-14 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl text-[10px] font-black tracking-widest outline-none"
                         />
                     </div>
@@ -177,53 +200,85 @@ export function CatalogMobile({ filters }: CatalogMobileProps) {
 
             {/* Product Feed: 1 column for impact */}
             <div className="space-y-8">
-                {filteredVehicles.map((v: any) => (
-                    <MobileProductCard key={v.id} v={v} downpayment={downpayment} />
-                ))}
+                {filteredVehicles.map(
+                    (
+                        v: any // eslint-disable-line @typescript-eslint/no-explicit-any
+                    ) => (
+                        <MobileProductCard key={v.id} v={v} downpayment={downpayment} />
+                    )
+                )}
             </div>
 
             {/* Mobile Filter Drawer (Bottom Sheet) */}
-            {
-                isMobileFiltersOpen && (
-                    <div className="fixed inset-0 z-[200]">
-                        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsMobileFiltersOpen(false)} />
-                        <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-900 rounded-t-[3rem] p-8 space-y-10 animate-in slide-in-from-bottom duration-300 max-h-[85vh] overflow-y-auto">
-                            <div className="flex items-center justify-between sticky top-0 bg-white dark:bg-slate-900 z-10 pb-4 border-b">
-                                <h3 className="text-xl font-black uppercase italic tracking-widest">Filter Machines</h3>
-                                <button onClick={() => setIsMobileFiltersOpen(false)} className="text-[10px] font-black uppercase text-slate-400">Close</button>
-                            </div>
+            {isMobileFiltersOpen && (
+                <div className="fixed inset-0 z-[200]">
+                    <div
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        onClick={() => setIsMobileFiltersOpen(false)}
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-900 rounded-t-[3rem] p-8 space-y-10 animate-in slide-in-from-bottom duration-300 max-h-[85vh] overflow-y-auto">
+                        <div className="flex items-center justify-between sticky top-0 bg-white dark:bg-slate-900 z-10 pb-4 border-b">
+                            <h3 className="text-xl font-black uppercase italic tracking-widest">Filter Machines</h3>
+                            <button
+                                onClick={() => setIsMobileFiltersOpen(false)}
+                                className="text-[10px] font-black uppercase text-slate-400"
+                            >
+                                Close
+                            </button>
+                        </div>
 
-                            <div className="space-y-10">
-                                <div className="space-y-6">
-                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">EMI Calculator</h4>
-                                    <div className="p-6 bg-green-500/5 rounded-3xl space-y-6 border border-green-500/10">
-                                        <div className="flex justify-between items-end">
-                                            <span className="text-[8px] font-black text-slate-500">DOWNPAYMENT</span>
-                                            <span className="text-sm font-black text-green-600">₹{downpayment.toLocaleString('en-IN')}</span>
-                                        </div>
-                                        <input
-                                            type="range"
-                                            min="5000" max="75000" step="5000"
-                                            value={downpayment}
-                                            onChange={(e) => setDownpayment(parseInt(e.target.value))}
-                                            className="w-full h-1 bg-slate-200 dark:bg-slate-800 appearance-none rounded-full accent-green-600"
-                                        />
-                                        <div className="grid grid-cols-4 gap-2">
-                                            {[12, 24, 36, 48].map(t => (
-                                                <button key={t} onClick={() => setTenure(t)} className={`py-3 rounded-xl text-[10px] font-black ${tenure === t ? 'bg-green-600 text-white shadow-lg' : 'bg-white dark:bg-white/5 text-slate-400'}`}>{t}M</button>
-                                            ))}
-                                        </div>
+                        <div className="space-y-10">
+                            <div className="space-y-6">
+                                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                    EMI Calculator
+                                </h4>
+                                <div className="p-6 bg-green-500/5 rounded-3xl space-y-6 border border-green-500/10">
+                                    <div className="flex justify-between items-end">
+                                        <span className="text-[8px] font-black text-slate-500">DOWNPAYMENT</span>
+                                        <span className="text-sm font-black text-green-600">
+                                            ₹{downpayment.toLocaleString('en-IN')}
+                                        </span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="5000"
+                                        max="75000"
+                                        step="5000"
+                                        value={downpayment}
+                                        onChange={e => setDownpayment(parseInt(e.target.value))}
+                                        className="w-full h-1 bg-slate-200 dark:bg-slate-800 appearance-none rounded-full accent-green-600"
+                                    />
+                                    <div className="grid grid-cols-4 gap-2">
+                                        {[12, 24, 36, 48].map(t => (
+                                            <button
+                                                key={t}
+                                                onClick={() => setTenure(t)}
+                                                className={`py-3 rounded-xl text-[10px] font-black ${tenure === t ? 'bg-green-600 text-white shadow-lg' : 'bg-white dark:bg-white/5 text-slate-400'}`}
+                                            >
+                                                {t}M
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
-
-                                <FilterGroup title="CC Range" options={['< 125cc', '125-250cc', '250-500cc', '> 500cc']} selectedValues={selectedCC} onToggle={(v: string) => toggleFilter(setSelectedCC, v)} />
                             </div>
 
-                            <button onClick={() => setIsMobileFiltersOpen(false)} className="w-full py-5 bg-black text-white dark:bg-brand-primary dark:text-black rounded-3xl text-[10px] font-black uppercase tracking-widest shadow-2xl">Apply Filters</button>
+                            <FilterGroup
+                                title="CC Range"
+                                options={['< 125cc', '125-250cc', '250-500cc', '> 500cc']}
+                                selectedValues={selectedCC}
+                                onToggle={(v: string) => toggleFilter(setSelectedCC, v)}
+                            />
                         </div>
+
+                        <button
+                            onClick={() => setIsMobileFiltersOpen(false)}
+                            className="w-full py-5 bg-black text-white dark:bg-brand-primary dark:text-black rounded-3xl text-[10px] font-black uppercase tracking-widest shadow-2xl"
+                        >
+                            Apply Filters
+                        </button>
                     </div>
-                )
-            }
-        </div >
+                </div>
+            )}
+        </div>
     );
 }

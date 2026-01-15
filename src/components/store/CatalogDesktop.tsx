@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { ChevronDown, Zap, Search, Heart, LayoutGrid, List, Star, StarHalf, X, SlidersHorizontal } from 'lucide-react';
 import Link from 'next/link';
 import { slugify } from '@/utils/slugs';
-import { brands } from '@/hooks/useCatalogFilters';
+import { BRANDS as brands } from '@/config/market';
 import type { useCatalogFilters } from '@/hooks/useCatalogFilters';
 import { getStableReviewCount } from '@/utils/vehicleUtils';
 import type { ProductVariant } from '@/types/productMaster';
@@ -908,7 +908,7 @@ export function CatalogDesktop({ filters }: CatalogDesktopProps) {
                         <div
                             className={`grid gap-12 xl:gap-16 transition-all duration-700 ${
                                 viewMode === 'grid'
-                                    ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3'
+                                    ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3'
                                     : 'grid-cols-1'
                             }`}
                         >
