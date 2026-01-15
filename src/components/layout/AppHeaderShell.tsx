@@ -30,7 +30,7 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
     const heightClass = headerPreset === 'compact' ? 'h-20' : 'h-24';
     const containerClass =
         headerPreset === 'compact'
-            ? 'max-w-[1440px] 2xl:max-w-[1680px] px-6 md:px-12 lg:px-20'
+            ? 'max-w-[1440px] 2xl:max-w-[1920px] px-6 md:px-12 lg:px-20'
             : 'max-w-[1920px] px-6 md:px-12 lg:px-20';
 
     // Standard separation and background based on theme and scroll state
