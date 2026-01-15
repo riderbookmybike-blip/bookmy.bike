@@ -490,7 +490,7 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
         <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-black transition-colors duration-500 font-sans">
             {/* Main Content Area - Visual Rest (No Container Box) */}
             <main
-                className={`flex-1 mx-auto w-full ${isTv ? 'px-24 xl:px-44 max-w-[1700px] py-4' : 'px-6 md:px-12 lg:px-20 max-w-[1440px] 2xl:max-w-[1700px] py-8'}`}
+                className={`flex-1 mx-auto w-full ${isTv ? 'px-24 xl:px-44 max-w-[1440px] py-4' : 'px-6 md:px-12 lg:px-20 max-w-[1440px] py-8'}`}
             >
                 {/* Header Section - Aligned with Global Header */}
                 <header className={`${isTv ? 'mb-6' : 'mb-12'} px-2`}>
