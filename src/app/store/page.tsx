@@ -10,7 +10,7 @@ export default function StorePage() {
     return (
         <DeviceLayout
             mobile={<StoreMobile />}
-            tablet={<StoreTablet />}
+            tablet={<StoreDesktop />}
             desktop={<StoreDesktop />}
             tv={<StoreDesktop variant="tv" />}
         />
