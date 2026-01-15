@@ -35,19 +35,19 @@ export function StoreDesktop({ variant = 'default' }: StoreDesktopProps) {
                 </div>
 
                 <div
-                    className={`mx-auto relative z-10 w-full text-center max-w-[1440px] px-6 md:px-12 lg:px-20 ${isTv ? 'pt-6 pb-4' : 'pt-8 pb-6'}`}
+                    className="mx-auto relative z-10 w-full text-center max-w-[1440px] px-6 md:px-12 lg:px-20 pt-8 h-sm:pt-4 pb-6 h-sm:pb-4"
                 >
-                    <div className={isTv ? 'space-y-6' : 'space-y-8'}>
-                        <div className={isTv ? 'space-y-4' : 'space-y-6'}>
+                    <div className="space-y-8 h-sm:space-y-3 h-md:space-y-5">
+                        <div className="space-y-6 h-sm:space-y-2 h-md:space-y-4">
                             <div
-                                className={`inline-flex items-center gap-3 px-6 py-3 bg-brand-primary/5 dark:bg-brand-primary/10 border border-brand-primary/10 dark:border-brand-primary/20 text-brand-primary dark:text-brand-primary rounded-full text-[11px] font-black uppercase tracking-[0.3em] backdrop-blur-md shadow-sm ${isTv ? 'mb-6' : 'mb-8'}`}
+                                className="inline-flex items-center gap-3 px-6 py-3 h-sm:py-2 h-sm:px-4 bg-brand-primary/5 dark:bg-brand-primary/10 border border-brand-primary/10 dark:border-brand-primary/20 text-brand-primary dark:text-brand-primary rounded-full text-[11px] h-sm:text-[9px] font-black uppercase tracking-[0.3em] backdrop-blur-md shadow-sm mb-8 h-sm:mb-4 h-md:mb-6"
                             >
                                 <span className="flex h-2 w-2 rounded-full bg-brand-primary animate-ping" />
                                 India’s Lowest EMI Guarantee
                             </div>
 
                             <h1
-                                className={`${isTv ? 'text-6xl sm:text-7xl md:text-8xl lg:text-8xl xl:text-[7rem] pb-4' : 'text-6xl sm:text-7xl md:text-8xl lg:text-8xl xl:text-8xl pb-4'} font-black italic uppercase tracking-tight md:tracking-tighter lg:tracking-[-0.04em] leading-none xl:leading-[0.9] 2xl:leading-tight`}
+                                className="text-6xl sm:text-7xl md:text-8xl lg:text-8xl xl:text-8xl h-sm:text-7xl h-md:text-7xl pb-4 h-sm:pb-1 font-black italic uppercase tracking-tight md:tracking-tighter lg:tracking-[-0.04em] leading-none xl:leading-[0.9] 2xl:leading-tight"
                             >
                                 <span className="text-slate-900 dark:text-white transition-colors">Your Next</span>{' '}
                                 <br />
@@ -55,7 +55,7 @@ export function StoreDesktop({ variant = 'default' }: StoreDesktopProps) {
                             </h1>
 
                             <p
-                                className={`max-w-[60ch] mx-auto font-medium text-slate-700 dark:text-slate-300 leading-relaxed tracking-wide drop-shadow-sm ${isTv ? 'text-base sm:text-lg' : 'text-lg sm:text-xl'}`}
+                                className="max-w-[60ch] mx-auto font-medium text-slate-700 dark:text-slate-300 leading-relaxed tracking-wide drop-shadow-sm text-lg sm:text-xl h-sm:text-base h-md:text-lg"
                             >
                                 Unified prices from verified dealers. Instant quotes. Lowest EMI guarantee.
                             </p>
