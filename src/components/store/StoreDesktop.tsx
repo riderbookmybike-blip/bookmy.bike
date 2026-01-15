@@ -47,7 +47,7 @@ export function StoreDesktop({ variant = 'default' }: StoreDesktopProps) {
                             </div>
 
                             <h1
-                                className={`${isTv ? 'text-6xl sm:text-7xl md:text-8xl lg:text-8xl xl:text-[7rem] pb-4' : 'text-6xl sm:text-7xl md:text-8xl lg:text-8xl xl:text-[7rem] 2xl:text-[7.5rem] pb-4'} font-black italic uppercase tracking-tight md:tracking-tighter lg:tracking-[-0.04em] leading-none xl:leading-[0.9] 2xl:leading-tight`}
+                                className={`${isTv ? 'text-6xl sm:text-7xl md:text-8xl lg:text-8xl xl:text-[7rem] pb-4' : 'text-6xl sm:text-7xl md:text-8xl lg:text-8xl xl:text-8xl pb-4'} font-black italic uppercase tracking-tight md:tracking-tighter lg:tracking-[-0.04em] leading-none xl:leading-[0.9] 2xl:leading-tight`}
                             >
                                 <span className="text-slate-900 dark:text-white transition-colors">Your Next</span>{' '}
                                 <br />
