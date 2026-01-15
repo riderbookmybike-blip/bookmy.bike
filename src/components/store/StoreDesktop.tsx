@@ -15,7 +15,7 @@ interface StoreDesktopProps {
 export function StoreDesktop({ variant = 'default' }: StoreDesktopProps) {
     const { items } = useCatalog();
     const totalModels = items.length || 500; // Fallback to 500 if loading or empty
-    const isTv = variant === 'tv';
+    const isTv = false; // TV logic moved to dedicated StoreTV component
 
     return (
         <div className="flex flex-col pb-40 transition-colors duration-300">
@@ -34,45 +34,35 @@ export function StoreDesktop({ variant = 'default' }: StoreDesktopProps) {
                     <div className="absolute inset-0 bg-gradient-to-b from-white via-white/40 to-white dark:from-[#020617] dark:via-[#020617]/40 dark:to-[#020617]" />
                 </div>
 
-                <div
-                    className="mx-auto relative z-10 w-full text-center max-w-[1440px] px-6 md:px-12 lg:px-20 pt-8 h-sm:pt-4 pb-6 h-sm:pb-4"
-                >
-                    <div className="space-y-8 h-sm:space-y-3 h-md:space-y-5">
-                        <div className="space-y-6 h-sm:space-y-2 h-md:space-y-4">
-                            <div
-                                className="inline-flex items-center gap-3 px-6 py-3 h-sm:py-2 h-sm:px-4 bg-brand-primary/5 dark:bg-brand-primary/10 border border-brand-primary/10 dark:border-brand-primary/20 text-brand-primary dark:text-brand-primary rounded-full text-[11px] h-sm:text-[9px] font-black uppercase tracking-[0.3em] backdrop-blur-md shadow-sm mb-8 h-sm:mb-4 h-md:mb-6"
-                            >
+                <div className="mx-auto relative z-10 w-full text-center max-w-[1440px] px-6 md:px-12 lg:px-20 pt-20 pb-16">
+                    <div className="space-y-8">
+                        <div className="space-y-6">
+                            <div className="inline-flex items-center gap-3 px-6 py-3 bg-brand-primary/5 dark:bg-brand-primary/10 border border-brand-primary/10 dark:border-brand-primary/20 text-brand-primary dark:text-brand-primary rounded-full text-[11px] font-black uppercase tracking-[0.3em] backdrop-blur-md shadow-sm mb-8">
                                 <span className="flex h-2 w-2 rounded-full bg-brand-primary animate-ping" />
                                 India’s Lowest EMI Guarantee
                             </div>
 
-                            <h1
-                                className="text-6xl sm:text-7xl md:text-8xl lg:text-8xl xl:text-8xl h-sm:text-7xl h-md:text-7xl pb-4 h-sm:pb-1 font-black italic uppercase tracking-tight md:tracking-tighter lg:tracking-[-0.04em] leading-none xl:leading-[0.9] 2xl:leading-tight"
-                            >
+                            <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-8xl xl:text-8xl pb-4 font-black italic uppercase tracking-tight md:tracking-tighter lg:tracking-[-0.04em] leading-none xl:leading-[0.9] 2xl:leading-tight">
                                 <span className="text-slate-900 dark:text-white transition-colors">Your Next</span>{' '}
                                 <br />
                                 <span className="text-[#F4B000] drop-shadow-md transition-all">Legend Awaits.</span>
                             </h1>
 
-                            <p
-                                className="max-w-[60ch] mx-auto font-medium text-slate-700 dark:text-slate-300 leading-relaxed tracking-wide drop-shadow-sm text-lg sm:text-xl h-sm:text-base h-md:text-lg"
-                            >
+                            <p className="max-w-[60ch] mx-auto font-medium text-slate-700 dark:text-slate-300 leading-relaxed tracking-wide drop-shadow-sm text-lg sm:text-xl">
                                 Unified prices from verified dealers. Instant quotes. Lowest EMI guarantee.
                             </p>
                         </div>
 
                         {/* Search + Drive Cluster */}
-                        <div className={`w-full max-w-2xl mx-auto relative z-50 ${isTv ? 'space-y-6' : 'space-y-8'}`}>
+                        <div className="w-full max-w-2xl mx-auto relative z-50 space-y-8">
                             <div className="flex flex-col items-center gap-6">
                                 <Link
                                     href="/store/catalog"
-                                    className={`${isTv ? 'h-16 px-10 min-w-[240px] sm:min-w-[280px]' : 'h-20 px-12 min-w-[280px] sm:min-w-[320px]'} bg-slate-900 dark:bg-white text-white dark:text-black rounded-full flex items-center justify-center gap-4 hover:bg-brand-primary dark:hover:bg-brand-primary hover:text-black dark:hover:text-black transition-all shadow-[0_20px_40px_rgba(244,176,0,0.25)] hover:shadow-[0_24px_60px_rgba(244,176,0,0.35)] group/btn overflow-hidden relative`}
+                                    className="h-20 px-12 min-w-[280px] sm:min-w-[320px] bg-slate-900 dark:bg-white text-white dark:text-black rounded-full flex items-center justify-center gap-4 hover:bg-brand-primary dark:hover:bg-brand-primary hover:text-black dark:hover:text-black transition-all shadow-[0_20px_40px_rgba(244,176,0,0.25)] hover:shadow-[0_24px_60px_rgba(244,176,0,0.35)] group/btn overflow-hidden relative"
                                 >
                                     <div className="relative z-10 flex items-center gap-3">
-                                        <Search size={isTv ? 18 : 22} className="opacity-80 relative -top-[1px]" />
-                                        <span
-                                            className={`${isTv ? 'text-base' : 'text-lg'} font-black uppercase tracking-[0.15em] leading-none`}
-                                        >
+                                        <Search size={22} className="opacity-80 relative -top-[1px]" />
+                                        <span className="text-lg font-black uppercase tracking-[0.15em] leading-none">
                                             Search Bikes & Scooters
                                         </span>
                                     </div>
@@ -82,16 +72,12 @@ export function StoreDesktop({ variant = 'default' }: StoreDesktopProps) {
                         </div>
 
                         {/* Metrics Section */}
-                        <div
-                            className={`w-full max-w-5xl mx-auto grid grid-cols-3 gap-4 md:gap-0 border-t border-slate-200/50 dark:border-white/5 transition-colors ${isTv ? 'py-4 mt-6' : 'py-6 mt-8'}`}
-                        >
+                        <div className="w-full max-w-5xl mx-auto grid grid-cols-3 gap-4 md:gap-0 border-t border-slate-200/50 dark:border-white/5 transition-colors py-6 mt-8">
                             <div className="text-center group cursor-default space-y-1">
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
                                     {'>'} Models
                                 </p>
-                                <p
-                                    className={`${isTv ? 'text-3xl md:text-4xl' : 'text-4xl md:text-5xl'} font-black italic text-slate-900 dark:text-white tracking-tighter`}
-                                >
+                                <p className="text-4xl md:text-5xl font-black italic text-slate-900 dark:text-white tracking-tighter">
                                     {totalModels}+
                                 </p>
                             </div>
