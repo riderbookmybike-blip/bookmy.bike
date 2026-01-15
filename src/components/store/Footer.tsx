@@ -120,8 +120,32 @@ const ViewportDebug = () => {
 
     if (!mounted) return null;
 
-    const { width } = dimensions;
-    const mode = width >= 1536 ? 'TV (4K/2K)' : width >= 1024 ? 'DESKTOP' : width >= 768 ? 'TABLET' : 'MOBILE';
+    const { width, height } = dimensions;
+    const screenWidth = typeof window !== 'undefined' ? window.screen.width : 0;
+    const screenHeight = typeof window !== 'undefined' ? window.screen.height : 0;
+    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio : 1;
+
+    // Aspect Ratio Calculation
+    const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+    const common = gcd(width, height);
+    const aspect = `${width / common}:${height / common}`;
+
+    // Improved Mode Logic
+    let mode = 'MOBILE';
+    if (width >= 1536) mode = 'ULTRA-WIDE / TV';
+    else if (width >= 1024) mode = 'DESKTOP';
+    else if (width >= 768) mode = 'TABLET';
+
+    // Simple Device Info
+    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+    const device = ua.includes('Macintosh')
+        ? 'MacBook'
+        : ua.includes('iPhone')
+          ? 'iPhone'
+          : ua.includes('Android')
+            ? 'Android'
+            : 'Device';
+
     const commitSha = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA || 'DEV';
 
     return (
@@ -132,24 +156,32 @@ const ViewportDebug = () => {
                 <span>in India</span>
             </div>
 
-            <div className="absolute bottom-full right-0 mb-3 w-64 p-3 bg-slate-900/95 text-white text-[10px] font-mono rounded-lg border border-white/10 shadow-xl opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all pointer-events-none z-50 backdrop-blur-md">
+            <div className="absolute bottom-full right-0 mb-3 w-72 p-3 bg-slate-900/95 text-white text-[10px] font-mono rounded-lg border border-white/10 shadow-xl opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all pointer-events-none z-50 backdrop-blur-md">
                 <div className="space-y-1.5">
                     <div className="flex justify-between border-b border-white/10 pb-1">
                         <span className="text-slate-400">Viewport</span>
                         <span className="font-bold text-brand-primary">
-                            {width}x{dimensions.height}
+                            {width}x{height} <span className="text-[8px] opacity-60">({aspect})</span>
                         </span>
                     </div>
                     <div className="flex justify-between border-b border-white/10 pb-1">
-                        <span className="text-slate-400">Mode</span>
-                        <span className="font-bold">{mode}</span>
+                        <span className="text-slate-400">Screen</span>
+                        <span className="font-bold">
+                            {screenWidth}x{screenHeight} <span className="text-[8px] opacity-60">@{dpr}x</span>
+                        </span>
                     </div>
                     <div className="flex justify-between border-b border-white/10 pb-1">
-                        <span className="text-slate-400">Build</span>
+                        <span className="text-slate-400">Device/Mode</span>
+                        <span className="font-bold">
+                            {device} | {mode}
+                        </span>
+                    </div>
+                    <div className="flex justify-between border-b border-white/10 pb-1">
+                        <span className="text-slate-400">Build Info</span>
                         <span className="font-mono text-xs">{commitSha.slice(0, 7)}</span>
                     </div>
                     <div className="flex justify-between">
-                        <span className="text-slate-400">Loaded</span>
+                        <span className="text-slate-400">Local Time</span>
                         <span>{time}</span>
                     </div>
                 </div>
