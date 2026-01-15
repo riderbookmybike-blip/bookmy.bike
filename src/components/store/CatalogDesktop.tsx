@@ -185,9 +185,9 @@ const ProductCard = ({
     return (
         <div
             key={v.id}
-            className="group bg-white dark:bg-slate-900/40 dark:backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden flex flex-col shadow-sm hover:shadow-2xl dark:hover:shadow-brand-primary/5 transition-all duration-500 dark:hover:border-white/20 min-h-[480px]"
+            className="group bg-white dark:bg-slate-900/40 dark:backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden flex flex-col shadow-sm hover:shadow-2xl dark:hover:shadow-brand-primary/5 transition-all duration-500 dark:hover:border-white/20 min-h-[480px] h-sm:min-h-[400px] h-md:min-h-[440px]"
         >
-            <div className="h-[220px] bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center relative p-4 border-b border-slate-100 dark:border-white/5 overflow-hidden group/card">
+            <div className="h-[220px] h-sm:h-[160px] h-md:h-[180px] bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center relative p-4 border-b border-slate-100 dark:border-white/5 overflow-hidden group/card">
                 <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-white/10 dark:to-black/30 z-0" />
 
                 <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
@@ -440,11 +440,10 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
                                 <button
                                     key={opt}
                                     onClick={() => onToggle(opt)}
-                                    className={`group relative flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${
-                                        selectedValues.includes(opt)
+                                    className={`group relative flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${selectedValues.includes(opt)
                                             ? 'bg-brand-primary/10 border-brand-primary/50 shadow-sm'
                                             : 'bg-white dark:bg-white/[0.02] border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/20'
-                                    }`}
+                                        }`}
                                 >
                                     <span
                                         className={`text-[10px] font-black uppercase tracking-widest italic transition-colors ${selectedValues.includes(opt) ? 'text-slate-900 dark:text-brand-primary' : 'text-slate-500 dark:text-slate-300 group-hover:text-slate-800 dark:hover:text-slate-100'}`}
@@ -507,11 +506,10 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
                                 {viewMode === 'grid' && (
                                     <button
                                         onClick={() => setIsFilterOpen(true)}
-                                        className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
-                                            activeFilterCount > 0
+                                        className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${activeFilterCount > 0
                                                 ? 'bg-[#F4B000] text-black shadow-lg shadow-brand-primary/20'
                                                 : 'bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-white/20'
-                                        }`}
+                                            }`}
                                     >
                                         <SlidersHorizontal size={14} />
                                         FILTERS
@@ -527,11 +525,10 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
                                     <button
                                         key={option}
                                         onClick={() => setSortBy(option)}
-                                        className={`px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all border border-transparent ${
-                                            sortBy === option
+                                        className={`px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all border border-transparent ${sortBy === option
                                                 ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-lg'
                                                 : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                                        }`}
+                                            }`}
                                     >
                                         {option === 'popular' ? 'Popular' : option === 'price' ? 'Price' : 'EMI'}
                                     </button>
@@ -541,21 +538,19 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
                             <div className="flex items-center gap-1.5 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full p-1.5 shadow-sm">
                                 <button
                                     onClick={() => setViewMode('grid')}
-                                    className={`p-2.5 rounded-full transition-all ${
-                                        viewMode === 'grid'
+                                    className={`p-2.5 rounded-full transition-all ${viewMode === 'grid'
                                             ? 'bg-slate-900 text-white dark:bg-white dark:text-black shadow-lg'
                                             : 'text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                                    }`}
+                                        }`}
                                 >
                                     <LayoutGrid size={16} />
                                 </button>
                                 <button
                                     onClick={() => setViewMode('list')}
-                                    className={`p-2.5 rounded-full transition-all ${
-                                        viewMode === 'list'
+                                    className={`p-2.5 rounded-full transition-all ${viewMode === 'list'
                                             ? 'bg-slate-900 text-white dark:bg-white dark:text-black shadow-lg'
                                             : 'text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                                    }`}
+                                        }`}
                                 >
                                     <List size={16} />
                                 </button>
@@ -667,11 +662,10 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
                                                             <button
                                                                 key={t}
                                                                 onClick={() => setTenure(t)}
-                                                                className={`py-3 rounded-2xl text-[10px] font-black transition-all duration-300 ${
-                                                                    tenure === t
+                                                                className={`py-3 rounded-2xl text-[10px] font-black transition-all duration-300 ${tenure === t
                                                                         ? 'bg-slate-900 dark:bg-brand-primary text-white dark:text-black shadow-lg scale-105 ring-2 ring-brand-primary/20'
                                                                         : 'bg-white/50 dark:bg-slate-800/30 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-white dark:hover:bg-slate-800 shadow-sm'
-                                                                }`}
+                                                                    }`}
                                                             >
                                                                 {t.toString().padStart(2, '0')}
                                                             </button>
@@ -801,121 +795,120 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
                             selectedWheels.length > 0 ||
                             selectedFinishes.length > 0 ||
                             selectedSeatHeight.length > 0) && (
-                            <div className="flex flex-wrap items-center gap-2">
-                                {searchQuery && (
-                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full">
-                                        <span className="text-[9px] font-black uppercase text-slate-400">Search</span>
-                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                            {searchQuery}
-                                        </span>
-                                        <button
-                                            onClick={() => setSearchQuery('')}
-                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                <div className="flex flex-wrap items-center gap-2">
+                                    {searchQuery && (
+                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full">
+                                            <span className="text-[9px] font-black uppercase text-slate-400">Search</span>
+                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                                {searchQuery}
+                                            </span>
+                                            <button
+                                                onClick={() => setSearchQuery('')}
+                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                            >
+                                                <X size={10} />
+                                            </button>
+                                        </div>
+                                    )}
+                                    {selectedCC.map((cc: string) => (
+                                        <div
+                                            key={cc}
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
                                         >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                )}
-                                {selectedCC.map((cc: string) => (
-                                    <div
-                                        key={cc}
-                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
+                                            <span className="text-[9px] font-black uppercase text-slate-400">CC</span>
+                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                                {cc}
+                                            </span>
+                                            <button
+                                                onClick={() => toggleFilter(setSelectedCC, cc)}
+                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                            >
+                                                <X size={10} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {selectedFinishes.map((finish: string) => (
+                                        <div
+                                            key={finish}
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
+                                        >
+                                            <span className="text-[9px] font-black uppercase text-slate-400">Finish</span>
+                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                                {finish}
+                                            </span>
+                                            <button
+                                                onClick={() => toggleFilter(setSelectedFinishes, finish)}
+                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                            >
+                                                <X size={10} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {selectedSeatHeight.map((sh: string) => (
+                                        <div
+                                            key={sh}
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
+                                        >
+                                            <span className="text-[9px] font-black uppercase text-slate-400">Seat</span>
+                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                                {sh}
+                                            </span>
+                                            <button
+                                                onClick={() => toggleFilter(setSelectedSeatHeight, sh)}
+                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                            >
+                                                <X size={10} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {selectedBrakes.map((brake: string) => (
+                                        <div
+                                            key={brake}
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
+                                        >
+                                            <span className="text-[9px] font-black uppercase text-slate-400">Brakes</span>
+                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                                {brake}
+                                            </span>
+                                            <button
+                                                onClick={() => toggleFilter(setSelectedBrakes, brake)}
+                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                            >
+                                                <X size={10} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {selectedWheels.map((wheel: string) => (
+                                        <div
+                                            key={wheel}
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
+                                        >
+                                            <span className="text-[9px] font-black uppercase text-slate-400">Wheels</span>
+                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                                {wheel}
+                                            </span>
+                                            <button
+                                                onClick={() => toggleFilter(setSelectedWheels, wheel)}
+                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                            >
+                                                <X size={10} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    <button
+                                        onClick={clearAll}
+                                        className="text-[9px] font-black uppercase tracking-widest text-brand-primary hover:text-slate-900 dark:hover:text-white transition-colors px-3 ml-2"
                                     >
-                                        <span className="text-[9px] font-black uppercase text-slate-400">CC</span>
-                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                            {cc}
-                                        </span>
-                                        <button
-                                            onClick={() => toggleFilter(setSelectedCC, cc)}
-                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                ))}
-                                {selectedFinishes.map((finish: string) => (
-                                    <div
-                                        key={finish}
-                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
-                                    >
-                                        <span className="text-[9px] font-black uppercase text-slate-400">Finish</span>
-                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                            {finish}
-                                        </span>
-                                        <button
-                                            onClick={() => toggleFilter(setSelectedFinishes, finish)}
-                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                ))}
-                                {selectedSeatHeight.map((sh: string) => (
-                                    <div
-                                        key={sh}
-                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
-                                    >
-                                        <span className="text-[9px] font-black uppercase text-slate-400">Seat</span>
-                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                            {sh}
-                                        </span>
-                                        <button
-                                            onClick={() => toggleFilter(setSelectedSeatHeight, sh)}
-                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                ))}
-                                {selectedBrakes.map((brake: string) => (
-                                    <div
-                                        key={brake}
-                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
-                                    >
-                                        <span className="text-[9px] font-black uppercase text-slate-400">Brakes</span>
-                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                            {brake}
-                                        </span>
-                                        <button
-                                            onClick={() => toggleFilter(setSelectedBrakes, brake)}
-                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                ))}
-                                {selectedWheels.map((wheel: string) => (
-                                    <div
-                                        key={wheel}
-                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
-                                    >
-                                        <span className="text-[9px] font-black uppercase text-slate-400">Wheels</span>
-                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                            {wheel}
-                                        </span>
-                                        <button
-                                            onClick={() => toggleFilter(setSelectedWheels, wheel)}
-                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                ))}
-                                <button
-                                    onClick={clearAll}
-                                    className="text-[9px] font-black uppercase tracking-widest text-brand-primary hover:text-slate-900 dark:hover:text-white transition-colors px-3 ml-2"
-                                >
-                                    Clear all
-                                </button>
-                            </div>
-                        )}
+                                        Clear all
+                                    </button>
+                                </div>
+                            )}
 
                         <div
-                            className={`grid ${
-                                viewMode === 'list'
+                            className={`grid ${viewMode === 'list'
                                     ? 'grid-cols-1 w-full gap-6'
                                     : `grid-cols-1 md:grid-cols-2 lg:grid-cols-3 ${isTv ? 'gap-10 xl:gap-16' : 'gap-8 xl:gap-12'} w-full`
-                            }`}
+                                }`}
                         >
                             {/* Results Grid */}
                             {results.map(v => (

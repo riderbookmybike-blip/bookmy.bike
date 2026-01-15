@@ -10,6 +10,11 @@ module.exports = {
             colors: {
                 ...require('./src/config/design-tokens').colors,
             },
+            screens: {
+                'h-sm': { 'raw': '(max-height: 820px)' },
+                'h-md': { 'raw': '(max-height: 900px)' },
+                'wide-short': { 'raw': '(min-width: 1536px) and (max-height: 900px)' },
+            },
             animation: {
                 'pulse-slower': 'pulse 8s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                 'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
