@@ -27,7 +27,7 @@ export function StoreDesktop() {
                     <div className="absolute inset-0 bg-gradient-to-b from-white via-white/40 to-white dark:from-[#020617] dark:via-[#020617]/40 dark:to-[#020617]" />
                 </div>
 
-                <div className="max-w-[1440px] mx-auto px-6 md:px-12 lg:px-20 relative z-10 w-full text-center pt-12 pb-8">
+                <div className="max-w-[1440px] 2xl:max-w-[1700px] mx-auto px-6 md:px-12 lg:px-20 2xl:px-24 relative z-10 w-full text-center pt-12 pb-8 2xl:pt-8 2xl:pb-4">
                     <div className="space-y-10 md:space-y-12">
                         <div className="space-y-6">
                             <div className="inline-flex items-center gap-3 px-6 py-3 bg-brand-primary/5 dark:bg-brand-primary/10 border border-brand-primary/10 dark:border-brand-primary/20 text-brand-primary dark:text-brand-primary rounded-full text-[11px] font-black uppercase tracking-[0.3em] mb-8 backdrop-blur-md shadow-sm">
@@ -102,7 +102,7 @@ export function StoreDesktop() {
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-200 dark:via-white/10 to-transparent" />
 
                 <div className="max-w-[1440px] mx-auto px-6 md:px-12 lg:px-20">
-                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-8 mb-24">
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 2xl:mb-4">
                         <div className="space-y-4">
                             <p className="text-[12px] font-black text-brand-primary dark:text-brand-primary uppercase tracking-[0.5em] leading-none italic">
                                 Partner Ecosystem
@@ -122,7 +122,7 @@ export function StoreDesktop() {
                         </Link>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 md:gap-20">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 md:gap-20 2xl:gap-12">
                         {BRANDS.slice(0, 9).map(brandName => (
                             <Link
                                 key={brandName}
