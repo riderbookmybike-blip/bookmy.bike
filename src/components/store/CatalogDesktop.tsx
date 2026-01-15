@@ -30,16 +30,18 @@ const StarRating = ({ rating = 4.5, size = 10 }: { rating?: number; size?: numbe
     );
 };
 
-const ProductCard = ({
+export const ProductCard = ({
     v,
     viewMode,
     downpayment,
     tenure,
+    isTv = false,
 }: {
     v: ProductVariant;
     viewMode: 'grid' | 'list';
     downpayment: number;
     tenure: number;
+    isTv?: boolean;
 }) => {
     const [isSaved, setIsSaved] = useState(false);
     const basePrice = v.price?.offerPrice || v.price?.onRoad || v.price?.exShowroom || 0;
@@ -79,12 +81,18 @@ const ProductCard = ({
                     <div className="flex justify-between items-start relative z-10">
                         <div className="space-y-1.5">
                             <div className="flex items-center gap-4">
-                                <h3 className="text-3xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white leading-none">
+                                <h3
+                                    className={`${isTv ? 'text-2xl' : 'text-3xl'} font-black uppercase tracking-tighter italic text-slate-900 dark:text-white leading-none`}
+                                >
                                     {v.model}
                                 </h3>
-                                <div className="flex items-center gap-2 bg-slate-100 dark:bg-white/10 px-2 py-1 rounded-md">
-                                    <StarRating rating={v.rating || 4.5} size={10} />
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-200">
+                                <div
+                                    className={`flex items-center gap-2 bg-slate-100 dark:bg-white/10 ${isTv ? 'px-1 py-0.5' : 'px-2 py-1'} rounded-md`}
+                                >
+                                    <StarRating rating={v.rating || 4.5} size={isTv ? 8 : 10} />
+                                    <span
+                                        className={`text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-200 ${isTv ? 'scale-90' : ''}`}
+                                    >
                                         {v.rating || '4.5'}
                                     </span>
                                 </div>
