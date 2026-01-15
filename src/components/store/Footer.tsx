@@ -109,6 +109,7 @@ const ViewportDebug = () => {
     const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
     const [mounted, setMounted] = React.useState(false);
     const [time] = React.useState(new Date().toLocaleTimeString());
+    const [forceShow, setForceShow] = React.useState(false);
 
     React.useEffect(() => {
         setMounted(true);
@@ -149,14 +150,20 @@ const ViewportDebug = () => {
     const commitSha = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA || 'DEV';
 
     return (
-        <div className="group relative cursor-help">
-            <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-600 font-medium uppercase tracking-widest hover:text-brand-primary transition-colors">
+        <div className="group relative cursor-help" onDoubleClick={() => setForceShow(!forceShow)}>
+            <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-600 font-medium uppercase tracking-widest hover:text-brand-primary transition-colors select-none">
                 <span>Engineered with</span>
                 <Heart size={10} className="text-brand-primary fill-brand-primary animate-pulse" />
                 <span>in India</span>
             </div>
 
-            <div className="absolute bottom-full right-0 mb-3 w-72 p-3 bg-slate-900/95 text-white text-[10px] font-mono rounded-lg border border-white/10 shadow-xl opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all pointer-events-none z-50 backdrop-blur-md">
+            <div
+                className={`absolute bottom-full right-0 mb-3 w-72 p-3 bg-slate-900/95 text-white text-[10px] font-mono rounded-lg border border-white/10 shadow-xl transition-all pointer-events-none z-50 backdrop-blur-md ${
+                    forceShow
+                        ? 'opacity-100 translate-y-0'
+                        : 'opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0'
+                }`}
+            >
                 <div className="space-y-1.5">
                     <div className="flex justify-between border-b border-white/10 pb-1">
                         <span className="text-slate-400">Viewport</span>
