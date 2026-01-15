@@ -35,7 +35,7 @@ export function StoreDesktop() {
                                 India’s Lowest EMI Guarantee
                             </div>
 
-                            <h1 className="text-6xl sm:text-8xl md:text-9xl lg:text-[8.5rem] font-black italic uppercase tracking-tight md:tracking-tighter lg:tracking-[-0.04em] leading-[0.9]">
+                            <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-8xl xl:text-[7rem] 2xl:text-[7.5rem] font-black italic uppercase tracking-tight md:tracking-tighter lg:tracking-[-0.04em] leading-none xl:leading-[0.9] 2xl:leading-tight pb-4">
                                 <span className="text-slate-900 dark:text-white transition-colors">Your Next</span>{' '}
                                 <br />
                                 <span className="text-[#F4B000] drop-shadow-md transition-all">Legend Awaits.</span>
