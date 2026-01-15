@@ -24,8 +24,8 @@ export function StoreTablet() {
                     <div className="absolute inset-0 bg-gradient-to-b from-white via-white/60 to-white dark:from-[#020617] dark:via-[#020617]/60 dark:to-[#020617]" />
                 </div>
 
-                <div className="max-w-4xl mx-auto relative z-10 w-full text-center py-20">
-                    <div className="space-y-10">
+                <div className="max-w-4xl mx-auto relative z-10 w-full text-center py-12">
+                    <div className="space-y-8">
                         <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-brand-primary/5 dark:bg-brand-primary/10 border border-brand-primary/10 text-brand-primary rounded-full text-[10px] font-black uppercase tracking-[0.3em] backdrop-blur-md">
                             India’s Lowest EMI Guarantee
                         </div>

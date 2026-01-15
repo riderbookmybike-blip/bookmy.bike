@@ -33,7 +33,7 @@ export function StoreMobile() {
     return (
         <div className="flex flex-col pb-40 transition-colors duration-300 w-full max-w-[100vw] overflow-x-hidden">
             {/* Mobile Portrait Hero */}
-            <section className="relative min-h-[85vh] flex flex-col items-center justify-center overflow-hidden bg-white dark:bg-[#020617] isolate px-4 pt-20 pb-12">
+            <section className="relative min-h-[65vh] flex flex-col items-center justify-center overflow-hidden bg-white dark:bg-[#020617] isolate px-4 pt-20 pb-12">
                 <div className="absolute inset-0 z-0 opacity-30">
                     <Image src="/images/hero/lifestyle_1.png" alt="Hero" fill className="object-cover" priority />
                     <div className="absolute inset-0 bg-gradient-to-b from-white via-white/80 to-white dark:from-[#020617] dark:via-[#020617]/80 dark:to-[#020617]" />
