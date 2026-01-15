@@ -489,9 +489,7 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-black transition-colors duration-500 font-sans">
             {/* Main Content Area - Visual Rest (No Container Box) */}
-            <main
-                className={`flex-1 mx-auto w-full ${isTv ? 'px-24 xl:px-44 max-w-[1440px] py-4' : 'px-6 md:px-12 lg:px-20 max-w-[1440px] py-8'}`}
-            >
+            <main className={`flex-1 mx-auto w-full max-w-[1440px] px-6 md:px-12 lg:px-20 ${isTv ? 'py-4' : 'py-8'}`}>
                 {/* Header Section - Aligned with Global Header */}
                 <header className={`${isTv ? 'mb-6' : 'mb-12'} px-2`}>
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
