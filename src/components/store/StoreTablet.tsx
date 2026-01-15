@@ -4,6 +4,8 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRight } from 'lucide-react';
+import { BRANDS, CATEGORIES } from '@/config/market';
+import { RiderPulse } from '@/components/store/RiderPulse';
 
 export function StoreTablet() {
     return (
@@ -51,33 +53,33 @@ export function StoreTablet() {
             </section>
 
             {/* Tablet Grid: Branding */}
-            <section className="py-24 bg-white dark:bg-[#020617] px-8">
-                <div className="flex flex-col gap-6 mb-12">
-                    <p className="text-[10px] font-black text-brand-primary uppercase tracking-[0.4em] italic">
+            <section className="py-24 bg-white dark:bg-[#020617] px-12 border-t border-slate-100 dark:border-white/5">
+                <div className="flex flex-col gap-6 mb-16">
+                    <p className="text-[10px] font-black text-brand-primary uppercase tracking-[0.4em] italic leading-none">
                         Partner Ecosystem
                     </p>
-                    <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white">
+                    <h2 className="text-5xl md:text-6xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white">
                         The Manufacturers
                     </h2>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                    {['HONDA', 'TVS', 'ROYAL ENFIELD', 'BAJAJ', 'SUZUKI', 'YAMAHA'].map(brand => (
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-12 md:gap-16">
+                    {BRANDS.slice(0, 9).map(brand => (
                         <Link
                             key={brand}
-                            href={`/store/catalog?search=${brand.toLowerCase()}`}
-                            className="h-28 bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 rounded-[1.5rem] flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/[0.05] transition-colors"
+                            href={`/store/catalog?brand=${brand}`}
+                            className="group border-b border-slate-100 dark:border-white/5 pb-8 hover:border-brand-primary transition-all duration-500"
                         >
-                            <span className="font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 text-xs">
+                            <h3 className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter text-slate-300 dark:text-slate-800 group-hover:text-brand-primary transition-colors duration-500">
                                 {brand}
-                            </span>
+                            </h3>
                         </Link>
                     ))}
                 </div>
             </section>
 
             {/* Tablet Protocol */}
-            <section className="py-24 bg-slate-900 text-white px-8">
+            <section className="py-24 bg-slate-900 text-white px-12">
                 <div className="space-y-12">
                     <div className="space-y-4">
                         <p className="text-[10px] font-black text-brand-primary uppercase tracking-[0.4em] italic">
@@ -88,7 +90,7 @@ export function StoreTablet() {
                         </h2>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {[
                             { step: '01', title: 'Select', desc: 'Browse 500+ models with unified dealer pricing.' },
                             { step: '02', title: 'Quote', desc: 'Get an instant, on-road quote for your location.' },
@@ -96,7 +98,7 @@ export function StoreTablet() {
                         ].map((item, i) => (
                             <div
                                 key={i}
-                                className="p-8 bg-white/5 border border-white/5 rounded-[2rem] flex items-center gap-6"
+                                className="p-8 bg-white/5 border border-white/5 rounded-[2.5rem] flex flex-col gap-6 justify-between"
                             >
                                 <div className="text-3xl font-black italic text-brand-primary opacity-50 shrink-0">
                                     {item.step}
@@ -112,47 +114,72 @@ export function StoreTablet() {
             </section>
 
             {/* Tablet Categories */}
-            <section className="py-24 bg-slate-50 dark:bg-[#020617] px-8">
-                <div className="mb-12 space-y-4">
+            <section className="py-24 bg-slate-50 dark:bg-[#020617] px-12">
+                <div className="mb-16 space-y-4 text-center">
                     <p className="text-[10px] font-black text-brand-primary uppercase tracking-[0.4em] italic">
                         Curated Collections
                     </p>
-                    <h2 className="text-5xl md:text-6xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white">
+                    <h2 className="text-6xl md:text-7xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white">
                         Select Your Vibe
                     </h2>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                    {[
-                        { title: 'Scooters', img: '/images/categories/scooter_nobg.png' },
-                        { title: 'Motorcycles', img: '/images/categories/motorcycle_nobg.png' },
-                        { title: 'Mopeds', img: '/images/categories/moped_nobg.png' },
-                        { title: 'Electric', img: '/images/categories/scooter_nobg.png' },
-                    ].map((cat, i) => (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    {CATEGORIES.map((cat, i) => (
                         <Link
                             key={i}
-                            href="/store/catalog"
-                            className="relative h-80 overflow-hidden rounded-[2.5rem] border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 flex flex-col justify-end p-8 hover:shadow-xl transition-shadow"
+                            href={cat.link}
+                            className="relative h-[520px] overflow-hidden rounded-[3.5rem] border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 flex flex-col justify-end p-10 group isolate transition-all duration-700"
                         >
-                            <div className="relative z-10">
-                                <h3 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white">
-                                    {cat.title}
-                                </h3>
-                                <div className="mt-4 flex items-center gap-2 text-[10px] font-black uppercase text-brand-primary">
-                                    Explore <ArrowRight size={14} />
+                            {/* Immersive Mesh Gradient - Hover State */}
+                            <div
+                                className={`absolute inset-0 bg-gradient-to-br ${cat.color} to-transparent opacity-0 group-hover:opacity-100 transition-all duration-1000 z-0 scale-150 group-hover:scale-100 blur-3xl`}
+                            />
+
+                            {/* Top Left Feature Label */}
+                            <div className="absolute top-8 left-8 z-20">
+                                {cat.features.slice(0, 1).map((feature, idx) => (
+                                    <span
+                                        key={idx}
+                                        className="inline-block px-3 py-1.5 rounded-full border border-slate-900/10 dark:border-white/10 bg-white/50 dark:bg-black/20 backdrop-blur-md text-[9px] font-sans font-bold uppercase tracking-[0.2em] text-slate-900 dark:text-white"
+                                    >
+                                        {feature}
+                                    </span>
+                                ))}
+                            </div>
+
+                            <div className="relative z-20 space-y-4">
+                                <div className="space-y-1">
+                                    <p className="text-[9px] font-black text-brand-primary uppercase tracking-[0.4em] italic">
+                                        {cat.subtitle}
+                                    </p>
+                                    <h3 className="text-3xl font-black uppercase tracking-tighter text-slate-900 dark:text-white leading-none">
+                                        {cat.title}
+                                    </h3>
+                                </div>
+                                <div className="mt-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-brand-primary opacity-0 group-hover:opacity-100 transition-all duration-500">
+                                    EXPLORE {cat.title} <ArrowRight size={14} />
                                 </div>
                             </div>
-                            <Image
-                                src={cat.img}
-                                alt={cat.title}
-                                width={420}
-                                height={320}
-                                className="absolute top-1/4 right-0 w-[90%] opacity-80 object-contain"
-                            />
+
+                            {/* Floating Bike Image */}
+                            <div className="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full flex items-center justify-center z-10 pointer-events-none">
+                                <div className="relative w-[110%] h-[110%] transition-all duration-1000">
+                                    <Image
+                                        src={cat.img}
+                                        alt={cat.title}
+                                        fill
+                                        className="object-contain filter drop-shadow-[0_30px_50px_rgba(0,0,0,0.1)] dark:drop-shadow-[0_20px_60px_rgba(255,255,255,0.05)] transition-all duration-1000"
+                                    />
+                                </div>
+                            </div>
                         </Link>
                     ))}
                 </div>
             </section>
+
+            {/* Restored Rider Pulse (Reviews) Section */}
+            <RiderPulse />
         </div>
     );
 }

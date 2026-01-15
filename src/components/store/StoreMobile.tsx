@@ -1,11 +1,35 @@
-'use client';
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRight, Shield, Search, MapPin, Zap } from 'lucide-react';
+import { BRANDS, CATEGORIES, MARKET_METRICS } from '@/config/market';
+import { RiderPulse } from '@/components/store/RiderPulse';
+import { createClient } from '@/lib/supabase/client';
+
+type BrandRecord = {
+    name: string;
+    logo_svg?: string | null;
+};
 
 export function StoreMobile() {
+    const [activeBrands, setActiveBrands] = useState<BrandRecord[]>([]);
+
+    useEffect(() => {
+        let isMounted = true;
+        const fetchBrands = async () => {
+            const supabase = createClient();
+            const { data } = await supabase.from('brands').select('name, logo_svg').eq('is_active', true);
+
+            if (data && isMounted) {
+                setActiveBrands(data as BrandRecord[]);
+            }
+        };
+        fetchBrands();
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
     return (
         <div className="flex flex-col pb-40 transition-colors duration-300 w-full max-w-[100vw] overflow-x-hidden">
             {/* Mobile Portrait Hero */}
@@ -18,7 +42,7 @@ export function StoreMobile() {
                 <div className="relative z-10 w-full text-center space-y-6 max-w-xs mx-auto">
                     <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-brand-primary/5 border border-brand-primary/10 text-brand-primary rounded-full text-[9px] font-black uppercase tracking-[0.2em] backdrop-blur-sm whitespace-nowrap">
                         <span className="h-1.5 w-1.5 rounded-full bg-brand-primary animate-pulse" />
-                        Lowest EMI Guaranteed
+                        {MARKET_METRICS.avgSavings} Savings Guaranteed
                     </div>
 
                     <h1 className="text-5xl font-black italic uppercase tracking-tighter leading-[0.85] text-slate-900 dark:text-white break-words">
@@ -32,21 +56,10 @@ export function StoreMobile() {
                         Stop Negotiating. Start Riding. India’s Best On-Road Price.
                     </p>
 
-                    <div className="space-y-4 pt-4 w-full max-w-sm mx-auto">
-                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-1 rounded-2xl shadow-xl">
-                            <div className="flex items-center px-4 h-12 bg-slate-50 dark:bg-white/5 rounded-xl">
-                                <Search className="text-slate-400 mr-3" size={16} />
-                                <input
-                                    type="text"
-                                    placeholder="Search Bike or Scooter..."
-                                    className="bg-transparent border-none outline-none text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white w-full placeholder:text-slate-400"
-                                />
-                            </div>
-                        </div>
-
+                    <div className="pt-8 w-full max-w-[280px] mx-auto">
                         <Link
                             href="/store/catalog"
-                            className="w-full h-12 bg-slate-900 dark:bg-white text-white dark:text-black rounded-xl flex items-center justify-center gap-3 font-black uppercase tracking-widest text-[10px] shadow-lg shadow-slate-900/20"
+                            className="w-full h-14 bg-slate-900 dark:bg-white text-white dark:text-black rounded-2xl flex items-center justify-center gap-3 font-black uppercase tracking-[0.2em] text-[10px] shadow-2xl shadow-slate-900/20 active:scale-95 transition-all"
                         >
                             Explore Collection <ArrowRight size={14} />
                         </Link>
@@ -76,17 +89,19 @@ export function StoreMobile() {
                     </h2>
                 </div>
 
-                <div className="flex overflow-x-auto gap-3 px-4 pb-4 no-scrollbar scroll-smooth snap-x">
-                    {['HONDA', 'TVS', 'RE', 'BAJAJ', 'SUZUKI', 'YAMAHA'].map(brand => (
+                <div className="flex overflow-x-auto gap-12 px-4 pb-12 no-scrollbar scroll-smooth snap-x">
+                    {activeBrands.slice(0, 10).map(brand => (
                         <Link
-                            key={brand}
-                            href={`/store/catalog?search=${brand.toLowerCase()}`}
-                            className="flex-shrink-0 w-32 h-32 bg-slate-50 dark:bg-white/5 rounded-[2rem] flex items-center justify-center snap-center border border-slate-100 dark:border-white/5"
+                            key={brand.name}
+                            href={`/store/catalog?brand=${brand.name.toUpperCase()}`}
+                            className="flex-shrink-0 snap-center"
                         >
-                            <span className="font-black text-[10px] tracking-widest text-slate-400">{brand}</span>
+                            <h3 className="text-6xl font-black uppercase italic tracking-tighter text-slate-200 dark:text-white/10 active:text-brand-primary transition-colors">
+                                {brand.name}
+                            </h3>
                         </Link>
                     ))}
-                    <div className="flex-shrink-0 w-1" /> {/* Spacer */}
+                    <div className="flex-shrink-0 w-8" />
                 </div>
             </section>
 
@@ -123,32 +138,61 @@ export function StoreMobile() {
                     </h2>
                 </div>
 
-                <div className="flex overflow-x-auto gap-4 px-4 pb-12 no-scrollbar snap-x">
-                    {[
-                        { title: 'Scooters', img: '/images/categories/scooter_nobg.png' },
-                        { title: 'Bikes', img: '/images/categories/motorcycle_nobg.png' },
-                        { title: 'Electric', img: '/images/categories/scooter_nobg.png' },
-                    ].map((cat, i) => (
+                <div className="flex overflow-x-auto gap-6 px-4 pb-12 no-scrollbar snap-x">
+                    {CATEGORIES.map((cat, i) => (
                         <Link
                             key={i}
-                            href="/store/catalog"
-                            className="flex-shrink-0 w-[80vw] h-[400px] bg-white dark:bg-slate-900 rounded-[3rem] p-8 relative overflow-hidden snap-center border border-slate-200 dark:border-white/10"
+                            href={cat.link}
+                            className={`flex-shrink-0 w-[85vw] h-[480px] bg-white dark:bg-slate-900 rounded-[3.5rem] p-10 relative overflow-hidden snap-center border border-slate-200 dark:border-white/5 flex flex-col justify-between group isolate`}
                         >
-                            <h3 className="text-3xl font-black uppercase tracking-tighter italic relative z-10">
-                                {cat.title}
-                            </h3>
-                            <Image
-                                src={cat.img}
-                                alt={cat.title}
-                                width={300}
-                                height={300}
-                                className="absolute bottom-0 right-0 w-[90%] opacity-90 object-contain"
+                            {/* Subdued Mesh Gradient Background */}
+                            <div
+                                className={`absolute inset-0 bg-gradient-to-br ${cat.color} to-transparent opacity-30 z-0 blur-3xl`}
                             />
+
+                            {/* Top Left Feature Label */}
+                            <div className="absolute top-8 left-8 z-20">
+                                {cat.features.slice(0, 1).map((feature, idx) => (
+                                    <span
+                                        key={idx}
+                                        className="inline-block px-3 py-1.5 rounded-full border border-slate-900/10 dark:border-white/10 bg-white/50 dark:bg-black/20 backdrop-blur-md text-[9px] font-sans font-bold uppercase tracking-[0.2em] text-slate-900 dark:text-white"
+                                    >
+                                        {feature}
+                                    </span>
+                                ))}
+                            </div>
+
+                            <div className="relative z-10 space-y-3">
+                                <p className="text-[9px] font-black text-brand-primary uppercase tracking-[0.3em] italic leading-none">
+                                    {cat.subtitle}
+                                </p>
+                                <h3 className="text-4xl font-black uppercase tracking-tighter text-slate-900 dark:text-white leading-none">
+                                    {cat.title}
+                                </h3>
+                            </div>
+
+                            <div className="relative z-10">
+                                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white">
+                                    EXPLORE {cat.title} <ArrowRight size={14} className="text-brand-primary" />
+                                </div>
+                            </div>
+
+                            <div className="absolute top-[35%] left-[10%] w-[90%] h-[70%] z-10 pointer-events-none">
+                                <Image
+                                    src={cat.img}
+                                    alt={cat.title}
+                                    fill
+                                    className="object-contain filter drop-shadow-[0_30px_40px_rgba(0,0,0,0.1)] dark:drop-shadow-[0_20px_50px_rgba(255,255,255,0.05)]"
+                                />
+                            </div>
                         </Link>
                     ))}
-                    <div className="flex-shrink-0 w-1" />
+                    <div className="flex-shrink-0 w-4" />
                 </div>
             </section>
+
+            {/* Restored Rider Pulse (Reviews) Section */}
+            <RiderPulse />
         </div>
     );
 }
