@@ -176,6 +176,9 @@ export default function InsuranceFormulaBuilder({
                             onDelete={() => handleDelete('tp', tpComponents, comp.id)}
                             readOnly={readOnly}
                             availableTargets={[]}
+                            slabValueLabel="Premium"
+                            showSlabValueTypeToggle
+                            defaultSlabValueType="FIXED"
                         />
                     ))}
                 </div>

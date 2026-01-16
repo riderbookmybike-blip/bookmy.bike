@@ -209,14 +209,28 @@ export default function FormulaBuilder({ components, onChange, readOnly = false,
 }
 
 // Recursive Block Component
-export const FormulaBlock = ({ component, onChange, onDelete, readOnly, availableTargets, inheritedContext, dragHandleProps }: {
+export const FormulaBlock = ({
+    component,
+    onChange,
+    onDelete,
+    readOnly,
+    availableTargets,
+    inheritedContext,
+    dragHandleProps,
+    slabValueLabel = 'Tax %',
+    showSlabValueTypeToggle = false,
+    defaultSlabValueType = 'PERCENTAGE'
+}: {
     component: FormulaComponent,
     onChange: (c: FormulaComponent) => void,
     onDelete: () => void,
     readOnly: boolean,
     availableTargets: { id: string; label: string }[],
     inheritedContext?: { fuelType?: string; regType?: string },
-    dragHandleProps?: any
+    dragHandleProps?: any,
+    slabValueLabel?: string,
+    showSlabValueTypeToggle?: boolean,
+    defaultSlabValueType?: 'PERCENTAGE' | 'FIXED'
 }) => {
 
     const [expanded, setExpanded] = useState(true);
@@ -229,6 +243,8 @@ export const FormulaBlock = ({ component, onChange, onDelete, readOnly, availabl
 
     const isTaxOnTax = component.basis === 'PREVIOUS_TAX_TOTAL';
     const isSlab = component.type === 'SLAB';
+    const slabValueType = component.slabValueType ?? defaultSlabValueType;
+    const isFixedSlabValue = slabValueType === 'FIXED';
 
     let borderColor = 'border-slate-200 dark:border-white/10';
     let headerColor = 'bg-slate-50/80 dark:bg-slate-800/80';
@@ -584,6 +600,23 @@ export const FormulaBlock = ({ component, onChange, onDelete, readOnly, availabl
                                 </span>
                             </div>
 
+                            {showSlabValueTypeToggle && (
+                                <div className="flex justify-end mb-2">
+                                    <div className="flex items-center gap-2 bg-slate-100/80 dark:bg-slate-900/60 p-1 rounded-xl border border-slate-200 dark:border-white/5">
+                                        <span className="text-[9px] font-black text-slate-400 uppercase px-2">Value Type</span>
+                                        <select
+                                            value={slabValueType}
+                                            onChange={(e) => updateField('slabValueType', e.target.value)}
+                                            className="text-[10px] font-black bg-white dark:bg-slate-900 border-none focus:ring-0 py-0.5 pl-1 pr-6 rounded-lg cursor-pointer text-slate-700 dark:text-slate-200 uppercase tracking-tighter italic"
+                                            disabled={effectiveReadOnly}
+                                        >
+                                            <option value="PERCENTAGE">%</option>
+                                            <option value="FIXED">Fixed</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="border border-white/40 dark:border-white/5 rounded-3xl overflow-hidden bg-white/40 dark:bg-slate-900/40 backdrop-blur-sm shadow-inner ring-1 ring-black/5 mt-4">
                                 <table className="w-full text-sm text-left border-collapse">
                                     <thead className="bg-slate-100/50 dark:bg-white/5 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-black tracking-widest border-b border-black/5 dark:border-white/5">
@@ -592,7 +625,7 @@ export const FormulaBlock = ({ component, onChange, onDelete, readOnly, availabl
                                             <th className="px-3 py-3 w-[20%]">Calculate On</th>
                                             <th className="px-3 py-3 w-[15%]">Min</th>
                                             <th className="px-3 py-3 w-[15%]">Max</th>
-                                            <th className="px-3 py-3 w-[10%] text-center">Tax %</th>
+                                            <th className="px-3 py-3 w-[10%] text-center">{slabValueLabel}</th>
                                             <th className="px-3 py-3 w-[10%] text-center border-l border-white/10 bg-orange-500/5">Cess %</th>
                                             {!effectiveReadOnly && <th className="px-3 py-3 w-[5%]"></th>}
                                         </tr>
@@ -680,8 +713,15 @@ export const FormulaBlock = ({ component, onChange, onDelete, readOnly, availabl
                                                     <td className="px-3 py-3 text-center">
                                                         <input
                                                             type="number"
-                                                            value={range.percentage}
-                                                            onChange={(e) => updateRange({ percentage: parseFloat(e.target.value) })}
+                                                            value={isFixedSlabValue ? (range.amount ?? '') : range.percentage}
+                                                            onChange={(e) => {
+                                                                const nextValue = e.target.value === '' ? '' : parseFloat(e.target.value);
+                                                                if (isFixedSlabValue) {
+                                                                    updateRange({ amount: nextValue === '' ? undefined : nextValue });
+                                                                } else {
+                                                                    updateRange({ percentage: nextValue === '' ? 0 : nextValue });
+                                                                }
+                                                            }}
                                                             className="w-16 bg-blue-50/50 dark:bg-blue-500/10 border-2 border-blue-100 dark:border-blue-500/30 focus:border-blue-600 focus:ring-4 focus:ring-blue-100 rounded-xl px-0 py-2 text-sm font-black text-blue-700 dark:text-blue-300 text-center"
                                                             placeholder="0"
                                                             readOnly={effectiveReadOnly}

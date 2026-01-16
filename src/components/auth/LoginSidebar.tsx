@@ -326,10 +326,18 @@ export default function LoginSidebar({
                 user = signupData.user; // Update user object for membership check below
             }
         } else if (authMethod === 'PHONE') {
-            await fetch('/api/auth/msg91/sync', {
+            const syncRes = await fetch('/api/auth/msg91/sync', {
                 method: 'POST',
                 body: JSON.stringify({ phone: phoneVal, pincode: isStaff ? null : location.pincode }),
             });
+            try {
+                const syncData = await syncRes.json();
+                if (syncData?.session) {
+                    await supabase.auth.setSession(syncData.session);
+                }
+            } catch {
+                // Ignore sync parse issues; login should still proceed if session is already set.
+            }
         }
 
         // Fetch Memberships & Redirect

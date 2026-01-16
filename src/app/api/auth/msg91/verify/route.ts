@@ -41,9 +41,14 @@ export async function POST(req: NextRequest) {
             const e164Phone = `+${mobile}`; // +91XXXXXXXXXX
             const email = `${phone}@bookmy.bike`;
 
-            const foundUser = existingUsers?.users.find(
-                u => u.phone === e164Phone || u.phone === mobile || u.email === email
-            );
+            const normalizePhone = (value?: string | null) => (value || '').replace(/\D/g, '').slice(-10);
+            const targetPhone = normalizePhone(tenDigitPhone);
+            const foundUser = existingUsers?.users.find(u => {
+                const userPhone = normalizePhone(u.phone || '');
+                const metaPhone = normalizePhone((u.user_metadata as { phone?: string })?.phone);
+                const emailMatch = u.email === email;
+                return userPhone === targetPhone || metaPhone === targetPhone || u.phone === e164Phone || u.phone === mobile || emailMatch;
+            });
 
             if (!foundUser) {
                 // Allow new users to proceed to signup (Deadlock Fix)
