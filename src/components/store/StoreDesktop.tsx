@@ -34,7 +34,7 @@ export function StoreDesktop({ variant = 'default' }: StoreDesktopProps) {
                     <div className="absolute inset-0 bg-gradient-to-b from-white via-white/40 to-white dark:from-[#020617] dark:via-[#020617]/40 dark:to-[#020617]" />
                 </div>
 
-                <div className="mx-auto relative z-10 w-full text-center max-w-[1440px] px-6 md:px-12 lg:px-20 pt-20 pb-16">
+                <div className="mx-auto relative z-10 w-full text-center max-w-[1440px] px-6 md:px-12 lg:px-20 pt-16 pb-12">
                     <div className="space-y-8">
                         <div className="space-y-6">
                             <div className="inline-flex items-center gap-3 px-6 py-3 bg-brand-primary/5 dark:bg-brand-primary/10 border border-brand-primary/10 dark:border-brand-primary/20 text-brand-primary dark:text-brand-primary rounded-full text-[11px] font-black uppercase tracking-[0.3em] backdrop-blur-md shadow-sm mb-8">
@@ -72,7 +72,7 @@ export function StoreDesktop({ variant = 'default' }: StoreDesktopProps) {
                         </div>
 
                         {/* Metrics Section */}
-                        <div className="w-full max-w-5xl mx-auto grid grid-cols-3 gap-4 md:gap-0 border-t border-slate-200/50 dark:border-white/5 transition-colors py-6 mt-8">
+                        <div className="w-full max-w-5xl mx-auto grid grid-cols-3 gap-4 md:gap-0 border-t border-slate-200/50 dark:border-white/5 transition-colors py-4 mt-4">
                             <div className="text-center group cursor-default space-y-1">
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
                                     {'>'} Models

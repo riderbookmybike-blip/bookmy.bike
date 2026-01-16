@@ -1,24 +1,25 @@
-"use client"
+'use client';
 
-import * as React from "react"
-import { Moon, Sun } from "lucide-react"
-import { useTheme } from "@/components/providers/ThemeProvider"
+import * as React from 'react';
+import { Moon, Sun } from 'lucide-react';
+import { useTheme } from '@/components/providers/ThemeProvider';
 
 export function ThemeToggle({ className }: { className?: string }) {
-    const { theme, setTheme } = useTheme()
-    const [mounted, setMounted] = React.useState(false)
+    const { theme, setTheme } = useTheme();
+    const [mounted, setMounted] = React.useState(false);
 
     React.useEffect(() => {
-        setMounted(true)
-    }, [])
+        setMounted(true);
+    }, []);
 
     if (!mounted) {
-        return <div className="w-9 h-9" /> // Avoid hydration mismatch
+        return <div className="w-9 h-9" />; // Avoid hydration mismatch
     }
 
     return (
         <button
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            type="button"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className={`w-9 h-9 flex items-center justify-center flex-shrink-0 rounded-full bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white hover:scale-110 transition-all ${className}`}
             aria-label="Toggle Theme"
         >

@@ -16,13 +16,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         // Load saved theme
-        const saved = localStorage.getItem('theme') as Theme;
-        if (saved) setTheme(saved);
+        const saved = localStorage.getItem('theme') as Theme | null;
+        if (!saved) return;
+        const frame = window.requestAnimationFrame(() => setTheme(saved));
+        return () => window.cancelAnimationFrame(frame);
     }, []);
 
     useEffect(() => {
         const root = window.document.documentElement;
-        root.classList.remove('light', 'dark');
+        // Split remove for better compatibility with older TV browsers
+        root.classList.remove('light');
+        root.classList.remove('dark');
 
         if (theme === 'system') {
             const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -34,11 +38,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('theme', theme);
     }, [theme]);
 
-    return (
-        <ThemeContext.Provider value={{ theme, setTheme }}>
-            {children}
-        </ThemeContext.Provider>
-    );
+    return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>;
 }
 
 export const useTheme = () => {

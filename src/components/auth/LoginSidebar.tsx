@@ -1,13 +1,29 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { Session } from '@supabase/supabase-js';
-import { Phone, ArrowRight, Lock, User, X, AlertCircle, Globe, RefreshCcw, ChevronRight, CheckCircle2, Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
+import { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import {
+    Phone,
+    ArrowRight,
+    Lock,
+    User,
+    X,
+    AlertCircle,
+    Globe,
+    RefreshCcw,
+    ChevronRight,
+    CheckCircle2,
+    Facebook,
+    Twitter,
+    Instagram,
+    Linkedin,
+} from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useRouter } from 'next/navigation';
 import { useTenant, TenantType } from '@/lib/tenant/tenantContext';
 import { createClient } from '@/lib/supabase/client';
 import { getSmartPincode } from '@/lib/location/geocode';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 
 interface LoginSidebarProps {
     isOpen: boolean;
@@ -46,7 +62,7 @@ export default function LoginSidebar({
     const [redirectPath, setRedirectPath] = useState<string | null>(redirectTo ?? null);
     const [fallbackPath, setFallbackPath] = useState<string | null>(null);
     const [tenantSlug, setTenantSlug] = useState<string | null>(
-        tenantSlugProp ?? (redirectTo ? redirectTo.match(/^\/app\/([^/]+)/)?.[1] ?? null : null)
+        tenantSlugProp ?? (redirectTo ? (redirectTo.match(/^\/app\/([^/]+)/)?.[1] ?? null) : null)
     );
 
     // Existence Info
@@ -98,7 +114,8 @@ export default function LoginSidebar({
             // Determine Marketplace vs Tenant context
             const pathname = window.location.pathname;
             const searchParams = new URLSearchParams(window.location.search);
-            const derivedSlug = tenantSlugProp || searchParams.get('tenant') || (redirectTo?.match(/^\/app\/([^/]+)/)?.[1]);
+            const derivedSlug =
+                tenantSlugProp || searchParams.get('tenant') || redirectTo?.match(/^\/app\/([^/]+)/)?.[1];
             const isInTenantPath = pathname.startsWith('/app/') || !!derivedSlug;
 
             setIsMarketplace(!isInTenantPath);
@@ -238,8 +255,8 @@ export default function LoginSidebar({
         const phoneVal = identifier.replace(/\D/g, '');
 
         try {
-            let sessionData = null;
-            let userData = null;
+            let sessionData: Session | null = null;
+            let userData: SupabaseUser | null = null;
 
             if (authMethod === 'PHONE') {
                 const res = await fetch('/api/auth/msg91/verify', {
@@ -250,35 +267,40 @@ export default function LoginSidebar({
                 const verifyData = await res.json();
                 if (!verifyData.success) throw new Error(verifyData.message);
 
-                // If isNew, session will be null. This is expected. 
+                // If isNew, session will be null. This is expected.
                 // We proceed to completeLogin which will trigger signup -> auto-login.
-                sessionData = verifyData.session;
-                userData = verifyData.user;
+                sessionData = verifyData.session ?? null;
+                userData = verifyData.user ?? null;
 
                 if (sessionData) {
-                    await supabase.auth.setSession(sessionData as any);
+                    await supabase.auth.setSession(sessionData);
                 }
             } else {
                 const { data, error } = await supabase.auth.verifyOtp({ email: identifier, token: otp, type: 'email' });
                 if (error) throw error;
                 sessionData = data.session;
                 userData = data.user;
-                await supabase.auth.setSession(sessionData); // Ensure session is set
+                if (sessionData) {
+                    await supabase.auth.setSession(sessionData); // Ensure session is set
+                }
             }
 
             // Sync & Complete
             await completeLogin(userData, sessionData);
-
-        } catch (err: any) {
-            setLoginError(err.message || 'Verification failed.');
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Verification failed.';
+            setLoginError(message);
             if (securityTimer > 15) setShowEmailFallback(true);
         } finally {
             setLoading(false);
         }
     };
 
-    const completeLogin = async (user: any, session: any) => {
+    const completeLogin = async (user: SupabaseUser | null, _session: Session | null) => {
         const supabase = createClient();
+        if (!user) {
+            throw new Error('User not found');
+        }
 
         // Sync User Data
         const isEmail = authMethod === 'EMAIL';
@@ -291,21 +313,22 @@ export default function LoginSidebar({
                     phone: phoneVal,
                     email: isEmail ? identifier : '',
                     displayName: fullName || 'Rider',
-                    pincode: location.pincode
-                })
+                    pincode: location.pincode,
+                }),
             });
             const signupData = await signupRes.json();
             if (!signupData.success) throw new Error(signupData.message || 'Signup failed');
 
             // Capture session from signup response
-            if (signupData.session) {
-                await supabase.auth.setSession(signupData.session);
+            const signupSession = signupData.session as Session | null;
+            if (signupSession) {
+                await supabase.auth.setSession(signupSession);
                 user = signupData.user; // Update user object for membership check below
             }
         } else if (authMethod === 'PHONE') {
             await fetch('/api/auth/msg91/sync', {
                 method: 'POST',
-                body: JSON.stringify({ phone: phoneVal, pincode: isStaff ? null : location.pincode })
+                body: JSON.stringify({ phone: phoneVal, pincode: isStaff ? null : location.pincode }),
             });
         }
 
@@ -339,11 +362,11 @@ export default function LoginSidebar({
     const overlayVariants = {
         hidden: { opacity: 0 },
         visible: { opacity: 1 },
-        exit: { opacity: 0 }
+        exit: { opacity: 0 },
     };
 
     // Sidebar Slide-In from Right
-    const sidebarVariants: any = {
+    const sidebarVariants: Variants = {
         hidden: { x: '100%', opacity: 0, scale: 0.95 },
         visible: {
             x: 0,
@@ -353,21 +376,21 @@ export default function LoginSidebar({
                 type: 'spring',
                 damping: 25,
                 stiffness: 300,
-                mass: 0.8
-            }
+                mass: 0.8,
+            },
         },
         exit: {
             x: '100%',
             opacity: 0,
             scale: 0.95,
-            transition: { duration: 0.2, ease: 'easeIn' }
-        }
+            transition: { duration: 0.2, ease: 'easeIn' },
+        },
     };
 
     const contentVariants = {
         hidden: { opacity: 0, x: 20 },
         visible: { opacity: 1, x: 0, transition: { delay: 0.2, duration: 0.4 } },
-        exit: { opacity: 0, x: -20 }
+        exit: { opacity: 0, x: -20 },
     };
 
     return (
@@ -400,12 +423,15 @@ export default function LoginSidebar({
                             <div className="scale-90 origin-left">
                                 <Logo mode="auto" size={32} variant="full" />
                             </div>
-                            <button
-                                onClick={onClose}
-                                className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors text-slate-500 dark:text-slate-400"
-                            >
-                                <X size={20} />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <ThemeToggle className="w-10 h-10" />
+                                <button
+                                    onClick={onClose}
+                                    className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors text-slate-500 dark:text-slate-400"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Main Content (Scrollable) */}
@@ -424,16 +450,24 @@ export default function LoginSidebar({
                                         <h2 className="text-4xl xs:text-5xl font-black italic uppercase tracking-tighter text-slate-900 dark:text-white leading-[0.9]">
                                             {step === 'INITIAL'
                                                 ? 'Start Your'
-                                                : (step === 'SIGNUP' ? 'Create' : 'Verify')}
+                                                : step === 'SIGNUP'
+                                                  ? 'Create'
+                                                  : 'Verify'}
                                             <span className="block text-[#F4B000]">
                                                 {step === 'INITIAL'
                                                     ? 'Journey.'
-                                                    : (step === 'SIGNUP' ? 'Profile.' : 'Identity.')}
+                                                    : step === 'SIGNUP'
+                                                      ? 'Profile.'
+                                                      : 'Identity.'}
                                             </span>
                                         </h2>
                                         <p className="text-sm font-medium text-slate-500 dark:text-slate-400 max-w-xs leading-relaxed">
-                                            {step === 'INITIAL' && "Enter your 10-digit mobile number to login or create a new account instantly."}
-                                            {step === 'SIGNUP' && (authMethod === 'EMAIL' ? 'Enter your name to complete signup.' : "We just need your name to set up your rider profile.")}
+                                            {step === 'INITIAL' &&
+                                                'Enter your 10-digit mobile number to login or create a new account instantly.'}
+                                            {step === 'SIGNUP' &&
+                                                (authMethod === 'EMAIL'
+                                                    ? 'Enter your name to complete signup.'
+                                                    : 'We just need your name to set up your rider profile.')}
                                             {step === 'OTP' && `Enter the verification code sent to ${identifier}.`}
                                         </p>
                                     </div>
@@ -443,7 +477,9 @@ export default function LoginSidebar({
                                         <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 flex items-start gap-3">
                                             <AlertCircle size={18} className="text-red-500 mt-0.5" />
                                             <div>
-                                                <p className="text-xs font-black uppercase text-red-600 dark:text-red-400 tracking-wider">Authentication Error</p>
+                                                <p className="text-xs font-black uppercase text-red-600 dark:text-red-400 tracking-wider">
+                                                    Authentication Error
+                                                </p>
                                                 <p className="text-xs text-red-500 mt-1">{loginError}</p>
                                             </div>
                                         </div>
@@ -451,10 +487,11 @@ export default function LoginSidebar({
 
                                     {/* INPUTS */}
                                     <div className="space-y-6">
-
                                         {step === 'SIGNUP' && (
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Full Name</label>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+                                                    Full Name
+                                                </label>
                                                 <input
                                                     type="text"
                                                     value={fullName}
@@ -468,15 +505,27 @@ export default function LoginSidebar({
 
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-                                                {step === 'OTP' ? 'OTP Code' : (authMethod === 'EMAIL' ? 'Email Address' : 'Mobile Number')}
+                                                {step === 'OTP'
+                                                    ? 'OTP Code'
+                                                    : authMethod === 'EMAIL'
+                                                      ? 'Email Address'
+                                                      : 'Mobile Number'}
                                             </label>
                                             <div className="relative group">
                                                 <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-brand-primary transition-colors">
-                                                    {step === 'OTP' ? <Lock size={20} /> : (authMethod === 'EMAIL' ? <Globe size={20} /> : <Phone size={20} />)}
+                                                    {step === 'OTP' ? (
+                                                        <Lock size={20} />
+                                                    ) : authMethod === 'EMAIL' ? (
+                                                        <Globe size={20} />
+                                                    ) : (
+                                                        <Phone size={20} />
+                                                    )}
                                                 </div>
                                                 <input
                                                     ref={inputRef}
-                                                    type={step === 'OTP' ? 'tel' : (authMethod === 'PHONE' ? 'tel' : 'text')}
+                                                    type={
+                                                        step === 'OTP' ? 'tel' : authMethod === 'PHONE' ? 'tel' : 'text'
+                                                    }
                                                     value={step === 'OTP' ? otp : identifier}
                                                     onChange={e => {
                                                         const val = e.target.value;
@@ -498,13 +547,19 @@ export default function LoginSidebar({
                                                         }
                                                     }}
                                                     placeholder={step === 'OTP' ? '• • • •' : '98765 43210'}
-                                                    maxLength={step === 'INITIAL' && authMethod === 'PHONE' ? 10 : undefined}
+                                                    maxLength={
+                                                        step === 'INITIAL' && authMethod === 'PHONE' ? 10 : undefined
+                                                    }
                                                     disabled={step !== 'INITIAL' && step !== 'OTP'}
                                                     className={`w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl py-5 pl-14 pr-5 text-xl font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all ${step === 'OTP' ? 'tracking-[0.5em]' : 'tracking-wide'}`}
-                                                    onKeyDown={(e) => {
+                                                    onKeyDown={e => {
                                                         if (e.key === 'Enter') {
-                                                            if (step === 'INITIAL' && authMethod === 'EMAIL') handleCheckUser();
-                                                            if (step === 'SIGNUP') authMethod === 'EMAIL' ? handleSendEmailOtp(identifier) : handleSendPhoneOtp(identifier);
+                                                            if (step === 'INITIAL' && authMethod === 'EMAIL')
+                                                                handleCheckUser();
+                                                            if (step === 'SIGNUP')
+                                                                authMethod === 'EMAIL'
+                                                                    ? handleSendEmailOtp(identifier)
+                                                                    : handleSendPhoneOtp(identifier);
                                                             if (step === 'OTP') handleLogin();
                                                         }
                                                     }}
@@ -522,13 +577,17 @@ export default function LoginSidebar({
                                             <button
                                                 onClick={() => {
                                                     if (step === 'INITIAL') handleCheckUser();
-                                                    else if (step === 'SIGNUP') authMethod === 'EMAIL' ? handleSendEmailOtp(identifier) : handleSendPhoneOtp(identifier);
+                                                    else if (step === 'SIGNUP')
+                                                        authMethod === 'EMAIL'
+                                                            ? handleSendEmailOtp(identifier)
+                                                            : handleSendPhoneOtp(identifier);
                                                     else if (step === 'OTP') handleLogin();
                                                 }}
                                                 disabled={loading || (step === 'OTP' && otp.length < 4)}
                                                 className="w-full py-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl text-xs font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-xl disabled:opacity-50"
                                             >
-                                                {step === 'SIGNUP' ? 'Complete Signup' : 'Proceed'} <ChevronRight size={16} />
+                                                {step === 'SIGNUP' ? 'Complete Signup' : 'Proceed'}{' '}
+                                                <ChevronRight size={16} />
                                             </button>
                                         )}
 
@@ -550,11 +609,18 @@ export default function LoginSidebar({
                                         {/* OTP ACTIONS */}
                                         {step === 'OTP' && (
                                             <div className="flex justify-between items-center px-1">
-                                                <button onClick={() => setStep('INITIAL')} className="text-[10px] font-bold text-slate-500 hover:text-brand-primary transition-colors uppercase tracking-wider">
+                                                <button
+                                                    onClick={() => setStep('INITIAL')}
+                                                    className="text-[10px] font-bold text-slate-500 hover:text-brand-primary transition-colors uppercase tracking-wider"
+                                                >
                                                     Change Number
                                                 </button>
                                                 <button
-                                                    onClick={() => authMethod === 'EMAIL' ? handleSendEmailOtp(identifier) : handleSendPhoneOtp(identifier)}
+                                                    onClick={() =>
+                                                        authMethod === 'EMAIL'
+                                                            ? handleSendEmailOtp(identifier)
+                                                            : handleSendPhoneOtp(identifier)
+                                                    }
                                                     disabled={resendTimer > 0}
                                                     className="text-[10px] font-bold text-slate-900 dark:text-white hover:text-brand-primary transition-colors uppercase tracking-wider disabled:opacity-50"
                                                 >
@@ -607,7 +673,11 @@ export default function LoginSidebar({
                             {/* Socials */}
                             <div className="flex justify-center gap-6">
                                 {[Facebook, Twitter, Instagram, Linkedin].map((Icon, i) => (
-                                    <a key={i} href="#" className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 hover:bg-brand-primary hover:text-black transition-all">
+                                    <a
+                                        key={i}
+                                        href="#"
+                                        className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 hover:bg-brand-primary hover:text-black transition-all"
+                                    >
                                         <Icon size={14} />
                                     </a>
                                 ))}
@@ -615,14 +685,19 @@ export default function LoginSidebar({
 
                             {/* Links */}
                             <div className="flex justify-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                                <a href="#" className="hover:text-brand-primary transition-colors">Terms</a>
+                                <a href="#" className="hover:text-brand-primary transition-colors">
+                                    Terms
+                                </a>
                                 <span className="text-slate-200 dark:text-slate-800">•</span>
-                                <a href="#" className="hover:text-brand-primary transition-colors">Privacy</a>
+                                <a href="#" className="hover:text-brand-primary transition-colors">
+                                    Privacy
+                                </a>
                                 <span className="text-slate-200 dark:text-slate-800">•</span>
-                                <a href="#" className="hover:text-brand-primary transition-colors">Support</a>
+                                <a href="#" className="hover:text-brand-primary transition-colors">
+                                    Support
+                                </a>
                             </div>
                         </div>
-
                     </motion.div>
                 </div>
             )}

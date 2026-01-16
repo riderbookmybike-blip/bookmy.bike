@@ -8,6 +8,7 @@ interface AppHeaderShellProps {
     right?: React.ReactNode;
     children?: React.ReactNode;
     scrolled?: boolean;
+    visible?: boolean;
     transparentAtTop?: boolean;
     className?: string;
 }
@@ -22,6 +23,7 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
     right,
     children,
     scrolled = false,
+    visible = true,
     transparentAtTop = false,
     className = '',
 }) => {
@@ -39,8 +41,20 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
 
     return (
         <>
+            {/* Top trigger zone for mouse interaction when header is hidden */}
+            <div
+                className="fixed top-0 left-0 right-0 h-4 z-[60] pointer-events-auto"
+                onMouseEnter={() =>
+                    visible === false &&
+                    typeof window !== 'undefined' &&
+                    window.dispatchEvent(new CustomEvent('showHeader'))
+                }
+            />
             <header
-                className={`sticky top-0 z-50 w-full flex items-center transition-all duration-300 ${heightClass} ${bgClass} ${className}`}
+                className={`${transparentAtTop && !scrolled ? 'absolute' : 'sticky'} top-0 z-50 w-full flex items-center transition-all duration-500 ${heightClass} ${bgClass} ${className} ${visible ? 'translate-y-0' : '-translate-y-full shadow-none whitespace-nowrap'}`}
+                onMouseEnter={() =>
+                    typeof window !== 'undefined' && window.dispatchEvent(new CustomEvent('showHeader'))
+                }
             >
                 <div className={`w-full mx-auto flex items-center justify-between h-full ${containerClass}`}>
                     {/* Left Slot: Logo / Brand */}

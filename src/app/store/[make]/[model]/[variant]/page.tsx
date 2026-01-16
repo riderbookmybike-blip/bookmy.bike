@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Metadata } from 'next';
 import { MOCK_VEHICLES } from '@/types/productMaster';
@@ -8,6 +7,7 @@ import { calculateOnRoad } from '@/lib/utils/pricingUtility';
 import { createClient } from '@/lib/supabase/server';
 import ProductClient from './ProductClient';
 import { redirect } from 'next/navigation';
+import type { FormulaComponent, RegistrationRule } from '@/types/registration';
 
 type Props = {
     params: Promise<{
@@ -19,6 +19,25 @@ type Props = {
         color?: string; // Still readable for SEO/Metadata
         pincode?: string;
     }>;
+};
+
+type RegistrationRuleRow = Partial<RegistrationRule> & {
+    display_id?: string | null;
+    rule_name?: string | null;
+    state_code?: string | null;
+    vehicle_type?: RegistrationRule['vehicleType'] | null;
+    effective_from?: string | null;
+    state_tenure?: number | null;
+    bh_tenure?: number | null;
+    company_multiplier?: number | null;
+    last_updated?: string | null;
+};
+
+type VehicleColorRow = {
+    name: string;
+    hex_code: string;
+    image_url?: string | null;
+    gallery_urls?: string[] | null;
 };
 
 // Product lookup moved to DB fetch inside Page
@@ -42,14 +61,16 @@ export default async function Page({ params, searchParams }: Props) {
     // 2. Fetch Variant & Pricing from DB
     const { data: variantData, error } = await supabase
         .from('vehicle_variants')
-        .select(`
+        .select(
+            `
             *,
             vehicle_models (
                 *,
                 brands (*)
             ),
             vehicle_colors (*)
-        `)
+        `
+        )
         .eq('slug', resolvedParams.variant)
         .eq('vehicle_models.slug', resolvedParams.model)
         .single();
@@ -60,7 +81,9 @@ export default async function Page({ params, searchParams }: Props) {
             <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white p-20 text-center">
                 <div>
                     <h1 className="text-4xl font-black italic">MACHINE NOT FOUND</h1>
-                    <p className="text-slate-500 mt-4 uppercase tracking-widest font-black">Variant or Model slug mismatch in database</p>
+                    <p className="text-slate-500 mt-4 uppercase tracking-widest font-black">
+                        Variant or Model slug mismatch in database
+                    </p>
                 </div>
             </div>
         );
@@ -87,45 +110,69 @@ export default async function Page({ params, searchParams }: Props) {
     const baseExShowroom = priceData?.ex_showroom_price || variantData.base_price_ex_showroom || 0;
     const engineCc = variantData.vehicle_models.displacement_cc || 110;
 
-    // Default Rule if none found in DB
-    const effectiveRule = ruleData || {
-        state_tenure: 15,
-        bh_tenure: 2,
-        company_multiplier: 2,
-        components: [
-            { id: 'tax', type: 'PERCENTAGE', label: 'Road Tax', percentage: 10, isRoadTax: true }
-        ]
-    };
+    const fallbackComponents: FormulaComponent[] = [
+        { id: 'tax', type: 'PERCENTAGE', label: 'Road Tax', percentage: 10, isRoadTax: true },
+    ];
+    const ruleRow = ruleData as RegistrationRuleRow | null;
+    const nowIso = new Date().toISOString();
+    const normalizedStatus: RegistrationRule['status'] = ruleRow?.status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE';
+    const components =
+        Array.isArray(ruleRow?.components) && ruleRow.components.length > 0 ? ruleRow.components : fallbackComponents;
+
+    const effectiveRule: RegistrationRule = ruleRow
+        ? {
+              id: ruleRow.id ?? `rule-${stateCode}`,
+              displayId: ruleRow.displayId ?? ruleRow.display_id ?? undefined,
+              ruleName: ruleRow.ruleName ?? ruleRow.rule_name ?? `${stateCode} RTO Rule`,
+              stateCode: ruleRow.stateCode ?? ruleRow.state_code ?? stateCode,
+              vehicleType: (ruleRow.vehicleType ??
+                  ruleRow.vehicle_type ??
+                  'TWO_WHEELER') as RegistrationRule['vehicleType'],
+              effectiveFrom: ruleRow.effectiveFrom ?? ruleRow.effective_from ?? nowIso,
+              status: normalizedStatus,
+              stateTenure: ruleRow.stateTenure ?? ruleRow.state_tenure ?? 15,
+              bhTenure: ruleRow.bhTenure ?? ruleRow.bh_tenure ?? 2,
+              companyMultiplier: ruleRow.companyMultiplier ?? ruleRow.company_multiplier ?? 2,
+              components,
+              version: ruleRow.version ?? 1,
+              lastUpdated: ruleRow.lastUpdated ?? ruleRow.last_updated ?? nowIso,
+          }
+        : {
+              id: `rule-${stateCode}`,
+              ruleName: `${stateCode} RTO Rule`,
+              stateCode,
+              vehicleType: 'TWO_WHEELER',
+              effectiveFrom: nowIso,
+              status: 'ACTIVE',
+              stateTenure: 15,
+              bhTenure: 2,
+              companyMultiplier: 2,
+              components,
+              version: 1,
+              lastUpdated: nowIso,
+          };
 
     // Calculate
-    const onRoadBreakdown = calculateOnRoad(
-        Number(baseExShowroom),
-        engineCc,
-        {
-            stateTenure: effectiveRule.state_tenure,
-            bhTenure: effectiveRule.bh_tenure,
-            companyMultiplier: effectiveRule.company_multiplier,
-            components: effectiveRule.components
-        } as any
-    );
+    const onRoadBreakdown = calculateOnRoad(Number(baseExShowroom), engineCc, effectiveRule);
 
     // Map DB Variant to Product Object
+    const colors = (variantData.vehicle_colors || []) as VehicleColorRow[];
     const product = {
         id: variantData.id,
         make: variantData.vehicle_models.brands.name,
         model: variantData.vehicle_models.name,
         variant: variantData.name,
         basePrice: Number(baseExShowroom),
-        colors: variantData.vehicle_colors.map((c: any) => ({
-            name: c.name,
-            hex: c.hex_code,
-            image: c.image_url
-        }))
+        colors: colors.map(color => ({
+            name: color.name,
+            hex: color.hex_code,
+            image: color.image_url || (Array.isArray(color.gallery_urls) && color.gallery_urls[0]) || null,
+        })),
     };
 
     return (
         <ProductClient
-            product={product as any}
+            product={product}
             makeParam={resolvedParams.make}
             modelParam={resolvedParams.model}
             variantParam={resolvedParams.variant}
@@ -136,7 +183,7 @@ export default async function Page({ params, searchParams }: Props) {
                 insurance: onRoadBreakdown.insuranceComp.total,
                 otherCharges: 1500,
                 onRoad: onRoadBreakdown.onRoadTotal,
-                region: stateCode
+                region: stateCode,
             }}
         />
     );

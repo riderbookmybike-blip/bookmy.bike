@@ -16,6 +16,7 @@ import {
     LogOut,
     ChevronDown,
 } from 'lucide-react';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 interface Membership {
     role: string;
@@ -90,7 +91,8 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
     }, []);
 
     useEffect(() => {
-        setMounted(true);
+        const mountedFrame = window.requestAnimationFrame(() => setMounted(true));
+        return () => window.cancelAnimationFrame(mountedFrame);
     }, []);
 
     const handleLogout = async () => {
@@ -135,48 +137,63 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
         return (
             <button
                 onClick={onLoginClick}
-                className={`flex items-center gap-2 md:gap-3 p-2 md:pl-3 md:pr-4 md:py-1.5 rounded-full border transition-all group ${scrolled || isLight
-                    ? 'border-blue-600/20 dark:border-blue-600/40 bg-slate-100 dark:bg-black/40'
-                    : 'border-blue-600/60 bg-black/40'
-                    }`}
+                className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all group ${
+                    scrolled || isLight
+                        ? 'border-slate-900/10 dark:border-white/10 text-slate-500 dark:text-white hover:text-blue-600'
+                        : 'border-white/20 text-white/80 hover:text-white hover:bg-white/10'
+                }`}
+                title="Sign In"
             >
-                <div className="w-5 h-5 bg-brand-primary rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
-                    <UserIcon size={12} className="text-black" />
+                <div className="w-7 h-7 bg-transparent rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <UserIcon size={18} className="text-current" />
                 </div>
-                <span
-                    suppressHydrationWarning
-                    className={`text-[11px] font-black uppercase tracking-[0.18em] ${(mounted && theme === 'dark') ? 'text-white' : (scrolled || theme === 'light' ? 'text-slate-900 dark:text-white' : 'text-white')
-                        }`}
-                >
-                    Sign In
-                </span>
             </button>
         );
     }
 
     const displayName =
-        user.user_metadata?.full_name?.split(' ')[0] || user.user_metadata?.name?.split(' ')[0] || user.email?.split('@')[0] || 'User';
+        user.user_metadata?.full_name?.split(' ')[0] ||
+        user.user_metadata?.name?.split(' ')[0] ||
+        user.email?.split('@')[0] ||
+        'User';
 
     return (
         <div className="relative">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`flex items-center gap-2 md:gap-3 p-2 md:pl-3 md:pr-2 md:py-1.5 rounded-full border transition-all group ${scrolled || isLight
-                    ? 'border-blue-600/20 dark:border-blue-600/40 bg-slate-100 dark:bg-black/40'
-                    : 'border-blue-600/60 bg-black/40'
-                    }`}
+                className={`flex items-center gap-2 md:gap-3 p-2 md:pl-3 md:pr-2 md:py-1.5 rounded-full border transition-all group ${
+                    scrolled || isLight
+                        ? 'border-slate-900/10 dark:border-white/10 bg-slate-100 dark:bg-black/40'
+                        : 'border-white/20 bg-black/40'
+                }`}
             >
                 <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black shadow-lg shadow-brand-primary/20 bg-gradient-to-br from-brand-primary to-[#F4B000] border-2 border-white dark:border-slate-800 overflow-hidden shrink-0">
                     {user.user_metadata?.avatar_url ? (
-                        <img src={user.user_metadata.avatar_url} alt={displayName} className="w-full h-full object-cover" />
+                        <img
+                            src={user.user_metadata.avatar_url}
+                            alt={displayName}
+                            className="w-full h-full object-cover"
+                        />
                     ) : (
-                        <span>{(user.user_metadata?.full_name?.[0] || user.user_metadata?.name?.[0] || user.email?.[0] || 'U').toUpperCase()}</span>
+                        <span>
+                            {(
+                                user.user_metadata?.full_name?.[0] ||
+                                user.user_metadata?.name?.[0] ||
+                                user.email?.[0] ||
+                                'U'
+                            ).toUpperCase()}
+                        </span>
                     )}
                 </div>
                 <span
                     suppressHydrationWarning
-                    className={`text-[11px] font-black uppercase tracking-[0.18em] ${(mounted && theme === 'dark') ? 'text-white' : (scrolled || theme === 'light' ? 'text-slate-900 dark:text-white' : 'text-white')
-                        }`}
+                    className={`text-[11px] font-black uppercase tracking-[0.18em] ${
+                        mounted && theme === 'dark'
+                            ? 'text-white'
+                            : scrolled || theme === 'light'
+                              ? 'text-slate-900 dark:text-white'
+                              : 'text-white'
+                    }`}
                 >
                     Hi, {displayName}
                 </span>
@@ -195,9 +212,20 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                         <div className="p-6 bg-slate-50 dark:bg-white/[0.02] border-b border-gray-100 dark:border-white/5 flex items-center gap-4">
                             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-primary to-[#F4B000] flex items-center justify-center text-white text-xl font-black shadow-inner overflow-hidden uppercase">
                                 {user.user_metadata?.avatar_url ? (
-                                    <img src={user.user_metadata.avatar_url} alt={user.user_metadata?.full_name} className="w-full h-full object-cover" />
+                                    <img
+                                        src={user.user_metadata.avatar_url}
+                                        alt={user.user_metadata?.full_name}
+                                        className="w-full h-full object-cover"
+                                    />
                                 ) : (
-                                    <span>{(user.user_metadata?.full_name?.[0] || user.user_metadata?.name?.[0] || user.email?.[0] || 'U').toUpperCase()}</span>
+                                    <span>
+                                        {(
+                                            user.user_metadata?.full_name?.[0] ||
+                                            user.user_metadata?.name?.[0] ||
+                                            user.email?.[0] ||
+                                            'U'
+                                        ).toUpperCase()}
+                                    </span>
                                 )}
                             </div>
                             <div className="flex-1 min-w-0">
@@ -208,6 +236,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                                     {user.email}
                                 </p>
                             </div>
+                            <ThemeToggle className="w-10 h-10" />
                         </div>
 
                         {/* Member Access */}
@@ -233,8 +262,12 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                                                     {getTenantIcon(m.tenants.type)}
                                                 </div>
                                                 <div className="flex flex-col">
-                                                    <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-tight">{m.tenants.name}</span>
-                                                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{m.tenants.type.replace('_', ' ')}</span>
+                                                    <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                                        {m.tenants.name}
+                                                    </span>
+                                                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">
+                                                        {m.tenants.type.replace('_', ' ')}
+                                                    </span>
                                                 </div>
                                             </div>
                                             <span className="text-[8px] font-black px-2 py-1 bg-brand-primary/10 text-brand-primary border border-brand-primary/20 rounded-full uppercase tracking-widest">
@@ -249,7 +282,9 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                         {/* My Account */}
                         <div className="p-2 border-t border-slate-100 dark:border-white/5">
                             <div className="px-4 py-3 flex items-center justify-between">
-                                <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">My Account</p>
+                                <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+                                    My Account
+                                </p>
                                 <div className="h-px flex-1 ml-4 bg-slate-100 dark:bg-white/10" />
                             </div>
                             <div className="grid grid-cols-2 gap-1 px-2">
@@ -258,14 +293,16 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                                     { label: 'Orders', icon: Package, href: '/orders' },
                                     { label: 'Wishlist', icon: Heart, href: '/wishlist' },
                                     { label: 'Alerts', icon: Bell, href: '/notifications' },
-                                ].map((item) => (
+                                ].map(item => (
                                     <a
                                         key={item.label}
                                         href={item.href}
                                         className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-all group border border-transparent hover:border-slate-100 dark:hover:border-white/5 text-center"
                                     >
                                         <item.icon className="w-4 h-4 text-slate-400 group-hover:text-brand-primary transition-colors" />
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">{item.label}</span>
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">
+                                            {item.label}
+                                        </span>
                                     </a>
                                 ))}
                             </div>

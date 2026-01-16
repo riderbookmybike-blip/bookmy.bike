@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Menu, X, Heart } from 'lucide-react';
+import { Menu, X, Heart, Home as HomeIcon } from 'lucide-react';
+import { MotorcycleIcon } from '@/components/icons/MotorcycleIcon';
 import { Logo } from '@/components/brand/Logo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useTheme } from '@/components/providers/ThemeProvider';
@@ -18,17 +19,35 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [userName, setUserName] = useState<string | null>(null);
     const [scrolled, setScrolled] = useState(false);
+    const [isVisible, setIsVisible] = useState(true);
     const [mounted, setMounted] = useState(false);
+    const [viewport, setViewport] = useState<{ width: number; height: number } | null>(null);
     const { theme } = useTheme();
     const pathname = usePathname();
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setMounted(true);
+        const mountedFrame = window.requestAnimationFrame(() => setMounted(true));
+        let lastScrollY = window.scrollY;
+
         const handleScroll = () => {
-            setScrolled(window.scrollY > 100);
+            const currentScrollY = window.scrollY;
+            setScrolled(currentScrollY > 100);
+
+            setScrolled(currentScrollY > 100);
+
+            // Autohide removed as per user request (transparent icons are unobtrusive)
+            setIsVisible(true);
+
+            lastScrollY = currentScrollY;
         };
-        window.addEventListener('scroll', handleScroll);
+
+        const handleShowHeader = () => setIsVisible(true);
+        const handleResize = () => setViewport({ width: window.innerWidth, height: window.innerHeight });
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        window.addEventListener('showHeader', handleShowHeader);
+        window.addEventListener('resize', handleResize);
+        handleResize();
 
         const supabase = createClient();
         const syncAuth = async () => {
@@ -58,12 +77,25 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
             setUserName(name);
         });
         return () => {
+            window.cancelAnimationFrame(mountedFrame);
             window.removeEventListener('scroll', handleScroll);
+            window.removeEventListener('showHeader', handleShowHeader);
+            window.removeEventListener('resize', handleResize);
             data.subscription.unsubscribe();
         };
     }, []);
 
-    const isLight = mounted ? theme === 'light' : true; // Default to light on SSR for marketplace
+    // For the home page (StoreTV), we follow the global theme
+    // We only use fallback if not mounted
+    const isLight = mounted ? theme === 'light' : true;
+    const isTv = Boolean(
+        viewport &&
+        (viewport.width >= 2000 ||
+            (viewport.width === 960 && viewport.height === 540) ||
+            (viewport.width === 1280 && viewport.height === 720) ||
+            (viewport.width >= 1110 && viewport.width <= 1200 && viewport.height >= 600 && viewport.height <= 700))
+    );
+    const showTextNav = !isTv && (!pathname.startsWith('/store/') || pathname === '/store');
 
     // Quick rollback: set navPreset to 'wide'.
     const navPreset: 'tight' | 'wide' = 'tight';
@@ -104,6 +136,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     return (
         <AppHeaderShell
             scrolled={scrolled}
+            visible={isVisible}
             transparentAtTop={true}
             left={
                 <Link href="/" className="flex items-center group">
@@ -114,44 +147,53 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
             center={null}
             right={
                 <div className={`flex items-center ${rightGapClass}`}>
-                    {/* Desktop Navigation */}
-                    <div className={`hidden lg:flex items-center ${navGapClass}`}>
-                        <Link href="/" className={`${navLinkClass} ${isActive('/') ? activeNavClass : ''}`}>
-                            Home
+                    {/* Desktop Navigation - Always visible for better UX, except on TV/Catalog/PDP Mode where we want focus */}
+                    {showTextNav && (
+                        <div className={`hidden lg:flex items-center ${navGapClass}`}>
+                            <Link href="/" className={`${navLinkClass} ${isActive('/') ? activeNavClass : ''}`}>
+                                Home
+                            </Link>
+                            <Link
+                                href="/store/catalog"
+                                className={`${navLinkClass} ${isActive('/store/catalog') ? activeNavClass : ''}`}
+                            >
+                                Catalog
+                            </Link>
+                            {/* New Brands Link scrolling to footer or brands page */}
+                            <Link
+                                href="#brands"
+                                onClick={e => {
+                                    e.preventDefault();
+                                    const footer = document.getElementById('footer-brands');
+                                    if (footer) footer.scrollIntoView({ behavior: 'smooth' });
+                                }}
+                                className={`${navLinkClass}`}
+                            >
+                                Brands
+                            </Link>
+                            <Link
+                                href="/store/compare"
+                                className={`${navLinkClass} ${isActive('/store/compare') ? activeNavClass : ''}`}
+                            >
+                                Compare
+                            </Link>
+                        </div>
+                    )}
+
+                    {/* Unified Action Group: Favorites, Home, Catalog, User */}
+                    <div className="hidden md:flex items-center gap-3">
+                        <Link
+                            href="/"
+                            className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all group ${scrolled || isLight ? 'border-slate-900/10 dark:border-white/10 text-slate-500 dark:text-white hover:text-blue-600' : 'border-white/20 text-white/80 hover:text-white hover:bg-white/10'}`}
+                        >
+                            <HomeIcon size={18} />
                         </Link>
                         <Link
                             href="/store/catalog"
-                            className={`${navLinkClass} ${isActive('/store') ? activeNavClass : ''}`}
+                            className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all group ${scrolled || isLight ? 'border-slate-900/10 dark:border-white/10 text-slate-500 dark:text-white hover:text-blue-600' : 'border-white/20 text-white/80 hover:text-white hover:bg-white/10'}`}
                         >
-                            Catalog
+                            <MotorcycleIcon size={20} />
                         </Link>
-                        <Link
-                            href="/store/compare"
-                            className={`${navLinkClass} ${isActive('/store/compare') ? activeNavClass : ''}`}
-                        >
-                            Compare
-                        </Link>
-                        <Link href="/zero" className={`${navLinkClass} ${isActive('/zero') ? activeNavClass : ''}`}>
-                            Zero
-                        </Link>
-                    </div>
-
-                    {/* Favorites & Theme Toggle */}
-                    <div className="hidden md:flex items-center gap-4">
-                        {/* Hide Wishlist on Home (/) if user is not logged in, or purely for aesthetic minimalism as requested */}
-                        {(!pathname.endsWith('/') || userName) && (
-                            <Link
-                                href="/store/wishlist"
-                                className="w-10 h-10 rounded-full bg-slate-100 dark:bg-white/5 hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors flex items-center justify-center group"
-                            >
-                                <Heart size={18} className="group-hover:fill-current transition-all" />
-                            </Link>
-                        )}
-                        <ThemeToggle className="w-10 h-10" />
-                    </div>
-
-                    {/* User Dropdown - Hidden on Mobile */}
-                    <div className="hidden md:block">
                         <ProfileDropdown onLoginClick={onLoginClick} scrolled={scrolled} theme={theme} />
                     </div>
 
