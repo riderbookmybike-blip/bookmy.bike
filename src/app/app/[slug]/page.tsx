@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 
-export default function TenantRoot({ params }: { params: { slug: string } }) {
+export default async function TenantRoot({ params }: { params: Promise<{ slug: string }> }) {
     // Redirect /app/{slug} → /app/{slug}/dashboard
-    redirect(`/app/${params.slug}/dashboard`);
+    const { slug } = await params;
+    redirect(`/app/${slug}/dashboard`);
 }
