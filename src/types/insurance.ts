@@ -36,6 +36,13 @@ export interface InsuranceCalculationContext {
     exShowroom: number;
     engineCc: number;
     fuelType: string;
+
+    // Policy Details
+    isNewVehicle?: boolean; // Default true
+    odTenure?: 1 | 3 | 5;   // Default 1
+    tpTenure?: 1 | 5;       // Default 5 for New
+    ncbPercentage?: 0 | 20 | 25 | 35 | 45 | 50; // Default 0
+
     // Optional manually specified IDV
     customIdv?: number;
 }

@@ -24,13 +24,19 @@ export default function InsuranceDetailPage() {
     const router = useRouter();
     const { can } = usePermission();
     const id = params?.id ? decodeURIComponent(params.id as string) : null;
-    const canEdit = can('catalog-insurance', 'create');
+    const localRole = typeof window !== 'undefined'
+        ? (localStorage.getItem('active_role') || localStorage.getItem('user_role'))
+        : null;
+    const isPrivilegedRole = !!localRole && ['OWNER', 'SUPER_ADMIN', 'SUPERADMIN', 'MARKETPLACE_ADMIN'].includes(localRole);
+    const canEdit = can('catalog-insurance', id === 'new' ? 'create' : 'edit') || isPrivilegedRole;
 
     const [activeTab, setActiveTab] = useState('Overview');
     const [isMounted, setIsMounted] = useState(false);
     const [ruleList, setRuleList] = useState<InsuranceRule[]>([]);
     const [rule, setRule] = useState<InsuranceRule | null>(null);
     const [isCalcValid, setIsCalcValid] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [isDirty, setIsDirty] = useState(false);
 
     const STORAGE_KEY = 'aums_insurance_rules_v2';
 
@@ -81,8 +87,25 @@ export default function InsuranceDetailPage() {
         }
     }, [id, isMounted]);
 
+    useEffect(() => {
+        if (!isMounted) return;
+        const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+            if (!isDirty) return;
+            event.preventDefault();
+            event.returnValue = '';
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [isDirty, isMounted]);
+
     const handleSave = () => {
         if (!rule) return;
+        if (!isCalcValid && activeTab === 'Premium Studio') {
+            alert('Calculation check failed. Please verify in the preview before saving.');
+            return;
+        }
+        const shouldSave = window.confirm('Save insurance rule changes?');
+        if (!shouldSave) return;
         const current = loadRules();
         const idx = current.findIndex((r: any) => r.id === rule.id);
         const newRules = [...current];
@@ -90,6 +113,12 @@ export default function InsuranceDetailPage() {
         else newRules.push(rule);
         saveRules(newRules);
         alert("Insurance Rule Saved!");
+        setIsEditing(false);
+        setIsDirty(false);
+        router.push('/catalog/insurance');
+    };
+    const handleBack = () => {
+        if (isDirty && !window.confirm('You have unsaved changes. Leave without saving?')) return;
         router.push('/catalog/insurance');
     };
 
@@ -106,7 +135,7 @@ export default function InsuranceDetailPage() {
                     {/* Header */}
                     <div className="flex justify-between items-center px-8 py-6 border-b border-slate-100 dark:border-white/5 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md sticky top-0 z-20">
                         <div className="flex items-center gap-4">
-                            <button className="p-2 -ml-2 text-slate-400 hover:text-blue-600 transition-colors" onClick={() => router.push('/catalog/insurance')}>
+                            <button className="p-2 -ml-2 text-slate-400 hover:text-blue-600 transition-colors" onClick={handleBack}>
                                 <ChevronLeft size={24} />
                             </button>
                             <div>
@@ -119,7 +148,15 @@ export default function InsuranceDetailPage() {
                             </div>
                         </div>
                         <div className="flex items-center gap-4">
-                            {canEdit && (
+                            {canEdit && !isEditing && (
+                                <button
+                                    onClick={() => setIsEditing(true)}
+                                    className="px-6 py-2.5 bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-500/20 hover:shadow-2xl hover:shadow-slate-500/40 transition-all flex items-center gap-2 border border-white/10"
+                                >
+                                    <Sparkles size={16} /> Enable Edit
+                                </button>
+                            )}
+                            {canEdit && isEditing && (
                                 <button
                                     onClick={handleSave}
                                     className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[11px] font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-blue-500/20 hover:shadow-2xl hover:shadow-blue-500/40 transition-all flex items-center gap-2 border border-white/10"
@@ -155,8 +192,11 @@ export default function InsuranceDetailPage() {
                             <div className="p-8">
                                 <InsuranceOverview
                                     rule={rule}
-                                    onChange={setRule}
-                                    readOnly={!canEdit}
+                                    onChange={(nextRule) => {
+                                        setRule(nextRule);
+                                        setIsDirty(true);
+                                    }}
+                                    readOnly={!canEdit || !isEditing}
                                 />
                             </div>
                         )}
@@ -183,12 +223,17 @@ export default function InsuranceDetailPage() {
                                             tpComponents={rule.tpComponents}
                                             addons={rule.addons}
                                             idvPercentage={rule.idvPercentage}
-                                            onIdvChange={(val) => setRule({ ...rule, idvPercentage: val })}
+                                            onIdvChange={(val) => {
+                                                setRule({ ...rule, idvPercentage: val });
+                                                setIsDirty(true);
+                                            }}
                                             onChange={(section, comps) => {
                                                 setRule({ ...rule, [section + (section === 'addons' ? '' : 'Components')]: comps });
                                                 setIsCalcValid(false);
+                                                setIsDirty(true);
                                             }}
-                                            readOnly={!canEdit}
+                                            readOnly={!canEdit || !isEditing}
+                                            forceEdit={isEditing}
                                         />
                                     </div>
 
@@ -207,4 +252,3 @@ export default function InsuranceDetailPage() {
         </RoleGuard>
     );
 }
-

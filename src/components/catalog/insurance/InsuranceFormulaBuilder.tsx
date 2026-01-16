@@ -20,6 +20,7 @@ interface InsuranceFormulaBuilderProps {
     onIdvChange: (val: number) => void;
     onChange: (section: 'od' | 'tp' | 'addons', components: FormulaComponent[]) => void;
     readOnly?: boolean;
+    forceEdit?: boolean;
 }
 
 export default function InsuranceFormulaBuilder({
@@ -29,7 +30,8 @@ export default function InsuranceFormulaBuilder({
     idvPercentage,
     onIdvChange,
     onChange,
-    readOnly = false
+    readOnly = false,
+    forceEdit = false
 }: InsuranceFormulaBuilderProps) {
 
     const handleAdd = (section: 'od' | 'tp' | 'addons', components: FormulaComponent[], type: ComponentType) => {
@@ -135,6 +137,7 @@ export default function InsuranceFormulaBuilder({
                             onDelete={() => handleDelete('od', odComponents, comp.id)}
                             readOnly={readOnly}
                             availableTargets={[]}
+                            forceEdit={forceEdit}
                         />
                     ))}
                     {odComponents.length === 0 && (
@@ -179,6 +182,7 @@ export default function InsuranceFormulaBuilder({
                             slabValueLabel="Premium"
                             showSlabValueTypeToggle
                             defaultSlabValueType="FIXED"
+                            forceEdit={forceEdit}
                         />
                     ))}
                 </div>
@@ -254,6 +258,7 @@ export default function InsuranceFormulaBuilder({
                             onDelete={() => handleDelete('addons', addons, comp.id)}
                             readOnly={readOnly}
                             availableTargets={[]}
+                            forceEdit={forceEdit}
                         />
                     ))}
                 </div>

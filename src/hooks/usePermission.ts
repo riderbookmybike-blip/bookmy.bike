@@ -4,11 +4,11 @@ import { useTenant } from '@/lib/tenant/tenantContext';
 import { PERMISSIONS, Resource, Action, UserRole } from '@/config/permissions';
 
 export function usePermission() {
-    const { activeRole, isReadOnly } = useTenant();
+    const { activeRole, userRole, isReadOnly } = useTenant();
 
     const can = (resource: Resource, action: Action, roleOverride?: string): boolean => {
         // Use activeRole from context, or fallback to override/default
-        const roleStr = roleOverride || activeRole || 'DEALERSHIP_ADMIN';
+        const roleStr = roleOverride || activeRole || userRole || 'BMB_USER';
         const role = roleStr as UserRole;
 
         // 1. Check Matrix

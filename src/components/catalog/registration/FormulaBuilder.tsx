@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FormulaComponent, ComponentType, Operator, SlabRange } from '@/types/registration';
+import { FormulaComponent, ComponentType, SlabRange } from '@/types/registration';
 import {
     Pencil,
     Trash2,
@@ -219,7 +219,8 @@ export const FormulaBlock = ({
     dragHandleProps,
     slabValueLabel = 'Tax %',
     showSlabValueTypeToggle = false,
-    defaultSlabValueType = 'PERCENTAGE'
+    defaultSlabValueType = 'PERCENTAGE',
+    forceEdit = false
 }: {
     component: FormulaComponent,
     onChange: (c: FormulaComponent) => void,
@@ -230,14 +231,15 @@ export const FormulaBlock = ({
     dragHandleProps?: any,
     slabValueLabel?: string,
     showSlabValueTypeToggle?: boolean,
-    defaultSlabValueType?: 'PERCENTAGE' | 'FIXED'
+    defaultSlabValueType?: 'PERCENTAGE' | 'FIXED',
+    forceEdit?: boolean
 }) => {
 
     const [expanded, setExpanded] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
-    const effectiveReadOnly = readOnly || !isEditing;
+    const effectiveReadOnly = readOnly || (!forceEdit && !isEditing);
 
-    const updateField = (field: keyof FormulaComponent, value: any) => {
+    const updateField = (field: keyof FormulaComponent, value: FormulaComponent[keyof FormulaComponent]) => {
         onChange({ ...component, [field]: value });
     };
 
@@ -245,6 +247,15 @@ export const FormulaBlock = ({
     const isSlab = component.type === 'SLAB';
     const slabValueType = component.slabValueType ?? defaultSlabValueType;
     const isFixedSlabValue = slabValueType === 'FIXED';
+    const createSlabRange = (overrides: Partial<SlabRange> = {}): SlabRange => ({
+        id: crypto.randomUUID(),
+        min: 0,
+        max: null,
+        percentage: 0,
+        applicableFuels: ['PETROL', 'DIESEL', 'CNG'],
+        slabBasis: 'ENGINE_CC',
+        ...overrides,
+    });
 
     let borderColor = 'border-slate-200 dark:border-white/10';
     let headerColor = 'bg-slate-50/80 dark:bg-slate-800/80';
@@ -758,18 +769,39 @@ export const FormulaBlock = ({
 
                                 {!effectiveReadOnly && (
                                     <div className="p-4 bg-slate-50/30 dark:bg-white/5 border-t border-black/5 dark:border-white/5 flex justify-center">
-                                        <button
-                                            onClick={() => {
-                                                const newRanges = [
-                                                    ...(component.ranges || []),
-                                                    { id: crypto.randomUUID(), min: 0, max: null, percentage: 0, applicableFuels: ['PETROL', 'DIESEL', 'CNG'], slabBasis: 'ENGINE_CC' }
-                                                ];
-                                                updateField('ranges', newRanges);
-                                            }}
-                                            className="flex items-center gap-2 text-[10px] font-black text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-white dark:hover:bg-white/5 px-6 py-3 rounded-2xl transition-all shadow-sm active:scale-95 uppercase tracking-widest"
-                                        >
-                                            <Plus size={12} /> Add Rule Row
-                                        </button>
+                                        <div className="flex flex-wrap items-center gap-3">
+                                            <button
+                                                onClick={() => {
+                                                    const newRanges = [
+                                                        ...(component.ranges || []),
+                                                        createSlabRange()
+                                                    ];
+                                                    updateField('ranges', newRanges);
+                                                }}
+                                                className="flex items-center gap-2 text-[10px] font-black text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-white dark:hover:bg-white/5 px-6 py-3 rounded-2xl transition-all shadow-sm active:scale-95 uppercase tracking-widest"
+                                            >
+                                                <Plus size={12} /> Add Rule Row
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    const ranges = component.ranges || [];
+                                                    const last = ranges[ranges.length - 1];
+                                                    const nextMin = last && last.max !== null ? last.max : (last?.min ?? 0);
+                                                    const nextBasis = last?.slabBasis || component.slabVariable || 'ENGINE_CC';
+                                                    const nextFuels = last?.applicableFuels || ['PETROL', 'DIESEL', 'CNG'];
+                                                    const nextRange = createSlabRange({
+                                                        min: nextMin,
+                                                        max: null,
+                                                        slabBasis: nextBasis,
+                                                        applicableFuels: nextFuels,
+                                                    });
+                                                    updateField('ranges', [...ranges, nextRange]);
+                                                }}
+                                                className="flex items-center gap-2 text-[10px] font-black text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-white dark:hover:bg-white/5 px-6 py-3 rounded-2xl transition-all shadow-sm active:scale-95 uppercase tracking-widest"
+                                            >
+                                                <Plus size={12} /> Add Next Row
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                             </div>

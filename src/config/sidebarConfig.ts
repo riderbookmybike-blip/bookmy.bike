@@ -268,6 +268,14 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         color: 'text-pink-500',
         allowedTenants: ['MARKETPLACE', 'AUMS'],
         allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN']
+      },
+      {
+        title: 'Template Studio',
+        href: '/app/aums/dashboard/admin/templates',
+        icon: LayoutDashboard,
+        color: 'text-indigo-600',
+        allowedTenants: ['AUMS'],
+        allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN']
       }
     ]
   }

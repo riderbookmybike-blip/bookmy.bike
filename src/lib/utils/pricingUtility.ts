@@ -75,7 +75,11 @@ export function calculateInsurance(exShowroom: number, engineCc: number = 110, r
     const ctx: InsuranceCalculationContext = {
         exShowroom,
         engineCc,
-        fuelType: 'PETROL'
+        fuelType: 'PETROL',
+        isNewVehicle: true,
+        odTenure: 1, // Default 1 Year OD (New 2W)
+        tpTenure: 5, // Default 5 Year TP (New 2W)
+        ncbPercentage: 0
     };
 
     const res = calculateInsurancePremium(effectiveRule, ctx);
@@ -104,6 +108,7 @@ export function calculateOnRoad(
     baseExShowroom: number,
     engineCc: string | number,
     rule: RegistrationRule,
+    insuranceRule?: InsuranceRule,
     pricingOverride?: { exShowroom?: number; discount?: number; dealerOffer?: number; onRoadOverride?: number }
 ) {
     // 1. Apply Ex-Showroom Override if present
@@ -118,9 +123,9 @@ export function calculateOnRoad(
     const rtoBharat = calculateRTO(exShowroom, rule, 'BH', cc);
     const rtoCompany = calculateRTO(exShowroom, rule, 'COMPANY', cc);
 
-    const insuranceComp = calculateInsurance(exShowroom, cc);
+    const insuranceComp = calculateInsurance(exShowroom, cc, insuranceRule);
     // For liability only, we could pass a different rule, but for now just using the same engine
-    const insuranceLib = calculateInsurance(exShowroom, cc);
+    const insuranceLib = calculateInsurance(exShowroom, cc, insuranceRule);
 
     // Calculate Base On-Road (before final override)
     let calculatedOnRoad = exShowroom + rtoState.total + insuranceComp.total;

@@ -58,9 +58,26 @@ export const offerOptions = [
     { id: 'off-bank', name: 'HDFC Bank Offer', price: 0, description: 'Instant cashback on credit card EMI transactions.', discountPrice: 2000 },
 ];
 
-export function usePDPData(initialPrice: number | { exShowroom: number }, dbColors: { name: string; hex: string; image: string }[] = []) {
+import { InsuranceRule } from '@/types/insurance';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function usePDPData(initialPrice: number | { exShowroom: number }, dbColors: { name: string; hex: string; image: string }[] = [], insuranceRule?: InsuranceRule) {
     const router = useRouter();
     const searchParams = useSearchParams();
+
+    // Mapping Insurance Rule Components to Local Format if available
+    const dbAddons = insuranceRule?.addons?.map(a => ({
+        id: a.id,
+        name: a.label,
+        price: a.type === 'FIXED' ? (a.amount || 0) : (a.amount || 0), // Simplifying % logic for now - ideally calculate based on IDV if %
+        description: `${a.type === 'PERCENTAGE' ? (a.percentage || 0) + '% of Basis' : 'Fixed Price Coverage'}`,
+        discountPrice: 0,
+        isMandatory: false
+    })) || [];
+
+    // Merge or use DB addons
+    // Ideally we split mandatory (TP/OD - handled in Base) vs Addons
+    const availableInsuranceAddons = dbAddons.length > 0 ? dbAddons : [...insuranceAddons];
 
     // Map DB colors to LocalColorConfig format
     const colors = dbColors.length > 0 ? dbColors.map(c => ({
@@ -78,7 +95,10 @@ export function usePDPData(initialPrice: number | { exShowroom: number }, dbColo
     const [selectedColor, setSelectedColor] = useState(initialColor);
     const [regType, setRegType] = useState<'STATE' | 'BH' | 'COMPANY'>('STATE');
     const [selectedAccessories, setSelectedAccessories] = useState<string[]>(['acc-lock', 'acc-numberplate']);
-    const [selectedInsuranceAddons, setSelectedInsuranceAddons] = useState<string[]>(mandatoryInsurance.map(i => i.id));
+
+    // Default select nothing for addons if DB, else default hardcoded
+    const [selectedInsuranceAddons, setSelectedInsuranceAddons] = useState<string[]>(dbAddons.length > 0 ? [] : mandatoryInsurance.map(i => i.id));
+
     const [emiTenure, setEmiTenure] = useState(36);
     const [configTab, setConfigTab] = useState<'PRICE_BREAKUP' | 'FINANCE' | 'ACCESSORIES' | 'INSURANCE' | 'REGISTRATION' | 'SERVICES' | 'OFFERS'>('PRICE_BREAKUP');
     const [selectedServices, setSelectedServices] = useState<string[]>([]);
@@ -111,9 +131,9 @@ export function usePDPData(initialPrice: number | { exShowroom: number }, dbColo
     if (regType === 'BH') rtoEstimates = Math.round(baseExShowroom * 0.08);
     if (regType === 'COMPANY') rtoEstimates = Math.round(baseExShowroom * 0.20);
 
-    const insuranceAddonsPrice = [...mandatoryInsurance, ...insuranceAddons]
+    const insuranceAddonsPrice = (dbAddons.length > 0 ? availableInsuranceAddons : [...mandatoryInsurance, ...insuranceAddons])
         .filter(addon => selectedInsuranceAddons.includes(addon.id))
-        .reduce((sum, addon) => sum + (addon.discountPrice > 0 ? addon.discountPrice : addon.price), 0);
+        .reduce((sum: number, addon: any) => sum + (addon.discountPrice > 0 ? addon.discountPrice : addon.price), 0);
 
     const accessoriesPrice = [...mandatoryAccessories, ...optionalAccessories]
         .filter(acc => selectedAccessories.includes(acc.id))

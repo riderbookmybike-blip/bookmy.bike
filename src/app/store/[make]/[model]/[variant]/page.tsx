@@ -106,6 +106,41 @@ export default async function Page({ params, searchParams }: Props) {
         .eq('status', 'ACTIVE')
         .single();
 
+    const { data: insuranceRuleData } = await supabase
+        .from('insurance_rules')
+        .select('*')
+        .eq('state_code', 'ALL') // MVP: Start with generic rule
+        .eq('status', 'ACTIVE')
+        .single();
+
+    // Map Insurance Rule similar to RTO Rule
+    // Using simple mapping assuming DB columns match camelCase in future or relying on coercion
+    // But since type is strict in TypeScript, we need to map carefully if keys differ.
+    // The migration used snake_case columns.
+
+    const insRow = insuranceRuleData;
+    let effectiveInsuranceRule: any = undefined;
+
+    if (insRow) {
+        effectiveInsuranceRule = {
+            id: insRow.id,
+            displayId: insRow.display_id,
+            ruleName: insRow.rule_name,
+            stateCode: insRow.state_code,
+            insurerName: insRow.insurer_name,
+            vehicleType: insRow.vehicle_type,
+            effectiveFrom: insRow.effective_from,
+            status: insRow.status,
+            idvPercentage: insRow.idv_percentage,
+            gstPercentage: insRow.gst_percentage,
+            odComponents: insRow.od_components,
+            tpComponents: insRow.tp_components,
+            addons: insRow.addons,
+            version: insRow.version,
+            lastUpdated: insRow.last_updated
+        };
+    }
+
     // 4. Calculate On-Road
     const baseExShowroom = priceData?.ex_showroom_price || variantData.base_price_ex_showroom || 0;
     const engineCc = variantData.vehicle_models.displacement_cc || 110;
@@ -121,39 +156,39 @@ export default async function Page({ params, searchParams }: Props) {
 
     const effectiveRule: RegistrationRule = ruleRow
         ? {
-              id: ruleRow.id ?? `rule-${stateCode}`,
-              displayId: ruleRow.displayId ?? ruleRow.display_id ?? undefined,
-              ruleName: ruleRow.ruleName ?? ruleRow.rule_name ?? `${stateCode} RTO Rule`,
-              stateCode: ruleRow.stateCode ?? ruleRow.state_code ?? stateCode,
-              vehicleType: (ruleRow.vehicleType ??
-                  ruleRow.vehicle_type ??
-                  'TWO_WHEELER') as RegistrationRule['vehicleType'],
-              effectiveFrom: ruleRow.effectiveFrom ?? ruleRow.effective_from ?? nowIso,
-              status: normalizedStatus,
-              stateTenure: ruleRow.stateTenure ?? ruleRow.state_tenure ?? 15,
-              bhTenure: ruleRow.bhTenure ?? ruleRow.bh_tenure ?? 2,
-              companyMultiplier: ruleRow.companyMultiplier ?? ruleRow.company_multiplier ?? 2,
-              components,
-              version: ruleRow.version ?? 1,
-              lastUpdated: ruleRow.lastUpdated ?? ruleRow.last_updated ?? nowIso,
-          }
+            id: ruleRow.id ?? `rule-${stateCode}`,
+            displayId: ruleRow.displayId ?? ruleRow.display_id ?? undefined,
+            ruleName: ruleRow.ruleName ?? ruleRow.rule_name ?? `${stateCode} RTO Rule`,
+            stateCode: ruleRow.stateCode ?? ruleRow.state_code ?? stateCode,
+            vehicleType: (ruleRow.vehicleType ??
+                ruleRow.vehicle_type ??
+                'TWO_WHEELER') as RegistrationRule['vehicleType'],
+            effectiveFrom: ruleRow.effectiveFrom ?? ruleRow.effective_from ?? nowIso,
+            status: normalizedStatus,
+            stateTenure: ruleRow.stateTenure ?? ruleRow.state_tenure ?? 15,
+            bhTenure: ruleRow.bhTenure ?? ruleRow.bh_tenure ?? 2,
+            companyMultiplier: ruleRow.companyMultiplier ?? ruleRow.company_multiplier ?? 2,
+            components,
+            version: ruleRow.version ?? 1,
+            lastUpdated: ruleRow.lastUpdated ?? ruleRow.last_updated ?? nowIso,
+        }
         : {
-              id: `rule-${stateCode}`,
-              ruleName: `${stateCode} RTO Rule`,
-              stateCode,
-              vehicleType: 'TWO_WHEELER',
-              effectiveFrom: nowIso,
-              status: 'ACTIVE',
-              stateTenure: 15,
-              bhTenure: 2,
-              companyMultiplier: 2,
-              components,
-              version: 1,
-              lastUpdated: nowIso,
-          };
+            id: `rule-${stateCode}`,
+            ruleName: `${stateCode} RTO Rule`,
+            stateCode,
+            vehicleType: 'TWO_WHEELER',
+            effectiveFrom: nowIso,
+            status: 'ACTIVE',
+            stateTenure: 15,
+            bhTenure: 2,
+            companyMultiplier: 2,
+            components,
+            version: 1,
+            lastUpdated: nowIso,
+        };
 
-    // Calculate
-    const onRoadBreakdown = calculateOnRoad(Number(baseExShowroom), engineCc, effectiveRule);
+    // Calculate with Insurance Rule
+    const onRoadBreakdown = calculateOnRoad(Number(baseExShowroom), engineCc, effectiveRule, effectiveInsuranceRule);
 
     // Map DB Variant to Product Object
     const colors = (variantData.vehicle_colors || []) as VehicleColorRow[];
@@ -185,6 +220,7 @@ export default async function Page({ params, searchParams }: Props) {
                 onRoad: onRoadBreakdown.onRoadTotal,
                 region: stateCode,
             }}
+            insuranceRule={effectiveInsuranceRule} /* Pass rule to client */
         />
     );
 }
