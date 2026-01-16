@@ -248,6 +248,19 @@ export default function LoginSidebar({
         }
     };
 
+    const validateSignupRequirements = () => {
+        const nameOk = fullName.trim().length > 0;
+        if (!nameOk) {
+            setLoginError('Please enter your full name to continue.');
+            return false;
+        }
+        if (!location.pincode) {
+            setLoginError('Please allow location access to complete signup.');
+            return false;
+        }
+        return true;
+    };
+
     const handleLogin = async () => {
         if (otp.length < 4) return;
         setLoading(true);
@@ -269,6 +282,9 @@ export default function LoginSidebar({
 
                 // If isNew, session will be null. This is expected.
                 // We proceed to completeLogin which will trigger signup -> auto-login.
+                if (verifyData.isNew) {
+                    setIsNewUser(true);
+                }
                 sessionData = verifyData.session ?? null;
                 userData = verifyData.user ?? null;
 
@@ -298,7 +314,7 @@ export default function LoginSidebar({
 
     const completeLogin = async (user: SupabaseUser | null, _session: Session | null) => {
         const supabase = createClient();
-        if (!user) {
+        if (!user && !isNewUser) {
             throw new Error('User not found');
         }
 
@@ -344,7 +360,7 @@ export default function LoginSidebar({
         const { data: memberships } = await supabase
             .from('memberships')
             .select('*, tenants!inner(*)')
-            .eq('user_id', user.id)
+            .eq('user_id', user?.id)
             .eq('status', 'ACTIVE');
 
         // Session Set
@@ -593,10 +609,12 @@ export default function LoginSidebar({
                                             <button
                                                 onClick={() => {
                                                     if (step === 'INITIAL') handleCheckUser();
-                                                    else if (step === 'SIGNUP')
+                                                    else if (step === 'SIGNUP') {
+                                                        if (!validateSignupRequirements()) return;
                                                         authMethod === 'EMAIL'
                                                             ? handleSendEmailOtp(identifier)
                                                             : handleSendPhoneOtp(identifier);
+                                                    }
                                                     else if (step === 'OTP') handleLogin();
                                                 }}
                                                 disabled={loading || (step === 'OTP' && otp.length < 4)}
@@ -615,6 +633,9 @@ export default function LoginSidebar({
                                                     setStep('SIGNUP');
                                                     setShowSignupPrompt(false);
                                                     setLoginError(null);
+                                                    if (!location.pincode) {
+                                                        detectLocation();
+                                                    }
                                                 }}
                                                 className="w-full py-5 bg-[#F4B000] text-black rounded-2xl text-xs font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-xl animate-in fade-in slide-in-from-bottom-4"
                                             >

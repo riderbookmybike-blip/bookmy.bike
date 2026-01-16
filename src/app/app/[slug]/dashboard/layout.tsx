@@ -24,7 +24,7 @@ export default async function TenantDashboardLayout({
     const { data: rawMemberships } = await supabase
         .rpc('get_user_memberships', { p_user_id: user.id });
 
-    const memberships = (Array.isArray(rawMemberships) ? rawMemberships : []).map((m: any) => ({
+    let memberships = (Array.isArray(rawMemberships) ? rawMemberships : []).map((m: any) => ({
         ...m,
         tenants: {
             id: m.tenant_id,
@@ -34,6 +34,19 @@ export default async function TenantDashboardLayout({
             config: m.tenant_config,
         },
     }));
+
+    if (memberships.length === 0) {
+        const { data: fallbackMemberships } = await supabase
+            .from('memberships')
+            .select('role, status, tenants!inner(id, name, slug, type, config)')
+            .eq('user_id', user.id)
+            .eq('status', 'ACTIVE');
+
+        memberships = (fallbackMemberships || []).map((m: any) => ({
+            ...m,
+            tenants: Array.isArray(m.tenants) ? m.tenants[0] : m.tenants,
+        }));
+    }
 
     let matched = memberships.find((m: any) => m.tenants?.slug === slug);
     if (!matched && slug === 'aums') {
