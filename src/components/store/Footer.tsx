@@ -1,9 +1,14 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
 import { Logo } from '@/components/brand/Logo';
 import { Facebook, Twitter, Linkedin, Instagram, Heart, Newspaper } from 'lucide-react';
+import { useBrands } from '@/hooks/useBrands';
+import { slugify } from '@/utils/slugs';
 
 export const Footer = () => {
+    const { brands } = useBrands();
     return (
         <footer className="bg-white dark:bg-[#020617] border-t border-slate-100 dark:border-white/5 pt-24 pb-12 transition-colors duration-500 overflow-hidden relative">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-brand-primary/20 to-transparent" />
@@ -40,17 +45,14 @@ export const Footer = () => {
                             </FooterLinkList>
                         </div>
 
-                        <div className="space-y-8">
-                            <FooterHeading>Makes</FooterHeading>
+                        <div id="footer-brands" className="space-y-8 scroll-mt-28">
+                            <FooterHeading>Brands</FooterHeading>
                             <FooterLinkList>
-                                <FooterLink href="/store/honda">Honda</FooterLink>
-                                <FooterLink href="/store/tvs">TVS</FooterLink>
-                                <FooterLink href="/store/royal-enfield">Royal Enfield</FooterLink>
-                                <FooterLink href="/store/hero">Hero MotoCorp</FooterLink>
-                                <FooterLink href="/store/bajaj">Bajaj Auto</FooterLink>
-                                <FooterLink href="/store/ktm">KTM</FooterLink>
-                                <FooterLink href="/store/suzuki">Suzuki</FooterLink>
-                                <FooterLink href="/store/yamaha">Yamaha</FooterLink>
+                                {brands.map(brand => (
+                                    <FooterLink key={brand.id} href={`/store/${brand.slug || slugify(brand.name)}`}>
+                                        {brand.name}
+                                    </FooterLink>
+                                ))}
                             </FooterLinkList>
                         </div>
 
@@ -131,9 +133,15 @@ const ViewportDebug = () => {
     const common = gcd(width, height);
     const aspect = `${width / common}:${height / common}`;
 
-    // Improved Mode Logic
+    // Improved Mode Logic (Must match DeviceLayout.tsx)
     let mode = 'MOBILE';
-    if (width >= 1536) mode = 'ULTRA-WIDE / TV';
+    const isTvActual =
+        width >= 2000 ||
+        (width === 960 && height === 540 && dpr >= 2) ||
+        (width === 1280 && height === 720 && dpr >= 2) ||
+        (width === 1129 && height === 635);
+
+    if (isTvActual) mode = 'ULTRA-WIDE / TV';
     else if (width >= 1024) mode = 'DESKTOP';
     else if (width >= 768) mode = 'TABLET';
 

@@ -116,7 +116,7 @@ export default function SidebarHUD({
                                 className="w-full h-full rounded-[2rem] z-10 p-4 flex flex-col items-center justify-center text-center opacity-80"
                                 style={{
                                     background: `linear-gradient(135deg, ${activeColor.hex}dd, ${activeColor.hex}44)`,
-                                    border: `1px solid ${activeColor.hex}33`
+                                    border: `1px solid ${activeColor.hex}33`,
                                 }}
                             >
                                 <Zap size={40} className="text-white/20 mb-2" />
@@ -164,12 +164,83 @@ export default function SidebarHUD({
                             ))}
                     </div>
 
-                    <div className="pt-6 border-t border-slate-100 dark:border-white/5 flex justify-between items-center group/price">
-                        <span className="text-xs font-[900] uppercase italic tracking-wider text-slate-900 dark:text-white/40">
-                            Final Price
-                        </span>
+                    <div className="pt-6 border-t border-slate-100 dark:border-white/5 flex justify-between items-center group/price relative">
+                        <div className="flex items-center gap-1.5 cursor-help group/tooltip">
+                            <span className="text-xs font-[900] uppercase italic tracking-wider text-slate-900 dark:text-white/40 border-b border-dotted border-slate-300 dark:border-white/10">
+                                Final Price
+                            </span>
+                            {/* Smart Serviceability Tooltip */}
+                            {(() => {
+                                if (typeof window === 'undefined') return <Info size={12} className="text-slate-400" />;
+                                const cached = localStorage.getItem('bkmb_user_pincode');
+                                let colorClass = 'text-slate-400';
+                                if (cached) {
+                                    try {
+                                        const data = JSON.parse(cached);
+                                        const isServiceable = [
+                                            '110001',
+                                            '400001',
+                                            '560001',
+                                            '600001',
+                                            '700001',
+                                            '500001',
+                                        ].some(p => data.pincode?.startsWith(p.slice(0, 3)));
+                                        colorClass = isServiceable
+                                            ? 'text-emerald-500 fill-emerald-500/20'
+                                            : 'text-red-500 fill-red-500/20';
+                                    } catch {}
+                                }
+                                return <Info size={12} className={colorClass} />;
+                            })()}
+
+                            {/* Tooltip Content */}
+                            <div className="absolute bottom-full left-0 mb-2 px-4 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest rounded-xl opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-2xl">
+                                {(() => {
+                                    if (typeof window === 'undefined') return 'Checking Serviceability...';
+                                    const cached = localStorage.getItem('bkmb_user_pincode');
+                                    if (!cached) return 'Set Location to check serviceability';
+
+                                    try {
+                                        const data = JSON.parse(cached);
+                                        const isServiceable = [
+                                            '110001',
+                                            '400001',
+                                            '560001',
+                                            '600001',
+                                            '700001',
+                                            '500001',
+                                        ].some(p => data.pincode?.startsWith(p.slice(0, 3))); // Mock check
+
+                                        return (
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex items-center gap-2">
+                                                    <div
+                                                        className={`w-2 h-2 rounded-full ${isServiceable ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-red-500 shadow-[0_0_8px_#ef4444]'}`}
+                                                    />
+                                                    <span
+                                                        className={
+                                                            isServiceable
+                                                                ? 'text-emerald-400 font-black'
+                                                                : 'text-red-400 font-black'
+                                                        }
+                                                    >
+                                                        {isServiceable ? 'Fully Serviceable' : 'Not Available Here'}
+                                                    </span>
+                                                </div>
+                                                <span className="opacity-50 font-medium">
+                                                    {data.city || data.pincode}
+                                                </span>
+                                            </div>
+                                        );
+                                    } catch {
+                                        return 'Location Error';
+                                    }
+                                })()}
+                            </div>
+                        </div>
+
                         <div className="text-right">
-                            <span className="text-3xl font-black italic tracking-tighter text-brand-primary dark:text-brand-primary font-mono block">
+                            <span className="text-3xl font-black italic tracking-tighter text-brand-primary dark:text-brand-primary font-mono block drop-shadow-[0_0_15px_rgba(244,176,0,0.2)]">
                                 ₹{totalOnRoad.toLocaleString()}
                             </span>
                         </div>
@@ -202,15 +273,15 @@ export default function SidebarHUD({
                                     downPayment / totalOnRoad > 0.25
                                         ? 'High'
                                         : downPayment / totalOnRoad > 0.15
-                                            ? 'Medium'
-                                            : 'Low',
+                                          ? 'Medium'
+                                          : 'Low',
                                 isHighlight: true,
                                 colorClass:
                                     downPayment / totalOnRoad > 0.25
                                         ? 'text-emerald-500'
                                         : downPayment / totalOnRoad > 0.15
-                                            ? 'text-brand-primary'
-                                            : 'text-amber-500',
+                                          ? 'text-brand-primary'
+                                          : 'text-amber-500',
                             },
                             {
                                 label: 'Finance TAT',

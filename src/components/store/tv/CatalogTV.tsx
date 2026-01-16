@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Search, SlidersHorizontal, LayoutGrid, List, ChevronDown, MapPin, Zap, X, Filter } from 'lucide-react';
+import { Filter, SlidersHorizontal } from 'lucide-react';
 import { useCatalog } from '@/hooks/useCatalog';
 import { ProductCard } from '@/components/store/CatalogDesktop';
+import { SmartFilterDrawer } from './SmartFilterDrawer';
+import { MARKET_METRICS } from '@/config/market';
 
 /**
  * Tier 5: TV / Ultra-Wide Catalog Platform
@@ -11,40 +13,123 @@ import { ProductCard } from '@/components/store/CatalogDesktop';
  */
 export function CatalogTV() {
     const { items } = useCatalog();
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-    const [sortBy, setSortBy] = useState<'popular' | 'price' | 'emi'>('popular');
+    const [activeCategory, setActiveCategory] = useState<'ALL' | 'MOTORCYCLE' | 'SCOOTER' | 'MOPED'>('ALL');
+    const [activeBrands, setActiveBrands] = useState<string[]>([]);
+    const [activeEngines, setActiveEngines] = useState<string[]>([]);
+    const [activeFuels, setActiveFuels] = useState<string[]>([]);
+    const [activeDownpayment, setActiveDownpayment] = useState<number | null>(null);
+    const [activeTenure, setActiveTenure] = useState<number | null>(null);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [isVisible, setIsVisible] = useState(true);
+
+    React.useEffect(() => {
+        let lastScrollY = window.scrollY;
+        const handleScroll = () => {
+            const currentScrollY = window.scrollY;
+            // Autohide removed as per user request (transparent icons are unobtrusive)
+            setIsVisible(true);
+
+            lastScrollY = currentScrollY;
+        };
+        const handleShow = () => setIsVisible(true);
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        window.addEventListener('showCatalogHeader', handleShow);
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            window.removeEventListener('showCatalogHeader', handleShow);
+        };
+    }, []);
 
     // Mock state for filters (logic kept simple for TV)
-    const downpayment = 50000;
-    const tenure = 36;
-    const activeFilterCount = 0;
+    const downpayment = activeDownpayment ?? 50000;
+    const tenure = activeTenure ?? 36;
+
+    // Helper to parse metrics like "765 mm" or "110 kg"
+    const parseMetric = (val?: string) => {
+        if (!val) return Infinity;
+        const num = parseFloat(val.replace(/[^\d.]/g, ''));
+        return isNaN(num) ? Infinity : num;
+    };
 
     const results = useMemo(() => {
-        const vehicles = [...items];
-        if (sortBy === 'price') vehicles.sort((a, b) => (a.price?.exShowroom || 0) - (b.price?.exShowroom || 0));
-        return vehicles;
-    }, [items, sortBy]);
+        let filtered = items;
+
+        // 1. Filter by Category
+        if (activeCategory !== 'ALL') {
+            filtered = filtered.filter(item => item.bodyType === activeCategory);
+        }
+
+        // 2. Filter by Brands
+        if (activeBrands.length > 0) {
+            filtered = filtered.filter(item => activeBrands.includes(item.make.toLowerCase().replace(/\s+/g, '_')));
+        }
+
+        return filtered;
+    }, [items, activeCategory, activeBrands]);
+
+    const handleToggleBrand = (brandId: string) => {
+        setActiveBrands(prev => (prev.includes(brandId) ? prev.filter(b => b !== brandId) : [...prev, brandId]));
+    };
+
+    const handleToggleEngine = (engineId: string) => {
+        setActiveEngines(prev => (prev.includes(engineId) ? prev.filter(e => e !== engineId) : [...prev, engineId]));
+    };
+
+    const handleToggleFuel = (fuelId: string) => {
+        setActiveFuels(prev => (prev.includes(fuelId) ? prev.filter(f => f !== fuelId) : [...prev, fuelId]));
+    };
+
+    const handleSelectDownpayment = (amount: number | null) => {
+        setActiveDownpayment(amount);
+    };
+
+    const handleSelectTenure = (months: number | null) => {
+        setActiveTenure(months);
+    };
+
+    const handleResetFilters = () => {
+        setActiveBrands([]);
+        setActiveEngines([]);
+        setActiveFuels([]);
+        setActiveDownpayment(null);
+        setActiveTenure(null);
+        setActiveCategory('ALL');
+        setIsFilterOpen(false);
+    };
 
     return (
-        <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-black transition-colors duration-500 font-sans">
-            {/* Ultra-Slim TV Header */}
-            <header className="sticky top-20 z-40 bg-white/80 dark:bg-[#020617]/80 backdrop-blur-3xl border-b border-slate-100 dark:border-white/5 py-4">
-                <div className="max-w-[1440px] mx-auto px-12 flex items-center justify-between">
+        <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-black transition-colors duration-500 font-sans pt-24">
+            {/* Top trigger zone for Catalog Header when hidden */}
+            <div
+                className="fixed top-0 left-0 right-0 h-4 z-[45]"
+                onMouseEnter={() => window.dispatchEvent(new CustomEvent('showCatalogHeader'))}
+            />
+
+            {/* Ultra-Slim TV Header - Minimal Sticky with Smart Autohide */}
+            <header
+                className={`sticky top-0 z-40 bg-white/90 dark:bg-black/80 backdrop-blur-3xl border-b border-slate-100 dark:border-white/5 py-4 transition-transform duration-500 ${isVisible ? 'translate-y-0' : '-translate-y-full'}`}
+                onMouseEnter={() => setIsVisible(true)}
+            >
+                <div className="max-w-[1440px] mx-auto px-20 flex items-center justify-between">
                     <div className="flex items-center gap-6">
-                        <h1 className="text-4xl font-black italic text-slate-900 dark:text-white tracking-widest leading-none">
-                            {results.length} BIKES
-                        </h1>
+                        <button
+                            onClick={() => setIsFilterOpen(true)}
+                            className="flex items-center gap-3 px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-black rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all"
+                        >
+                            <SlidersHorizontal size={14} strokeWidth={2.5} /> CUSTOMIZE
+                        </button>
+
                         <div className="h-6 w-px bg-slate-200 dark:bg-white/10" />
+
                         <div className="flex gap-2">
-                            {(['popular', 'price', 'emi'] as const).map(option => (
+                            {(['MOTORCYCLE', 'SCOOTER', 'MOPED'] as const).map(option => (
                                 <button
                                     key={option}
-                                    onClick={() => setSortBy(option)}
-                                    className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border-2 transition-all ${
-                                        sortBy === option
-                                            ? 'bg-brand-primary border-brand-primary text-black'
-                                            : 'border-slate-200 dark:border-white/10 text-slate-500'
+                                    onClick={() => setActiveCategory(activeCategory === option ? 'ALL' : option)}
+                                    className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
+                                        activeCategory === option
+                                            ? 'bg-[#FFD700] text-black shadow-lg shadow-[#FFD700]/20 scale-105'
+                                            : 'bg-slate-900 dark:bg-white text-white dark:text-black hover:scale-105 shadow-md shadow-slate-900/10 dark:shadow-white/5'
                                     }`}
                                 >
                                     {option}
@@ -54,25 +139,15 @@ export function CatalogTV() {
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <button
-                            onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-                            className="p-4 rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10"
-                        >
-                            {viewMode === 'grid' ? <List size={24} /> : <LayoutGrid size={24} />}
-                        </button>
-                        <button
-                            onClick={() => setIsFilterOpen(true)}
-                            className="flex items-center gap-3 px-8 py-3 bg-slate-900 dark:bg-white text-white dark:text-black rounded-full text-xs font-black uppercase tracking-widest"
-                        >
-                            <Filter size={18} /> Filters
-                        </button>
+                        <h1 className="text-3xl font-black italic text-slate-900 dark:text-white tracking-widest leading-none">
+                            {results.length} VEHICLES
+                        </h1>
                     </div>
                 </div>
             </header>
 
-            <main className="flex-1 mx-auto w-full max-w-[1440px] px-12 py-8">
-                {/* Result Grid with Enforced 3-Columns for TV */}
-                <div className={`grid grid-cols-3 gap-10 w-full`}>
+            <main className="flex-1 mx-auto w-full max-w-[1440px] px-20 py-6">
+                <div className="grid grid-cols-3 gap-10 w-full">
                     {results.map(v => (
                         <div key={v.id} className="transform transition-transform active:scale-95">
                             <ProductCard v={v} viewMode="grid" downpayment={downpayment} tenure={tenure} isTv={true} />
@@ -80,6 +155,22 @@ export function CatalogTV() {
                     ))}
                 </div>
             </main>
+
+            <SmartFilterDrawer
+                isOpen={isFilterOpen}
+                onClose={() => setIsFilterOpen(false)}
+                activeBrands={activeBrands}
+                onToggleBrand={handleToggleBrand}
+                activeEngines={activeEngines}
+                onToggleEngine={handleToggleEngine}
+                activeFuels={activeFuels}
+                onToggleFuel={handleToggleFuel}
+                activeDownpayment={activeDownpayment}
+                onSelectDownpayment={handleSelectDownpayment}
+                activeTenure={activeTenure}
+                onSelectTenure={handleSelectTenure}
+                onReset={handleResetFilters}
+            />
         </div>
     );
 }

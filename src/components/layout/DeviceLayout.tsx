@@ -27,10 +27,15 @@ export const DeviceLayout: React.FC<DeviceLayoutProps> = ({ mobile, tablet, desk
     const { width, height } = viewport;
 
     // Smart TV Detection:
-    // 1. Explicit width >= 1536 (4K/Ultra-Wide)
-    // 2. Viewport 960x540 with DPR >= 2 (1080p TV Scaling)
+    // 1. Massive Viewport (4K TVs / Monitors)
+    // 2. Viewport 960x540 with DPR >= 2 (Scaled 1080p TV)
+    // 3. Viewport 1280x720 with DPR >= 2 (Scaled 720p TV/Stick)
     const dpr = typeof window !== 'undefined' ? window.devicePixelRatio : 1;
-    const isTv = width >= 1536 || (width === 960 && height === 540 && dpr >= 2);
+    const isTv =
+        width >= 2000 ||
+        (width === 960 && height === 540 && dpr >= 2) ||
+        (width === 1280 && height === 720 && dpr >= 2) ||
+        (width >= 1110 && width <= 1200 && height >= 600 && height <= 700);
 
     if (isTv && tv) {
         return <>{tv}</>;

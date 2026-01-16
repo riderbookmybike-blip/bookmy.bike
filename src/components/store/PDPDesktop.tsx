@@ -30,9 +30,9 @@ import {
 } from '@/hooks/usePDPData';
 
 interface PDPDesktopProps {
-    product: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    product: any;
     variantParam: string;
-    data: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    data: any;
     handlers: {
         handleColorChange: (id: string) => void;
         handleShareQuote: () => void;
@@ -100,7 +100,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
         }
     }, []);
 
-    const activeColorConfig = colors.find((c: any) => c.id === selectedColor) || colors[0]; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const activeColorConfig = colors.find((c: any) => c.id === selectedColor) || colors[0];
     const totalMRP =
         (product.mrp || baseExShowroom + 5000) +
         rtoEstimates +
@@ -139,7 +139,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
         }
     };
 
-    const ConfigItemRow = ({ item, isSelected, onToggle, isMandatory = false, isRadio = false }: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+    const ConfigItemRow = ({ item, isSelected, onToggle, isMandatory = false, isRadio = false }: any) => {
         const quantity = isSelected ? quantities[item.id] || 1 : 0;
         const finalPrice = item.discountPrice > 0 ? item.discountPrice : item.price;
         const billedAmount = isSelected ? finalPrice * quantity : 0;
@@ -148,9 +148,10 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
             <div
                 onClick={() => !isMandatory && onToggle && onToggle()}
                 className={`group relative p-4 rounded-[2.5rem] border transition-all duration-300 flex items-center justify-between gap-4 cursor-pointer overflow-hidden
-                    ${isSelected
-                        ? 'bg-brand-primary/5 border-brand-primary/30'
-                        : 'bg-white/[0.03] border-slate-200 dark:border-white/5 hover:bg-white/[0.05] hover:border-slate-300 dark:hover:border-white/10'
+                    ${
+                        isSelected
+                            ? 'bg-brand-primary/5 border-brand-primary/30'
+                            : 'bg-white/[0.03] border-slate-200 dark:border-white/5 hover:bg-white/[0.05] hover:border-slate-300 dark:hover:border-white/10'
                     }
                     ${isMandatory ? 'cursor-default opacity-90' : ''}
                 `}
@@ -160,10 +161,11 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                     <div className="flex items-center gap-4 min-w-[200px]">
                         <div
                             className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all shrink-0
-                            ${isSelected
+                            ${
+                                isSelected
                                     ? 'bg-brand-primary border-brand-primary text-black shadow-[0_0_15px_rgba(255,215,0,0.25)]'
                                     : 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-400'
-                                }`}
+                            }`}
                         >
                             {configTab === 'INSURANCE' ? <ShieldIcon size={20} /> : <Zap size={20} />}
                         </div>
@@ -230,10 +232,11 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                         {/* Selection Checkbox/Radio */}
                         <div
                             className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300
-                            ${isSelected
+                            ${
+                                isSelected
                                     ? 'bg-brand-primary border-brand-primary scale-110 shadow-lg shadow-brand-primary/30'
                                     : 'border-slate-300 dark:border-slate-700 bg-transparent group-hover:border-brand-primary'
-                                }`}
+                            }`}
                         >
                             {isSelected && (
                                 <CheckCircle2
@@ -274,48 +277,102 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                         <TabHeader icon={Zap} title="EMI Plan" subtext="Pick what works for you" />
 
                         {/* Slider Row */}
-                        {/* Slider Row */}
-                        <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-[2.5rem] p-6 space-y-3">
+                        {/* Premium Gold Slider */}
+                        <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-[2.5rem] p-8 space-y-6">
                             <div className="flex justify-between items-end">
-                                <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-500 opacity-80">
-                                    How much you want to pay now?
-                                </h4>
-                                <div className="text-2xl font-black italic text-brand-primary font-mono">
+                                <div>
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                                        Downpayment
+                                    </h4>
+                                    <p className="text-[10px] font-bold text-slate-400">Adjust to fit your budget</p>
+                                </div>
+                                <div className="text-3xl font-black italic text-brand-primary font-mono drop-shadow-[0_0_15px_rgba(244,176,0,0.3)]">
                                     ₹{downPayment.toLocaleString()}
                                 </div>
                             </div>
-                            <input
-                                type="range"
-                                min={minDownPayment}
-                                max={maxDownPayment}
-                                step={1000}
-                                value={downPayment}
-                                onChange={e => setUserDownPayment(parseInt(e.target.value))}
-                                className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full appearance-none cursor-pointer"
-                                style={{ accentColor: '#F4B000' }}
-                            />
+
+                            <div className="relative h-6 flex items-center">
+                                <input
+                                    type="range"
+                                    min={minDownPayment}
+                                    max={maxDownPayment}
+                                    step={1000}
+                                    value={downPayment}
+                                    onChange={e => setUserDownPayment(parseInt(e.target.value))}
+                                    className="w-full h-2 rounded-full appearance-none cursor-pointer relative z-20 bg-transparent focus:outline-none"
+                                    style={{
+                                        WebkitAppearance: 'none',
+                                    }}
+                                />
+                                {/* Custom Track */}
+                                <div className="absolute inset-x-0 h-2 rounded-full overflow-hidden pointer-events-none z-10 bg-slate-200 dark:bg-slate-800">
+                                    <div
+                                        className="h-full bg-gradient-to-r from-[#F4B000] to-[#FFD700] shadow-[0_0_15px_#F4B000]"
+                                        style={{
+                                            width: `${((downPayment - minDownPayment) / (maxDownPayment - minDownPayment)) * 100}%`,
+                                        }}
+                                    />
+                                </div>
+                                {/* Thumb Styles injected via style tag for strict control if needed, 
+                                    but standard tailwind accent-color doesn't support complex shadows. 
+                                    Reliance on updated global css or Webkit styles is usually needed for custom thumbs.
+                                    For now, using standard input with refined track. */}
+                            </div>
+                            <div className="flex justify-between text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                                <span>Min: ₹{minDownPayment.toLocaleString()}</span>
+                                <span>Max: ₹{maxDownPayment.toLocaleString()}</span>
+                            </div>
                         </div>
 
-                        {/* Tenure List Selection */}
-                        <div className="space-y-4">
-                            {[60, 48, 36, 24].map(tenure => {
+                        {/* Tenure Grid */}
+                        <div className="grid grid-cols-2 gap-4">
+                            {[24, 36, 48, 60].map(tenure => {
                                 const emiValue = Math.round(
                                     (loanAmount * (annualInterest / 12) * Math.pow(1 + annualInterest / 12, tenure)) /
-                                    (Math.pow(1 + annualInterest / 12, tenure) - 1)
+                                        (Math.pow(1 + annualInterest / 12, tenure) - 1)
                                 );
+                                const isSelected = emiTenure === tenure;
+
                                 return (
-                                    <ConfigItemRow
+                                    <button
                                         key={tenure}
-                                        item={{
-                                            id: tenure.toString(),
-                                            name: `${tenure} Months`,
-                                            description: tenure === 36 ? 'Recommended Tenure' : 'Flexible EMI Duration',
-                                            price: emiValue,
-                                        }}
-                                        isSelected={emiTenure === tenure}
-                                        onToggle={() => setEmiTenure(tenure)}
-                                        isRadio
-                                    />
+                                        onClick={() => setEmiTenure(tenure)}
+                                        className={`relative group p-6 rounded-[2rem] border transition-all duration-300 text-left overflow-hidden
+                                            ${
+                                                isSelected
+                                                    ? 'bg-brand-primary border-brand-primary shadow-[0_0_20px_rgba(244,176,0,0.2)]'
+                                                    : 'bg-white/[0.03] border-slate-200 dark:border-white/5 hover:border-brand-primary/50'
+                                            }
+                                        `}
+                                    >
+                                        <div className="relative z-10 flex flex-col justify-between h-full space-y-4">
+                                            <div className="flex justify-between items-start">
+                                                <span
+                                                    className={`text-4xl font-black italic tracking-tighter ${isSelected ? 'text-black' : 'text-slate-300 dark:text-slate-700'}`}
+                                                >
+                                                    {tenure}
+                                                </span>
+                                                <div
+                                                    className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${isSelected ? 'border-black bg-black text-brand-primary' : 'border-slate-200 dark:border-white/10'}`}
+                                                >
+                                                    {isSelected && <Zap size={14} fill="currentColor" />}
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <p
+                                                    className={`text-[9px] font-bold uppercase tracking-widest mb-0.5 ${isSelected ? 'text-black/60' : 'text-slate-500'}`}
+                                                >
+                                                    Monthly EMI
+                                                </p>
+                                                <p
+                                                    className={`text-xl font-black font-mono ${isSelected ? 'text-black' : 'text-white'}`}
+                                                >
+                                                    ₹{emiValue.toLocaleString()}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </button>
                                 );
                             })}
                         </div>
@@ -333,7 +390,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                                     key={acc.id}
                                     item={{ ...acc, maxQty: acc.maxQty || 1 }}
                                     isSelected={true}
-                                    onToggle={() => { }}
+                                    onToggle={() => {}}
                                     isMandatory={true}
                                 />
                             ))}
@@ -477,7 +534,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                                     key={srv.id}
                                     item={srv}
                                     isSelected={true}
-                                    onToggle={() => { }}
+                                    onToggle={() => {}}
                                     isMandatory={true}
                                 />
                             ))}
@@ -547,7 +604,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                 }}
             />
 
-            <div className="max-w-[1440px] mx-auto px-6 md:px-12 py-4 space-y-6 relative z-10">
+            <div className="max-w-[1440px] mx-auto px-6 md:px-12 lg:px-20 py-4 space-y-8 relative z-10">
                 {/* 1. Context Navigation Row (Minimal) */}
                 <DynamicHeader
                     breadcrumb={
@@ -617,7 +674,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                         onGetQuote={handleBookingRequest}
                         onShare={handleShareQuote}
                         onSave={handleSaveQuote}
-                        onDownload={() => { }}
+                        onDownload={() => {}}
                         onShowVideo={() => setIsVideoOpen(true)}
                         productImage={getProductImage()}
                         downPayment={userDownPayment}

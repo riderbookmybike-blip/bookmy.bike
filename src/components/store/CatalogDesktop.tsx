@@ -1,7 +1,19 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { ChevronDown, Zap, Search, Heart, LayoutGrid, List, Star, StarHalf, X, SlidersHorizontal } from 'lucide-react';
+import {
+    ChevronDown,
+    Zap,
+    Search,
+    Heart,
+    LayoutGrid,
+    List,
+    Star,
+    StarHalf,
+    X,
+    SlidersHorizontal,
+    CircleHelp,
+} from 'lucide-react';
 import Link from 'next/link';
 import { slugify } from '@/utils/slugs';
 import { BRANDS as brands } from '@/config/market';
@@ -193,9 +205,11 @@ export const ProductCard = ({
     return (
         <div
             key={v.id}
-            className="group bg-white dark:bg-slate-900/40 dark:backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden flex flex-col shadow-sm hover:shadow-2xl dark:hover:shadow-brand-primary/5 transition-all duration-500 dark:hover:border-white/20 min-h-[480px] h-sm:min-h-[400px] h-md:min-h-[440px]"
+            className={`group bg-white dark:bg-slate-900/40 dark:backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden flex flex-col shadow-sm hover:shadow-2xl dark:hover:shadow-brand-primary/5 transition-all duration-500 dark:hover:border-white/20 ${isTv ? 'min-h-[420px]' : 'min-h-[480px] h-sm:min-h-[400px] h-md:min-h-[440px]'}`}
         >
-            <div className="h-[220px] h-sm:h-[160px] h-md:h-[180px] bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center relative p-4 border-b border-slate-100 dark:border-white/5 overflow-hidden group/card">
+            <div
+                className={`${isTv ? 'h-[205px]' : 'h-[220px] h-sm:h-[160px] h-md:h-[180px]'} bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center relative p-4 border-b border-slate-100 dark:border-white/5 overflow-hidden group/card`}
+            >
                 <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-white/10 dark:to-black/30 z-0" />
 
                 <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
@@ -241,73 +255,158 @@ export const ProductCard = ({
                 </span>
             </div>
 
-            <div className="p-8 space-y-8 flex-1 flex flex-col justify-between relative overflow-hidden">
+            <div
+                className={`${isTv ? 'p-4 space-y-4' : 'p-8 space-y-8'} flex-1 flex flex-col justify-between relative overflow-hidden`}
+            >
                 <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/5 rounded-full blur-[40px] -mr-16 -mt-16 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
 
                 <div className="relative z-10">
                     <div className="flex items-center justify-between">
-                        <h3 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white leading-none">
+                        <h3
+                            className={`${isTv ? 'text-lg' : 'text-xl'} font-black uppercase tracking-tighter italic text-slate-900 dark:text-white leading-none`}
+                        >
                             {v.model}
                         </h3>
-                        <div className="flex items-center gap-2">
-                            {v.availableColors && v.availableColors.length > 0 && (
-                                <div className="flex -space-x-1.5">
-                                    {v.availableColors.slice(0, 3).map((c, i) => (
-                                        <div
-                                            key={i}
-                                            className="w-3.5 h-3.5 rounded-full border border-white dark:border-slate-900 shadow-sm"
-                                            style={{ backgroundColor: typeof c === 'string' ? c : c.hexCode }}
-                                        />
-                                    ))}
-                                    {v.availableColors.length > 3 && (
-                                        <div className="w-3.5 h-3.5 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-[6px] font-black border border-white dark:border-slate-900 z-10 text-slate-500 dark:text-slate-400">
-                                            +{v.availableColors.length - 3}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
+                        {/* Rating in line for TV */}
+                        {isTv && (
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] font-black text-slate-900 dark:text-white">
+                                    {v.rating || '4.5'}
+                                </span>
+                                <StarRating rating={v.rating || 4.5} size={8} />
+                            </div>
+                        )}
+                        {!isTv && v.availableColors && v.availableColors.length > 0 && (
+                            <div className="flex -space-x-1.5">
+                                {v.availableColors.slice(0, 3).map((c, i) => (
+                                    <div
+                                        key={i}
+                                        className="w-3.5 h-3.5 rounded-full border border-white dark:border-slate-900 shadow-sm"
+                                        style={{ backgroundColor: typeof c === 'string' ? c : c.hexCode }}
+                                    />
+                                ))}
+                            </div>
+                        )}
                     </div>
-                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-widest mt-2">
+                    <p
+                        className={`${isTv ? 'text-[9px]' : 'text-[10px]'} font-bold text-slate-400 dark:text-slate-400 uppercase tracking-widest ${isTv ? 'mt-1' : 'mt-2'}`}
+                    >
                         {v.variant}
                     </p>
-
-                    {/* Specs Grid (Grid View) */}
                 </div>
 
-                <div className="flex items-center justify-between border-y border-slate-100 dark:border-white/10 py-5 bg-slate-50/50 dark:bg-white/[0.04] -mx-6 px-6 relative z-10">
-                    <div className="space-y-1">
+                <div
+                    className={`flex items-center justify-between border-y border-slate-100 dark:border-white/10 ${isTv ? 'py-3' : 'py-5'} bg-slate-50/50 dark:bg-white/[0.04] -mx-6 px-6 relative z-10`}
+                >
+                    <div className="space-y-0.5">
                         <p className="text-[8px] font-bold text-slate-400 dark:text-slate-300 uppercase tracking-widest leading-none">
                             Price
                         </p>
-                        <span className="text-lg font-black text-slate-900 dark:text-white block tracking-tight">
+                        <span
+                            className={`${isTv ? 'text-base' : 'text-lg'} font-black text-slate-900 dark:text-white block tracking-tight`}
+                        >
                             ₹{basePrice.toLocaleString('en-IN')}
                         </span>
+                        <div className="relative group/tooltip w-fit cursor-help">
+                            <div className="flex items-center gap-1">
+                                <p className="text-[8px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                    On-Road
+                                </p>
+                                {(() => {
+                                    if (typeof window === 'undefined')
+                                        return <CircleHelp size={10} className="text-slate-400" />;
+                                    const cached = localStorage.getItem('bkmb_user_pincode');
+                                    let colorClass = 'text-slate-400';
+                                    if (cached) {
+                                        try {
+                                            const data = JSON.parse(cached);
+                                            const isServiceable = [
+                                                '110001',
+                                                '400001',
+                                                '560001',
+                                                '600001',
+                                                '700001',
+                                                '500001',
+                                            ].some(p => data.pincode?.startsWith(p.slice(0, 3)));
+                                            colorClass = isServiceable
+                                                ? 'text-emerald-500 fill-emerald-500/20'
+                                                : 'text-red-500 fill-red-500/20';
+                                        } catch {}
+                                    }
+                                    return <CircleHelp size={10} className={colorClass} />;
+                                })()}
+                            </div>
+                            {/* Serviceability Tooltip */}
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[9px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-xl">
+                                {(() => {
+                                    if (typeof window === 'undefined') return 'Checking...';
+                                    const cached = localStorage.getItem('bkmb_user_pincode');
+                                    if (!cached) return 'Set Location';
+
+                                    try {
+                                        const data = JSON.parse(cached);
+                                        const isServiceable = [
+                                            '110001',
+                                            '400001',
+                                            '560001',
+                                            '600001',
+                                            '700001',
+                                            '500001',
+                                        ].some(p => data.pincode?.startsWith(p.slice(0, 3))); // Simple mock check
+
+                                        return (
+                                            <div className="flex items-center gap-2">
+                                                <span>{data.city || data.pincode}</span>
+                                                <div
+                                                    className={`w-2 h-2 rounded-full ${isServiceable ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-red-500 shadow-[0_0_8px_#ef4444]'}`}
+                                                />
+                                                <span className={isServiceable ? 'text-emerald-400' : 'text-red-400'}>
+                                                    {isServiceable ? 'Serviceable' : 'Not Available'}
+                                                </span>
+                                            </div>
+                                        );
+                                    } catch {
+                                        return 'Invalid Location';
+                                    }
+                                })()}
+                                {/* Arrow */}
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-slate-900 dark:border-t-white" />
+                            </div>
+                        </div>
                     </div>
-                    <div className="text-right space-y-1">
+                    <div className="text-right space-y-0.5">
                         <p className="text-[8px] font-bold text-slate-400 dark:text-slate-300 uppercase tracking-widest leading-none">
-                            EMI/mo
+                            EMI
                         </p>
-                        <p className="text-lg font-black text-brand-primary drop-shadow-[0_0_8px_rgba(244,176,0,0.2)]">
+                        <p
+                            className={`${isTv ? 'text-base' : 'text-lg'} font-black text-brand-primary drop-shadow-[0_0_8px_rgba(244,176,0,0.2)]`}
+                        >
                             ₹{emiValue.toLocaleString('en-IN')}
+                        </p>
+                        <p className="text-[7px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                            {tenure} Months
                         </p>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 relative z-10 mt-2">
+                <div className={`grid grid-cols-1 ${isTv ? 'gap-2' : 'gap-3'} relative z-10 ${isTv ? 'mt-1' : 'mt-2'}`}>
                     <Link
                         href={`/store/${slugify(v.make)}/${slugify(v.model)}/${slugify(v.variant)}`}
-                        className="w-full py-4 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(244,176,0,0.3)] hover:shadow-[0_0_30px_rgba(244,176,0,0.5)] hover:-translate-y-0.5 transition-all"
+                        className={`w-full ${isTv ? 'py-3' : 'py-4'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(244,176,0,0.3)] hover:shadow-[0_0_30px_rgba(244,176,0,0.5)] transition-all`}
                     >
                         GET QUOTE
                     </Link>
-                    <div className="flex items-center justify-center gap-2 py-1">
-                        <span className="text-xs font-black text-slate-900 dark:text-white">{v.rating || '4.5'}</span>
-                        <StarRating rating={v.rating || 4.5} size={12} />
-                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider ml-1">
-                            {getStableReviewCount(v)} Reviews
-                        </span>
-                    </div>
+                    {!isTv && (
+                        <div className="flex items-center justify-center gap-2 py-1">
+                            <span className="text-xs font-black text-slate-900 dark:text-white">
+                                {v.rating || '4.5'}
+                            </span>
+                            <StarRating rating={v.rating || 4.5} size={12} />
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider ml-1">
+                                {getStableReviewCount(v)} Reviews
+                            </span>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

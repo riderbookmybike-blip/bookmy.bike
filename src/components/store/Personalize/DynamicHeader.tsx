@@ -14,17 +14,16 @@ interface DynamicHeaderProps {
  * Identity & Pricing are handled by the Sidebar HUD.
  * This component only provides contextual navigation.
  */
-export default function DynamicHeader({
-    breadcrumb,
-    onBack,
-    className = ''
-}: DynamicHeaderProps) {
+export default function DynamicHeader({ breadcrumb, onBack, className = '' }: DynamicHeaderProps) {
     if (!breadcrumb && !onBack) return null;
 
     return (
-        <div className={`flex items-center gap-4 py-2 ${className}`}>
+        <div className={`flex items-center gap-4 py-2 pt-24 ${className}`}>
             {onBack && (
-                <button onClick={onBack} className="p-2 -ml-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white">
+                <button
+                    onClick={onBack}
+                    className="p-2 -ml-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white"
+                >
                     <ArrowLeft size={16} />
                 </button>
             )}

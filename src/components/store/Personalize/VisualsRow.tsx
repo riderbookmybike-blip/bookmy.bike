@@ -32,7 +32,7 @@ export default function VisualsRow({
     videoSource,
     className = '',
     isVideoOpen = false,
-    onCloseVideo = () => { },
+    onCloseVideo = () => {},
 }: VisualsRowProps) {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const activeColorName = colors.find(c => c.id === selectedColor)?.name;
@@ -45,106 +45,73 @@ export default function VisualsRow({
 
     return (
         <div className={`relative ${className}`}>
-            {/* 1. Primary Hero Visualizer */}
-            <div className="relative h-[600px] bg-white dark:bg-[#050505] rounded-[4rem] ring-1 ring-slate-100 dark:ring-white/10 overflow-hidden group shadow-[0_20px_50px_rgba(0,0,0,0.08)] dark:shadow-2xl transition-all duration-700">
-                {/* Atmospheric Background - Removed for cleaner look */}
-                <div className="absolute inset-0 z-0 bg-slate-50/50 dark:bg-white/5" />
+            {/* 1. Primary Hero Visualizer - 3 Part Layout */}
+            <div className="relative h-[600px] bg-white dark:bg-[#050505] rounded-[4rem] ring-1 ring-slate-100 dark:ring-white/10 overflow-hidden group shadow-[0_20px_50px_rgba(0,0,0,0.08)] dark:shadow-2xl transition-all duration-700 flex flex-col">
+                {/* Atmospheric Background - Golden Spotlight */}
+                <div className="absolute inset-x-0 bottom-0 top-1/2 z-0 bg-gradient-to-t from-[#F4B000]/20 to-transparent opacity-60 blur-3xl rounded-b-[4rem]" />
+                <div className="absolute inset-0 z-0 bg-radial-at-c from-white/10 to-transparent opacity-50" />
 
-                {/* Main Product Image (Static & Stable) */}
-                <div className="absolute inset-0 z-10 p-12 flex items-center justify-center">
-                    {productImage && !productImage.includes('categories/') ? (
-                        <img
-                            src={galaxyImages[currentImageIndex]}
-                            alt="Product Visual"
-                            className="w-full max-w-[85%] h-auto object-contain brightness-[1.1] contrast-[1.05] drop-shadow-[0_30px_60px_rgba(0,0,0,0.2)] dark:drop-shadow-[0_40px_80px_rgba(0,0,0,0.9)] animate-in fade-in zoom-in-95 duration-500"
-                            key={currentImageIndex} // Force re-render for anim
-                        />
-                    ) : (
-                        <div
-                            className="w-full h-full rounded-[3rem] animate-in fade-in zoom-in-95 duration-1000 flex flex-col items-center justify-center text-center p-20"
-                            style={{
-                                background: `radial-gradient(circle at center, ${colors.find(c => c.id === selectedColor)?.hex}66, ${colors.find(c => c.id === selectedColor)?.hex}22)`,
-                                border: `1px solid ${colors.find(c => c.id === selectedColor)?.hex}44`
-                            }}
-                        >
-                            <div
-                                className="w-64 h-64 rounded-full blur-[100px] opacity-50 animate-pulse"
-                                style={{ backgroundColor: colors.find(c => c.id === selectedColor)?.hex }}
-                            />
-                            <div className="relative z-10 mt-12">
-                                <Maximize2 size={80} className="mx-auto mb-6 text-white/20" />
-                                <h3 className="text-5xl font-black uppercase italic tracking-tighter text-white/10"> No Image Available </h3>
-                                <p className="text-white/5 font-black uppercase tracking-[0.5em] mt-4"> Showing {activeColorName} finish </p>
-                            </div>
-                        </div>
-                    )}
-                    {/* Shadow/Reflections */}
-                    {productImage && !productImage.includes('categories/') && (
-                        <div className="absolute bottom-[18%] w-[70%] h-6 bg-black/10 dark:bg-black/50 blur-[40px] dark:blur-[50px] rounded-full scale-x-125" />
-                    )}
+                {/* Status Indicator (Top Right) */}
+                <div className="absolute top-8 right-8 z-20 flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-4 py-1.5 rounded-full backdrop-blur-md">
+                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">In Stock</span>
                 </div>
 
-                {/* Gallery Navigation Controls */}
-                <div className="absolute inset-x-12 top-1/2 -translate-y-1/2 z-20 flex justify-between pointer-events-none">
+                {/* PART 1: Image Area (75%) - Strictly contained */}
+                <div className="relative flex-[3] z-10 flex items-center justify-center overflow-hidden">
+                    <img
+                        src={productImage || '/images/categories/scooter_nobg.png'}
+                        alt="Product Visual"
+                        className="w-full max-w-[65%] max-h-[90%] object-contain brightness-[1.1] contrast-[1.1] drop-shadow-[0_40px_80px_rgba(0,0,0,0.5)] dark:drop-shadow-[0_60px_100px_rgba(0,0,0,0.9)] animate-in fade-in zoom-in-95 duration-700"
+                        key={currentImageIndex}
+                    />
+
+                    {/* Gallery Navigation */}
                     <button
                         onClick={prevImage}
-                        className={`w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-slate-900 dark:text-white pointer-events-auto transition-all active:scale-95 hover:scale-110 ${!productImage || productImage.includes('categories/') ? 'hidden' : ''}`}
+                        className={`absolute left-8 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-slate-900 dark:text-white transition-all active:scale-95 hover:scale-110 ${!productImage || productImage.includes('categories/') ? 'hidden' : ''}`}
                     >
-                        <ChevronLeft size={24} />
+                        <ChevronLeft size={20} />
                     </button>
                     <button
                         onClick={nextImage}
-                        className={`w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-slate-900 dark:text-white pointer-events-auto transition-all active:scale-95 hover:scale-110 ${!productImage || productImage.includes('categories/') ? 'hidden' : ''}`}
+                        className={`absolute right-8 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-slate-900 dark:text-white transition-all active:scale-95 hover:scale-110 ${!productImage || productImage.includes('categories/') ? 'hidden' : ''}`}
                     >
-                        <ChevronRight size={24} />
+                        <ChevronRight size={20} />
                     </button>
                 </div>
 
-                {/* Bottom Overlay: Identity & Color Selector */}
-                <div className="absolute inset-x-0 bottom-0 p-12 z-30 flex items-end justify-between bg-gradient-to-t from-white dark:from-black via-white/80 dark:via-black/80 to-transparent pt-32 pointer-events-none">
-                    <div className="max-w-[60%]">
-                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#F4B000] mb-4 animate-in fade-in slide-in-from-left-4 duration-700">
-                            Selected Choice
-                        </p>
-                        <h2 className="text-4xl font-black uppercase italic text-slate-900 dark:text-white tracking-tighter leading-[0.85] animate-in fade-in slide-in-from-bottom-4 duration-1000">
-                            {activeColorName}
-                        </h2>
-                    </div>
+                {/* PART 2: Color Name (10%) */}
+                <div className="flex-shrink-0 h-[50px] z-10 flex items-center justify-center bg-gradient-to-t from-white/50 to-transparent dark:from-[#050505]/50">
+                    <p className="text-sm font-black uppercase tracking-[0.4em] text-[#F4B000] animate-in fade-in slide-in-from-bottom-2 duration-700">
+                        {activeColorName}
+                    </p>
+                </div>
 
-                    <div className="flex flex-col items-end gap-3 pointer-events-auto">
-                        {/* Status Overlay */}
-                        <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-4 py-1.5 rounded-full">
-                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                            <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600">
-                                In Stock
-                            </span>
-                        </div>
-
-                        <div className="flex gap-4 items-center p-2">
-                            {colors.map(color => {
-                                const isSelected = selectedColor === color.id;
-                                return (
-                                    <button
-                                        key={color.id}
-                                        onClick={() => onColorSelect(color.id)}
-                                        className={`relative w-10 h-10 rounded-full transition-all duration-500 group/color ${isSelected ? 'scale-110' : 'hover:scale-110'}`}
-                                    >
-                                        <div
-                                            className={`absolute inset-0 rounded-full border-2 transition-all ${isSelected ? 'border-[#F4B000] scale-125' : 'border-transparent'}`}
-                                        />
-                                        <div
-                                            className={`w-full h-full rounded-full border border-black/10 dark:border-white/20 shadow-inner ${color.class}`}
-                                            style={{ backgroundColor: color.hex }}
-                                        />
-                                        {/* Tooltip */}
-                                        <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-slate-900 text-white text-[8px] font-black uppercase tracking-widest rounded opacity-0 group-hover/color:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                                            {color.name}
-                                        </div>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
+                {/* PART 3: Color Circles (15%) - Independent section */}
+                <div className="flex-shrink-0 h-[70px] z-10 flex items-center justify-center gap-4 px-4 bg-white dark:bg-[#050505] overflow-hidden">
+                    {colors.map(color => {
+                        const isSelected = selectedColor === color.id;
+                        return (
+                            <button
+                                key={color.id}
+                                onClick={() => onColorSelect(color.id)}
+                                className={`relative w-9 h-9 rounded-full transition-all duration-500 group/color ${isSelected ? 'scale-110' : 'hover:scale-110'}`}
+                            >
+                                <div
+                                    className={`absolute inset-0 rounded-full border-2 transition-all ${isSelected ? 'border-[#F4B000] scale-125' : 'border-transparent'}`}
+                                />
+                                <div
+                                    className={`w-full h-full rounded-full border border-black/10 dark:border-white/20 shadow-inner ${color.class}`}
+                                    style={{ backgroundColor: color.hex }}
+                                />
+                                {/* Tooltip */}
+                                <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[8px] font-black uppercase tracking-widest rounded opacity-0 group-hover/color:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                                    {color.name}
+                                </div>
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
