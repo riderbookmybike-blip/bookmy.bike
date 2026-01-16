@@ -5,6 +5,7 @@ import AdminDashboard from '@/components/dashboard/AdminDashboard';
 export default async function TenantDashboard(props: { params: Promise<{ slug: string }> }) {
     const params = await props.params;
     const { slug } = params;
+    const normalizedSlug = slug.toLowerCase();
     const supabase = await createClient();
 
     const {
@@ -12,7 +13,7 @@ export default async function TenantDashboard(props: { params: Promise<{ slug: s
     } = await supabase.auth.getUser();
 
     if (!user) {
-        redirect('/login');
+        redirect(`/login?next=/app/${slug}/dashboard`);
     }
 
     // 1. Fetch all memberships for the user via secure RPC
@@ -21,25 +22,41 @@ export default async function TenantDashboard(props: { params: Promise<{ slug: s
         .rpc('get_user_memberships', { p_user_id: user.id });
 
     // Identify if we got an array (new JSONB approach) or direct data
-    const membershipsArray = Array.isArray(rawMembershipsData) ? rawMembershipsData : [];
-
-    // Map RPC results to expected format
-    const allMemberships = membershipsArray.map((m: any) => ({
+    let allMemberships = (Array.isArray(rawMembershipsData) ? rawMembershipsData : []).map((m: any) => ({
         ...m,
         tenants: {
+            id: m.tenant_id,
             name: m.tenant_name,
             slug: m.tenant_slug,
-            type: m.tenant_type
+            type: m.tenant_type,
+            config: m.tenant_config,
         }
     }));
 
+    if (allMemberships.length === 0) {
+        const { data: fallbackMemberships } = await supabase
+            .from('memberships')
+            .select('role, status, tenants!inner(id, name, slug, type, config)')
+            .eq('user_id', user.id)
+            .eq('status', 'ACTIVE');
 
-    const directMembership = (allMemberships || []).find((m: any) => m.tenants?.slug === slug);
+        allMemberships = (fallbackMemberships || []).map((m: any) => ({
+            ...m,
+            tenants: Array.isArray(m.tenants) ? m.tenants[0] : m.tenants,
+        }));
+    }
+
+    allMemberships = allMemberships.filter((m: any) => (m.status || '').toUpperCase() === 'ACTIVE');
+
+
+    const directMembership = (allMemberships || []).find((m: any) =>
+        (m.tenants?.slug || '').toLowerCase() === normalizedSlug
+    );
     let effectiveMembership = directMembership;
 
     // FAIL-SAFE: If no direct membership exists for this specific slug, 
     // AND the slug is 'aums', check if the user has any admin-level role in the system.
-    if (!directMembership && slug === 'aums' && allMemberships.length > 0) {
+    if (!directMembership && normalizedSlug === 'aums' && allMemberships.length > 0) {
         // Strict list of roles allowed to bypass for AUMS management portal
         const adminRoles = ['SUPER_ADMIN', 'SUPERADMIN', 'ADMIN', 'MARKETPLACE_ADMIN', 'OWNER'];
         effectiveMembership = allMemberships.find((m: any) => {

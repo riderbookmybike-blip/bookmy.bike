@@ -9,18 +9,19 @@ export default async function TenantDashboardLayout({
     params,
 }: {
     children: React.ReactNode;
-    params: { slug: string };
+    params: Promise<{ slug: string }>;
 }) {
     const supabase = await createClient();
     const {
         data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) {
-        redirect('/login');
-    }
+    const { slug } = await params;
+    const normalizedSlug = slug.toLowerCase();
 
-    const { slug } = params;
+    if (!user) {
+        redirect(`/login?next=/app/${slug}/dashboard`);
+    }
     const { data: rawMemberships } = await supabase
         .rpc('get_user_memberships', { p_user_id: user.id });
 
@@ -48,10 +49,17 @@ export default async function TenantDashboardLayout({
         }));
     }
 
-    let matched = memberships.find((m: any) => m.tenants?.slug === slug);
-    if (!matched && slug === 'aums') {
+    let matched = memberships.find((m: any) =>
+        (m.tenants?.slug || '').toLowerCase() === normalizedSlug &&
+        (m.status || '').toUpperCase() === 'ACTIVE'
+    );
+    if (!matched && normalizedSlug === 'aums') {
         const adminRoles = ['SUPER_ADMIN', 'SUPERADMIN', 'ADMIN', 'MARKETPLACE_ADMIN', 'OWNER'];
-        matched = memberships.find((m: any) => adminRoles.includes((m.role || '').toUpperCase()));
+        // Ensure AUMS access is also restricted to ACTIVE memberships
+        matched = memberships.find((m: any) =>
+            adminRoles.includes((m.role || '').toUpperCase()) &&
+            (m.status || '').toUpperCase() === 'ACTIVE'
+        );
     }
     if (!matched) redirect('/403');
 
