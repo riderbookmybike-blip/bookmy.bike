@@ -103,6 +103,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
         localStorage.removeItem('user_name');
         localStorage.removeItem('user_role');
         localStorage.removeItem('active_role');
+        localStorage.removeItem('base_role');
         localStorage.removeItem('tenant_type');
 
         window.location.href = '/';

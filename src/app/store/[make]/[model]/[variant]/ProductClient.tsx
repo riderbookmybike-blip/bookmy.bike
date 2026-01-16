@@ -10,6 +10,8 @@ import { LeadCaptureModal } from '@/components/leads/LeadCaptureModal';
 import { EmailUpdateModal } from '@/components/auth/EmailUpdateModal';
 import { createClient } from '@/lib/supabase/client';
 
+import { InsuranceRule } from '@/types/insurance';
+
 interface ProductClientProps {
     product: any; // eslint-disable-line @typescript-eslint/no-explicit-any
     makeParam: string;
@@ -17,6 +19,7 @@ interface ProductClientProps {
     variantParam: string;
     initialLocation: any; // eslint-disable-line @typescript-eslint/no-explicit-any
     initialPrice: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    insuranceRule?: InsuranceRule;
 }
 
 export default function ProductClient({
@@ -25,9 +28,10 @@ export default function ProductClient({
     modelParam,
     variantParam,
     initialLocation,
-    initialPrice
+    initialPrice,
+    insuranceRule
 }: ProductClientProps) {
-    const data = usePDPData(initialPrice, product.colors);
+    const data = usePDPData(initialPrice, product.colors, insuranceRule);
     const {
         setSelectedColor,
         selectedColor,

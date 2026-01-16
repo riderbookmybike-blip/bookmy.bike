@@ -24,7 +24,7 @@ export const VitalTile = ({ icon: Icon, label, value, sub, meta, color }: VitalT
         <div className="flex items-center justify-between p-4 rounded-2xl border border-slate-100 dark:border-white/5 hover:border-indigo-500/20 transition-all bg-white dark:bg-slate-900/50">
             <div className="flex items-center gap-4">
                 <div className={`p-2.5 rounded-xl border ${colorMap[color]} shrink-0`}>
-                    <Icon size={18} />
+                    {Icon ? <Icon size={18} /> : <div className="w-[18px] h-[18px]" />}
                 </div>
                 <div>
                     <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</div>

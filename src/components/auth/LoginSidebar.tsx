@@ -41,7 +41,7 @@ export default function LoginSidebar({
     tenantSlug: tenantSlugProp,
 }: LoginSidebarProps) {
     const router = useRouter();
-    const { setTenantType, tenantId, activeRole, userRole } = useTenant();
+    const { setTenantType, tenantId, activeRole, userRole, setUserRole, setActiveRole, setUserName } = useTenant();
     const [loginError, setLoginError] = useState<string | null>(null);
     const [step, setStep] = useState<'INITIAL' | 'SIGNUP' | 'OTP'>('INITIAL');
     const [authMethod, setAuthMethod] = useState<'PHONE' | 'EMAIL'>('PHONE');
@@ -348,8 +348,16 @@ export default function LoginSidebar({
             .eq('status', 'ACTIVE');
 
         // Session Set
-        const finalRole = detectedRole || 'BMB_USER';
+        const primaryMembership = (memberships && memberships.length > 0) ? memberships[0] : null;
+        const finalRole = detectedRole || primaryMembership?.role || 'BMB_USER';
+        const displayName = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'User';
         localStorage.setItem('user_role', finalRole);
+        localStorage.setItem('active_role', finalRole);
+        localStorage.setItem('base_role', 'BMB_USER');
+        localStorage.setItem('user_name', displayName);
+        setUserRole(finalRole);
+        setActiveRole(finalRole);
+        setUserName(displayName);
 
         // Tenant Context
         if (memberships?.length && (tenantSlugProp || window.location.pathname.startsWith('/app/'))) {

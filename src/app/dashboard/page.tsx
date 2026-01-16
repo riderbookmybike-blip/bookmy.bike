@@ -1,11 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import DealerDashboard from '@/components/dashboard/DealerDashboard';
 import BankDashboard from '@/components/dashboard/BankDashboard';
 import AdminDashboard from '@/components/dashboard/AdminDashboard';
 import UserDashboard from '@/components/dashboard/UserDashboard';
+import DynamicDashboard from '@/components/dashboard/DynamicDashboard';
+import { DashboardConfig } from '@/modules/core/types';
 
 // MAIN PAGE SHELL
 export default function DashboardPage() {
@@ -15,13 +17,39 @@ export default function DashboardPage() {
         activeRole
     } = useTenant();
 
+    const [dynamicConfig, setDynamicConfig] = useState<DashboardConfig | null>(null);
+    const [loadingConfig, setLoadingConfig] = useState(true);
+
+    // Fetch Dynamic Configuration
+    useEffect(() => {
+        const fetchConfig = async () => {
+            if (!tenantType || !activeRole) return;
+            setLoadingConfig(true);
+            try {
+                const res = await fetch(`/api/me/dashboard-config?tenantType=${tenantType}&role=${activeRole}`);
+                const data = await res.json();
+                if (data.found && data.config) {
+                    setDynamicConfig(data.config);
+                } else {
+                    setDynamicConfig(null);
+                }
+            } catch (e) {
+                console.error("Failed to load dynamic dashboard", e);
+            } finally {
+                setLoadingConfig(false);
+            }
+        };
+
+        fetchConfig();
+    }, [tenantType, activeRole]);
+
     // 1. Loading State (Initial Hydration)
-    if (!tenantType && !activeRole) {
+    if ((!tenantType && !activeRole) || (tenantType && loadingConfig)) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
                 <div className="w-12 h-12 border-t-2 border-primary rounded-full animate-spin" />
                 <p className="text-xs font-black uppercase tracking-widest text-slate-400 italic animate-pulse">
-                    Synchronizing...
+                    Loading Dashboard...
                 </p>
             </div>
         );
@@ -54,12 +82,22 @@ export default function DashboardPage() {
             {/* Main Content Area */}
             {tenantType && tenantName !== 'Access Denied' && (
                 <>
-                    {tenantType === 'DEALER' && activeRole !== 'BMB_USER' && <DealerDashboard />}
-                    {tenantType === 'BANK' && activeRole !== 'BMB_USER' && <BankDashboard />}
-                    {(tenantType === 'MARKETPLACE') && (
-                        (activeRole && ['OWNER', 'DEALERSHIP_ADMIN', 'DEALERSHIP_STAFF'].includes(activeRole))
-                            ? <AdminDashboard />
-                            : <UserDashboard />
+                    {/* Prefer Dynamic Config if available */}
+                    {dynamicConfig ? (
+                        <div className="space-y-6">
+                            <DynamicDashboard config={dynamicConfig} />
+                        </div>
+                    ) : (
+                        /* Fallback to legacy hardcoded dashboards */
+                        <>
+                            {tenantType === 'DEALER' && activeRole !== 'BMB_USER' && <DealerDashboard />}
+                            {tenantType === 'BANK' && activeRole !== 'BMB_USER' && <BankDashboard />}
+                            {(tenantType === 'MARKETPLACE') && (
+                                (activeRole && ['OWNER', 'DEALERSHIP_ADMIN', 'DEALERSHIP_STAFF'].includes(activeRole))
+                                    ? <AdminDashboard />
+                                    : <UserDashboard />
+                            )}
+                        </>
                     )}
                 </>
             )}

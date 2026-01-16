@@ -127,6 +127,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         localStorage.removeItem('user_name');
         localStorage.removeItem('user_role');
         localStorage.removeItem('active_role');
+        localStorage.removeItem('base_role');
         localStorage.removeItem('tenant_type');
 
         setUserName(null);

@@ -1,7 +1,9 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+
 
 export type TenantType = 'DEALER' | 'MARKETPLACE' | 'AUMS' | 'BANK';
 
@@ -71,6 +73,7 @@ interface TenantContextType {
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
 export const TenantProvider = ({ children }: { children: ReactNode }) => {
+    const pathname = usePathname();
     const [tenantType, setTenantTypeState] = useState<TenantType | undefined>(undefined);
     const [tenantName, setTenantNameState] = useState('');
     const [tenantConfig, setTenantConfig] = useState<TenantConfig | null>(null);
@@ -110,33 +113,11 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                 setTenantNameState(tName);
             }
 
-            const pathname = window.location.pathname;
-            const isMarketplaceRoute = !pathname.startsWith('/app/');
-
             const uName = localStorage.getItem('user_name');
             if (uName) setUserName(uName);
 
             const tId = localStorage.getItem('tenant_id');
             if (tId) setTenantId(tId);
-
-            const uRole = localStorage.getItem('user_role');
-            const aRole = localStorage.getItem('active_role');
-
-            if (isMarketplaceRoute) {
-                if (uRole && !['BMB_USER'].includes(uRole)) {
-                    setUserRole('BMB_USER');
-                    setActiveRole('BMB_USER');
-                } else {
-                    if (uRole) setUserRole(uRole);
-                    if (aRole) setActiveRole(aRole);
-                }
-            } else {
-                if (uRole) setUserRole(uRole);
-                if (aRole) setActiveRole(aRole);
-            }
-
-            const rCode = localStorage.getItem('referral_code');
-            if (rCode) setReferralCode(rCode);
 
             const savedMems = localStorage.getItem('user_memberships');
             if (savedMems) {
@@ -175,12 +156,33 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
         }
     }, []);
 
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const isMarketplaceRoute = !pathname.startsWith('/app/');
+        const uRole = localStorage.getItem('user_role');
+        const aRole = localStorage.getItem('active_role');
+        const baseRole = localStorage.getItem('base_role');
+
+        if (isMarketplaceRoute) {
+            const resolvedBase = baseRole || 'BMB_USER';
+            setUserRole(resolvedBase);
+            setActiveRole(resolvedBase);
+        } else {
+            if (uRole) setUserRole(uRole);
+            if (aRole) setActiveRole(aRole);
+        }
+    }, [pathname]);
+
     const setMemberships = (data: Membership[]) => {
         setMembershipsState(data);
         if (typeof window !== 'undefined') {
             localStorage.setItem('user_memberships', JSON.stringify(data));
         }
     };
+
+    // /app/* role sync now handled server-side in dashboard layout.
+
+
 
     const switchRole = (role: string) => {
         setActiveRole(role);

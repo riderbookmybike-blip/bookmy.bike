@@ -51,7 +51,7 @@ export default function InsuranceOverview({ rule, onChange, onDelete, readOnly =
                 {/* Maharashtra Map Asset */}
                 <div className="absolute right-0 top-0 h-full w-1/2 opacity-20 mix-blend-screen pointer-events-none group-hover:opacity-40 transition-opacity duration-1000">
                     <img
-                        src="/Users/rathoreajitmsingh/.gemini/antigravity/brain/05a45dfe-37f9-481e-985d-34dcb883f948/maharashtra_map_premium_1767475857202.png"
+                        src="/images/maps/maharashtra_map.png"
                         alt="State Context"
                         className="h-full w-full object-contain object-right transform scale-110 group-hover:scale-125 transition-transform duration-1000"
                     />

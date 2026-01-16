@@ -79,14 +79,18 @@ const evaluateInsuranceComponent = (
         });
     }
     else if (comp.type === 'SLAB') {
-        // TP is often slab-based on CC
         const ranges = comp.ranges || [];
         let match = null;
-        const val = ctx.engineCc;
+        let basisLabel = 'ENGINE_CC';
 
         for (const range of ranges) {
+            const rowBasis = range.slabBasis || comp.slabVariable || 'ENGINE_CC';
+            const val = rowBasis === 'ENGINE_CC'
+                ? ctx.engineCc
+                : (rowBasis === 'IDV' ? idv : ctx.exShowroom);
             if (val >= range.min && (range.max === null || val <= range.max)) {
                 match = range;
+                basisLabel = rowBasis;
                 break;
             }
         }
@@ -97,13 +101,13 @@ const evaluateInsuranceComponent = (
             if (slabValueType === 'FIXED') {
                 amount = match.amount ?? match.percentage ?? 0;
             } else {
-                const basisValue = comp.basis === 'IDV' || !comp.basis ? idv : (comp.basis === 'EX_SHOWROOM' ? ctx.exShowroom : idv);
+                const basisValue = comp.basis === 'IDV' || !comp.basis ? idv : ctx.exShowroom;
                 amount = basisValue * ((match.percentage || 0) / 100);
             }
             results.push({
                 label: comp.label,
                 amount: applyRounding(amount, comp.roundingMode),
-                meta: `Slab ${match.min}-${match.max || '∞'} CC`,
+                meta: `Slab ${match.min}-${match.max || '∞'} ${basisLabel}`,
                 componentId: comp.id
             });
         }
