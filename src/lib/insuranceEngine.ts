@@ -34,7 +34,12 @@ export function calculateInsurance(rule: InsuranceRule, ctx: InsuranceCalculatio
                 });
                 if (range) {
                     // Range-based fixed amount or percentage of basis
-                    amount = range.amount || Math.round(basisValue * ((range.percentage || 0) / 100));
+                    const slabValueType = comp.slabValueType ?? 'FIXED';
+                    if (slabValueType === 'FIXED') {
+                        amount = range.amount ?? range.percentage ?? 0;
+                    } else {
+                        amount = Math.round(basisValue * ((range.percentage || 0) / 100));
+                    }
                 }
             }
 

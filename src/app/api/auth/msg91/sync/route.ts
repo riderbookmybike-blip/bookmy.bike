@@ -18,13 +18,20 @@ export async function POST(req: NextRequest) {
         const { data: existingUsers } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 });
 
         // Find user by phone OR synthesized email
-        const foundUser = existingUsers?.users.find(
-            u =>
+        const normalizePhone = (value?: string | null) => (value || '').replace(/\D/g, '').slice(-10);
+        const targetPhone = normalizePhone(phone);
+        const foundUser = existingUsers?.users.find(u => {
+            const userPhone = normalizePhone(u.phone || '');
+            const metaPhone = normalizePhone((u.user_metadata as { phone?: string })?.phone);
+            return (
+                userPhone === targetPhone ||
+                metaPhone === targetPhone ||
                 u.phone === e164Phone ||
                 u.phone === formattedPhone ||
-                u.phone === phone || // Check unformatted too just in case
+                u.phone === phone ||
                 u.email === email
-        );
+            );
+        });
 
         if (!foundUser) {
             // 2. User MUST exist for Login flow

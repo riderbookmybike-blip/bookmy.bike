@@ -64,6 +64,7 @@ export interface FormulaComponent {
     // Slab
     slabVariable?: FormulaVariable;
     ranges?: SlabRange[];
+    slabValueType?: 'PERCENTAGE' | 'FIXED';
 
     // Alternative Slabs (e.g. for EV based on KW instead of CC)
     secondarySlabs?: {

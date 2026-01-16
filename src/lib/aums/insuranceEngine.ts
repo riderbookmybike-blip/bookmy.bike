@@ -92,9 +92,17 @@ const evaluateInsuranceComponent = (
         }
 
         if (match) {
+            const slabValueType = comp.slabValueType ?? 'FIXED';
+            let amount = 0;
+            if (slabValueType === 'FIXED') {
+                amount = match.amount ?? match.percentage ?? 0;
+            } else {
+                const basisValue = comp.basis === 'IDV' || !comp.basis ? idv : (comp.basis === 'EX_SHOWROOM' ? ctx.exShowroom : idv);
+                amount = basisValue * ((match.percentage || 0) / 100);
+            }
             results.push({
                 label: comp.label,
-                amount: applyRounding(match.percentage, comp.roundingMode), // For TP, percentage field often stores the fixed amount
+                amount: applyRounding(amount, comp.roundingMode),
                 meta: `Slab ${match.min}-${match.max || '∞'} CC`,
                 componentId: comp.id
             });
