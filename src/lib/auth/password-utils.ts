@@ -23,6 +23,10 @@ export function getAuthPassword(phone: string): string {
     }
 
     // CRITICAL: Supabase/Bcrypt has a 72-char limit.
-    // We hash the result to ensure it's always 64 characters (SHA-256 hex) regardless of input length.
-    return createHash('sha256').update(rawPassword).digest('hex');
+    // We hash the result to ensure it's deterministic and safe.
+    // Supabase Policy: Uppercase + Symbol + Number + Lowercase.
+    // Hex provides Lowercase + Number. We prefix "A!" to satisfy the rest.
+    // Length: 64 (hex) + 2 (prefix) = 66 chars (valid < 72).
+    const hash = createHash('sha256').update(rawPassword).digest('hex');
+    return `A!${hash}`;
 }
