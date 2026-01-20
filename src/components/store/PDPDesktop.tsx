@@ -590,15 +590,8 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                     </div>
                 );
             case 'SERVICES':
-                // For now keep hardcoded free services or fetch if we have a table for them
-                const freeServiceSchedule = [
-                    { id: 'FREE_1', name: '1st Free Service', price: 0, description: '30 Days or 1000 km, whichever is earlier.', isMandatory: true },
-                    { id: 'FREE_2', name: '2nd Free Service', price: 0, description: '90 Days or 3000 km, whichever is earlier.', isMandatory: true },
-                    { id: 'FREE_3', name: '3rd Free Service', price: 0, description: '180 Days or 6000 km, whichever is earlier.', isMandatory: true },
-                    { id: 'FREE_4', name: '4th Free Service', price: 0, description: '270 Days or 9000 km, whichever is earlier.', isMandatory: true },
-                    { id: 'FREE_5', name: '5th Free Service', price: 0, description: '365 Days or 12000 km, whichever is earlier.', isMandatory: true },
-                ];
-                const paidServices = activeServices.filter((s: any) => s.price > 0);
+                const freeServiceSchedule = activeServices.filter((s: any) => s.isMandatory || s.price === 0);
+                const paidServices = activeServices.filter((s: any) => !s.isMandatory && s.price > 0);
 
                 return (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">

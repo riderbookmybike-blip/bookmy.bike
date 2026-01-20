@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminClient } from '@/lib/supabase/admin';
+import { getAuthPassword } from '@/lib/auth/password-utils';
 
 export async function POST(req: NextRequest) {
     const adminSecret = process.env.ADMIN_API_SECRET;
@@ -16,15 +17,10 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, message: 'Phone number required' }, { status: 400 });
         }
 
-        const migrationSecret = process.env.MIGRATION_PASSWORD_SECRET;
-        if (!migrationSecret) {
-            return NextResponse.json({ success: false, message: 'Server misconfiguration' }, { status: 500 });
-        }
-
         const formattedPhone = `91${phone}`; // Legacy numeric format
         const e164Phone = `+91${phone}`; // E.164 format
         const email = `${phone}@bookmy.bike`; // Synthesized email
-        const password = `MSG91_${phone}_${migrationSecret}`; // Secure-ish password bypass
+        const password = getAuthPassword(phone);
 
         // 1. Check if User Exists in Supabase Auth
         const { data: existingUsers } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 });
@@ -59,11 +55,12 @@ export async function POST(req: NextRequest) {
 
         const userId = foundUser.id;
         const actualEmail = foundUser.email || email; // Use real email if exists, else synthesized
+        const shouldSetEmail = !foundUser.email;
 
         // 3. MIGRATION FIX: Ensure Password is Set for Legacy Users
         const { error: updateError } = await adminClient.auth.admin.updateUserById(userId, {
             password: password,
-            email_confirm: true,
+            ...(shouldSetEmail ? { email: actualEmail, email_confirm: true } : { email_confirm: true }),
             user_metadata: { phone_login_migrated: true },
         });
 

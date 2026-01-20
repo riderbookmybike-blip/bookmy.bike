@@ -213,6 +213,7 @@ for select using (id = auth.uid());
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase Settings -> API | Public connection |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Settings -> API | Public RLS interactions |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase Settings -> API | **SECRET** (Server Actions) |
+| `MIGRATION_PASSWORD_SECRET` | Random 32+ char secret | Required for phone OTP login/session bootstrap |
 | `NEXT_PUBLIC_SITE_URL` | `https://bookmy.bike` | Canonical Generaton |
 
 **Local `.env`**: Copy the exact same list.

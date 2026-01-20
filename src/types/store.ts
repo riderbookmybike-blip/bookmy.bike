@@ -27,6 +27,7 @@ export interface CatalogItem {
     sku_code?: string;
 
     // Dynamic Specs (The Engine)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     specs: Record<string, any>;
 
     // Commercials
@@ -53,7 +54,10 @@ export interface ServiceOption {
     id: string;
     name: string;
     price: number;
+    maxQty?: number;
     description?: string;
     discountPrice?: number;
-    maxQty?: number;
+    isMandatory?: boolean;
+    duration_months?: number;
 }
+

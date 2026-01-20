@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { adminClient } from '@/lib/supabase/admin';
 import { cookies } from 'next/headers';
+import { getAuthPassword } from '@/lib/auth/password-utils';
 
 export async function POST(req: NextRequest) {
     try {
@@ -76,8 +77,7 @@ export async function POST(req: NextRequest) {
 
             if (profile) {
                 console.log(`[Login Debug] JIT: Found migrated profile ${profile.id}. Provisioning Auth...`);
-                const migrationSecret = process.env.MIGRATION_PASSWORD_SECRET || (isLocalhost ? 'dev-secret-fallback' : 'PROD_FALLBACK_TODO');
-                const jitPassword = `MSG91_${phone}_${migrationSecret}`;
+                const jitPassword = getAuthPassword(phone);
                 const jitEmail = profile.email || `${phone}@bookmy.bike`;
 
                 const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
@@ -164,25 +164,19 @@ export async function POST(req: NextRequest) {
             }
 
             const userId = foundUser.id;
-            const migrationSecret = process.env.MIGRATION_PASSWORD_SECRET || (isLocalhost ? 'dev-secret-fallback' : undefined);
-
-            console.log('[Login Debug] Password Generation:', {
-                isLocalhost,
-                hasSecret: !!process.env.MIGRATION_PASSWORD_SECRET,
-                usingFallback: !process.env.MIGRATION_PASSWORD_SECRET && isLocalhost
-            });
-
-            if (!migrationSecret) {
-                return NextResponse.json({ success: false, message: 'Server misconfiguration: MIGRATION_PASSWORD_SECRET missing' }, { status: 500 });
+            let password;
+            try {
+                password = getAuthPassword(phone);
+            } catch (e: any) {
+                return NextResponse.json({ success: false, message: e.message }, { status: 500 });
             }
-
-            const password = `MSG91_${phone}_${migrationSecret}`;
             const actualEmail = foundUser.email || email;
+            const shouldSetEmail = !foundUser.email;
 
             // Ensure password is set (idempotent)
             const { error: updateError } = await adminClient.auth.admin.updateUserById(userId, {
                 password: password,
-                email_confirm: true,
+                ...(shouldSetEmail ? { email: actualEmail, email_confirm: true } : { email_confirm: true }),
                 user_metadata: { ...foundUser.user_metadata, phone_login_migrated: true },
             });
 
