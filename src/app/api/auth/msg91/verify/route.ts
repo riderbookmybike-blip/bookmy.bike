@@ -247,7 +247,8 @@ export async function POST(req: NextRequest) {
                 }
             } else {
                 // User already has email, ensure it is confirmed
-                if (!foundUser.email_confirmed_at) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                if (!(foundUser as any).email_confirmed_at) {
                     await adminClient.auth.admin.updateUserById(userId, { email_confirm: true });
                 }
             }
