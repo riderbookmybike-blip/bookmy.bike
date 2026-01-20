@@ -3,21 +3,13 @@ import { VehicleUnit } from '@/types/vehicleUnit';
 import { LedgerEntry } from '@/types/ledger';
 import { Booking } from '@/types/booking';
 
-export interface Quote {
-    id: string;
-    // Add other properties as inferred or Any
-    [key: string]: any;
-}
+import { Quote as AumsQuote, MockOrder as AumsMockOrder } from './aums/dataStore';
 
-export interface SalesOrder {
-    id: string;
-    [key: string]: any;
-}
-
+export type Quote = AumsQuote;
 import { Invoice as InvoiceType } from '@/types/invoice';
 export type Invoice = InvoiceType;
-
-export type MockOrder = SalesOrder;
+export type MockOrder = AumsMockOrder;
+export type SalesOrder = AumsMockOrder;
 
 export const getQuotes = (): Quote[] => [];
 export const getSalesOrders = (): SalesOrder[] => [];

@@ -60,27 +60,107 @@
   --color-neutral-800: #1e293b;
   --color-neutral-900: #0f172a;
   --color-neutral-950: #020617;
-
-  /* Backgrounds */
-  --background: #ffffff;
-  --background-secondary: #f8fafc;
-  --foreground: #0f172a;
-  --foreground-muted: #64748b;
-
-  /* Borders */
-  --border-default: #e2e8f0;
-  --border-subtle: #f1f5f9;
 }
 
-/* Dark Mode */
-/* Dark Mode - Applied via .dark class */
-.dark {
-  --background: #0f172a;
-  --background-secondary: #1e293b;
-  --foreground: #f1f5f9;
-  --foreground-muted: #94a3b8;
-  --border-default: #334155;
-  --border-subtle: #1e293b;
+@layer base {
+  :root {
+    /* Primary Brand (Cyber Yellow) */
+    --color-primary-50: #fefce8;
+    --color-primary-100: #fef9c3;
+    --color-primary-200: #fef08a;
+    --color-primary-300: #fde047;
+    --color-primary-400: #facc15;
+    --color-primary-500: #ffd700;
+    /* Core Brand Color */
+    --color-primary-600: #eab308;
+    --color-primary-700: #ca8a04;
+    --color-primary-800: #a16207;
+    --color-primary-900: #854d0e;
+
+    /* Success - Emerald */
+    --color-success-50: #ecfdf5;
+    --color-success-100: #d1fae5;
+    --color-success-500: #10b981;
+    --color-success-600: #059669;
+    --color-success-700: #047857;
+
+    /* Warning - Amber */
+    --color-warning-50: #fffbeb;
+    --color-warning-100: #fef3c7;
+    --color-warning-500: #f59e0b;
+    --color-warning-600: #d97706;
+    --color-warning-700: #b45309;
+
+    /* Error - Rose */
+    --color-error-50: #fff1f2;
+    --color-error-100: #ffe4e6;
+    --color-error-500: #f43f5e;
+    --color-error-600: #e11d48;
+    --color-error-700: #be123c;
+
+    /* Info - Sky */
+    --color-info-50: #f0f9ff;
+    --color-info-100: #e0f2fe;
+    --color-info-500: #0ea5e9;
+    --color-info-600: #0284c7;
+
+    /* Neutral - Slate base */
+    --color-neutral-50: #f8fafc;
+    --color-neutral-100: #f1f5f9;
+    --color-neutral-200: #e2e8f0;
+    --color-neutral-300: #cbd5e1;
+    --color-neutral-400: #94a3b8;
+    --color-neutral-500: #64748b;
+    --color-neutral-600: #475569;
+    --color-neutral-700: #334155;
+    --color-neutral-800: #1e293b;
+    --color-neutral-900: #0f172a;
+    --color-neutral-950: #020617;
+
+    /* Backgrounds */
+    --background: #ffffff;
+    --background-secondary: #f8fafc;
+    --foreground: #0f172a;
+    --foreground-muted: #64748b;
+
+    /* Borders */
+    --border-default: #e2e8f0;
+    --border-subtle: #f1f5f9;
+  }
+
+  /* Dark Mode */
+  /* Dark Mode - Applied via .dark class */
+  .dark {
+    --background: #000000;
+    --background-secondary: #050505;
+    --foreground: #f8fafc;
+    --foreground-muted: #94a3b8;
+    --border-default: #1a1a1a;
+    --border-subtle: #0f0f0f;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl;
+  }
+
+  .dark .glass-panel {
+    @apply bg-black/60 backdrop-blur-2xl border-white/[0.08];
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+  }
+
+  .glass-card {
+    @apply bg-white/[0.03] backdrop-blur-md border border-white/[0.08] hover:bg-white/[0.06] transition-all duration-300;
+  }
+
+  .dark .glass-card {
+    @apply bg-white/[0.02] backdrop-blur-lg border-white/[0.05] hover:bg-white/[0.04];
+  }
+
+  .text-glow {
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+  }
 }
 
 /* Tailwind Theme Inline */
@@ -115,6 +195,22 @@ body {
 
 .dark {
   color-scheme: dark;
+}
+
+@layer base {
+
+  /* Dark-mode safety net for light-only utility usage */
+  .dark [class~="bg-white"]:not([class*="dark:bg-"]) {
+    background-color: #0f172a;
+  }
+
+  .dark [class~="text-slate-900"]:not([class*="dark:text-"]) {
+    color: #f8fafc;
+  }
+
+  .dark [class~="border-slate-200"]:not([class*="dark:border-"]) {
+    border-color: rgba(255, 255, 255, 0.08);
+  }
 }
 
 /* =============================================

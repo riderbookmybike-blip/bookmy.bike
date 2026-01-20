@@ -17,13 +17,13 @@ export default function BrandPage() {
     const brandDesc = brandData?.description || 'Explore the complete range of vehicles engineered for performance and reliability.';
 
     return (
-        <div className="min-h-screen bg-white dark:bg-black transition-colors">
+        <div className="min-h-screen bg-white dark:bg-[#0b0d10] transition-colors">
             <main>
                 {/* Hero Section */}
                 <section className="relative min-h-[60vh] flex flex-col pt-28 pb-16 overflow-hidden">
                     <div className="absolute inset-0 z-0">
                         <div className="absolute inset-0 bg-gradient-to-r from-white via-white/80 to-transparent dark:from-black dark:via-black/80 dark:to-transparent z-10" />
-                        <div className="absolute inset-0 bg-slate-100 dark:bg-slate-900 transition-colors" />
+                        <div className="absolute inset-0 bg-slate-100 dark:bg-[#0f1115] transition-colors" />
                         {/* Background Text Overlay */}
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full text-center pointer-events-none select-none opacity-[0.03] dark:opacity-[0.05]">
                             <h1 className="text-[30rem] font-black uppercase italic tracking-tighter leading-none">
@@ -112,7 +112,7 @@ export default function BrandPage() {
                 </section>
 
                 {/* Featured Models Section */}
-                <section className="py-24 md:py-32 bg-white dark:bg-black transition-colors">
+                <section className="py-24 md:py-32 bg-white dark:bg-[#0b0d10] transition-colors">
                     <div className="max-w-[1400px] mx-auto px-6">
                         <div className="text-center mb-20 space-y-4">
                             <p className="text-[12px] font-black text-blue-600 dark:text-blue-500 uppercase tracking-[0.5em] italic">The Lineup</p>
@@ -126,7 +126,7 @@ export default function BrandPage() {
                                 { title: 'Mopeds', subtitle: 'Utility & Efficiency.', desc: 'Heavy-duty performance.', img: '/images/categories/moped_nobg.png', color: 'bg-amber-500', link: `/store/catalog?category=MOPED&brand=${brandName.toUpperCase()}` },
                                 { title: 'Electric', subtitle: 'Zero Emissions.', desc: 'The future of clean energy.', img: '/images/categories/scooter_nobg.png', color: 'bg-emerald-500', link: `/store/catalog?category=ELECTRIC&brand=${brandName.toUpperCase()}` },
                             ].map((cat, i) => (
-                                <div key={i} className="group relative h-[550px] overflow-hidden rounded-[3rem] border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 flex flex-col items-center justify-end p-6 md:p-10 shadow-2xl shadow-slate-200/50 dark:shadow-none transition-all">
+                                <div key={i} className="group relative h-[550px] overflow-hidden rounded-[3rem] border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0f1115] flex flex-col items-center justify-end p-6 md:p-10 shadow-2xl shadow-slate-200/50 dark:shadow-none transition-all">
                                     <div className="absolute inset-0 bg-gradient-to-t from-slate-100 via-slate-100/20 to-transparent dark:from-slate-950 dark:via-slate-950/20 dark:to-transparent z-10 transition-colors" />
                                     <div className="absolute inset-0 bg-slate-50 dark:bg-slate-800 scale-100 group-hover:scale-110 transition-transform duration-1000 opacity-50" />
 
@@ -175,8 +175,8 @@ export default function BrandPage() {
                         </div>
                         <Link
                             href={`/store/catalog?brand=${brandName.toUpperCase()}`}
-                            className="inline-flex h-20 px-12 bg-white text-black hover:bg-blue-500 hover:text-white rounded-[2rem] text-sm font-black uppercase tracking-[0.2em] transition-all items-center justify-center gap-4 group"
-                        >
+                                            className="inline-flex h-20 px-12 bg-white dark:bg-white text-black hover:bg-blue-500 hover:text-white rounded-[2rem] text-sm font-black uppercase tracking-[0.2em] transition-all items-center justify-center gap-4 group"
+                                        >
                             Explore The Collection <ChevronRight className="group-hover:translate-x-2 transition-transform" />
                         </Link>
                     </div>

@@ -45,14 +45,12 @@ export function calculateRTO(exShowroom: number, rule: RegistrationRule, type: '
  */
 export function calculateInsurance(exShowroom: number, engineCc: number = 110, rule?: InsuranceRule) {
     // If no rule provided, use a basic fallback (simulates HDFC ERGO)
-    const effectiveRule: InsuranceRule = rule || {
+    const effectiveRule: any = rule || {
         id: 'fallback-ins',
         ruleName: 'Default Comprehensive',
         stateCode: 'ALL',
         insurerName: 'Generic Insurer',
         vehicleType: 'TWO_WHEELER',
-        effectiveFrom: new Date().toISOString(),
-        status: 'ACTIVE',
         idvPercentage: 95,
         gstPercentage: 18,
         odComponents: [{ id: 'od', type: 'PERCENTAGE', label: 'Own Damage', percentage: 1.5, basis: 'IDV' }],
@@ -67,9 +65,25 @@ export function calculateInsurance(exShowroom: number, engineCc: number = 110, r
         addons: [
             { id: 'zero-dep', type: 'PERCENTAGE', label: 'Zero Depreciation', percentage: 0.2, basis: 'IDV' },
             { id: 'pa-cover', type: 'FIXED', label: 'PA Cover', amount: 375 }
-        ],
-        version: 1,
-        lastUpdated: new Date().toISOString()
+        ]
+    };
+
+    // Map DB snake_case fields to camelCase if they exist
+    const mappedRule: InsuranceRule = {
+        id: effectiveRule.id,
+        ruleName: effectiveRule.rule_name || effectiveRule.ruleName,
+        stateCode: effectiveRule.state_code || effectiveRule.stateCode,
+        insurerName: effectiveRule.insurer_name || effectiveRule.insurerName,
+        vehicleType: effectiveRule.vehicle_type || effectiveRule.vehicleType,
+        idvPercentage: Number(effectiveRule.idv_percentage || effectiveRule.idvPercentage || 95),
+        gstPercentage: Number(effectiveRule.gst_percentage || effectiveRule.gstPercentage || 18),
+        odComponents: effectiveRule.od_components || effectiveRule.odComponents || [],
+        tpComponents: effectiveRule.tp_components || effectiveRule.tpComponents || [],
+        addons: effectiveRule.addons || effectiveRule.addons || [],
+        effectiveFrom: effectiveRule.created_at || effectiveRule.effectiveFrom || new Date().toISOString(),
+        status: effectiveRule.status || 'ACTIVE',
+        version: effectiveRule.version || 1,
+        lastUpdated: effectiveRule.updated_at || effectiveRule.lastUpdated || new Date().toISOString()
     };
 
     const ctx: InsuranceCalculationContext = {
@@ -82,7 +96,7 @@ export function calculateInsurance(exShowroom: number, engineCc: number = 110, r
         ncbPercentage: 0
     };
 
-    const res = calculateInsurancePremium(effectiveRule, ctx);
+    const res = calculateInsurancePremium(mappedRule, ctx);
 
     return {
         total: res.totalPremium,
@@ -91,7 +105,7 @@ export function calculateInsurance(exShowroom: number, engineCc: number = 110, r
             ...res.odBreakdown,
             ...res.tpBreakdown,
             ...res.addonBreakdown,
-            { label: 'GST (18%)', amount: res.gstAmount }
+            { label: `GST (${mappedRule.gstPercentage}%)`, amount: res.gstAmount }
         ].map(i => ({
             label: i.label,
             amount: i.amount,

@@ -5,6 +5,12 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { createClient } from '@/lib/supabase/client';
 
+declare global {
+    interface Window {
+        dataLayer?: Record<string, unknown>[];
+    }
+}
+
 // Types
 type EventType = 'PAGE_VIEW' | 'CLICK' | 'SCROLL' | 'FORM_SUBMIT' | 'INTENT_SIGNAL';
 
@@ -19,6 +25,68 @@ export const useAnalytics = () => {
     const context = useContext(AnalyticsContext);
     if (!context) throw new Error('useAnalytics must be used within AnalyticsProvider');
     return context;
+};
+
+const INTERNAL_QUERY_PARAM = 'internal_test';
+const INTERNAL_STORAGE_KEY = 'bkmb_internal_test';
+const PROD_HOSTS = new Set(['bookmy.bike', 'www.bookmy.bike']);
+
+const getEnvironment = (): 'production' | 'prelaunch' => {
+    if (typeof window === 'undefined') return 'prelaunch';
+    return PROD_HOSTS.has(window.location.hostname) ? 'production' : 'prelaunch';
+};
+
+const getGa4MeasurementId = (environment: 'production' | 'prelaunch') => {
+    if (environment === 'production') return process.env.NEXT_PUBLIC_GA4_ID_PROD;
+    return process.env.NEXT_PUBLIC_GA4_ID_PRELAUNCH;
+};
+
+const resolveInternalTraffic = () => {
+    if (typeof window === 'undefined') return false;
+    const isProd = PROD_HOSTS.has(window.location.hostname);
+    if (!isProd) return true;
+
+    const params = new URLSearchParams(window.location.search);
+    const flag = params.get(INTERNAL_QUERY_PARAM);
+    if (flag === '1') {
+        try {
+            localStorage.setItem(INTERNAL_STORAGE_KEY, '1');
+        } catch {
+            // Ignore storage errors
+        }
+        return true;
+    }
+    if (flag === '0') {
+        try {
+            localStorage.removeItem(INTERNAL_STORAGE_KEY);
+        } catch {
+            // Ignore storage errors
+        }
+    }
+
+    try {
+        return localStorage.getItem(INTERNAL_STORAGE_KEY) === '1';
+    } catch {
+        return false;
+    }
+};
+
+const pushDataLayer = (payload: Record<string, unknown>) => {
+    if (typeof window === 'undefined') return;
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push(payload);
+};
+
+const getPageType = (pathname: string) => {
+    if (pathname === '/') return 'home';
+    if (pathname.startsWith('/search')) return 'search';
+    if (pathname.startsWith('/store')) return 'product_detail';
+    if (pathname.includes('/booking')) return 'booking_details';
+    if (pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/auth')) {
+        return 'auth';
+    }
+    if (pathname.startsWith('/app/')) return 'dashboard';
+    return 'other';
 };
 
 // Helper: Get robust device info
@@ -43,6 +111,9 @@ export default function AnalyticsProvider({ children }: { children: React.ReactN
     const sessionIdRef = useRef<string>('');
     const queueRef = useRef<any[]>([]);
     const processingRef = useRef(false);
+    const environmentRef = useRef<'production' | 'prelaunch'>('prelaunch');
+    const internalTrafficRef = useRef(false);
+    const ga4MeasurementIdRef = useRef<string | null>(null);
     const supabase = createClient();
 
     // 1. Initialize Session
@@ -63,9 +134,45 @@ export default function AnalyticsProvider({ children }: { children: React.ReactN
         return () => clearInterval(interval);
     }, []);
 
+    // 2. Initialize dataLayer context
+    useEffect(() => {
+        const environment = getEnvironment();
+        const internalTraffic = resolveInternalTraffic();
+        const ga4MeasurementId = getGa4MeasurementId(environment);
+
+        environmentRef.current = environment;
+        internalTrafficRef.current = internalTraffic;
+        ga4MeasurementIdRef.current = ga4MeasurementId ?? null;
+
+        const initPayload: Record<string, unknown> = {
+            event: 'bkmb_init',
+            environment,
+            internal_traffic: internalTraffic ? 'true' : 'false'
+        };
+        if (ga4MeasurementId) initPayload.ga4_measurement_id = ga4MeasurementId;
+        pushDataLayer(initPayload);
+    }, []);
+
     // 2. Track Page Views (Automatic)
     useEffect(() => {
         if (!sessionIdRef.current) return;
+
+        const resolvedEnvironment = environmentRef.current || getEnvironment();
+        const resolvedInternalTraffic = resolveInternalTraffic();
+        if (resolvedInternalTraffic !== internalTrafficRef.current) {
+            internalTrafficRef.current = resolvedInternalTraffic;
+        }
+
+        const pagePayload: Record<string, unknown> = {
+            event: 'bkmb_page_view',
+            page_path: pathname,
+            page_type: getPageType(pathname),
+            page_title: document.title,
+            environment: resolvedEnvironment,
+            internal_traffic: resolvedInternalTraffic ? 'true' : 'false'
+        };
+        if (ga4MeasurementIdRef.current) pagePayload.ga4_measurement_id = ga4MeasurementIdRef.current;
+        pushDataLayer(pagePayload);
 
         // Track Page View
         trackEvent('PAGE_VIEW', 'page_load', {

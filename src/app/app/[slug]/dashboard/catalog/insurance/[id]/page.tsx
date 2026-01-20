@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import MasterListDetailLayout from '@/components/templates/MasterListDetailLayout';
 import ListPanel from '@/components/templates/ListPanel';
 import RoleGuard from '@/components/auth/RoleGuard';
+import { useTenant } from '@/lib/tenant/tenantContext';
 import { useRouter, useParams } from 'next/navigation';
 import { usePermission } from '@/hooks/usePermission';
 import { InsuranceRule } from '@/types/insurance';
@@ -12,54 +13,98 @@ import InsuranceOverview from '@/components/catalog/insurance/InsuranceOverview'
 import InsuranceFormulaBuilder from '@/components/catalog/insurance/InsuranceFormulaBuilder';
 import InsurancePreview from '@/components/catalog/insurance/InsurancePreview';
 import { MOCK_INSURANCE_RULES } from '@/lib/mock/insuranceMocks';
-import { Save, ChevronLeft, Calculator, Sparkles } from 'lucide-react';
+import { Save, ChevronLeft, Calculator, Sparkles, Loader2 } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import DataSourceIndicator from '@/components/dev/DataSourceIndicator';
 
 const COLUMNS = [
     { key: 'insurerName', header: 'Insurer / Rule', width: '70%' },
     { key: 'status', header: 'Status', type: 'badge' as const, align: 'right' as const }
 ];
 
+// Mapping Utility
+const mapDbToFrontend = (d: any): InsuranceRule => ({
+    id: d.id,
+    displayId: d.display_id,
+    ruleName: d.rule_name,
+    stateCode: d.state_code,
+    insurerName: d.insurer_name,
+    vehicleType: d.vehicle_type,
+    effectiveFrom: d.effective_from || d.created_at?.split('T')[0],
+    status: d.status,
+    idvPercentage: Number(d.idv_percentage),
+    gstPercentage: Number(d.gst_percentage),
+    odComponents: d.od_components || [],
+    tpComponents: d.tp_components || [],
+    addons: d.addons || [],
+    version: d.version || 1,
+    lastUpdated: d.updated_at
+});
+
+const mapFrontendToDb = (r: InsuranceRule) => ({
+    id: r.id,
+    display_id: r.displayId,
+    rule_name: r.ruleName,
+    state_code: r.stateCode,
+    insurer_name: r.insurerName,
+    vehicle_type: r.vehicleType,
+    effective_from: r.effectiveFrom,
+    status: r.status,
+    idv_percentage: r.idvPercentage,
+    gst_percentage: r.gstPercentage,
+    od_components: r.odComponents,
+    tp_components: r.tpComponents,
+    addons: r.addons,
+    version: r.version,
+    updated_at: new Date().toISOString()
+});
+
 export default function InsuranceDetailPage() {
     const params = useParams();
     const router = useRouter();
     const { can } = usePermission();
     const id = params?.id ? decodeURIComponent(params.id as string) : null;
-    const localRole = typeof window !== 'undefined'
-        ? (localStorage.getItem('active_role') || localStorage.getItem('user_role'))
-        : null;
+
+    // Permission Logic
+    // Permission Logic
+    const { activeRole, userRole: contextUserRole } = useTenant();
+    const localRole = activeRole || contextUserRole;
     const isPrivilegedRole = !!localRole && ['OWNER', 'SUPER_ADMIN', 'SUPERADMIN', 'MARKETPLACE_ADMIN'].includes(localRole);
     const canEdit = can('catalog-insurance', id === 'new' ? 'create' : 'edit') || isPrivilegedRole;
 
+    const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('Overview');
     const [isMounted, setIsMounted] = useState(false);
-    const [ruleList, setRuleList] = useState<InsuranceRule[]>([]);
     const [rule, setRule] = useState<InsuranceRule | null>(null);
     const [isCalcValid, setIsCalcValid] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
 
-    const STORAGE_KEY = 'aums_insurance_rules_v2';
-
-    // Persistence
-    const loadRules = () => {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        return stored ? JSON.parse(stored) : MOCK_INSURANCE_RULES;
-    };
-
-    const saveRules = (rules: InsuranceRule[]) => {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
-        setRuleList(rules);
-    };
-
     useEffect(() => {
         setIsMounted(true);
-        setRuleList(loadRules());
     }, []);
 
-    useEffect(() => {
-        if (!isMounted || !id) return;
+    const fetchRule = async (targetId: string) => {
+        setLoading(true);
+        const supabase = createClient();
 
-        if (id === 'new') {
+        // Robust lookup: UUID vs DisplayId vs StateCode
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
+        let query = supabase.from('insurance_rules').select('*');
+
+        if (isUuid) {
+            query = query.eq('id', targetId);
+        } else if (targetId.includes('-')) {
+            query = query.eq('display_id', targetId);
+        } else {
+            query = query.eq('state_code', targetId.toUpperCase());
+        }
+
+        const { data, error } = await query.maybeSingle();
+
+        if (!error && data) {
+            setRule(mapDbToFrontend(data));
+        } else if (targetId === 'new') {
             setRule({
                 id: crypto.randomUUID(),
                 ruleName: 'New Insurance Rule',
@@ -76,14 +121,13 @@ export default function InsuranceDetailPage() {
                 version: 1,
                 lastUpdated: new Date().toISOString()
             });
-        } else {
-            const rules = loadRules();
-            const found = rules.find((r: any) =>
-                r.id === id ||
-                r.displayId === id ||
-                (r.stateCode && r.stateCode.toLowerCase() === id.toLowerCase()) // Fallback for "State URL" request
-            );
-            if (found) setRule(found);
+        }
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        if (isMounted && id) {
+            fetchRule(id);
         }
     }, [id, isMounted]);
 
@@ -98,29 +142,46 @@ export default function InsuranceDetailPage() {
         return () => window.removeEventListener('beforeunload', handleBeforeUnload);
     }, [isDirty, isMounted]);
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!rule) return;
         if (!isCalcValid && activeTab === 'Premium Studio') {
             alert('Calculation check failed. Please verify in the preview before saving.');
             return;
         }
-        const shouldSave = window.confirm('Save insurance rule changes?');
-        if (!shouldSave) return;
-        const current = loadRules();
-        const idx = current.findIndex((r: any) => r.id === rule.id);
-        const newRules = [...current];
-        if (idx !== -1) newRules[idx] = { ...rule, lastUpdated: new Date().toISOString() };
-        else newRules.push(rule);
-        saveRules(newRules);
-        alert("Insurance Rule Saved!");
-        setIsEditing(false);
-        setIsDirty(false);
-        router.push('/catalog/insurance');
+
+        const supabase = createClient();
+        const dbPayload = mapFrontendToDb(rule);
+
+        const { error } = await supabase
+            .from('insurance_rules')
+            .upsert(dbPayload);
+
+        if (!error) {
+            alert("Insurance Rule Saved Successfully to Database!");
+            setIsEditing(false);
+            setIsDirty(false);
+            router.push('/catalog/insurance');
+        } else {
+            console.error("Save error", error);
+            alert(`Failed to save: ${error.message}`);
+        }
     };
+
     const handleBack = () => {
         if (isDirty && !window.confirm('You have unsaved changes. Leave without saving?')) return;
         router.push('/catalog/insurance');
     };
+
+    if (!isMounted || loading) {
+        return (
+            <div className="h-full w-full flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 p-20 text-center">
+                <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
+                <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">Syncing with Live DB...</h3>
+            </div>
+        );
+    }
+
+    if (!rule) return null;
 
     if (!isMounted || !rule) return null;
 
@@ -144,6 +205,7 @@ export default function InsuranceDetailPage() {
                                 </h2>
                                 <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
                                     <Sparkles size={10} className="text-blue-500" /> Profiling {rule.displayId || 'NEW'}
+                                    <DataSourceIndicator source="LIVE" className="ml-1" />
                                 </p>
                             </div>
                         </div>

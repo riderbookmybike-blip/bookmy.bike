@@ -51,6 +51,7 @@ export default function LoginSidebar({
     const [identifier, setIdentifier] = useState('');
     const [otp, setOtp] = useState('');
     const [fullName, setFullName] = useState('');
+    const [manualPincode, setManualPincode] = useState('');
     const [showSignupPrompt, setShowSignupPrompt] = useState(false);
     const [loading, setLoading] = useState(false);
 
@@ -148,6 +149,8 @@ export default function LoginSidebar({
                     latitude: result.latitude || latitude,
                     longitude: result.longitude || longitude,
                 });
+            }, () => {
+                setLocation(prev => ({ ...prev, pincode: null }));
             });
         }
     };
@@ -254,8 +257,9 @@ export default function LoginSidebar({
             setLoginError('Please enter your full name to continue.');
             return false;
         }
-        if (!location.pincode) {
-            setLoginError('Please allow location access to complete signup.');
+        const resolvedPincode = location.pincode || manualPincode.trim();
+        if (!resolvedPincode || resolvedPincode.length < 6) {
+            setLoginError('Please allow location access or enter a valid 6-digit pincode.');
             return false;
         }
         return true;
@@ -321,6 +325,7 @@ export default function LoginSidebar({
         // Sync User Data
         const isEmail = authMethod === 'EMAIL';
         const phoneVal = !isEmail ? identifier.replace(/\D/g, '') : '';
+        const resolvedPincode = location.pincode || manualPincode.trim() || null;
 
         if (isNewUser) {
             const signupRes = await fetch('/api/auth/signup', {
@@ -329,7 +334,7 @@ export default function LoginSidebar({
                     phone: phoneVal,
                     email: isEmail ? identifier : '',
                     displayName: fullName || 'Rider',
-                    pincode: location.pincode,
+                    pincode: resolvedPincode,
                 }),
             });
             const signupData = await signupRes.json();
@@ -340,19 +345,6 @@ export default function LoginSidebar({
             if (signupSession) {
                 await supabase.auth.setSession(signupSession);
                 user = signupData.user; // Update user object for membership check below
-            }
-        } else if (authMethod === 'PHONE') {
-            const syncRes = await fetch('/api/auth/msg91/sync', {
-                method: 'POST',
-                body: JSON.stringify({ phone: phoneVal, pincode: isStaff ? null : location.pincode }),
-            });
-            try {
-                const syncData = await syncRes.json();
-                if (syncData?.session) {
-                    await supabase.auth.setSession(syncData.session);
-                }
-            } catch {
-                // Ignore sync parse issues; login should still proceed if session is already set.
             }
         }
 
@@ -532,6 +524,24 @@ export default function LoginSidebar({
                                                     className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl p-5 text-lg font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all"
                                                     autoFocus
                                                 />
+                                            </div>
+                                        )}
+
+                                        {step === 'SIGNUP' && (
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+                                                    Pincode (Required)
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={manualPincode}
+                                                    onChange={e => setManualPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                                    placeholder={location.pincode ? `Auto: ${location.pincode}` : 'Enter 6-digit pincode'}
+                                                    className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl p-5 text-lg font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all"
+                                                />
+                                                <p className="text-[10px] text-slate-400">
+                                                    {location.pincode ? 'Location detected. You can edit if needed.' : 'Allow location or enter your pincode manually.'}
+                                                </p>
                                             </div>
                                         )}
 

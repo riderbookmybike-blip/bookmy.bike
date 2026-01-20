@@ -3,15 +3,17 @@
 import React, { useState } from 'react';
 import { RegistrationRule } from '@/types/registration';
 import { Calendar, MapPin, Truck, AlertTriangle, Trash2, Info, CheckCircle2, XCircle, User, Globe, Building2 } from 'lucide-react';
+import ActivityTimelinePanel from '@/components/modules/context/ActivityTimelinePanel';
 
 interface RuleOverviewProps {
     rule: RegistrationRule;
     onChange: (rule: RegistrationRule) => void;
     onDelete?: () => void;
     readOnly?: boolean;
+    auditLogs?: any[];
 }
 
-export default function RuleOverview({ rule, onChange, onDelete, readOnly = false }: RuleOverviewProps) {
+export default function RuleOverview({ rule, onChange, onDelete, readOnly = false, auditLogs = [] }: RuleOverviewProps) {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [deleteConfirmation, setDeleteConfirmation] = useState('');
     const [isHovered, setIsHovered] = useState(false);
@@ -28,33 +30,34 @@ export default function RuleOverview({ rule, onChange, onDelete, readOnly = fals
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 w-full px-4 pb-12">
-            {/* Hero Section */}
-            <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-slate-900 to-indigo-950 p-8 md:p-12 shadow-2xl group min-h-[400px] flex items-center">
-                {/* Background Decor */}
-                <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/20 blur-[100px] rounded-full -mr-48 -mt-48 animate-pulse" />
-                <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/10 blur-[80px] rounded-full -ml-32 -mb-32" />
+            {/* Desktop: Side-by-Side Layout for "Above the Fold" */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 h-full">
+                {/* Hero Section - Left Column (8/12) */}
+                <div className="xl:col-span-8 relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-slate-900 to-indigo-950 p-8 shadow-2xl group flex flex-col justify-between min-h-[400px]">
+                    {/* Background Decor */}
+                    <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/20 blur-[100px] rounded-full -mr-48 -mt-48 animate-pulse" />
+                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/10 blur-[80px] rounded-full -ml-32 -mb-32" />
 
-                {/* Maharashtra Map Asset */}
-                <div className="absolute right-0 top-0 h-full w-1/2 opacity-40 mix-blend-screen pointer-events-none group-hover:opacity-60 transition-opacity duration-1000">
-                    <img
-                        src="/images/maps/maharashtra_map.png"
-                        alt="Maharashtra Map"
-                        className="h-full w-full object-contain object-right transform scale-110 group-hover:scale-125 transition-transform duration-1000"
-                    />
-                </div>
+                    {/* Maharashtra Map Asset */}
+                    <div className="absolute right-0 top-0 h-full w-2/3 opacity-40 mix-blend-screen pointer-events-none group-hover:opacity-60 transition-opacity duration-1000">
+                        <img
+                            src="/images/maps/maharashtra_map.png"
+                            alt="Maharashtra Map"
+                            className="h-full w-full object-contain object-right transform scale-110 group-hover:scale-125 transition-transform duration-1000"
+                        />
+                    </div>
 
-                <div className="relative flex flex-col md:flex-row md:items-end justify-between gap-8 w-full">
-                    <div className="flex-1 space-y-4">
-                        <div className="flex items-center gap-3">
+                    <div className="relative z-10 w-full">
+                        <div className="flex items-center gap-3 mb-6">
                             <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${rule.status === 'ACTIVE' ? 'bg-green-500/20 text-green-400 border border-green-500/30 shadow-[0_0_15px_rgba(34,197,94,0.3)]' : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'}`}>
                                 <div className={`w-1.5 h-1.5 rounded-full ${rule.status === 'ACTIVE' ? 'bg-green-400 animate-ping' : 'bg-gray-400'}`} />
                                 {rule.status}
                             </div>
                         </div>
 
-                        <div className="relative group/name">
+                        <div className="relative group/name mb-8">
                             <input
-                                className="text-4xl md:text-6xl font-black text-white w-full bg-transparent border-none focus:ring-0 p-0 transition-all placeholder-white/20 tracking-tighter"
+                                className="text-4xl lg:text-5xl font-black text-white w-full bg-transparent border-none focus:ring-0 p-0 transition-all placeholder-white/20 tracking-tighter"
                                 value={rule.ruleName}
                                 onChange={e => update('ruleName', e.target.value)}
                                 readOnly={readOnly}
@@ -63,7 +66,7 @@ export default function RuleOverview({ rule, onChange, onDelete, readOnly = fals
                             <div className="h-0.5 w-24 bg-blue-500 group-hover/name:w-full transition-all duration-500 rounded-full mt-2" />
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-6 pt-4">
+                        <div className="flex flex-wrap items-center gap-6">
                             <div className="flex items-center gap-3 text-white/60">
                                 <div className="p-2.5 bg-white/10 rounded-2xl backdrop-blur-md border border-white/10 group-hover:scale-110 transition-transform">
                                     <MapPin size={18} className="text-blue-400" />
@@ -81,6 +84,8 @@ export default function RuleOverview({ rule, onChange, onDelete, readOnly = fals
                                         <option value="KA" className="bg-slate-900">Karnataka</option>
                                         <option value="DL" className="bg-slate-900">Delhi</option>
                                         <option value="GJ" className="bg-slate-900">Gujarat</option>
+                                        <option value="TN" className="bg-slate-900">Tamil Nadu</option>
+                                        <option value="TS" className="bg-slate-900">Telangana</option>
                                     </select>
                                 </div>
                             </div>
@@ -106,12 +111,12 @@ export default function RuleOverview({ rule, onChange, onDelete, readOnly = fals
                         </div>
                     </div>
 
-                    <div className="flex flex-col items-end gap-3 min-w-48">
-                        <div className="w-full p-4 bg-white/10 rounded-[2rem] backdrop-blur-md border border-white/10 text-right group-hover:translate-x-[-8px] transition-transform">
+                    <div className="relative z-10 w-full flex justify-end mt-8">
+                        <div className="p-4 bg-white/10 rounded-[2rem] backdrop-blur-md border border-white/10 text-right group-hover:translate-x-[-8px] transition-transform min-w-[180px]">
                             <p className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-1">Effective Date</p>
                             <input
                                 type="date"
-                                className="bg-transparent text-lg font-black text-blue-400 border-none p-0 focus:ring-0 text-right cursor-pointer"
+                                className="bg-transparent text-lg font-black text-blue-400 border-none p-0 focus:ring-0 text-right cursor-pointer w-full"
                                 value={rule.effectiveFrom}
                                 onChange={e => update('effectiveFrom', e.target.value)}
                                 readOnly={readOnly}
@@ -119,69 +124,69 @@ export default function RuleOverview({ rule, onChange, onDelete, readOnly = fals
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Dashboard Metrics Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Metric 1: State Tenure */}
-                <div className="group relative bg-white/40 backdrop-blur-xl rounded-[2.5rem] p-8 border border-white/60 shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1">
-                    <div className="absolute top-6 right-6 p-3 bg-blue-50 text-blue-600 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-colors duration-500">
-                        <User size={24} />
+                {/* Dashboard Metrics Grid - Right Column (4/12) */}
+                <div className="xl:col-span-4 flex flex-col gap-4 h-full">
+                    {/* Metric 1: State Tenure */}
+                    <div className="flex-1 group relative bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl rounded-[2rem] p-6 border border-white/60 dark:border-white/10 shadow-lg hover:shadow-xl transition-all flex flex-col justify-center">
+                        <div className="flex justify-between items-start mb-2">
+                            <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em]">Standard Tenure</p>
+                            <div className="p-2 bg-blue-50 text-blue-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                <User size={18} />
+                            </div>
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                            <input
+                                type="number"
+                                className="text-4xl font-black text-slate-900 dark:text-white w-full bg-transparent border-none p-0 focus:ring-0 leading-none tracking-tighter"
+                                value={rule.stateTenure || 15}
+                                onChange={e => update('stateTenure', parseFloat(e.target.value) || 0)}
+                                readOnly={readOnly}
+                            />
+                            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">Years</span>
+                        </div>
                     </div>
-                    <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] mb-4">Standard Tenure</p>
-                    <div className="flex items-baseline gap-2">
-                        <input
-                            type="number"
-                            className="text-5xl font-black text-slate-900 dark:text-white w-full bg-transparent border-none p-0 focus:ring-0 leading-none tracking-tighter"
-                            value={rule.stateTenure || 15}
-                            onChange={e => update('stateTenure', parseFloat(e.target.value) || 0)}
-                            readOnly={readOnly}
-                        />
-                        <span className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase">Years</span>
-                    </div>
-                    <div className="mt-6 h-1 w-12 bg-blue-500 rounded-full opacity-30 group-hover:w-full transition-all duration-700" />
-                    <p className="mt-4 text-[10px] font-bold text-slate-500 dark:text-slate-300">Applied to State Series registrations by default.</p>
-                </div>
 
-                {/* Metric 2: BH Tenure */}
-                <div className="group relative bg-white/40 backdrop-blur-xl rounded-[2.5rem] p-8 border border-white/60 shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1">
-                    <div className="absolute top-6 right-6 p-3 bg-indigo-50 text-indigo-600 rounded-2xl group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-500">
-                        <Globe size={24} />
+                    {/* Metric 2: BH Tenure */}
+                    <div className="flex-1 group relative bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl rounded-[2rem] p-6 border border-white/60 dark:border-white/10 shadow-lg hover:shadow-xl transition-all flex flex-col justify-center">
+                        <div className="flex justify-between items-start mb-2">
+                            <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em]">Bharat Cycle</p>
+                            <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                <Globe size={18} />
+                            </div>
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                            <input
+                                type="number"
+                                className="text-4xl font-black text-slate-900 dark:text-white w-full bg-transparent border-none p-0 focus:ring-0 leading-none tracking-tighter"
+                                value={rule.bhTenure || 2}
+                                onChange={e => update('bhTenure', parseFloat(e.target.value) || 0)}
+                                readOnly={readOnly}
+                            />
+                            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">Years</span>
+                        </div>
                     </div>
-                    <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] mb-4">Bharat Cycle</p>
-                    <div className="flex items-baseline gap-2">
-                        <input
-                            type="number"
-                            className="text-5xl font-black text-slate-900 dark:text-white w-full bg-transparent border-none p-0 focus:ring-0 leading-none tracking-tighter"
-                            value={rule.bhTenure || 2}
-                            onChange={e => update('bhTenure', parseFloat(e.target.value) || 0)}
-                            readOnly={readOnly}
-                        />
-                        <span className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase">Years</span>
-                    </div>
-                    <div className="mt-6 h-1 w-12 bg-indigo-500 rounded-full opacity-30 group-hover:w-full transition-all duration-700" />
-                    <p className="mt-4 text-[10px] font-bold text-slate-500 dark:text-slate-300">Payment blocks for BH series (typically 2-year cycles).</p>
-                </div>
 
-                {/* Metric 3: Company Multiplier */}
-                <div className="group relative bg-white/40 backdrop-blur-xl rounded-[2.5rem] p-8 border border-white/60 shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1">
-                    <div className="absolute top-6 right-6 p-3 bg-amber-50 text-amber-600 rounded-2xl group-hover:bg-amber-600 group-hover:text-white transition-colors duration-500">
-                        <Building2 size={24} />
+                    {/* Metric 3: Company Multiplier */}
+                    <div className="flex-1 group relative bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl rounded-[2rem] p-6 border border-white/60 dark:border-white/10 shadow-lg hover:shadow-xl transition-all flex flex-col justify-center">
+                        <div className="flex justify-between items-start mb-2">
+                            <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em]">Corp Multiplier</p>
+                            <div className="p-2 bg-amber-50 text-amber-600 rounded-xl group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                                <Building2 size={18} />
+                            </div>
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                            <input
+                                type="number"
+                                step="0.1"
+                                className="text-4xl font-black text-slate-900 dark:text-white w-full bg-transparent border-none p-0 focus:ring-0 leading-none tracking-tighter"
+                                value={rule.companyMultiplier || 1}
+                                onChange={e => update('companyMultiplier', parseFloat(e.target.value) || 1)}
+                                readOnly={readOnly}
+                            />
+                            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">x</span>
+                        </div>
                     </div>
-                    <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] mb-4">Corp Multiplier</p>
-                    <div className="flex items-baseline gap-2">
-                        <input
-                            type="number"
-                            step="0.1"
-                            className="text-5xl font-black text-slate-900 dark:text-white w-full bg-transparent border-none p-0 focus:ring-0 leading-none tracking-tighter"
-                            value={rule.companyMultiplier || 1}
-                            onChange={e => update('companyMultiplier', parseFloat(e.target.value) || 1)}
-                            readOnly={readOnly}
-                        />
-                        <span className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase">Multiplier</span>
-                    </div>
-                    <div className="mt-6 h-1 w-12 bg-amber-500 rounded-full opacity-30 group-hover:w-full transition-all duration-700" />
-                    <p className="mt-4 text-[10px] font-bold text-slate-500 dark:text-slate-300">Automatic factor applied to MV Tax for corporate entities.</p>
                 </div>
             </div>
 
@@ -283,6 +288,16 @@ export default function RuleOverview({ rule, onChange, onDelete, readOnly = fals
                             </button>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Audit Log / Event Log */}
+            {auditLogs && auditLogs.length > 0 && (
+                <div className="pt-8 border-t border-gray-100 dark:border-slate-800">
+                    <ActivityTimelinePanel
+                        entity={{ name: rule.ruleName, id: rule.displayId || rule.id }}
+                        activities={auditLogs}
+                    />
                 </div>
             )}
         </div>

@@ -126,11 +126,10 @@ export function CatalogTV() {
                                 <button
                                     key={option}
                                     onClick={() => setActiveCategory(activeCategory === option ? 'ALL' : option)}
-                                    className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
-                                        activeCategory === option
+                                    className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeCategory === option
                                             ? 'bg-[#FFD700] text-black shadow-lg shadow-[#FFD700]/20 scale-105'
                                             : 'bg-slate-900 dark:bg-white text-white dark:text-black hover:scale-105 shadow-md shadow-slate-900/10 dark:shadow-white/5'
-                                    }`}
+                                        }`}
                                 >
                                     {option}
                                 </button>
@@ -140,7 +139,7 @@ export function CatalogTV() {
 
                     <div className="flex items-center gap-4">
                         <h1 className="text-3xl font-black italic text-slate-900 dark:text-white tracking-widest leading-none">
-                            {results.length} VEHICLES
+                            {results.length} {results.length === 1 ? 'VEHICLE' : 'VEHICLES'}
                         </h1>
                     </div>
                 </div>

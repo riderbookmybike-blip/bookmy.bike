@@ -202,7 +202,7 @@ export default function MembersHome() {
                                     <h3 className="text-3xl font-black uppercase tracking-tighter italic leading-none">Upgrade Your <br /> Experience</h3>
                                     <p className="text-[10px] font-bold text-rose-100 uppercase tracking-widest italic">Get priority allocation on new drops.</p>
                                 </div>
-                                <button className="w-full py-4 bg-white text-rose-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl">Elite Circle Pro</button>
+                                <button className="w-full py-4 bg-white dark:bg-white text-rose-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl">Elite Circle Pro</button>
                             </div>
                         </div>
                         <div className="absolute -right-4 -bottom-4 w-48 h-48 bg-white/10 rounded-full blur-3xl group-hover:scale-125 transition-transform duration-1000" />

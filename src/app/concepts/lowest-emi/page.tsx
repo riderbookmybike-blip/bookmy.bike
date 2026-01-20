@@ -84,7 +84,7 @@ export default function LowestEmiConcept() {
                             into a single EMI-first decision screen.
                         </p>
                         <div className="flex flex-wrap gap-4">
-                            <button className="px-6 py-3 rounded-2xl bg-white text-black font-semibold inline-flex items-center gap-2 shadow-[0_12px_32px_rgba(255,255,255,0.22)]">
+                            <button className="px-6 py-3 rounded-2xl bg-white dark:bg-white text-black font-semibold inline-flex items-center gap-2 shadow-[0_12px_32px_rgba(255,255,255,0.22)]">
                                 Start EMI Scan <ArrowRight size={18} />
                             </button>
                             <button className="px-6 py-3 rounded-2xl border border-white/20 text-white/80 hover:text-white hover:border-white/60 transition">

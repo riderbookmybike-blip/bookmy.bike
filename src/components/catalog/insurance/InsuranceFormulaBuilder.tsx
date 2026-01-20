@@ -120,7 +120,7 @@ export default function InsuranceFormulaBuilder({
                         <div className="flex gap-2">
                             <button
                                 onClick={() => handleAdd('od', odComponents, 'PERCENTAGE')}
-                                className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2"
+                                className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-white/5 transition-all flex items-center gap-2"
                             >
                                 <Banknote size={14} className="text-blue-500" /> + % OD Rate
                             </button>
@@ -163,7 +163,7 @@ export default function InsuranceFormulaBuilder({
                     {!readOnly && (
                         <button
                             onClick={() => handleAdd('tp', tpComponents, 'SLAB')}
-                            className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2"
+                            className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-white/5 transition-all flex items-center gap-2"
                         >
                             <Calculator size={14} className="text-indigo-500" /> + TP Slab Table
                         </button>
@@ -204,37 +204,37 @@ export default function InsuranceFormulaBuilder({
                         <div className="flex flex-wrap gap-2">
                             <button
                                 onClick={() => handleQuickAdd('Zero Depreciation', 0.15)}
-                                className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[9px] font-black uppercase tracking-widest hover:border-amber-400 hover:text-amber-600 transition-all flex items-center gap-2 group"
+                                className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest hover:border-amber-400 hover:text-amber-600 transition-all flex items-center gap-2 group"
                             >
                                 <Zap size={12} className="text-amber-500 group-hover:scale-125 transition-transform" /> + Zero Dep
                             </button>
                             <button
                                 onClick={() => handleQuickAdd('Return to Invoice (RTI)', 0.1)}
-                                className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[9px] font-black uppercase tracking-widest hover:border-amber-400 hover:text-amber-600 transition-all flex items-center gap-2 group"
+                                className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest hover:border-amber-400 hover:text-amber-600 transition-all flex items-center gap-2 group"
                             >
                                 <Lock size={12} className="text-amber-500 group-hover:scale-125 transition-transform" /> + RTI
                             </button>
                             <button
                                 onClick={() => handleQuickAdd('Consumables Cover', 0.05)}
-                                className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[9px] font-black uppercase tracking-widest hover:border-amber-400 hover:text-amber-600 transition-all flex items-center gap-2 group"
+                                className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest hover:border-amber-400 hover:text-amber-600 transition-all flex items-center gap-2 group"
                             >
                                 <Zap size={12} className="text-amber-500 group-hover:scale-125 transition-transform" /> + Consumables
                             </button>
                             <button
                                 onClick={() => handleQuickAdd('Engine Protection', 0.08)}
-                                className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[9px] font-black uppercase tracking-widest hover:border-amber-400 hover:text-amber-600 transition-all flex items-center gap-2 group"
+                                className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest hover:border-amber-400 hover:text-amber-600 transition-all flex items-center gap-2 group"
                             >
                                 <Shield size={12} className="text-amber-500 group-hover:scale-125 transition-transform" /> + Engine Protect
                             </button>
                             <button
                                 onClick={() => handleQuickAdd('Roadside Assistance (RSA)', 0, 150)}
-                                className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[9px] font-black uppercase tracking-widest hover:border-amber-400 hover:text-amber-600 transition-all flex items-center gap-2 group"
+                                className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest hover:border-amber-400 hover:text-amber-600 transition-all flex items-center gap-2 group"
                             >
                                 <Calculator size={12} className="text-amber-500 group-hover:scale-125 transition-transform" /> + RSA (Fixed)
                             </button>
                             <button
                                 onClick={() => handleQuickAdd('Personal Accident (PA) Cover', 0, 375)}
-                                className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[9px] font-black uppercase tracking-widest hover:border-amber-400 hover:text-amber-600 transition-all flex items-center gap-2 group"
+                                className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest hover:border-amber-400 hover:text-amber-600 transition-all flex items-center gap-2 group"
                             >
                                 <Lock size={12} className="text-amber-500 group-hover:scale-125 transition-transform" /> + PA Cover
                             </button>

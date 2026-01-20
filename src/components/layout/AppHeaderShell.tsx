@@ -29,7 +29,7 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
 }) => {
     // Quick rollback: switch to 'spacious' for the previous 96px height + wider container.
     const headerPreset: 'compact' | 'spacious' = 'compact';
-    const heightClass = headerPreset === 'compact' ? 'h-20' : 'h-24';
+    const heightClass = headerPreset === 'compact' ? 'h-16' : 'h-24';
     const containerClass =
         headerPreset === 'compact' ? 'max-w-[1440px] px-6 md:px-12 lg:px-20' : 'max-w-[1920px] px-6 md:px-12 lg:px-20';
 
@@ -37,7 +37,7 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
     const bgClass =
         transparentAtTop && !scrolled
             ? 'bg-transparent border-b-transparent'
-            : 'bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-white/10 shadow-sm';
+            : 'bg-white dark:bg-[#0b0d10] border-b border-slate-200 dark:border-white/10 shadow-sm';
 
     return (
         <>

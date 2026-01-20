@@ -89,7 +89,7 @@ export default function Sidebar({
                 `}
             >
                 {/* Header */}
-                <div className="h-20 flex items-center justify-between px-6 border-b border-slate-100 dark:border-white/5 shrink-0 overflow-hidden">
+                <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100 dark:border-white/5 shrink-0 overflow-hidden">
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-3">
                             <Logo
@@ -169,15 +169,14 @@ export default function Sidebar({
                                                 href={href}
                                                 className={`
                                                     flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-200
-                                                    ${
-                                                        isActive
-                                                            ? 'bg-brand-primary text-slate-900 shadow-lg shadow-brand-primary/25 border border-brand-primary/20'
-                                                            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
+                                                    ${isActive
+                                                        ? 'bg-brand-primary/[0.08] text-slate-900 shadow-sm border-l-4 border-brand-primary rounded-r-none font-bold'
+                                                        : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
                                                     }
                                                 `}
                                             >
                                                 <div
-                                                    className={`shrink-0 ${isActive ? 'text-slate-900' : item.color || 'text-slate-400'}`}
+                                                    className={`shrink-0 ${isActive ? 'text-brand-primary font-bold' : item.color || 'text-slate-400'}`}
                                                 >
                                                     {Icon && <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />}
                                                 </div>
@@ -217,7 +216,7 @@ export default function Sidebar({
                         className={`flex items-center gap-3 px-2 py-2 rounded-xl border border-transparent hover:border-slate-200 dark:hover:border-white/10 transition-all cursor-pointer`}
                     >
                         <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center shrink-0">
-                            <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
+                            <span className="w-2.5 h-2.5 rounded-full bg-white dark:bg-white animate-pulse" />
                         </div>
                         <AnimatePresence>
                             {isExpanded && (

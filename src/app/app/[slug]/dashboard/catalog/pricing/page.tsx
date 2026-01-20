@@ -9,8 +9,9 @@ import ContextSidePanel from '@/components/templates/ContextSidePanel';
 import { MOCK_REGISTRATION_RULES } from '@/lib/mock/catalogMocks';
 import { RegistrationRule } from '@/types/registration';
 import PricingLedgerTable from '@/components/modules/products/PricingLedgerTable';
-import { Landmark, Filter, ShieldCheck, FileCheck, Layers, Car, Zap, Loader2, Save, ExternalLink } from 'lucide-react';
+import { Landmark, Filter, ShieldCheck, FileCheck, Layers, Car, Zap, Loader2, Save, ExternalLink, Activity, Target, ClipboardCheck, Package, TrendingUp } from 'lucide-react';
 import { KpiCard } from '@/components/dashboard/DashboardWidgets';
+import { KPIItem } from '@/components/layout/KPIBar';
 
 interface SKUPriceRow {
     id: string; // vehicle_color_id
@@ -32,23 +33,23 @@ interface SKUPriceRow {
 
 export default function PricingPage() {
     const supabase = createClient();
-    const { tenantId } = useTenant();
-    const [states, setStates] = useState<RegistrationRule[]>(MOCK_REGISTRATION_RULES);
+    const { tenantId, tenantSlug } = useTenant();
+    const [states, setStates] = useState<RegistrationRule[]>([]);
     const [selectedStateId, setSelectedStateId] = useState<string>('');
     const [selectedBrand, setSelectedBrand] = useState<string>('ALL');
-
     const [skus, setSkus] = useState<SKUPriceRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [brands, setBrands] = useState<string[]>([]);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [lastEditTime, setLastEditTime] = useState<number | null>(null);
 
-    // Initial Load
+    // Initial Load - Fetch Brands and Rules
     useEffect(() => {
-        if (MOCK_REGISTRATION_RULES.length > 0) {
-            setSelectedStateId(MOCK_REGISTRATION_RULES[0].id);
-        }
-        fetchBrands();
+        const init = async () => {
+            await fetchBrands();
+            await fetchRules();
+        };
+        init();
     }, []);
 
     // Fetch Data when Filters Change
@@ -63,43 +64,69 @@ export default function PricingPage() {
         if (hasUnsavedChanges && lastEditTime) {
             const timer = setTimeout(() => {
                 handleSaveAll();
-            }, 5000); // 5 seconds of inactivity
+            }, 5000);
             return () => clearTimeout(timer);
         }
     }, [lastEditTime, hasUnsavedChanges]);
 
+    const fetchRules = async () => {
+        const { data } = await supabase
+            .from('registration_rules')
+            .select('*')
+            .eq('status', 'ACTIVE')
+            .order('state_code');
+
+        if (data && data.length > 0) {
+            // Transform DB rows to RegistrationRule type if needed, but the schema matches mostly
+            const mappedRules = data.map((r: any) => ({
+                ...r,
+                displayId: r.display_id,
+                ruleName: `${r.rule_name} (${r.state_code})`,
+                stateCode: r.state_code,
+                vehicleType: r.vehicle_type
+            }));
+            setStates(mappedRules);
+            setSelectedStateId(mappedRules[0].id);
+        }
+    };
+
     const fetchBrands = async () => {
-        const { data } = await supabase.from('brands').select('name, logo_svg').eq('is_active', true).order('name');
+        const { data } = await supabase
+            .from('brands')
+            .select('id, name, logo_svg')
+            .eq('is_active', true)
+            .order('name');
+
         if (data) {
-            setBrands(data.map((b: any) => b.name)); // Keeping state as string for now to avoid breaking existing logic, but we could upgrade this.
+            setBrands(data.map((b: any) => b.name));
         }
     };
 
     const fetchSKUsAndPrices = async () => {
         setLoading(true);
         try {
-            // 1. Fetch SKUs (Hierarchical)
-            let query = supabase
-                .from('vehicle_colors')
+            // 1. Fetch SKUs from Unified Catalog
+            // SKU -> Variant (Parent) -> Family (Grandparent)
+            const { data: skuData, error: skuError } = await supabase
+                .from('catalog_items')
                 .select(`
                     id,
                     name,
-                    vehicle_variants!inner (
+                    specs,
+                    price_base,
+                    parent:parent_id (
+                        id,
                         name,
-                        base_price_ex_showroom,
-                        vehicle_models!inner (
+                        parent:parent_id (
                             id,
                             name,
-                            brands!inner (id, name, logo_svg)
+                            price_base,
+                            brand:brands(id, name, logo_svg)
                         )
                     )
-                `);
+                `)
+                .eq('type', 'SKU');
 
-            if (selectedBrand !== 'ALL') {
-                query = query.eq('vehicle_variants.vehicle_models.brands.name', selectedBrand);
-            }
-
-            const { data: skuData, error: skuError } = await query;
             if (skuError) throw skuError;
 
             // 2. Fetch Existing Prices for State
@@ -110,56 +137,69 @@ export default function PricingPage() {
                     .select('vehicle_color_id, ex_showroom_price, updated_at')
                     .eq('state_code', activeStateCode),
                 supabase
-                    .rpc('get_stock_counts') // We'll create this RPC or use a manual count
+                    .from('vehicle_inventory')
+                    .select('sku_id, status')
+                    .eq('status', 'AVAILABLE')
             ]);
 
-            // If RPC doesn't exist yet, we'll do a manual count fetch
             const { data: priceData, error: priceError } = priceRes;
             if (priceError) throw priceError;
 
-            // Fetch stock counts manually for now
-            const { data: stockData } = await supabase
-                .from('vehicle_inventory')
-                .select('sku_id, status')
-                .eq('status', 'AVAILABLE');
+            const { data: stockData } = stockRes;
 
             const stockMap = new Map();
             stockData?.forEach((s: any) => {
                 stockMap.set(s.sku_id, (stockMap.get(s.sku_id) || 0) + 1);
             });
 
-            // Map Prices
+            // 3. Fetch Brand Regional Deltas for this state
+            const { data: brandDeltas } = await supabase
+                .from('brand_regional_configs')
+                .select('brand_id, delta_percentage')
+                .eq('state_code', activeStateCode);
+
+            const brandDeltaMap = new Map();
+            brandDeltas?.forEach(d => brandDeltaMap.set(d.brand_id, d.delta_percentage));
+
             const priceMap = new Map();
             priceData?.forEach((p: any) => priceMap.set(p.vehicle_color_id, p.ex_showroom_price));
 
-            // Transform to Flat Row
-            const formattedSkus: SKUPriceRow[] = (skuData || []).map((sku: any) => {
-                const variant = sku.vehicle_variants;
-                const model = variant.vehicle_models;
-                const brand = model.brands;
+            let formattedSkus: SKUPriceRow[] = (skuData || []).map((sku: any) => {
+                const variant = sku.parent;
+                const family = variant?.parent;
+                const brand = family?.brand;
 
-                // Priority: State Price > Variant Base Price > 0
+                // Priority: State Price > (Base Price * (1 + Brand Delta %)) > 0
                 const statePrice = priceMap.get(sku.id);
-                const finalPrice = statePrice !== undefined ? statePrice : (variant.base_price_ex_showroom || 0);
+                const basePrice = (sku.price_base || family?.price_base || 0);
+                const brandDelta = brandDeltaMap.get(brand?.id) || 0;
+
+                const finalPrice = statePrice !== undefined
+                    ? statePrice
+                    : Math.round(basePrice * (1 + brandDelta / 100));
 
                 return {
                     id: sku.id,
-                    brand: brand.name,
-                    brandId: brand.id,
-                    brandLogo: brand.logo_svg,
-                    model: model.name,
-                    modelId: model.id,
-                    variant: variant.name,
+                    brand: brand?.name || 'UNKNOWN',
+                    brandId: brand?.id,
+                    brandLogo: brand?.logo_svg,
+                    model: family?.name || 'UNKNOWN',
+                    modelId: family?.id,
+                    variant: variant?.name || 'UNKNOWN',
                     color: sku.name,
-                    engineCc: 110, // Default for now as it wasn't in the fetch
+                    engineCc: parseInt(sku.specs?.engine_cc || family?.specs?.engine_cc || '110'),
                     exShowroom: finalPrice,
-                    originalExShowroom: finalPrice, // Store original for diff
-                    updatedAt: priceMap.get(sku.id) !== undefined ? priceData?.find((p: any) => p.vehicle_color_id === sku.id)?.updated_at : undefined,
+                    originalExShowroom: basePrice,
                     stockCount: stockMap.get(sku.id) || 0
                 };
             });
 
-            // Client-side sort if needed
+            // Filter by Brand if needed
+            if (selectedBrand !== 'ALL') {
+                formattedSkus = formattedSkus.filter(s => s.brand === selectedBrand);
+            }
+
+            // Client-side sort
             formattedSkus.sort((a, b) => a.brand.localeCompare(b.brand) || a.model.localeCompare(b.model));
 
             setSkus(formattedSkus);
@@ -217,31 +257,86 @@ export default function PricingPage() {
 
     // ... Rendering ...
     // ... Rendering ...
-    const renderHeader = () => (
-        <div className="flex justify-between items-center px-6 py-4 border-b border-slate-200 dark:border-white/5 bg-white dark:bg-slate-950 sticky top-0 z-20">
-            <div className="flex items-center gap-4">
-                <div className="p-2 rounded-xl bg-blue-600/10 text-blue-600 dark:text-blue-400">
-                    <Landmark size={20} strokeWidth={2.5} />
-                </div>
-                <div>
-                    <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-none">
-                        On-Road Pricing
-                    </h2>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-                        Regulatory Ledger
-                    </p>
-                </div>
-            </div>
+    const renderHeader = () => {
+        // Calculate dynamic metrics
+        const missingPrices = skus.filter(s => s.exShowroom === 0).length;
+        const pendingSaves = hasUnsavedChanges ? skus.filter(s => s.exShowroom !== s.originalExShowroom).length : 0;
+        const activeState = states.find(s => s.id === selectedStateId)?.stateCode || '--';
 
-            <div className="flex items-center gap-4">
-                {/* Unsaved Changes Indicator */}
-                <div className={`flex items-center gap-2 text-[10px] font-bold px-3 py-1.5 rounded-full transition-all ${hasUnsavedChanges ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' : 'opacity-0'}`}>
-                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                    UNSAVED CHANGES
+        return (
+            <div className="flex justify-between items-center px-6 py-4 border-b border-slate-200 dark:border-white/5 bg-white dark:bg-slate-950 sticky top-0 z-20">
+                <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-4">
+                        <div className="p-2.5 rounded-2xl bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20">
+                            <Landmark size={22} strokeWidth={2.5} />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-none">
+                                On-Road Pricing
+                            </h2>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                                Regulatory Ledger
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="h-8 w-px bg-slate-200 dark:bg-white/10 hidden lg:block" />
+
+                    {/* Page KPIs */}
+                    <div className="hidden xl:flex items-center gap-3">
+                        <KPIItem
+                            label="Tracked SKUs"
+                            value={skus.length}
+                            icon={Package}
+                            description="Total unique color/variant combinations in this state"
+                            color="indigo"
+                        />
+                        <KPIItem
+                            label="Pending Saves"
+                            value={pendingSaves}
+                            icon={Save}
+                            description="SKUs modified in current session awaiting commit"
+                            color={pendingSaves > 0 ? 'amber' : 'slate'}
+                            trend={pendingSaves > 0 ? { value: 'Dirty', positive: false } : undefined}
+                        />
+                        <KPIItem
+                            label="Missing Prices"
+                            value={missingPrices}
+                            icon={Target}
+                            description="SKUs requiring ex-showroom price definition"
+                            color={missingPrices > 0 ? 'rose' : 'emerald'}
+                        />
+                        <KPIItem
+                            label="Active Region"
+                            value={activeState}
+                            icon={Activity}
+                            description="Currently selected region for regulatory computation"
+                            color="blue"
+                        />
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                    {/* Brand Performance Shortcut */}
+                    <a
+                        href={`/app/${tenantSlug}/dashboard/catalog/pricing/brands`}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-white/5 dark:hover:bg-white/10 text-[11px] font-black uppercase text-slate-500 transition-all border border-slate-100 dark:border-white/5"
+                    >
+                        <TrendingUp size={14} className="text-pink-500" />
+                        Configure Brand Performance Deltas
+                    </a>
+
+                    <div className="h-6 w-px bg-slate-200 dark:bg-white/10" />
+
+                    {/* Unsaved Changes Indicator */}
+                    <div className={`flex items-center gap-2 text-[10px] font-bold px-3 py-1.5 rounded-full transition-all ${hasUnsavedChanges ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' : 'opacity-0'}`}>
+                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                        UNSAVED CHANGES
+                    </div>
                 </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     const renderControlBar = () => (
         <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-3 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-sm">

@@ -7,12 +7,16 @@ export type AuditAction =
     | 'MEMBER_ROLE_UPDATED'
     | 'MEMBER_REMOVED'
     | 'SETTINGS_UPDATED'
-    | 'OWNERSHIP_TRANSFERRED';
+    | 'OWNERSHIP_TRANSFERRED'
+    | 'REGISTRATION_RULE_CREATED'
+    | 'REGISTRATION_RULE_UPDATED'
+    | 'REGISTRATION_RULE_DELETED';
 
 export type AuditEntityType =
     | 'INVITATION'
     | 'MEMBERSHIP'
-    | 'TENANT';
+    | 'TENANT'
+    | 'REGISTRATION_RULE';
 
 interface AuditLogParams {
     tenantId: string;

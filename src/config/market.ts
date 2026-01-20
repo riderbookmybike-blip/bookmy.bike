@@ -57,6 +57,6 @@ export const CATEGORIES: CategoryMetadata[] = [
 
 export const MARKET_METRICS = {
     avgSavings: '₹12k+',
-    deliveryTime: '48h',
+    deliveryTime: '4 hours',
     // totalModels is calculated dynamically in the component
 };

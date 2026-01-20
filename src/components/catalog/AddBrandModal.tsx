@@ -1,28 +1,32 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Loader2, ShoppingBag, Globe, ChevronRight } from 'lucide-react';
+import { X, Loader2, ShoppingBag, Globe, ChevronRight, Settings2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import AttributeInput from '@/components/catalog/AttributeInput';
 
 interface AddBrandModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSuccess: (brandName: string) => void;
     initialData?: any; // NEW for editing
+    template?: any; // NEW for template-driven specs
 }
 
-export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData }: AddBrandModalProps) {
+export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData, template }: AddBrandModalProps) {
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
         landingUrl: '',
         logo_svg: '', // Keep for backward compat
-        brand_logos: { original: '', dark: '', light: '' } as Record<string, string>
+        brand_logos: { original: '', dark: '', light: '' } as Record<string, string>,
+        specifications: {} as Record<string, any>
     });
 
     const [activeTheme, setActiveTheme] = useState<'original' | 'dark' | 'light'>('original');
 
     const [isAdaptive, setIsAdaptive] = useState(false);
+    const supabase = createClient();
 
     React.useEffect(() => {
         if (initialData) {
@@ -30,16 +34,17 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData 
                 name: initialData.name || '',
                 landingUrl: initialData.website_url || '',
                 logo_svg: initialData.logo_svg || '',
-                brand_logos: initialData.brand_logos || { original: initialData.logo_svg || '', dark: '', light: '' }
+                brand_logos: initialData.brand_logos || { original: initialData.logo_svg || '', dark: '', light: '' },
+                specifications: initialData.specifications || {}
             });
-            // FIX: Always default to raw colors for Original tab to prevent auto-dark conversion
             setIsAdaptive(false);
         } else {
             setFormData({
                 name: '',
                 landingUrl: '',
                 logo_svg: '',
-                brand_logos: { original: '', dark: '', light: '' }
+                brand_logos: { original: '', dark: '', light: '' },
+                specifications: {}
             });
             setIsAdaptive(false);
         }
@@ -51,6 +56,19 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData 
             const reader = new FileReader();
             reader.onload = (event) => {
                 let svgCode = event.target?.result as string;
+
+                // --- SVG Scaling Fix ---
+                // If viewBox is missing but width/height exist, inject viewBox
+                if (!svgCode.includes('viewBox') && svgCode.includes('width=') && svgCode.includes('height=')) {
+                    const wMatch = svgCode.match(/width="([^"]+)"/);
+                    const hMatch = svgCode.match(/height="([^"]+)"/);
+                    if (wMatch && hMatch) {
+                        const w = wMatch[1].replace('px', '');
+                        const h = hMatch[1].replace('px', '');
+                        svgCode = svgCode.replace('<svg', `<svg viewBox="0 0 ${w} ${h}"`);
+                    }
+                }
+                // --- Adaptive Logic ---
                 if (isAdaptive) {
                     svgCode = svgCode
                         .replace(/fill="[^"]*"/g, 'fill="currentColor"')
@@ -80,7 +98,7 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData 
         setLoading(true);
 
         try {
-            const supabase = createClient();
+            let brandId = initialData?.id;
 
             if (initialData?.id) {
                 const { error } = await supabase
@@ -89,20 +107,23 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData 
                         name: formData.name,
                         website_url: formData.landingUrl,
                         logo_svg: formData.brand_logos.original, // Sync original
-                        brand_logos: formData.brand_logos
+                        brand_logos: formData.brand_logos,
+                        specifications: formData.specifications
                     })
                     .eq('id', initialData.id);
                 if (error) throw error;
             } else {
-                const { error } = await supabase.from('brands').insert([{
+                const { data, error } = await supabase.from('brands').insert([{
                     name: formData.name,
                     slug: formData.name.toLowerCase().replace(/\s+/g, '-'),
                     website_url: formData.landingUrl,
                     logo_svg: formData.brand_logos.original,
                     brand_logos: formData.brand_logos,
+                    specifications: formData.specifications,
                     is_active: true
-                }]);
+                }]).select('id').single();
                 if (error) throw error;
+                if (data) brandId = data.id;
             }
 
             onSuccess(formData.name);
@@ -111,7 +132,8 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData 
                 name: '',
                 landingUrl: '',
                 logo_svg: '',
-                brand_logos: { original: '', dark: '', light: '' }
+                brand_logos: { original: '', dark: '', 'light': '' },
+                specifications: {}
             });
 
         } catch (error: any) {
@@ -171,6 +193,34 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData 
                                 />
                             </div>
                         </div>
+
+                        {/* Template-driven Brand Specifications */}
+                        {template?.attribute_config?.brand?.length > 0 && (
+                            <div className="space-y-6 pt-6 border-t border-slate-100 dark:border-white/5">
+                                <div className="flex items-center gap-4 ml-4">
+                                    <div className="w-8 h-8 rounded-xl bg-indigo-600/10 flex items-center justify-center">
+                                        <Settings2 className="text-indigo-600" size={16} />
+                                    </div>
+                                    <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest italic">
+                                        Manufacturer Specifications
+                                    </h3>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-6 px-4">
+                                    {template.attribute_config.brand.map((attr: any) => (
+                                        <AttributeInput
+                                            key={attr.name}
+                                            attr={attr}
+                                            value={formData.specifications[attr.name]}
+                                            onChange={(val) => setFormData(prev => ({
+                                                ...prev,
+                                                specifications: { ...prev.specifications, [attr.name]: val }
+                                            }))}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         <div className="space-y-4">
                             <div className="flex items-center justify-between ml-4">
@@ -233,9 +283,12 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData 
                                     {formData.brand_logos[activeTheme] ? (
                                         <>
                                             <div
-                                                className={`w-full h-full flex items-center justify-center [&>svg]:max-w-full [&>svg]:max-h-full ${isAdaptive ? '[&>svg]:fill-current' : ''} ${activeTheme === 'dark' ? 'text-white' :
-                                                    activeTheme === 'light' ? 'text-slate-900' :
-                                                        'text-slate-900 dark:text-white'
+                                                className={`w-full h-full flex items-center justify-center 
+                                                    [&>svg]:w-full [&>svg]:h-full [&>svg]:max-w-full [&>svg]:max-h-full 
+                                                    ${isAdaptive ? '[&>svg]:fill-current' : ''} 
+                                                    ${activeTheme === 'dark' ? 'text-white' :
+                                                        activeTheme === 'light' ? 'text-slate-900' :
+                                                            'text-slate-900 dark:text-white'
                                                     }`}
                                                 dangerouslySetInnerHTML={{ __html: formData.brand_logos[activeTheme] }}
                                             />

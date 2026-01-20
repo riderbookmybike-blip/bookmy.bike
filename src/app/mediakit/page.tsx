@@ -185,7 +185,7 @@ export default function MediaKitPage() {
                                 usage="High-contrast mark for neutral white or bright surfaces."
                                 onDownload={() => downloadSVG('full', 'black')}
                             >
-                                <div className="h-64 flex items-center justify-center bg-white rounded-3xl mb-8 group-hover:scale-[1.05] transition-transform duration-700 shadow-xl shadow-black/5">
+                                <div className="h-64 flex items-center justify-center bg-white dark:bg-white rounded-3xl mb-8 group-hover:scale-[1.05] transition-transform duration-700 shadow-xl shadow-black/5">
                                     <Logo monochrome="black" size={48} />
                                 </div>
                             </AssetCard>

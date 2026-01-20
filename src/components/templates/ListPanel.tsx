@@ -18,7 +18,7 @@ interface ColumnDef {
 }
 
 interface ListPanelProps {
-    title: string;
+    title: React.ReactNode;
     columns: ColumnDef[];
     data?: any[];
     actionLabel?: string;
@@ -185,7 +185,7 @@ export default function ListPanel({
                             >
                                 <Trash2 size={14} /> Delete
                             </button>
-                        ) : (
+                        ) : onActionClick && (
                             <button
                                 onClick={onActionClick}
                                 className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:shadow-2xl hover:shadow-indigo-500/40 transition-all duration-300 border border-white/10"

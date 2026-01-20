@@ -10,8 +10,14 @@ export async function POST(req: NextRequest) {
 
         const authKey = process.env.MSG91_AUTH_KEY;
         const templateId = process.env.MSG91_TEMPLATE_ID;
+        const isProduction = process.env.NODE_ENV === 'production';
 
         if (!authKey || !templateId) {
+            if (isProduction) {
+                console.error('MSG91 Configuration Missing.');
+                return NextResponse.json({ success: false, message: 'OTP service unavailable' }, { status: 500 });
+            }
+
             console.warn('MSG91 Configuration Missing. Using developer fallback.');
             // Fail-safe for local development - allow the user to proceed with a mock OTP
             return NextResponse.json({

@@ -36,6 +36,8 @@ import MSG91Initializer from '@/components/auth/MSG91Initializer';
 
 import { Suspense } from 'react';
 import AnalyticsProvider from '@/components/analytics/AnalyticsProvider';
+import AnalyticsScripts from '@/components/analytics/AnalyticsScripts';
+import { Toaster } from 'sonner';
 
 export default function RootLayout({
     children,
@@ -48,6 +50,7 @@ export default function RootLayout({
                 suppressHydrationWarning
                 className={`${inter.variable} ${jetbrainsMono.variable} antialiased font-sans bg-[var(--background)] text-[var(--foreground)]`}
             >
+                <AnalyticsScripts />
                 <ThemeProvider>
                     <TenantProvider>
                         <Suspense fallback={null}>
@@ -55,6 +58,7 @@ export default function RootLayout({
                                 <MSG91Initializer />
                                 {/* <FaviconProvider /> */}
                                 {children}
+                                <Toaster position="top-center" richColors />
                             </AnalyticsProvider>
                         </Suspense>
                     </TenantProvider>

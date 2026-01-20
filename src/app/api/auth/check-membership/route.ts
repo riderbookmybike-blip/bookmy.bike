@@ -48,22 +48,50 @@ export async function POST(request: NextRequest) {
         }
 
         // 1. Find User by Phone or Email
-        const {
-            data: { users },
-            error: listError,
-        } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-        if (listError) throw listError;
+        let user: any = null;
 
-        const user = users.find(u => {
-            const hasEmail = email && u.email?.toLowerCase() === email.toLowerCase();
-            const hasPhone =
-                phone &&
-                (u.phone === formattedPhone ||
-                    u.phone === `+${formattedPhone}` ||
-                    u.user_metadata?.phone === formattedPhone ||
-                    u.user_metadata?.phone === phone);
-            return hasEmail || hasPhone;
-        });
+        // NEW: Try to find in profiles first (more reliable for 21k migrated users)
+        const { data: profileMatch } = await supabaseAdmin
+            .from('profiles')
+            .select('id, email, phone')
+            .or(`phone.eq.${phone},phone.eq.${formattedPhone},phone.eq.+${formattedPhone}${email ? `,email.eq.${email}` : ''}`)
+            .maybeSingle();
+
+        if (profileMatch) {
+            console.log('[CheckMembership] Profile Match Found:', profileMatch.id);
+            // Even if profile exists, we check if they have an Auth account
+            const { data: { user: authUser } } = await supabaseAdmin.auth.admin.getUserById(profileMatch.id);
+            if (authUser) {
+                user = authUser;
+            } else {
+                // Migrated user but no Auth yet
+                return NextResponse.json({
+                    success: true,
+                    isMember: true, // They are technically a member if they have a profile
+                    isNew: false,
+                    isMigrated: true,
+                    userId: profileMatch.id,
+                    message: 'Pre-registered account found. Verification required.',
+                });
+            }
+        }
+
+        // Fallback to searching Auth directly if profile check didn't resolve it (Legacy/New users)
+        if (!user) {
+            const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+            if (listError) throw listError;
+
+            user = users.find(u => {
+                const hasEmail = email && u.email?.toLowerCase() === email.toLowerCase();
+                const hasPhone =
+                    phone &&
+                    (u.phone === formattedPhone ||
+                        u.phone === `+${formattedPhone}` ||
+                        u.user_metadata?.phone === formattedPhone ||
+                        u.user_metadata?.phone === phone);
+                return hasEmail || hasPhone;
+            });
+        }
 
         if (!user) {
             return NextResponse.json({

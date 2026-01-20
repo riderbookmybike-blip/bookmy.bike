@@ -29,23 +29,23 @@ export default function ActivityTimeline({ items }: ActivityTimelineProps) {
     const activities = items && items.length > 0 ? items : MOCK_ACTIVITIES;
 
     return (
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 h-full overflow-y-auto">
-            <h3 className="text-lg font-bold text-gray-900 mb-6">Activity Timeline</h3>
-            <div className="relative border-l border-gray-200 ml-3 space-y-8">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-sm border border-gray-100 dark:border-white/10 h-full overflow-y-auto">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Activity Timeline</h3>
+            <div className="relative border-l border-gray-200 dark:border-white/10 ml-3 space-y-8">
                 {activities.map((activity) => {
                     const Icon = activity.icon || Circle;
                     return (
                         <div key={activity.id} className="relative pl-8">
                             {/* Connector Line Dot */}
-                            <div className={`absolute -left-3 top-1 p-1 rounded-full border-2 border-white shadow-sm ${activity.color}`}>
+                            <div className={`absolute -left-3 top-1 p-1 rounded-full border-2 border-white dark:border-slate-900 shadow-sm ${activity.color}`}>
                                 <Icon size={14} />
                             </div>
 
                             <div className="flex flex-col">
-                                <span className="text-sm font-semibold text-gray-900">
-                                    {activity.user} <span className="font-normal text-gray-500">{activity.action}</span>
+                                <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                                    {activity.user} <span className="font-normal text-gray-500 dark:text-slate-400">{activity.action}</span>
                                 </span>
-                                <span className="text-xs text-gray-400 mt-1">{activity.time}</span>
+                                <span className="text-xs text-gray-400 dark:text-slate-500 mt-1">{activity.time}</span>
                             </div>
                         </div>
                     );
@@ -53,8 +53,8 @@ export default function ActivityTimeline({ items }: ActivityTimelineProps) {
 
                 {/* Start Item */}
                 <div className="relative pl-8 opactiy-50">
-                    <div className="absolute -left-1.5 top-1 h-3 w-3 rounded-full bg-gray-200 border-2 border-white"></div>
-                    <span className="text-xs text-gray-400">Record created on Jan 1, 2025</span>
+                    <div className="absolute -left-1.5 top-1 h-3 w-3 rounded-full bg-gray-200 dark:bg-slate-700 border-2 border-white dark:border-slate-900"></div>
+                    <span className="text-xs text-gray-400 dark:text-slate-500">Record created on Jan 1, 2025</span>
                 </div>
             </div>
         </div>

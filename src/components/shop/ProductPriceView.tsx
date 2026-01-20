@@ -29,43 +29,43 @@ export default function ProductPriceView({ product, rtoCode = 'DL-01' }: Product
     }, [product, rtoCode]);
 
     if (loading) {
-        return <div className="animate-pulse h-24 bg-gray-100 rounded-lg w-full"></div>;
+        return <div className="animate-pulse h-24 bg-gray-100 dark:bg-slate-800 rounded-lg w-full"></div>;
     }
 
     if (!snapshot) return null;
 
     return (
-        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-            <h3 className="text-xs uppercase font-bold text-gray-500 mb-2">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-white/10 shadow-sm">
+            <h3 className="text-xs uppercase font-bold text-gray-500 dark:text-slate-400 mb-2">
                 On-Road Price Estimate ({snapshot.rtoCode})
             </h3>
 
             <div className="flex items-baseline gap-2 mb-4">
-                <span className="text-2xl font-bold text-gray-900">
+                <span className="text-2xl font-bold text-gray-900 dark:text-white">
                     ₹{snapshot.totalOnRoad.toLocaleString()}
                 </span>
-                <span className="text-xs text-gray-500 font-mono">
+                <span className="text-xs text-gray-500 dark:text-slate-400 font-mono">
                     {snapshot.ruleVersion}
                 </span>
             </div>
 
             {/* Breakdown - Read Only */}
-            <div className="space-y-2 text-sm border-t border-gray-100 pt-3">
+            <div className="space-y-2 text-sm border-t border-gray-100 dark:border-white/10 pt-3">
                 <div className="flex justify-between">
-                    <span className="text-gray-600">Ex-Showroom</span>
-                    <span className="font-medium">₹{snapshot.exShowroom.toLocaleString()}</span>
+                    <span className="text-gray-600 dark:text-slate-400">Ex-Showroom</span>
+                    <span className="font-medium text-gray-900 dark:text-white">₹{snapshot.exShowroom.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
-                    <span className="text-gray-600">RTO & Registration</span>
-                    <span className="font-medium">₹{snapshot.rtoCharges.toLocaleString()}</span>
+                    <span className="text-gray-600 dark:text-slate-400">RTO & Registration</span>
+                    <span className="font-medium text-gray-900 dark:text-white">₹{snapshot.rtoCharges.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
-                    <span className="text-gray-600">Insurance (1+5yr)</span>
-                    <span className="font-medium">₹{snapshot.insuranceBase.toLocaleString()}</span>
+                    <span className="text-gray-600 dark:text-slate-400">Insurance (1+5yr)</span>
+                    <span className="font-medium text-gray-900 dark:text-white">₹{snapshot.insuranceBase.toLocaleString()}</span>
                 </div>
             </div>
 
-            <div className="mt-3 pt-2 border-t border-gray-100 text-[10px] text-gray-400 text-center">
+            <div className="mt-3 pt-2 border-t border-gray-100 dark:border-white/10 text-[10px] text-gray-400 dark:text-slate-500 text-center">
                 Snapshot ID: {snapshot.id} • {snapshot.calculatedAt.split('T')[0]}
             </div>
         </div>

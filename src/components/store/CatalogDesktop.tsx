@@ -6,17 +6,16 @@ import {
     Zap,
     Search,
     Heart,
-    LayoutGrid,
-    List,
     Star,
     StarHalf,
     X,
     SlidersHorizontal,
     CircleHelp,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import Link from 'next/link';
-import { slugify } from '@/utils/slugs';
-import { BRANDS as brands } from '@/config/market';
+import { buildProductUrl } from '@/lib/utils/urlHelper';
+import { BRANDS as defaultBrands } from '@/config/market';
 import type { useCatalogFilters } from '@/hooks/useCatalogFilters';
 import { getStableReviewCount } from '@/utils/vehicleUtils';
 import type { ProductVariant } from '@/types/productMaster';
@@ -56,14 +55,52 @@ export const ProductCard = ({
     isTv?: boolean;
 }) => {
     const [isSaved, setIsSaved] = useState(false);
+    const [serviceability, setServiceability] = useState<{ status: 'loading' | 'serviceable' | 'unserviceable' | 'unset'; location?: string }>({ status: 'loading' });
+
+    React.useEffect(() => {
+        const checkServiceability = () => {
+            if (typeof window === 'undefined') return;
+            const cached = localStorage.getItem('bkmb_user_pincode');
+            if (!cached) {
+                setServiceability({ status: 'unset' });
+                return;
+            }
+            try {
+                const data = JSON.parse(cached);
+                // Serviceable prefixes (Mock)
+                const isServiceable = ['110001', '400001', '560001', '600001', '700001', '500001']
+                    .some(p => data.pincode?.startsWith(p.slice(0, 3)));
+
+                setServiceability({
+                    status: isServiceable ? 'serviceable' : 'unserviceable',
+                    location: data.city || data.pincode
+                });
+            } catch {
+                setServiceability({ status: 'unset' });
+            }
+        };
+        checkServiceability();
+    }, []);
+
     const basePrice = v.price?.offerPrice || v.price?.onRoad || v.price?.exShowroom || 0;
     const emiValue = Math.max(0, Math.round((basePrice - downpayment) * 0.035));
+    const isUnserviceable = serviceability.status === 'unserviceable';
+
+    const handleGetQuoteClick = (e: React.MouseEvent) => {
+        if (isUnserviceable) {
+            e.preventDefault();
+            toast.error(`Your area ${serviceability.location || ''} is not serviceable`, {
+                description: "We will update you once we are live in your area.",
+                duration: 5000,
+            });
+        }
+    };
 
     if (viewMode === 'list') {
         return (
             <div
                 key={v.id}
-                className="group bg-white dark:bg-slate-900/40 dark:backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden flex shadow-sm hover:shadow-2xl dark:hover:shadow-brand-primary/5 transition-all duration-500 min-h-[22rem] dark:hover:border-white/20"
+                className="group bg-white dark:bg-[#0f1115] dark:backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden flex shadow-sm hover:shadow-2xl dark:hover:shadow-brand-primary/5 transition-all duration-500 min-h-[22rem] dark:hover:border-white/20"
             >
                 {/* Image Section - Wider */}
                 <div className="w-[38%] bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center relative p-8 shrink-0 border-r border-slate-100 dark:border-white/5 overflow-hidden group/card">
@@ -189,12 +226,25 @@ export const ProductCard = ({
                             </div>
                         </div>
                         <div className="flex items-center gap-6">
-                            <Link
-                                href={`/store/${slugify(v.make)}/${slugify(v.model)}/${slugify(v.variant)}`}
-                                className="px-10 py-4 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(244,176,0,0.3)] hover:shadow-[0_0_30px_rgba(244,176,0,0.5)] hover:-translate-y-1 transition-all"
-                            >
-                                GET QUOTE
-                            </Link>
+                            {isUnserviceable ? (
+                                <button
+                                    onClick={handleGetQuoteClick}
+                                    className="px-10 py-4 bg-slate-200 dark:bg-slate-800 text-slate-400 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] cursor-not-allowed"
+                                >
+                                    Get Quote
+                                </button>
+                            ) : (
+                                <Link
+                                    href={buildProductUrl({
+                                        make: v.make,
+                                        model: v.model,
+                                        variant: v.variant
+                                    }).url}
+                                    className="px-10 py-4 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(244,176,0,0.3)] hover:shadow-[0_0_30px_rgba(244,176,0,0.5)] hover:-translate-y-1 transition-all"
+                                >
+                                    GET QUOTE
+                                </Link>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -205,11 +255,12 @@ export const ProductCard = ({
     return (
         <div
             key={v.id}
-            className={`group bg-white dark:bg-slate-900/40 dark:backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden flex flex-col shadow-sm hover:shadow-2xl dark:hover:shadow-brand-primary/5 transition-all duration-500 dark:hover:border-white/20 ${isTv ? 'min-h-[420px]' : 'min-h-[480px] h-sm:min-h-[400px] h-md:min-h-[440px]'}`}
+            className={`group bg-white dark:bg-[#0f1115] dark:backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden flex flex-col shadow-sm hover:shadow-2xl dark:hover:shadow-brand-primary/5 transition-all duration-500 dark:hover:border-white/20 ${isTv ? 'min-h-[420px]' : 'min-h-[480px] h-sm:min-h-[400px] h-md:min-h-[440px]'}`}
         >
             <div
                 className={`${isTv ? 'h-[205px]' : 'h-[220px] h-sm:h-[160px] h-md:h-[180px]'} bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center relative p-4 border-b border-slate-100 dark:border-white/5 overflow-hidden group/card`}
             >
+                {/* ... Image Section content ... */}
                 <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-white/10 dark:to-black/30 z-0" />
 
                 <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
@@ -277,14 +328,26 @@ export const ProductCard = ({
                             </div>
                         )}
                         {!isTv && v.availableColors && v.availableColors.length > 0 && (
-                            <div className="flex -space-x-1.5">
+                            <div className="flex items-center -space-x-1.5 translate-y-0.5">
                                 {v.availableColors.slice(0, 3).map((c, i) => (
                                     <div
                                         key={i}
-                                        className="w-3.5 h-3.5 rounded-full border border-white dark:border-slate-900 shadow-sm"
-                                        style={{ backgroundColor: typeof c === 'string' ? c : c.hexCode }}
+                                        className="w-4 h-4 rounded-full border-2 border-white dark:border-slate-900 shadow-sm relative group/swatch"
+                                        style={{
+                                            background: c.secondaryHexCode
+                                                ? `linear-gradient(135deg, ${c.hexCode} 50%, ${c.secondaryHexCode} 50%)`
+                                                : c.hexCode
+                                        }}
+                                        title={c.name}
                                     />
                                 ))}
+                                {v.availableColors.length > 3 && (
+                                    <div className="w-4 h-4 rounded-full bg-slate-100 dark:bg-white/10 border-2 border-white dark:border-slate-900 flex items-center justify-center shadow-sm z-0">
+                                        <span className="text-[7px] font-black text-slate-500 dark:text-slate-300">
+                                            +{v.availableColors.length - 3}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -300,7 +363,7 @@ export const ProductCard = ({
                 >
                     <div className="space-y-0.5">
                         <p className="text-[8px] font-bold text-slate-400 dark:text-slate-300 uppercase tracking-widest leading-none">
-                            Price
+                            On-Road Price
                         </p>
                         <span
                             className={`${isTv ? 'text-base' : 'text-lg'} font-black text-slate-900 dark:text-white block tracking-tight`}
@@ -310,64 +373,36 @@ export const ProductCard = ({
                         <div className="relative group/tooltip w-fit cursor-help">
                             <div className="flex items-center gap-1">
                                 <p className="text-[8px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                                    On-Road
+                                    All-Inclusive
                                 </p>
-                                {(() => {
-                                    if (typeof window === 'undefined')
-                                        return <CircleHelp size={10} className="text-slate-400" />;
-                                    const cached = localStorage.getItem('bkmb_user_pincode');
-                                    let colorClass = 'text-slate-400';
-                                    if (cached) {
-                                        try {
-                                            const data = JSON.parse(cached);
-                                            const isServiceable = [
-                                                '110001',
-                                                '400001',
-                                                '560001',
-                                                '600001',
-                                                '700001',
-                                                '500001',
-                                            ].some(p => data.pincode?.startsWith(p.slice(0, 3)));
-                                            colorClass = isServiceable
-                                                ? 'text-emerald-500 fill-emerald-500/20'
-                                                : 'text-red-500 fill-red-500/20';
-                                        } catch {}
+                                <CircleHelp
+                                    size={10}
+                                    className={
+                                        serviceability.status === 'serviceable'
+                                            ? 'text-emerald-500 fill-emerald-500/20'
+                                            : serviceability.status === 'unserviceable'
+                                                ? 'text-red-500 fill-red-500/20'
+                                                : 'text-slate-400'
                                     }
-                                    return <CircleHelp size={10} className={colorClass} />;
-                                })()}
+                                />
                             </div>
                             {/* Serviceability Tooltip */}
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[9px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-xl">
                                 {(() => {
-                                    if (typeof window === 'undefined') return 'Checking...';
-                                    const cached = localStorage.getItem('bkmb_user_pincode');
-                                    if (!cached) return 'Set Location';
+                                    if (serviceability.status === 'loading') return 'Checking...';
+                                    if (serviceability.status === 'unset') return 'Maharashtra';
 
-                                    try {
-                                        const data = JSON.parse(cached);
-                                        const isServiceable = [
-                                            '110001',
-                                            '400001',
-                                            '560001',
-                                            '600001',
-                                            '700001',
-                                            '500001',
-                                        ].some(p => data.pincode?.startsWith(p.slice(0, 3))); // Simple mock check
-
-                                        return (
-                                            <div className="flex items-center gap-2">
-                                                <span>{data.city || data.pincode}</span>
-                                                <div
-                                                    className={`w-2 h-2 rounded-full ${isServiceable ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-red-500 shadow-[0_0_8px_#ef4444]'}`}
-                                                />
-                                                <span className={isServiceable ? 'text-emerald-400' : 'text-red-400'}>
-                                                    {isServiceable ? 'Serviceable' : 'Not Available'}
-                                                </span>
-                                            </div>
-                                        );
-                                    } catch {
-                                        return 'Invalid Location';
-                                    }
+                                    return (
+                                        <div className="flex items-center gap-2">
+                                            <span>{serviceability.location || 'Your Location'}</span>
+                                            <div
+                                                className={`w-2 h-2 rounded-full ${serviceability.status === 'serviceable' ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-red-500 shadow-[0_0_8px_#ef4444]'}`}
+                                            />
+                                            <span className={serviceability.status === 'serviceable' ? 'text-emerald-400' : 'text-red-400'}>
+                                                {serviceability.status === 'serviceable' ? 'Serviceable' : 'Not Available'}
+                                            </span>
+                                        </div>
+                                    );
                                 })()}
                                 {/* Arrow */}
                                 <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-slate-900 dark:border-t-white" />
@@ -390,12 +425,25 @@ export const ProductCard = ({
                 </div>
 
                 <div className={`grid grid-cols-1 ${isTv ? 'gap-2' : 'gap-3'} relative z-10 ${isTv ? 'mt-1' : 'mt-2'}`}>
-                    <Link
-                        href={`/store/${slugify(v.make)}/${slugify(v.model)}/${slugify(v.variant)}`}
-                        className={`w-full ${isTv ? 'py-3' : 'py-4'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(244,176,0,0.3)] hover:shadow-[0_0_30px_rgba(244,176,0,0.5)] transition-all`}
-                    >
-                        GET QUOTE
-                    </Link>
+                    {isUnserviceable ? (
+                        <button
+                            onClick={handleGetQuoteClick}
+                            className={`w-full ${isTv ? 'py-3' : 'py-4'} bg-slate-200 dark:bg-slate-800 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 cursor-not-allowed`}
+                        >
+                            GET QUOTE
+                        </button>
+                    ) : (
+                        <Link
+                            href={buildProductUrl({
+                                make: v.make,
+                                model: v.model,
+                                variant: v.variant
+                            }).url}
+                            className={`w-full ${isTv ? 'py-3' : 'py-4'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(244,176,0,0.3)] hover:shadow-[0_0_30px_rgba(244,176,0,0.5)] transition-all`}
+                        >
+                            GET QUOTE
+                        </Link>
+                    )}
                     {!isTv && (
                         <div className="flex items-center justify-center gap-2 py-1">
                             <span className="text-xs font-black text-slate-900 dark:text-white">
@@ -425,6 +473,8 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
         setSelectedBrakes,
         selectedWheels,
         setSelectedWheels,
+        selectedBodyTypes,
+        setSelectedBodyTypes,
         selectedSeatHeight,
         setSelectedSeatHeight,
         selectedFinishes,
@@ -437,10 +487,13 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
         setMaxPrice,
         maxEMI,
         setMaxEMI,
+        availableMakes,
         filteredVehicles,
         toggleFilter,
         clearAll,
     } = filters;
+
+    const makeOptions = (availableMakes && availableMakes.length > 0) ? availableMakes : defaultBrands;
 
     const isTv = variant === 'tv';
 
@@ -448,11 +501,15 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [isEmiOpen, setIsEmiOpen] = useState(true);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const activeCategory = selectedBodyTypes.length === 1 ? selectedBodyTypes[0] : 'ALL';
 
     // Calculate active filter count
     const activeFilterCount = useMemo(() => {
         let count = 0;
-        if (selectedMakes.length < brands.length) count++;
+        const selectedMakeSet = new Set(selectedMakes.map(m => m.toUpperCase()));
+        const isAllMakesSelected = makeOptions.length === 0
+            || makeOptions.every(m => selectedMakeSet.has(m.toUpperCase()));
+        if (!isAllMakesSelected) count++;
         if (selectedCC.length > 0) count++;
         if (selectedBrakes.length > 0) count++;
         if (selectedWheels.length > 0) count++;
@@ -462,7 +519,8 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
         if (maxEMI < 20000) count++;
         return count;
     }, [
-        selectedMakes.length,
+        selectedMakes,
+        makeOptions,
         selectedCC.length,
         selectedBrakes.length,
         selectedWheels.length,
@@ -547,11 +605,10 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
                                 <button
                                     key={opt}
                                     onClick={() => onToggle(opt)}
-                                    className={`group relative flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${
-                                        selectedValues.includes(opt)
-                                            ? 'bg-brand-primary/10 border-brand-primary/50 shadow-sm'
-                                            : 'bg-white dark:bg-white/[0.02] border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/20'
-                                    }`}
+                                    className={`group relative flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${selectedValues.includes(opt)
+                                        ? 'bg-brand-primary/10 border-brand-primary/50 shadow-sm'
+                                        : 'bg-white dark:bg-white/[0.02] border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/20'
+                                        }`}
                                 >
                                     <span
                                         className={`text-[10px] font-black uppercase tracking-widest italic transition-colors ${selectedValues.includes(opt) ? 'text-slate-900 dark:text-brand-primary' : 'text-slate-500 dark:text-slate-300 group-hover:text-slate-800 dark:hover:text-slate-100'}`}
@@ -594,88 +651,63 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
     }, [filteredVehicles, sortBy, downpayment]);
 
     return (
-        <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-black transition-colors duration-500 font-sans">
+        <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-[#0b0d10] transition-colors duration-500 font-sans">
             {/* Main Content Area - Visual Rest (No Container Box) */}
-            <main className="flex-1 mx-auto w-full max-w-[1440px] px-6 md:px-12 lg:px-20 py-12">
+            <main className="flex-1 mx-auto w-full max-w-[1440px] px-6 md:px-12 lg:px-20 pt-24 pb-16">
                 {/* Header Section - Aligned with Global Header */}
-                <header className="mb-12 px-2">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div className="space-y-2">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Catalog</p>
-                            <h1 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tighter italic">
-                                {results.length} Results
-                            </h1>
-                        </div>
-
-                        <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-1 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full p-1.5 shadow-sm">
-                                {viewMode === 'grid' && (
-                                    <button
-                                        onClick={() => setIsFilterOpen(true)}
-                                        className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
-                                            activeFilterCount > 0
-                                                ? 'bg-[#F4B000] text-black shadow-lg shadow-brand-primary/20'
-                                                : 'bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-white/20'
-                                        }`}
-                                    >
-                                        <SlidersHorizontal size={14} />
-                                        FILTERS
-                                        {activeFilterCount > 0 && (
-                                            <span className="flex items-center justify-center bg-black text-white w-4 h-4 rounded-full text-[8px]">
-                                                {activeFilterCount}
-                                            </span>
-                                        )}
-                                    </button>
+                <header className="mb-6 px-2">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                        <div className="flex flex-wrap items-center gap-4">
+                            <button
+                                onClick={() => setIsFilterOpen(true)}
+                                className="flex items-center gap-3 px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-black rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all"
+                            >
+                                <SlidersHorizontal size={14} strokeWidth={2.5} /> CUSTOMIZE
+                                {activeFilterCount > 0 && (
+                                    <span className="flex items-center justify-center bg-[#F4B000] text-black w-5 h-5 rounded-full text-[8px]">
+                                        {activeFilterCount}
+                                    </span>
                                 )}
-                                <div className="w-[1px] h-6 bg-slate-200 dark:bg-white/10 mx-1" />
-                                {(['popular', 'price', 'emi'] as const).map(option => (
+                            </button>
+
+                            <div className="hidden lg:block h-6 w-px bg-slate-200 dark:bg-white/10" />
+
+                            <div className="flex flex-wrap gap-2">
+                                {(['MOTORCYCLE', 'SCOOTER', 'MOPED'] as const).map(option => (
                                     <button
                                         key={option}
-                                        onClick={() => setSortBy(option)}
-                                        className={`px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all border border-transparent ${
-                                            sortBy === option
-                                                ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-lg'
-                                                : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                                        }`}
+                                        onClick={() =>
+                                            setSelectedBodyTypes(activeCategory === option ? [] : [option])
+                                        }
+                                        className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeCategory === option
+                                            ? 'bg-[#FFD700] text-black shadow-lg shadow-[#FFD700]/20 scale-105'
+                                            : 'bg-slate-900 dark:bg-white text-white dark:text-black hover:scale-105 shadow-md shadow-slate-900/10 dark:shadow-white/5'
+                                            }`}
                                     >
-                                        {option === 'popular' ? 'Popular' : option === 'price' ? 'Price' : 'EMI'}
+                                        {option}
                                     </button>
                                 ))}
                             </div>
+                        </div>
 
-                            <div className="flex items-center gap-1.5 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full p-1.5 shadow-sm">
-                                <button
-                                    onClick={() => setViewMode('grid')}
-                                    className={`p-2.5 rounded-full transition-all ${
-                                        viewMode === 'grid'
-                                            ? 'bg-slate-900 text-white dark:bg-white dark:text-black shadow-lg'
-                                            : 'text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                                    }`}
-                                >
-                                    <LayoutGrid size={16} />
-                                </button>
-                                <button
-                                    onClick={() => setViewMode('list')}
-                                    className={`p-2.5 rounded-full transition-all ${
-                                        viewMode === 'list'
-                                            ? 'bg-slate-900 text-white dark:bg-white dark:text-black shadow-lg'
-                                            : 'text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                                    }`}
-                                >
-                                    <List size={16} />
-                                </button>
-                            </div>
+                        <div className="flex items-center justify-between lg:justify-end gap-6">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
+                                Catalog
+                            </p>
+                            <h1 className="text-3xl md:text-4xl font-black italic text-slate-900 dark:text-white tracking-widest leading-none">
+                                {results.length} {results.length === 1 ? 'VEHICLE' : 'VEHICLES'}
+                            </h1>
                         </div>
                     </div>
                 </header>
 
                 <div
-                    className={`flex gap-8 xl:gap-20 transition-all duration-700 ${viewMode === 'grid' ? 'max-w-full' : ''}`}
+                    className={`flex gap-6 xl:gap-16 transition-all duration-700 ${viewMode === 'grid' ? 'max-w-full' : ''}`}
                 >
                     {/* Sidebar Filter - Left Column (Only List View) */}
                     {viewMode === 'list' && (
-                        <aside className="hidden xl:block w-80 flex-shrink-0 space-y-8 sticky top-28 self-start pt-4 transition-all animate-in fade-in slide-in-from-left-4">
-                            <div className="flex flex-col gap-10 p-8 bg-white/60 dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/5 rounded-[3rem] backdrop-blur-3xl shadow-2xl">
+                        <aside className="hidden xl:block w-80 flex-shrink-0 space-y-6 sticky top-24 self-start pt-2 transition-all animate-in fade-in slide-in-from-left-4">
+                            <div className="flex flex-col gap-8 p-6 bg-white/60 dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/5 rounded-[3rem] backdrop-blur-3xl shadow-2xl">
                                 {/* EMI Calculator Accordion */}
                                 <div className="space-y-4">
                                     <button
@@ -693,7 +725,7 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
                                     </button>
 
                                     {isEmiOpen && (
-                                        <div className="space-y-8 p-6 bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-3xl animate-in fade-in slide-in-from-top-2">
+                                    <div className="space-y-6 p-5 bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-3xl animate-in fade-in slide-in-from-top-2">
                                             <div className="space-y-4">
                                                 <div className="flex justify-between items-end">
                                                     <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
@@ -772,11 +804,10 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
                                                             <button
                                                                 key={t}
                                                                 onClick={() => setTenure(t)}
-                                                                className={`py-3 rounded-2xl text-[10px] font-black transition-all duration-300 ${
-                                                                    tenure === t
-                                                                        ? 'bg-slate-900 dark:bg-brand-primary text-white dark:text-black shadow-lg scale-105 ring-2 ring-brand-primary/20'
-                                                                        : 'bg-white/50 dark:bg-slate-800/30 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-white dark:hover:bg-slate-800 shadow-sm'
-                                                                }`}
+                                                                className={`py-3 rounded-2xl text-[10px] font-black transition-all duration-300 ${tenure === t
+                                                                    ? 'bg-slate-900 dark:bg-brand-primary text-white dark:text-black shadow-lg scale-105 ring-2 ring-brand-primary/20'
+                                                                    : 'bg-white/50 dark:bg-slate-800/30 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-white dark:hover:bg-slate-800 shadow-sm'
+                                                                    }`}
                                                             >
                                                                 {t.toString().padStart(2, '0')}
                                                             </button>
@@ -786,7 +817,7 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
                                             </div>
 
                                             {/* Budget & EMI Filters nested in Calculator */}
-                                            <div className="space-y-6 pt-6 border-t border-slate-200/50 dark:border-white/5">
+                                <div className="space-y-6 pt-4 border-t border-slate-200/50 dark:border-white/5">
                                                 <div className="space-y-4">
                                                     <div className="flex justify-between items-end">
                                                         <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
@@ -855,18 +886,18 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
                                         placeholder="FIND MACHINE..."
                                         value={searchQuery}
                                         onChange={e => setSearchQuery(e.target.value)}
-                                        className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl py-4.5 pl-14 pr-4 text-[11px] font-black tracking-widest uppercase focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600 shadow-sm"
+                                        className="w-full bg-white dark:bg-[#0f1115] border border-slate-200 dark:border-white/10 rounded-2xl py-4.5 pl-14 pr-4 text-[11px] font-black tracking-widest uppercase focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600 shadow-sm"
                                     />
                                 </div>
                                 {/* Filter Groups in Sidebar (List View) */}
-                                <div className="space-y-8">
+                                <div className="space-y-6">
                                     <FilterGroup
                                         title="Quick Selection"
                                         options={['HONDA', 'TVS', 'BAJAJ', 'SUZUKI', 'YAMAHA']}
                                         selectedValues={selectedMakes}
                                         onToggle={(v: string) => toggleFilter(setSelectedMakes, v)}
-                                        onReset={() => setSelectedMakes(brands)}
-                                        showReset={selectedMakes.length < brands.length}
+                                        onReset={() => setSelectedMakes(makeOptions)}
+                                        showReset={selectedMakes.length < makeOptions.length}
                                     />
                                     <FilterGroup
                                         title="CC Range"
@@ -906,121 +937,120 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
                             selectedWheels.length > 0 ||
                             selectedFinishes.length > 0 ||
                             selectedSeatHeight.length > 0) && (
-                            <div className="flex flex-wrap items-center gap-2">
-                                {searchQuery && (
-                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full">
-                                        <span className="text-[9px] font-black uppercase text-slate-400">Search</span>
-                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                            {searchQuery}
-                                        </span>
-                                        <button
-                                            onClick={() => setSearchQuery('')}
-                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                <div className="flex flex-wrap items-center gap-2">
+                                    {searchQuery && (
+                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full">
+                                            <span className="text-[9px] font-black uppercase text-slate-400">Search</span>
+                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                                {searchQuery}
+                                            </span>
+                                            <button
+                                                onClick={() => setSearchQuery('')}
+                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                            >
+                                                <X size={10} />
+                                            </button>
+                                        </div>
+                                    )}
+                                    {selectedCC.map((cc: string) => (
+                                        <div
+                                            key={cc}
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
                                         >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                )}
-                                {selectedCC.map((cc: string) => (
-                                    <div
-                                        key={cc}
-                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
+                                            <span className="text-[9px] font-black uppercase text-slate-400">CC</span>
+                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                                {cc}
+                                            </span>
+                                            <button
+                                                onClick={() => toggleFilter(setSelectedCC, cc)}
+                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                            >
+                                                <X size={10} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {selectedFinishes.map((finish: string) => (
+                                        <div
+                                            key={finish}
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
+                                        >
+                                            <span className="text-[9px] font-black uppercase text-slate-400">Finish</span>
+                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                                {finish}
+                                            </span>
+                                            <button
+                                                onClick={() => toggleFilter(setSelectedFinishes, finish)}
+                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                            >
+                                                <X size={10} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {selectedSeatHeight.map((sh: string) => (
+                                        <div
+                                            key={sh}
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
+                                        >
+                                            <span className="text-[9px] font-black uppercase text-slate-400">Seat</span>
+                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                                {sh}
+                                            </span>
+                                            <button
+                                                onClick={() => toggleFilter(setSelectedSeatHeight, sh)}
+                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                            >
+                                                <X size={10} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {selectedBrakes.map((brake: string) => (
+                                        <div
+                                            key={brake}
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
+                                        >
+                                            <span className="text-[9px] font-black uppercase text-slate-400">Brakes</span>
+                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                                {brake}
+                                            </span>
+                                            <button
+                                                onClick={() => toggleFilter(setSelectedBrakes, brake)}
+                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                            >
+                                                <X size={10} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {selectedWheels.map((wheel: string) => (
+                                        <div
+                                            key={wheel}
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
+                                        >
+                                            <span className="text-[9px] font-black uppercase text-slate-400">Wheels</span>
+                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                                {wheel}
+                                            </span>
+                                            <button
+                                                onClick={() => toggleFilter(setSelectedWheels, wheel)}
+                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                            >
+                                                <X size={10} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    <button
+                                        onClick={clearAll}
+                                        className="text-[9px] font-black uppercase tracking-widest text-brand-primary hover:text-slate-900 dark:hover:text-white transition-colors px-3 ml-2"
                                     >
-                                        <span className="text-[9px] font-black uppercase text-slate-400">CC</span>
-                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                            {cc}
-                                        </span>
-                                        <button
-                                            onClick={() => toggleFilter(setSelectedCC, cc)}
-                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                ))}
-                                {selectedFinishes.map((finish: string) => (
-                                    <div
-                                        key={finish}
-                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
-                                    >
-                                        <span className="text-[9px] font-black uppercase text-slate-400">Finish</span>
-                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                            {finish}
-                                        </span>
-                                        <button
-                                            onClick={() => toggleFilter(setSelectedFinishes, finish)}
-                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                ))}
-                                {selectedSeatHeight.map((sh: string) => (
-                                    <div
-                                        key={sh}
-                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
-                                    >
-                                        <span className="text-[9px] font-black uppercase text-slate-400">Seat</span>
-                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                            {sh}
-                                        </span>
-                                        <button
-                                            onClick={() => toggleFilter(setSelectedSeatHeight, sh)}
-                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                ))}
-                                {selectedBrakes.map((brake: string) => (
-                                    <div
-                                        key={brake}
-                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
-                                    >
-                                        <span className="text-[9px] font-black uppercase text-slate-400">Brakes</span>
-                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                            {brake}
-                                        </span>
-                                        <button
-                                            onClick={() => toggleFilter(setSelectedBrakes, brake)}
-                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                ))}
-                                {selectedWheels.map((wheel: string) => (
-                                    <div
-                                        key={wheel}
-                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
-                                    >
-                                        <span className="text-[9px] font-black uppercase text-slate-400">Wheels</span>
-                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                            {wheel}
-                                        </span>
-                                        <button
-                                            onClick={() => toggleFilter(setSelectedWheels, wheel)}
-                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                ))}
-                                <button
-                                    onClick={clearAll}
-                                    className="text-[9px] font-black uppercase tracking-widest text-brand-primary hover:text-slate-900 dark:hover:text-white transition-colors px-3 ml-2"
-                                >
-                                    Clear all
-                                </button>
-                            </div>
-                        )}
+                                        Clear all
+                                    </button>
+                                </div>
+                            )}
 
                         <div
-                            className={`grid ${
-                                viewMode === 'list'
-                                    ? 'grid-cols-1 w-full gap-8'
-                                    : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 xl:gap-12 w-full'
-                            }`}
+                            className={`grid ${viewMode === 'list'
+                                ? 'grid-cols-1 w-full gap-6'
+                                : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 xl:gap-8 w-full'
+                                }`}
                         >
                             {/* Results Grid */}
                             {results.map(v => (
@@ -1030,6 +1060,7 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
                                     viewMode={viewMode}
                                     downpayment={downpayment}
                                     tenure={tenure}
+                                    isTv={viewMode === 'grid'}
                                 />
                             ))}
                         </div>
@@ -1038,35 +1069,36 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
 
                 {/* Mega Filter Overlay (Grid View Only) */}
                 {isFilterOpen && viewMode === 'grid' ? (
-                    <div className="fixed inset-0 z-[100] flex flex-col animate-in fade-in duration-300">
-                        <div
-                            className="absolute inset-0 bg-slate-900/40 dark:bg-[#020617]/80 backdrop-blur-3xl"
-                            onClick={() => setIsFilterOpen(false)}
-                        />
-
-                        <div className="relative flex-1 flex flex-col self-end w-full max-w-4xl bg-white dark:bg-slate-900 shadow-2xl overflow-hidden border-l border-slate-200 dark:border-white/10">
+                    <div className="fixed top-[76px] inset-x-0 bottom-0 z-[100] bg-white/95 dark:bg-[#0b0d10]/95 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 flex flex-col animate-in fade-in duration-300">
+                        <div className="max-w-[1440px] mx-auto w-full px-20 flex flex-col h-full">
                             {/* Overlay Header */}
-                            <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100 dark:border-white/5">
-                                <div className="flex items-center gap-4">
-                                    <h3 className="text-xl font-black uppercase tracking-widest text-slate-900 dark:text-white">
-                                        Filters
+                            <div className="flex-shrink-0 py-8 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-widest italic uppercase">
+                                        Customize
                                     </h3>
-                                    {activeFilterCount > 0 && (
-                                        <span className="bg-[#F4B000] text-black px-3 py-1 rounded-full text-[10px] font-black uppercase">
-                                            {activeFilterCount} Active
-                                        </span>
-                                    )}
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-2">
+                                        Refine by brand, engine & fuel
+                                    </p>
                                 </div>
-                                <button
-                                    onClick={() => setIsFilterOpen(false)}
-                                    className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-full transition-colors text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                >
-                                    <X size={24} />
-                                </button>
+                                <div className="flex items-center gap-4">
+                                    <button
+                                        onClick={clearAll}
+                                        className="flex items-center gap-2 px-6 py-3 rounded-full border border-slate-200 dark:border-white/10 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-rose-500 hover:border-rose-500/30 transition-all"
+                                    >
+                                        Reset
+                                    </button>
+                                    <button
+                                        onClick={() => setIsFilterOpen(false)}
+                                        className="p-3 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-all"
+                                    >
+                                        <X size={22} className="text-slate-900 dark:text-white" />
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Overlay Content */}
-                            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                            <div className="flex-1 overflow-y-auto py-10 custom-scrollbar">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                                     {/* Left Column: EMI & Search */}
                                     <div className="space-y-12">
@@ -1139,11 +1171,11 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
                                     <div className="space-y-12">
                                         <FilterGroup
                                             title="Brands"
-                                            options={brands}
+                                            options={makeOptions}
                                             selectedValues={selectedMakes}
                                             onToggle={(v: string) => toggleFilter(setSelectedMakes, v)}
-                                            onReset={() => setSelectedMakes(brands)}
-                                            showReset={selectedMakes.length < brands.length}
+                                            onReset={() => setSelectedMakes(makeOptions)}
+                                            showReset={selectedMakes.length < makeOptions.length}
                                         />
                                         <FilterGroup
                                             title="Engine Displacement"
@@ -1199,7 +1231,7 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
                                     onClick={() => setIsFilterOpen(false)}
                                     className="px-12 py-5 bg-[#F4B000] text-black rounded-2xl text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-[#F4B000]/20 hover:scale-105 transition-all"
                                 >
-                                    Show {results.length} Results
+                                    Show {results.length} {results.length === 1 ? 'Result' : 'Results'}
                                 </button>
                             </div>
                         </div>

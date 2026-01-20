@@ -32,19 +32,19 @@ export default function BrandPricingForm({ brandName, onSave }: BrandPricingForm
 
     return (
         <div className="space-y-6">
-            <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg flex items-start gap-3">
-                <AlertTriangle className="text-blue-600 mt-0.5" size={18} />
+            <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-lg flex items-start gap-3">
+                <AlertTriangle className="text-blue-600 dark:text-blue-300 mt-0.5" size={18} />
                 <div>
-                    <h4 className="text-sm font-bold text-blue-900">Brand Level Pricing</h4>
-                    <p className="text-sm text-blue-700 mt-1">
+                    <h4 className="text-sm font-bold text-blue-900 dark:text-blue-300">Brand Level Pricing</h4>
+                    <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
                         Define default margins for {brandName}. New variants added to the master will automatically inherit these rules.
                     </p>
                 </div>
             </div>
 
-            <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm space-y-6">
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-lg border border-gray-200 dark:border-white/10 shadow-sm space-y-6">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">Default Margin Rule</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-3">Default Margin Rule</label>
                     <div className="flex items-center gap-4">
                         <label className="flex items-center gap-2 cursor-pointer">
                             <input
@@ -54,7 +54,7 @@ export default function BrandPricingForm({ brandName, onSave }: BrandPricingForm
                                 checked={config.defaultMarginType === 'FIXED'}
                                 onChange={() => setConfig({ ...config, defaultMarginType: 'FIXED' })}
                             />
-                            <span className="text-sm text-gray-900">Fixed Amount (₹)</span>
+                            <span className="text-sm text-gray-900 dark:text-white">Fixed Amount (₹)</span>
                         </label>
                         <label className="flex items-center gap-2 cursor-pointer">
                             <input
@@ -64,28 +64,28 @@ export default function BrandPricingForm({ brandName, onSave }: BrandPricingForm
                                 checked={config.defaultMarginType === 'PERCENTAGE'}
                                 onChange={() => setConfig({ ...config, defaultMarginType: 'PERCENTAGE' })}
                             />
-                            <span className="text-sm text-gray-900">Percentage (%)</span>
+                            <span className="text-sm text-gray-900 dark:text-white">Percentage (%)</span>
                         </label>
                     </div>
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                         {config.defaultMarginType === 'FIXED' ? 'Margin Amount (₹)' : 'Margin Percentage (%)'}
                     </label>
                     <input
                         type="number"
-                        className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                        className="w-full max-w-xs px-3 py-2 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-medium bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                         value={config.defaultMarginValue}
                         onChange={(e) => setConfig({ ...config, defaultMarginValue: Number(e.target.value) })}
                         placeholder="0"
                     />
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                         This margin will be added to the Purchase Price to calculate the Selling Price.
                     </p>
                 </div>
 
-                <div className="pt-4 border-t border-gray-100">
+                <div className="pt-4 border-t border-gray-100 dark:border-white/10">
                     <label className="flex items-center gap-2 cursor-pointer">
                         <input
                             type="checkbox"
@@ -93,9 +93,9 @@ export default function BrandPricingForm({ brandName, onSave }: BrandPricingForm
                             checked={applyToAll}
                             onChange={(e) => setApplyToAll(e.target.checked)}
                         />
-                        <span className="text-sm font-medium text-gray-900">Apply to all existing variants immediately</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">Apply to all existing variants immediately</span>
                     </label>
-                    <p className="text-xs text-gray-500 ml-6 mt-1">
+                    <p className="text-xs text-gray-500 dark:text-slate-400 ml-6 mt-1">
                         If unchecked, this rule only applies to new variants. Existing overrides are preserved.
                     </p>
                 </div>

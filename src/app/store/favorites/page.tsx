@@ -27,7 +27,7 @@ export default function FavoritesPage() {
     }
 
     return (
-        <PageFrame variant="wide" className="space-y-12">
+        <PageFrame variant="wide" className="space-y-10">
 
             {/* Header */}
             <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 pb-8 border-b border-slate-200 dark:border-white/10">
@@ -75,10 +75,10 @@ export default function FavoritesPage() {
                     return (
                         <div
                             key={v.id}
-                            className="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-[2rem] overflow-hidden hover:shadow-2xl transition-all duration-500 flex flex-col"
+                            className="group relative bg-white dark:bg-[#0f1115] border border-slate-200 dark:border-white/5 rounded-[2rem] overflow-hidden hover:shadow-2xl transition-all duration-500 flex flex-col"
                         >
                             {/* Image */}
-                            <div className="aspect-[4/3] bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center p-6 overflow-hidden relative group-hover:bg-slate-200 dark:group-hover:bg-slate-800 transition-colors">
+                            <div className="aspect-[4/3] bg-slate-100 dark:bg-[#14161b] flex items-center justify-center p-6 overflow-hidden relative group-hover:bg-slate-200 dark:group-hover:bg-[#1b1e24] transition-colors">
                                 {/* Remove Button */}
                                 <button
                                     onClick={() => toggleFavorite(v.id)}

@@ -305,11 +305,17 @@ const evaluateComponent = (
             // Add Integrated Cess if present
             if (match.cessPercentage) {
                 const cessRaw = rawAmt * (match.cessPercentage / 100);
-                const cessAdjusted = applyVariantLogic(cessRaw, ctx, comp); // Use Same rounding/logic as base comp
+                const cessAdjusted = applyVariantLogic(cessRaw, ctx, comp);
+
+                // UX Fix: The "Base Amount" shown in description should also reflect the pro-rata logic
+                // if the parent charge (rawAmt) was pro-rated.
+                // Re-calculating the effective base that was actually charged
+                const adjustedBase = applyVariantLogic(rawAmt, ctx, comp).amount;
+
                 results.push({
                     label: `${comp.label} (Cess)`,
                     amount: cessAdjusted.amount,
-                    meta: `${match.cessPercentage}% Surcharge on ${comp.label} (₹${rawAmt.toLocaleString()})`,
+                    meta: `${match.cessPercentage}% Surcharge on ${comp.label} (₹${adjustedBase.toLocaleString()})`,
                     componentId: `${comp.id}_cess`
                 });
             }

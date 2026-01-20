@@ -50,16 +50,16 @@ export const PageFrame: React.FC<PageFrameProps> = ({
                 "w-full mx-auto section-transition", // animates padding changes
                 maxWidthClass,
 
-                // Side Breathing Room (Phase 2 Spec: 4 -> 8 -> 12 scale)
-                "px-4 md:px-8 lg:px-12",
+                // Side Breathing Room (Desktop Store Spec: 6 -> 12 -> 20 scale)
+                "px-6 md:px-12 lg:px-20",
 
                 // Headroom (Top Spacing)
                 // Default: Standard headroom (Header Height only).
                 // noTopPadding: Used for Heroes that bleed behind header.
                 !noTopPadding ? "pt-[var(--header-h,80px)]" : undefined,
 
-                // Bottom Spacing (Phase 2 Spec: Section)
-                "pb-16 md:pb-24",
+                // Bottom Spacing (Desktop Store Spec)
+                "pb-12 md:pb-16",
 
                 className
             )}

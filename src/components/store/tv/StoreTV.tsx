@@ -13,8 +13,8 @@ import { useCatalog } from '@/hooks/useCatalog';
  * Feature: Clean Showroom Aesthetics with Bottom Glass Dock.
  */
 export function StoreTV() {
-    const { items } = useCatalog();
-    const totalModels = items.length || 500;
+    const { items, skuCount } = useCatalog();
+    const totalSkus = skuCount || items.length || 500;
 
     return (
         <div className="flex flex-col bg-white dark:bg-[#020617] transition-colors duration-700 overflow-hidden font-sans selection:bg-brand-primary selection:text-black">
@@ -72,10 +72,10 @@ export function StoreTV() {
                         <div className="grid grid-cols-3 bg-white/80 dark:bg-white/5 border border-slate-900/10 dark:border-white/10 rounded-[3rem] backdrop-blur-3xl overflow-hidden shadow-2xl transition-colors duration-700">
                             <div className="px-10 py-8 flex flex-col items-center text-center gap-1 border-r border-slate-900/5 dark:border-white/5">
                                 <span className="text-[10px] font-black text-slate-500 dark:text-white/40 uppercase tracking-widest transition-colors">
-                                    Models Available
+                                    SKU Available
                                 </span>
                                 <span className="text-4xl font-black text-slate-950 dark:text-white transition-colors">
-                                    {totalModels}+
+                                    {totalSkus}+
                                 </span>
                             </div>
                             <div className="px-10 py-8 flex flex-col items-center text-center gap-1 border-r border-slate-900/5 dark:border-white/5">

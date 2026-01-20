@@ -141,7 +141,7 @@ export default function PricingLedgerTable({
             const filterValue = filters[key as keyof SKUPriceRow]?.toLowerCase();
             if (filterValue) {
                 result = result.filter(sku =>
-                    String(sku[key as keyof SKUPriceRow] || '').toLowerCase().includes(filterValue)
+                    String(sku[key as keyof SKUPriceRow] || '').toLowerCase() === filterValue
                 );
             }
         });
@@ -153,6 +153,8 @@ export default function PricingLedgerTable({
                 const bVal = b[sortConfig.key];
 
                 if (aVal === bVal) return 0;
+                if (aVal === null || aVal === undefined) return 1;
+                if (bVal === null || bVal === undefined) return -1;
 
                 // Handle numbers vs strings
                 if (typeof aVal === 'number' && typeof bVal === 'number') {

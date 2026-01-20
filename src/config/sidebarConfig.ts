@@ -30,7 +30,8 @@ import {
   FileOutput,
   Wallet,
   Lock,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Database
 } from 'lucide-react';
 import { TenantType } from '@/lib/tenant/tenantContext';
 
@@ -90,20 +91,13 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
     group: 'Operations',
     items: [
       {
-        title: 'Vehicle Catalog',
-        href: '/dashboard/catalog/vehicles',
+        title: 'Product Catalog',
+        href: '/dashboard/catalog/products',
         icon: Box,
         color: 'text-indigo-500',
         allowedTenants: ['MARKETPLACE', 'DEALER', 'AUMS'],
         allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN'],
         permissions: ['read']
-      },
-      {
-        title: 'Accessories',
-        href: '/dashboard/catalog/accessories',
-        icon: ShoppingBag,
-        color: 'text-pink-500',
-        allowedTenants: ['MARKETPLACE', 'DEALER', 'AUMS']
       },
       {
         title: 'Pricing Engine',
@@ -114,6 +108,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN'],
         permissions: ['read']
       },
+
       {
         title: 'RTO / Registration',
         href: '/dashboard/catalog/registration',
@@ -270,12 +265,36 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN']
       },
       {
+        title: 'HSN Master',
+        href: '/dashboard/catalog/hsn',
+        icon: ScrollText,
+        color: 'text-emerald-500',
+        allowedTenants: ['AUMS'],
+        allowedRoles: ['SUPER_ADMIN', 'MARKETPLACE_ADMIN']
+      },
+      {
+        title: 'Roles & Audit',
+        href: '/dashboard/settings/roles',
+        icon: ShieldCheck,
+        color: 'text-indigo-500',
+        allowedTenants: ['AUMS'],
+        allowedRoles: ['SUPER_ADMIN']
+      },
+      {
         title: 'Template Studio',
         href: '/app/aums/dashboard/admin/templates',
         icon: LayoutDashboard,
         color: 'text-indigo-600',
         allowedTenants: ['AUMS'],
         allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN']
+      },
+      {
+        title: 'Migration Studio',
+        href: '/dashboard/admin/migration',
+        icon: Database,
+        color: 'text-rose-600',
+        allowedTenants: ['AUMS'],
+        allowedRoles: ['SUPER_ADMIN']
       }
     ]
   }

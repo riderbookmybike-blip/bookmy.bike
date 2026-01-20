@@ -115,7 +115,7 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
                                     <>
                                         <button
                                             onClick={() => handleAllotmentChange('NONE')}
-                                            className="px-4 py-2 bg-white text-gray-700 border border-gray-300 font-bold rounded-lg hover:bg-gray-50 transition-colors"
+                                            className="px-4 py-2 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 border border-gray-300 dark:border-white/10 font-bold rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
                                         >
                                             Release Hold
                                         </button>
@@ -128,7 +128,7 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
                                     </>
                                 )}
                                 {booking.allotmentStatus === 'HARD_LOCK' && (
-                                    <div className="flex items-center gap-2 text-red-700 font-medium bg-red-100 px-3 py-1.5 rounded-lg border border-red-200">
+                                    <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-medium bg-red-100 dark:bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-500/20">
                                         <Lock size={14} /> Locked. Cannot change.
                                     </div>
                                 )}
@@ -136,24 +136,24 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
                         </div>
 
                         {/* Vehicle Details */}
-                        <div className="bg-white border border-gray-200 rounded-lg p-6">
-                            <h4 className="font-bold text-gray-900 mb-4">Vehicle Configuration</h4>
+                        <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-lg p-6">
+                            <h4 className="font-bold text-gray-900 dark:text-white mb-4">Vehicle Configuration</h4>
                             <div className="grid grid-cols-2 gap-y-4 gap-x-8 text-sm">
                                 <div>
-                                    <span className="block text-gray-500">Brand</span>
-                                    <span className="font-medium">{booking.brandName}</span>
+                                    <span className="block text-gray-500 dark:text-slate-400">Brand</span>
+                                    <span className="font-medium text-gray-900 dark:text-white">{booking.brandName}</span>
                                 </div>
                                 <div>
-                                    <span className="block text-gray-500">Model</span>
-                                    <span className="font-medium">{booking.modelName}</span>
+                                    <span className="block text-gray-500 dark:text-slate-400">Model</span>
+                                    <span className="font-medium text-gray-900 dark:text-white">{booking.modelName}</span>
                                 </div>
                                 <div className="col-span-2">
-                                    <span className="block text-gray-500">Variant Details</span>
-                                    <span className="font-medium">{booking.variantName}</span>
+                                    <span className="block text-gray-500 dark:text-slate-400">Variant Details</span>
+                                    <span className="font-medium text-gray-900 dark:text-white">{booking.variantName}</span>
                                 </div>
                                 <div>
-                                    <span className="block text-gray-500">Final Price</span>
-                                    <span className="font-mono font-bold text-green-700">₹{booking.price.toLocaleString()}</span>
+                                    <span className="block text-gray-500 dark:text-slate-400">Final Price</span>
+                                    <span className="font-mono font-bold text-green-700 dark:text-green-400">₹{booking.price.toLocaleString()}</span>
                                 </div>
                             </div>
                         </div>
@@ -178,12 +178,12 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
                 return (
                     <div className="space-y-6">
                         {/* Locked Banner */}
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
+                        <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg p-4 flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <Lock size={20} className="text-blue-600" />
+                                <Lock size={20} className="text-blue-600 dark:text-blue-300" />
                                 <div>
-                                    <h3 className="font-bold text-blue-900 text-sm">Locked at Booking Confirmation</h3>
-                                    <p className="text-xs text-blue-700">All downstream calculations use these values.</p>
+                                    <h3 className="font-bold text-blue-900 dark:text-blue-300 text-sm">Locked at Booking Confirmation</h3>
+                                    <p className="text-xs text-blue-700 dark:text-blue-300">All downstream calculations use these values.</p>
                                 </div>
                             </div>
                             <div className="text-right">
@@ -193,28 +193,28 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
                         </div>
 
                         {/* Cost Breakdown */}
-                        <div className="bg-white border border-gray-200 rounded-lg p-6">
-                            <h4 className="font-bold text-gray-900 mb-6 flex items-center gap-2">
+                        <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-lg p-6">
+                            <h4 className="font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
                                 <FileText size={18} /> On-Road Price Breakdown
                             </h4>
 
                             <div className="space-y-4 text-sm">
-                                <div className="flex justify-between items-center pb-3 border-b border-gray-100">
-                                    <span className="text-gray-600">Ex-Showroom Price</span>
-                                    <span className="font-mono font-medium">₹{snap.exShowroom.toLocaleString()}</span>
+                                <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-white/10">
+                                    <span className="text-gray-600 dark:text-slate-400">Ex-Showroom Price</span>
+                                    <span className="font-mono font-medium text-gray-900 dark:text-white">₹{snap.exShowroom.toLocaleString()}</span>
                                 </div>
-                                <div className="flex justify-between items-center pb-3 border-b border-gray-100">
-                                    <span className="text-gray-600">RTO Charges ({snap.rtoCode})</span>
-                                    <span className="font-mono font-medium">₹{snap.rtoCharges.toLocaleString()}</span>
+                                <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-white/10">
+                                    <span className="text-gray-600 dark:text-slate-400">RTO Charges ({snap.rtoCode})</span>
+                                    <span className="font-mono font-medium text-gray-900 dark:text-white">₹{snap.rtoCharges.toLocaleString()}</span>
                                 </div>
-                                <div className="flex justify-between items-center pb-3 border-b border-gray-100">
-                                    <span className="text-gray-600">Insurance (Base + {snap.insuranceAddons.length} Addons)</span>
-                                    <span className="font-mono font-medium">₹{snap.insuranceBase.toLocaleString()}</span>
+                                <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-white/10">
+                                    <span className="text-gray-600 dark:text-slate-400">Insurance (Base + {snap.insuranceAddons.length} Addons)</span>
+                                    <span className="font-mono font-medium text-gray-900 dark:text-white">₹{snap.insuranceBase.toLocaleString()}</span>
                                 </div>
                                 {snap.accessoryBundle.length > 0 && (
-                                    <div className="flex justify-between items-center pb-3 border-b border-gray-100">
-                                        <span className="text-gray-600">Accessories</span>
-                                        <span className="font-mono font-medium">Included</span>
+                                    <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-white/10">
+                                        <span className="text-gray-600 dark:text-slate-400">Accessories</span>
+                                        <span className="font-mono font-medium text-gray-900 dark:text-white">Included</span>
                                     </div>
                                 )}
 
@@ -276,30 +276,30 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
 
                 return (
                     <div className="space-y-6">
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 flex items-start gap-4">
-                            <ClipboardCheck className="text-yellow-600 mt-1" size={24} />
+                        <div className="bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20 rounded-lg p-6 flex items-start gap-4">
+                            <ClipboardCheck className="text-yellow-600 dark:text-yellow-300 mt-1" size={24} />
                             <div>
-                                <h3 className="font-bold text-yellow-900">Pre-Delivery Inspection</h3>
-                                <p className="text-sm text-yellow-700 mt-1">
+                                <h3 className="font-bold text-yellow-900 dark:text-yellow-300">Pre-Delivery Inspection</h3>
+                                <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
                                     Mandatory inspection for VIN <strong>{booking.assignedVin}</strong>.
                                 </p>
                             </div>
                         </div>
 
-                        <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
+                        <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-lg p-6 space-y-4">
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Inspector Name</label>
+                                <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-1">Inspector Name</label>
                                 <input
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                    className="w-full border border-gray-300 dark:border-white/10 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                                     placeholder="e.g., Service Tech Name"
                                     value={pdiForm.inspector}
                                     onChange={e => setPdiForm({ ...pdiForm, inspector: e.target.value })}
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Odometer Reading (km)</label>
+                                <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-1">Odometer Reading (km)</label>
                                 <input
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                    className="w-full border border-gray-300 dark:border-white/10 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                                     placeholder="e.g., 5"
                                     value={pdiForm.odo}
                                     onChange={e => setPdiForm({ ...pdiForm, odo: e.target.value })}
@@ -307,16 +307,16 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
                             </div>
 
                             <div className="space-y-3 pt-2">
-                                <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100 cursor-pointer hover:bg-blue-50 hover:border-blue-100">
+                                <label className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-950 rounded-lg border border-gray-100 dark:border-white/10 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:border-blue-100">
                                     <input
                                         type="checkbox"
                                         checked={pdiForm.visual}
                                         onChange={e => setPdiForm({ ...pdiForm, visual: e.target.checked })}
                                         className="w-5 h-5 text-blue-600 rounded"
                                     />
-                                    <span className="text-sm font-medium text-gray-900">Visual Inspection Only (No Scratches/Dents)</span>
+                                    <span className="text-sm font-medium text-gray-900 dark:text-white">Visual Inspection Only (No Scratches/Dents)</span>
                                 </label>
-                                <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100 cursor-pointer hover:bg-blue-50 hover:border-blue-100">
+                                <label className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-950 rounded-lg border border-gray-100 dark:border-white/10 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:border-blue-100">
                                     <input
                                         type="checkbox"
                                         checked={pdiForm.access}
@@ -409,31 +409,31 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
                 // State 3: Ready for Delivery
                 return (
                     <div className="space-y-6 mt-4">
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 flex items-start gap-4">
-                            <Truck className="text-blue-600 mt-1" size={24} />
+                        <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg p-6 flex items-start gap-4">
+                            <Truck className="text-blue-600 dark:text-blue-300 mt-1" size={24} />
                             <div>
-                                <h3 className="font-bold text-blue-900">Ready for Handover</h3>
-                                <p className="text-sm text-blue-700 mt-1">
+                                <h3 className="font-bold text-blue-900 dark:text-blue-300">Ready for Handover</h3>
+                                <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
                                     VIN <strong>{booking.assignedVin}</strong> is assigned and ready.
                                     Complete the form below to finalize delivery.
                                 </p>
                             </div>
                         </div>
 
-                        <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
+                        <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-lg p-6 space-y-4">
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Receiver Name</label>
+                                <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-1">Receiver Name</label>
                                 <input
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                    className="w-full border border-gray-300 dark:border-white/10 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                                     placeholder="e.g., Customer or Representative Name"
                                     value={deliveryForm.receiver}
                                     onChange={e => setDeliveryForm({ ...deliveryForm, receiver: e.target.value })}
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Notes </label>
+                                <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-1">Notes </label>
                                 <textarea
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm h-20"
+                                    className="w-full border border-gray-300 dark:border-white/10 rounded-lg px-3 py-2 text-sm h-20 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                                     placeholder="e.g., Key handed over, Helmet pending..."
                                     value={deliveryForm.notes}
                                     onChange={e => setDeliveryForm({ ...deliveryForm, notes: e.target.value })}
@@ -447,7 +447,7 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
                                     onChange={e => setDeliveryForm({ ...deliveryForm, confirmed: e.target.checked })}
                                     className="w-5 h-5 text-blue-600 rounded"
                                 />
-                                <label htmlFor="confirm" className="text-sm font-medium text-gray-900">
+                                <label htmlFor="confirm" className="text-sm font-medium text-gray-900 dark:text-white">
                                     I confirm that the physical vehicle has been handed over.
                                 </label>
                             </div>
@@ -626,15 +626,15 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
                                 {/* List */}
                                 <div className="space-y-3">
                                     {receipts.length === 0 ? (
-                                        <p className="text-sm text-gray-400 italic">No payments recorded.</p>
+                                        <p className="text-sm text-gray-400 dark:text-slate-500 italic">No payments recorded.</p>
                                     ) : (
                                         receipts.map(r => (
-                                            <div key={r.id} className="p-3 bg-white border border-gray-200 rounded-lg shadow-sm">
+                                            <div key={r.id} className="p-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-lg shadow-sm">
                                                 <div className="flex justify-between items-start mb-1">
-                                                    <span className="font-mono text-xs font-bold text-gray-500">{r.displayId}</span>
-                                                    <span className="text-sm font-bold text-green-700">₹{r.amount.toLocaleString()}</span>
+                                                    <span className="font-mono text-xs font-bold text-gray-500 dark:text-slate-400">{r.displayId}</span>
+                                                    <span className="text-sm font-bold text-green-700 dark:text-green-400">₹{r.amount.toLocaleString()}</span>
                                                 </div>
-                                                <div className="flex justify-between items-center text-xs text-gray-600">
+                                                <div className="flex justify-between items-center text-xs text-gray-600 dark:text-slate-400">
                                                     <div className="flex items-center gap-1">
                                                         {r.mode === 'CASH' ? <Banknote size={12} /> :
                                                             r.mode === 'UPI' ? <Wallet size={12} /> :
@@ -668,26 +668,26 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
 
                 if (booking.documents?.customerAck) {
                     return (
-                        <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
-                            <div className="p-6 bg-gray-50 flex items-center gap-4">
-                                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+                        <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-lg divide-y divide-gray-100 dark:divide-white/10">
+                            <div className="p-6 bg-gray-50 dark:bg-slate-950 flex items-center gap-4">
+                                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-500/10 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-300">
                                     <CheckCircle2 size={24} />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-blue-900">All Documents Acknowledged</h3>
-                                    <p className="text-blue-700 text-sm">Customer has received all papers.</p>
+                                    <h3 className="text-lg font-bold text-blue-900 dark:text-blue-300">All Documents Acknowledged</h3>
+                                    <p className="text-blue-700 dark:text-blue-300 text-sm">Customer has received all papers.</p>
                                 </div>
                             </div>
                             <div className="p-6 space-y-4">
                                 <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-600">Invoice</span>
-                                    <span className="font-bold text-green-700 flex items-center gap-2">
+                                    <span className="text-gray-600 dark:text-slate-400">Invoice</span>
+                                    <span className="font-bold text-green-700 dark:text-green-400 flex items-center gap-2">
                                         <CheckCircle2 size={16} /> Acknowledged
                                     </span>
                                 </div>
                                 <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-600">Delivery Note</span>
-                                    <span className="font-bold text-green-700 flex items-center gap-2">
+                                    <span className="text-gray-600 dark:text-slate-400">Delivery Note</span>
+                                    <span className="font-bold text-green-700 dark:text-green-400 flex items-center gap-2">
                                         <CheckCircle2 size={16} /> Acknowledged
                                     </span>
                                 </div>
@@ -721,11 +721,11 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
                             </div>
                         </div>
 
-                        <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
+                        <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-lg p-6 space-y-4">
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Insurance Policy Number</label>
+                                <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-1">Insurance Policy Number</label>
                                 <input
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                    className="w-full border border-gray-300 dark:border-white/10 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                                     placeholder="Enter Policy #"
                                     value={docForm.policyNo}
                                     onChange={e => setDocForm({ ...docForm, policyNo: e.target.value })}
@@ -733,7 +733,7 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
                             </div>
 
                             <div className="space-y-3 pt-2">
-                                <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100 cursor-pointer hover:bg-blue-50 hover:border-blue-100">
+                                <label className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-950 rounded-lg border border-gray-100 dark:border-white/10 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:border-blue-100">
                                     <input
                                         type="checkbox"
                                         checked={docForm.confirmInvoice}

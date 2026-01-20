@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { User } from '@supabase/supabase-js';
 import {
@@ -15,6 +15,7 @@ import {
     HelpCircle,
     LogOut,
     ChevronDown,
+    MapPin,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
@@ -38,6 +39,27 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
     const [memberships, setMemberships] = useState<Membership[]>([]);
     const [isOpen, setIsOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
+    const [location, setLocation] = useState<{ area: string; city: string; stateCode?: string } | null>(null);
+
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+
+        if (isOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+            document.addEventListener('touchstart', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+        };
+    }, [isOpen]);
 
     useEffect(() => {
         const supabase = createClient();
@@ -91,6 +113,33 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
     }, []);
 
     useEffect(() => {
+        const handleLocationChange = () => {
+            const stored = localStorage.getItem('bkmb_user_pincode');
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    setLocation({
+                        area: parsed.area,
+                        city: parsed.city,
+                        stateCode: parsed.stateCode
+                    });
+                } catch (e) {
+                    console.error('Error parsing stored location:', e);
+                }
+            }
+        };
+
+        handleLocationChange();
+        window.addEventListener('locationChanged', handleLocationChange);
+        window.addEventListener('storage', handleLocationChange);
+
+        return () => {
+            window.removeEventListener('locationChanged', handleLocationChange);
+            window.removeEventListener('storage', handleLocationChange);
+        };
+    }, []);
+
+    useEffect(() => {
         const mountedFrame = window.requestAnimationFrame(() => setMounted(true));
         return () => window.cancelAnimationFrame(mountedFrame);
     }, []);
@@ -138,11 +187,10 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
         return (
             <button
                 onClick={onLoginClick}
-                className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all group ${
-                    scrolled || isLight
-                        ? 'border-slate-900/10 dark:border-white/10 text-slate-500 dark:text-white hover:text-blue-600'
-                        : 'border-white/20 text-white/80 hover:text-white hover:bg-white/10'
-                }`}
+                className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all group ${scrolled || isLight
+                    ? 'border-slate-900/10 dark:border-white/10 text-slate-500 dark:text-white hover:text-blue-600'
+                    : 'border-white/20 text-white/80 hover:text-white hover:bg-white/10'
+                    }`}
                 title="Sign In"
             >
                 <div className="w-7 h-7 bg-transparent rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -159,14 +207,13 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
         'User';
 
     return (
-        <div className="relative">
+        <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`flex items-center gap-2 md:gap-3 p-2 md:pl-3 md:pr-2 md:py-1.5 rounded-full border transition-all group ${
-                    scrolled || isLight
-                        ? 'border-slate-900/10 dark:border-white/10 bg-slate-100 dark:bg-black/40'
-                        : 'border-white/20 bg-black/40'
-                }`}
+                className={`flex items-center gap-2 md:gap-3 p-2 md:pl-3 md:pr-2 md:py-1.5 rounded-full border transition-all group ${scrolled || isLight
+                    ? 'border-slate-900/10 dark:border-white/10 bg-slate-100 dark:bg-[#0f1115]'
+                    : 'border-white/20 bg-black/40'
+                    }`}
             >
                 <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black shadow-lg shadow-brand-primary/20 bg-gradient-to-br from-brand-primary to-[#F4B000] border-2 border-white dark:border-slate-800 overflow-hidden shrink-0">
                     {user.user_metadata?.avatar_url ? (
@@ -188,13 +235,12 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                 </div>
                 <span
                     suppressHydrationWarning
-                    className={`text-[11px] font-black uppercase tracking-[0.18em] ${
-                        mounted && theme === 'dark'
-                            ? 'text-white'
-                            : scrolled || theme === 'light'
-                              ? 'text-slate-900 dark:text-white'
-                              : 'text-white'
-                    }`}
+                    className={`text-[11px] font-black uppercase tracking-[0.18em] ${mounted && theme === 'dark'
+                        ? 'text-white'
+                        : scrolled || theme === 'light'
+                            ? 'text-slate-900 dark:text-white'
+                            : 'text-white'
+                        }`}
                 >
                     Hi, {displayName}
                 </span>
@@ -206,128 +252,130 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
             </button>
 
             {isOpen && (
-                <>
-                    <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-                    <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 z-50 overflow-hidden">
-                        {/* User Info */}
-                        <div className="p-6 bg-slate-50 dark:bg-white/[0.02] border-b border-gray-100 dark:border-white/5 flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-primary to-[#F4B000] flex items-center justify-center text-white text-xl font-black shadow-inner overflow-hidden uppercase">
-                                {user.user_metadata?.avatar_url ? (
-                                    <img
-                                        src={user.user_metadata.avatar_url}
-                                        alt={user.user_metadata?.full_name}
-                                        className="w-full h-full object-cover"
-                                    />
-                                ) : (
-                                    <span>
-                                        {(
-                                            user.user_metadata?.full_name?.[0] ||
-                                            user.user_metadata?.name?.[0] ||
-                                            user.email?.[0] ||
-                                            'U'
-                                        ).toUpperCase()}
-                                    </span>
-                                )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="font-black text-slate-900 dark:text-white truncate uppercase tracking-tight">
-                                    {user.user_metadata?.full_name || 'BookMyBike User'}
-                                </p>
-                                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 truncate uppercase tracking-widest leading-none mt-1">
-                                    {user.email}
-                                </p>
-                            </div>
-                            <ThemeToggle className="w-10 h-10" />
+                <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-[#0f1115] rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                    {/* User Info */}
+                    <div className="p-6 bg-slate-50 dark:bg-[#14161b] border-b border-gray-100 dark:border-white/5 flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-primary to-[#F4B000] flex items-center justify-center text-white text-xl font-black shadow-inner overflow-hidden uppercase">
+                            {user.user_metadata?.avatar_url ? (
+                                <img
+                                    src={user.user_metadata.avatar_url}
+                                    alt={user.user_metadata?.full_name}
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <span>
+                                    {(
+                                        user.user_metadata?.full_name?.[0] ||
+                                        user.user_metadata?.name?.[0] ||
+                                        user.email?.[0] ||
+                                        'U'
+                                    ).toUpperCase()}
+                                </span>
+                            )}
                         </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="font-black text-slate-900 dark:text-white truncate uppercase tracking-tight">
+                                {user.user_metadata?.full_name || 'BookMyBike User'}
+                            </p>
+                            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 truncate uppercase tracking-widest leading-none mt-1">
+                                {user.email}
+                            </p>
+                            {location && (
+                                <p className="text-[9px] font-black text-blue-500 truncate uppercase tracking-[0.15em] leading-none mt-2.5 flex items-center gap-1">
+                                    <MapPin size={10} className="fill-blue-500/20" /> {location.area}, {location.stateCode || location.city}
+                                </p>
+                            )}
+                        </div>
+                        <ThemeToggle className="w-10 h-10" />
+                    </div>
 
-                        {/* Member Access */}
-                        {memberships.length > 0 && (
-                            <div className="p-2">
-                                <div className="px-4 py-3 flex items-center justify-between">
-                                    <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
-                                        Member Access
-                                    </p>
-                                    <div className="h-px flex-1 ml-4 bg-slate-100 dark:bg-white/5" />
-                                </div>
-                                <div className="space-y-1">
-                                    {memberships.map(m => (
-                                        <a
-                                            key={m.tenants.slug}
-                                            href={`/app/${m.tenants.slug}/dashboard`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="group flex items-center justify-between px-4 py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-all border border-transparent hover:border-slate-100 dark:hover:border-white/5"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-400 group-hover:text-brand-primary transition-colors">
-                                                    {getTenantIcon(m.tenants.type)}
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                                                        {m.tenants.name}
-                                                    </span>
-                                                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">
-                                                        {m.tenants.type.replace('_', ' ')}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <span className="text-[8px] font-black px-2 py-1 bg-brand-primary/10 text-brand-primary border border-brand-primary/20 rounded-full uppercase tracking-widest">
-                                                {getRoleLabel(m.role)}
-                                            </span>
-                                        </a>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* My Account */}
-                        <div className="p-2 border-t border-slate-100 dark:border-white/5">
+                    {/* Member Access */}
+                    {memberships.length > 0 && (
+                        <div className="p-2">
                             <div className="px-4 py-3 flex items-center justify-between">
                                 <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
-                                    My Account
+                                    Member Access
                                 </p>
-                                <div className="h-px flex-1 ml-4 bg-slate-100 dark:bg-white/10" />
+                                <div className="h-px flex-1 ml-4 bg-slate-100 dark:bg-white/5" />
                             </div>
-                            <div className="grid grid-cols-2 gap-1 px-2">
-                                {[
-                                    { label: 'Profile', icon: UserIcon, href: '/profile' },
-                                    { label: 'Orders', icon: Package, href: '/orders' },
-                                    { label: 'Wishlist', icon: Heart, href: '/wishlist' },
-                                    { label: 'Alerts', icon: Bell, href: '/notifications' },
-                                ].map(item => (
+                            <div className="space-y-1">
+                                {memberships.map(m => (
                                     <a
-                                        key={item.label}
-                                        href={item.href}
-                                        className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-all group border border-transparent hover:border-slate-100 dark:hover:border-white/5 text-center"
+                                        key={m.tenants.slug}
+                                        href={`/app/${m.tenants.slug}/dashboard`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="group flex items-center justify-between px-4 py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-all border border-transparent hover:border-slate-100 dark:hover:border-white/5"
                                     >
-                                        <item.icon className="w-4 h-4 text-slate-400 group-hover:text-brand-primary transition-colors" />
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">
-                                            {item.label}
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-white dark:bg-[#14161b] border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-400 group-hover:text-brand-primary transition-colors">
+                                                {getTenantIcon(m.tenants.type)}
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                                    {m.tenants.name}
+                                                </span>
+                                                <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">
+                                                    {m.tenants.type.replace('_', ' ')}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <span className="text-[8px] font-black px-2 py-1 bg-brand-primary/10 text-brand-primary border border-brand-primary/20 rounded-full uppercase tracking-widest">
+                                            {getRoleLabel(m.role)}
                                         </span>
                                     </a>
                                 ))}
                             </div>
                         </div>
+                    )}
 
-                        {/* Help & Logout */}
-                        <div className="p-4 bg-slate-50 dark:bg-white/[0.01] border-t border-slate-100 dark:border-white/5 flex items-center justify-between gap-2">
-                            <a
-                                href="/help"
-                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-slate-200 dark:border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all bg-white dark:bg-slate-800/50"
-                            >
-                                <HelpCircle className="w-3.5 h-3.5" />
-                                Help
-                            </a>
-                            <button
-                                onClick={handleLogout}
-                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border border-rose-500/20"
-                            >
-                                <LogOut className="w-3.5 h-3.5" />
-                                Logout
-                            </button>
+                    {/* My Account */}
+                    <div className="p-2 border-t border-slate-100 dark:border-white/5">
+                        <div className="px-4 py-3 flex items-center justify-between">
+                            <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+                                My Account
+                            </p>
+                            <div className="h-px flex-1 ml-4 bg-slate-100 dark:bg-white/10" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-1 px-2">
+                            {[
+                                { label: 'Profile', icon: UserIcon, href: '/profile' },
+                                { label: 'Orders', icon: Package, href: '/orders' },
+                                { label: 'Wishlist', icon: Heart, href: '/wishlist' },
+                                { label: 'Alerts', icon: Bell, href: '/notifications' },
+                            ].map(item => (
+                                <a
+                                    key={item.label}
+                                    href={item.href}
+                                    className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-all group border border-transparent hover:border-slate-100 dark:hover:border-white/5 text-center"
+                                >
+                                    <item.icon className="w-4 h-4 text-slate-400 group-hover:text-brand-primary transition-colors" />
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">
+                                        {item.label}
+                                    </span>
+                                </a>
+                            ))}
                         </div>
                     </div>
-                </>
+
+                    {/* Help & Logout */}
+                    <div className="p-4 bg-slate-50 dark:bg-[#14161b] border-t border-slate-100 dark:border-white/5 flex items-center justify-between gap-2">
+                        <a
+                            href="/help"
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-slate-200 dark:border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all bg-white dark:bg-[#0f1115]"
+                        >
+                            <HelpCircle className="w-3.5 h-3.5" />
+                            Help
+                        </a>
+                        <button
+                            onClick={handleLogout}
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border border-rose-500/20"
+                        >
+                            <LogOut className="w-3.5 h-3.5" />
+                            Logout
+                        </button>
+                    </div>
+                </div>
             )}
         </div>
     );

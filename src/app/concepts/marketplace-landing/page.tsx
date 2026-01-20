@@ -1,7 +1,7 @@
 export default function MarketplaceLandingConcept() {
     return (
         <div
-            className="min-h-screen bg-white text-slate-900"
+            className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100"
             style={{ fontFamily: '"IBM Plex Mono", "SFMono-Regular", ui-monospace, monospace' }}
         >
             <div className="relative overflow-hidden">
@@ -22,7 +22,7 @@ export default function MarketplaceLandingConcept() {
                         <a className="hover:text-blue-700" href="#trust">Trust</a>
                         <a className="hover:text-blue-700" href="#policies">Policies</a>
                     </nav>
-                    <button className="rounded-full border border-slate-300 px-5 py-2 text-xs font-black uppercase tracking-[0.25em] text-slate-700">
+                    <button className="rounded-full border border-slate-300 dark:border-white/20 px-5 py-2 text-xs font-black uppercase tracking-[0.25em] text-slate-700 dark:text-slate-200">
                         Sign in
                     </button>
                 </header>
@@ -44,38 +44,38 @@ export default function MarketplaceLandingConcept() {
                             <button className="rounded-full bg-blue-700 px-8 py-4 text-xs font-black uppercase tracking-[0.3em] text-white">
                                 Explore catalog
                             </button>
-                            <button className="rounded-full border border-slate-300 px-8 py-4 text-xs font-black uppercase tracking-[0.3em] text-slate-700">
+                            <button className="rounded-full border border-slate-300 dark:border-white/20 px-8 py-4 text-xs font-black uppercase tracking-[0.3em] text-slate-700 dark:text-slate-200">
                                 Schedule a call
                             </button>
                         </div>
-                        <div className="grid max-w-xl grid-cols-3 gap-4 rounded-3xl border border-slate-200 bg-white p-5 text-center">
+                        <div className="grid max-w-xl grid-cols-3 gap-4 rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 p-5 text-center">
                             <div>
-                                <p className="text-2xl font-black text-slate-900">12k+</p>
+                                <p className="text-2xl font-black text-slate-900 dark:text-white">12k+</p>
                                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Bookings</p>
                             </div>
                             <div>
-                                <p className="text-2xl font-black text-slate-900">48 hrs</p>
+                                <p className="text-2xl font-black text-slate-900 dark:text-white">48 hrs</p>
                                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Avg delivery</p>
                             </div>
                             <div>
-                                <p className="text-2xl font-black text-slate-900">3 days</p>
+                                <p className="text-2xl font-black text-slate-900 dark:text-white">3 days</p>
                                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Refund TAT</p>
                             </div>
                         </div>
                     </div>
 
                     <div className="relative">
-                        <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_40px_80px_-60px_rgba(15,23,42,0.45)]">
-                            <div className="rounded-3xl border border-blue-200 bg-blue-50 p-6 text-slate-900">
+                        <div className="rounded-[28px] border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 p-6 shadow-[0_40px_80px_-60px_rgba(15,23,42,0.45)]">
+                            <div className="rounded-3xl border border-blue-200 dark:border-blue-500/20 bg-blue-50 dark:bg-blue-500/10 p-6 text-slate-900 dark:text-white">
                                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-700">Instant quote</p>
                                 <h3 className="mt-2 text-2xl font-black uppercase">Jupiter SmartX</h3>
-                                <p className="text-sm text-slate-600">Live on-road pricing with EMI clarity</p>
+                                <p className="text-sm text-slate-600 dark:text-slate-300">Live on-road pricing with EMI clarity</p>
                                 <div className="mt-6 grid grid-cols-2 gap-4 text-sm">
-                                    <div className="rounded-2xl border border-blue-200 bg-white p-4">
+                                    <div className="rounded-2xl border border-blue-200 dark:border-blue-500/20 bg-white dark:bg-slate-900 p-4">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">On road</p>
                                         <p className="text-xl font-black">Rs 92,800</p>
                                     </div>
-                                    <div className="rounded-2xl border border-blue-200 bg-white p-4">
+                                    <div className="rounded-2xl border border-blue-200 dark:border-blue-500/20 bg-white dark:bg-slate-900 p-4">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">EMI</p>
                                         <p className="text-xl font-black">Rs 2,890</p>
                                     </div>
@@ -95,7 +95,7 @@ export default function MarketplaceLandingConcept() {
             </div>
 
             <section id="trust" className="mx-auto w-full max-w-6xl px-6 py-8">
-                <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white px-6 py-4">
+                <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 px-6 py-4">
                     <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Trusted by</p>
                     <div className="flex flex-wrap items-center gap-6 text-xs font-black uppercase tracking-[0.25em] text-slate-500">
                         <span>Honda</span>
@@ -115,10 +115,10 @@ export default function MarketplaceLandingConcept() {
                         { title: 'Book', text: 'Confirm availability, upload KYC, reserve instantly.' },
                         { title: 'Deliver', text: 'Dealer allocation, tracking, and documentation.' }
                     ].map((step, index) => (
-                        <div key={step.title} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <div key={step.title} className="rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 p-6 shadow-sm">
                             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-700">Step 0{index + 1}</p>
-                            <h3 className="mt-4 text-2xl font-black uppercase text-slate-900">{step.title}</h3>
-                            <p className="mt-3 text-sm font-medium text-slate-600">{step.text}</p>
+                            <h3 className="mt-4 text-2xl font-black uppercase text-slate-900 dark:text-white">{step.title}</h3>
+                            <p className="mt-3 text-sm font-medium text-slate-600 dark:text-slate-400">{step.text}</p>
                         </div>
                     ))}
                 </div>
@@ -130,15 +130,15 @@ export default function MarketplaceLandingConcept() {
                         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Featured</p>
                         <h2 className="text-3xl font-black uppercase text-slate-900">High-demand scooters</h2>
                     </div>
-                    <button className="rounded-full border border-slate-300 px-6 py-2 text-xs font-black uppercase tracking-[0.3em] text-slate-700">
+                    <button className="rounded-full border border-slate-300 dark:border-white/20 px-6 py-2 text-xs font-black uppercase tracking-[0.3em] text-slate-700 dark:text-slate-200">
                         View all
                     </button>
                 </div>
                 <div className="mt-8 grid gap-6 md:grid-cols-3">
                     {['Jupiter', 'Activa', 'Access'].map((bike) => (
-                        <div key={bike} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <div key={bike} className="rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 p-5 shadow-sm">
                             <div className="h-36 rounded-2xl bg-slate-100" />
-                            <h3 className="mt-4 text-xl font-black uppercase text-slate-900">{bike}</h3>
+                            <h3 className="mt-4 text-xl font-black uppercase text-slate-900 dark:text-white">{bike}</h3>
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">From Rs 2,400 EMI</p>
                             <button className="mt-4 w-full rounded-full bg-blue-700 px-4 py-3 text-xs font-black uppercase tracking-[0.3em] text-white">
                                 Get quote
@@ -150,15 +150,15 @@ export default function MarketplaceLandingConcept() {
 
             <section id="policies" className="mx-auto w-full max-w-6xl px-6 py-12">
                 <div className="grid gap-6 md:grid-cols-[1.2fr_0.8fr]">
-                    <div className="rounded-3xl border border-slate-200 bg-white p-8">
+                    <div className="rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 p-8">
                         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Compliance ready</p>
-                        <h3 className="mt-4 text-3xl font-black uppercase text-slate-900">Policy clarity</h3>
-                        <p className="mt-4 text-sm font-medium text-slate-600">
+                        <h3 className="mt-4 text-3xl font-black uppercase text-slate-900 dark:text-white">Policy clarity</h3>
+                        <p className="mt-4 text-sm font-medium text-slate-600 dark:text-slate-400">
                             GST invoicing, refund timelines, data privacy, and KYC guidelines are clear at every step.
                         </p>
                         <div className="mt-6 flex flex-wrap gap-3">
                             {['Refund policy', 'Privacy policy', 'Terms', 'KYC checklist'].map((item) => (
-                                <span key={item} className="rounded-full border border-slate-200 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                <span key={item} className="rounded-full border border-slate-200 dark:border-white/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
                                     {item}
                                 </span>
                             ))}
@@ -168,14 +168,14 @@ export default function MarketplaceLandingConcept() {
                         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-200">Partner with us</p>
                         <h3 className="mt-4 text-3xl font-black uppercase">OEMs and NBFCs</h3>
                         <p className="mt-4 text-sm text-blue-100">Dedicated partner dashboard with lead flow, SLA, and compliance tracking.</p>
-                        <button className="mt-6 w-full rounded-full bg-white px-4 py-3 text-xs font-black uppercase tracking-[0.3em] text-blue-700">
+                        <button className="mt-6 w-full rounded-full bg-white dark:bg-white px-4 py-3 text-xs font-black uppercase tracking-[0.3em] text-blue-700">
                             Schedule a call
                         </button>
                     </div>
                 </div>
             </section>
 
-            <footer className="border-t border-slate-200 bg-white py-10">
+            <footer className="border-t border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 py-10">
                 <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-6 text-xs font-bold uppercase tracking-widest text-slate-400">
                     <span>BookMyBike 2026</span>
                     <span>Contact: partnerships@bookmybike</span>

@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ShieldCheck, Share, Heart, Zap, Info, ArrowRight, ChevronDown, SlidersHorizontal } from 'lucide-react';
-import { mandatoryAccessories, optionalAccessories, mandatoryInsurance, insuranceAddons, serviceOptions, offerOptions } from '@/hooks/usePDPData';
+import { Zap, Share, Heart, ShieldCheck, ArrowRight } from 'lucide-react';
+import { ServiceOption } from '@/types/store';
 
 interface PDPMobileProps {
     product: any; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -15,27 +15,45 @@ export function PDPMobile({ product, variantParam, data, handlers }: PDPMobilePr
     const {
         colors,
         selectedColor,
-        regType, setRegType,
+        regType,
         selectedAccessories,
         selectedInsuranceAddons,
-        emiTenure, setEmiTenure,
-        configTab, setConfigTab,
+        emiTenure,
+        configTab,
         selectedServices,
         selectedOffers,
         quantities,
-        userDownPayment, setUserDownPayment,
+        userDownPayment,
         isReferralActive,
-        baseExShowroom, rtoEstimates, insuranceAddonsPrice, roadTax, accessoriesPrice, servicesPrice, offersDiscount, colorDiscount, totalOnRoad,
-        downPayment, minDownPayment, maxDownPayment, emi, annualInterest, loanAmount
+        baseExShowroom,
+        rtoEstimates,
+        baseInsurance,
+        insuranceAddonsPrice,
+        otherCharges,
+        accessoriesPrice,
+        servicesPrice,
+        offersDiscount,
+        colorDiscount,
+        totalOnRoad,
+        downPayment,
+        minDownPayment,
+        maxDownPayment,
+        emi,
+        annualInterest,
+        loanAmount,
+        activeAccessories,
+        activeServices,
+        warrantyItems
     } = data;
 
     const {
         handleColorChange, handleShareQuote, handleBookingRequest,
-        toggleAccessory, toggleInsuranceAddon, toggleService, toggleOffer, updateQuantity
+        toggleAccessory, toggleInsuranceAddon, toggleService, toggleOffer, updateQuantity,
+        setRegType, setEmiTenure, setConfigTab, setUserDownPayment
     } = handlers;
 
     const activeColorConfig = colors.find((c: any) => c.id === selectedColor) || colors[0]; // eslint-disable-line @typescript-eslint/no-explicit-any
-    const totalMRP = (product.mrp || (baseExShowroom + 5000)) + rtoEstimates + (mandatoryInsurance.reduce((sum, i) => sum + i.price, 0)) + roadTax + accessoriesPrice + servicesPrice;
+    const totalMRP = (product.mrp || (baseExShowroom + 5000)) + rtoEstimates + baseInsurance + accessoriesPrice + servicesPrice + otherCharges;
 
     const getProductImage = () => {
         if (activeColorConfig?.image) return activeColorConfig.image;
@@ -71,9 +89,9 @@ export function PDPMobile({ product, variantParam, data, handlers }: PDPMobilePr
     };
 
     return (
-        <div className="min-h-screen bg-white dark:bg-[#020617] pb-40">
+        <div className="min-h-screen bg-white dark:bg-black pb-40">
             {/* 1. Mobile Hero: Full Impact */}
-            <section className="relative aspect-[4/5] bg-slate-50 dark:bg-slate-900/50 flex items-center justify-center p-12">
+            <section className="relative aspect-[4/5] bg-slate-50 dark:bg-neutral-900/50 flex items-center justify-center p-12">
                 <div className="absolute top-8 left-8 right-8 flex justify-between items-start z-10">
                     <div className="space-y-1">
                         <p className="text-[10px] font-black uppercase tracking-widest text-brand-primary italic">{product.make}</p>
@@ -81,8 +99,8 @@ export function PDPMobile({ product, variantParam, data, handlers }: PDPMobilePr
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">{variantParam}</p>
                     </div>
                     <div className="flex gap-2">
-                        <button onClick={handleShareQuote} className="p-3 bg-white/80 dark:bg-black/40 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-full shadow-lg"><Share size={16} /></button>
-                        <button className="p-3 bg-white/80 dark:bg-black/40 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-full shadow-lg text-rose-500"><Heart size={16} className="fill-current" /></button>
+                        <button onClick={handleShareQuote} className="p-3 glass-panel dark:bg-black/40 rounded-full shadow-lg"><Share size={16} /></button>
+                        <button className="p-3 glass-panel dark:bg-black/40 rounded-full shadow-lg text-rose-500"><Heart size={16} className="fill-current" /></button>
                     </div>
                 </div>
 
@@ -124,7 +142,7 @@ export function PDPMobile({ product, variantParam, data, handlers }: PDPMobilePr
 
             {/* 2. Mobile Clusters: Quick Stats */}
             <section className="px-6 -mt-10 relative z-20">
-                <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-white/10 p-8 shadow-2xl space-y-8">
+                <div className="glass-panel dark:bg-neutral-950 rounded-[2.5rem] p-8 shadow-2xl space-y-8">
                     <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-1">
                             <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">On-Road Price</p>
@@ -170,7 +188,7 @@ export function PDPMobile({ product, variantParam, data, handlers }: PDPMobilePr
                             {[
                                 { label: 'Ex-Showroom', value: baseExShowroom },
                                 { label: 'RTO & Reg.', value: rtoEstimates },
-                                { label: 'Insurance (Mandatory)', value: mandatoryInsurance.reduce((sum, i) => sum + i.price, 0) },
+                                { label: 'Insurance', value: baseInsurance + insuranceAddonsPrice },
                                 { label: 'Total On-Road', value: totalOnRoad, isTotal: true }
                             ].map((item, idx) => (
                                 <div key={idx} className={`flex justify-between items-center ${item.isTotal ? 'pt-4 border-t border-slate-200 dark:border-white/10' : ''}`}>
@@ -191,7 +209,7 @@ export function PDPMobile({ product, variantParam, data, handlers }: PDPMobilePr
                                 <input type="range" min={minDownPayment} max={maxDownPayment} step={1000} value={downPayment} onChange={(e) => setUserDownPayment(parseInt(e.target.value))} className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full appearance-none accent-brand-primary" />
                             </div>
                             <div className="space-y-3">
-                                {[60, 48, 36].map(t => (
+                                {[60, 48, 36, 24].map(t => (
                                     <button key={t} onClick={() => setEmiTenure(t)} className={`w-full p-5 rounded-2xl border transition-all flex justify-between items-center ${emiTenure === t ? 'bg-brand-primary border-brand-primary text-black shadow-xl' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500'}`}>
                                         <span className="text-xs font-black italic uppercase">{t} MONTHS</span>
                                         <span className="text-base font-black italic">₹{Math.round((loanAmount * (annualInterest / 12) * Math.pow(1 + (annualInterest / 12), t)) / (Math.pow(1 + (annualInterest / 12), t) - 1)).toLocaleString()}</span>
@@ -204,17 +222,43 @@ export function PDPMobile({ product, variantParam, data, handlers }: PDPMobilePr
                     {configTab === 'ACCESSORIES' && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
                             <div className="grid grid-cols-1 gap-3">
-                                {optionalAccessories.map(acc => (
-                                    <ConfigItemRowMobile key={acc.id} item={acc} isSelected={selectedAccessories.includes(acc.id)} onToggle={() => toggleAccessory(acc.id)} />
+                                {activeAccessories.map((acc: any) => (
+                                    <ConfigItemRowMobile
+                                        key={acc.id}
+                                        item={acc}
+                                        isSelected={selectedAccessories.includes(acc.id)}
+                                        onToggle={() => toggleAccessory(acc.id)}
+                                        isMandatory={acc.isMandatory}
+                                    />
                                 ))}
                             </div>
+                        </div>
+                    )}
+
+                    {configTab === 'TECH_SPECS' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                            {warrantyItems.length > 0 && (
+                                <div className="space-y-3">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Warranty</p>
+                                    {warrantyItems.map((w: any, idx: number) => (
+                                        <div key={idx} className="p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5">
+                                            <p className="text-[10px] font-black uppercase text-white mb-1">{w.label}</p>
+                                            <div className="flex justify-between text-[10px] font-mono text-brand-primary">
+                                                <span>{w.km} KM</span>
+                                                <span>{w.days} Days</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {/* Detailed Specs could go here */}
                         </div>
                     )}
                 </div>
             </section>
 
             {/* 4. Sticky Mobile Booking Bar */}
-            <div className="fixed bottom-0 left-0 right-0 z-[100] bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-white/10 p-6 pb-12 flex items-center justify-between gap-6 shadow-[0_-20px_50px_rgba(0,0,0,0.1)]">
+            <div className="fixed bottom-0 left-0 right-0 z-[100] glass-panel dark:bg-black/80 p-6 pb-12 flex items-center justify-between gap-6 shadow-[0_-20px_50px_rgba(0,0,0,0.1)]">
                 <div className="flex flex-col">
                     <p className="text-[9px] font-black uppercase tracking-widest text-green-600 italic leading-none">Smart EMI</p>
                     <p className="text-2xl font-black italic tracking-tighter mt-1">₹{emi.toLocaleString()}<span className="text-[10px] text-slate-400 ml-1">/mo*</span></p>

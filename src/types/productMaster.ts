@@ -97,6 +97,8 @@ export interface ProductVariant {
 
     // Detailed Context
     displayName?: string; // Full public name
+    slug: string;        // URL slug (e.g. "zx")
+    modelSlug: string;   // URL slug for the model (e.g. "jupiter")
 
     // Attributes
     color?: string;    // Imperial Red (Vehicles)
@@ -128,6 +130,7 @@ export interface ProductVariant {
         id: string;
         name: string;
         hexCode: string;
+        secondaryHexCode?: string;
         finish?: 'MATT' | 'GLOSSY' | 'METALLIC' | 'SATIN';
         imageUrl?: string;
     }>;
@@ -155,6 +158,8 @@ export const MOCK_VEHICLES: ProductVariant[] = [
         powerUnit: 'CC',
         segment: 'COMMUTER',
         displayName: 'Honda Activa 6G Standard',
+        slug: 'standard',
+        modelSlug: 'activa-6g',
         color: 'Matte Axis Grey',
         sku: 'HND-ACT-6G-STD-MAG',
         hsnCode: '871120',
@@ -223,6 +228,8 @@ export const MOCK_VEHICLES: ProductVariant[] = [
         powerUnit: 'CC',
         segment: 'COMMUTER',
         displayName: 'Honda Activa 6G Standard',
+        slug: 'standard-blue',
+        modelSlug: 'activa-6g',
         color: 'Decent Blue',
         sku: 'HND-ACT-6G-STD-DBL',
         hsnCode: '871120',
@@ -251,6 +258,8 @@ export const MOCK_VEHICLES: ProductVariant[] = [
         powerUnit: 'CC',
         segment: 'CRUISER',
         displayName: 'Royal Enfield Classic 350 Dark',
+        slug: 'dark',
+        modelSlug: 'classic-350',
         color: 'Stealth Black',
         sku: 'RE-CLS-350-DRK-BLK',
         hsnCode: '871120',
@@ -290,6 +299,8 @@ export const MOCK_VEHICLES: ProductVariant[] = [
         powerUnit: 'CC',
         segment: 'CRUISER',
         displayName: 'Royal Enfield Classic 350 Dark',
+        slug: 'gunmetal',
+        modelSlug: 'classic-350',
         color: 'Gunmetal Grey',
         sku: 'RE-CLS-350-DRK-GRY',
         hsnCode: '871120',
@@ -320,6 +331,8 @@ export const MOCK_VEHICLES: ProductVariant[] = [
         powerUnit: 'CC',
         segment: 'SPORT',
         displayName: 'Yamaha R15M V4',
+        slug: 'v4',
+        modelSlug: 'r15m',
         color: 'Metallic Grey',
         sku: 'YMH-R15M-V4-GRY',
         hsnCode: '871120',
@@ -383,6 +396,8 @@ export const MOCK_ACCESSORIES: ProductVariant[] = [
         make: 'Studds',
         model: 'Ninja 3G',
         variant: 'Flip Up',
+        slug: 'ninja-3g',
+        modelSlug: 'studds',
         size: 'L (58cm)',
         sku: 'STD-NIN-3G-BLK-L',
         hsnCode: '650610',
@@ -399,6 +414,8 @@ export const MOCK_ACCESSORIES: ProductVariant[] = [
         make: 'Honda',
         model: 'Chrome Guard',
         variant: 'Full Kit',
+        slug: 'chrome-guard',
+        modelSlug: 'honda',
         sku: 'HND-ACT-GRD-SET',
         hsnCode: '871410',
         gstRate: 18,
@@ -418,6 +435,8 @@ export const MOCK_SERVICES: ProductVariant[] = [
         make: 'AUMS',
         model: 'AMC',
         variant: 'Gold Plan',
+        slug: 'gold',
+        modelSlug: 'aums-amc',
         duration: '1 Year',
         sku: 'SVC-AMC-GLD-1Y',
         hsnCode: '998729',

@@ -1,42 +1,8 @@
 import React, { useState } from 'react';
 import { MapPin, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { getPincodeDetails } from '@/actions/pincode';
 
-// Dummy Pincode Data (would normally come from API/CSV)
-const VALID_PINCODES: Record<string, string> = {
-    // Delhi NCR
-    '110001': 'New Delhi', '110002': 'Daryaganj', '110003': 'Aliganj', '110020': 'Okhla',
-    '110017': 'Malviya Nagar', '110019': 'Kalkaji', '110025': 'New Friends Colony',
-    '122001': 'Gurgaon', '201301': 'Noida',
 
-    // Mumbai
-    '400001': 'Mumbai GPO', '400050': 'Bandra West', '400053': 'Andheri West',
-    '400076': 'Powai', '400093': 'Chakala', '400028': 'Dadar West',
-    '400018': 'Worli', '400005': 'Colaba',
-
-    // Bangalore
-    '560001': 'Bangalore GPO', '560034': 'Koramangala', '560038': 'Indiranagar',
-    '560066': 'Whitefield', '560100': 'Electronic City', '560076': 'JP Nagar',
-
-    // Chennai
-    '600001': 'Chennai GPO', '600018': 'Teynampet', '600096': 'Perungudi',
-    '600100': 'Medavakkam', '600017': 'T. Nagar',
-
-    // Kolkata
-    '700001': 'Kolkata GPO', '700091': 'Salt Lake', '700053': 'New Alipore',
-    '700016': 'Park Street', '700020': 'Bhowanipore',
-
-    // Hyderabad
-    '500001': 'Hyderabad GPO', '500032': 'Gachibowli', '500081': 'Madhapur',
-    '500034': 'Banjara Hills', '500033': 'Jubilee Hills',
-
-    // Pune
-    '411001': 'Pune GPO', '411057': 'Hinjewadi', '411014': 'Viman Nagar',
-    '411038': 'Kothrud', '411027': 'Aundh',
-
-    // Other Majors
-    '302001': 'Jaipur', '380001': 'Ahmedabad', '440001': 'Nagpur',
-    '226001': 'Lucknow', '452001': 'Indore', '160017': 'Chandigarh'
-};
 
 export default function DeliveryChecker() {
     const [pincode, setPincode] = useState('');
@@ -47,16 +13,33 @@ export default function DeliveryChecker() {
         if (pincode.length !== 6) return;
         setStatus('LOADING');
 
-        // Simulate API delay
-        setTimeout(() => {
-            if (VALID_PINCODES[pincode]) {
+        try {
+            const result = await getPincodeDetails(pincode);
+            if (result.success && result.data) {
+                const locData = result.data;
                 setStatus('VALID');
-                setCity(VALID_PINCODES[pincode]);
+                setCity(locData.city);
+
+                // Save to localStorage for other components (like ProfileDropdown)
+                const storageData = {
+                    pincode: locData.pincode,
+                    area: locData.area,
+                    city: locData.city,
+                    state: locData.state,
+                    stateCode: locData.state_code || '' // Ensure state_code is handled if available
+                };
+                localStorage.setItem('bkmb_user_pincode', JSON.stringify(storageData));
+
+                // Dispatch event for reactive updates
+                window.dispatchEvent(new Event('locationChanged'));
             } else {
                 setStatus('INVALID');
                 setCity('');
             }
-        }, 1000);
+        } catch (error) {
+            console.error('Error checking pincode:', error);
+            setStatus('INVALID');
+        }
     };
 
     return (

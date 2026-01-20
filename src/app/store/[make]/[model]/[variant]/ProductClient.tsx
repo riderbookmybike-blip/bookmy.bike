@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { usePDPData, mandatoryAccessories, optionalAccessories, mandatoryInsurance, insuranceAddons, serviceOptions, offerOptions, productColors } from '@/hooks/usePDPData';
+import { usePDPData } from '@/hooks/usePDPData';
 import { DeviceLayout } from '@/components/layout/DeviceLayout';
 import { PDPMobile } from '@/components/store/PDPMobile';
 import { PDPTablet } from '@/components/store/PDPTablet';
@@ -20,6 +20,9 @@ interface ProductClientProps {
     initialLocation: any; // eslint-disable-line @typescript-eslint/no-explicit-any
     initialPrice: any; // eslint-disable-line @typescript-eslint/no-explicit-any
     insuranceRule?: InsuranceRule;
+    registrationRule?: any; // Added
+    initialAccessories?: any[];
+    initialServices?: any[];
 }
 
 export default function ProductClient({
@@ -29,27 +32,46 @@ export default function ProductClient({
     variantParam,
     initialLocation,
     initialPrice,
-    insuranceRule
+    insuranceRule,
+    registrationRule, // Added
+    initialAccessories = [],
+    initialServices = []
 }: ProductClientProps) {
-    const data = usePDPData(initialPrice, product.colors, insuranceRule);
+    const { data, actions } = usePDPData({
+        initialPrice,
+        colors: product.colors, // Passing colors from product
+        insuranceRule,
+        registrationRule,
+        initialAccessories,
+        initialServices,
+        product
+    });
+
     const {
-        setSelectedColor,
         selectedColor,
         totalOnRoad,
-        initialLocation: loc, // Not using loc directly but data has it indirectly
         selectedAccessories,
-        setSelectedAccessories,
         selectedInsuranceAddons,
-        setSelectedInsuranceAddons,
         selectedServices,
-        setSelectedServices,
         selectedOffers,
-        setSelectedOffers,
         quantities,
-        setQuantities,
         isReferralActive,
-        setIsReferralActive
+        baseExShowroom
     } = data;
+
+    const {
+        setSelectedColor,
+        setSelectedAccessories,
+        setSelectedInsuranceAddons,
+        setSelectedServices,
+        setSelectedOffers,
+        setQuantities,
+        setIsReferralActive,
+        setRegType,
+        setEmiTenure,
+        setConfigTab,
+        setUserDownPayment
+    } = actions;
 
     const [showQuoteSuccess, setShowQuoteSuccess] = useState(false);
     const [showEmailModal, setShowEmailModal] = useState(false);
@@ -89,12 +111,14 @@ export default function ProductClient({
     };
 
     const toggleAccessory = (id: string) => {
-        if (mandatoryAccessories.some(a => a.id === id)) return;
+        const accessory = data.activeAccessories.find((a: any) => a.id === id);
+        if (accessory?.isMandatory) return;
         setSelectedAccessories(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
     };
 
     const toggleInsuranceAddon = (id: string) => {
-        if (mandatoryInsurance.some(i => i.id === id)) return;
+        const addon = data.availableInsuranceAddons.find((i: any) => i.id === id);
+        if (addon?.isMandatory) return;
         setSelectedInsuranceAddons(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
     };
 
@@ -123,7 +147,11 @@ export default function ProductClient({
         toggleInsuranceAddon,
         toggleService,
         toggleOffer,
-        updateQuantity
+        updateQuantity,
+        setRegType,
+        setEmiTenure,
+        setConfigTab,
+        setUserDownPayment
     };
 
     const commonProps = {

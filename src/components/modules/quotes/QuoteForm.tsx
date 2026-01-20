@@ -9,12 +9,20 @@ interface QuoteFormProps {
     isOpen: boolean;
     onClose: () => void;
     onSubmit: (data: { customerName: string, product: ProductVariant, price: number }) => void;
+    initialCustomerName?: string;
 }
 
-export default function QuoteForm({ isOpen, onClose, onSubmit }: QuoteFormProps) {
+export default function QuoteForm({ isOpen, onClose, onSubmit, initialCustomerName }: QuoteFormProps) {
     const [selectedProduct, setSelectedProduct] = useState<ProductVariant | null>(null);
     const [quotePrice, setQuotePrice] = useState(0);
-    const [customerName, setCustomerName] = useState('');
+    const [customerName, setCustomerName] = useState(initialCustomerName || '');
+
+    // Update customer name if prop changes
+    React.useEffect(() => {
+        if (initialCustomerName) {
+            setCustomerName(initialCustomerName);
+        }
+    }, [initialCustomerName]);
 
     const handleSubmit = () => {
         if (!selectedProduct || !customerName) return;

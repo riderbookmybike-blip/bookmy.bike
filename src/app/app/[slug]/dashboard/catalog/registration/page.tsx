@@ -11,7 +11,9 @@ import { Landmark, Shield, Globe, Info } from 'lucide-react';
 import { KpiCard } from '@/components/dashboard/DashboardWidgets';
 
 import { createClient } from '@/lib/supabase/client';
-import { MOCK_REGISTRATION_RULES } from '@/lib/mock/catalogMocks';
+import DataSourceIndicator from '@/components/dev/DataSourceIndicator';
+import { calculateRegistrationCharges } from '@/lib/aums/registrationEngine';
+import { CalculationContext } from '@/types/registration';
 
 const STATE_NAMES: Record<string, string> = {
     'MH': 'Maharashtra',
@@ -27,7 +29,7 @@ const STATE_NAMES: Record<string, string> = {
 };
 
 const COLUMNS = [
-    { key: 'displayId', header: 'Rule ID', type: 'id' as const, width: '120px' },
+    { key: 'formattedId', header: 'Rule ID', type: 'id' as const, width: '180px' }, // Displaying formatted ID
     {
         key: 'ruleName',
         header: 'Jurisdiction',
@@ -35,6 +37,9 @@ const COLUMNS = [
         icon: Globe,
         subtitle: (item: any) => `${item.stateCode} • RTO Rule`
     },
+    { key: 'fixedTotal', header: 'Fixed Fees', type: 'amount' as const, width: '180px' },
+    { key: 'taxRange', header: 'Tax % Range', width: '200px' },
+    { key: 'sampleTotal', header: 'Est. (State 1L)', type: 'amount' as const, width: '200px' },
     { key: 'status', header: 'Status', type: 'badge' as const, align: 'right' as const, width: '120px' }
 ];
 
@@ -46,6 +51,7 @@ export default function RegistrationMasterPage() {
     const basePath = tenantSlug ? `/app/${tenantSlug}/dashboard/catalog/registration` : '/dashboard/catalog/registration';
 
     const [ruleList, setRuleList] = useState<any[]>([]);
+    const [dataSource, setDataSource] = useState<'LIVE' | 'MOCK'>('MOCK');
     const [checkedIds, setCheckedIds] = useState<any[]>([]);
     const [isMounted, setIsMounted] = useState(false);
 
@@ -56,14 +62,73 @@ export default function RegistrationMasterPage() {
             .select('*')
             .order('state_code', { ascending: true });
 
-        if (!error && data && data.length > 0) {
-            const formatted = data.map(r => ({
-                ...r,
-                ruleName: r.ruleName?.includes('(') ? r.ruleName : `${STATE_NAMES[r.state_code || r.stateCode] || r.state_code || r.stateCode} (${r.state_code || r.stateCode})`
-            }));
+        if (!error && data) {
+            const formatted = data.map(r => {
+                const stateCode = r.state_code || r.stateCode;
+                const ruleName = r.rule_name || r.ruleName;
+                const components = r.components || [];
+
+                // 1. Calculate Fixed Charges Sum
+                const fixedTotal = components
+                    .filter((c: any) => c.type === 'FIXED')
+                    .reduce((sum: number, c: any) => sum + (c.amount || 0), 0);
+
+                // 2. Calculate Tax Range (Min/Max)
+                const percentages: number[] = [];
+                components.forEach((c: any) => {
+                    if (c.type === 'PERCENTAGE') percentages.push(c.percentage || 0);
+                    if (c.type === 'SLAB') (c.ranges || []).forEach((range: any) => percentages.push(range.percentage || 0));
+                });
+                const minTax = percentages.length ? Math.min(...percentages) : 0;
+                const maxTax = percentages.length ? Math.max(...percentages) : 0;
+                const taxRange = percentages.length ? `${minTax}% - ${maxTax}%` : 'N/A';
+
+                // 3. Sample Calculation (1L, 100cc)
+                let sampleTotal = 0;
+                try {
+                    const ctx: CalculationContext = {
+                        exShowroom: 100000,
+                        invoiceBase: 100000,
+                        engineCc: 100,
+                        fuelType: 'PETROL',
+                        regType: 'STATE_INDIVIDUAL',
+                        variantConfig: { stateTenure: 15, bhTenure: 2, companyMultiplier: 2 }
+                    };
+                    // Ensure 'r' has necessary fields for engine (it might be raw JSON, but structure should match)
+                    const res = calculateRegistrationCharges(r as any, ctx);
+                    sampleTotal = res.totalAmount;
+                } catch (e) {
+                    console.error("Sample calc failed for", stateCode, e);
+                }
+
+                // 4. Format ID: Last 9 chars in 3-3-3 format
+                const rawUuid = r.id || '';
+                const cleanUuid = rawUuid.replace(/-/g, '');
+                const last9 = cleanUuid.slice(-9);
+                const formattedId = last9.length === 9
+                    ? `${last9.slice(0, 3).toUpperCase()}-${last9.slice(3, 6).toUpperCase()}-${last9.slice(6, 9).toUpperCase()}`
+                    : rawUuid.slice(0, 8); // Fallback
+
+                return {
+                    ...r,
+                    id: r.id,
+                    formattedId, // New field for display
+                    displayId: r.display_id || r.displayId,
+                    stateCode: stateCode,
+                    ruleName: ruleName?.includes('(')
+                        ? ruleName
+                        : `${STATE_NAMES[stateCode] || stateCode} (${stateCode})`,
+                    fixedTotal,
+                    taxRange,
+                    sampleTotal
+                };
+            });
             setRuleList(formatted);
+            setDataSource('LIVE');
         } else {
-            setRuleList(MOCK_REGISTRATION_RULES);
+            console.error("Error fetching registration rules:", error);
+            setRuleList([]);
+            setDataSource('LIVE'); // Still LIVE even if empty, as we aren't using MOCK
         }
     };
 
@@ -114,7 +179,12 @@ export default function RegistrationMasterPage() {
         <RoleGuard resource="catalog-registration" action="view">
             <MasterListDetailLayout mode="list-only">
                 <ListPanel
-                    title="Registration (RTO)"
+                    title={
+                        <div className="flex items-center gap-3">
+                            Registration (RTO)
+                            <DataSourceIndicator source={dataSource} />
+                        </div>
+                    }
                     columns={COLUMNS}
                     data={ruleList}
                     actionLabel={canEdit ? "New RTO Rule" : ""}

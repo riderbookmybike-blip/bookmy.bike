@@ -218,7 +218,7 @@ export default function BrandGuidelinesPage() {
                                         setBikeColor('#4F46E5');
                                         setBookmyColor(playgroundBg === 'dark' ? '#FFFFFF' : '#000000');
                                     }}
-                                    className="w-full py-3 rounded-xl border border-slate-200 dark:border-white/10 font-bold text-xs uppercase tracking-widest text-slate-500 hover:bg-white hover:text-slate-900 transition-colors flex items-center justify-center gap-2"
+                                    className="w-full py-3 rounded-xl border border-slate-200 dark:border-white/10 font-bold text-xs uppercase tracking-widest text-slate-500 hover:bg-white hover:text-slate-900 dark:hover:bg-white/5 dark:hover:text-white transition-colors flex items-center justify-center gap-2"
                                 >
                                     <RefreshCw size={14} /> Reset Defaults
                                 </button>

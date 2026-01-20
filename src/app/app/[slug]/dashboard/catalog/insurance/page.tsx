@@ -8,8 +8,9 @@ import { usePermission } from '@/hooks/usePermission';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { useRouter } from 'next/navigation';
 
-import { MOCK_INSURANCE_RULES } from '@/lib/mock/insuranceMocks';
-import { Shield, Activity, Zap, Percent } from 'lucide-react';
+import { Landmark, Shield, Globe, Info, Activity, Percent, Zap } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import DataSourceIndicator from '@/components/dev/DataSourceIndicator';
 
 const COLUMNS = [
     { key: 'displayId', header: 'Rule ID', type: 'id' as const, width: '120px' },
@@ -34,11 +35,33 @@ export default function InsuranceMasterPage() {
 
     const [checkedIds, setCheckedIds] = useState<any[]>([]);
     const [data, setData] = useState<any[]>([]);
-    const STORAGE_KEY = 'aums_insurance_rules_v2';
+    const [dataSource, setDataSource] = useState<'LIVE' | 'MOCK'>('LIVE');
 
     useEffect(() => {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        setData(stored ? JSON.parse(stored) : MOCK_INSURANCE_RULES);
+        const fetchInsurance = async () => {
+            const supabase = createClient();
+            const { data: dbData, error } = await supabase
+                .from('insurance_rules')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (!error && dbData) {
+                setData(dbData.map(d => ({
+                    ...d,
+                    displayId: d.display_id,
+                    insurerName: d.insurer_name,
+                    stateCode: d.state_code,
+                    vehicleType: d.vehicle_type,
+                    idvPercentage: d.idv_percentage + '%'
+                })));
+                setDataSource('LIVE');
+            } else {
+                console.error("Error fetching insurance rules:", error);
+                setData([]);
+                setDataSource('LIVE');
+            }
+        };
+        fetchInsurance();
     }, []);
 
     const metrics = (
@@ -64,7 +87,6 @@ export default function InsuranceMasterPage() {
         if (confirm(`Are you sure you want to delete ${ids.length} insurance rules?`)) {
             const newData = data.filter(item => !ids.includes(item.id));
             setData(newData);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
             setCheckedIds([]);
         }
     };
@@ -73,7 +95,12 @@ export default function InsuranceMasterPage() {
         <RoleGuard resource="catalog-insurance" action="view">
             <MasterListDetailLayout mode="list-only">
                 <ListPanel
-                    title="Insurance Rules"
+                    title={
+                        <div className="flex items-center gap-3">
+                            Insurance Rules
+                            <DataSourceIndicator source={dataSource} />
+                        </div>
+                    }
                     columns={COLUMNS}
                     data={data}
                     actionLabel={canEdit ? "New Insurance Rule" : ""}

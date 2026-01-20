@@ -138,16 +138,16 @@ function InviteContent() {
     };
 
     if (status === 'LOADING') {
-        return <div className="min-h-screen flex items-center justify-center bg-white"><div className="animate-spin w-6 h-6 border-2 border-indigo-600 rounded-full border-t-transparent"></div></div>;
+        return <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950"><div className="animate-spin w-6 h-6 border-2 border-indigo-600 rounded-full border-t-transparent"></div></div>;
     }
 
     if (status === 'INVALID') {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-                <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center space-y-4">
+            <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
+                <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl shadow-xl max-w-md w-full text-center space-y-4">
                     <XCircle className="mx-auto text-red-500" size={48} />
-                    <h2 className="text-xl font-bold text-slate-900">Invalid Invitation</h2>
-                    <p className="text-slate-500">{error}</p>
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">Invalid Invitation</h2>
+                    <p className="text-slate-500 dark:text-slate-400">{error}</p>
                     <button onClick={() => router.push('/')} className="text-indigo-600 font-bold hover:underline">Go Home</button>
                 </div>
             </div>
@@ -155,28 +155,28 @@ function InviteContent() {
     }
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-white p-4 font-sans">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-slate-950 p-4 font-sans">
             <div className="mb-8"><Logo mode="auto" /></div>
 
-            <div className="bg-white border border-slate-200 p-8 md:p-12 rounded-3xl shadow-2xl shadow-indigo-500/10 max-w-lg w-full text-center space-y-8 animate-in fade-in zoom-in duration-500">
-                <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto text-indigo-600">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-8 md:p-12 rounded-3xl shadow-2xl shadow-indigo-500/10 max-w-lg w-full text-center space-y-8 animate-in fade-in zoom-in duration-500">
+                <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl flex items-center justify-center mx-auto text-indigo-600 dark:text-indigo-400">
                     <ShieldCheck size={32} />
                 </div>
 
                 <div>
-                    <h1 className="text-2xl font-black text-slate-900 mb-2">You've been invited!</h1>
-                    <p className="text-slate-500 text-lg">
-                        Join <strong className="text-slate-900">{inviteData?.tenants?.name}</strong> as <span className="inline-block bg-slate-100 px-2 py-0.5 rounded text-sm font-bold align-middle">{inviteData?.role}</span>
+                    <h1 className="text-2xl font-black text-slate-900 dark:text-white mb-2">You've been invited!</h1>
+                    <p className="text-slate-500 dark:text-slate-400 text-lg">
+                        Join <strong className="text-slate-900 dark:text-white">{inviteData?.tenants?.name}</strong> as <span className="inline-block bg-slate-100 dark:bg-white/10 px-2 py-0.5 rounded text-sm font-bold align-middle">{inviteData?.role}</span>
                     </p>
                 </div>
 
-                <div className="bg-slate-50 p-4 rounded-xl text-left flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center font-bold text-slate-400">
+                <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-xl text-left flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 flex items-center justify-center font-bold text-slate-400">
                         {inviteData?.tenants?.name?.charAt(0)}
                     </div>
                     <div>
                         <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Organization</div>
-                        <div className="font-bold text-slate-900">{inviteData?.tenants?.name}</div>
+                        <div className="font-bold text-slate-900 dark:text-white">{inviteData?.tenants?.name}</div>
                     </div>
                 </div>
 
@@ -197,7 +197,7 @@ function InviteContent() {
                 )}
 
                 {!currentUser && (
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
                         You will be asked to verify your phone number to proceed.
                     </p>
                 )}
@@ -208,7 +208,7 @@ function InviteContent() {
 
 export default function InvitePage() {
     return (
-        <Suspense fallback={<div className="min-h-screen bg-white" />}>
+        <Suspense fallback={<div className="min-h-screen bg-white dark:bg-slate-950" />}>
             <InviteContent />
         </Suspense>
     );

@@ -68,11 +68,11 @@ const SortableComponent = ({ component, onChange, onDelete, readOnly, availableT
         transform: CSS.Transform.toString(transform),
         transition,
         zIndex: isDragging ? 50 : 0,
-        opacity: isDragging ? 0.5 : 1,
+        opacity: isDragging ? 0.3 : 1,
     };
 
     return (
-        <div ref={setNodeRef} style={style} className="touch-none">
+        <div ref={setNodeRef} style={style} className={`touch-none ${isDragging ? 'scale-[1.02] shadow-2xl rotate-1' : 'transition-all duration-300'}`}>
             <FormulaBlock
                 component={component}
                 onChange={onChange}
@@ -81,6 +81,7 @@ const SortableComponent = ({ component, onChange, onDelete, readOnly, availableT
                 availableTargets={availableTargets}
                 inheritedContext={inheritedContext}
                 dragHandleProps={{ ...attributes, ...listeners }}
+                isDragging={isDragging}
             />
         </div>
     );
@@ -220,7 +221,8 @@ export const FormulaBlock = ({
     slabValueLabel = 'Tax %',
     showSlabValueTypeToggle = false,
     defaultSlabValueType = 'PERCENTAGE',
-    forceEdit = false
+    forceEdit = false,
+    isDragging
 }: {
     component: FormulaComponent,
     onChange: (c: FormulaComponent) => void,
@@ -232,7 +234,8 @@ export const FormulaBlock = ({
     slabValueLabel?: string,
     showSlabValueTypeToggle?: boolean,
     defaultSlabValueType?: 'PERCENTAGE' | 'FIXED',
-    forceEdit?: boolean
+    forceEdit?: boolean,
+    isDragging?: boolean
 }) => {
 
     const [expanded, setExpanded] = useState(true);
@@ -296,11 +299,11 @@ export const FormulaBlock = ({
     return (
         <div className={`group border border-white/20 rounded-2xl bg-white/60 backdrop-blur-xl shadow-lg hover:shadow-xl transition-all duration-300 ring-1 ${ringColor} overflow-hidden ${borderColor}`}>
             {/* Header */}
-            <div className={`flex items-center gap-4 px-4 py-3 cursor-pointer group/header ${headerColor} rounded-t-2xl border-b ${borderColor} transition-colors`} onClick={() => setExpanded(!expanded)}>
+            <div className={`flex items-center gap-4 px-4 py-3 cursor-pointer group/header ${headerColor} rounded-t-2xl border-b ${borderColor} transition-colors ${isDragging ? 'bg-blue-50/50' : ''}`} onClick={() => setExpanded(!expanded)}>
                 {/* Drag Handle */}
                 {!readOnly && (
-                    <div {...dragHandleProps} className="p-1 hover:bg-black/5 rounded cursor-grab active:cursor-grabbing text-gray-400">
-                        <GripVertical size={16} />
+                    <div {...dragHandleProps} className="p-2 -ml-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl cursor-grab active:cursor-grabbing text-slate-400 hover:text-blue-600 transition-all group-hover/header:translate-x-1">
+                        <GripVertical size={20} className="drop-shadow-sm" />
                     </div>
                 )}
 

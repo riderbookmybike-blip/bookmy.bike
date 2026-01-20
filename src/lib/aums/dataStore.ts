@@ -5,39 +5,6 @@ import { LedgerEntry, TransactionType, PartyType } from "@/types/ledger";
 import { ACCOUNT_MASTER } from "./accounting/accountMaster";
 
 // Types needed directly here to avoid circular deps if any, but simplistic for now
-export interface MockOrder {
-    id: string;
-    displayId: string; // SO-24-LOC-XXX
-    quoteId: string;
-    quoteDisplayId: string; // QT-24-LOC-XXX
-    customer: string;
-    brand: string;
-    model: string;
-    variant: string;
-    price: number;
-    status: 'BOOKED' | 'CONVERTED';
-    date: string;
-}
-
-import { generateDisplayId } from './idEngine';
-
-// Initial Mock Orders
-let ORDERS: MockOrder[] = [
-    {
-        id: '123e4567-e89b-12d3-a456-426614174000', // UUID
-        displayId: '9X2V3M1AB', // 9-Char Mock (Clean)
-        quoteId: 'uuid-quote-001',
-        quoteDisplayId: '8Z7L6K5CD', // 9-Char Mock (Clean)
-        customer: 'Rahul Kumar',
-        brand: 'Honda',
-        model: 'Activa 6G',
-        variant: 'Standard / Matte Axis Grey',
-        price: 85000,
-        status: 'BOOKED', // Ready to Convert
-        date: '2024-01-02'
-    }
-];
-
 // Quote Interface
 export interface Quote {
     id: string; // UUID
@@ -46,12 +13,49 @@ export interface Quote {
     productName: string;
     productSku: string;
     price: number;
-    status: 'DRAFT' | 'CONFIRMED' | 'Converted to Order';
+    status: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'EXPIRED' | 'REJECTED' | 'CONFIRMED' | 'Converted to Order';
     date: string;
+    version?: number;
+    isLatest?: boolean;
 }
 
 // Initial Mock Bookings
 let BOOKINGS: Booking[] = [];
+
+// Sales Order / Booking Interface
+export interface MockOrder {
+    id: string;
+    displayId: string; // SO-24-LOC-XXX
+    quoteId?: string;
+    quoteDisplayId?: string;
+    customer: string;
+    brand: string;
+    model: string;
+    variant: string;
+    price: number;
+    status: string;
+    date: string;
+    currentStage?: string;
+}
+
+import { generateDisplayId } from './idEngine';
+
+// Initial Mock Orders
+let ORDERS: MockOrder[] = [
+    {
+        id: '123e4567-e89b-12d3-a456-426614174000',
+        displayId: '9X2V3M1AB',
+        quoteId: 'uuid-quote-001',
+        quoteDisplayId: '8Z7L6K5CD',
+        customer: 'Rahul Kumar',
+        brand: 'Honda',
+        model: 'Activa 6G',
+        variant: 'Standard / Matte Axis Grey',
+        price: 85000,
+        status: 'BOOKED',
+        date: '2024-01-02'
+    }
+];
 
 // Initial Mock Quotes
 let QUOTES: Quote[] = [

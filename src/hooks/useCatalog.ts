@@ -1,218 +1,309 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { ProductVariant, MOCK_VEHICLES } from '@/types/productMaster';
+import { ProductVariant } from '@/types/productMaster';
+import { calculateOnRoad } from '@/lib/utils/pricingUtility';
 
-interface DBVariant {
+// New Unified Schema Types
+interface CatalogItemDB {
     id: string;
+    type: string;
     name: string;
     slug: string;
-    position: number;
-    base_price_ex_showroom: number;
-    braking_system: string | null;
-    specifications: any | null;
-    vehicle_models: {
+    specs: any;
+    price_base: number;
+    brand_id: string;
+    brand: { name: string; logo_svg?: string };
+    template: { name: string; code: string };
+    children?: {
         id: string;
+        type: string;
         name: string;
         slug: string;
-        category: string;
-        fuel_type: string;
-        displacement_cc: number | null;
-        brands: {
+        displayName?: string; // Added displayName
+        modelSlug?: string; // Added modelSlug
+        specs?: any;
+        price_base?: number;
+        position?: number;
+        skus?: {
             id: string;
-            name: string;
-        };
-    };
-    vehicle_colors: Array<{
-        id: string;
-        name: string;
-        hex_code: string;
-        finish?: string | null;
-        image_url: string | null;
-        gallery_urls?: string[] | null;
-        is_primary?: boolean | null;
-        vehicle_prices: Array<{
-            ex_showroom_price: number;
-            state_code: string;
-        }>;
-    }>;
+            type: string;
+            price_base: number;
+            specs?: any;
+            prices?: {
+                ex_showroom_price: number;
+                state_code: string;
+            }[];
+        }[];
+    }[];
 }
 
 export function useCatalog() {
     const [items, setItems] = useState<ProductVariant[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [skuCount, setSkuCount] = useState<number>(0);
+    const [stateCode, setStateCode] = useState('MH');
+
+    useEffect(() => {
+        const resolveStateCode = () => {
+            if (typeof window === 'undefined') return;
+            const cached = localStorage.getItem('bkmb_user_pincode');
+            if (!cached) return;
+            try {
+                const data = JSON.parse(cached) as { state?: string | null; stateCode?: string | null };
+                if (data.stateCode) {
+                    setStateCode(data.stateCode.toUpperCase());
+                    return;
+                }
+                const stateMap: Record<string, string> = {
+                    MAHARASHTRA: 'MH',
+                    KARNATAKA: 'KA',
+                    DELHI: 'DL',
+                    GUJARAT: 'GJ',
+                    TAMIL_NADU: 'TN',
+                    TELANGANA: 'TS',
+                    UTTAR_PRADESH: 'UP',
+                    WEST_BENGAL: 'WB',
+                    RAJASTHAN: 'RJ',
+                };
+                const normalized = (data.state || '').toUpperCase();
+                if (normalized && stateMap[normalized]) {
+                    setStateCode(stateMap[normalized]);
+                }
+            } catch (e) {
+                console.error('Error parsing stored location:', e);
+            }
+        };
+
+        resolveStateCode();
+        window.addEventListener('locationChanged', resolveStateCode);
+        return () => window.removeEventListener('locationChanged', resolveStateCode);
+    }, []);
 
     useEffect(() => {
         const fetchItems = async () => {
             try {
+                setIsLoading(true);
                 const supabase = createClient();
 
-                // Fetch from vehicle hierarchy
-                const { data, error } = await supabase
-                    .from('vehicle_variants')
-                    .select(
-                        `
-                        id,
-                        name,
-                        slug,
-                        position,
-                        base_price_ex_showroom,
-                        braking_system,
-                        specifications,
-                        vehicle_models (
+                // Fetch Families + Children (Variants) + Grandchildren (SKUs)
+                const { data, error: dbError } = await supabase
+                    .from('catalog_items')
+                    .select(`
+                        id, type, name, slug, specs, price_base, brand_id,
+                        brand:brands(name, logo_svg),
+                        template:catalog_templates!inner(name, code, category),
+                        children:catalog_items!parent_id(
                             id,
+                            type,
                             name,
                             slug,
-                            category,
-                            fuel_type,
-                            displacement_cc,
-                            brands (
+                            specs,
+                            price_base,
+                            parent:catalog_items!parent_id(name, slug),
+                            position,
+                            skus:catalog_items!parent_id(
                                 id,
-                                name
-                            )
-                        ),
-                        vehicle_colors (
-                            id,
-                            name,
-                            hex_code,
-                            finish,
-                            image_url,
-                            gallery_urls,
-                            is_primary,
-                            vehicle_prices (
-                                ex_showroom_price,
-                                state_code
+                                type,
+                                price_base,
+                                is_primary,
+                                image_url,
+                                gallery_urls,
+                                video_url,
+                                specs,
+                                prices:vehicle_prices(ex_showroom_price, state_code)
                             )
                         )
-                    `
-                    )
-                    .eq('is_active', true)
-                    .order('position', { ascending: true });
+                    `)
+                    .eq('type', 'FAMILY')
+                    .eq('status', 'ACTIVE')
+                    .not('template_id', 'is', null) // Ensure it has a template
+                    .eq('template.category', 'VEHICLE');
 
-                if (error) throw error;
+                if (dbError) {
+                    console.error('Database error fetching catalog:', JSON.stringify(dbError, null, 2));
+                    throw dbError;
+                }
 
-                if (data && data.length > 0) {
-                    // Map DB structure to ProductVariant format
-                    const usedImages = new Set<string>();
-                    const usedColorCounts = new Map<string, number>();
-                    const mappedItems: ProductVariant[] = [];
+                const { data: ruleData } = await supabase
+                    .from('registration_rules')
+                    .select('*')
+                    .eq('state_code', stateCode)
+                    .eq('status', 'ACTIVE');
 
-                    for (const variant of data as unknown as DBVariant[]) {
-                        const model = variant.vehicle_models;
-                        const brand = model?.brands;
-                        const colors = variant.vehicle_colors || [];
+                const { data: insuranceRuleData } = await supabase
+                    .from('insurance_rules')
+                    .select('*')
+                    .eq('status', 'ACTIVE')
+                    .eq('vehicle_type', 'TWO_WHEELER')
+                    .or(`state_code.eq.${stateCode},state_code.eq.ALL`)
+                    .order('state_code', { ascending: false })
+                    .limit(1);
 
-                        type ColorCandidate = {
-                            color: DBVariant['vehicle_colors'][number];
-                            key: string;
-                            images: string[];
-                            unusedImage?: string;
-                            isPrimary: boolean;
-                        };
+                const effectiveRule: any = ruleData?.[0] || {
+                    id: 'default',
+                    stateCode,
+                    components: [{ id: 'tax', type: 'PERCENTAGE', label: 'Road Tax', percentage: 10, isRoadTax: true }]
+                };
+                const insuranceRule: any = insuranceRuleData?.[0];
 
-                        const colorCandidates: ColorCandidate[] = colors.map(color => {
-                            const gallery = Array.isArray(color.gallery_urls) ? color.gallery_urls : [];
-                            const images = [color.image_url, ...gallery].filter(Boolean) as string[];
-                            const key = color.id || color.hex_code || color.name;
+                if (data) {
+                    const mappedItems: ProductVariant[] = (data as any[]).flatMap((family: CatalogItemDB) => {
+                        const templateName = family.template?.name?.toLowerCase() || '';
+                        let bodyType: any = 'MOTORCYCLE';
+                        if (templateName.includes('scooter')) bodyType = 'SCOOTER';
+                        if (templateName.includes('helmet')) bodyType = 'ACCESSORY';
+
+                        // For each child (Variant), we create a listing item.
+                        // If there are no VARIANT nodes, fall back to any children or the family itself.
+                        const familyChildren = family.children || [];
+                        const variantChildren = familyChildren.filter(c => c.type === 'VARIANT');
+                        let displayVariants = variantChildren.length > 0
+                            ? variantChildren
+                            : (familyChildren.length > 0 ? familyChildren : [family]);
+
+                        // Sort variants by position
+                        displayVariants = displayVariants.sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
+
+                        return displayVariants.map(variantItem => {
+                            const makeName = family.brand?.name
+                                || family.specs?.brand
+                                || family.specs?.make
+                                || family.specs?.brand_name
+                                || 'Unknown';
+                            const variantSpecs = (variantItem as any).specs || {};
+                            const variantSkus = (variantItem as any).skus;
+                            const isSkuItem = (variantItem as any).type === 'SKU';
+                            const allSkus: any[] = (Array.isArray(variantSkus) && variantSkus.length > 0)
+                                ? variantSkus
+                                : (isSkuItem
+                                    ? [variantItem]
+                                    : familyChildren.flatMap(c => (c.type === 'SKU' ? [c] : (c.skus || []))));
+
                             return {
-                                color,
-                                key,
-                                images,
-                                unusedImage: images.find(url => !usedImages.has(url)),
-                                isPrimary: Boolean(color.is_primary)
+                                id: variantItem.id,
+                                type: 'VEHICLE',
+                                make: makeName,
+                                model: family.name,
+                                variant: variantItem.name || family.name,
+                                displayName: `${makeName} ${family.name} ${variantItem.name !== family.name ? variantItem.name : ''}`.trim(),
+                                label: `${makeName} / ${family.name}`,
+                                slug: variantItem.slug,
+                                modelSlug: family.slug,
+                                sku: `SKU-${variantItem.slug}`.toUpperCase(),
+                                status: 'ACTIVE',
+                                bodyType,
+                                fuelType: family.specs?.fuel_type || 'PETROL',
+                                displacement: family.specs?.engine_cc,
+                                powerUnit: 'CC',
+                                segment: 'COMMUTER',
+                                rating: 4.5,
+
+                                // Pricing - Find the "Starting At" price for this specific variant
+                                price: (() => {
+                                    const skuPrices = allSkus.map((sku: any) => {
+                                        const statePrice = sku.prices?.find((p: any) => p.state_code === 'MH')?.ex_showroom_price;
+                                        return statePrice || sku.price_base || variantItem.price_base || family.price_base || 0;
+                                    }).filter((p: number) => p > 0);
+
+                                    const basePrice = skuPrices.length > 0
+                                        ? Math.min(...skuPrices)
+                                        : (variantItem.price_base || family.price_base || 0);
+
+                                    const engineCc = family.specs?.engine_cc || 110;
+                                    const onRoadBreakdown = calculateOnRoad(Number(basePrice), engineCc, effectiveRule, insuranceRule);
+
+                                    return {
+                                        exShowroom: basePrice,
+                                        onRoad: Math.round(onRoadBreakdown.onRoadTotal)
+                                    };
+                                })(),
+
+                                // Specs
+                                specifications: {
+                                    engine: {
+                                        displacement: family.specs?.engine_cc ? `${family.specs.engine_cc} cc` : undefined,
+                                        maxPower: family.specs?.max_power,
+                                        maxTorque: family.specs?.max_torque
+                                    },
+                                    transmission: {
+                                        type: family.specs?.transmission_type || 'Manual',
+                                        gears: family.specs?.gears
+                                    },
+                                    battery: {
+                                        range: family.specs?.range_eco ? `${family.specs.range_eco} km` : undefined,
+                                        chargingTime: family.specs?.charging_time
+                                    }
+                                },
+
+                                // Images
+                                // Images - Prioritize Primary SKU then any SKU, fallback to variant/family
+                                imageUrl: (() => {
+                                    const primarySku = allSkus.find((s: any) => s.is_primary);
+                                    const firstSku = allSkus[0];
+                                    const targetSku = primarySku || firstSku;
+
+                                    return targetSku?.image_url ||
+                                        targetSku?.specs?.primary_image ||
+                                        targetSku?.specs?.gallery?.[0] ||
+                                        variantItem.specs?.image_url ||
+                                        family.specs?.image_url ||
+                                        undefined;
+                                })(),
+
+                                // Colors - Extract unique colors from SKUs
+                                availableColors: (() => {
+                                    const colorsMap = new Map();
+                                    allSkus.forEach((sku: any) => {
+                                        const hex = sku.specs?.hex_primary;
+                                        if (hex && !colorsMap.has(hex)) {
+                                            colorsMap.set(hex, {
+                                                hexCode: hex,
+                                                secondaryHexCode: sku.specs?.hex_secondary,
+                                                name: sku.specs?.Color || sku.name
+                                            });
+                                        }
+                                    });
+                                    return Array.from(colorsMap.values());
+                                })()
                             };
                         });
-
-                        const pickBestCandidate = (candidates: ColorCandidate[]) => {
-                            let best: ColorCandidate | undefined;
-                            let bestScore = Number.NEGATIVE_INFINITY;
-
-                            for (const candidate of candidates) {
-                                const isUnusedColor = !usedColorCounts.has(candidate.key);
-                                const hasUnusedImage = Boolean(candidate.unusedImage);
-                                const hasImage = candidate.images.length > 0;
-                                const colorCount = usedColorCounts.get(candidate.key) ?? 0;
-                                const score = (isUnusedColor ? 100 : 0)
-                                    + (hasUnusedImage ? 10 : 0)
-                                    + (hasImage ? 1 : 0)
-                                    - colorCount;
-
-                                if (!best || score > bestScore) {
-                                    best = candidate;
-                                    bestScore = score;
-                                }
-                            }
-
-                            return best;
-                        };
-
-                        const primaryCandidates = colorCandidates.filter(candidate => candidate.isPrimary);
-                        const chosenCandidate = primaryCandidates.length > 0
-                            ? pickBestCandidate(primaryCandidates)
-                            : pickBestCandidate(colorCandidates);
-                        const chosenColor = chosenCandidate?.color || colors[0];
-                        const resolvedImage = chosenCandidate?.unusedImage || chosenCandidate?.images[0];
-
-                        if (chosenCandidate?.key) {
-                            usedColorCounts.set(
-                                chosenCandidate.key,
-                                (usedColorCounts.get(chosenCandidate.key) ?? 0) + 1
-                            );
-                        }
-                        if (resolvedImage) usedImages.add(resolvedImage);
-
-                        // Pricing Logic: Try to find MH price, fallback to first available
-                        const prices = chosenColor?.vehicle_prices || [];
-                        const mhPrice = prices.find(p => p.state_code === 'MH')?.ex_showroom_price;
-                        const finalExPrice = mhPrice || prices[0]?.ex_showroom_price || variant.base_price_ex_showroom || 0;
-                        mappedItems.push({
-                            id: variant.id,
-                            type: 'VEHICLE' as const,
-                            make: brand?.name || 'Unknown',
-                            model: model?.name || 'Unknown',
-                            variant: variant.name,
-                            color: chosenColor?.name || 'Standard',
-                            displayName: `${brand?.name || ''} ${model?.name || ''} ${variant.name}`.trim(),
-                            label: `${brand?.name || ''} / ${model?.name || ''} / ${variant.name}`,
-                            sku: `${(brand?.name || 'UNK').slice(0, 3)}-${(model?.name || 'UNK').slice(0, 3)}-${variant.slug}`.toUpperCase(),
-                            status: 'ACTIVE' as const,
-                            bodyType: model?.category === 'SCOOTER' ? 'SCOOTER' : 'MOTORCYCLE',
-                            fuelType: model?.fuel_type || 'PETROL',
-                            displacement: model?.displacement_cc || undefined,
-                            powerUnit: 'CC' as const,
-                            segment: 'COMMUTER',
-                            specifications: variant.specifications || {},
-                            features: [],
-                            price: {
-                                exShowroom: Number(finalExPrice),
-                                onRoad: Math.round(Number(finalExPrice) * 1.15) // Mock 15% on-road addition
-                            },
-                            imageUrl: resolvedImage || undefined,
-                            availableColors: variant.vehicle_colors.map(vc => ({
-                                id: vc.id,
-                                name: vc.name,
-                                hexCode: vc.hex_code,
-                                finish: vc.finish as any,
-                                imageUrl: vc.image_url || undefined
-                            }))
-                        });
-                    }
+                    });
                     setItems(mappedItems);
+                    const { count: skuTotal, error: skuError } = await supabase
+                        .from('catalog_items')
+                        .select('id', { count: 'exact', head: true })
+                        .eq('type', 'SKU')
+                        .eq('status', 'ACTIVE');
+                    if (skuError) {
+                        console.error('Database error fetching sku count:', JSON.stringify(skuError, null, 2));
+                    } else {
+                        setSkuCount(skuTotal || 0);
+                    }
                 } else {
-                    // Fallback to empty list if DB is empty (MOCK removed as per request)
                     setItems([]);
                 }
-            } catch (err: unknown) {
+            } catch (err: any) {
                 console.error('Error fetching catalog:', err);
+                // Log detailed error if it's a Supabase error
+                if (err.message && err.details) {
+                    console.error('Supabase Error Details:', {
+                        message: err.message,
+                        details: err.details,
+                        hint: err.hint,
+                        code: err.code
+                    });
+                }
                 setError(err instanceof Error ? err.message : 'Unknown error');
-                setItems([]); // Fallback to empty on error
+                setItems([]);
             } finally {
+
                 setIsLoading(false);
             }
         };
 
         fetchItems();
-    }, []);
+    }, [stateCode]);
 
-    return { items, isLoading, error };
+    return { items, isLoading, error, skuCount };
 }

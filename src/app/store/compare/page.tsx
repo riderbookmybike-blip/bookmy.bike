@@ -73,7 +73,7 @@ export default function ComparePage() {
 
     return (
         <div className="bg-white dark:bg-slate-950 transition-colors duration-500">
-            <PageFrame variant="wide" className="min-h-screen space-y-12">
+            <PageFrame variant="wide" className="min-h-screen space-y-10">
                 {/* Header Area */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 border-b border-slate-200 dark:border-white/10 pb-8">
                     <div className="space-y-4">
@@ -103,7 +103,7 @@ export default function ComparePage() {
                                     <div key={v.id} className="relative group">
                                         <button
                                             onClick={() => removeFromCompare(v.id)}
-                                            className="absolute -top-3 -right-3 w-8 h-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-20"
+                                            className="absolute -top-3 -right-3 w-8 h-8 bg-white dark:bg-[#0f1115] border border-slate-200 dark:border-white/10 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-20"
                                         >
                                             <X size={14} />
                                         </button>
@@ -183,7 +183,7 @@ export default function ComparePage() {
                 {/* Selection Overlay (if Adding Mode) */}
                 {isAddingMode && (
                     <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6 md:p-12 animate-in fade-in duration-300">
-                        <div className="w-full max-w-5xl bg-white dark:bg-slate-900 rounded-[4rem] border border-slate-200 dark:border-white/10 overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="w-full max-w-5xl bg-white dark:bg-[#0f1115] rounded-[4rem] border border-slate-200 dark:border-white/10 overflow-hidden flex flex-col max-h-[90vh]">
                             <div className="p-10 border-b border-slate-100 dark:border-white/5 flex items-center justify-center relative">
                                 <h2 className="text-4xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white">Choose Your Ally.</h2>
                                 <button onClick={() => setIsAddingMode(false)} className="absolute right-10 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full border border-slate-200 dark:border-white/10 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/5 transition-all text-slate-900 dark:text-white">

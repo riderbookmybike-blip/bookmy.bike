@@ -6,12 +6,15 @@ import ListPanel from '@/components/templates/ListPanel';
 import RoleGuard from '@/components/auth/RoleGuard';
 import { useRouter, useParams } from 'next/navigation';
 import { usePermission } from '@/hooks/usePermission';
+import { useTenant } from '@/lib/tenant/tenantContext';
 import { RegistrationRule } from '@/types/registration';
 import RuleOverview from '@/components/catalog/registration/RuleOverview';
 import FormulaBuilder from '@/components/catalog/registration/FormulaBuilder';
 import PreviewCalculator from '@/components/catalog/registration/PreviewCalculator';
 import { MOCK_REGISTRATION_RULES } from '@/lib/mock/catalogMocks';
-import { Save, AlertTriangle, ChevronLeft, Calculator, Sparkles } from 'lucide-react';
+import { Save, AlertTriangle, ChevronLeft, Calculator, Sparkles, Loader2 } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import DataSourceIndicator from '@/components/dev/DataSourceIndicator';
 
 const COLUMNS = [
     { key: 'regType', header: 'State / Rule', width: '70%' },
@@ -21,6 +24,7 @@ const COLUMNS = [
 export default function RegistrationDetailPage() {
     const params = useParams();
     const router = useRouter();
+    const { tenantSlug, tenantId } = useTenant();
     const { can } = usePermission();
 
     // 1. Safe Params Resolution
@@ -32,69 +36,114 @@ export default function RegistrationDetailPage() {
 
     const [activeTab, setActiveTab] = useState('Overview');
     const [isMounted, setIsMounted] = useState(false);
-
-    // List State
-    const [ruleList, setRuleList] = useState<any[]>([]);
-    const [checkedIds, setCheckedIds] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
 
     // Rule State
     const [rule, setRule] = useState<RegistrationRule | null>(null);
+    const [auditLogs, setAuditLogs] = useState<any[]>([]);
     const [isCalculationValid, setIsCalculationValid] = useState(false);
 
-    const STORAGE_KEY = 'aums_registration_rules_v2';
+    // Mapper: DB -> Frontend
+    const mapDbToFrontend = (dbRule: any): RegistrationRule => {
+        return {
+            id: dbRule.id,
+            displayId: dbRule.display_id,
+            ruleName: dbRule.rule_name,
+            stateCode: dbRule.state_code,
+            vehicleType: dbRule.vehicle_type as any,
+            effectiveFrom: dbRule.effective_from || '2017-04-01',
+            status: dbRule.status?.toUpperCase() === 'ACTIVE' ? 'ACTIVE' : 'INACTIVE',
+            stateTenure: dbRule.state_tenure || 15,
+            bhTenure: dbRule.bh_tenure || 2,
+            companyMultiplier: Number(dbRule.company_multiplier) || 2,
+            components: dbRule.components || [],
+            version: dbRule.version || 1,
+            lastUpdated: dbRule.updated_at || new Date().toISOString()
+        };
+    };
 
-    // Helper: Load Rules from Storage or Mock
-    const loadRulesFromStorage = () => {
+    // Mapper: Frontend -> DB
+    const mapFrontendToDb = (rule: RegistrationRule) => {
+        return {
+            id: rule.id,
+            display_id: rule.displayId,
+            rule_name: rule.ruleName,
+            state_code: rule.stateCode,
+            vehicle_type: rule.vehicleType,
+            status: rule.status,
+            state_tenure: rule.stateTenure,
+            bh_tenure: rule.bhTenure,
+            company_multiplier: rule.companyMultiplier,
+            components: rule.components,
+            version: rule.version,
+            updated_at: new Date().toISOString()
+        };
+    };
+
+    const fetchAuditLogs = async (targetId: string) => {
+        const supabase = createClient();
+        const { data, error } = await supabase
+            .from('audit_logs')
+            .select('*')
+            .eq('entity_id', targetId)
+            .order('created_at', { ascending: false })
+            .limit(20);
+
+        if (!error && data) {
+            const formatted = data.map((log: any) => ({
+                id: log.id,
+                action: log.action.replace('REGISTRATION_RULE_', ''),
+                user: 'User ' + (log.actor_id ? log.actor_id.substring(0, 4) : 'Sys'),
+                timestamp: new Date(log.created_at).toLocaleString(),
+                details: JSON.stringify(log.metadata) === '{}' ? undefined : JSON.stringify(log.metadata)
+            }));
+            setAuditLogs(formatted);
+        }
+    };
+
+    const logClientAction = async (action: string, ruleId: string, ruleName: string) => {
         try {
-            const stored = localStorage.getItem(STORAGE_KEY);
-            if (stored) {
-                return JSON.parse(stored);
-            }
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user || !tenantId) return;
+
+            // Log action with proper tenant_id
+            await supabase.from('audit_logs').insert({
+                action,
+                entity_type: 'REGISTRATION_RULE',
+                entity_id: ruleId,
+                actor_id: user.id,
+                tenant_id: tenantId,
+                metadata: { ruleName }
+            });
+
+            // Refresh logs
+            fetchAuditLogs(ruleId);
         } catch (e) {
-            console.error("Failed to load from storage", e);
-        }
-        return MOCK_REGISTRATION_RULES; // Fallback to initial mock
-    };
-
-    // Helper: Save Rules to Storage
-    const saveRulesToStorage = (rules: any[]) => {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
-            setRuleList(rules);
-        } catch (e) {
-            console.error("Failed to save to storage", e);
+            console.error("Audit log failed", e);
         }
     };
 
-    // Prevent Hydration Mismatch & Initial Load
-    useEffect(() => {
-        setIsMounted(true);
-        const rules = loadRulesFromStorage();
-        setRuleList(rules);
-    }, []);
+    const fetchRule = async (targetId: string) => {
+        setLoading(true);
+        const supabase = createClient();
 
-    const handleBulkDelete = (ids: any[]) => {
-        if (!confirm(`Are you sure you want to delete ${ids.length} rules?`)) return;
+        // Robust lookup: UUID vs State Code
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
+        let query = supabase.from('registration_rules').select('*');
 
-        const currentRules = loadRulesFromStorage();
-        const newRules = currentRules.filter((r: any) => !ids.includes(r.id));
-
-        saveRulesToStorage(newRules);
-        setCheckedIds([]); // Clear selection
-
-        // If currently viewing a deleted rule, go back to list
-        if (ids.includes(id)) {
-            router.push('/catalog/registration');
+        if (isUuid) {
+            query = query.eq('id', targetId);
+        } else {
+            query = query.eq('state_code', targetId.toUpperCase());
         }
-    };
 
-    // Load Data (Detail View)
-    useEffect(() => {
-        if (!isMounted || !id) return;
+        const { data, error } = await query.maybeSingle();
 
-
-
-        if (id === 'new') {
+        if (!error && data) {
+            setRule(mapDbToFrontend(data));
+            fetchAuditLogs(data.id);
+        } else if (targetId === 'new') {
             setRule({
                 id: crypto.randomUUID(),
                 ruleName: 'New Rule',
@@ -110,72 +159,52 @@ export default function RegistrationDetailPage() {
                 companyMultiplier: 2
             });
         } else {
-            // Fetch from Local Storage (Source of Truth)
-            const currentRules = loadRulesFromStorage();
-            const mock = currentRules.find((r: any) =>
-                r.id === id ||
-                r.stateCode === id ||
-                (r.stateCode && r.stateCode.toLowerCase() === id.toLowerCase())
-            );
-
-            if (mock) {
-                // PERSISTENCE CHECK: If it has 'components', use them
-                if (mock.components) {
-                    setRule(mock as unknown as RegistrationRule);
-                } else {
-                    // Adapter: Flat Mock Data -> Complex Rule Object
-                    setRule({
-                        id: mock.id,
-                        displayId: mock.displayId,
-                        ruleName: mock.ruleName || 'Unknown Rule',
-                        stateCode: mock.stateCode || (mock.state ? mock.state.substring(0, 2).toUpperCase() : 'XX'),
-                        vehicleType: 'TWO_WHEELER',
-                        status: 'ACTIVE',
-                        effectiveFrom: '2017-04-01',
-                        version: 1,
-                        lastUpdated: new Date().toISOString(),
-                        stateTenure: 15,
-                        bhTenure: 2,
-                        companyMultiplier: 2,
-                        // Seed defaults if empty in mock
-                        components: [
-                            {
-                                id: '1',
-                                type: 'PERCENTAGE',
-                                label: 'Road Tax',
-                                percentage: mock.numericValue ? mock.numericValue * 100 : 10,
-                                basis: 'EX_SHOWROOM'
-                            },
-                            {
-                                id: '2',
-                                type: 'FIXED',
-                                label: 'Smart Card Fee',
-                                amount: 200
-                            }
-                        ]
-                    });
-                }
-            } else {
-                // Not Found Fallback (Prevent Infinite Loading)
-                setRule({
-                    id: id,
-                    ruleName: 'Unknown Rule',
-                    stateCode: '',
-                    vehicleType: 'TWO_WHEELER',
-                    status: 'INACTIVE',
-                    effectiveFrom: '2017-04-01',
-                    components: [],
-                    version: 0,
-                    lastUpdated: new Date().toISOString(),
-                    stateTenure: 15,
-                    bhTenure: 2,
-                    companyMultiplier: 2
-                });
-            }
+            console.error("Rule not found or error", error);
+            // Fallback for missing record but valid ID
+            setRule({
+                id: targetId,
+                ruleName: 'Not Found',
+                stateCode: '',
+                vehicleType: 'TWO_WHEELER',
+                status: 'INACTIVE',
+                effectiveFrom: '2017-04-01',
+                components: [],
+                version: 0,
+                lastUpdated: new Date().toISOString(),
+                stateTenure: 15,
+                bhTenure: 2,
+                companyMultiplier: 2
+            });
         }
-    }, [id, isMounted]);
+        setLoading(false);
+    };
 
-    const handleSave = () => {
+    useEffect(() => {
+        setIsMounted(true);
+        if (id) fetchRule(id);
+    }, [id]);
+
+    const handleBulkDelete = async (ids: any[]) => {
+        if (!confirm(`Are you sure you want to delete ${ids.length} rules?`)) return;
+
+        const supabase = createClient();
+        const { error } = await supabase
+            .from('registration_rules')
+            .delete()
+            .in('id', ids);
+
+        if (!error) {
+            await logClientAction('REGISTRATION_RULE_DELETED', ids[0], rule?.ruleName || 'Unknown'); // Logging single deletion for now
+            if (ids.includes(rule?.id)) {
+                router.push('/catalog/registration');
+            }
+        } else {
+            alert("Failed to delete from database");
+        }
+    };
+
+
+    const handleSave = async () => {
         if (!rule) return;
 
         if (!isCalculationValid) {
@@ -184,35 +213,30 @@ export default function RegistrationDetailPage() {
             return;
         }
 
-        const currentRules = loadRulesFromStorage();
-        const idx = currentRules.findIndex((r: any) => r.id === rule.id);
+        const supabase = createClient();
+        const dbPayload = mapFrontendToDb(rule);
 
-        const newRules = [...currentRules];
+        const { error } = await supabase
+            .from('registration_rules')
+            .upsert(dbPayload);
 
-        if (idx !== -1) {
-            // Update existing
-            newRules[idx] = {
-                ...newRules[idx],
-                ...rule,
-                value: rule.components.length + ' Components', // Update list view summary
-                status: rule.status
-            };
+        if (!error) {
+            await logClientAction(
+                rule.id ? 'REGISTRATION_RULE_UPDATED' : 'REGISTRATION_RULE_CREATED',
+                rule.id || 'new',
+                rule.ruleName
+            );
+            alert("Rule Saved Successfully to Database!");
+            // Dynamic redirect to list view
+            const currentPath = window.location.pathname;
+            // Expected format: .../catalog/registration/[id]
+            // We want to go to: .../catalog/registration
+            const listPath = currentPath.substring(0, currentPath.lastIndexOf('/'));
+            router.push(listPath);
         } else {
-            // Create New
-            newRules.push({
-                ...rule,
-                state: rule.ruleName.split(' ')[0] || 'Unknown', // Fallback for list column
-                regType: rule.ruleName,
-                taxType: 'Formula', // Default for lists
-                value: rule.components.length + ' Components',
-            });
+            console.error("Save error", error);
+            alert(`Failed to save: ${error.message}`);
         }
-
-        saveRulesToStorage(newRules);
-
-
-        alert("Rule Saved Successfully! (Persisted to Browser Storage)");
-        router.push('/catalog/registration');
     };
 
     // Helper to delete singular rule from Detail View
@@ -221,7 +245,9 @@ export default function RegistrationDetailPage() {
     };
 
     const handleClose = () => {
-        router.push('/catalog/registration');
+        const currentPath = window.location.pathname;
+        const listPath = currentPath.substring(0, currentPath.lastIndexOf('/'));
+        router.push(listPath);
     };
 
     // Helper to flatten components for targeting
@@ -254,10 +280,10 @@ export default function RegistrationDetailPage() {
         return (
             <RoleGuard resource="catalog-registration" action="view">
                 <MasterListDetailLayout mode="list-only">
-                    <div className="flex justify-center items-center h-full min-h-[50vh] bg-white">
+                    <div className="flex justify-center items-center h-full min-h-[50vh] bg-white dark:bg-slate-950">
                         <div className="text-center">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-                            <p className="text-sm text-gray-500 font-medium">Loading Rule Configuration...</p>
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-slate-200 mx-auto mb-4"></div>
+                            <p className="text-sm text-gray-500 dark:text-slate-400 font-medium">Loading Rule Configuration...</p>
                         </div>
                     </div>
                 </MasterListDetailLayout>
@@ -284,6 +310,7 @@ export default function RegistrationDetailPage() {
                                 <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter italic uppercase leading-none mb-1">{rule.ruleName}</h2>
                                 <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 dark:text-slate-300 uppercase tracking-[0.2em] leading-none mb-2">
                                     <Sparkles size={10} className="text-blue-500" /> Profiling {rule.displayId || 'NEW'}
+                                    <DataSourceIndicator source="LIVE" className="ml-2" />
                                 </div>
                                 <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 dark:text-slate-300 uppercase tracking-widest leading-none">
                                     <span className={`px-2 py-0.5 rounded-lg border ${rule.status === 'ACTIVE' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/20' : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-100 dark:border-white/10'}`}>
@@ -329,13 +356,14 @@ export default function RegistrationDetailPage() {
                     </div>
 
                     {/* Content Area */}
-                    <div className="flex-1 overflow-auto bg-slate-50/30 dark:bg-slate-950/50">
+                    <div className="flex-1 overflow-auto bg-slate-50/30 dark:bg-slate-950/50 pb-24">
                         {activeTab === 'Overview' && (
-                            <div className="p-6 w-full">
+                            <div className="p-6 w-full max-w-5xl mx-auto">
                                 <RuleOverview
                                     rule={rule}
                                     onChange={setRule}
                                     readOnly={!canEdit}
+                                    auditLogs={auditLogs}
                                 />
                             </div>
                         )}
@@ -345,9 +373,12 @@ export default function RegistrationDetailPage() {
                                 <div className="grid grid-cols-12 gap-8 items-start">
                                     {/* Left: Formula Builder */}
                                     <div className="col-span-12 xl:col-span-8 space-y-4">
-                                        <div className="bg-amber-50/50 backdrop-blur-sm border border-amber-200/50 p-4 rounded-xl flex gap-3 text-sm text-amber-800 shadow-sm">
-                                            <AlertTriangle size={18} className="shrink-0 text-amber-500" />
-                                            <p className="font-medium">Design your tax logic here. Changes are instantly simulated in the live preview on the right.</p>
+                                        <div className="bg-amber-50/50 backdrop-blur-sm border border-amber-200/50 p-4 rounded-xl flex gap-3 text-sm text-amber-800 shadow-sm transition-all hover:shadow-md">
+                                            <AlertTriangle size={18} className="shrink-0 text-amber-500 animate-pulse" />
+                                            <div>
+                                                <p className="font-bold">Logic Design Zone</p>
+                                                <p className="opacity-80 text-xs">Design your tax logic here. Changes are instantly simulated in the live preview. Drag components to reorder sequence.</p>
+                                            </div>
                                         </div>
 
                                         <FormulaBuilder
@@ -372,7 +403,7 @@ export default function RegistrationDetailPage() {
                                     {/* Mobile Preview (Bottom) */}
                                     <div className="col-span-12 xl:hidden mt-8">
                                         <div className="border-t border-gray-200 pt-8">
-                                            <h3 className="text-lg font-bold text-gray-900 mb-4">Live Preview</h3>
+                                            <h3 className="text-sm font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Live Performance Preview</h3>
                                             <PreviewCalculator
                                                 rule={rule}
                                                 onValidCalculation={setIsCalculationValid}
@@ -382,6 +413,51 @@ export default function RegistrationDetailPage() {
                                 </div>
                             </div>
                         )}
+                    </div>
+
+                    {/* Sticky Actions Bar */}
+                    <div className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-t border-slate-200 dark:border-white/5 px-8 py-4 flex justify-between items-center z-30 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] transition-all">
+                        <div className="flex items-center gap-6">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-tight">Verification Status</span>
+                                <div className="flex items-center gap-2">
+                                    <div className={`w-2 h-2 rounded-full ${isCalculationValid ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-amber-500 animate-pulse'}`} />
+                                    <span className={`text-xs font-black uppercase tracking-tight ${isCalculationValid ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                        {isCalculationValid ? 'Calculation Verified' : 'Awaiting Simulation'}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="h-8 w-px bg-slate-200 dark:bg-white/10" />
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-tight">Last Saved</span>
+                                <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                                    {new Date(rule.lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={handleClose}
+                                className="px-6 py-2.5 text-slate-500 dark:text-slate-400 font-bold text-xs uppercase tracking-widest hover:text-slate-900 dark:hover:text-white transition-colors"
+                            >
+                                Discard
+                            </button>
+                            {canEdit && (
+                                <button
+                                    onClick={handleSave}
+                                    className={`group px-8 py-2.5 rounded-xl flex items-center gap-3 transition-all active:scale-95 shadow-lg ${isCalculationValid
+                                        ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20'
+                                        : 'bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-slate-500 cursor-not-allowed shadow-none'
+                                        }`}
+                                >
+                                    <span className="text-xs font-black uppercase tracking-widest">
+                                        {isCalculationValid ? 'Publish Changes' : 'Simulation Required'}
+                                    </span>
+                                    {isCalculationValid ? <Sparkles size={16} className="group-hover:rotate-12 transition-transform" /> : <Calculator size={16} />}
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
             </MasterListDetailLayout>
