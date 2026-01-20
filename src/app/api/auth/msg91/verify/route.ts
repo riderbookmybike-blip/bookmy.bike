@@ -196,17 +196,60 @@ export async function POST(req: NextRequest) {
             const actualEmail = foundUser.email || email;
             const shouldSetEmail = !foundUser.email;
 
-            // 1. CRITICAL: Update Password & Metadata (Must succeed for login)
+            // 1. CRITICAL: Update Password ONLY (Must succeed for login)
+            // We strip all other fields to minimize chance of 422 errors (e.g. invalid email state)
             const { error: passwordError } = await adminClient.auth.admin.updateUserById(userId, {
                 password: password,
-                email_confirm: true,
-                user_metadata: { ...foundUser.user_metadata, phone_login_migrated: true },
             });
 
             if (passwordError) {
                 console.error('[Login Debug] Password update failed:', passwordError);
-                // If this fails, login will likely fail, so we return error
-                return NextResponse.json({ success: false, message: 'Secure session setup failed.' }, { status: 500 });
+                return NextResponse.json(
+                    {
+                        success: false,
+                        message: `Secure session setup failed: ${passwordError.message || 'Password update rejected'}`,
+                    },
+                    { status: 500 }
+                );
+            }
+
+            // 2. Metadata Update (Non-critical)
+            await adminClient.auth.admin.updateUserById(userId, {
+                user_metadata: { ...foundUser.user_metadata, phone_login_migrated: true },
+                role: 'authenticated',
+            });
+
+            // 3. Option A: Internal Email Synthesis (Best Effort)
+            // Ensure every user has an email for Supabase compatibility
+            if (!foundUser.email) {
+                const synthesizedEmail = `${phone}@bookmy.bike`;
+
+                // Try setting the synthesized email
+                const { error: emailError } = await adminClient.auth.admin.updateUserById(userId, {
+                    email: synthesizedEmail,
+                    email_confirm: true,
+                });
+
+                if (emailError) {
+                    console.warn('[Login Debug] Primary synthesized email failed:', emailError.message);
+
+                    // Fallback: Append User ID to ensure uniqueness
+                    const fallbackEmail = `${phone}.${userId.substring(0, 4)}@bookmy.bike`;
+                    await adminClient.auth.admin.updateUserById(userId, {
+                        email: fallbackEmail,
+                        email_confirm: true,
+                        user_metadata: {
+                            ...foundUser.user_metadata,
+                            email_synthesized: true,
+                            email_conflict_resolved: true,
+                        },
+                    });
+                }
+            } else {
+                // User already has email, ensure it is confirmed
+                if (!foundUser.email_confirmed_at) {
+                    await adminClient.auth.admin.updateUserById(userId, { email_confirm: true });
+                }
             }
 
             // 2. OPTIONAL: Update Email (Best Effort)
