@@ -32,6 +32,7 @@ interface CatalogItem {
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
     const { make, model, variant } = await params;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { color, pincode, dealer } = await searchParams;
 
     // Canonical is always the clean variant path
@@ -147,6 +148,7 @@ export default async function Page({ params, searchParams }: Props) {
         .eq('parent_id', item.id)
         .eq('type', 'SKU');
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const colors = (skus || []).map((sku: any) => {
         // Derive clean color name
         // 1. Try specs.color
@@ -190,6 +192,7 @@ export default async function Page({ params, searchParams }: Props) {
     };
 
     // 6. Accessories & Services
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const accessories = (accessoriesData || []).map((a: any) => ({
         id: a.id,
         name: a.name,
@@ -201,6 +204,7 @@ export default async function Page({ params, searchParams }: Props) {
         category: a.category
     }));
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const services = (servicesData || []).map((s: any) => ({
         id: s.id,
         name: s.name,
@@ -208,6 +212,7 @@ export default async function Page({ params, searchParams }: Props) {
         price: Number(s.price),
         discountPrice: Number(s.discount_price),
         maxQty: s.max_qty,
+        isMandatory: s.is_mandatory,
         durationMonths: s.duration_months
     }));
 
