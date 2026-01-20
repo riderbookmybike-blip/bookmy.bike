@@ -83,12 +83,23 @@ export default async function Page({ params, searchParams }: Props) {
     if (!variantItem || error) {
         console.error('PDP Fetch Error:', error);
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white p-20 text-center">
-                <div>
-                    <h1 className="text-4xl font-black italic">PRODUCT NOT FOUND</h1>
-                    <p className="text-slate-500 mt-4 uppercase tracking-widest font-black">
-                        {error ? error.message : 'The requested product could not be found in our catalog.'}
+            <div className="min-h-screen flex items-center justify-center bg-black bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 to-black text-white p-20 text-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20" />
+                <div className="relative z-10 glass-panel border border-white/10 p-12 rounded-[3rem] shadow-2xl max-w-lg mx-auto backdrop-blur-xl">
+                    <div className="w-20 h-20 bg-red-500/10 rounded-3xl flex items-center justify-center mx-auto mb-8 border border-red-500/20 text-red-500 shadow-[0_0_30px_rgba(239,68,68,0.2)]">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                    </div>
+                    <h1 className="text-4xl font-black italic tracking-tighter mb-4 text-white">
+                        PRODUCT <span className="text-red-500">NOT FOUND</span>
+                    </h1>
+                    <p className="text-slate-400 uppercase tracking-widest font-bold text-xs leading-relaxed">
+                        {error ? error.message : 'The requested configuration is currently unavailable in our catalog.'}
                     </p>
+                    <div className="mt-8 flex justify-center gap-4">
+                        <a href="/store" className="px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all hover:scale-105 active:scale-95">
+                            Return to Store
+                        </a>
+                    </div>
                 </div>
             </div>
         );
