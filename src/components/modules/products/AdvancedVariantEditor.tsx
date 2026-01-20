@@ -227,7 +227,7 @@ export default function AdvancedVariantEditor({
                                                                         >
                                                                             {isActive && (
                                                                                 <div className="absolute inset-0 flex items-center justify-center">
-                                                                                    <div className="w-1.5 h-1.5 bg-white rounded-full shadow-sm" />
+                                                                                    <div className="w-1.5 h-1.5 bg-white dark:bg-white rounded-full shadow-sm" />
                                                                                 </div>
                                                                             )}
                                                                         </button>

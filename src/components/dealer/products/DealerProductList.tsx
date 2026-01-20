@@ -47,25 +47,25 @@ export default function DealerProductList({ products, selectedId, onSelect, onAd
     });
 
     return (
-        <div className="h-full flex flex-col bg-white border-r border-gray-200">
+        <div className="h-full flex flex-col bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-white/10">
             {/* Toolbar */}
-            <div className="p-4 border-b border-gray-200 space-y-3">
+            <div className="p-4 border-b border-gray-200 dark:border-white/10 space-y-3">
                 <div className="flex items-center justify-between">
-                    <h2 className="font-bold text-gray-700">Product List</h2>
+                    <h2 className="font-bold text-gray-700 dark:text-slate-200">Product List</h2>
                     <button
                         onClick={() => setIsAddOpen(true)}
-                        className="p-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors"
+                        className="p-1.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 rounded hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors"
                         title="Add from Master"
                     >
                         <Plus size={20} />
                     </button>
                 </div>
                 <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={16} />
                     <input
                         type="text"
                         placeholder="Search..."
-                        className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 outline-none"
+                        className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 dark:border-white/10 rounded focus:ring-1 focus:ring-blue-500 outline-none bg-white dark:bg-slate-950 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-500"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
@@ -74,7 +74,7 @@ export default function DealerProductList({ products, selectedId, onSelect, onAd
 
             {/* List */}
             <div className="flex-1 overflow-y-auto">
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-gray-100 dark:divide-white/10">
                     {filtered.map(dp => {
                         const master = getMasterDetails(dp.productVariantId);
                         if (!master) return null;
@@ -84,23 +84,23 @@ export default function DealerProductList({ products, selectedId, onSelect, onAd
                             <div
                                 key={dp.id}
                                 onClick={() => onSelect(dp)}
-                                className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 ${isSelected ? 'bg-blue-50 border-l-4 border-blue-600' : 'border-l-4 border-transparent'}`}
+                                className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-white/5 ${isSelected ? 'bg-blue-50 dark:bg-blue-500/10 border-l-4 border-blue-600' : 'border-l-4 border-transparent'}`}
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex-1 min-w-0 pr-2">
-                                        <p className={`text-sm font-medium truncat ${isSelected ? 'text-blue-900' : 'text-gray-900'}`}>
+                                        <p className={`text-sm font-medium truncat ${isSelected ? 'text-blue-900 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
                                             {master.label}
                                         </p>
-                                        <p className="text-xs text-gray-500 font-mono mt-0.5">{master.sku}</p>
+                                        <p className="text-xs text-gray-500 dark:text-slate-400 font-mono mt-0.5">{master.sku}</p>
                                     </div>
-                                    <span className={`inline-block w-2 h-2 rounded-full mt-1.5 ${dp.isActive ? 'bg-green-500' : 'bg-gray-300'}`}></span>
+                                    <span className={`inline-block w-2 h-2 rounded-full mt-1.5 ${dp.isActive ? 'bg-green-500' : 'bg-gray-300 dark:bg-slate-600'}`}></span>
                                 </div>
                                 <div className="mt-2 flex items-baseline justify-between">
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded border ${master.type === 'VEHICLE' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-gray-50 text-gray-600 border-gray-100'
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded border ${master.type === 'VEHICLE' ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-blue-500/20' : 'bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-slate-400 border-gray-100 dark:border-white/10'
                                         }`}>
                                         {master.type}
                                     </span>
-                                    <span className="text-xs font-mono font-bold text-gray-700">
+                                    <span className="text-xs font-mono font-bold text-gray-700 dark:text-slate-200">
                                         ₹{dp.sellingPrice.toLocaleString()}
                                     </span>
                                 </div>

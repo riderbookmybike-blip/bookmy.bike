@@ -32,7 +32,7 @@ export default function VisualsRow({
     videoSource,
     className = '',
     isVideoOpen = false,
-    onCloseVideo = () => {},
+    onCloseVideo = () => { },
 }: VisualsRowProps) {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const activeColorName = colors.find(c => c.id === selectedColor)?.name;
@@ -96,13 +96,13 @@ export default function VisualsRow({
                             <button
                                 key={color.id}
                                 onClick={() => onColorSelect(color.id)}
-                                className={`relative w-9 h-9 rounded-full transition-all duration-500 group/color ${isSelected ? 'scale-110' : 'hover:scale-110'}`}
+                                className={`relative w-9 h-9 rounded-xl transition-all duration-500 group/color ${isSelected ? 'scale-110' : 'hover:scale-110'}`}
                             >
                                 <div
-                                    className={`absolute inset-0 rounded-full border-2 transition-all ${isSelected ? 'border-[#F4B000] scale-125' : 'border-transparent'}`}
+                                    className={`absolute inset-0 rounded-xl border-2 transition-all ${isSelected ? 'border-[#F4B000] scale-125' : 'border-transparent'}`}
                                 />
                                 <div
-                                    className={`w-full h-full rounded-full border border-black/10 dark:border-white/20 shadow-inner ${color.class}`}
+                                    className={`w-full h-full rounded-xl border border-black/10 dark:border-white/20 shadow-inner ${color.class}`}
                                     style={{ backgroundColor: color.hex }}
                                 />
                                 {/* Tooltip */}

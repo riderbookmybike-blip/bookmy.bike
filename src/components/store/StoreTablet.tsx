@@ -92,9 +92,9 @@ export function StoreTablet() {
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {[
-                            { step: '01', title: 'Select', desc: 'Browse 500+ models with unified dealer pricing.' },
+                            { step: '01', title: 'Select', desc: 'Browse 500+ SKU with unified dealer pricing.' },
                             { step: '02', title: 'Quote', desc: 'Get an instant, on-road quote for your location.' },
-                            { step: '03', title: 'Own', desc: 'Secure the lowest EMI & get delivery in 48 hours.' },
+                            { step: '03', title: 'Own', desc: 'Secure the lowest EMI & get delivery in 4 hours.' },
                         ].map((item, i) => (
                             <div
                                 key={i}

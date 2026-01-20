@@ -88,33 +88,33 @@ export default function PreviewCalculator({ rule, onValidCalculation }: PreviewC
                         <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Real-time Validation</p>
                     </div>
                 </div>
-                <button onClick={handleCalculate} className="text-gray-400 hover:text-blue-600 transition-all p-2 hover:bg-white rounded-xl active:scale-95 shadow-sm">
+                <button onClick={handleCalculate} className="text-gray-400 dark:text-slate-500 hover:text-blue-600 transition-all p-2 hover:bg-white dark:hover:bg-white/5 rounded-xl active:scale-95 shadow-sm">
                     <RefreshCw size={16} />
                 </button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-5 space-y-8">
                 {/* Global Inputs */}
-                <div className="bg-white/50 p-4 rounded-2xl border border-white/60 shadow-inner grid grid-cols-1 gap-4">
+                <div className="bg-white/50 dark:bg-slate-900/60 p-4 rounded-2xl border border-white/60 dark:border-white/10 shadow-inner grid grid-cols-1 gap-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="col-span-1">
-                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Ex-Showroom Price</label>
+                            <label className="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-2">Ex-Showroom Price</label>
                             <div className="relative group">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-bold group-focus-within:text-blue-600 transition-colors">₹</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 text-sm font-bold group-focus-within:text-blue-600 transition-colors">₹</span>
                                 <input
                                     type="number"
-                                    className="w-full bg-white border border-gray-100 rounded-xl pl-8 pr-4 py-3 text-sm font-black text-gray-900 focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all shadow-sm"
+                                    className="w-full bg-white dark:bg-slate-900 border border-gray-100 dark:border-white/10 rounded-xl pl-8 pr-4 py-3 text-sm font-black text-gray-900 dark:text-white focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all shadow-sm"
                                     value={inputs.exShowroom}
                                     onChange={e => setInputs({ ...inputs, exShowroom: parseFloat(e.target.value) || 0 })}
                                 />
                             </div>
                         </div>
                         <div>
-                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Engine Capacity</label>
+                            <label className="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-2">Engine Capacity</label>
                             <div className="relative group">
                                 <input
                                     type="number"
-                                    className="w-full bg-white border border-gray-100 rounded-xl px-4 py-3 text-sm font-black text-gray-900 focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all shadow-sm"
+                                    className="w-full bg-white dark:bg-slate-900 border border-gray-100 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-black text-gray-900 dark:text-white focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all shadow-sm"
                                     value={inputs.engineCc}
                                     onChange={e => setInputs({ ...inputs, engineCc: parseInt(e.target.value) || 0 })}
                                 />
@@ -178,7 +178,7 @@ export default function PreviewCalculator({ rule, onValidCalculation }: PreviewC
                                 </div>
 
                                 {isExpanded && res && (
-                                    <div className="border-t border-gray-100/50 p-5 bg-white space-y-4">
+            <div className="border-t border-gray-100/50 dark:border-white/10 p-5 bg-white dark:bg-slate-900 space-y-4">
                                         <div className="space-y-3">
                                             {res.breakdown.map((item, idx) => (
                                                 <div key={idx} className="flex justify-between items-start group/row">

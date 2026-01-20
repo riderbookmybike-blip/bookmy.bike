@@ -15,7 +15,14 @@ export async function POST(req: NextRequest) {
 
         const formattedPhone = `+91${phone}`;
         const email = `${phone}@bookmy.bike`;
-        const password = `MSG91_${phone}_${process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(0, 8)}`;
+        const migrationSecret = process.env.MIGRATION_PASSWORD_SECRET;
+        if (!migrationSecret) {
+            return NextResponse.json({
+                success: false,
+                message: 'Server misconfiguration'
+            }, { status: 500 });
+        }
+        const password = `MSG91_${phone}_${migrationSecret}`;
 
         // 1. Check if User Already Exists
         const { data: existingUsers } = await adminClient.auth.admin.listUsers();

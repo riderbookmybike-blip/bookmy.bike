@@ -95,7 +95,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
             (viewport.width === 1280 && viewport.height === 720) ||
             (viewport.width >= 1110 && viewport.width <= 1200 && viewport.height >= 600 && viewport.height <= 700))
     );
-    const showTextNav = !isTv && (!pathname.startsWith('/store/') || pathname === '/store');
+    const showTextNav = !isTv && pathname !== '/' && (!pathname.startsWith('/store/') || pathname === '/store');
 
     // Quick rollback: set navPreset to 'wide'.
     const navPreset: 'tight' | 'wide' = 'tight';
@@ -209,7 +209,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         >
             {/* Mobile Menu Overlay */}
             {isMobileMenuOpen && (
-                <div className="md:hidden bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-white/5 p-6 space-y-8 animate-in slide-in-from-top-4 duration-300 shadow-2xl h-screen fixed inset-0 top-20 z-40 overflow-y-auto">
+                <div className="md:hidden bg-white dark:bg-[#0f1115] border-t border-slate-200 dark:border-white/5 p-6 space-y-8 animate-in slide-in-from-top-4 duration-300 shadow-2xl h-screen fixed inset-0 top-20 z-40 overflow-y-auto">
                     <nav className="flex flex-col gap-6">
                         <Link
                             href="/"

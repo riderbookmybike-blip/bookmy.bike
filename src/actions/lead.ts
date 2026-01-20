@@ -8,8 +8,10 @@ import { headers } from 'next/headers';
 const leadSchema = z.object({
     name: z.string().min(2, "Name is too short"),
     phone: z.string().regex(/^[6-9]\d{9}$/, "Invalid Indian mobile number"),
+    pincode: z.string().regex(/^\d{6}$/, "Invalid Pincode"), // Mandatory
     city: z.string().optional(),
-    model: z.string(),
+    dob: z.string().optional(), // Added DOB
+    model: z.string().optional(), // Optional
     variant: z.string().optional(),
     color: z.string().optional(),
     honeypot: z.string().max(0, "Spam detected"), // Must be empty
@@ -45,7 +47,9 @@ export async function submitLead(formData: FormData) {
     const rawData = {
         name: formData.get('name') as string,
         phone: formData.get('phone') as string,
+        pincode: formData.get('pincode') as string,
         city: formData.get('city') as string,
+        dob: formData.get('dob') as string,
         model: formData.get('model') as string,
         variant: formData.get('variant') as string,
         color: formData.get('color') as string,
@@ -85,19 +89,25 @@ export async function submitLead(formData: FormData) {
             .insert({
                 owner_tenant_id: ownerTenantId,
                 selected_dealer_tenant_id: rawData.selectedDealerId || null,
-                name: data.name,
-                phone: data.phone,
-                city: data.city,
-                pincode: null,
+                customer_name: data.name,
+                customer_phone: data.phone,
+                customer_city: data.city,
+                customer_pincode: data.pincode,
+                customer_dob: data.dob,
                 interest_model: data.model,
                 interest_variant: data.variant,
                 interest_color: data.color,
                 price_snapshot: data.priceSnapshot,
-                utm_source: data.utm?.utm_source,
-                utm_medium: data.utm?.utm_medium,
-                utm_campaign: data.utm?.utm_campaign,
+                utm_data: {
+                    utm_source: data.utm?.utm_source,
+                    utm_medium: data.utm?.utm_medium,
+                    utm_campaign: data.utm?.utm_campaign,
+                },
                 status: 'NEW',
-                referrer_user_id: referrerUserId || null,
+                referral_data: referrerUserId ? {
+                    referred_by_user_id: referrerUserId,
+                    source_tenant_id: referrerTenantId
+                } : null,
                 meta_data: referrerTenantId ? { source_tenant_id: referrerTenantId } : null
             })
             .select('id')

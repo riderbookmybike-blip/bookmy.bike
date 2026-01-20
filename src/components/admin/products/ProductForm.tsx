@@ -208,15 +208,15 @@ export default function ProductForm({ type, initialData, onCancel }: ProductForm
             )}
 
             {/* 4. Generated Preview */}
-            <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-lg">
+            <div className="p-4 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 rounded-lg">
                 <div className="flex items-start gap-3">
                     <Info className="text-indigo-600 shrink-0 mt-0.5" size={18} />
                     <div className="flex-1">
-                        <h4 className="text-sm font-bold text-indigo-900">Label Preview</h4>
-                        <p className="text-xs text-indigo-700 mt-1 mb-2">
+                        <h4 className="text-sm font-bold text-indigo-900 dark:text-indigo-300">Label Preview</h4>
+                        <p className="text-xs text-indigo-700 dark:text-indigo-300 mt-1 mb-2">
                             This is how the product will appear in global search and invoices.
                         </p>
-                        <div className="p-2 bg-white rounded border border-indigo-200 text-sm font-mono text-gray-800 break-all">
+                        <div className="p-2 bg-white dark:bg-slate-900 rounded border border-indigo-200 dark:border-indigo-500/30 text-sm font-mono text-gray-800 dark:text-slate-200 break-all">
                             {generatedLabel || '...'}
                         </div>
                     </div>
@@ -224,11 +224,11 @@ export default function ProductForm({ type, initialData, onCancel }: ProductForm
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-white/10">
                 <button
                     type="button"
                     onClick={onCancel}
-                    className="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 rounded-lg transition-colors"
+                    className="px-4 py-2 text-gray-700 dark:text-slate-300 font-medium hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-colors"
                 >
                     Cancel
                 </button>

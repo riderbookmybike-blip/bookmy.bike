@@ -5,6 +5,7 @@ import { ProductVariant } from '@/types/productMaster';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 
 import { BRANDS as brands } from '@/config/market';
+export { brands };
 
 export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
     const searchParams = useSearchParams();
@@ -22,10 +23,20 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
+    const availableMakes = useMemo(() => {
+        const makes = Array.from(new Set(
+            initialVehicles
+                .map(v => (v.make || '').trim())
+                .filter(Boolean)
+                .map(m => m.toUpperCase())
+        ));
+        return makes.length > 0 ? makes : brands;
+    }, [initialVehicles]);
+
     // Initialize filters from searchParams
     const [selectedMakes, setSelectedMakes] = useState<string[]>(() => {
         const brandParam = searchParams.get('brand');
-        return brandParam ? brandParam.toUpperCase().split(',') : brands;
+        return brandParam ? brandParam.toUpperCase().split(',') : availableMakes;
     });
 
     const [selectedFuels, setSelectedFuels] = useState<string[]>(() => {
@@ -66,6 +77,21 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         return t ? parseInt(t) : 36;
     });
 
+    useEffect(() => {
+        const brandParam = searchParams.get('brand');
+        if (brandParam) return;
+
+        setSelectedMakes(prev => {
+            if (prev.length === 0) return availableMakes;
+
+            const prevUpper = prev.map(m => m.toUpperCase());
+            const defaultUpper = brands.map(m => m.toUpperCase());
+            const isDefault = prevUpper.length === defaultUpper.length && defaultUpper.every(m => prevUpper.includes(m));
+
+            return isDefault ? availableMakes : prev;
+        });
+    }, [availableMakes, searchParams]);
+
     // Update URL when filters change
     useEffect(() => {
         const params = new URLSearchParams(searchParams.toString());
@@ -74,10 +100,13 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         else params.delete('q');
 
         // Only set brand if it's not the full brands list (default)
-        if (selectedMakes.length > 0 && selectedMakes.length < brands.length) {
-            params.set('brand', selectedMakes.join(','));
-        } else {
+        const selectedMakeSet = new Set(selectedMakes.map(m => m.toUpperCase()));
+        const isAllMakesSelected = selectedMakes.length === 0
+            || (availableMakes.length > 0 && availableMakes.every(m => selectedMakeSet.has(m.toUpperCase())));
+        if (isAllMakesSelected) {
             params.delete('brand');
+        } else {
+            params.set('brand', selectedMakes.join(','));
         }
 
         if (selectedFuels.length > 0) params.set('fuel', selectedFuels.join(','));
@@ -114,6 +143,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         selectedFinishes,
         downpayment,
         tenure,
+        availableMakes,
         pathname,
         router,
     ]);
@@ -123,7 +153,11 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
             const matchesSearch = (v.make + ' ' + v.model + ' ' + v.variant)
                 .toLowerCase()
                 .includes(debouncedSearch.toLowerCase());
-            const matchesMake = selectedMakes.includes(v.make.toUpperCase());
+            const normalizedMake = (v.make || '').toUpperCase();
+            const selectedMakeSet = new Set(selectedMakes.map(m => m.toUpperCase()));
+            const isAllMakesSelected = selectedMakes.length === 0
+                || (availableMakes.length > 0 && availableMakes.every(m => selectedMakeSet.has(m.toUpperCase())));
+            const matchesMake = isAllMakesSelected || selectedMakeSet.has(normalizedMake);
 
             const isElectric = v.model.toLowerCase().includes('electric') || v.fuelType === 'ELECTRIC';
             const fuelType = isElectric ? 'Electric' : 'Petrol';
@@ -140,10 +174,10 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
                 displacement < 125
                     ? '< 125cc'
                     : displacement < 250
-                      ? '125-250cc'
-                      : displacement < 500
-                        ? '250-500cc'
-                        : '> 500cc';
+                        ? '125-250cc'
+                        : displacement < 500
+                            ? '250-500cc'
+                            : '> 500cc';
             const matchesCC = selectedCC.length === 0 || selectedCC.includes(ccTag);
 
             const brakeType = v.specifications?.brakes?.front?.toLowerCase().includes('disc') ? 'Disc (Front)' : 'Drum';
@@ -204,6 +238,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         maxPrice,
         maxEMI,
         downpayment, // Added dependency for EMI calculation
+        availableMakes,
     ]);
 
     const toggleFilter = (setter: React.Dispatch<React.SetStateAction<string[]>>, value: string) => {
@@ -212,7 +247,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
 
     const clearAll = () => {
         setSearchQuery('');
-        setSelectedMakes(brands);
+        setSelectedMakes(availableMakes);
         setSelectedFuels([]);
         setSelectedSegments([]);
         setSelectedBodyTypes([]);
@@ -257,6 +292,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         setMaxPrice,
         maxEMI,
         setMaxEMI,
+        availableMakes,
         filteredVehicles,
         toggleFilter,
         clearAll,

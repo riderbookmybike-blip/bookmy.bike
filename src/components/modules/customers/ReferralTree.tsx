@@ -72,21 +72,21 @@ const TreeNode = ({ node, level = 0 }: { node: ReferralNode, level?: number }) =
 };
 
 export default function ReferralTree({ root }: ReferralTreeProps) {
-    if (!root) return <div className="text-gray-400 p-4">No referral data available</div>;
+    if (!root) return <div className="text-gray-400 dark:text-slate-500 p-4">No referral data available</div>;
 
     return (
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-sm border border-gray-100 dark:border-white/10">
             <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-purple-50 text-purple-600 rounded-lg">
+                <div className="p-2 bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-300 rounded-lg">
                     <Network size={20} />
                 </div>
                 <div>
-                    <h3 className="text-lg font-bold text-gray-900">Referral Network</h3>
-                    <p className="text-sm text-gray-500">Downline hierarchy for {root.name}</p>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Referral Network</h3>
+                    <p className="text-sm text-gray-500 dark:text-slate-400">Downline hierarchy for {root.name}</p>
                 </div>
             </div>
 
-            <div className="border rounded-lg p-4 bg-white/50 min-h-[300px]">
+            <div className="border border-gray-200 dark:border-white/10 rounded-lg p-4 bg-white/50 dark:bg-slate-900/60 min-h-[300px]">
                 <TreeNode node={root} />
             </div>
         </div>

@@ -13,7 +13,7 @@ interface DealerBrandDetailProps {
 export default function DealerBrandDetail({ brandName, onClose }: DealerBrandDetailProps) {
     if (!brandName) {
         return (
-            <div className="h-full flex items-center justify-center bg-gray-50 text-gray-500">
+            <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-slate-950 text-gray-500 dark:text-slate-500">
                 <div className="text-center">
                     <p>Select a Brand to manage enablement & pricing</p>
                 </div>
@@ -44,21 +44,21 @@ export default function DealerBrandDetail({ brandName, onClose }: DealerBrandDet
 
                         {/* Stats Grid */}
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="p-4 bg-white border border-gray-200 rounded-lg">
-                                <span className="text-xs text-gray-500 uppercase tracking-wide">Total Models</span>
-                                <div className="text-2xl font-bold text-gray-900">{models}</div>
+                            <div className="p-4 bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-lg">
+                                <span className="text-xs text-gray-500 dark:text-slate-400 uppercase tracking-wide">Total Models</span>
+                                <div className="text-2xl font-bold text-gray-900 dark:text-white">{models}</div>
                             </div>
-                            <div className="p-4 bg-white border border-gray-200 rounded-lg">
-                                <span className="text-xs text-gray-500 uppercase tracking-wide">Total Variants</span>
-                                <div className="text-2xl font-bold text-gray-900">{variants}</div>
+                            <div className="p-4 bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-lg">
+                                <span className="text-xs text-gray-500 dark:text-slate-400 uppercase tracking-wide">Total Variants</span>
+                                <div className="text-2xl font-bold text-gray-900 dark:text-white">{variants}</div>
                             </div>
                         </div>
 
-                        <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                            <h4 className="font-bold text-gray-900 text-sm mb-2">Included Models</h4>
+                        <div className="p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-white/10 rounded-lg">
+                            <h4 className="font-bold text-gray-900 dark:text-white text-sm mb-2">Included Models</h4>
                             <div className="flex flex-wrap gap-2">
                                 {Array.from(new Set(brandProducts.map(p => p.model))).map(m => (
-                                    <span key={m} className="px-2 py-1 bg-white border border-gray-200 rounded text-xs font-medium text-gray-700">
+                                    <span key={m} className="px-2 py-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded text-xs font-medium text-gray-700 dark:text-slate-300">
                                         {m}
                                     </span>
                                 ))}
@@ -70,23 +70,23 @@ export default function DealerBrandDetail({ brandName, onClose }: DealerBrandDet
                 return <BrandPricingForm brandName={brandName} onSave={() => { }} />;
             case 'Variants':
                 return (
-                    <div className="bg-white border boundary-gray-200 rounded-lg overflow-hidden">
+                    <div className="bg-white dark:bg-slate-900 border boundary-gray-200 dark:border-white/10 rounded-lg overflow-hidden">
                         <table className="w-full text-left text-sm">
-                            <thead className="bg-gray-50 border-b border-gray-200 text-gray-500 font-medium">
+                            <thead className="bg-gray-50 dark:bg-slate-950 border-b border-gray-200 dark:border-white/10 text-gray-500 dark:text-slate-400 font-medium">
                                 <tr>
                                     <th className="px-4 py-3">Variant</th>
                                     <th className="px-4 py-3">SKU</th>
                                     <th className="px-4 py-3 text-right">Settings</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody className="divide-y divide-gray-100 dark:divide-white/10">
                                 {brandProducts.map(p => (
-                                    <tr key={p.id} className="hover:bg-gray-50">
+                                    <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-white/5">
                                         <td className="px-4 py-3">
-                                            <div className="font-medium text-gray-900">{p.model}</div>
-                                            <div className="text-xs text-gray-500">{p.variant} {p.color}</div>
+                                            <div className="font-medium text-gray-900 dark:text-white">{p.model}</div>
+                                            <div className="text-xs text-gray-500 dark:text-slate-400">{p.variant} {p.color}</div>
                                         </td>
-                                        <td className="px-4 py-3 font-mono text-xs text-gray-400">
+                                        <td className="px-4 py-3 font-mono text-xs text-gray-400 dark:text-slate-500">
                                             {p.sku}
                                         </td>
                                         <td className="px-4 py-3 text-right">

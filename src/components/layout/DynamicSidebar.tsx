@@ -76,7 +76,7 @@ export default function DynamicSidebar({
                 `}
             >
                 {/* Header */}
-                <div className="h-20 flex items-center justify-between px-6 border-b border-slate-100 dark:border-white/5 shrink-0 overflow-hidden">
+                <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100 dark:border-white/5 shrink-0 overflow-hidden">
                     <div className="flex items-center gap-3">
                         <Logo
                             mode="auto"
@@ -137,13 +137,13 @@ export default function DynamicSidebar({
                                                 className={`
                                                     flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-200
                                                     ${isActive
-                                                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25 border border-indigo-500/20'
+                                                        ? 'bg-brand-primary/[0.08] text-slate-900 shadow-sm border-l-4 border-brand-primary rounded-r-none'
                                                         : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
                                                     }
                                                 `}
                                             >
                                                 <div
-                                                    className={`shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`}
+                                                    className={`shrink-0 ${isActive ? 'text-brand-primary font-bold' : 'text-slate-400'}`}
                                                 >
                                                     {Icon ? <Icon size={20} strokeWidth={isActive ? 2.5 : 2} /> : <div className="w-5 h-5 bg-slate-200 rounded-full" />}
                                                 </div>

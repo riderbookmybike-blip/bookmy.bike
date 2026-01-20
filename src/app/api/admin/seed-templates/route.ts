@@ -2,7 +2,14 @@ import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { TEMPLATES } from '@/modules/templates/seedData';
 
-export async function POST() {
+export async function POST(request: Request) {
+    const adminSecret = process.env.ADMIN_API_SECRET;
+    const providedSecret = request.headers.get('x-admin-secret') || '';
+
+    if (!adminSecret || providedSecret !== adminSecret) {
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     // Use Service Role Key to bypass RLS for seeding
     const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,

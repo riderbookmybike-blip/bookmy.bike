@@ -141,21 +141,21 @@ export default function CommandPalette({ role }: CommandPaletteProps) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-black/50 backdrop-blur-sm transition-all">
-            <div className="w-full max-w-lg bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-200 dark:border-white/10 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
 
                 {/* Input */}
-                <div className="flex items-center px-4 py-3 border-b border-gray-100">
-                    <Search className="w-5 h-5 text-gray-400 mr-3" />
+                <div className="flex items-center px-4 py-3 border-b border-gray-100 dark:border-white/10">
+                    <Search className="w-5 h-5 text-gray-400 dark:text-slate-500 mr-3" />
                     <input
                         type="text"
-                        className="flex-1 text-lg bg-transparent outline-none placeholder:text-gray-400 text-gray-900"
+                        className="flex-1 text-lg bg-transparent outline-none placeholder:text-gray-400 dark:placeholder:text-slate-500 text-gray-900 dark:text-white"
                         placeholder="Search commands or pages..."
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         autoFocus
                     />
                     <div className="flex items-center gap-1">
-                        <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-gray-500 bg-gray-100 rounded border border-gray-200">
+                        <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-white/5 rounded border border-gray-200 dark:border-white/10">
                             <span className="text-sm">⎋</span> Esc
                         </kbd>
                     </div>
@@ -164,7 +164,7 @@ export default function CommandPalette({ role }: CommandPaletteProps) {
                 {/* List */}
                 <div className="max-h-[60vh] overflow-y-auto py-2">
                     {filteredCommands.length === 0 ? (
-                        <div className="px-4 py-8 text-center text-gray-500 text-sm">
+                        <div className="px-4 py-8 text-center text-gray-500 dark:text-slate-400 text-sm">
                             No results found.
                         </div>
                     ) : (
@@ -174,7 +174,7 @@ export default function CommandPalette({ role }: CommandPaletteProps) {
                                     key={`${cmd.section}-${cmd.name}`}
                                     onClick={() => executeCommand(cmd)}
                                     className={`w-full flex items-center justify-between px-4 py-3 text-left text-sm transition-colors
-                            ${index === selectedIndex ? 'bg-blue-50 text-blue-900' : 'text-gray-700 hover:bg-gray-50'}
+                            ${index === selectedIndex ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-900 dark:text-blue-300' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-white/5'}
                         `}
                                     onMouseEnter={() => setSelectedIndex(index)}
                                 >

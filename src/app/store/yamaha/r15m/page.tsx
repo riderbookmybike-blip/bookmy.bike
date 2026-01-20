@@ -102,10 +102,10 @@ export default function YamahaR15MPage() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-900 text-white">
+        <div className="min-h-screen bg-[#0b0d10] text-white">
 
             {/* Header */}
-            <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/5">
+            <header className="fixed top-0 left-0 right-0 z-50 bg-[#0b0d10]/85 backdrop-blur-xl border-b border-white/5">
                 <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-6">
                         <Link href="/store/catalog" className="flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors">
@@ -134,8 +134,8 @@ export default function YamahaR15MPage() {
                         alt={`${R15M_DATA.brand} ${R15M_DATA.model}`}
                         className="w-full h-full object-cover"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/80 to-transparent" />
-                    <div className="absolute inset-0 bg-gradient-to-r from-slate-900/80 via-transparent to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0b0d10] via-[#0b0d10]/85 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#0b0d10]/85 via-transparent to-transparent" />
                 </div>
 
                 <div className="relative z-10 max-w-7xl mx-auto px-6 py-24 md:py-32">
@@ -198,7 +198,7 @@ export default function YamahaR15MPage() {
 
 
             {/* Color Selector */}
-            <section className="py-12 bg-black border-y border-white/5">
+            <section className="py-12 bg-[#0b0d10] border-y border-white/5">
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                         <div>
@@ -226,7 +226,7 @@ export default function YamahaR15MPage() {
 
 
             {/* Specifications Tabs */}
-            <section className="py-16 bg-slate-900">
+            <section className="py-16 bg-[#0b0d10]">
                 <div className="max-w-7xl mx-auto px-6">
                     {/* Tab Headers */}
                     <div className="flex gap-4 mb-12 overflow-x-auto pb-4">
@@ -370,7 +370,7 @@ export default function YamahaR15MPage() {
 
 
             {/* Trust Footer */}
-            <section className="py-12 bg-black border-t border-white/5">
+            <section className="py-12 bg-[#0b0d10] border-t border-white/5">
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="flex flex-col md:flex-row items-center justify-center gap-8 text-center md:text-left">
                         <div className="flex items-center gap-3">
@@ -379,7 +379,7 @@ export default function YamahaR15MPage() {
                         </div>
                         <div className="flex items-center gap-3">
                             <Zap size={20} style={{ color: BRAND_GOLD }} />
-                            <span className="text-sm text-white/60">48hr Doorstep Delivery</span>
+                            <span className="text-sm text-white/60">4hr Doorstep Delivery</span>
                         </div>
                         <div className="flex items-center gap-3">
                             <Check size={20} style={{ color: BRAND_GOLD }} />

@@ -149,7 +149,7 @@ export default function ShellLayout({
                 showSearch={true}
             />
 
-            <div className="flex pt-16">
+            <div className="flex pt-14">
                 {/* Sidebar Component */}
                 <Sidebar
                     role={effectiveRole as UserRole}

@@ -75,16 +75,16 @@ export default function DealerBrandList({ onSelect, selectedBrand, basePath }: D
     };
 
     return (
-        <div className="h-full flex flex-col bg-white border-r border-gray-200">
+        <div className="h-full flex flex-col bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-white/10">
             {/* Toolbar */}
-            <div className="p-4 border-b border-gray-200 space-y-3">
-                <h2 className="font-bold text-gray-700">Brand Management</h2>
+            <div className="p-4 border-b border-gray-200 dark:border-white/10 space-y-3">
+                <h2 className="font-bold text-gray-700 dark:text-slate-200">Brand Management</h2>
                 <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={16} />
                     <input
                         type="text"
                         placeholder="Search Brands..."
-                        className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 outline-none"
+                        className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 dark:border-white/10 rounded focus:ring-1 focus:ring-blue-500 outline-none bg-white dark:bg-slate-950 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-500"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
@@ -93,7 +93,7 @@ export default function DealerBrandList({ onSelect, selectedBrand, basePath }: D
 
             {/* List */}
             <div className="flex-1 overflow-y-auto">
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-gray-100 dark:divide-white/10">
                     {filtered.map(brand => {
                         const isSelected = brand.brandName === selectedBrand;
                         // Count variants
@@ -103,18 +103,18 @@ export default function DealerBrandList({ onSelect, selectedBrand, basePath }: D
                             <div
                                 key={brand.brandName}
                                 onClick={() => handleRowClick(brand.brandName)}
-                                className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 flex items-center justify-between ${isSelected ? 'bg-blue-50 border-l-4 border-blue-600' : 'border-l-4 border-transparent'}`}
+                                className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-white/5 flex items-center justify-between ${isSelected ? 'bg-blue-50 dark:bg-blue-500/10 border-l-4 border-blue-600' : 'border-l-4 border-transparent'}`}
                             >
                                 <div className="flex-1 min-w-0 pr-4">
                                     <div className="flex items-center gap-2">
-                                        <h3 className={`font-medium ${isSelected ? 'text-blue-900' : 'text-gray-900'}`}>
+                                        <h3 className={`font-medium ${isSelected ? 'text-blue-900 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
                                             {brand.brandName}
                                         </h3>
-                                        <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
+                                        <span className="text-xs text-gray-400 dark:text-slate-500 bg-gray-100 dark:bg-white/5 px-1.5 py-0.5 rounded-full">
                                             {variantCount} items
                                         </span>
                                     </div>
-                                    <p className="text-xs text-gray-500 mt-1">
+                                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                                         {brand.isActive ? 'Enabled for Sale' : 'Not Selling'}
                                     </p>
                                 </div>
@@ -122,9 +122,9 @@ export default function DealerBrandList({ onSelect, selectedBrand, basePath }: D
                                     {/* Toggle */}
                                     <div
                                         onClick={(e) => toggleBrand(brand.brandName, e)}
-                                        className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${brand.isActive ? 'bg-green-500' : 'bg-gray-300'}`}
+                                        className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${brand.isActive ? 'bg-green-500' : 'bg-gray-300 dark:bg-slate-600'}`}
                                     >
-                                        <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${brand.isActive ? 'translate-x-5' : ''}`}></div>
+                                        <div className={`bg-white dark:bg-slate-900 w-4 h-4 rounded-full shadow-md transform transition-transform ${brand.isActive ? 'translate-x-5' : ''}`}></div>
                                     </div>
                                     {isSelected && <ChevronRight size={16} className="text-blue-400" />}
                                 </div>

@@ -19,15 +19,8 @@ import VisualsRow from './Personalize/VisualsRow';
 import TabNavigation from './Personalize/Tabs/TabNavigation';
 import AccessoriesTab from './Personalize/Tabs/AccessoriesTab';
 import SidebarHUD from './Personalize/SidebarHUD';
-import {
-    mandatoryAccessories,
-    optionalAccessories,
-    mandatoryInsurance,
-    insuranceAddons,
-    serviceOptions,
-    offerOptions,
-    mandatoryInsurance as mandatoryIns,
-} from '@/hooks/usePDPData';
+import CascadingAccessorySelector from './Personalize/CascadingAccessorySelector';
+import { ServiceOption } from '@/types/store';
 
 interface PDPDesktopProps {
     product: any;
@@ -43,6 +36,10 @@ interface PDPDesktopProps {
         toggleService: (id: string) => void;
         toggleOffer: (id: string) => void;
         updateQuantity: (id: string, delta: number, max?: number) => void;
+        setRegType: (type: 'STATE' | 'BH' | 'COMPANY') => void;
+        setEmiTenure: (months: number) => void;
+        setConfigTab: (tab: 'PRICE_BREAKUP' | 'FINANCE' | 'ACCESSORIES' | 'INSURANCE' | 'REGISTRATION' | 'SERVICES' | 'OFFERS' | 'WARRANTY' | 'TECH_SPECS') => void;
+        setUserDownPayment: (amount: number) => void;
     };
 }
 
@@ -51,23 +48,22 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
         colors,
         selectedColor,
         regType,
-        setRegType,
         selectedAccessories,
         selectedInsuranceAddons,
         emiTenure,
-        setEmiTenure,
         configTab,
-        setConfigTab,
         selectedServices,
         selectedOffers,
         quantities,
         userDownPayment,
-        setUserDownPayment,
         isReferralActive,
         baseExShowroom,
         rtoEstimates,
+        rtoBreakdown,
+        baseInsurance,
+        insuranceBreakdown,
         insuranceAddonsPrice,
-        roadTax,
+        otherCharges,
         accessoriesPrice,
         servicesPrice,
         offersDiscount,
@@ -79,6 +75,10 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
         emi,
         annualInterest,
         loanAmount,
+        activeAccessories,
+        activeServices,
+        availableInsuranceAddons,
+        warrantyItems
     } = data;
 
     const {
@@ -91,6 +91,10 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
         toggleService,
         toggleOffer,
         updateQuantity,
+        setRegType,
+        setEmiTenure,
+        setConfigTab,
+        setUserDownPayment,
     } = handlers;
 
     // Set default tab to Finance or Accessories if Price Breakup is active (since it's now in the sidebar)
@@ -101,23 +105,25 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
     }, []);
 
     const activeColorConfig = colors.find((c: any) => c.id === selectedColor) || colors[0];
+
     const totalMRP =
         (product.mrp || baseExShowroom + 5000) +
         rtoEstimates +
-        mandatoryIns.reduce((sum, i) => sum + i.price, 0) +
-        roadTax +
+        baseInsurance +
         accessoriesPrice +
-        servicesPrice;
+        servicesPrice +
+        otherCharges;
+
     const totalSavings = offersDiscount + colorDiscount + (isReferralActive ? 5000 : 0);
 
     const priceBreakupData = [
         { label: 'Showroom Price', value: baseExShowroom },
-        { label: `Registration (${regType})`, value: rtoEstimates },
-        { label: 'Required Insurance', value: mandatoryIns.reduce((sum, i) => sum + i.price, 0) },
+        { label: `Registration (${regType})`, value: rtoEstimates, breakdown: rtoBreakdown },
+        { label: 'Required Insurance', value: baseInsurance, breakdown: insuranceBreakdown },
         { label: 'Extra Insurance', value: insuranceAddonsPrice },
         { label: 'Accessories', value: accessoriesPrice },
         { label: 'Services / AMC', value: servicesPrice },
-        { label: 'Other Charges', value: roadTax },
+        ...(otherCharges > 0 ? [{ label: 'Other Charges', value: otherCharges }] : []),
         { label: 'Delivery TAT', value: '7 DAYS', isInfo: true },
         { label: 'Savings Applied', value: offersDiscount, isDeduction: true },
         ...(colorDiscount > 0 ? [{ label: 'Color Offer', value: colorDiscount, isDeduction: true }] : []),
@@ -139,7 +145,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
         }
     };
 
-    const ConfigItemRow = ({ item, isSelected, onToggle, isMandatory = false, isRadio = false }: any) => {
+    const ConfigItemRow = ({ item, isSelected, onToggle, isMandatory = false, isRadio = false, breakdown }: any) => {
         const quantity = isSelected ? quantities[item.id] || 1 : 0;
         const finalPrice = item.discountPrice > 0 ? item.discountPrice : item.price;
         const billedAmount = isSelected ? finalPrice * quantity : 0;
@@ -147,25 +153,40 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
         return (
             <div
                 onClick={() => !isMandatory && onToggle && onToggle()}
-                className={`group relative p-4 rounded-[2.5rem] border transition-all duration-300 flex items-center justify-between gap-4 cursor-pointer overflow-hidden
-                    ${
-                        isSelected
-                            ? 'bg-brand-primary/5 border-brand-primary/30'
-                            : 'bg-white/[0.03] border-slate-200 dark:border-white/5 hover:bg-white/[0.05] hover:border-slate-300 dark:hover:border-white/10'
+                className={`group relative p-4 rounded-[2.5rem] border transition-all duration-300 flex items-center justify-between gap-4 cursor-pointer
+                    ${isSelected
+                        ? 'bg-brand-primary/5 border-brand-primary/30'
+                        : 'bg-white/[0.03] border-slate-200 dark:border-white/5 hover:bg-white/[0.05] hover:border-slate-300 dark:hover:border-white/10'
                     }
                     ${isMandatory ? 'cursor-default opacity-90' : ''}
                 `}
             >
+                {/* Breakdown Tooltip */}
+                {breakdown && breakdown.length > 0 && (
+                    <div className="absolute top-full left-14 mt-2 w-64 p-3 glass-panel dark:bg-black/80 rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                        <div className="space-y-1">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-2 border-b border-white/5 pb-1">Charge Breakdown</p>
+                            {breakdown.map((b: any, idx: number) => (
+                                <div key={idx} className="flex justify-between text-[10px] text-slate-300">
+                                    <span>{b.label}</span>
+                                    <span className="font-mono">₹{b.amount.toLocaleString()}</span>
+                                </div>
+                            ))}
+                        </div>
+                        {/* Arrow */}
+                        <div className="absolute bottom-full left-4 -mb-1 w-2 h-2 bg-neutral-950 border-l border-t border-white/10 rotate-45 transform"></div>
+                    </div>
+                )}
+
                 <div className="flex-1 flex items-center justify-between gap-6">
                     {/* 1. Identity */}
                     <div className="flex items-center gap-4 min-w-[200px]">
                         <div
                             className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all shrink-0
-                            ${
-                                isSelected
+                            ${isSelected
                                     ? 'bg-brand-primary border-brand-primary text-black shadow-[0_0_15px_rgba(255,215,0,0.25)]'
                                     : 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-400'
-                            }`}
+                                }`}
                         >
                             {configTab === 'INSURANCE' ? <ShieldIcon size={20} /> : <Zap size={20} />}
                         </div>
@@ -232,11 +253,10 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                         {/* Selection Checkbox/Radio */}
                         <div
                             className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300
-                            ${
-                                isSelected
+                            ${isSelected
                                     ? 'bg-brand-primary border-brand-primary scale-110 shadow-lg shadow-brand-primary/30'
                                     : 'border-slate-300 dark:border-slate-700 bg-transparent group-hover:border-brand-primary'
-                            }`}
+                                }`}
                         >
                             {isSelected && (
                                 <CheckCircle2
@@ -329,7 +349,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                             {[24, 36, 48, 60].map(tenure => {
                                 const emiValue = Math.round(
                                     (loanAmount * (annualInterest / 12) * Math.pow(1 + annualInterest / 12, tenure)) /
-                                        (Math.pow(1 + annualInterest / 12, tenure) - 1)
+                                    (Math.pow(1 + annualInterest / 12, tenure) - 1)
                                 );
                                 const isSelected = emiTenure === tenure;
 
@@ -338,10 +358,9 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                                         key={tenure}
                                         onClick={() => setEmiTenure(tenure)}
                                         className={`relative group p-6 rounded-[2rem] border transition-all duration-300 text-left overflow-hidden
-                                            ${
-                                                isSelected
-                                                    ? 'bg-brand-primary border-brand-primary shadow-[0_0_20px_rgba(244,176,0,0.2)]'
-                                                    : 'bg-white/[0.03] border-slate-200 dark:border-white/5 hover:border-brand-primary/50'
+                                            ${isSelected
+                                                ? 'bg-brand-primary border-brand-primary shadow-[0_0_20px_rgba(244,176,0,0.2)]'
+                                                : 'bg-white/[0.03] border-slate-200 dark:border-white/5 hover:border-brand-primary/50'
                                             }
                                         `}
                                     >
@@ -379,26 +398,92 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                     </div>
                 );
             case 'ACCESSORIES':
+                // Group accessories by category
+                const helmets = activeAccessories.filter((a: any) => a.category === 'HELMET');
+                const others = activeAccessories.filter((a: any) => a.category !== 'HELMET');
+
+                // Find currently selected helmet ID
+                const selectedHelmetId = helmets.find((h: any) => selectedAccessories.includes(h.id))?.id;
+
+                const handleHelmetSelect = (id: string) => {
+                    // Since helmets are usually exclusive (1 per slot), we remove other helmets and add this one
+                    // Just use toggleAccessory logic but ensure exclusivity if that's the rule
+                    // For now, let's just use the toggle logic but clearer:
+                    // 1. Remove all *other* helmets from selection
+                    const otherHelmetIds = helmets.map((h: any) => h.id).filter((hid: string) => hid !== id);
+                    const newSelection = selectedAccessories.filter((sid: string) => !otherHelmetIds.includes(sid));
+
+                    if (!newSelection.includes(id)) {
+                        newSelection.push(id);
+                    }
+                    // Updates state via parent handler (need to expose a direct set or simulate toggle)
+                    // Since we only have toggle, we might need to iterate. 
+                    // OR better: Update the handlers on parent to allow 'setExclusive'
+                    // For MVP, just toggle the new one ON and others OFF? No, race conditions.
+
+                    // Optimization: Just expose setSelectedAccessories or a bulk update in handlers?
+                    // Currently only toggle is exposed. 
+                    // Let's assume toggle is smart enough or we update the handler.
+
+                    // ACTUALLY: The user's request "mandatory is variant 1 but i can add more too" 
+                    // implies MULTI-SELECT is okay. "I can add more too".
+                    // So maybe just standard toggle? 
+                    // User said "in cascading effect bhut layage..." -> "will look like..."
+
+                    // Let's use the Selector for "Configuring" the *Mandatory* one if it exists?
+                    // If Helmets are mandatory, we want to swap.
+
+                    // Let's try a swap logic: If I pick a new helmet, unselect the old one IF it was mandatory replacement?
+                    // Simplest: Just use toggle. If they want 2 helmets, they get 2.
+                    toggleAccessory(id);
+                };
+
                 return (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 space-y-10">
                         <TabHeader icon={Package} title="Accessories" subtext="Personalize your ride" />
 
-                        <div className="space-y-4 mb-10">
-                            <SectionLabel text="Mandatory Items" />
-                            {mandatoryAccessories.map((acc: any) => (
+                        {/* 1. Cascading Selectors for Complex Categories (e.g. Helmets) */}
+                        {helmets.length > 0 && (
+                            <div className="space-y-4">
+                                <SectionLabel text="Rider Gear (Helmets)" />
+                                <CascadingAccessorySelector
+                                    category="HELMET"
+                                    items={helmets}
+                                    selectedId={selectedHelmetId}
+                                    onSelect={(id: string) => {
+                                        // Exclusive Selection Logic for Helmets (Swap behavior)
+                                        // 1. Find currently selected helmet(s)
+                                        const current = selectedAccessories.filter((sid: string) => helmets.some((h: any) => h.id === sid));
+                                        // Then toggle them OFF
+                                        current.forEach((sid: string) => toggleAccessory(sid));
+                                        // 3. Toggle new one (if not same)
+                                        if (!current.includes(id)) {
+                                            toggleAccessory(id);
+                                        }
+                                    }}
+                                    label="Select Helmet"
+                                />
+                            </div>
+                        )}
+
+                        {/* 2. Standard Mandatory Items (Non-Helmet) */}
+                        <div className="space-y-4">
+                            <SectionLabel text="Essentials" />
+                            {others.filter((a: any) => a.isMandatory).map((acc: any) => (
                                 <ConfigItemRow
                                     key={acc.id}
                                     item={{ ...acc, maxQty: acc.maxQty || 1 }}
                                     isSelected={true}
-                                    onToggle={() => {}}
+                                    onToggle={() => { }}
                                     isMandatory={true}
                                 />
                             ))}
                         </div>
 
+                        {/* 3. Standard Optional Items (Non-Helmet) */}
                         <div className="space-y-4">
                             <SectionLabel text="Optional Upgrades" />
-                            {optionalAccessories.map((acc: any) => (
+                            {others.filter((a: any) => !a.isMandatory).map((acc: any) => (
                                 <ConfigItemRow
                                     key={acc.id}
                                     item={{ ...acc, maxQty: acc.maxQty || 1 }}
@@ -410,7 +495,8 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                     </div>
                 );
             case 'REGISTRATION':
-                const regItems = [
+                // Use rtoOptions if available (Calculated), else fallback to old hardcoded (should not happen if hook is updated)
+                const regItems = (data.rtoOptions && data.rtoOptions.length > 0) ? data.rtoOptions : [
                     {
                         id: 'STATE',
                         name: 'State Registration',
@@ -430,6 +516,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                         description: 'Corporate entity registration.',
                     },
                 ];
+
                 return (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
                         <TabHeader icon={ClipboardList} title="Registration" subtext="Get road-ready" />
@@ -441,87 +528,77 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                                 isSelected={regType === 'STATE'}
                                 onToggle={() => setRegType('STATE')}
                                 isRadio
+                                breakdown={regItems[0].breakdown}
                             />
                         </div>
 
                         <div className="space-y-4">
                             <SectionLabel text="Other Options" />
-                            {regItems.slice(1).map(item => (
+                            {regItems.slice(1).map((item: any) => (
                                 <ConfigItemRow
                                     key={item.id}
                                     item={item}
                                     isSelected={regType === item.id}
                                     onToggle={() => setRegType(item.id as any)}
                                     isRadio
+                                    breakdown={item.breakdown}
                                 />
                             ))}
                         </div>
                     </div>
                 );
             case 'INSURANCE':
+                const insuranceItems = insuranceBreakdown || [];
+
                 return (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
                         <TabHeader icon={ShieldIcon} title="Insurance" subtext="Secure your journey" />
 
                         <div className="space-y-4 mb-10">
-                            <SectionLabel text="Required Insurance" />
-                            {mandatoryInsurance.map(i => (
-                                <ConfigItemRow key={i.id} item={i} isSelected={true} isMandatory />
-                            ))}
+                            <SectionLabel text="Required Insurance (TP + OD)" />
+                            <div className="space-y-3 px-2">
+                                {insuranceItems.map((b: any, idx: number) => (
+                                    <div key={idx} className="flex justify-between items-center py-3 border-b border-white/5 last:border-0">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                                                <ShieldCheck size={16} />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-black uppercase italic tracking-wider text-white">{b.label}</p>
+                                                {b.detail && <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{b.detail}</p>}
+                                            </div>
+                                        </div>
+                                        <p className="text-sm font-black font-mono text-white">₹{b.amount.toLocaleString()}</p>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
 
-                        <div className="space-y-4">
-                            <SectionLabel text="Extra Coverage (Add-ons)" />
-                            {insuranceAddons.map(i => (
-                                <ConfigItemRow
-                                    key={i.id}
-                                    item={i}
-                                    isSelected={selectedInsuranceAddons.includes(i.id)}
-                                    onToggle={() => toggleInsuranceAddon(i.id)}
-                                />
-                            ))}
-                        </div>
+                        {availableInsuranceAddons.length > 0 && (
+                            <div className="space-y-4">
+                                <SectionLabel text="Extra Coverage (Add-ons)" />
+                                {availableInsuranceAddons.map((i: any) => (
+                                    <ConfigItemRow
+                                        key={i.id}
+                                        item={i}
+                                        isSelected={selectedInsuranceAddons.includes(i.id)}
+                                        onToggle={() => toggleInsuranceAddon(i.id)}
+                                    />
+                                ))}
+                            </div>
+                        )}
                     </div>
                 );
             case 'SERVICES':
+                // For now keep hardcoded free services or fetch if we have a table for them
                 const freeServiceSchedule = [
-                    {
-                        id: 'FREE_1',
-                        name: '1st Free Service',
-                        price: 0,
-                        description: '30 Days or 1000 km, whichever is earlier.',
-                        isMandatory: true,
-                    },
-                    {
-                        id: 'FREE_2',
-                        name: '2nd Free Service',
-                        price: 0,
-                        description: '90 Days or 3000 km, whichever is earlier.',
-                        isMandatory: true,
-                    },
-                    {
-                        id: 'FREE_3',
-                        name: '3rd Free Service',
-                        price: 0,
-                        description: '180 Days or 6000 km, whichever is earlier.',
-                        isMandatory: true,
-                    },
-                    {
-                        id: 'FREE_4',
-                        name: '4th Free Service',
-                        price: 0,
-                        description: '270 Days or 9000 km, whichever is earlier.',
-                        isMandatory: true,
-                    },
-                    {
-                        id: 'FREE_5',
-                        name: '5th Free Service',
-                        price: 0,
-                        description: '365 Days or 12000 km, whichever is earlier.',
-                        isMandatory: true,
-                    },
+                    { id: 'FREE_1', name: '1st Free Service', price: 0, description: '30 Days or 1000 km, whichever is earlier.', isMandatory: true },
+                    { id: 'FREE_2', name: '2nd Free Service', price: 0, description: '90 Days or 3000 km, whichever is earlier.', isMandatory: true },
+                    { id: 'FREE_3', name: '3rd Free Service', price: 0, description: '180 Days or 6000 km, whichever is earlier.', isMandatory: true },
+                    { id: 'FREE_4', name: '4th Free Service', price: 0, description: '270 Days or 9000 km, whichever is earlier.', isMandatory: true },
+                    { id: 'FREE_5', name: '5th Free Service', price: 0, description: '365 Days or 12000 km, whichever is earlier.', isMandatory: true },
                 ];
-                const paidServices = serviceOptions.filter((s: any) => s.price > 0);
+                const paidServices = activeServices.filter((s: any) => s.price > 0);
 
                 return (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -534,7 +611,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                                     key={srv.id}
                                     item={srv}
                                     isSelected={true}
-                                    onToggle={() => {}}
+                                    onToggle={() => { }}
                                     isMandatory={true}
                                 />
                             ))}
@@ -542,7 +619,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
 
                         <div className="space-y-4">
                             <SectionLabel text="AMC Plans & Protection" />
-                            {paidServices.map(srv => (
+                            {paidServices.map((srv: ServiceOption) => (
                                 <ConfigItemRow
                                     key={srv.id}
                                     item={srv}
@@ -555,34 +632,38 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                 );
             case 'OFFERS':
             case 'WARRANTY':
-                const standardWarranty = offerOptions.filter((o: any) => o.price === 0);
-                const extendedWarranty = offerOptions.filter((o: any) => o.price > 0);
                 return (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
                         <TabHeader icon={Gift} title="Warranty" subtext="Peace of mind guaranteed" />
 
                         <div className="space-y-4 mb-10">
-                            <SectionLabel text="Standard Manufacturer Warranty" />
-                            {standardWarranty.map((off: any) => (
-                                <ConfigItemRow
-                                    key={off.id}
-                                    item={{ ...off, isOffer: true }}
-                                    isSelected={selectedOffers.includes(off.id)}
-                                    onToggle={() => toggleOffer(off.id)}
-                                />
-                            ))}
-                        </div>
-
-                        <div className="space-y-4">
-                            <SectionLabel text="Optional Extensions" />
-                            {extendedWarranty.map((off: any) => (
-                                <ConfigItemRow
-                                    key={off.id}
-                                    item={{ ...off, isOffer: true }}
-                                    isSelected={selectedOffers.includes(off.id)}
-                                    onToggle={() => toggleOffer(off.id)}
-                                />
-                            ))}
+                            <SectionLabel text="Manufacturer Warranty Details" />
+                            {warrantyItems.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {warrantyItems.map((w: any, idx: number) => (
+                                        <div key={idx} className="bg-white/[0.03] border border-white/5 p-6 rounded-[2rem] flex flex-col gap-2">
+                                            <div className="w-10 h-10 rounded-xl bg-brand-primary/10 flex items-center justify-center text-brand-primary mb-2">
+                                                <ShieldCheck size={20} />
+                                            </div>
+                                            <p className="text-sm font-black uppercase italic tracking-tighter text-white">{w.label}</p>
+                                            <div className="flex gap-4 mt-2">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Coverage</span>
+                                                    <span className="text-sm font-black font-mono text-brand-primary">{w.days} Days</span>
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Usage Limit</span>
+                                                    <span className="text-sm font-black font-mono text-brand-primary">{w.km} KM</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="p-8 text-center bg-white/[0.03] rounded-[2rem] border border-white/5">
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Standard manufacturer warranty applies</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 );
@@ -595,7 +676,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
     const [isVideoOpen, setIsVideoOpen] = useState(false);
 
     return (
-        <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-white pb-32 transition-colors duration-1000 relative overflow-hidden">
+        <div className="min-h-screen bg-white dark:bg-[#0b0d10] text-slate-900 dark:text-white pb-24 transition-colors duration-1000 relative overflow-hidden">
             {/* Dynamic Background Glow */}
             <div
                 className="fixed inset-0 pointer-events-none z-0 transition-all duration-[2000ms] opacity-30 dark:opacity-20 blur-[120px]"
@@ -604,7 +685,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                 }}
             />
 
-            <div className="max-w-[1440px] mx-auto px-6 md:px-12 lg:px-20 py-4 space-y-8 relative z-10">
+            <div className="max-w-[1440px] mx-auto px-6 md:px-12 lg:px-20 py-6 space-y-6 relative z-10">
                 {/* 1. Context Navigation Row (Minimal) */}
                 <DynamicHeader
                     breadcrumb={
@@ -615,22 +696,22 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                 />
 
                 {/* 2. Main Flux Layout (Configurator | Sidebar Master) */}
-                <div className="flex gap-12 items-start">
+                <div className="flex gap-8 items-start">
                     {/* Left Column: Visuals & Selection Engine */}
-                    <div className="flex-1 space-y-12 min-w-0">
+                    <div className="flex-1 space-y-10 min-w-0">
                         <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
                             <VisualsRow
                                 colors={colors}
                                 selectedColor={selectedColor}
                                 onColorSelect={handleColorChange}
                                 productImage={getProductImage()}
-                                videoSource="4TFu_oDpTNI"
+                                videoSource={activeColorConfig?.video || ''}
                                 isVideoOpen={isVideoOpen}
                                 onCloseVideo={() => setIsVideoOpen(false)}
                             />
                         </div>
 
-                        <div className="bg-white dark:bg-slate-900/20 border border-slate-200 dark:border-white/5 rounded-[4rem] p-8 space-y-12 animate-in fade-in slide-in-from-bottom-12 duration-700 delay-100 shadow-2xl">
+                        <div className="glass-panel dark:bg-white/[0.02] rounded-[4rem] p-8 space-y-10 animate-in fade-in slide-in-from-bottom-12 duration-700 delay-100 shadow-2xl">
                             <TabNavigation
                                 activeTab={configTab}
                                 onTabChange={id => setConfigTab(id as any)}
@@ -674,8 +755,8 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                         onGetQuote={handleBookingRequest}
                         onShare={handleShareQuote}
                         onSave={handleSaveQuote}
-                        onDownload={() => {}}
-                        onShowVideo={() => setIsVideoOpen(true)}
+                        onDownload={() => { }}
+                        onShowVideo={activeColorConfig?.video ? () => setIsVideoOpen(true) : undefined}
                         productImage={getProductImage()}
                         downPayment={userDownPayment}
                     />

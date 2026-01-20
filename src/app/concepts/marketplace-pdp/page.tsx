@@ -1,7 +1,7 @@
 export default function MarketplacePdpConcept() {
     return (
         <div
-            className="min-h-screen bg-white text-slate-900"
+            className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100"
             style={{ fontFamily: '"IBM Plex Mono", "SFMono-Regular", ui-monospace, monospace' }}
         >
             <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_15%_0%,rgba(37,99,235,0.12),transparent_45%),radial-gradient(circle_at_85%_0%,rgba(15,23,42,0.12),transparent_55%)]" />
@@ -14,12 +14,12 @@ export default function MarketplacePdpConcept() {
                         <p className="text-xs font-semibold text-slate-400">Transparency view</p>
                     </div>
                 </div>
-                <button className="rounded-full border border-slate-300 px-5 py-2 text-xs font-black uppercase tracking-[0.25em] text-slate-700">Share</button>
+                <button className="rounded-full border border-slate-300 dark:border-white/20 px-5 py-2 text-xs font-black uppercase tracking-[0.25em] text-slate-700 dark:text-slate-200">Share</button>
             </header>
 
             <main className="mx-auto w-full max-w-6xl px-6 pb-16">
                 <div className="grid gap-8 lg:grid-cols-[1.4fr_0.9fr]">
-                    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <section className="rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 p-6 shadow-sm">
                         <div className="h-80 rounded-3xl bg-slate-100" />
                         <div className="mt-6 flex gap-3">
                             {[1, 2, 3, 4].map((i) => (
@@ -29,12 +29,12 @@ export default function MarketplacePdpConcept() {
                         <div className="mt-8 space-y-4">
                             <div>
                                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">TVS</p>
-                                <h1 className="text-4xl font-black uppercase text-slate-900">Jupiter SmartX</h1>
-                                <p className="text-sm font-semibold text-slate-500">Disc | Smart connect | 125cc</p>
+                                <h1 className="text-4xl font-black uppercase text-slate-900 dark:text-white">Jupiter SmartX</h1>
+                                <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Disc | Smart connect | 125cc</p>
                             </div>
                             <div className="grid gap-4 md:grid-cols-3">
                                 {['Range', 'Mileage', 'Warranty'].map((label) => (
-                                    <div key={label} className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                                    <div key={label} className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 px-4 py-3">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
                                         <p className="text-lg font-black">42 kmpl</p>
                                     </div>
@@ -44,16 +44,16 @@ export default function MarketplacePdpConcept() {
                     </section>
 
                     <aside className="space-y-6">
-                        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <div className="rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 p-6 shadow-sm">
                             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">On road price</p>
                             <p className="mt-2 text-3xl font-black">Rs 92,800</p>
-                            <p className="mt-2 text-sm font-semibold text-slate-500">Includes RTO + insurance</p>
+                            <p className="mt-2 text-sm font-semibold text-slate-500 dark:text-slate-400">Includes RTO + insurance</p>
                             <div className="mt-6 grid grid-cols-2 gap-4">
-                                <div className="rounded-2xl border border-slate-200 bg-blue-50 px-4 py-3">
+                                <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-blue-50 dark:bg-blue-500/10 px-4 py-3">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-blue-700">EMI</p>
                                     <p className="text-lg font-black">Rs 2,890</p>
                                 </div>
-                                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                                <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 px-4 py-3">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tenure</p>
                                     <p className="text-lg font-black">36 mo</p>
                                 </div>
@@ -79,9 +79,9 @@ export default function MarketplacePdpConcept() {
                 </div>
 
                 <section className="mt-10 grid gap-6 lg:grid-cols-[1fr_1fr]">
-                    <div className="rounded-3xl border border-slate-200 bg-white p-6">
-                        <h2 className="text-2xl font-black uppercase text-slate-900">Price breakup</h2>
-                        <div className="mt-4 space-y-3 text-sm font-semibold text-slate-600">
+                    <div className="rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 p-6">
+                        <h2 className="text-2xl font-black uppercase text-slate-900 dark:text-white">Price breakup</h2>
+                        <div className="mt-4 space-y-3 text-sm font-semibold text-slate-600 dark:text-slate-400">
                             {[
                                 ['Ex showroom', 'Rs 78,000'],
                                 ['Insurance', 'Rs 4,200'],
@@ -95,9 +95,9 @@ export default function MarketplacePdpConcept() {
                             ))}
                         </div>
                     </div>
-                    <div className="rounded-3xl border border-slate-200 bg-white p-6">
-                        <h2 className="text-2xl font-black uppercase text-slate-900">Delivery and policies</h2>
-                        <div className="mt-4 space-y-3 text-sm font-semibold text-slate-600">
+                    <div className="rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 p-6">
+                        <h2 className="text-2xl font-black uppercase text-slate-900 dark:text-white">Delivery and policies</h2>
+                        <div className="mt-4 space-y-3 text-sm font-semibold text-slate-600 dark:text-slate-400">
                             <p>Delivery in 48 hours for metro cities.</p>
                             <p>Refund initiated within 24 hours, reflects in 3 days.</p>
                             <p>All documents verified before allocation.</p>

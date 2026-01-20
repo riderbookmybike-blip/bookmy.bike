@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminClient } from '@/lib/supabase/admin';
 
 export async function POST(req: NextRequest) {
+    const adminSecret = process.env.ADMIN_API_SECRET;
+    const providedSecret = req.headers.get('x-admin-secret') || '';
+
+    if (!adminSecret || providedSecret !== adminSecret) {
+        return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const { phone } = await req.json();
 
@@ -9,10 +16,15 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, message: 'Phone number required' }, { status: 400 });
         }
 
+        const migrationSecret = process.env.MIGRATION_PASSWORD_SECRET;
+        if (!migrationSecret) {
+            return NextResponse.json({ success: false, message: 'Server misconfiguration' }, { status: 500 });
+        }
+
         const formattedPhone = `91${phone}`; // Legacy numeric format
         const e164Phone = `+91${phone}`; // E.164 format
         const email = `${phone}@bookmy.bike`; // Synthesized email
-        const password = `MSG91_${phone}_${process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(0, 8)}`; // Secure-ish password bypass
+        const password = `MSG91_${phone}_${migrationSecret}`; // Secure-ish password bypass
 
         // 1. Check if User Exists in Supabase Auth
         const { data: existingUsers } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 });

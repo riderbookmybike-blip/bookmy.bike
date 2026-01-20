@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { ShieldCheck, Share, Heart, Zap, Info, ArrowRight } from 'lucide-react';
-import { mandatoryAccessories, optionalAccessories, mandatoryInsurance, insuranceAddons, serviceOptions, offerOptions } from '@/hooks/usePDPData';
+import { Zap, ArrowRight } from 'lucide-react';
+import { ServiceOption } from '@/types/store';
 
 interface PDPTabletProps {
     product: any; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -15,23 +15,40 @@ export function PDPTablet({ product, variantParam, data, handlers }: PDPTabletPr
     const {
         colors,
         selectedColor,
-        regType, setRegType,
+        regType,
         selectedAccessories,
         selectedInsuranceAddons,
-        emiTenure, setEmiTenure,
-        configTab, setConfigTab,
+        emiTenure,
+        configTab,
         selectedServices,
         selectedOffers,
         quantities,
-        userDownPayment, setUserDownPayment,
+        userDownPayment,
         isReferralActive,
-        baseExShowroom, rtoEstimates, insuranceAddonsPrice, roadTax, accessoriesPrice, servicesPrice, offersDiscount, colorDiscount, totalOnRoad,
-        downPayment, minDownPayment, maxDownPayment, emi, annualInterest, loanAmount
+        baseExShowroom,
+        rtoEstimates,
+        baseInsurance,
+        insuranceAddonsPrice,
+        otherCharges,
+        accessoriesPrice,
+        servicesPrice,
+        offersDiscount,
+        colorDiscount,
+        totalOnRoad,
+        downPayment,
+        minDownPayment,
+        maxDownPayment,
+        emi,
+        annualInterest,
+        loanAmount,
+        activeAccessories,
+        warrantyItems
     } = data;
 
     const {
         handleColorChange, handleShareQuote, handleBookingRequest,
-        toggleAccessory, toggleInsuranceAddon, toggleService, toggleOffer, updateQuantity
+        toggleAccessory, toggleInsuranceAddon, toggleService, toggleOffer, updateQuantity,
+        setRegType, setEmiTenure, setConfigTab, setUserDownPayment
     } = handlers;
 
     const activeColorConfig = colors.find((c: any) => c.id === selectedColor) || colors[0]; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -47,7 +64,7 @@ export function PDPTablet({ product, variantParam, data, handlers }: PDPTabletPr
     };
 
     return (
-        <div className="min-h-screen bg-white dark:bg-[#020617] p-12 pb-40">
+        <div className="min-h-screen bg-white dark:bg-black p-12 pb-40">
             <div className="grid grid-cols-2 gap-16 min-h-[80vh]">
                 {/* Visuals Side */}
                 <div className="space-y-12">
@@ -57,7 +74,7 @@ export function PDPTablet({ product, variantParam, data, handlers }: PDPTabletPr
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{variantParam}</p>
                     </div>
 
-                    <div className="aspect-square bg-slate-50 dark:bg-slate-900/50 rounded-[3rem] flex items-center justify-center p-12 relative overflow-hidden group">
+                    <div className="aspect-square glass-panel dark:bg-neutral-900/50 rounded-[3rem] flex items-center justify-center p-12 relative overflow-hidden group">
                         <div className="absolute inset-0 bg-gradient-radial from-brand-primary/5 to-transparent" />
                         {getProductImage() && !getProductImage().includes('categories/') ? (
                             <img src={getProductImage()} alt={product.model} className="relative z-10 w-full h-auto object-contain drop-shadow-2xl transition-transform duration-700 group-hover:scale-110" />
@@ -92,7 +109,7 @@ export function PDPTablet({ product, variantParam, data, handlers }: PDPTabletPr
                 </div>
 
                 {/* Content Side */}
-                <div className="flex flex-col h-full bg-slate-50 dark:bg-white/[0.03] rounded-[3rem] border border-slate-200 dark:border-white/5 p-12">
+                <div className="flex flex-col h-full glass-panel dark:bg-white/[0.03] rounded-[3rem] p-12">
                     <div className="flex gap-4 overflow-x-auto no-scrollbar border-b border-slate-200 dark:border-white/10 pb-6 mb-8">
                         {[
                             { id: 'PRICE_BREAKUP', label: 'Summary' },
@@ -116,7 +133,7 @@ export function PDPTablet({ product, variantParam, data, handlers }: PDPTabletPr
                                 {[
                                     { label: 'Ex-Showroom', value: baseExShowroom },
                                     { label: 'RTO Registration', value: rtoEstimates },
-                                    { label: 'Insurance (Std)', value: mandatoryInsurance.reduce((sum, i) => sum + i.price, 0) },
+                                    { label: 'Insurance', value: baseInsurance + insuranceAddonsPrice },
                                     { label: 'Accessories', value: accessoriesPrice },
                                     { label: 'Total On-Road', value: totalOnRoad, isTotal: true }
                                 ].map((item, idx) => (
@@ -139,7 +156,7 @@ export function PDPTablet({ product, variantParam, data, handlers }: PDPTabletPr
                                 </div>
                                 <div className="grid gap-3">
                                     {[60, 48, 36, 24].map(t => (
-                                        <button key={t} onClick={() => setEmiTenure(t)} className={`w-full p-8 rounded-3xl border transition-all flex justify-between items-center ${emiTenure === t ? 'bg-slate-900 border-slate-900 text-white dark:bg-white dark:text-black shadow-2xl scale-[1.02]' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10'}`}>
+                                        <button key={t} onClick={() => setEmiTenure(t)} className={`w-full p-8 rounded-3xl border transition-all flex justify-between items-center ${emiTenure === t ? 'bg-slate-950 border-slate-800 text-white dark:bg-white dark:text-black shadow-2xl scale-[1.02]' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10'}`}>
                                             <span className="text-sm font-black italic uppercase tracking-widest">{t} Months</span>
                                             <span className="text-2xl font-black italic tracking-tighter">₹{Math.round((loanAmount * (annualInterest / 12) * Math.pow(1 + (annualInterest / 12), t)) / (Math.pow(1 + (annualInterest / 12), t) - 1)).toLocaleString()}</span>
                                         </button>
@@ -150,8 +167,12 @@ export function PDPTablet({ product, variantParam, data, handlers }: PDPTabletPr
 
                         {configTab === 'ACCESSORIES' && (
                             <div className="grid grid-cols-1 gap-3">
-                                {optionalAccessories.map(acc => (
-                                    <button key={acc.id} onClick={() => toggleAccessory(acc.id)} className={`p-6 rounded-3xl border transition-all flex items-center justify-between ${selectedAccessories.includes(acc.id) ? 'bg-brand-primary/10 border-brand-primary/50' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10'}`}>
+                                {activeAccessories.map((acc: any) => (
+                                    <button
+                                        key={acc.id}
+                                        onClick={() => !acc.isMandatory && toggleAccessory(acc.id)}
+                                        className={`p-6 rounded-3xl border transition-all flex items-center justify-between ${selectedAccessories.includes(acc.id) ? 'bg-brand-primary/10 border-brand-primary/50' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10'} ${acc.isMandatory ? 'opacity-80' : 'cursor-pointer'}`}
+                                    >
                                         <div className="text-left">
                                             <p className="text-[10px] font-black uppercase text-slate-500">{acc.name}</p>
                                             <p className="text-sm font-black italic">₹{acc.price.toLocaleString()}</p>
@@ -161,6 +182,27 @@ export function PDPTablet({ product, variantParam, data, handlers }: PDPTabletPr
                                         </div>
                                     </button>
                                 ))}
+                            </div>
+                        )}
+
+                        {configTab === 'INSURANCE' && (
+                            <div className="space-y-6">
+                                {warrantyItems.length > 0 && (
+                                    <div className="space-y-3">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Warranty</p>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            {warrantyItems.map((w: any, idx: number) => (
+                                                <div key={idx} className="p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5">
+                                                    <p className="text-[10px] font-black uppercase text-white mb-1">{w.label}</p>
+                                                    <div className="flex justify-between text-[10px] font-mono text-brand-primary">
+                                                        <span>{w.km} KM</span>
+                                                        <span>{w.days} Days</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>

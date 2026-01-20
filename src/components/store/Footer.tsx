@@ -10,13 +10,13 @@ import { slugify } from '@/utils/slugs';
 export const Footer = () => {
     const { brands } = useBrands();
     return (
-        <footer className="bg-white dark:bg-[#020617] border-t border-slate-100 dark:border-white/5 pt-24 pb-12 transition-colors duration-500 overflow-hidden relative">
+        <footer className="bg-white dark:bg-[#0b0d10] border-t border-slate-100 dark:border-white/5 pt-16 pb-10 transition-colors duration-500 overflow-hidden relative">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-brand-primary/20 to-transparent" />
 
             <div className="max-w-[1440px] mx-auto px-4 md:px-12 lg:px-20 relative z-10">
                 {/* Top Section: Trust & Brand */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 mb-20">
-                    <div className="lg:col-span-4 space-y-8">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 mb-12">
+                    <div className="lg:col-span-4 space-y-6">
                         <Logo mode="auto" size={32} className="justify-start" />
                         <p className="text-base text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm font-medium italic">
                             Redefining the era of mobility. India&apos;s premier marketplace for the next generation of
@@ -31,8 +31,8 @@ export const Footer = () => {
                         </div>
                     </div>
 
-                    <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-5 gap-8">
-                        <div className="space-y-8">
+                    <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-5 gap-6">
+                        <div className="space-y-6">
                             <FooterHeading>Collection</FooterHeading>
                             <FooterLinkList>
                                 <FooterLink href="/store/catalog">All Inventory</FooterLink>
@@ -45,7 +45,7 @@ export const Footer = () => {
                             </FooterLinkList>
                         </div>
 
-                        <div id="footer-brands" className="space-y-8 scroll-mt-28">
+                        <div id="footer-brands" className="space-y-6 scroll-mt-28">
                             <FooterHeading>Brands</FooterHeading>
                             <FooterLinkList>
                                 {brands.map(brand => (
@@ -56,7 +56,7 @@ export const Footer = () => {
                             </FooterLinkList>
                         </div>
 
-                        <div className="space-y-8">
+                        <div className="space-y-6">
                             <FooterHeading>Ecosystem</FooterHeading>
                             <FooterLinkList>
                                 <FooterLink href="#">About</FooterLink>
@@ -67,7 +67,7 @@ export const Footer = () => {
                             </FooterLinkList>
                         </div>
 
-                        <div className="space-y-8">
+                        <div className="space-y-6">
                             <FooterHeading>Concierge</FooterHeading>
                             <FooterLinkList>
                                 <FooterLink href="#">Help Center</FooterLink>
@@ -77,7 +77,7 @@ export const Footer = () => {
                             </FooterLinkList>
                         </div>
 
-                        <div className="space-y-8">
+                        <div className="space-y-6">
                             <FooterHeading>Legal</FooterHeading>
                             <FooterLinkList>
                                 <FooterLink href="#">Privacy</FooterLink>
@@ -89,7 +89,7 @@ export const Footer = () => {
                 </div>
 
                 {/* Bottom Section: Legal & Copyright Addressed */}
-                <div className="flex flex-col md:flex-row items-center justify-between pt-12 border-t border-slate-100 dark:border-white/5 gap-8">
+                <div className="flex flex-col md:flex-row items-center justify-between pt-8 border-t border-slate-100 dark:border-white/5 gap-6">
                     <div className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />
                         <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">

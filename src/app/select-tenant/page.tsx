@@ -20,24 +20,24 @@ export default function SelectTenantPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
             <div className="sm:mx-auto sm:w-full sm:max-w-md">
-                <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
                     Select Tenant
                 </h2>
-                <p className="mt-2 text-center text-sm text-gray-600">
+                <p className="mt-2 text-center text-sm text-gray-600 dark:text-slate-400">
                     Choose the organization you want to access
                 </p>
             </div>
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-                <div className="bg-white shadow overflow-hidden sm:rounded-md">
-                    <ul className="divide-y divide-gray-200">
+                <div className="bg-white dark:bg-slate-900 shadow overflow-hidden sm:rounded-md">
+                    <ul className="divide-y divide-gray-200 dark:divide-white/10">
                         {MOCK_TENANTS.map((tenant) => (
                             <li key={tenant.id}>
                                 <button
                                     onClick={() => handleSelect(tenant.id)}
-                                    className="block w-full text-left hover:bg-gray-50 transition duration-150 ease-in-out focus:outline-none"
+                                    className="block w-full text-left hover:bg-gray-50 dark:hover:bg-white/5 transition duration-150 ease-in-out focus:outline-none"
                                     disabled={tenant.status === 'Suspended'}
                                 >
                                     <div className="px-4 py-4 sm:px-6">
@@ -54,11 +54,11 @@ export default function SelectTenantPage() {
                                         </div>
                                         <div className="mt-2 sm:flex sm:justify-between">
                                             <div className="sm:flex">
-                                                <p className="flex items-center text-sm text-gray-500">
+                                                <p className="flex items-center text-sm text-gray-500 dark:text-slate-400">
                                                     {tenant.role}
                                                 </p>
                                             </div>
-                                            <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
+                                            <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-slate-400 sm:mt-0">
                                                 <p>
                                                     {tenant.city}
                                                 </p>

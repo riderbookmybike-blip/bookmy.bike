@@ -106,31 +106,33 @@ export default function DetailPanel({
             )}
 
             {/* Tabs Navigation - Premium Segmented Control */}
-            <div className="px-6 lg:px-8 py-3 border-b border-slate-100 dark:border-white/5 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md shrink-0 flex items-center justify-between">
-                <div className="flex bg-slate-100/50 dark:bg-white/5 p-1 rounded-2xl border border-slate-200/50 dark:border-white/5">
-                    <nav className="flex space-x-1 overflow-x-auto scrollbar-none">
-                        {effectiveTabs.map((tab) => (
-                            <button
-                                key={tab}
-                                onClick={() => handleTabClick(tab)}
-                                className={`
-                                    min-w-[100px] py-2 px-6 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all duration-300
-                                    ${activeTab === tab
-                                        ? 'bg-white dark:bg-white/10 text-blue-600 dark:text-blue-400 shadow-sm scale-[1.02] border border-slate-200/50 dark:border-white/10'
-                                        : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/5'
-                                    }
-                                `}
-                            >
-                                {tab}
-                            </button>
-                        ))}
-                    </nav>
-                </div>
+            {effectiveTabs.length > 0 && (
+                <div className="px-6 lg:px-8 py-3 border-b border-slate-100 dark:border-white/5 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md shrink-0 flex items-center justify-between">
+                    <div className="flex bg-slate-100/50 dark:bg-white/5 p-1 rounded-2xl border border-slate-200/50 dark:border-white/5">
+                        <nav className="flex space-x-1 overflow-x-auto scrollbar-none">
+                            {effectiveTabs.map((tab) => (
+                                <button
+                                    key={tab}
+                                    onClick={() => handleTabClick(tab)}
+                                    className={`
+                                        min-w-[100px] py-2 px-6 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all duration-300
+                                        ${activeTab === tab
+                                            ? 'bg-white dark:bg-white/10 text-blue-600 dark:text-blue-400 shadow-sm scale-[1.02] border border-slate-200/50 dark:border-white/10'
+                                            : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/5'
+                                        }
+                                    `}
+                                >
+                                    {tab}
+                                </button>
+                            ))}
+                        </nav>
+                    </div>
 
-                <div className="flex items-center">
-                    {actionButton}
+                    <div className="flex items-center">
+                        {actionButton}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Content Area - Symmetric Padding */}
             <div className="flex-1 overflow-auto scrollbar-thin px-6 lg:px-8 py-6">

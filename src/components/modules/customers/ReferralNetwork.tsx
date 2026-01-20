@@ -14,51 +14,51 @@ interface ReferralNetworkProps {
 }
 
 const CampaignCard = ({ source }: { source: ReferralSource }) => (
-    <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-lg border border-purple-100 flex items-center gap-6">
-        <div className="p-4 bg-white rounded-full shadow-sm text-purple-600">
+    <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-500/10 dark:to-blue-500/10 p-6 rounded-lg border border-purple-100 dark:border-white/10 flex items-center gap-6">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-full shadow-sm text-purple-600 dark:text-purple-300">
             {source.type === 'EVENT' ? <Calendar size={32} /> : <Megaphone size={32} />}
         </div>
         <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
-                <span className="px-2 py-0.5 bg-purple-200 text-purple-800 text-xs font-bold rounded uppercase">
+                <span className="px-2 py-0.5 bg-purple-200 dark:bg-purple-500/20 text-purple-800 dark:text-purple-200 text-xs font-bold rounded uppercase">
                     {source.type}
                 </span>
                 {source.validTo && (
-                    <span className="text-xs text-gray-500">Valid till {source.validTo}</span>
+                    <span className="text-xs text-gray-500 dark:text-slate-400">Valid till {source.validTo}</span>
                 )}
             </div>
-            <h3 className="text-xl font-bold text-gray-900">{source.name}</h3>
-            <p className="text-gray-600 mt-1">{source.description}</p>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">{source.name}</h3>
+            <p className="text-gray-600 dark:text-slate-400 mt-1">{source.description}</p>
             <div className="mt-4 flex items-center gap-2">
-                <Tag size={16} className="text-gray-400" />
-                <span className="font-mono text-sm bg-white px-2 py-1 rounded border border-gray-200 text-gray-700">
+                <Tag size={16} className="text-gray-400 dark:text-slate-500" />
+                <span className="font-mono text-sm bg-white dark:bg-slate-900 px-2 py-1 rounded border border-gray-200 dark:border-white/10 text-gray-700 dark:text-slate-200">
                     {source.code}
                 </span>
-                <span className="text-xs text-gray-400 ml-2">Referral Code</span>
+                <span className="text-xs text-gray-400 dark:text-slate-500 ml-2">Referral Code</span>
             </div>
         </div>
-        <div className="text-center px-4 border-l border-gray-200">
+        <div className="text-center px-4 border-l border-gray-200 dark:border-white/10">
             <Gift className="mx-auto text-purple-400 mb-2" />
-            <p className="text-sm font-medium text-purple-900">Platform Linked</p>
+            <p className="text-sm font-medium text-purple-900 dark:text-purple-200">Platform Linked</p>
         </div>
     </div>
 );
 
 const PersonCard = ({ source }: { source: ReferralSource }) => (
-    <div className="bg-white p-6 rounded-lg border border-gray-100 flex items-center gap-6">
-        <div className="p-4 bg-blue-50 rounded-full text-blue-600">
+    <div className="bg-white dark:bg-slate-900 p-6 rounded-lg border border-gray-100 dark:border-white/10 flex items-center gap-6">
+        <div className="p-4 bg-blue-50 dark:bg-blue-500/10 rounded-full text-blue-600 dark:text-blue-300">
             <User size={32} />
         </div>
         <div>
             <div className="flex items-center gap-2 mb-1">
-                <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-bold rounded uppercase">
+                <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-500/10 text-blue-800 dark:text-blue-200 text-xs font-bold rounded uppercase">
                     Direct Referral
                 </span>
             </div>
-            <h3 className="text-xl font-bold text-gray-900">{source.name}</h3>
-            <p className="text-gray-500 text-sm mt-1">Existing Customer</p>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">{source.name}</h3>
+            <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">Existing Customer</p>
             <div className="mt-3 flex items-center gap-2">
-                <span className="font-mono text-sm bg-gray-50 px-2 py-1 rounded text-gray-700">
+                <span className="font-mono text-sm bg-gray-50 dark:bg-white/5 px-2 py-1 rounded text-gray-700 dark:text-slate-200">
                     {source.code}
                 </span>
             </div>
@@ -67,17 +67,17 @@ const PersonCard = ({ source }: { source: ReferralSource }) => (
 );
 
 export default function ReferralNetwork({ source }: ReferralNetworkProps) {
-    if (!source) return <div className="text-gray-400 p-4">No referral source linked.</div>;
+    if (!source) return <div className="text-gray-400 dark:text-slate-500 p-4">No referral source linked.</div>;
 
     return (
         <div className="space-y-6">
             <div className="flex items-center gap-3">
-                <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
+                <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 rounded-lg">
                     <Network size={20} />
                 </div>
                 <div>
-                    <h3 className="text-lg font-bold text-gray-900">Referral Origin</h3>
-                    <p className="text-sm text-gray-500">This customer joined via:</p>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Referral Origin</h3>
+                    <p className="text-sm text-gray-500 dark:text-slate-400">This customer joined via:</p>
                 </div>
             </div>
 

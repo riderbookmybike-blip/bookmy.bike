@@ -30,7 +30,7 @@ export const AumsLandingHeader = ({ onLoginClick }: AumsLandingHeaderProps) => {
 
                     <button
                         onClick={onLoginClick}
-                        className="px-6 h-9 bg-white text-slate-950 hover:bg-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-white/10 transition-all flex items-center gap-2 active:scale-95 flex-shrink-0"
+                        className="px-6 h-9 bg-white dark:bg-white text-slate-950 hover:bg-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-white/10 transition-all flex items-center gap-2 active:scale-95 flex-shrink-0"
                     >
                         <Terminal size={14} className="text-blue-600" />
                         Partner Login

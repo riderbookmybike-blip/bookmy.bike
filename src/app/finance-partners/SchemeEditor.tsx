@@ -458,7 +458,7 @@ export default function SchemeEditor({ initialScheme, onSave, onCancel }: Scheme
                                                                             const newData = charge.tableData?.filter(r => r.tenure !== t);
                                                                             updateCharge(charge.id, { tableData: newData });
                                                                         }}
-                                                                        className="absolute -top-1 -right-1 text-slate-800 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-full p-0.5"
+                                                                        className="absolute -top-1 -right-1 text-slate-800 dark:text-slate-200 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-slate-900 rounded-full p-0.5"
                                                                     >
                                                                         <Plus size={8} className="rotate-45" />
                                                                     </button>

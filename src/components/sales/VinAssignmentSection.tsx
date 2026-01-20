@@ -54,11 +54,11 @@ export function VinAssignmentSection({ booking, onAssign }: { booking: Booking, 
     }
 
     return (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-            <h4 className="font-bold text-blue-900 mb-4 flex items-center gap-2">
+        <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg p-6">
+            <h4 className="font-bold text-blue-900 dark:text-blue-300 mb-4 flex items-center gap-2">
                 <Fingerprint size={18} /> Assign VIN / Chassis
             </h4>
-            <p className="text-sm text-blue-700 mb-4">
+            <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">
                 Booking is confirmed. Select a chassis from inventory to finalize the unit.
             </p>
 
@@ -66,7 +66,7 @@ export function VinAssignmentSection({ booking, onAssign }: { booking: Booking, 
                 <select
                     value={selectedVin}
                     onChange={(e) => setSelectedVin(e.target.value)}
-                    className="flex-1 bg-white border border-blue-300 rounded px-3 py-2 text-sm font-mono"
+                    className="flex-1 bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-500/30 rounded px-3 py-2 text-sm font-mono text-slate-900 dark:text-white"
                 >
                     <option value="">-- Select Chassis --</option>
                     {availableVins.map(v => (

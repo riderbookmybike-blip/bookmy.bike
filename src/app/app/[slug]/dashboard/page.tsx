@@ -114,15 +114,15 @@ export default async function TenantDashboard(props: { params: Promise<{ slug: s
         <div className="p-8">
             <div className="mb-6">
                 <h1 className="text-3xl font-bold mb-2">{tenant.name}</h1>
-                <p className="text-gray-600">
+                <p className="text-gray-600 dark:text-slate-400">
                     Welcome back! Your role: <span className="font-medium text-brand-primary">{roleLabel}</span>
                 </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white p-6 rounded-lg shadow">
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow">
                     <h3 className="font-semibold mb-2">Quick Stats</h3>
-                    <p className="text-gray-600">Dashboard content coming soon...</p>
+                    <p className="text-gray-600 dark:text-slate-400">Dashboard content coming soon...</p>
                 </div>
             </div>
         </div>

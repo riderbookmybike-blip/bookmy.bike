@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { InsuranceRule, InsuranceCalculationContext, InsuranceCalculationResult } from '@/types/insurance';
 import { calculateInsurance } from '@/lib/insuranceEngine';
+import { runInsuranceTests } from '@/lib/insuranceTestCases';
 import { Calculator, RefreshCw, Shield, Zap, Lock, DollarSign } from 'lucide-react';
 
 interface InsurancePreviewProps {
@@ -19,10 +20,18 @@ export default function InsurancePreview({ rule, onValidCalculation }: Insurance
     });
 
     const [result, setResult] = useState<InsuranceCalculationResult | null>(null);
+    const [loggedTests, setLoggedTests] = useState(false);
 
     useEffect(() => {
         handleCalculate();
     }, [inputs, rule.odComponents, rule.tpComponents, rule.addons, rule.idvPercentage, rule.gstPercentage]);
+
+    useEffect(() => {
+        if (process.env.NODE_ENV !== 'development' || loggedTests) return;
+        const results = runInsuranceTests();
+        console.table(results);
+        setLoggedTests(true);
+    }, [loggedTests]);
 
     const handleCalculate = () => {
         try {

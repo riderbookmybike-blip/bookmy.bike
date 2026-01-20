@@ -23,7 +23,7 @@ export default function R15MV2Page() {
     const feature2Y = useTransform(scrollYProgress, [0.4, 0.6], [100, 0]);
 
     return (
-        <div ref={containerRef} className="bg-[#0a0a0a] text-white selection:bg-blue-600 selection:text-white">
+        <div ref={containerRef} className="bg-[#0b0d10] text-white selection:bg-blue-600 selection:text-white">
 
             {/* ════════════ FIXED HEADER ════════════ */}
             <motion.header
@@ -101,7 +101,7 @@ export default function R15MV2Page() {
 
 
             {/* ════════════ STATS STRIP ════════════ */}
-            <section className="py-20 border-y border-white/5 bg-[#050505]">
+            <section className="py-20 border-y border-white/5 bg-[#0f1115]">
                 <div className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-12">
                     {[
                         { label: "Displacement", value: "155", unit: "cc" },
@@ -166,7 +166,7 @@ export default function R15MV2Page() {
 
 
             {/* ════════════ TECH GRID ════════════ */}
-            <section className="py-32 bg-[#050505] relative">
+            <section className="py-32 bg-[#0f1115] relative">
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="mb-20">
                         <span className="text-blue-500 font-bold tracking-widest text-sm uppercase">Smart Technology</span>
@@ -207,7 +207,7 @@ export default function R15MV2Page() {
                             }
                         ].map((feature, i) => (
                             <div key={i} className="group p-8 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-blue-500/30 transition-all duration-300">
-                                <div className="w-12 h-12 rounded-full bg-black flex items-center justify-center text-white mb-6 group-hover:scale-110 group-hover:bg-blue-600 transition-all">
+                                <div className="w-12 h-12 rounded-full bg-[#0b0d10] flex items-center justify-center text-white mb-6 group-hover:scale-110 group-hover:bg-blue-600 transition-all">
                                     {feature.icon}
                                 </div>
                                 <h4 className="text-xl font-bold mb-3">{feature.title}</h4>
@@ -229,7 +229,7 @@ export default function R15MV2Page() {
                         className="w-full h-full object-cover opacity-30 grayscale"
                         alt=""
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/80 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0b0d10] via-[#0b0d10]/80 to-transparent" />
                 </div>
 
                 <div className="relative z-10 text-center max-w-2xl px-6">
@@ -244,9 +244,9 @@ export default function R15MV2Page() {
                             Check EMI
                             <ArrowRight size={18} />
                         </button>
-                        <button className="px-10 py-5 bg-white text-black hover:bg-gray-200 font-bold uppercase tracking-widest rounded-full transition-all hover:scale-105">
-                            Book Test Ride
-                        </button>
+                            <button className="px-10 py-5 bg-white dark:bg-white text-black hover:bg-gray-200 font-bold uppercase tracking-widest rounded-full transition-all hover:scale-105">
+                                Book Test Ride
+                            </button>
                     </div>
                 </div>
             </section>
