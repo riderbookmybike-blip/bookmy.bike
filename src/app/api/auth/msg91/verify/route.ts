@@ -35,13 +35,26 @@ export async function POST(req: NextRequest) {
         const bypassFlag = ['1', 'true', 'yes'].includes((process.env.SUPERADMIN_DEV_BYPASS || '').toLowerCase());
         const vercelEnv = (process.env.VERCEL_ENV || '').toLowerCase();
         const isBypassHost = bypassHosts.includes(hostName) || bypassHosts.includes(host.toLowerCase());
-        const isBypassEnv = isLocalhost || bypassFlag || isBypassHost || vercelEnv === 'preview' || vercelEnv === 'development';
+        const isBypassEnv =
+            isLocalhost || bypassFlag || isBypassHost || vercelEnv === 'preview' || vercelEnv === 'development';
 
-        console.log('[Login Debug] Request:', { phone, otp, host, isLocalhost, isProduction, env: process.env.NODE_ENV });
+        console.log('[Login Debug] Request:', {
+            phone,
+            otp,
+            host,
+            isLocalhost,
+            isProduction,
+            env: process.env.NODE_ENV,
+        });
 
         const normalizePhone = (value?: string | null) => (value || '').replace(/\D/g, '').slice(-10);
         const targetPhone = normalizePhone(tenDigitPhone);
-        let cachedUsers: Array<{ id: string; phone?: string | null; email?: string | null; user_metadata?: { phone?: string | null } }> | null = null;
+        let cachedUsers: Array<{
+            id: string;
+            phone?: string | null;
+            email?: string | null;
+            user_metadata?: { phone?: string | null };
+        }> | null = null;
         let cachedUser:
             | { id: string; phone?: string | null; email?: string | null; user_metadata?: { phone?: string | null } }
             | null
@@ -51,7 +64,10 @@ export async function POST(req: NextRequest) {
             if (cachedUser !== undefined) return cachedUser;
 
             // 1. Try finding in Auth first
-            const { data: existingUsers, error: listError } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 });
+            const { data: existingUsers, error: listError } = await adminClient.auth.admin.listUsers({
+                page: 1,
+                perPage: 1000,
+            });
             if (listError) throw listError;
             cachedUsers = existingUsers?.users || [];
 
@@ -59,7 +75,13 @@ export async function POST(req: NextRequest) {
                 const userPhone = normalizePhone(u.phone || '');
                 const metaPhone = normalizePhone((u.user_metadata as { phone?: string })?.phone);
                 const emailMatch = u.email?.toLowerCase() === email.toLowerCase();
-                return userPhone === targetPhone || metaPhone === targetPhone || u.phone === e164Phone || u.phone === mobile || emailMatch;
+                return (
+                    userPhone === targetPhone ||
+                    metaPhone === targetPhone ||
+                    u.phone === e164Phone ||
+                    u.phone === mobile ||
+                    emailMatch
+                );
             });
 
             if (cachedUser) {
@@ -87,7 +109,7 @@ export async function POST(req: NextRequest) {
                     email_confirm: true,
                     phone_confirm: true,
                     password: jitPassword,
-                    user_metadata: { full_name: profile.full_name, phone_login_migrated: true }
+                    user_metadata: { full_name: profile.full_name, phone_login_migrated: true },
                 });
 
                 if (createError) {
@@ -167,22 +189,44 @@ export async function POST(req: NextRequest) {
             let password;
             try {
                 password = getAuthPassword(phone);
-            } catch (e: any) {
-                return NextResponse.json({ success: false, message: e.message }, { status: 500 });
+            } catch (error) {
+                const message = error instanceof Error ? error.message : 'Unknown error';
+                return NextResponse.json({ success: false, message }, { status: 500 });
             }
             const actualEmail = foundUser.email || email;
             const shouldSetEmail = !foundUser.email;
 
-            // Ensure password is set (idempotent)
-            const { error: updateError } = await adminClient.auth.admin.updateUserById(userId, {
+            // 1. CRITICAL: Update Password & Metadata (Must succeed for login)
+            const { error: passwordError } = await adminClient.auth.admin.updateUserById(userId, {
                 password: password,
-                ...(shouldSetEmail ? { email: actualEmail, email_confirm: true } : { email_confirm: true }),
+                email_confirm: true,
                 user_metadata: { ...foundUser.user_metadata, phone_login_migrated: true },
             });
 
-            if (updateError) {
-                console.error('[Login Debug] updateUserById failed:', updateError);
-                // NOT returning here because if the password already matches, signIn might still work.
+            if (passwordError) {
+                console.error('[Login Debug] Password update failed:', passwordError);
+                // If this fails, login will likely fail, so we return error
+                return NextResponse.json({ success: false, message: 'Secure session setup failed.' }, { status: 500 });
+            }
+
+            // 2. OPTIONAL: Update Email (Best Effort)
+            // If this fails (e.g. duplicate email), we log it but allow login to proceed
+            if (shouldSetEmail) {
+                const { error: emailError } = await adminClient.auth.admin.updateUserById(userId, {
+                    email: actualEmail,
+                    email_confirm: true,
+                });
+                if (emailError) {
+                    console.warn('[Login Debug] Email update skipped (likely duplicate):', emailError.message);
+                    // Flag metadata so we know sync failed
+                    await adminClient.auth.admin.updateUserById(userId, {
+                        user_metadata: {
+                            ...foundUser.user_metadata,
+                            email_sync_failed: true,
+                            email_sync_error: emailError.message,
+                        },
+                    });
+                }
             }
 
             const { data: signInData, error: signInError } = await adminClient.auth.signInWithPassword({
@@ -192,10 +236,13 @@ export async function POST(req: NextRequest) {
 
             if (signInError || !signInData.session) {
                 console.error('[Login Debug] signInWithPassword failed:', signInError);
-                return NextResponse.json({
-                    success: false,
-                    message: `Session generation failed: ${signInError?.message || 'Unknown error'}`
-                }, { status: 500 });
+                return NextResponse.json(
+                    {
+                        success: false,
+                        message: `Session generation failed: ${signInError?.message || 'Unknown error'}`,
+                    },
+                    { status: 500 }
+                );
             }
 
             // SELF-VERIFY: Check if the token is actually valid right now
@@ -207,7 +254,6 @@ export async function POST(req: NextRequest) {
                     { status: 500 }
                 );
             } else {
-
             }
 
             const { data: profile } = await adminClient.from('profiles').select('full_name').eq('id', userId).single();
