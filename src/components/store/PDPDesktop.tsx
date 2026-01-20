@@ -678,7 +678,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                 }}
             />
 
-            <div className="max-w-[1440px] mx-auto px-6 md:px-12 lg:px-20 py-6 space-y-6 relative z-10">
+            <div className="max-w-[1600px] mx-auto px-6 md:px-12 lg:px-24 py-8 space-y-8 relative z-10">
                 {/* 1. Context Navigation Row (Minimal) */}
                 <DynamicHeader
                     breadcrumb={
@@ -689,7 +689,7 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                 />
 
                 {/* 2. Main Flux Layout (Configurator | Sidebar Master) */}
-                <div className="flex gap-8 items-start">
+                <div className="flex gap-16 items-start">
                     {/* Left Column: Visuals & Selection Engine */}
                     <div className="flex-1 space-y-10 min-w-0">
                         <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">

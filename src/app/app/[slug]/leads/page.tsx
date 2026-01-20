@@ -41,6 +41,7 @@ export default function LeadsPage() {
     const [isQuoteFormOpen, setIsQuoteFormOpen] = useState(false);
 
     const fetchLeads = async () => {
+        if (!tenantId) return;
         setIsLoading(true);
         try {
             const data = await getLeads(tenantId);
@@ -55,7 +56,9 @@ export default function LeadsPage() {
     };
 
     useEffect(() => {
-        fetchLeads();
+        if (tenantId) {
+            fetchLeads();
+        }
     }, [tenantId]);
 
     const handleNewLead = () => {
@@ -136,8 +139,19 @@ export default function LeadsPage() {
         }
     };
 
+    if (isLoading && leads.length === 0) {
+        return (
+            <div className="h-full bg-black flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Initializing_Intelligence...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="h-full bg-black flex overflow-hidden font-sans">
+        <div className="h-full bg-black flex overflow-hidden font-sans" style={{ height: '100%' }}>
             <MasterListDetailLayout mode={selectedLead ? 'list-detail' : 'list-only'}>
                 {/* List Panel */}
                 <div className="h-full flex flex-col bg-black/40 backdrop-blur-3xl">

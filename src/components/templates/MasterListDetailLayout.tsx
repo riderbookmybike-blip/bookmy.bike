@@ -18,8 +18,8 @@ export default function MasterListDetailLayout({
     // List-only mode: Full-width list, no detail panel
     if (mode === 'list-only') {
         return (
-            <div className="flex h-full overflow-hidden">
-                <div className="flex-1 h-full">
+            <div className="flex h-full overflow-hidden" style={{ height: '100%' }}>
+                <div className="flex-1 h-full min-h-0">
                     {listChild}
                 </div>
             </div>
@@ -39,7 +39,7 @@ export default function MasterListDetailLayout({
 
     // List-detail mode: Split view
     return (
-        <div className="flex h-full overflow-hidden bg-white dark:bg-slate-950 transition-colors duration-500">
+        <div className="flex h-full overflow-hidden bg-white dark:bg-slate-950 transition-colors duration-500" style={{ height: '100%' }}>
             {/* List Panel - Fixed width */}
             <div className="w-[320px] min-w-[280px] max-w-[360px] h-full flex-shrink-0 relative z-10 border-r border-slate-200/60 dark:border-white/5">
                 {listChild}

@@ -12,7 +12,7 @@ interface StoreDesktopProps {
     variant?: 'default' | 'tv';
 }
 
-export function StoreDesktop({ variant = 'default' }: StoreDesktopProps) {
+export function StoreDesktop({ variant: _variant = 'default' }: StoreDesktopProps) {
     const { items, skuCount } = useCatalog();
     const totalSkus = skuCount || items.length || 500; // Fallback to 500 if loading or empty
     const isTv = false; // TV logic moved to dedicated StoreTV component
@@ -34,7 +34,7 @@ export function StoreDesktop({ variant = 'default' }: StoreDesktopProps) {
                     <div className="absolute inset-0 bg-gradient-to-b from-white via-white/40 to-white dark:from-[#0b0d10] dark:via-[#0b0d10]/40 dark:to-[#0b0d10]" />
                 </div>
 
-                <div className="mx-auto relative z-10 w-full text-center max-w-[1440px] px-6 md:px-12 lg:px-20 pt-12 pb-10">
+                <div className="mx-auto relative z-10 w-full text-center max-w-[1600px] px-6 md:px-12 lg:px-20 pt-12 pb-10">
                     <div className="space-y-6">
                         <div className="space-y-5">
                             <div className="inline-flex items-center gap-3 px-6 py-3 bg-brand-primary/5 dark:bg-brand-primary/10 border border-brand-primary/10 dark:border-brand-primary/20 text-brand-primary dark:text-brand-primary rounded-full text-[11px] font-black uppercase tracking-[0.3em] backdrop-blur-md shadow-sm mb-6">
@@ -112,7 +112,7 @@ export function StoreDesktop({ variant = 'default' }: StoreDesktopProps) {
             <section className="py-12 md:py-16 lg:py-20 bg-white dark:bg-[#0b0d10] transition-colors relative overflow-hidden">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-200 dark:via-white/10 to-transparent" />
 
-                <div className="max-w-[1440px] mx-auto px-6 md:px-12 lg:px-20">
+                <div className="max-w-[1600px] mx-auto px-6 md:px-12 lg:px-20">
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-5 mb-4 2xl:mb-3">
                         <div className="space-y-4">
                             <p className="text-[12px] font-black text-brand-primary dark:text-brand-primary uppercase tracking-[0.5em] leading-none italic">
@@ -161,7 +161,7 @@ export function StoreDesktop({ variant = 'default' }: StoreDesktopProps) {
                     <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_120%,#FFD700,transparent_70%)]" />
                 </div>
 
-                <div className="max-w-[1440px] mx-auto px-6 md:px-12 lg:px-20 relative z-10">
+                <div className="max-w-[1600px] mx-auto px-6 md:px-12 lg:px-20 relative z-10">
                     <div className="grid grid-cols-12 gap-12 items-center">
                         <div className="col-span-5 space-y-6">
                             <div className="space-y-4">
@@ -233,7 +233,7 @@ export function StoreDesktop({ variant = 'default' }: StoreDesktopProps) {
 
             {/* Featured Categories */}
             <section className="pt-10 pb-8 bg-slate-50 dark:bg-[#0b0d10] transition-colors">
-                <div className="max-w-[1440px] mx-auto px-6 md:px-12 lg:px-8 xl:px-20">
+                <div className="max-w-[1600px] mx-auto px-6 md:px-12 lg:px-8 xl:px-20">
                     <div className="text-center max-w-3xl mx-auto mb-5 space-y-3">
                         <p className="text-[12px] font-black text-brand-primary dark:text-brand-primary uppercase tracking-[0.5em] italic">
                             Curated Collections

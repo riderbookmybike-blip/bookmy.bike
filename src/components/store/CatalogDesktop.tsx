@@ -461,7 +461,7 @@ export const ProductCard = ({
     );
 };
 
-export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopProps) {
+export function CatalogDesktop({ filters, variant: _variant = 'default' }: CatalogDesktopProps) {
     const {
         searchQuery,
         setSearchQuery,
@@ -495,9 +495,11 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
 
     const makeOptions = (availableMakes && availableMakes.length > 0) ? availableMakes : defaultBrands;
 
-    const isTv = variant === 'tv';
+    const [isTv] = useState(_variant === 'tv');
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [sortBy, setSortBy] = useState<'popular' | 'price' | 'emi'>('popular');
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [isEmiOpen, setIsEmiOpen] = useState(true);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -653,7 +655,7 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-[#0b0d10] transition-colors duration-500 font-sans">
             {/* Main Content Area - Visual Rest (No Container Box) */}
-            <main className="flex-1 mx-auto w-full max-w-[1440px] px-6 md:px-12 lg:px-20 pt-24 pb-16">
+            <main className="flex-1 mx-auto w-full max-w-[1600px] px-6 md:px-12 lg:px-20 pt-24 pb-16">
                 {/* Header Section - Aligned with Global Header */}
                 <header className="mb-6 px-2">
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -725,7 +727,7 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
                                     </button>
 
                                     {isEmiOpen && (
-                                    <div className="space-y-6 p-5 bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-3xl animate-in fade-in slide-in-from-top-2">
+                                        <div className="space-y-6 p-5 bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-3xl animate-in fade-in slide-in-from-top-2">
                                             <div className="space-y-4">
                                                 <div className="flex justify-between items-end">
                                                     <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
@@ -817,7 +819,7 @@ export function CatalogDesktop({ filters, variant = 'default' }: CatalogDesktopP
                                             </div>
 
                                             {/* Budget & EMI Filters nested in Calculator */}
-                                <div className="space-y-6 pt-4 border-t border-slate-200/50 dark:border-white/5">
+                                            <div className="space-y-6 pt-4 border-t border-slate-200/50 dark:border-white/5">
                                                 <div className="space-y-4">
                                                     <div className="flex justify-between items-end">
                                                         <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
