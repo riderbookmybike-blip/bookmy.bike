@@ -8,6 +8,8 @@ import { createClient } from '@/lib/supabase/client';
 import { resolveLocation } from '@/utils/locationResolver';
 import { calculateDistance, HUB_LOCATION, MAX_SERVICEABLE_DISTANCE_KM } from '@/utils/geoUtils';
 
+import { checkServiceability } from '@/actions/serviceArea';
+
 interface CatalogMobileProps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     filters: any;
@@ -37,7 +39,7 @@ export function CatalogMobile({ filters }: CatalogMobileProps) {
     const [serviceability, setServiceability] = useState<{ status: 'loading' | 'serviceable' | 'unserviceable' | 'unset'; location?: string; distance?: number }>({ status: 'loading' });
 
     useEffect(() => {
-        const checkServiceability = async () => {
+        const checkCurrentServiceability = async () => {
             if (typeof window === 'undefined') return;
             const supabase = createClient();
 
@@ -51,16 +53,12 @@ export function CatalogMobile({ filters }: CatalogMobileProps) {
                     .single();
 
                 if (profile?.aadhaar_pincode) {
-                    const resolved = await resolveLocation(profile.aadhaar_pincode);
-                    if (resolved && resolved.lat && resolved.lng) {
-                        const dist = calculateDistance(resolved.lat, resolved.lng, HUB_LOCATION.lat, HUB_LOCATION.lng);
-                        setServiceability({
-                            status: dist <= MAX_SERVICEABLE_DISTANCE_KM ? 'serviceable' : 'unserviceable',
-                            location: resolved.city || resolved.district || profile.aadhaar_pincode,
-                            distance: Math.round(dist)
-                        });
-                        return;
-                    }
+                    const result = await checkServiceability(profile.aadhaar_pincode);
+                    setServiceability({
+                        status: result.isServiceable ? 'serviceable' : 'unserviceable',
+                        location: result.location || profile.aadhaar_pincode
+                    });
+                    return;
                 }
             }
 
@@ -70,12 +68,10 @@ export function CatalogMobile({ filters }: CatalogMobileProps) {
                 try {
                     const data = JSON.parse(cached);
                     if (data.pincode) {
-                        const isServiceable = ['110', '400', '401', '402', '411', '560', '600', '700', '500', '201', '122']
-                            .some(prefix => data.pincode?.startsWith(prefix));
-
+                        const result = await checkServiceability(data.pincode);
                         setServiceability({
-                            status: isServiceable ? 'serviceable' : 'unserviceable',
-                            location: data.city || data.pincode
+                            status: result.isServiceable ? 'serviceable' : 'unserviceable',
+                            location: result.location || data.pincode
                         });
                         return;
                     } else if (data.city) {
@@ -97,9 +93,21 @@ export function CatalogMobile({ filters }: CatalogMobileProps) {
                     try {
                         const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
                         const data = await res.json();
+                        const pincode = data.postcode;
                         const city = data.city || data.locality || data.principalSubdivision;
 
-                        if (city && data.latitude && data.longitude) {
+                        if (pincode) {
+                            const result = await checkServiceability(pincode);
+                            setServiceability({
+                                status: result.isServiceable ? 'serviceable' : 'unserviceable',
+                                location: result.location || city || pincode
+                            });
+                            localStorage.setItem('bkmb_user_pincode', JSON.stringify({
+                                pincode,
+                                city: result.location || city,
+                                manuallySet: false
+                            }));
+                        } else if (city && data.latitude && data.longitude) {
                             const dist = calculateDistance(data.latitude, data.longitude, HUB_LOCATION.lat, HUB_LOCATION.lng);
                             setServiceability({
                                 status: dist <= MAX_SERVICEABLE_DISTANCE_KM ? 'serviceable' : 'unserviceable',
@@ -123,7 +131,7 @@ export function CatalogMobile({ filters }: CatalogMobileProps) {
                 setServiceability({ status: 'unset' });
             }
         };
-        checkServiceability();
+        checkCurrentServiceability();
     }, []);
 
     const makeOptions = (filters.availableMakes && filters.availableMakes.length > 0)
@@ -179,7 +187,7 @@ export function CatalogMobile({ filters }: CatalogMobileProps) {
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
                             onBlur={() => !searchQuery && setIsSearchActive(false)}
-                            className="w-full pl-12 pr-10 h-11 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 rounded-2xl text-[10px] font-black tracking-widest outline-none shadow-2xl focus:ring-2 focus:ring-brand-primary/20 backdrop-blur-xl"
+                            className="w-full pl-12 pr-10 h-11 bg-white/70 dark:bg-zinc-900/70 border border-slate-200/50 dark:border-white/5 rounded-2xl text-[10px] font-black tracking-widest outline-none shadow-2xl focus:ring-2 focus:ring-brand-primary/10 backdrop-blur-2xl transition-all"
                         />
                         <button
                             onClick={() => {
@@ -202,7 +210,7 @@ export function CatalogMobile({ filters }: CatalogMobileProps) {
             </div>
 
             {/* Product Feed: 1 column for impact */}
-            <div className="px-6 space-y-12">
+            <div className="px-6 space-y-6 md:space-y-12">
                 {filteredVehicles.map(
                     (
                         v: any // eslint-disable-line @typescript-eslint/no-explicit-any

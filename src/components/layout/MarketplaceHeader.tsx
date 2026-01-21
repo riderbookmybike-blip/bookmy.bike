@@ -142,7 +142,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         <AppHeaderShell
             scrolled={scrolled}
             visible={isVisible}
-            transparentAtTop={true}
+            transparentAtTop={false}
             left={
                 <Link href="/" className="flex items-center group">
                     {/* Full Logo on all screens */}

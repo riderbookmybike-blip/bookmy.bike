@@ -15,6 +15,15 @@ const getYoutubeThumbnail = (url: string) => {
     return (match && match[2].length === 11) ? `https://img.youtube.com/vi/${match[2]}/mqdefault.jpg` : null;
 };
 
+// Start of Helper Function
+function toTitleCase(str: string): string {
+    if (!str) return '';
+    return str.toLowerCase().split(' ').map(word => {
+        return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
+}
+// End of Helper Function
+
 export default function FamilyStep({ brand, template, familyData, families = [], stats = {}, onSave, onDelete }: any) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [formData, setFormData] = useState({
@@ -59,6 +68,7 @@ export default function FamilyStep({ brand, template, familyData, families = [],
             const supabase = createClient();
             const payload = {
                 ...formData,
+                name: toTitleCase(formData.name), // Enforce Title Case
                 template_id: template.id,
                 brand_id: brand.id,
                 type: 'FAMILY',

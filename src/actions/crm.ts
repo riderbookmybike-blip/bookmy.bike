@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { adminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
+import { checkServiceability } from './serviceArea';
 
 // --- CUSTOMER PROFILES ---
 
@@ -26,7 +27,7 @@ async function getOrCreateCustomerProfile(data: {
         await adminClient
             .from('profiles')
             .update({
-                full_name: data.name,
+                full_name: toTitleCase(data.name),
                 whatsapp: data.phone,
                 date_of_birth: data.dob,
                 aadhaar_pincode: data.pincode,
@@ -42,7 +43,7 @@ async function getOrCreateCustomerProfile(data: {
         phone: data.phone,
         phone_confirm: true,
         user_metadata: {
-            full_name: data.name,
+            full_name: toTitleCase(data.name),
         }
     });
 
@@ -64,7 +65,7 @@ async function getOrCreateCustomerProfile(data: {
         .from('profiles')
         .upsert({
             id: authUser.user.id,
-            full_name: data.name,
+            full_name: toTitleCase(data.name),
             whatsapp: data.phone,
             date_of_birth: data.dob,
             aadhaar_pincode: data.pincode,
@@ -207,6 +208,14 @@ export async function getCatalogModels() {
     return data.map(i => i.name);
 }
 
+// Helper to format text as Title Case
+function toTitleCase(str: string): string {
+    if (!str) return '';
+    return str.toLowerCase().split(' ').map(word => {
+        return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
+}
+
 export async function createLeadAction(data: {
     customer_name: string;
     customer_phone: string;
@@ -217,8 +226,9 @@ export async function createLeadAction(data: {
     owner_tenant_id: string;
     source?: string;
 }) {
-    // Enforce Uppercase Name
-    data.customer_name = data.customer_name.toUpperCase();
+    // Enforce Title Case Name
+    data.customer_name = toTitleCase(data.customer_name);
+    if (data.customer_city) data.customer_city = toTitleCase(data.customer_city);
 
     // 1. Get or Create Persistent Customer Profile
     const customerId = await getOrCreateCustomerProfile({
@@ -233,12 +243,9 @@ export async function createLeadAction(data: {
     let status = 'NEW';
     let isServiceable = false;
 
-    // Define serviceable logic (Mock for now, but strict)
-    const serviceablePrefixes = ['11', '12', '56', '40']; // Delhi, Haryana, Bangalore, Mumbai start
-
     if (data.customer_pincode) {
-        const prefix = data.customer_pincode.substring(0, 2);
-        isServiceable = serviceablePrefixes.includes(prefix);
+        const result = await checkServiceability(data.customer_pincode);
+        isServiceable = result.isServiceable;
 
         if (!isServiceable) {
             status = 'JUNK';
