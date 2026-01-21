@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
-import { MOCK_VEHICLES, MOCK_ACCESSORIES, MOCK_SERVICES, ProductVariant } from '@/types/productMaster';
+import React, { useState, useEffect } from 'react';
+import { ProductVariant } from '@/types/productMaster';
 import { calculateDealerPrice, isProductEnabledForDealer } from '@/lib/pricing';
-import { Search, ChevronRight, Calculator } from 'lucide-react';
+import { Search, Loader2 } from 'lucide-react';
+import { getAllProducts } from '@/actions/product';
+import { toast } from 'sonner';
 
 interface QuoteProductSelectorProps {
     onSelect: (variant: ProductVariant, price: number) => void;
@@ -11,10 +13,29 @@ interface QuoteProductSelectorProps {
 
 export default function QuoteProductSelector({ onSelect }: QuoteProductSelectorProps) {
     const [search, setSearch] = useState('');
+    const [products, setProducts] = useState<ProductVariant[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    // Flatten and Filter
-    const allProducts = [...MOCK_VEHICLES, ...MOCK_ACCESSORIES, ...MOCK_SERVICES];
-    const availableProducts = allProducts.filter(p => isProductEnabledForDealer(p.id));
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                const { products, error } = await getAllProducts();
+                if (error) {
+                    toast.error(error);
+                    return;
+                }
+                setProducts(products);
+            } catch (error) {
+                toast.error('Failed to load products');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchProducts();
+    }, []);
+
+    // Filter available products
+    const availableProducts = products.filter(p => isProductEnabledForDealer(p.id));
 
     // Filter by Search
     const filtered = availableProducts.filter(p =>
@@ -23,7 +44,7 @@ export default function QuoteProductSelector({ onSelect }: QuoteProductSelectorP
     );
 
     return (
-        <div className="bg-white dark:bg-slate-900 border boundary-gray-200 dark:border-white/10 rounded-lg overflow-hidden flex flex-col h-[400px]">
+        <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-lg overflow-hidden flex flex-col h-[400px]">
             <div className="p-3 border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-slate-950">
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={16} />
@@ -39,7 +60,11 @@ export default function QuoteProductSelector({ onSelect }: QuoteProductSelectorP
             </div>
 
             <div className="flex-1 overflow-y-auto">
-                {filtered.length === 0 ? (
+                {loading ? (
+                    <div className="flex items-center justify-center h-full text-gray-400">
+                        <Loader2 className="animate-spin mr-2" size={20} /> Loading products...
+                    </div>
+                ) : filtered.length === 0 ? (
                     <div className="p-8 text-center text-gray-400 dark:text-slate-500 text-sm">
                         No enabled products found. <br /> Check Brand Enablement settings.
                     </div>
@@ -57,7 +82,7 @@ export default function QuoteProductSelector({ onSelect }: QuoteProductSelectorP
                                     <div>
                                         <div className="flex items-center gap-2">
                                             <span className={`text-[10px] font-bold px-1 py-0.5 rounded border ${p.type === 'VEHICLE' ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-blue-500/20' :
-                                                    'bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-slate-400 border-gray-100 dark:border-white/10'
+                                                'bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-slate-400 border-gray-100 dark:border-white/10'
                                                 }`}>
                                                 {p.make}
                                             </span>

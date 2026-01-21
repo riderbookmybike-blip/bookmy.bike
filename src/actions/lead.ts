@@ -43,12 +43,22 @@ export async function submitLead(formData: FormData) {
     }
     rateLimit.set(ip, now);
 
+    // Helper to format text as Title Case
+    function toTitleCase(str: string): string {
+        if (!str) return '';
+        return str.toLowerCase().split(' ').map(word => {
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        }).join(' ');
+    }
+
+    // ... existing code ...
+
     // 3. Extract & Validate Data
     const rawData = {
-        name: formData.get('name') as string,
+        name: toTitleCase(formData.get('name') as string),
         phone: formData.get('phone') as string,
         pincode: formData.get('pincode') as string,
-        city: formData.get('city') as string,
+        city: toTitleCase(formData.get('city') as string),
         dob: formData.get('dob') as string,
         model: formData.get('model') as string,
         variant: formData.get('variant') as string,

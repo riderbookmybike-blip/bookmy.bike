@@ -42,6 +42,8 @@ interface SidebarHUDProps {
     downPayment: number;
 }
 
+import { checkServiceability } from '@/actions/serviceArea';
+
 /**
  * Master Sidebar HUD for Desktop PDP.
  * Now grows naturally without internal scrolling.
@@ -75,32 +77,35 @@ export default function SidebarHUD({
     }>({ isServiceable: false, status: 'CHECKING' });
 
     React.useEffect(() => {
-        const cached = localStorage.getItem('bkmb_user_pincode');
-        if (!cached) {
-            setServiceability({ isServiceable: false, status: 'UNSET' });
-            return;
-        }
+        const checkCurrentServiceability = async () => {
+            const cached = localStorage.getItem('bkmb_user_pincode');
+            if (!cached) {
+                setServiceability({ isServiceable: false, status: 'UNSET' });
+                return;
+            }
 
-        try {
-            const data = JSON.parse(cached);
-            const isServiceable = [
-                '110001',
-                '400001',
-                '560001',
-                '600001',
-                '700001',
-                '500001',
-            ].some(p => data.pincode?.startsWith(p.slice(0, 3)));
-
-            setServiceability({
-                pincode: data.pincode,
-                city: data.city,
-                isServiceable,
-                status: 'SET'
-            });
-        } catch {
-            setServiceability({ isServiceable: false, status: 'UNSET' });
-        }
+            try {
+                const data = JSON.parse(cached);
+                if (data.pincode) {
+                    const result = await checkServiceability(data.pincode);
+                    setServiceability({
+                        pincode: data.pincode,
+                        city: result.location || data.city,
+                        isServiceable: result.isServiceable,
+                        status: 'SET'
+                    });
+                } else {
+                    setServiceability({
+                        city: data.city,
+                        isServiceable: false, // Or keep as unset if no pincode
+                        status: 'SET'
+                    });
+                }
+            } catch {
+                setServiceability({ isServiceable: false, status: 'UNSET' });
+            }
+        };
+        checkCurrentServiceability();
     }, []);
 
     let infoColorClass = 'text-slate-400';

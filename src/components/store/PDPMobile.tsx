@@ -91,16 +91,16 @@ export function PDPMobile({ product, variantParam, data, handlers }: PDPMobilePr
     return (
         <div className="min-h-screen bg-white dark:bg-black pb-40">
             {/* 1. Mobile Hero: Full Impact */}
-            <section className="relative aspect-[4/5] bg-slate-50 dark:bg-neutral-900/50 flex items-center justify-center p-12">
-                <div className="absolute top-8 left-8 right-8 flex justify-between items-start z-10">
-                    <div className="space-y-1">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-brand-primary italic">{product.make}</p>
-                        <h1 className="text-4xl font-black uppercase italic tracking-tighter leading-none">{product.model}</h1>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">{variantParam}</p>
+            <section className="relative aspect-[1/1.1] bg-slate-50 dark:bg-neutral-900/50 flex items-center justify-center p-6">
+                <div className="absolute top-6 left-6 right-6 flex justify-between items-start z-10">
+                    <div className="space-y-0.5">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-brand-primary italic">{product.make}</p>
+                        <h1 className="text-3xl font-black uppercase italic tracking-tighter leading-none">{product.model}</h1>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em]">{variantParam}</p>
                     </div>
                     <div className="flex gap-2">
-                        <button onClick={handleShareQuote} className="p-3 glass-panel dark:bg-black/40 rounded-full shadow-lg"><Share size={16} /></button>
-                        <button className="p-3 glass-panel dark:bg-black/40 rounded-full shadow-lg text-rose-500"><Heart size={16} className="fill-current" /></button>
+                        <button onClick={handleShareQuote} className="p-2.5 glass-panel dark:bg-black/40 rounded-full shadow-md"><Share size={14} /></button>
+                        <button className="p-2.5 glass-panel dark:bg-black/40 rounded-full shadow-md text-rose-500"><Heart size={14} className="fill-current" /></button>
                     </div>
                 </div>
 
@@ -122,13 +122,13 @@ export function PDPMobile({ product, variantParam, data, handlers }: PDPMobilePr
                     )}
                 </div>
 
-                <div className="absolute bottom-8 left-8 right-8">
-                    <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
+                <div className="absolute bottom-6 left-6 right-6">
+                    <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
                         {colors.map((color: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) => (
                             <button
                                 key={color.id}
                                 onClick={() => handleColorChange(color.id)}
-                                className={`flex-shrink-0 w-12 h-12 rounded-full border-2 p-1 transition-all ${selectedColor === color.id ? 'border-brand-primary scale-110 shadow-lg' : 'border-transparent'}`}
+                                className={`flex-shrink-0 w-10 h-10 rounded-full border-2 p-1 transition-all ${selectedColor === color.id ? 'border-brand-primary scale-110 shadow-lg' : 'border-transparent'}`}
                             >
                                 <div
                                     className={`w-full h-full rounded-full ${color.class}`}
@@ -141,31 +141,31 @@ export function PDPMobile({ product, variantParam, data, handlers }: PDPMobilePr
             </section>
 
             {/* 2. Mobile Clusters: Quick Stats */}
-            <section className="px-6 -mt-10 relative z-20">
-                <div className="glass-panel dark:bg-neutral-950 rounded-[2.5rem] p-8 shadow-2xl space-y-8">
-                    <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-1">
-                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">On-Road Price</p>
-                            <p className="text-2xl font-black italic tracking-tighter text-slate-900 dark:text-white">₹{totalOnRoad.toLocaleString()}</p>
+            <section className="px-6 -mt-6 relative z-20">
+                <div className="glass-panel dark:bg-neutral-950 rounded-[2rem] p-6 shadow-2xl space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-0.5">
+                            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">On-Road Price</p>
+                            <p className="text-xl font-black italic tracking-tighter text-slate-900 dark:text-white">₹{totalOnRoad.toLocaleString()}</p>
                         </div>
-                        <div className="space-y-1">
-                            <p className="text-[9px] font-black uppercase tracking-widest text-green-600 italic">Lowest EMI</p>
-                            <p className="text-2xl font-black italic tracking-tighter text-green-600">₹{emi.toLocaleString()}<span className="text-[10px] text-slate-400">/mo</span></p>
+                        <div className="space-y-0.5">
+                            <p className="text-[8px] font-black uppercase tracking-widest text-green-600 italic">Lowest EMI</p>
+                            <p className="text-xl font-black italic tracking-tighter text-green-600">₹{emi.toLocaleString()}<span className="text-[9px] text-slate-400">/mo</span></p>
                         </div>
                     </div>
 
-                    <div className="flex gap-3 pt-2 border-t border-slate-100 dark:border-white/5 pt-6">
-                        <div className="flex-1 flex items-center gap-3 px-4 py-3 bg-slate-50 dark:bg-white/5 rounded-2xl">
-                            <ShieldCheck size={18} className="text-brand-primary" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Price Protection Enabled</span>
+                    <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-white/5">
+                        <div className="flex-1 flex items-center gap-2.5 px-3.5 py-2.5 bg-slate-50 dark:bg-white/5 rounded-xl">
+                            <ShieldCheck size={16} className="text-brand-primary" />
+                            <span className="text-[9px] font-black uppercase tracking-widest">Price Protection Enabled</span>
                         </div>
                     </div>
                 </div>
             </section>
 
             {/* 3. Configuration Tabs: Mobile Refine */}
-            <section className="px-6 pt-12 space-y-8">
-                <div className="flex gap-4 overflow-x-auto no-scrollbar border-b border-slate-100 dark:border-white/5 pb-4">
+            <section className="px-6 pt-8 space-y-6">
+                <div className="flex gap-3 overflow-x-auto no-scrollbar border-b border-slate-100 dark:border-white/5 pb-3">
                     {[
                         { id: 'PRICE_BREAKUP', label: 'Summary' },
                         { id: 'FINANCE', label: 'EMI Plan' },
@@ -175,7 +175,7 @@ export function PDPMobile({ product, variantParam, data, handlers }: PDPMobilePr
                         <button
                             key={tab.id}
                             onClick={() => setConfigTab(tab.id as 'PRICE_BREAKUP' | 'FINANCE' | 'ACCESSORIES' | 'TECH_SPECS')}
-                            className={`flex-shrink-0 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${configTab === tab.id ? 'bg-slate-900 text-white dark:bg-white dark:text-black shadow-lg' : 'text-slate-400'}`}
+                            className={`flex-shrink-0 px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${configTab === tab.id ? 'bg-slate-900 text-white dark:bg-white dark:text-black shadow-lg' : 'text-slate-400'}`}
                         >
                             {tab.label}
                         </button>
@@ -200,19 +200,19 @@ export function PDPMobile({ product, variantParam, data, handlers }: PDPMobilePr
                     )}
 
                     {configTab === 'FINANCE' && (
-                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2">
-                            <div className="p-6 bg-slate-50 dark:bg-white/5 rounded-3xl space-y-4 border border-slate-200 dark:border-white/5">
+                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                            <div className="p-5 bg-slate-50 dark:bg-white/5 rounded-2xl space-y-3 border border-slate-200 dark:border-white/5">
                                 <div className="flex justify-between items-end">
-                                    <span className="text-[10px] font-black uppercase text-slate-400">Downpayment</span>
-                                    <span className="text-lg font-black italic">₹{downPayment.toLocaleString()}</span>
+                                    <span className="text-[9px] font-black uppercase text-slate-400">Downpayment</span>
+                                    <span className="text-base font-black italic">₹{downPayment.toLocaleString()}</span>
                                 </div>
                                 <input type="range" min={minDownPayment} max={maxDownPayment} step={1000} value={downPayment} onChange={(e) => setUserDownPayment(parseInt(e.target.value))} className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full appearance-none accent-brand-primary" />
                             </div>
-                            <div className="space-y-3">
+                            <div className="space-y-2.5">
                                 {[60, 48, 36, 24].map(t => (
-                                    <button key={t} onClick={() => setEmiTenure(t)} className={`w-full p-5 rounded-2xl border transition-all flex justify-between items-center ${emiTenure === t ? 'bg-brand-primary border-brand-primary text-black shadow-xl' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500'}`}>
-                                        <span className="text-xs font-black italic uppercase">{t} MONTHS</span>
-                                        <span className="text-base font-black italic">₹{Math.round((loanAmount * (annualInterest / 12) * Math.pow(1 + (annualInterest / 12), t)) / (Math.pow(1 + (annualInterest / 12), t) - 1)).toLocaleString()}</span>
+                                    <button key={t} onClick={() => setEmiTenure(t)} className={`w-full p-4 rounded-xl border transition-all flex justify-between items-center ${emiTenure === t ? 'bg-brand-primary border-brand-primary text-black shadow-lg' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500'}`}>
+                                        <span className="text-[10px] font-black italic uppercase">{t} MONTHS</span>
+                                        <span className="text-sm font-black italic">₹{Math.round((loanAmount * (annualInterest / 12) * Math.pow(1 + (annualInterest / 12), t)) / (Math.pow(1 + (annualInterest / 12), t) - 1)).toLocaleString()}</span>
                                     </button>
                                 ))}
                             </div>
@@ -258,16 +258,16 @@ export function PDPMobile({ product, variantParam, data, handlers }: PDPMobilePr
             </section>
 
             {/* 4. Sticky Mobile Booking Bar */}
-            <div className="fixed bottom-0 left-0 right-0 z-[100] glass-panel dark:bg-black/80 p-6 pb-12 flex items-center justify-between gap-6 shadow-[0_-20px_50px_rgba(0,0,0,0.1)]">
+            <div className="fixed bottom-0 left-0 right-0 z-[100] glass-panel dark:bg-black/80 p-4 pb-10 flex items-center justify-between gap-4 shadow-[0_-20px_50px_rgba(0,0,0,0.1)]">
                 <div className="flex flex-col">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-green-600 italic leading-none">Smart EMI</p>
-                    <p className="text-2xl font-black italic tracking-tighter mt-1">₹{emi.toLocaleString()}<span className="text-[10px] text-slate-400 ml-1">/mo*</span></p>
+                    <p className="text-[8px] font-black uppercase tracking-widest text-green-600 italic leading-none">Smart EMI</p>
+                    <p className="text-xl font-black italic tracking-tighter mt-1">₹{emi.toLocaleString()}<span className="text-[9px] text-slate-400 ml-1">/mo*</span></p>
                 </div>
                 <button
                     onClick={handleBookingRequest}
-                    className="flex-1 h-14 bg-red-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest italic flex items-center justify-center gap-3 shadow-xl active:scale-[0.98] transition-transform"
+                    className="flex-1 h-12 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest italic flex items-center justify-center gap-3 shadow-xl active:scale-[0.98] transition-transform"
                 >
-                    BOOK NOW <ArrowRight size={16} />
+                    BOOK NOW <ArrowRight size={14} />
                 </button>
             </div>
         </div>

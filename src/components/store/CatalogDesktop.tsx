@@ -17,6 +17,7 @@ import {
     ArrowRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { checkServiceability } from '@/actions/serviceArea';
 import Link from 'next/link';
 import { buildProductUrl } from '@/lib/utils/urlHelper';
 import { BRANDS as defaultBrands } from '@/config/market';
@@ -268,36 +269,41 @@ export const ProductCard = ({
         <div
             key={v.id}
             onClick={handleCardClick}
-            className={`group bg-[#FAFAFA] dark:bg-[#0f1115] border border-black/[0.06] dark:border-white/10 rounded-[2rem] overflow-hidden flex flex-col shadow-[0_8px_24px_rgba(0,0,0,0.06)] dark:shadow-none hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 ${isTv ? 'min-h-[640px]' : 'min-h-[660px]'}`}
+            className={`group bg-white dark:bg-[#0f1115] border border-black/[0.04] dark:border-white/10 rounded-[2rem] overflow-hidden flex flex-col shadow-[0_1px_2px_rgba(0,0,0,0.02),0_4px_12px_rgba(0,0,0,0.03),0_12px_24px_-4px_rgba(0,0,0,0.08)] dark:shadow-none hover:shadow-[0_20px_40px_-12px_rgba(244,176,0,0.15)] transition-all duration-700 hover:-translate-y-2 ${isTv ? 'min-h-[640px]' : 'min-h-[520px] md:min-h-[660px]'}`}
         >
             <div
-                className={`h-[314px] md:h-[344px] lg:h-[384px] bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center relative p-4 border-b border-black/[0.04] dark:border-white/5 overflow-hidden group/card`}
+                className={`h-[240px] md:h-[344px] lg:h-[384px] bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center relative p-4 border-b border-black/[0.04] dark:border-white/5 overflow-hidden group/card`}
             >
                 <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-white/10 dark:to-black/30 z-0" />
 
                 <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
                     {/* Mileage Badge (New) */}
                     {((v.specifications as any)?.mileage || (v.specifications as any)?.arai) && (
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/90 dark:bg-black/90 backdrop-blur-md text-slate-900 dark:text-white rounded-lg shadow-sm border border-black/5">
-                            <Zap size={8} className="fill-current text-brand-primary" />
-                            <span className="text-[9px] font-black uppercase tracking-wider">
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-black/80 backdrop-blur-xl text-slate-900 dark:text-white rounded-xl shadow-sm border border-black/5 group/mileage transition-all hover:scale-105">
+                            <motion.div
+                                animate={{ scale: [1, 1.2, 1] }}
+                                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                            >
+                                <Zap size={10} className="fill-brand-primary text-brand-primary" />
+                            </motion.div>
+                            <span className="text-[10px] font-black uppercase tracking-wider">
                                 {((v.specifications as any)?.mileage || (v.specifications as any)?.arai)} km/l
                             </span>
                         </div>
                     )}
 
                     {v.rating && v.rating >= 4.7 && (
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-900/90 dark:bg-white/90 backdrop-blur-md text-white dark:text-black rounded-lg shadow-lg">
-                            <Star size={8} className="fill-current" />
-                            <span className="text-[8px] font-black uppercase tracking-[0.1em]">Best Seller</span>
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-950 dark:bg-white backdrop-blur-xl text-white dark:text-black rounded-xl shadow-xl border border-white/10 dark:border-black/5 ring-4 ring-black/5 dark:ring-white/5">
+                            <Star size={10} className="fill-brand-primary text-brand-primary" />
+                            <span className="text-[9px] font-black uppercase tracking-[0.15em]">Best Seller</span>
                         </div>
                     )}
                     {/* Only showing one badge as requested, Priority: Best Seller > Discount */}
                     {!v.rating || v.rating < 4.7 ? (
                         v.price?.discount && (
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/90 backdrop-blur-md text-white rounded-lg shadow-lg shadow-emerald-500/20">
-                                <Zap size={8} className="fill-white" />
-                                <span className="text-[8px] font-black uppercase tracking-[0.1em]">
+                            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 backdrop-blur-xl text-white rounded-xl shadow-lg shadow-emerald-500/20 border border-white/20">
+                                <Zap size={10} className="fill-white" />
+                                <span className="text-[9px] font-black uppercase tracking-[0.15em]">
                                     SAVE ₹{v.price.discount.toLocaleString('en-IN')}
                                 </span>
                             </div>
@@ -325,7 +331,11 @@ export const ProductCard = ({
                     </button>
                 </div>
 
-                <img
+                <motion.img
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    whileHover={{ scale: 1.05 }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
                     src={
                         selectedColorImage ||
                         v.imageUrl ||
@@ -334,7 +344,7 @@ export const ProductCard = ({
                             : '/images/categories/motorcycle_nobg.png')
                     }
                     alt={v.model}
-                    className="absolute bottom-2 left-1/2 -translate-x-1/2 w-[92%] h-[92%] object-contain z-10 transition-transform duration-700 group-hover/card:scale-105"
+                    className="absolute bottom-2 left-1/2 -translate-x-1/2 w-[92%] h-[92%] object-contain z-10"
                 />
 
                 {/* Very Light Brand Watermark */}
@@ -343,11 +353,11 @@ export const ProductCard = ({
                 </span>
             </div>
 
-            <div className={`${isTv ? 'p-5' : 'p-6'} flex-1 flex flex-col justify-between relative overflow-hidden bg-[#FAFAFA] dark:bg-[#0f1115]`}>
-                <div className="relative z-10 space-y-1">
+            <div className={`${isTv ? 'p-5' : 'p-3 md:p-6'} flex-1 flex flex-col justify-between relative overflow-hidden bg-[#FAFAFA] dark:bg-[#0f1115]`}>
+                <div className="relative z-10">
                     <div className="flex items-center justify-between">
                         <h3
-                            className={`${isTv ? 'text-lg' : 'text-xl'} font-black uppercase tracking-tighter italic text-slate-900 dark:text-white leading-none`}
+                            className={`${isTv ? 'text-lg' : 'text-lg md:text-xl'} font-black uppercase tracking-tighter italic text-slate-900 dark:text-white leading-none`}
                         >
                             {v.model}
                         </h3>
@@ -383,11 +393,11 @@ export const ProductCard = ({
                 </div>
 
                 {/* 4) Pricing Row (Most Important) */}
-                <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/5 grid grid-cols-2 gap-4">
+                <div className="mt-1.5 md:mt-4 pt-1.5 md:pt-4 border-t border-slate-100 dark:border-white/5 grid grid-cols-2 gap-4">
                     <div className="flex flex-col items-start">
                         <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-0.5">On-Road</p>
                         <div className="flex items-baseline gap-1.5">
-                            <span className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                            <span className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
                                 ₹{basePrice.toLocaleString('en-IN')}
                             </span>
                         </div>
@@ -405,11 +415,10 @@ export const ProductCard = ({
                         ) : null}
                     </div>
                     <div className="flex flex-col items-end">
-                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-0.5">{activeTenure} Months</p>
-                        <div className="flex items-baseline gap-1.5">
-                            <p className="text-2xl font-black text-slate-700 dark:text-slate-300 tracking-tight">
-                                <span className="text-brand-primary">₹{emiValue.toLocaleString('en-IN')}</span>
-                            </p>
+                        <p className="text-[10px] font-black text-green-600 dark:text-green-500 uppercase tracking-widest mb-0.5 italic">Lowest EMI</p>
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-xl md:text-2xl font-black text-green-600 dark:text-green-500 italic">₹{emiValue.toLocaleString('en-IN')}</span>
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">/mo</span>
                         </div>
                     </div>
                 </div>
@@ -419,7 +428,7 @@ export const ProductCard = ({
 
 
 
-                <div className="mt-4 space-y-2">
+                <div className="mt-1.5 md:mt-4 space-y-1.5 md:space-y-2">
                     {isUnserviceable ? (
                         <button
                             onClick={handleGetQuoteClick}
@@ -435,7 +444,7 @@ export const ProductCard = ({
                                 model: v.model,
                                 variant: v.variant
                             }).url}
-                            className="group/btn relative w-full h-11 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 transition-all"
+                            className="group/btn relative w-full h-10 md:h-11 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 transition-all"
                         >
                             Get Best Quote
                             <ArrowRight size={12} className="opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all" />
@@ -493,7 +502,7 @@ export function CatalogDesktop({ filters, variant: _variant = 'default' }: Catal
     const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
 
     React.useEffect(() => {
-        const checkServiceability = async () => {
+        const checkCurrentServiceability = async () => {
             if (typeof window === 'undefined') return;
             const supabase = createClient();
 
@@ -507,16 +516,12 @@ export function CatalogDesktop({ filters, variant: _variant = 'default' }: Catal
                     .single();
 
                 if (profile?.aadhaar_pincode) {
-                    const resolved = await resolveLocation(profile.aadhaar_pincode);
-                    if (resolved && resolved.lat && resolved.lng) {
-                        const dist = calculateDistance(resolved.lat, resolved.lng, HUB_LOCATION.lat, HUB_LOCATION.lng);
-                        setServiceability({
-                            status: dist <= MAX_SERVICEABLE_DISTANCE_KM ? 'serviceable' : 'unserviceable',
-                            location: resolved.city || resolved.district || profile.aadhaar_pincode,
-                            distance: Math.round(dist)
-                        });
-                        return;
-                    }
+                    const result = await checkServiceability(profile.aadhaar_pincode);
+                    setServiceability({
+                        status: result.isServiceable ? 'serviceable' : 'unserviceable',
+                        location: result.location || profile.aadhaar_pincode
+                    });
+                    return;
                 }
             }
 
@@ -526,12 +531,10 @@ export function CatalogDesktop({ filters, variant: _variant = 'default' }: Catal
                 try {
                     const data = JSON.parse(cached);
                     if (data.pincode) {
-                        const isServiceable = ['110', '400', '401', '402', '411', '560', '600', '700', '500', '201', '122']
-                            .some(prefix => data.pincode?.startsWith(prefix));
-
+                        const result = await checkServiceability(data.pincode);
                         setServiceability({
-                            status: isServiceable ? 'serviceable' : 'unserviceable',
-                            location: data.city || data.pincode
+                            status: result.isServiceable ? 'serviceable' : 'unserviceable',
+                            location: result.location || data.pincode
                         });
                         return;
                     } else if (data.city) {
@@ -553,12 +556,24 @@ export function CatalogDesktop({ filters, variant: _variant = 'default' }: Catal
                     try {
                         const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
                         const data = await res.json();
+                        const pincode = data.postcode;
                         const city = data.city || data.locality || data.principalSubdivision;
 
-                        if (city && data.latitude && data.longitude) {
+                        if (pincode) {
+                            const result = await checkServiceability(pincode);
+                            setServiceability({
+                                status: result.isServiceable ? 'serviceable' : 'unserviceable',
+                                location: result.location || city || pincode
+                            });
+                            localStorage.setItem('bkmb_user_pincode', JSON.stringify({
+                                pincode,
+                                city: result.location || city,
+                                manuallySet: false
+                            }));
+                        } else if (city && data.latitude && data.longitude) {
                             const dist = calculateDistance(data.latitude, data.longitude, HUB_LOCATION.lat, HUB_LOCATION.lng);
                             setServiceability({
-                                status: dist <= MAX_SERVICEABLE_DISTANCE_KM ? 'serviceable' : 'unserviceable',
+                                status: (dist <= MAX_SERVICEABLE_DISTANCE_KM) ? 'serviceable' : 'unserviceable',
                                 location: city,
                                 distance: Math.round(dist)
                             });
@@ -579,7 +594,7 @@ export function CatalogDesktop({ filters, variant: _variant = 'default' }: Catal
                 setServiceability({ status: 'unset' });
             }
         };
-        checkServiceability();
+        checkCurrentServiceability();
     }, []);
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -740,7 +755,7 @@ export function CatalogDesktop({ filters, variant: _variant = 'default' }: Catal
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-[#0b0d10] transition-colors duration-500 font-sans">
             {/* Main Content Area - Visual Rest (No Container Box) */}
-            <main className="flex-1 mx-auto w-full max-w-[1600px] px-6 md:px-12 lg:px-20 pt-32 pb-16">
+            <main className="flex-1 mx-auto w-full max-w-[1600px] px-6 md:px-12 lg:px-20 pt-16 md:pt-32 pb-10 md:pb-16">
                 {/* Header Section - Aligned with Global Header */}
                 {/* Sticky Utility Bar */}
                 <header className="sticky top-20 z-40 -mx-6 px-6 md:-mx-12 md:px-12 lg:-mx-20 lg:px-20 py-4 backdrop-blur-xl bg-slate-50/80 dark:bg-[#0b0d10]/80 border-b border-slate-200 dark:border-white/5 mb-8 transition-all duration-300">
@@ -1174,7 +1189,7 @@ export function CatalogDesktop({ filters, variant: _variant = 'default' }: Catal
                                     tenure={tenure}
                                     serviceability={serviceability}
                                     onLocationClick={() => setIsLocationPickerOpen(true)}
-                                    isTv={viewMode === 'grid'}
+                                    isTv={isTv}
                                 />
                             ))}
                         </div>
@@ -1358,33 +1373,33 @@ export function CatalogDesktop({ filters, variant: _variant = 'default' }: Catal
             <LocationPicker
                 isOpen={isLocationPickerOpen}
                 onClose={() => setIsLocationPickerOpen(false)}
-                onLocationSet={(pincode, city, lat, lng) => {
+                onLocationSet={async (pincode, city, lat, lng) => {
+                    const result = await checkServiceability(pincode);
+
                     let dist: number | undefined;
-                    let isServiceable = false;
+                    let isServiceable = result.isServiceable;
 
                     if (lat && lng) {
                         dist = calculateDistance(lat, lng, HUB_LOCATION.lat, HUB_LOCATION.lng);
-                        isServiceable = dist <= MAX_SERVICEABLE_DISTANCE_KM;
-                    } else {
-                        // Fallback to pincode prefix if lat/lng missing
-                        isServiceable = ['110', '400', '401', '411'].some(p => pincode.startsWith(p));
+                        // Optional: can keep both distance and database check, but DB is source of truth now
+                        // isServiceable = isServiceable || dist <= MAX_SERVICEABLE_DISTANCE_KM;
                     }
 
                     setServiceability({
                         status: isServiceable ? 'serviceable' : 'unserviceable',
-                        location: city,
+                        location: result.location || city,
                         distance: dist ? Math.round(dist) : undefined
                     });
 
                     localStorage.setItem('bkmb_user_pincode', JSON.stringify({
                         pincode,
-                        city,
+                        city: result.location || city,
                         lat,
                         lng,
                         manuallySet: true
                     }));
 
-                    toast.success(`Prices updated for ${city}${dist ? ` (${Math.round(dist)}km)` : ''}`);
+                    toast.success(`Prices updated for ${result.location || city}${dist ? ` (${Math.round(dist)}km)` : ''}`);
                 }}
             />
         </div >

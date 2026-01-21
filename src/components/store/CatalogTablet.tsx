@@ -90,7 +90,7 @@ export function CatalogTablet({ filters }: CatalogTabletProps) {
                         viewMode="grid"
                         downpayment={downpayment}
                         tenure={tenure}
-                        isTv={true}
+                        isTv={false}
                     />
                 ))}
             </div>

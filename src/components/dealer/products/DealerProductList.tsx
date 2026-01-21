@@ -1,15 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
-import { DealerProduct, ProductVariant, MOCK_VEHICLES, MOCK_ACCESSORIES, MOCK_SERVICES, MOCK_DEALER_PRODUCTS } from '@/types/productMaster';
-import { Plus, Search } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { DealerProduct, ProductVariant } from '@/types/productMaster';
+import { Plus, Search, Loader2 } from 'lucide-react';
 import SlideOver from '@/components/ui/SlideOver';
 import MasterProductSelector from './MasterProductSelector';
-
-// Helper to look up Master details
-const getMasterDetails = (variantId: string): ProductVariant | undefined => {
-    return [...MOCK_VEHICLES, ...MOCK_ACCESSORIES, ...MOCK_SERVICES].find(p => p.id === variantId);
-};
+import { getAllProducts } from '@/actions/product';
+import { toast } from 'sonner';
 
 interface DealerProductListProps {
     products: DealerProduct[];
@@ -21,6 +18,31 @@ interface DealerProductListProps {
 export default function DealerProductList({ products, selectedId, onSelect, onAdd }: DealerProductListProps) {
     const [search, setSearch] = useState('');
     const [isAddOpen, setIsAddOpen] = useState(false);
+    const [masterProducts, setMasterProducts] = useState<ProductVariant[]>([]);
+    const [loadingMaster, setLoadingMaster] = useState(true);
+
+    useEffect(() => {
+        const fetchMaster = async () => {
+            try {
+                const { products, error } = await getAllProducts();
+                if (error) {
+                    toast.error('Failed to load product details');
+                } else {
+                    setMasterProducts(products);
+                }
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setLoadingMaster(false);
+            }
+        };
+        fetchMaster();
+    }, []);
+
+    // Helper to look up Master details
+    const getMasterDetails = (variantId: string): ProductVariant | undefined => {
+        return masterProducts.find(p => p.id === variantId);
+    };
 
     // 1. Handle Adding from Master
     const handleAddProduct = (variant: ProductVariant) => {
@@ -42,9 +64,20 @@ export default function DealerProductList({ products, selectedId, onSelect, onAd
     // Filter
     const filtered = products.filter(dp => {
         const master = getMasterDetails(dp.productVariantId);
+        // If master details aren't loaded yet, or not found, exclude or include based on policy?
+        // Ideally should wait. For now if not found, it won't match search unless search is empty?
+        // Actually if validation fails, just skip.
         if (!master) return false;
         return master.label.toLowerCase().includes(search.toLowerCase());
     });
+
+    if (loadingMaster) {
+        return (
+            <div className="h-full flex items-center justify-center bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-white/10">
+                <Loader2 className="animate-spin text-gray-400" />
+            </div>
+        );
+    }
 
     return (
         <div className="h-full flex flex-col bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-white/10">

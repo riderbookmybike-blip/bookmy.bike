@@ -8,6 +8,14 @@ import Modal from '@/components/ui/Modal';
 import AttributeInput from '@/components/catalog/AttributeInput';
 import { toast } from 'sonner';
 
+// Helper to format text as Title Case
+function toTitleCase(str: string): string {
+    if (!str) return '';
+    return str.toLowerCase().split(' ').map(word => {
+        return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
+}
+
 export default function VariantStep({ family, template, existingVariants, onUpdate }: any) {
     const [error, setError] = useState<string | null>(null);
     const [newVariantName, setNewVariantName] = useState('');
@@ -229,9 +237,11 @@ export default function VariantStep({ family, template, existingVariants, onUpda
             const validPositions = existingVariants.map((v: any) => parseInt(v.position)).filter((p: any) => !isNaN(p));
             const nextPosition = validPositions.length > 0 ? Math.max(...validPositions) + 1 : 1;
 
+            const titleCasedName = toTitleCase(name); // Enforce Title Case
+
             const payload = {
-                name: name.toUpperCase(),
-                specs: { [l1Label]: name.toUpperCase() },
+                name: titleCasedName,
+                specs: { [l1Label]: titleCasedName },
                 type: 'VARIANT',
                 status: 'ACTIVE',
                 brand_id: family.brand_id,
@@ -305,7 +315,7 @@ export default function VariantStep({ family, template, existingVariants, onUpda
             if (reorderSavedTimeoutRef.current) {
                 window.clearTimeout(reorderSavedTimeoutRef.current);
             }
-            reorderSavedTimeoutRef.current = window.setTimeout(() => {
+            reorderSavedTimeoutRef = window.setTimeout(() => {
                 setShowReorderSaved(false);
             }, 1200);
         } catch (err) {
@@ -733,8 +743,9 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                                         const supabase = createClient();
 
                                         // 1. Prepare Payload
-                                        const name = editingVariant.name.trim().toUpperCase();
-                                        const newSlug = `${family.slug}-${name}`
+                                        const nameRaw = editingVariant.name.trim();
+                                        const nameTitle = toTitleCase(nameRaw);
+                                        const newSlug = `${family.slug}-${nameRaw}`
                                             .toLowerCase()
                                             .trim()
                                             .replace(/[^a-z0-9\s-]/g, '')
@@ -744,12 +755,12 @@ export default function VariantStep({ family, template, existingVariants, onUpda
 
                                         const updatedSpecs = {
                                             ...editingVariant.specs,
-                                            [l1Label]: name // Sync the name spec too
+                                            [l1Label]: nameTitle // Sync the name spec too
                                         };
 
                                         // 2. Update Database
                                         const { error } = await supabase.from('catalog_items').update({
-                                            name: name,
+                                            name: nameTitle,
                                             slug: newSlug,
                                             specs: updatedSpecs
                                         }).eq('id', editingVariant.id);
@@ -759,7 +770,7 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                                         // 3. Update Local State (including the new variant data)
                                         const updatedVariant = {
                                             ...editingVariant,
-                                            name: name,
+                                            name: nameTitle,
                                             slug: newSlug,
                                             specs: updatedSpecs
                                         };

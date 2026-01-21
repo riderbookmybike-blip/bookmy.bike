@@ -7,6 +7,14 @@ import { createClient } from '@/lib/supabase/client';
 import { CheckCircle2, Building2, Palette, Users, ArrowRight, Loader2, Save } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 
+// Helper to format text as Title Case
+function toTitleCase(str: string): string {
+    if (!str) return '';
+    return str.toLowerCase().split(' ').map(word => {
+        return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
+}
+
 // STEPS
 type SetupStep = 'INFO' | 'BRAND' | 'TEAM' | 'FINISH';
 
@@ -89,7 +97,7 @@ export default function SetupWizard() {
             brand: {
                 ...tenantConfig?.brand,
                 primaryColor: tenantConfig?.brand?.primaryColor || '#4F46E5', // Default
-                displayName: orgData.displayName
+                displayName: toTitleCase(orgData.displayName)
             },
             // Note: location is technically in 'tenants' table columns too, but we store in config for now 
             // or update tenant row directly if specific columns exist.
@@ -112,7 +120,7 @@ export default function SetupWizard() {
             ...tenantConfig,
             brand: {
                 ...tenantConfig?.brand,
-                displayName: orgData.displayName,
+                displayName: toTitleCase(orgData.displayName),
                 primaryColor: brandData.primaryColor,
                 logoUrl: brandData.logoUrl
             },
@@ -129,7 +137,7 @@ export default function SetupWizard() {
             ...tenantConfig,
             brand: {
                 ...tenantConfig?.brand,
-                displayName: orgData.displayName,
+                displayName: toTitleCase(orgData.displayName),
                 primaryColor: brandData.primaryColor,
                 logoUrl: brandData.logoUrl
             },
@@ -233,7 +241,7 @@ export default function SetupWizard() {
                     <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
                         <div className="space-y-2">
                             <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Make it Yours</h2>
-                            <p className="text-sm text-slate-500">Configure your portal's look and feel.</p>
+                            <p className="text-sm text-slate-500">Configure your portal&apos;s look and feel.</p>
                         </div>
 
                         <div className="space-y-6">
@@ -259,7 +267,7 @@ export default function SetupWizard() {
                                 </div>
                                 <div>
                                     <p className="text-xs font-bold text-slate-600 dark:text-slate-300">Upload Logo</p>
-                                    <p className="text-[10px] text-slate-400">Recommended: 200x50px PNG</p>
+                                    <p className="text[10px] text-slate-400">Recommended: 200x50px PNG</p>
                                 </div>
                                 {/* Placeholder for Upload */}
                                 <button className="text-[10px] bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 px-4 py-2 rounded-lg font-bold hover:bg-slate-50 transition-colors">Select File</button>
