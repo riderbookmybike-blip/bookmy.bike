@@ -5,11 +5,13 @@ import React from 'react';
 interface MasterListDetailLayoutProps {
     children: React.ReactNode;
     mode?: 'list-only' | 'list-detail' | 'detail-only';
+    listPosition?: 'left' | 'right';
 }
 
 export default function MasterListDetailLayout({
     children,
     mode = 'list-detail',
+    listPosition = 'left',
 }: MasterListDetailLayoutProps) {
     const childArray = React.Children.toArray(children);
     const listChild = childArray[0];
@@ -38,10 +40,15 @@ export default function MasterListDetailLayout({
     }
 
     // List-detail mode: Split view
+    const isRight = listPosition === 'right';
+
     return (
-        <div className="flex h-full overflow-hidden bg-white dark:bg-slate-950 transition-colors duration-500" style={{ height: '100%' }}>
+        <div
+            className={`flex h-full overflow-hidden bg-white dark:bg-slate-950 transition-colors duration-500 ${isRight ? 'flex-row-reverse' : 'flex-row'}`}
+            style={{ height: '100%' }}
+        >
             {/* List Panel - Fixed width */}
-            <div className="w-[320px] min-w-[280px] max-w-[360px] h-full flex-shrink-0 relative z-10 border-r border-slate-200/60 dark:border-white/5">
+            <div className={`w-[320px] min-w-[280px] max-w-[360px] h-full flex-shrink-0 relative z-10 ${isRight ? 'border-l' : 'border-r'} border-slate-200/60 dark:border-white/5`}>
                 {listChild}
             </div>
 

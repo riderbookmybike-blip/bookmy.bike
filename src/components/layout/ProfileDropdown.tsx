@@ -16,8 +16,10 @@ import {
     LogOut,
     ChevronDown,
     MapPin,
+    X,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { useFavorites } from '@/lib/favorites/favoritesContext';
 
 interface Membership {
     role: string;
@@ -144,9 +146,13 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
         return () => window.cancelAnimationFrame(mountedFrame);
     }, []);
 
+    const { clearFavorites } = useFavorites();
+
     const handleLogout = async () => {
         const supabase = createClient();
         await supabase.auth.signOut();
+
+        clearFavorites();
 
         // Only clear auth-related keys
         localStorage.removeItem('user_name');

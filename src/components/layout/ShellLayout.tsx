@@ -8,6 +8,7 @@ import { useTenant } from '@/lib/tenant/tenantContext';
 import LoginSidebar from '@/components/auth/LoginSidebar';
 import { MarketplaceHeader } from '@/components/layout/MarketplaceHeader';
 import { UserRole } from '@/config/permissions';
+import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
 
 export default function ShellLayout({
     children,
@@ -80,9 +81,10 @@ export default function ShellLayout({
     // Crucial: Server and Client Initial Render must match.
     // Since activeRole/userRole are client-side only (Populated in useEffect of TenantProvider),
     // we must render the same loading state on both server and client initial render for APP routes.
+    let content: React.ReactNode = null;
     if (!mounted) {
         if (isAppRoute) {
-            return (
+            content = (
                 <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
                     <div className="text-center space-y-3">
                         <div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
@@ -91,7 +93,7 @@ export default function ShellLayout({
                 </div>
             );
         }
-        return null;
+        return <FavoritesProvider>{content}</FavoritesProvider>;
     }
 
     const handleSidebarHoverChange = (isHovered: boolean) => {
@@ -107,7 +109,7 @@ export default function ShellLayout({
 
     // Avoid marketplace shell on /app/* while role is still loading
     if (isAppRoute && !activeRole && !userRole) {
-        return (
+        content = (
             <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
                 <div className="text-center space-y-3">
                     <div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
@@ -115,12 +117,13 @@ export default function ShellLayout({
                 </div>
             </div>
         );
+        return <FavoritesProvider>{content}</FavoritesProvider>;
     }
 
 
     // --- REGULAR USER LAYOUT ---
     if (isRegularUser) {
-        return (
+        content = (
             <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
                 <MarketplaceHeader onLoginClick={() => setIsLoginOpen(true)} />
                 <main className="pt-20 p-6 md:p-8 max-w-7xl mx-auto">
@@ -133,10 +136,11 @@ export default function ShellLayout({
                 />
             </div>
         );
+        return <FavoritesProvider>{content}</FavoritesProvider>;
     }
 
     // --- ADMIN / ENTERPRISE LAYOUT ---
-    return (
+    content = (
         <div
             className="min-h-screen bg-slate-50 dark:bg-slate-950"
             style={{
@@ -165,7 +169,7 @@ export default function ShellLayout({
                 <div
                     className={`flex-1 flex flex-col h-full transition-all duration-300 ease-in-out ${isSidebarExpanded ? 'md:ml-64' : 'md:ml-20'}`}
                 >
-                    <main className="flex-1 h-full overflow-hidden p-4 md:p-6 bg-slate-50 dark:bg-slate-950 relative">
+                    <main className="flex-1 h-full overflow-y-auto p-4 md:p-6 bg-slate-50 dark:bg-slate-950 relative">
                         {children}
                     </main>
                 </div>
@@ -178,4 +182,5 @@ export default function ShellLayout({
             />
         </div>
     );
+    return <FavoritesProvider>{content}</FavoritesProvider>;
 }

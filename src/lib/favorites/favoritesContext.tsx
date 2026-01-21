@@ -2,11 +2,19 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
+export interface FavoriteItem {
+    id: string;
+    model: string;
+    variant: string;
+    slug: string;
+    imageUrl?: string;
+}
+
 interface FavoritesContextType {
-    favorites: string[];
-    addFavorite: (id: string) => void;
+    favorites: FavoriteItem[];
+    addFavorite: (item: FavoriteItem) => void;
     removeFavorite: (id: string) => void;
-    toggleFavorite: (id: string) => void;
+    toggleFavorite: (item: FavoriteItem) => void;
     isFavorite: (id: string) => boolean;
     clearFavorites: () => void;
 }
@@ -14,7 +22,7 @@ interface FavoritesContextType {
 const FavoritesContext = createContext<FavoritesContextType | undefined>(undefined);
 
 export const FavoritesProvider = ({ children }: { children: React.ReactNode }) => {
-    const [favorites, setFavorites] = useState<string[]>([]);
+    const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -35,27 +43,27 @@ export const FavoritesProvider = ({ children }: { children: React.ReactNode }) =
         }
     }, [favorites, mounted]);
 
-    const addFavorite = (id: string) => {
+    const addFavorite = (item: FavoriteItem) => {
         setFavorites(prev => {
-            if (prev.includes(id)) return prev;
-            return [...prev, id];
+            if (prev.some(f => f.id === item.id)) return prev;
+            return [...prev, item];
         });
     };
 
     const removeFavorite = (id: string) => {
-        setFavorites(prev => prev.filter(f => f !== id));
+        setFavorites(prev => prev.filter(f => f.id !== id));
     };
 
-    const toggleFavorite = (id: string) => {
+    const toggleFavorite = (item: FavoriteItem) => {
         setFavorites(prev => {
-            if (prev.includes(id)) {
-                return prev.filter(f => f !== id);
+            if (prev.some(f => f.id === item.id)) {
+                return prev.filter(f => f.id !== item.id);
             }
-            return [...prev, id];
+            return [...prev, item];
         });
     };
 
-    const isFavorite = (id: string) => favorites.includes(id);
+    const isFavorite = (id: string) => favorites.some(f => f.id === id);
 
     const clearFavorites = () => setFavorites([]);
 

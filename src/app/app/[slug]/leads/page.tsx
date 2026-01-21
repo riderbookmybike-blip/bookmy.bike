@@ -91,11 +91,11 @@ export default function LeadsPage() {
             setIsFormOpen(false);
         } catch (error) {
             console.error('Failed to create lead:', error);
-            toast.error('Failed to create lead');
+            toast.error(error instanceof Error ? error.message : 'Failed to create lead');
         }
     };
 
-    const handleQuoteSubmit = async (data: { customerName: string; product: any; price: number }) => {
+    const handleQuoteSubmit = async (data: { customerName: string; product: { id: string; label: string; sku: string }; price: number }) => {
         try {
             if (!tenantId || !selectedLead) return;
 
@@ -141,81 +141,85 @@ export default function LeadsPage() {
 
     if (isLoading && leads.length === 0) {
         return (
-            <div className="h-full bg-black flex items-center justify-center">
+            <div className="h-full bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Initializing_Intelligence...</p>
+                    <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Initializing_Intelligence...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="h-full bg-black flex overflow-hidden font-sans" style={{ height: '100%' }}>
-            <MasterListDetailLayout mode={selectedLead ? 'list-detail' : 'list-only'}>
+        <div className="h-full bg-slate-50 dark:bg-slate-950 flex overflow-hidden font-sans" style={{ height: '100%' }}>
+            <MasterListDetailLayout
+                mode={selectedLead ? 'list-detail' : 'list-only'}
+                listPosition={selectedLead ? 'right' : 'left'}
+            >
                 {/* List Panel */}
-                <div className="h-full flex flex-col bg-black/40 backdrop-blur-3xl">
+                <div className={`h-full flex flex-col bg-slate-50/50 dark:bg-black/60 backdrop-blur-3xl transition-all duration-700 ${selectedLead ? 'border-l border-slate-200 dark:border-white/5' : ''}`}>
                     <LeadList
                         leads={leads}
                         selectedId={selectedLead?.id || null}
                         onSelect={setSelectedLead}
                         onNewLead={handleNewLead}
+                        isSidebar={!!selectedLead}
                     />
                 </div>
 
                 {/* Detail Panel */}
-                <div className="h-full flex flex-col overflow-y-auto no-scrollbar bg-black">
+                <div className="h-full flex flex-col overflow-y-auto no-scrollbar bg-white dark:bg-[#0b0d10]">
                     {!selectedLead ? (
                         <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
-                            <Zap className="w-12 h-12 text-white/10 animate-pulse mb-4" />
-                            <p className="text-[10px] font-black uppercase tracking-[0.6em] text-white/20">Select_Customer_Profile</p>
+                            <Zap className="w-12 h-12 text-slate-200 dark:text-white/10 animate-pulse mb-4" />
+                            <p className="text-[10px] font-black uppercase tracking-[0.6em] text-slate-300 dark:text-white/20">Select_Customer_Profile</p>
                         </div>
                     ) : (
                         <div className="flex-1 flex flex-col">
                             {/* Premium Glass Header */}
-                            <div className="p-8 border-b border-white/5 bg-white/[0.02] backdrop-blur-3xl sticky top-0 z-30">
+                            <div className="p-8 border-b border-slate-200 dark:border-white/5 bg-white/80 dark:bg-white/[0.02] backdrop-blur-3xl sticky top-0 z-30 transition-colors">
                                 <div className="flex items-center justify-between mb-8">
                                     <div className="flex items-center gap-6">
                                         <button
                                             onClick={() => setSelectedLead(null)}
-                                            className="p-3 hover:bg-white/10 text-white/40 hover:text-white transition-all rounded-2xl border border-white/5 active:scale-90"
+                                            className="p-3 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 dark:text-white/40 hover:text-slate-900 dark:hover:text-white transition-all rounded-2xl border border-slate-200 dark:border-white/5 active:scale-90"
                                         >
                                             <ChevronLeft size={20} />
                                         </button>
                                         <div className="flex items-center gap-5">
-                                            <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center shadow-2xl relative group">
+                                            <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-500/20 dark:to-purple-500/20 border border-slate-200 dark:border-white/10 flex items-center justify-center shadow-lg dark:shadow-2xl relative group">
                                                 <div className="absolute inset-0 bg-indigo-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                <Zap size={32} className="text-white relative z-10 text-glow" />
+                                                <Zap size={32} className="text-indigo-600 dark:text-white relative z-10 text-glow" />
                                             </div>
                                             <div>
-                                                <div className="text-[10px] font-black text-indigo-400/80 uppercase tracking-[0.3em] mb-1.5 flex items-center gap-2">
-                                                    <span className="w-1 h-1 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,1)]" />
+                                                <div className="text-[10px] font-black text-indigo-500 dark:text-indigo-400/80 uppercase tracking-[0.3em] mb-1.5 flex items-center gap-2">
+                                                    <span className="w-1 h-1 rounded-full bg-indigo-600 dark:bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,1)]" />
                                                     ID: {formatLeadId(selectedLead.id)}
                                                 </div>
-                                                <h1 className="text-4xl font-black text-white tracking-tighter italic text-glow leading-none">
+                                                <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter italic text-glow leading-none uppercase">
                                                     {selectedLead.customerName}
                                                 </h1>
                                             </div>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-4">
-                                        <div className="flex items-center gap-1 p-1.5 bg-white/[0.03] rounded-2xl border border-white/5">
-                                            <a href={`tel:${selectedLead.phone}`} className="p-3 hover:bg-indigo-500/20 text-white/40 hover:text-indigo-400 transition-all rounded-xl active:scale-95">
+                                        <div className="flex items-center gap-1 p-1.5 bg-slate-100 dark:bg-white/[0.03] rounded-2xl border border-slate-200 dark:border-white/5">
+                                            <a href={`tel:${selectedLead.phone}`} className="p-3 hover:bg-white dark:hover:bg-indigo-500/20 text-slate-400 dark:text-white/40 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all rounded-xl active:scale-95">
                                                 <Phone size={18} />
                                             </a>
-                                            <a href={`mailto:?subject=AUMS Intelligence Notification`} className="p-3 hover:bg-purple-500/20 text-white/40 hover:text-purple-400 transition-all rounded-xl active:scale-95">
+                                            <a href={`mailto:?subject=AUMS Intelligence Notification`} className="p-3 hover:bg-white dark:hover:bg-purple-500/20 text-slate-400 dark:text-white/40 hover:text-purple-600 dark:hover:text-purple-400 transition-all rounded-xl active:scale-95">
                                                 <Mail size={18} />
                                             </a>
                                         </div>
 
                                         <Button
                                             onClick={() => setIsQuoteFormOpen(true)}
-                                            className="glass-card bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 font-black text-[10px] uppercase tracking-widest px-8 h-12 rounded-2xl shadow-xl active:scale-95"
+                                            className="glass-card bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20 dark:hover:bg-emerald-500/20 font-black text-[10px] uppercase tracking-widest px-8 h-12 rounded-2xl shadow-sm dark:shadow-xl active:scale-95 transition-all"
                                         >
                                             Generate_Quote
                                         </Button>
                                         <Button
-                                            className="glass-card bg-white/5 text-white border-white/10 hover:bg-white/10 font-black text-[10px] uppercase tracking-widest px-8 h-12 rounded-2xl active:scale-95"
+                                            className="glass-card bg-white text-slate-900 border-slate-200 hover:bg-slate-50 dark:bg-white/5 dark:text-white dark:border-white/10 dark:hover:bg-white/10 font-black text-[10px] uppercase tracking-widest px-8 h-12 rounded-2xl active:scale-95 transition-all"
                                         >
                                             Next_Action
                                         </Button>
@@ -224,17 +228,17 @@ export default function LeadsPage() {
 
                                 {/* Dynamic Lifecycle Timeline */}
                                 <div className="relative mt-10 px-4">
-                                    <div className="absolute top-[9px] left-8 right-8 h-[2px] bg-white/5" />
+                                    <div className="absolute top-[9px] left-8 right-8 h-[2px] bg-slate-200 dark:bg-white/5" />
                                     <div className="flex items-center justify-between relative z-10">
                                         {['NEW', 'QUOTE', 'BOOKING', 'FINANCE', 'DELIVERED'].map((status, index) => {
                                             const isActive = selectedLead.status === status;
                                             return (
                                                 <div key={status} className="flex flex-col items-center gap-4">
                                                     <div className={`w-5 h-5 rounded-full border-4 transition-all duration-700 ${isActive
-                                                        ? 'bg-indigo-500 border-black shadow-[0_0_20px_rgba(99,102,241,1)] scale-125'
-                                                        : 'bg-black border-white/10'
+                                                        ? 'bg-indigo-600 dark:bg-indigo-500 border-white dark:border-black shadow-[0_0_20px_rgba(99,102,241,0.5)] scale-125'
+                                                        : 'bg-slate-200 dark:bg-black border-slate-300 dark:border-white/10'
                                                         }`} />
-                                                    <span className={`text-[9px] font-black tracking-[0.2em] transition-colors duration-500 ${isActive ? 'text-white' : 'text-white/20'
+                                                    <span className={`text-[9px] font-black tracking-[0.2em] transition-colors duration-500 ${isActive ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-white/20'
                                                         }`}>{status}</span>
                                                 </div>
                                             );
@@ -244,15 +248,15 @@ export default function LeadsPage() {
                             </div>
 
                             {/* Refined SaaS Sub-Navigation */}
-                            <div className="px-8 border-b border-white/5 bg-black/40 backdrop-blur-md sticky top-[184px] z-20">
+                            <div className="px-8 border-b border-slate-200 dark:border-white/5 bg-slate-50/80 dark:bg-black/40 backdrop-blur-md sticky top-[184px] z-20 transition-colors">
                                 <div className="flex gap-12">
                                     {tabs.map((tab) => (
                                         <button
                                             key={tab.id}
                                             onClick={() => setActiveTab(tab.id)}
                                             className={`flex items-center gap-2.5 py-6 text-[10px] font-black uppercase tracking-[0.3em] transition-all relative ${activeTab === tab.id
-                                                ? 'text-white'
-                                                : 'text-white/30 hover:text-white/50'
+                                                ? 'text-slate-900 dark:text-white'
+                                                : 'text-slate-400 dark:text-white/30 hover:text-slate-600 dark:hover:text-white/50'
                                                 }`}
                                         >
                                             <span className={`transition-transform duration-500 ${activeTab === tab.id ? 'scale-110' : 'scale-100'}`}>
@@ -260,7 +264,7 @@ export default function LeadsPage() {
                                             </span>
                                             {tab.label}
                                             {activeTab === tab.id && (
-                                                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-indigo-500 rounded-full shadow-[0_0_15px_rgba(99,102,241,0.8)]" />
+                                                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-indigo-600 dark:bg-indigo-500 rounded-full shadow-[0_0_15px_rgba(99,102,241,0.8)]" />
                                             )}
                                         </button>
                                     ))}
@@ -268,7 +272,7 @@ export default function LeadsPage() {
                             </div>
 
                             {/* Content Matrix */}
-                            <div className="p-10">
+                            <div className="p-10 bg-slate-50 dark:bg-transparent">
                                 <div className="max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-8 duration-1000 fill-mode-both">
                                     {renderTabContent()}
                                 </div>
