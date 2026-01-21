@@ -8,6 +8,8 @@ export type LocationContext = {
     district: string;
     state: string;
     pricing_region_slug: string;
+    lat?: number;
+    lng?: number;
 };
 
 // In-memory cache for the session/render
@@ -32,7 +34,9 @@ export async function resolveLocation(pincode: string): Promise<LocationContext 
                 city: data.city || '',
                 district: data.district || '',
                 state: data.state || '',
-                pricing_region_slug: slugify(data.city || 'mumbai')
+                pricing_region_slug: slugify(data.city || 'mumbai'),
+                lat: data.latitude,
+                lng: data.longitude
             };
             locationCache.set(pincode, locationResult);
             return locationResult;

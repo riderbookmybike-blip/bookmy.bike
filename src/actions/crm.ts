@@ -49,9 +49,11 @@ async function getOrCreateCustomerProfile(data: {
     if (authError) {
         // If user already exists in auth but not profile (rare), use that ID
         if (authError.message.includes('already exists')) {
-            const { data: list } = await adminClient.auth.admin.listUsers();
-            const user = list.users.find(u => u.phone === data.phone);
+            // Fetch more users to increase chances of finding the existing one
+            const { data: list } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
+            const user = list.users.find(u => u.phone === data.phone || u.phone === `+91${data.phone}`);
             if (user) return user.id;
+            console.error('User exists in Auth but not found in listUsers (checked 1000)', data.phone);
         }
         throw authError;
     }
@@ -215,6 +217,9 @@ export async function createLeadAction(data: {
     owner_tenant_id: string;
     source?: string;
 }) {
+    // Enforce Uppercase Name
+    data.customer_name = data.customer_name.toUpperCase();
+
     // 1. Get or Create Persistent Customer Profile
     const customerId = await getOrCreateCustomerProfile({
         name: data.customer_name,
@@ -240,8 +245,8 @@ export async function createLeadAction(data: {
         }
     }
 
-    const supabase = await createClient();
-    const { data: lead, error } = await supabase
+    // Use adminClient to bypass RLS for Lead Creation (Backend Action)
+    const { data: lead, error } = await adminClient
         .from('leads')
         .insert({
             customer_id: customerId, // Linked to profile
@@ -261,12 +266,16 @@ export async function createLeadAction(data: {
                 auto_segregated: status === 'JUNK',
                 segregation_reason: status === 'JUNK' ? 'Unserviceable Pincode' : null
             },
-            intent_score: status === 'JUNK' ? 10 : 50 // Lower score for junk
+            intent_score: status === 'JUNK' ? 'COLD' : 'WARM' // Updated to match check constraint
         })
+
         .select()
         .single();
 
-    if (error) throw error;
+    if (error) {
+        console.error('Error inserting lead:', error);
+        throw new Error(`Lead Insert Failed: ${error.message}`);
+    }
     revalidatePath('/app/[slug]/leads');
     return lead;
 }
@@ -317,7 +326,8 @@ export async function createQuoteAction(data: {
     tenant_id: string;
     lead_id?: string;
     variant_id: string;
-    commercials: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    commercials: Record<string, any>;
 }) {
     const supabase = await createClient();
 
@@ -375,7 +385,8 @@ export async function createQuoteAction(data: {
     return quote;
 }
 
-export async function createQuoteVersion(parentQuoteId: string, commercials: any) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function createQuoteVersion(parentQuoteId: string, commercials: Record<string, any>) {
     const supabase = await createClient();
 
     // Get parent version
@@ -445,7 +456,8 @@ export async function getBookings(tenantId?: string) {
     const { data, error } = await query;
     if (error) throw error;
 
-    return data.map((b: any) => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return data.map((b: { id: string; quote_id: string; quotes: any; vehicle_details: any; status: string; created_at: string; current_stage: string }) => ({
         id: b.id,
         displayId: `SO-${b.id.slice(0, 4).toUpperCase()}`,
         quoteId: b.quote_id,
@@ -510,7 +522,8 @@ export async function createBookingFromQuote(quoteId: string) {
     return booking;
 }
 
-export async function updateBookingStage(id: string, stage: string, statusUpdates: any) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function updateBookingStage(id: string, stage: string, statusUpdates: Record<string, any>) {
     const supabase = await createClient();
     const { error } = await supabase
         .from('bookings')

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { Menu, X, Heart, Home as HomeIcon } from 'lucide-react';
+import { Menu, X, Heart, Home as HomeIcon, ArrowRight } from 'lucide-react';
 import { MotorcycleIcon } from '@/components/icons/MotorcycleIcon';
 import { Logo } from '@/components/brand/Logo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -10,17 +11,20 @@ import { usePathname } from 'next/navigation';
 
 import { AppHeaderShell } from './AppHeaderShell';
 import { ProfileDropdown } from './ProfileDropdown';
+import { useFavorites } from '@/lib/favorites/favoritesContext';
 
 interface MarketplaceHeaderProps {
     onLoginClick: () => void;
 }
 
 export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
+    const { favorites, removeFavorite } = useFavorites();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [userName, setUserName] = useState<string | null>(null);
     const [scrolled, setScrolled] = useState(false);
     const [isVisible, setIsVisible] = useState(true);
     const [mounted, setMounted] = useState(false);
+    const [showWishlistPreview, setShowWishlistPreview] = useState(false);
     const [viewport, setViewport] = useState<{ width: number; height: number } | null>(null);
     const { theme } = useTheme();
     const pathname = usePathname();
@@ -116,8 +120,8 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const mobileMenuButtonClass = scrolled
         ? 'text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/5'
         : isLight
-          ? 'text-slate-900 hover:bg-slate-900/5'
-          : 'text-white hover:bg-white/10';
+            ? 'text-slate-900 hover:bg-slate-900/5'
+            : 'text-white hover:bg-white/10';
 
     const handleSignOut = async () => {
         const supabase = createClient();
@@ -195,6 +199,80 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                         >
                             <MotorcycleIcon size={20} />
                         </Link>
+                        <div
+                            className="relative"
+                            onMouseEnter={() => setShowWishlistPreview(true)}
+                            onMouseLeave={() => setShowWishlistPreview(false)}
+                        >
+                            <Link
+                                href="/wishlist"
+                                className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all group relative ${scrolled || isLight ? 'border-slate-900/10 dark:border-white/10 text-slate-500 dark:text-white hover:text-blue-600' : 'border-white/20 text-white/80 hover:text-white hover:bg-white/10'}`}
+                            >
+                                <Heart size={18} />
+                                {favorites.length > 0 && (
+                                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900 animate-in zoom-in duration-300">
+                                        {favorites.length}
+                                    </span>
+                                )}
+                            </Link>
+
+                            <AnimatePresence>
+                                {showWishlistPreview && favorites.length > 0 && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        className="absolute top-full right-0 mt-4 w-72 bg-white dark:bg-[#0f1115] rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-slate-200 dark:border-white/10 p-4 z-50 py-6"
+                                    >
+                                        <div className="px-4 mb-4 flex justify-between items-center">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">My Wishlist</span>
+                                            <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 rounded-full">{favorites.length} Items</span>
+                                        </div>
+                                        <div className="space-y-2 max-h-80 overflow-y-auto px-1 custom-scrollbar">
+                                            {favorites.slice(0, 3).map((v, idx) => {
+                                                const uniqueKey = `${v.id}-${idx}`;
+                                                return (
+                                                    <div key={uniqueKey} className="group/wrapper relative">
+                                                        <Link
+                                                            href={`/store/product/${v.slug}`}
+                                                            className="flex items-center gap-4 p-3 hover:bg-slate-50 dark:hover:bg-white/5 rounded-2xl transition-all group/item pr-10"
+                                                        >
+                                                            <div className="w-16 h-12 bg-slate-100 dark:bg-white/5 rounded-xl flex items-center justify-center p-2 overflow-hidden flex-shrink-0">
+                                                                <img src={v.imageUrl} alt={v.model} className="w-full h-full object-contain group-hover/item:scale-110 transition-transform" />
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <p className="text-[10px] font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">{v.model}</p>
+                                                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">{v.variant}</p>
+                                                            </div>
+                                                        </Link>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                removeFavorite(v.id);
+                                                            }}
+                                                            className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white flex items-center justify-center transition-all opacity-0 group-hover/wrapper:opacity-100 scale-90 hover:scale-100"
+                                                            title="Remove from favorites"
+                                                        >
+                                                            <X size={14} />
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/5 px-2">
+                                            <Link
+                                                href="/wishlist"
+                                                className="w-full h-12 bg-slate-900 dark:bg-white text-white dark:text-black rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center hover:bg-black dark:hover:bg-white/90 transition-all hover:gap-2 group"
+                                            >
+                                                View All Items
+                                                <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+                                            </Link>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
                         <ProfileDropdown onLoginClick={onLoginClick} scrolled={scrolled} theme={theme} />
                     </div>
 
@@ -218,13 +296,27 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                         >
                             Home
                         </Link>
-                        <Link
-                            href="/store/catalog"
-                            onClick={() => setIsMobileMenuOpen(false)}
-                            className="text-xl font-black uppercase tracking-tighter text-slate-500 dark:text-slate-400"
-                        >
-                            Catalog
-                        </Link>
+                        <div className="flex flex-col gap-4">
+                            <Link
+                                href="/store/catalog"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className="text-xl font-black uppercase tracking-tighter text-slate-500 dark:text-slate-400"
+                            >
+                                Catalog
+                            </Link>
+                            <Link
+                                href="/wishlist"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className="text-xl font-black uppercase tracking-tighter text-rose-500 flex items-center justify-between"
+                            >
+                                <span>Wishlist</span>
+                                {favorites.length > 0 && (
+                                    <span className="bg-rose-500 text-white px-3 py-1 rounded-full text-[10px] font-bold">
+                                        {favorites.length}
+                                    </span>
+                                )}
+                            </Link>
+                        </div>
                         <Link
                             href="/store/compare"
                             onClick={() => setIsMobileMenuOpen(false)}

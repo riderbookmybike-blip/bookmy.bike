@@ -13,7 +13,7 @@ export const Footer = () => {
         <footer className="bg-white dark:bg-[#0b0d10] border-t border-slate-100 dark:border-white/5 pt-16 pb-10 transition-colors duration-500 overflow-hidden relative">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-brand-primary/20 to-transparent" />
 
-            <div className="max-w-[1440px] mx-auto px-4 md:px-12 lg:px-20 relative z-10">
+            <div className="max-w-[1600px] mx-auto px-4 md:px-12 lg:px-20 relative z-10">
                 {/* Top Section: Trust & Brand */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 mb-12">
                     <div className="lg:col-span-4 space-y-6">
@@ -150,10 +150,10 @@ const ViewportDebug = () => {
     const device = ua.includes('Macintosh')
         ? 'MacBook'
         : ua.includes('iPhone')
-          ? 'iPhone'
-          : ua.includes('Android')
-            ? 'Android'
-            : 'Device';
+            ? 'iPhone'
+            : ua.includes('Android')
+                ? 'Android'
+                : 'Device';
 
     const commitSha = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA || 'DEV';
 
@@ -166,11 +166,10 @@ const ViewportDebug = () => {
             </div>
 
             <div
-                className={`absolute bottom-full right-0 mb-3 w-72 p-3 bg-slate-900/95 text-white text-[10px] font-mono rounded-lg border border-white/10 shadow-xl transition-all pointer-events-none z-50 backdrop-blur-md ${
-                    forceShow
+                className={`absolute bottom-full right-0 mb-3 w-72 p-3 bg-slate-900/95 text-white text-[10px] font-mono rounded-lg border border-white/10 shadow-xl transition-all pointer-events-none z-50 backdrop-blur-md ${forceShow
                         ? 'opacity-100 translate-y-0'
                         : 'opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0'
-                }`}
+                    }`}
             >
                 <div className="space-y-1.5">
                     <div className="flex justify-between border-b border-white/10 pb-1">
@@ -227,11 +226,10 @@ const FooterLink = ({
     <li>
         <Link
             href={href}
-            className={`text-xs font-bold transition-colors ${
-                highlight
+            className={`text-xs font-bold transition-colors ${highlight
                     ? 'text-brand-primary dark:text-brand-primary hover:text-yellow-600 dark:hover:text-yellow-400'
                     : 'text-slate-500 dark:text-slate-400 hover:text-brand-primary dark:hover:text-brand-primary'
-            }`}
+                }`}
         >
             {children}
         </Link>

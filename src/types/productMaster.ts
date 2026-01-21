@@ -59,6 +59,7 @@ export interface VehicleSpecifications {
         ledLights?: string;
         usbCharging?: string;
         storageSpace?: string;
+        bluetooth?: string;
     };
     brakes?: {
         front?: string;
@@ -69,6 +70,7 @@ export interface VehicleSpecifications {
         rear?: string;
     };
     console?: string;
+    mileage?: string;
 }
 
 export interface ProductBrand {

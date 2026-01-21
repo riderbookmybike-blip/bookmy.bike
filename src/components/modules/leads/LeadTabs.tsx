@@ -39,7 +39,7 @@ export function LeadOverview({ lead }: { lead: Lead }) {
                     <div className="grid grid-cols-2 gap-8">
                         <div className="space-y-1">
                             <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Full Name</p>
-                            <p className="text-xl font-bold text-slate-900 dark:text-white">{lead.customerName}</p>
+                            <p className="text-xl font-bold text-slate-900 dark:text-white uppercase">{lead.customerName}</p>
                         </div>
                         <div className="space-y-1">
                             <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Contact Node</p>

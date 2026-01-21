@@ -31,55 +31,74 @@ export function StoreMobile() {
     }, []);
 
     return (
-        <div className="flex flex-col pb-40 transition-colors duration-300 w-full max-w-[100vw] overflow-x-hidden">
-            {/* Mobile Portrait Hero */}
-            <section className="relative min-h-[65vh] flex flex-col items-center justify-center overflow-hidden bg-white dark:bg-[#020617] isolate px-4 pt-20 pb-12">
-                <div className="absolute inset-0 z-0 opacity-30">
-                    <Image src="/images/hero/lifestyle_1.png" alt="Hero" fill className="object-cover" priority />
-                    <div className="absolute inset-0 bg-gradient-to-b from-white via-white/80 to-white dark:from-[#020617] dark:via-[#020617]/80 dark:to-[#020617]" />
+        <div className="flex flex-col transition-colors duration-300 w-full max-w-[100vw] overflow-x-hidden">
+            {/* Mobile Portrait Hero - Premium Cinematic Design */}
+            <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-black isolate">
+                {/* Background Image */}
+                <div className="absolute inset-0 z-0">
+                    <Image src="/images/hero/lifestyle_1.png" alt="Hero" fill className="object-cover opacity-60 scale-110" priority />
+                    {/* 1. Cinematic 3-Layer Gradient System */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/30 to-black/85" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/40" />
+                    {/* Top vignette for header */}
+                    <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/80 to-transparent" />
                 </div>
 
-                <div className="relative z-10 w-full text-center space-y-6 max-w-xs mx-auto">
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-brand-primary/5 border border-brand-primary/10 text-brand-primary rounded-full text-[9px] font-black uppercase tracking-[0.2em] backdrop-blur-sm whitespace-nowrap">
-                        <span className="h-1.5 w-1.5 rounded-full bg-brand-primary animate-pulse" />
-                        {MARKET_METRICS.avgSavings} Savings Guaranteed
+                {/* Content with Premium Spacing */}
+                <div className="relative z-10 w-full text-center max-w-sm mx-auto px-6 mt-10">
+                    {/* Badge - Premium with Glow */}
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#F5B301]/10 border border-[#F5B301]/25 text-[#F5B301] rounded-full text-[9px] font-bold uppercase tracking-[0.2em] backdrop-blur-md shadow-[0_0_25px_rgba(245,179,1,0.12)]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#F5B301] animate-pulse" />
+                        Lowest EMI Guarantee
                     </div>
 
-                    <h1 className="text-5xl font-black italic uppercase tracking-tighter leading-[0.85] text-slate-900 dark:text-white break-words">
-                        Your Next <br />
-                        <span className="text-[#F4B000]">
-                            Legend <br /> Awaits.
-                        </span>
+                    {/* 2. Luxury Typography Headline - Larger */}
+                    <h1 className="mt-5 text-[56px] font-black uppercase tracking-[-0.04em] leading-[0.92] text-white">
+                        Your<br />
+                        Next <span className="text-[#F5B301] drop-shadow-[0_8px_20px_rgba(245,179,1,0.25)]">Ride</span><br />
+                        Awaits.
                     </h1>
 
-                    <p className="text-sm text-slate-600 dark:text-slate-400 font-medium italic leading-relaxed px-2 max-w-[85%] mx-auto">
-                        Stop Negotiating. Start Riding. India’s Best On-Road Price.
+                    {/* Subtext */}
+                    <p className="mt-4 text-[13px] leading-[1.4] text-white/70 px-2">
+                        Unified prices from verified dealers. Instant quotes. Lowest EMI guarantee.
                     </p>
 
-                    <div className="pt-8 w-full max-w-[280px] mx-auto">
+                    {/* 3. Premium CTA */}
+                    <div className="mt-6 w-full max-w-[260px] mx-auto">
                         <Link
                             href="/store/catalog"
-                            className="w-full h-14 bg-slate-900 dark:bg-white text-white dark:text-black rounded-2xl flex items-center justify-center gap-3 font-black uppercase tracking-[0.2em] text-[10px] shadow-2xl shadow-slate-900/20 active:scale-95 transition-all"
+                            className="w-full h-12 rounded-full px-6 bg-[#F5B301] text-black font-semibold flex items-center justify-center gap-2 text-[12px] tracking-[0.18em] uppercase shadow-[0_14px_35px_rgba(245,179,1,0.28)] ring-1 ring-white/15 active:scale-95 transition-all"
                         >
-                            Explore Collection <ArrowRight size={14} />
+                            <Search size={16} />
+                            Search Bikes
                         </Link>
                     </div>
                 </div>
 
-                <div className="mt-12 flex flex-wrap justify-center gap-x-6 gap-y-2 opacity-70">
-                    {['Transparency', 'Speed', 'Precision'].map(item => (
-                        <div key={item} className="flex items-center gap-1.5">
-                            <Shield size={10} className="text-brand-primary" />
-                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                                {item}
-                            </span>
+                {/* 4. Glass Stats Card */}
+                <div className="relative z-10 mt-6 w-full max-w-sm mx-auto px-4 pb-10">
+                    <div className="rounded-2xl p-3 bg-white/[0.08] backdrop-blur-xl border border-white/[0.12] shadow-[0_18px_55px_rgba(0,0,0,0.45)]">
+                        <div className="grid grid-cols-3 divide-x divide-white/10">
+                            <div className="text-center px-2">
+                                <p className="text-[10px] text-white/55 tracking-[0.22em] uppercase mb-1">Customers</p>
+                                <p className="text-[18px] font-bold text-white">683k+</p>
+                            </div>
+                            <div className="text-center px-2">
+                                <p className="text-[10px] text-white/55 tracking-[0.22em] uppercase mb-1">Savings</p>
+                                <p className="text-[18px] font-bold text-white">₹12k+</p>
+                            </div>
+                            <div className="text-center px-2">
+                                <p className="text-[10px] text-white/55 tracking-[0.22em] uppercase mb-1">Delivery</p>
+                                <p className="text-[18px] font-bold text-white">4 hr</p>
+                            </div>
                         </div>
-                    ))}
+                    </div>
                 </div>
             </section>
 
             {/* Mobile Horizontal Carousel: Manufacturers */}
-            <section className="py-16 bg-white dark:bg-[#020617]">
+            <section className="py-16 bg-white dark:bg-black">
                 <div className="px-4 mb-8">
                     <p className="text-[9px] font-black text-brand-primary uppercase tracking-widest italic mb-2">
                         Partner Ecosystem
@@ -106,7 +125,7 @@ export function StoreMobile() {
             </section>
 
             {/* Mobile Protocol */}
-            <section className="py-16 bg-slate-900 text-white px-4">
+            <section className="py-16 bg-black text-white px-4">
                 <div className="space-y-12">
                     <h2 className="text-4xl font-black uppercase italic tracking-tighter">The Protocol</h2>
                     <div className="space-y-4">
@@ -127,65 +146,61 @@ export function StoreMobile() {
                 </div>
             </section>
 
-            {/* Mobile Horizontal Carousel: Vibe */}
-            <section className="py-16 bg-slate-50 dark:bg-[#020617]">
-                <div className="px-4 mb-8">
-                    <p className="text-[9px] font-black text-brand-primary uppercase tracking-widest italic mb-2">
+            {/* Mobile Horizontal Carousel: Vibe - Matching Desktop Design */}
+            <section className="py-12 bg-slate-50 dark:bg-black">
+                <div className="px-4 mb-6">
+                    <p className="text-[9px] font-black text-brand-primary uppercase tracking-widest mb-1">
                         Curated Collections
                     </p>
-                    <h2 className="text-4xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white">
+                    <h2 className="text-3xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white">
                         Select Your Vibe
                     </h2>
                 </div>
 
-                <div className="flex overflow-x-auto gap-6 px-4 pb-12 no-scrollbar snap-x">
+                <div className="flex overflow-x-auto gap-4 px-4 pb-8 no-scrollbar snap-x">
                     {CATEGORIES.map((cat, i) => (
-                        <Link
+                        <div
                             key={i}
-                            href={cat.link}
-                            className={`flex-shrink-0 w-[85vw] h-[480px] bg-white dark:bg-slate-900 rounded-[3.5rem] p-10 relative overflow-hidden snap-center border border-slate-200 dark:border-white/5 flex flex-col justify-between group isolate`}
+                            className="flex-shrink-0 w-[85vw] bg-white dark:bg-zinc-900 rounded-3xl p-6 relative overflow-hidden snap-center border border-slate-200 dark:border-white/10 flex flex-col"
                         >
-                            {/* Subdued Mesh Gradient Background */}
-                            <div
-                                className={`absolute inset-0 bg-gradient-to-br ${cat.color} to-transparent opacity-30 z-0 blur-3xl`}
-                            />
-
-                            {/* Top Left Feature Label */}
-                            <div className="absolute top-8 left-8 z-20">
-                                {cat.features.slice(0, 1).map((feature, idx) => (
-                                    <span
-                                        key={idx}
-                                        className="inline-block px-3 py-1.5 rounded-full border border-slate-900/10 dark:border-white/10 bg-white/50 dark:bg-black/20 backdrop-blur-md text-[9px] font-sans font-bold uppercase tracking-[0.2em] text-slate-900 dark:text-white"
-                                    >
-                                        {feature}
-                                    </span>
-                                ))}
+                            {/* Badge */}
+                            <div className="mb-4">
+                                <span className="inline-block px-3 py-1.5 bg-slate-100 dark:bg-white/10 rounded-full text-[8px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300">
+                                    {cat.features[0]}
+                                </span>
                             </div>
 
-                            <div className="relative z-10 space-y-3">
-                                <p className="text-[9px] font-black text-brand-primary uppercase tracking-[0.3em] italic leading-none">
-                                    {cat.subtitle}
-                                </p>
-                                <h3 className="text-4xl font-black uppercase tracking-tighter text-slate-900 dark:text-white leading-none">
-                                    {cat.title}
-                                </h3>
-                            </div>
+                            {/* Title */}
+                            <h3 className="text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-2">
+                                {cat.title}
+                            </h3>
 
-                            <div className="relative z-10">
-                                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white">
-                                    EXPLORE {cat.title} <ArrowRight size={14} className="text-brand-primary" />
-                                </div>
-                            </div>
-
-                            <div className="absolute top-[35%] left-[10%] w-[90%] h-[70%] z-10 pointer-events-none">
+                            {/* Product Image */}
+                            <div className="relative h-[180px] my-4">
                                 <Image
                                     src={cat.img}
                                     alt={cat.title}
                                     fill
-                                    className="object-contain filter drop-shadow-[0_30px_40px_rgba(0,0,0,0.1)] dark:drop-shadow-[0_20px_50px_rgba(255,255,255,0.05)]"
+                                    loading="lazy"
+                                    sizes="85vw"
+                                    className="object-contain drop-shadow-xl"
                                 />
                             </div>
-                        </Link>
+
+                            {/* Description */}
+                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4 line-clamp-3">
+                                {cat.desc}
+                            </p>
+
+                            {/* CTA Button */}
+                            <Link
+                                href={cat.link}
+                                className="w-full h-12 bg-gradient-to-r from-[#F4B000] to-[#FFD700] text-slate-900 rounded-xl flex items-center justify-center gap-2 font-black uppercase tracking-widest text-[10px] shadow-[0_4px_20px_rgba(244,176,0,0.3)] active:scale-95 transition-all mt-auto"
+                            >
+                                Explore {cat.title}
+                                <ArrowRight size={14} />
+                            </Link>
+                        </div>
                     ))}
                     <div className="flex-shrink-0 w-4" />
                 </div>

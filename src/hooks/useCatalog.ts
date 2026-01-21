@@ -174,11 +174,11 @@ export function useCatalog() {
                             const variantSpecs = (variantItem as any).specs || {};
                             const variantSkus = (variantItem as any).skus;
                             const isSkuItem = (variantItem as any).type === 'SKU';
-                            const allSkus: any[] = (Array.isArray(variantSkus) && variantSkus.length > 0)
+                            const allSkus = ((Array.isArray(variantSkus) && variantSkus.length > 0)
                                 ? variantSkus
                                 : (isSkuItem
                                     ? [variantItem]
-                                    : familyChildren.flatMap(c => (c.type === 'SKU' ? [c] : (c.skus || []))));
+                                    : familyChildren.flatMap(c => (c.type === 'SKU' ? [c] : (c.skus || []))))) as any;
 
                             return {
                                 id: variantItem.id,
@@ -219,22 +219,53 @@ export function useCatalog() {
                                     };
                                 })(),
 
-                                // Specs
-                                specifications: {
-                                    engine: {
-                                        displacement: family.specs?.engine_cc ? `${family.specs.engine_cc} cc` : undefined,
-                                        maxPower: family.specs?.max_power,
-                                        maxTorque: family.specs?.max_torque
-                                    },
-                                    transmission: {
-                                        type: family.specs?.transmission_type || 'Manual',
-                                        gears: family.specs?.gears
-                                    },
-                                    battery: {
-                                        range: family.specs?.range_eco ? `${family.specs.range_eco} km` : undefined,
-                                        chargingTime: family.specs?.charging_time
-                                    }
-                                },
+                                // Specs - prioritize variant specs then fallback to family specs
+                                specifications: (() => {
+                                    const vs = variantItem.specs || {};
+                                    const fs = family.specs || {};
+
+                                    const getSpec = (keys: string[]) => {
+                                        for (const key of keys) {
+                                            if (vs[key]) return vs[key];
+                                            if (fs[key]) return fs[key];
+                                        }
+                                        return undefined;
+                                    };
+
+                                    return {
+                                        engine: {
+                                            displacement: getSpec(['engine_cc', 'engine_capacity']),
+                                            maxPower: getSpec(['max_power']),
+                                            maxTorque: getSpec(['max_torque'])
+                                        },
+                                        transmission: {
+                                            type: getSpec(['transmission_type']) || 'Manual',
+                                            gears: getSpec(['gears'])
+                                        },
+                                        battery: {
+                                            range: getSpec(['range_eco', 'range']),
+                                            chargingTime: getSpec(['charging_time'])
+                                        },
+                                        dimensions: {
+                                            seatHeight: (() => {
+                                                const val = getSpec(['seat_height', 'seat_height_mm', 'saddle_height']);
+                                                return val ? `${val} mm` : undefined;
+                                            })(),
+                                            kerbWeight: (() => {
+                                                const val = getSpec(['weight', 'kerb_weight', 'curb_weight', 'weight_kg']);
+                                                return val ? `${val} kg` : undefined;
+                                            })(),
+                                            fuelCapacity: (() => {
+                                                const val = getSpec(['fuel_capacity', 'fuel_tank_capacity', 'tank_capacity', 'fuel_tank']);
+                                                return val ? `${val} L` : undefined;
+                                            })()
+                                        },
+                                        features: {
+                                            bluetooth: getSpec(['bluetooth', 'connectivity', 'smart_connectivity'])
+                                        },
+                                        mileage: getSpec(['mileage', 'arai_mileage', 'arai'])
+                                    };
+                                })(),
 
                                 // Images
                                 // Images - Prioritize Primary SKU then any SKU, fallback to variant/family
