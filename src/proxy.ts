@@ -59,15 +59,15 @@ export async function proxy(request: NextRequest) {
         }
 
         const { data: legacyMembership } = await supabase
-            .from('memberships')
-            .select('tenants!inner(slug)')
+            .from('id_team')
+            .select('id_tenants!inner(slug)')
             .eq('user_id', user.id)
             .eq('status', 'ACTIVE')
             .order('created_at', { ascending: true })
             .limit(1)
             .maybeSingle();
 
-        const legacyTenant = legacyMembership?.tenants as any;
+        const legacyTenant = legacyMembership?.id_tenants as { slug: string } | { slug: string }[] | null;
         const legacySlug = Array.isArray(legacyTenant)
             ? legacyTenant[0]?.slug
             : legacyTenant?.slug;
@@ -139,10 +139,10 @@ export async function proxy(request: NextRequest) {
     // 1. AUMS (Super Admin)
     if (tenantSlug === 'aums') {
         const { data: membership } = await supabase
-            .from('memberships')
-            .select('role, tenants!inner(slug)')
+            .from('id_team')
+            .select('role, id_tenants!inner(slug)')
             .eq('user_id', user.id)
-            .eq('tenants.slug', 'aums')
+            .eq('id_tenants.slug', 'aums')
             .eq('status', 'ACTIVE')
             .maybeSingle();
 
@@ -163,11 +163,11 @@ export async function proxy(request: NextRequest) {
 
     // Dynamic Partner Check
     const { data: tenantMembership } = await supabase
-        .from('memberships')
-        .select('id, tenants!inner(slug)')
+        .from('id_team')
+        .select('id, id_tenants!inner(slug)')
         .eq('user_id', user.id)
         .eq('status', 'ACTIVE')
-        .eq('tenants.slug', tenantSlug)
+        .eq('id_tenants.slug', tenantSlug)
         .maybeSingle();
 
     if (!tenantMembership) {

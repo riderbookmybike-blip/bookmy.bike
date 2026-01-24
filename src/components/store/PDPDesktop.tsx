@@ -4,6 +4,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
     ShieldCheck,
     Zap,
@@ -24,6 +25,8 @@ import { ServiceOption } from '@/types/store';
 
 interface PDPDesktopProps {
     product: any;
+    makeParam: string;
+    modelParam: string;
     variantParam: string;
     data: any;
     handlers: {
@@ -43,7 +46,7 @@ interface PDPDesktopProps {
     };
 }
 
-export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktopProps) {
+export function PDPDesktop({ product, makeParam, modelParam, variantParam, data, handlers }: PDPDesktopProps) {
     const {
         colors,
         selectedColor,
@@ -678,13 +681,27 @@ export function PDPDesktop({ product, variantParam, data, handlers }: PDPDesktop
                 }}
             />
 
-            <div className="max-w-[1600px] mx-auto px-6 md:px-12 lg:px-24 py-8 space-y-8 relative z-10">
+            <div className="max-w-[1600px] mx-auto px-6 md:px-12 lg:px-24 pt-4 md:pt-6 lg:pt-8 pb-10 space-y-8 relative z-10">
                 {/* 1. Context Navigation Row (Minimal) */}
                 <DynamicHeader
                     breadcrumb={
-                        <>
-                            STORE / <span className="text-slate-500">{product.make}</span> / {product.model}
-                        </>
+                        <div className="flex items-center gap-4">
+                            <Link href="/store" className="text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white transition-all duration-500 hover:tracking-[0.35em]">
+                                STORE
+                            </Link>
+
+                            <span className="text-brand-primary/30">•</span>
+
+                            <Link href={`/store/catalog?make=${makeParam}`} className="text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white transition-all duration-500 hover:tracking-[0.35em] uppercase">
+                                {makeParam}
+                            </Link>
+
+                            <span className="text-brand-primary/30">•</span>
+
+                            <span className="text-slate-900 dark:text-white font-black italic uppercase drop-shadow-[0_0_10px_rgba(255,255,255,0.1)]">
+                                {modelParam}
+                            </span>
+                        </div>
                     }
                 />
 

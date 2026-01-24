@@ -28,17 +28,15 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
     className = '',
 }) => {
     // Quick rollback: switch to 'spacious' for the previous 96px height + wider container.
-    const headerPreset: 'compact' | 'spacious' = 'compact';
-    const heightClass = headerPreset === 'compact' ? 'h-20' : 'h-24';
-    const containerClass =
-        headerPreset === 'compact' ? 'max-w-[1600px] px-6 md:px-12 lg:px-20' : 'max-w-[1920px] px-6 md:px-12 lg:px-20';
+    const containerClass = 'max-w-[1600px] px-6 md:px-12 lg:px-20';
 
-    // Standard separation and background based on theme and scroll state
-    // Glassmorphism: translucent bg + backdrop-blur
+    // Premium Unified States from Plan:
+    // 1. Home Top: Transparent background, border-b-white/5.
+    // 2. Scrolled/Inner: bg-black/60, backdrop-blur-md, border-b-white/10.
     const bgClass =
         transparentAtTop && !scrolled
-            ? 'bg-transparent border-b-transparent'
-            : 'bg-white/80 dark:bg-[#0b0d10]/80 backdrop-blur-xl backdrop-saturate-150 border-b border-slate-200/50 dark:border-white/10 shadow-sm';
+            ? 'bg-transparent border-b border-transparent'
+            : 'bg-black/85 md:bg-black/60 backdrop-blur-md backdrop-saturate-150 border-b border-white/5 md:border-white/10 shadow-2xl';
 
     return (
         <>
@@ -52,7 +50,8 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
                 }
             />
             <header
-                className={`sticky top-0 z-50 w-full flex items-center transition-all duration-500 ${heightClass} ${bgClass} ${className}`}
+                className={`sticky top-0 z-50 w-full flex items-center transition-all duration-500 ${bgClass} ${className}`}
+                style={{ height: 'var(--header-h)' }}
                 onMouseEnter={() =>
                     typeof window !== 'undefined' && window.dispatchEvent(new CustomEvent('showHeader'))
                 }
