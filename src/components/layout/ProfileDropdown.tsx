@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { createClient } from '@/lib/supabase/client';
 import { User } from '@supabase/supabase-js';
 import {
@@ -17,9 +18,18 @@ import {
     ChevronDown,
     MapPin,
     X,
+    MessageSquare,
+    Facebook,
+    Twitter,
+    Instagram,
+    Linkedin,
+    ChevronRight,
+    Camera
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
+import { Logo } from '@/components/brand/Logo';
 
 interface Membership {
     role: string;
@@ -41,43 +51,30 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
     const [memberships, setMemberships] = useState<Membership[]>([]);
     const [isOpen, setIsOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
-    const [location, setLocation] = useState<{ area: string; city: string; stateCode?: string } | null>(null);
+    const [location, setLocation] = useState<{ area: string; city: string; district?: string; state?: string; stateCode?: string } | null>(null);
+    const [uploading, setUploading] = useState(false);
 
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent | TouchEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
-            }
-        };
-
-        if (isOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-            document.addEventListener('touchstart', handleClickOutside);
-        }
-
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-            document.removeEventListener('touchstart', handleClickOutside);
-        };
-    }, [isOpen]);
+    // Close on click outside is now handled by the Backdrop overlay in the logic below
 
     useEffect(() => {
         const supabase = createClient();
 
         const loadMemberships = async (userId: string) => {
             const { data } = await supabase
-                .from('memberships')
-                .select('role, tenants!inner(slug, name, type)')
+                .from('id_team')
+                .select('role, id_tenants!inner(slug, name, type)')
                 .eq('user_id', userId)
                 .eq('status', 'ACTIVE');
 
             if (data) {
                 setMemberships(
-                    data.map(m => ({
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    data.map((m: any) => ({
                         role: m.role,
-                        tenants: Array.isArray(m.tenants) ? m.tenants[0] : m.tenants,
+                        tenants: Array.isArray(m.id_tenants) ? m.id_tenants[0] : m.id_tenants,
                     }))
                 );
             }
@@ -123,6 +120,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                     setLocation({
                         area: parsed.area,
                         city: parsed.city,
+                        district: parsed.district,
                         stateCode: parsed.stateCode
                     });
                 } catch (e) {
@@ -164,16 +162,51 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
         window.location.href = '/';
     };
 
+    const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        try {
+            setUploading(true);
+            const file = event.target.files?.[0];
+            if (!file || !user) return;
+
+            const fileExt = file.name.split('.').pop();
+            const filePath = `${user.id}/${Math.random()}.${fileExt}`;
+            const supabase = createClient();
+
+            const { error: uploadError } = await supabase.storage
+                .from('users')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('users')
+                .getPublicUrl(filePath);
+
+            const { error: updateError } = await supabase.auth.updateUser({
+                data: { avatar_url: publicUrl }
+            });
+
+            if (updateError) throw updateError;
+
+            setUser(prev => prev ? { ...prev, user_metadata: { ...prev.user_metadata, avatar_url: publicUrl } } : null);
+        } catch (error) {
+            console.error('Error uploading avatar:', error);
+            alert('Error uploading avatar!');
+        } finally {
+            setUploading(false);
+        }
+    };
+
     const getTenantIcon = (type: string) => {
         switch (type) {
             case 'SUPER_ADMIN':
-                return <Building2 className="w-4 h-4" />;
+                return <Building2 className="w-5 h-5" />;
             case 'DEALER':
-                return <Store className="w-4 h-4" />;
+                return <Store className="w-5 h-5" />;
             case 'BANK':
-                return <Landmark className="w-4 h-4" />;
+                return <Landmark className="w-5 h-5" />;
             default:
-                return <Building2 className="w-4 h-4" />;
+                return <Building2 className="w-5 h-5" />;
         }
     };
 
@@ -189,12 +222,13 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
 
     const isLight = mounted ? theme === 'light' : true;
 
+    // Trigger Button Logic matches original
     if (!user) {
         return (
             <button
                 onClick={onLoginClick}
-                className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all group ${scrolled || isLight
-                    ? 'border-slate-900/10 dark:border-white/10 text-slate-500 dark:text-white hover:text-blue-600'
+                className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all group ${scrolled || (mounted && theme === 'light')
+                    ? 'border-slate-900/10 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-white'
                     : 'border-white/20 text-white/80 hover:text-white hover:bg-white/10'
                     }`}
                 title="Sign In"
@@ -212,13 +246,64 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
         user.email?.split('@')[0] ||
         'User';
 
+    /** Animation Variants borrowed from LoginSidebar */
+    const overlayVariants = {
+        hidden: { opacity: 0 },
+        visible: { opacity: 1 },
+        exit: { opacity: 0 },
+    };
+
+    const sidebarVariants: Variants = {
+        hidden: { x: '100%', opacity: 0, scale: 0.95 },
+        visible: {
+            x: 0,
+            opacity: 1,
+            scale: 1,
+            transition: {
+                type: 'spring',
+                damping: 25,
+                stiffness: 300,
+                mass: 0.8,
+            },
+        },
+        exit: {
+            x: '100%',
+            opacity: 0,
+            scale: 0.95,
+            transition: { duration: 0.2, ease: 'easeIn' },
+        },
+    };
+
+    const containerVariants = {
+        hidden: { opacity: 0, y: 20 },
+        visible: {
+            opacity: 1,
+            y: 0,
+            transition: {
+                delayChildren: 0.1,
+                staggerChildren: 0.05
+            }
+        }
+    };
+
+    const itemVariants = {
+        hidden: { opacity: 0, x: 20 },
+        visible: { opacity: 1, x: 0 }
+    };
+
+    // Force glass style when not scrolled to match MarketplaceHeader icons
+    const isGlass = !scrolled;
+
     return (
-        <div className="relative" ref={dropdownRef}>
+        <>
+            {/* Trigger Button */}
             <button
-                onClick={() => setIsOpen(!isOpen)}
-                className={`flex items-center gap-2 md:gap-3 p-2 md:pl-3 md:pr-2 md:py-1.5 rounded-full border transition-all group ${scrolled || isLight
-                    ? 'border-slate-900/10 dark:border-white/10 bg-slate-100 dark:bg-[#0f1115]'
-                    : 'border-white/20 bg-black/40'
+                onClick={() => setIsOpen(true)}
+                className={`flex items-center gap-2 md:gap-3 p-2 md:pl-3 md:pr-2 md:py-1.5 rounded-full border transition-all group ${!isGlass && mounted && theme === 'light'
+                    ? 'border-slate-900/10 bg-slate-100 text-slate-900'
+                    : !isGlass && mounted && theme === 'dark'
+                        ? 'border-white/10 bg-[#0f1115] text-white'
+                        : 'border-white/20 hover:bg-white/10 text-white' // Glass Style
                     }`}
             >
                 <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black shadow-lg shadow-brand-primary/20 bg-gradient-to-br from-brand-primary to-[#F4B000] border-2 border-white dark:border-slate-800 overflow-hidden shrink-0">
@@ -241,148 +326,262 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                 </div>
                 <span
                     suppressHydrationWarning
-                    className={`text-[11px] font-black uppercase tracking-[0.18em] ${mounted && theme === 'dark'
+                    className={`text-[11px] font-black uppercase tracking-[0.18em] ${!isGlass && mounted && theme === 'dark'
                         ? 'text-white'
-                        : scrolled || theme === 'light'
-                            ? 'text-slate-900 dark:text-white'
+                        : !isGlass && mounted && theme === 'light'
+                            ? 'text-slate-900'
                             : 'text-white'
                         }`}
                 >
                     Hi, {displayName}
                 </span>
                 <div
-                    className={`transition-transform duration-300 ${isOpen ? 'rotate-180 text-blue-500' : 'text-slate-500'}`}
+                    className={`transition-transform duration-300 ${isOpen ? 'rotate-180 text-blue-500' : (!isGlass && mounted && theme === 'light' ? 'text-slate-500' : 'text-white/70')}`}
                 >
                     <ChevronDown size={14} />
                 </div>
             </button>
 
-            {isOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-[#0f1115] rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                    {/* User Info */}
-                    <div className="p-6 bg-slate-50 dark:bg-[#14161b] border-b border-gray-100 dark:border-white/5 flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-primary to-[#F4B000] flex items-center justify-center text-white text-xl font-black shadow-inner overflow-hidden uppercase">
-                            {user.user_metadata?.avatar_url ? (
-                                <img
-                                    src={user.user_metadata.avatar_url}
-                                    alt={user.user_metadata?.full_name}
-                                    className="w-full h-full object-cover"
-                                />
-                            ) : (
-                                <span>
-                                    {(
-                                        user.user_metadata?.full_name?.[0] ||
-                                        user.user_metadata?.name?.[0] ||
-                                        user.email?.[0] ||
-                                        'U'
-                                    ).toUpperCase()}
-                                </span>
-                            )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="font-black text-slate-900 dark:text-white truncate uppercase tracking-tight">
-                                {user.user_metadata?.full_name || 'BookMyBike User'}
-                            </p>
-                            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 truncate uppercase tracking-widest leading-none mt-1">
-                                {user.email}
-                            </p>
-                            {location && (
-                                <p className="text-[9px] font-black text-blue-500 truncate uppercase tracking-[0.15em] leading-none mt-2.5 flex items-center gap-1">
-                                    <MapPin size={10} className="fill-blue-500/20" /> {location.area}, {location.stateCode || location.city}
-                                </p>
-                            )}
-                        </div>
-                        <ThemeToggle className="w-10 h-10" />
-                    </div>
+            {/* Full Screen Sidebar Portal */}
+            {mounted && createPortal(
+                <AnimatePresence>
+                    {isOpen && (
+                        <div className="fixed inset-0 z-[100] flex justify-end items-center overflow-hidden sm:p-4 font-sans">
+                            {/* Backdrop */}
+                            <motion.div
+                                variants={overlayVariants}
+                                initial="hidden"
+                                animate="visible"
+                                exit="exit"
+                                onClick={() => setIsOpen(false)}
+                                className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
+                            />
 
-                    {/* Member Access */}
-                    {memberships.length > 0 && (
-                        <div className="p-2">
-                            <div className="px-4 py-3 flex items-center justify-between">
-                                <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
-                                    Member Access
-                                </p>
-                                <div className="h-px flex-1 ml-4 bg-slate-100 dark:bg-white/5" />
-                            </div>
-                            <div className="space-y-1">
-                                {memberships.map(m => (
-                                    <a
-                                        key={m.tenants.slug}
-                                        href={`/app/${m.tenants.slug}/dashboard`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="group flex items-center justify-between px-4 py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-all border border-transparent hover:border-slate-100 dark:hover:border-white/5"
+                            {/* Sidebar */}
+                            <motion.div
+                                variants={sidebarVariants}
+                                initial="hidden"
+                                animate="visible"
+                                exit="exit"
+                                className="relative w-full sm:w-[480px] h-full sm:h-[96vh] bg-white/95 dark:bg-[#0F172A]/95 backdrop-blur-3xl border border-white/20 shadow-2xl flex flex-col overflow-hidden sm:rounded-[2.5rem] ml-auto"
+                            >
+                                {/* Decorative Glows */}
+                                <div className="absolute top-[-20%] right-[-20%] w-[500px] h-[500px] bg-[#F4B000]/10 rounded-full blur-[100px] pointer-events-none" />
+
+                                {/* Header - Reduced Padding */}
+                                <div className="flex-none px-6 py-5 flex items-center justify-between z-10 shrink-0">
+                                    <div className="h-8 shrink-0">
+                                        <Logo
+                                            mode="auto"
+                                            size={32}
+                                            variant="full"
+                                            customColors={{
+                                                bike: '#F4B000'
+                                            }}
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <ThemeToggle className="w-9 h-9" />
+                                        <button
+                                            onClick={() => setIsOpen(false)}
+                                            className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors text-slate-500 dark:text-slate-400"
+                                        >
+                                            <X size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Main Content - Condensed Spacing */}
+                                <div className="flex-1 overflow-y-auto px-6 z-10 flex flex-col min-h-0 custom-scrollbar pb-2">
+                                    <motion.div
+                                        variants={containerVariants}
+                                        initial="hidden"
+                                        animate="visible"
+                                        className="space-y-4"
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-lg bg-white dark:bg-[#14161b] border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-400 group-hover:text-brand-primary transition-colors">
-                                                {getTenantIcon(m.tenants.type)}
+                                        {/* COMPACT USER CARD */}
+                                        <motion.div variants={itemVariants} className="bg-slate-50 dark:bg-white/[0.03] p-4 rounded-3xl border border-slate-100 dark:border-white/5 flex items-center gap-4 relative overflow-hidden group">
+                                            <div className="absolute top-0 right-0 p-4 opacity-30">
+                                                <div className="w-24 h-24 bg-brand-primary/20 rounded-full blur-2xl absolute -top-5 -right-5 pointer-events-none" />
                                             </div>
-                                            <div className="flex flex-col">
-                                                <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                                                    {m.tenants.name}
-                                                </span>
-                                                <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">
-                                                    {m.tenants.type.replace('_', ' ')}
-                                                </span>
+
+                                            {/* Smaller Avatar */}
+                                            <div className="relative shrink-0 group/avatar">
+                                                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-brand-primary to-[#F4B000] flex items-center justify-center text-white text-xl font-black shadow-lg shadow-brand-primary/20 overflow-hidden relative z-10 ring-2 ring-white dark:ring-[#0F172A]">
+                                                    {user.user_metadata?.avatar_url ? (
+                                                        <img
+                                                            src={user.user_metadata.avatar_url}
+                                                            alt={user.user_metadata?.full_name}
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <span>
+                                                            {(
+                                                                user.user_metadata?.full_name?.[0] ||
+                                                                user.user_metadata?.name?.[0] ||
+                                                                user.email?.[0] ||
+                                                                'U'
+                                                            ).toUpperCase()}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <button
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                    className="absolute bottom-0 right-0 w-6 h-6 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform z-20 border-2 border-white dark:border-[#0F172A]"
+                                                    title="Change Photo"
+                                                >
+                                                    {uploading ? (
+                                                        <div className="w-2 h-2 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                    ) : (
+                                                        <Camera size={10} />
+                                                    )}
+                                                </button>
+                                                <input
+                                                    type="file"
+                                                    ref={fileInputRef}
+                                                    className="hidden"
+                                                    accept="image/*"
+                                                    onChange={handleAvatarUpload}
+                                                />
                                             </div>
-                                        </div>
-                                        <span className="text-[8px] font-black px-2 py-1 bg-brand-primary/10 text-brand-primary border border-brand-primary/20 rounded-full uppercase tracking-widest">
-                                            {getRoleLabel(m.role)}
-                                        </span>
-                                    </a>
-                                ))}
-                            </div>
+
+                                            <div className="relative z-10 min-w-0 flex-1">
+                                                <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight leading-tight truncate">
+                                                    {user.user_metadata?.full_name || 'BookMyBike User'}
+                                                </h3>
+                                                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-0.5 tracking-wide uppercase truncate">
+                                                    {user.email}
+                                                </p>
+                                                {location && (
+                                                    <div className="inline-flex items-center gap-1 mt-2 px-2 py-1 rounded-full bg-blue-500/10 text-[9px] font-black uppercase tracking-[0.05em] text-blue-600 dark:text-blue-400">
+                                                        <MapPin size={10} className="fill-blue-500/20" />
+                                                        {location.district || location.city} {location.stateCode ? `(${location.stateCode})` : location.state ? `(${location.state})` : ''}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </motion.div>
+
+                                        {/* Compact Quick Actions List */}
+                                        <motion.div variants={itemVariants} className="space-y-2">
+                                            <h4 className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">
+                                                My Account
+                                            </h4>
+                                            <div className="flex flex-col gap-1.5">
+                                                {[
+                                                    { label: 'Profile Settings', icon: UserIcon, href: '/profile', color: 'text-blue-500', bg: 'bg-blue-500/10' },
+                                                    { label: 'My Orders', icon: Package, href: '/orders', color: 'text-orange-500', bg: 'bg-orange-500/10' },
+                                                    { label: 'Wishlist', icon: Heart, href: '/wishlist', color: 'text-rose-500', bg: 'bg-rose-500/10' },
+                                                    { label: 'Notifications', icon: Bell, href: '/notifications', color: 'text-purple-500', bg: 'bg-purple-500/10' },
+                                                ].map(item => (
+                                                    <a
+                                                        key={item.label}
+                                                        href={item.href}
+                                                        className="flex items-center gap-3 p-2.5 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 hover:border-brand-primary/30 dark:hover:border-brand-primary/30 transition-all group hover:shadow-md hover:shadow-brand-primary/5 dark:hover:bg-white/[0.06]"
+                                                    >
+                                                        <div className={`w-8 h-8 rounded-lg ${item.bg} flex items-center justify-center ${item.color} group-hover:scale-110 transition-transform shadow-sm shrink-0`}>
+                                                            <item.icon size={16} />
+                                                        </div>
+                                                        <div className="flex-1 flex items-center justify-between">
+                                                            <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-wider leading-tight">
+                                                                {item.label}
+                                                            </p>
+                                                            <ChevronRight size={12} className="text-slate-300 group-hover:text-brand-primary transition-colors" />
+                                                        </div>
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        </motion.div>
+
+                                        {/* Compact Memberships */}
+                                        {memberships.length > 0 && (
+                                            <motion.div variants={itemVariants} className="space-y-2">
+                                                <h4 className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">
+                                                    Workspace Access
+                                                </h4>
+                                                <div className="space-y-1.5">
+                                                    {memberships.map(m => (
+                                                        <a
+                                                            key={m.tenants.slug}
+                                                            href={`/app/${m.tenants.slug}/dashboard`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 hover:border-brand-primary/50 transition-all group hover:shadow-md hover:shadow-brand-primary/5 relative overflow-hidden"
+                                                        >
+                                                            <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-black border border-slate-100 dark:border-white/10 flex items-center justify-center text-slate-400 group-hover:text-brand-primary group-hover:scale-105 transition-all shrink-0">
+                                                                {getTenantIcon(m.tenants.type)}
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex flex-col">
+                                                                    <div className="flex items-center justify-between">
+                                                                        <h5 className="font-black text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
+                                                                            {m.tenants.name}
+                                                                        </h5>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                                        <span className="px-1.5 py-px rounded bg-slate-100 dark:bg-white/10 text-[7px] font-bold text-slate-500 uppercase tracking-wider">
+                                                                            {m.tenants.type.replace('_', ' ')}
+                                                                        </span>
+                                                                        <span className="text-[8px] font-bold text-slate-300">•</span>
+                                                                        <span className="text-[8px] font-black text-brand-primary uppercase tracking-widest flex items-center gap-1">
+                                                                            {getRoleLabel(m.role)}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="w-8 h-8 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-300 group-hover:text-brand-primary group-hover:bg-brand-primary/10 transition-colors">
+                                                                <ChevronRight size={12} />
+                                                            </div>
+                                                        </a>
+                                                    ))}
+                                                </div>
+                                            </motion.div>
+                                        )}
+
+                                    </motion.div>
+                                </div>
+
+                                {/* Compact Footer */}
+                                <div className="flex-none p-5 z-10 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-[#0F172A]/50">
+                                    <div className="flex items-center gap-3">
+                                        <a
+                                            href="/help"
+                                            className="flex-1 flex items-center justify-center gap-2 px-3 py-3 border border-slate-200 dark:border-white/10 rounded-2xl text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all bg-white dark:bg-white/[0.03] hover:shadow-md"
+                                        >
+                                            <HelpCircle size={14} />
+                                            Help
+                                        </a>
+                                        <button
+                                            onClick={handleLogout}
+                                            className="flex-1 flex items-center justify-center gap-2 px-3 py-3 bg-rose-500 text-white rounded-2xl text-[9px] font-black uppercase tracking-[0.15em] hover:bg-rose-600 transition-all shadow-lg shadow-rose-500/20 hover:shadow-rose-500/30 hover:-translate-y-0.5"
+                                        >
+                                            <LogOut size={14} />
+                                            Sign Out
+                                        </button>
+                                    </div>
+
+                                    <div className="flex justify-center gap-5 mt-4">
+                                        {[Facebook, Twitter, Instagram, Linkedin].map((Icon, i) => (
+                                            <a
+                                                key={i}
+                                                href="#"
+                                                className="w-6 h-6 rounded-full bg-transparent flex items-center justify-center text-slate-400 hover:text-brand-primary transition-all hover:scale-110"
+                                            >
+                                                <Icon size={14} />
+                                            </a>
+                                        ))}
+                                    </div>
+                                    <div className="text-center mt-3">
+                                        <p className="text-[9px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-widest">
+                                            BookMyBike v2.4.0
+                                        </p>
+                                    </div>
+                                </div>
+                            </motion.div>
                         </div>
                     )}
-
-                    {/* My Account */}
-                    <div className="p-2 border-t border-slate-100 dark:border-white/5">
-                        <div className="px-4 py-3 flex items-center justify-between">
-                            <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
-                                My Account
-                            </p>
-                            <div className="h-px flex-1 ml-4 bg-slate-100 dark:bg-white/10" />
-                        </div>
-                        <div className="grid grid-cols-2 gap-1 px-2">
-                            {[
-                                { label: 'Profile', icon: UserIcon, href: '/profile' },
-                                { label: 'Orders', icon: Package, href: '/orders' },
-                                { label: 'Wishlist', icon: Heart, href: '/wishlist' },
-                                { label: 'Alerts', icon: Bell, href: '/notifications' },
-                            ].map(item => (
-                                <a
-                                    key={item.label}
-                                    href={item.href}
-                                    className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-all group border border-transparent hover:border-slate-100 dark:hover:border-white/5 text-center"
-                                >
-                                    <item.icon className="w-4 h-4 text-slate-400 group-hover:text-brand-primary transition-colors" />
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">
-                                        {item.label}
-                                    </span>
-                                </a>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Help & Logout */}
-                    <div className="p-4 bg-slate-50 dark:bg-[#14161b] border-t border-slate-100 dark:border-white/5 flex items-center justify-between gap-2">
-                        <a
-                            href="/help"
-                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-slate-200 dark:border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all bg-white dark:bg-[#0f1115]"
-                        >
-                            <HelpCircle className="w-3.5 h-3.5" />
-                            Help
-                        </a>
-                        <button
-                            onClick={handleLogout}
-                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border border-rose-500/20"
-                        >
-                            <LogOut className="w-3.5 h-3.5" />
-                            Logout
-                        </button>
-                    </div>
-                </div>
+                </AnimatePresence>,
+                document.body
             )}
-        </div>
+        </>
     );
 }

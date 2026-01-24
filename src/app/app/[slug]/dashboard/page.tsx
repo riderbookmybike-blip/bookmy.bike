@@ -22,6 +22,7 @@ export default async function TenantDashboard(props: { params: Promise<{ slug: s
         .rpc('get_user_memberships', { p_user_id: user.id });
 
     // Identify if we got an array (new JSONB approach) or direct data
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let allMemberships = (Array.isArray(rawMembershipsData) ? rawMembershipsData : []).map((m: any) => ({
         ...m,
         tenants: {
@@ -35,20 +36,23 @@ export default async function TenantDashboard(props: { params: Promise<{ slug: s
 
     if (allMemberships.length === 0) {
         const { data: fallbackMemberships } = await supabase
-            .from('memberships')
-            .select('role, status, tenants!inner(id, name, slug, type, config)')
+            .from('id_team')
+            .select('role, status, id_tenants!inner(id, name, slug, type, config)')
             .eq('user_id', user.id)
             .eq('status', 'ACTIVE');
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         allMemberships = (fallbackMemberships || []).map((m: any) => ({
             ...m,
-            tenants: Array.isArray(m.tenants) ? m.tenants[0] : m.tenants,
+            tenants: Array.isArray(m.id_tenants) ? m.id_tenants[0] : m.id_tenants,
         }));
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     allMemberships = allMemberships.filter((m: any) => (m.status || '').toUpperCase() === 'ACTIVE');
 
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const directMembership = (allMemberships || []).find((m: any) =>
         (m.tenants?.slug || '').toLowerCase() === normalizedSlug
     );
@@ -59,6 +63,7 @@ export default async function TenantDashboard(props: { params: Promise<{ slug: s
     if (!directMembership && normalizedSlug === 'aums' && allMemberships.length > 0) {
         // Strict list of roles allowed to bypass for AUMS management portal
         const adminRoles = ['SUPER_ADMIN', 'SUPERADMIN', 'ADMIN', 'MARKETPLACE_ADMIN', 'OWNER'];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         effectiveMembership = allMemberships.find((m: any) => {
             const userRole = (m.role || '').toUpperCase();
             return adminRoles.includes(userRole);
@@ -72,15 +77,9 @@ export default async function TenantDashboard(props: { params: Promise<{ slug: s
                     <h1 className="text-2xl font-bold mb-4">403 ACCESS DENIED</h1>
                     <p className="mb-4">You are authenticated, but you do not have permission to access this portal.</p>
 
-                    {/* Debug Info (Only visible in 403 state) */}
                     <div className="mt-8 p-4 bg-slate-50 rounded-lg text-xs text-slate-400 text-left max-w-md mx-auto font-mono">
                         <p>User Context: {user.email}</p>
                         <p>Requested Slug: {slug}</p>
-                        <p>Memberships Found: {allMemberships.length}</p>
-                        {allMemberships.length > 0 && (
-                            <p>Available Roles: {allMemberships.map((m: any) => m.role).join(', ')}</p>
-                        )}
-                        {rpcError && <p className="text-red-400">RPC Error: {rpcError.message}</p>}
                     </div>
 
                     <div className="mt-8">

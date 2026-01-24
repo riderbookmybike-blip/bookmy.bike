@@ -138,6 +138,8 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         window.location.reload();
     };
 
+    const isHome = pathname === '/';
+
     return (
         <AppHeaderShell
             scrolled={scrolled}
@@ -145,8 +147,9 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
             transparentAtTop={false}
             left={
                 <Link href="/" className="flex items-center group">
-                    {/* Full Logo on all screens */}
-                    <Logo mode="auto" size={32} variant="full" />
+                    <div className="h-8 md:h-10 lg:h-12 transition-all duration-300">
+                        <Logo mode="dark" size="100%" variant="full" />
+                    </div>
                 </Link>
             }
             center={null}
@@ -189,13 +192,13 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                     <div className="hidden md:flex items-center gap-3">
                         <Link
                             href="/"
-                            className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all group ${scrolled || isLight ? 'border-slate-900/10 dark:border-white/10 text-slate-500 dark:text-white hover:text-blue-600' : 'border-white/20 text-white/80 hover:text-white hover:bg-white/10'}`}
+                            className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center transition-all group text-white/80 hover:text-white hover:bg-white/10"
                         >
                             <HomeIcon size={18} />
                         </Link>
                         <Link
                             href="/store/catalog"
-                            className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all group ${scrolled || isLight ? 'border-slate-900/10 dark:border-white/10 text-slate-500 dark:text-white hover:text-blue-600' : 'border-white/20 text-white/80 hover:text-white hover:bg-white/10'}`}
+                            className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center transition-all group text-white/80 hover:text-white hover:bg-white/10"
                         >
                             <MotorcycleIcon size={20} />
                         </Link>
@@ -206,7 +209,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                         >
                             <Link
                                 href="/wishlist"
-                                className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all group relative ${scrolled || isLight ? 'border-slate-900/10 dark:border-white/10 text-slate-500 dark:text-white hover:text-blue-600' : 'border-white/20 text-white/80 hover:text-white hover:bg-white/10'}`}
+                                className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center transition-all group relative text-white/80 hover:text-white hover:bg-white/10"
                             >
                                 <Heart size={18} />
                                 {favorites.length > 0 && (
