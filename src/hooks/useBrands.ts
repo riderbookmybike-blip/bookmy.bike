@@ -5,6 +5,7 @@ export interface Brand {
     id: string;
     name: string;
     slug: string;
+    logo_svg?: string;
 }
 
 export function useBrands() {
@@ -16,7 +17,12 @@ export function useBrands() {
         async function fetchBrands() {
             try {
                 const supabase = createClient();
-                const { data, error } = await supabase.from('cat_brands').select('id, name, slug').order('name');
+                const { data, error } = await supabase
+                    .from('cat_brands')
+                    .select('id, name, slug, logo_svg')
+                    .eq('is_active', true)
+                    .eq('brand_category', 'VEHICLE')
+                    .order('name');
 
                 if (error) throw error;
 

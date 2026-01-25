@@ -35,10 +35,6 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
     // Variant-based background and border styles
     const getBgClass = () => {
         // Premium behavior: Transparent at top, Glass when scrolled
-        if (transparentAtTop && !scrolled) {
-            return 'bg-transparent border-b border-transparent';
-        }
-
         if (variant === 'dashboard') {
             // Dashboard: Clean, solid, professional
             return 'bg-white dark:bg-[#0B0D10] border-b border-slate-200/60 dark:border-white/5 shadow-sm dark:shadow-none transition-all duration-300';
@@ -62,9 +58,7 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
                 }
             />
             <header
-                className={`${
-                    transparentAtTop && !scrolled ? 'fixed top-0 left-0 right-0' : 'sticky top-0'
-                } z-50 w-full flex items-center transition-all duration-500 header ${bgClass} ${className}`}
+                className={`fixed top-0 left-0 right-0 z-50 w-full flex items-center transition-all duration-500 header ${bgClass} ${className}`}
                 style={{ height: 'var(--header-h)' }}
                 onMouseEnter={() =>
                     typeof window !== 'undefined' && window.dispatchEvent(new CustomEvent('showHeader'))

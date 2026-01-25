@@ -154,7 +154,7 @@ export const Logo: React.FC<LogoProps> = ({
     const renderWordmarkSVG = () => (
         <div
             style={{ height: heights.textH }}
-            className={`flex items-center font-sans font-semibold tracking-[-0.03em] transition-all duration-300 ${isMetallic ? 'animate-shimmer' : ''}`}
+            className={`flex items-center font-sans font-bold tracking-[-0.03em] transition-all duration-300 ${isMetallic ? 'animate-shimmer' : ''}`}
         >
             <svg
                 viewBox="0 0 215 40"
@@ -165,7 +165,7 @@ export const Logo: React.FC<LogoProps> = ({
                 <text
                     x="0"
                     y="32"
-                    className="font-sans font-semibold"
+                    className="font-sans font-bold"
                     style={{ fontSize: '38px', letterSpacing: '-0.03em' }}
                 >
                     <tspan fill={colors.bookmy}>bookmy</tspan>
