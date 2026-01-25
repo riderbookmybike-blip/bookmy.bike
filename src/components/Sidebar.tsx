@@ -148,6 +148,7 @@ export default function Sidebar({
                                         tenantSlug &&
                                         (href.startsWith('/dashboard') ||
                                             href.startsWith('/leads') ||
+                                            href.startsWith('/members') ||
                                             href.startsWith('/customers') ||
                                             href.startsWith('/quotes') ||
                                             href.startsWith('/sales-orders') ||
@@ -168,15 +169,33 @@ export default function Sidebar({
                                             <Link
                                                 href={href}
                                                 className={`
-                                                    flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-200
+                                                    relative flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-300
                                                     ${isActive
-                                                        ? 'bg-brand-primary/[0.08] text-slate-900 shadow-sm border-l-4 border-brand-primary rounded-r-none font-bold'
+                                                        ? 'text-brand-primary'
                                                         : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
                                                     }
                                                 `}
                                             >
+                                                {/* Active Background Pill (Sliding Motion) */}
+                                                {isActive && (
+                                                    <motion.div
+                                                        layoutId="active-pill"
+                                                        className="absolute inset-0 bg-brand-primary/[0.12] dark:bg-brand-primary/[0.15] rounded-xl shadow-[0_4px_20px_rgba(244,176,0,0.1)] z-0"
+                                                        transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                                                    />
+                                                )}
+
+                                                {/* Active Accent Bar */}
+                                                {isActive && (
+                                                    <motion.div
+                                                        layoutId="active-bar"
+                                                        className="absolute left-[-2px] top-1/2 -translate-y-1/2 w-1.5 h-6 bg-brand-primary rounded-full shadow-[0_0_15px_rgba(244,176,0,0.6)] z-10"
+                                                        transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                                                    />
+                                                )}
+
                                                 <div
-                                                    className={`shrink-0 ${isActive ? 'text-brand-primary font-bold' : item.color || 'text-slate-400'}`}
+                                                    className={`relative z-10 shrink-0 ${isActive ? 'text-brand-primary' : item.color || 'text-slate-400'}`}
                                                 >
                                                     {Icon && <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />}
                                                 </div>
@@ -273,7 +292,10 @@ export default function Sidebar({
                                                     key={item.href}
                                                     href={href}
                                                     onClick={onMobileClose}
-                                                    className={`flex items-center gap-3 p-3 rounded-xl text-sm font-bold ${pathname === href ? 'bg-brand-primary text-slate-900 shadow-lg shadow-brand-primary/20' : 'text-slate-600 dark:text-slate-400'}`}
+                                                    className={`flex items-center gap-3 p-3 rounded-xl text-sm font-extrabold transition-all ${isActive
+                                                            ? 'bg-brand-primary text-slate-900 shadow-lg shadow-brand-primary/20'
+                                                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5'
+                                                        }`}
                                                 >
                                                     {item.icon && <item.icon size={20} />}
                                                     {item.title}

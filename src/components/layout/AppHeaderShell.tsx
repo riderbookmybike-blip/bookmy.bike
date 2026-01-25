@@ -10,6 +10,7 @@ interface AppHeaderShellProps {
     scrolled?: boolean;
     visible?: boolean;
     transparentAtTop?: boolean;
+    variant?: 'marketplace' | 'dashboard';
     className?: string;
 }
 
@@ -25,18 +26,28 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
     scrolled = false,
     visible = true,
     transparentAtTop = false,
+    variant = 'marketplace',
     className = '',
 }) => {
     // Quick rollback: switch to 'spacious' for the previous 96px height + wider container.
     const containerClass = 'max-w-[1600px] px-6 md:px-12 lg:px-20';
 
-    // Premium Unified States from Plan:
-    // 1. Home Top: Transparent background, border-b-white/5.
-    // 2. Scrolled/Inner: bg-black/60, backdrop-blur-md, border-b-white/10.
-    const bgClass =
-        transparentAtTop && !scrolled
-            ? 'bg-transparent border-b border-transparent'
-            : 'bg-black/85 md:bg-black/60 backdrop-blur-md backdrop-saturate-150 border-b border-white/5 md:border-white/10 shadow-2xl';
+    // Variant-based background and border styles
+    const getBgClass = () => {
+        if (transparentAtTop && !scrolled) {
+            return 'bg-transparent border-b border-transparent';
+        }
+
+        if (variant === 'dashboard') {
+            // Dashboard: Clean, solid, professional
+            return 'bg-white dark:bg-[#0B0D10] border-b border-slate-200/60 dark:border-white/5 shadow-sm dark:shadow-none transition-all duration-300';
+        }
+
+        // Marketplace: Premium, Glassmorphism, Dynamic
+        return 'bg-white/85 dark:bg-black/60 backdrop-blur-xl backdrop-saturate-150 border-b border-slate-200/50 dark:border-white/10 shadow-lg dark:shadow-2xl transition-all duration-500';
+    };
+
+    const bgClass = getBgClass();
 
     return (
         <>
@@ -50,7 +61,7 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
                 }
             />
             <header
-                className={`sticky top-0 z-50 w-full flex items-center transition-all duration-500 ${bgClass} ${className}`}
+                className={`sticky top-0 z-50 w-full flex items-center transition-all duration-500 header ${bgClass} ${className}`}
                 style={{ height: 'var(--header-h)' }}
                 onMouseEnter={() =>
                     typeof window !== 'undefined' && window.dispatchEvent(new CustomEvent('showHeader'))

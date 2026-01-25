@@ -105,7 +105,7 @@ export const Logo: React.FC<LogoProps> = ({
         return {
             icon: BRAND_GOLD,
             bookmy: "#000000",
-            bike: "#000000"
+            bike: BRAND_GOLD
         };
     }, [activeMode, monochrome, customColor, customColors]);
 

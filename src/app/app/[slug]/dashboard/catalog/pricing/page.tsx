@@ -71,7 +71,7 @@ export default function PricingPage() {
 
     const fetchRules = async () => {
         const { data } = await supabase
-            .from('registration_rules')
+            .from('cat_reg_rules')
             .select('*')
             .eq('status', 'ACTIVE')
             .order('state_code');
@@ -92,7 +92,7 @@ export default function PricingPage() {
 
     const fetchBrands = async () => {
         const { data } = await supabase
-            .from('brands')
+            .from('cat_brands')
             .select('id, name, logo_svg')
             .eq('is_active', true)
             .order('name');
@@ -108,7 +108,7 @@ export default function PricingPage() {
             // 1. Fetch SKUs from Unified Catalog
             // SKU -> Variant (Parent) -> Family (Grandparent)
             const { data: skuData, error: skuError } = await supabase
-                .from('catalog_items')
+                .from('cat_items')
                 .select(`
                     id,
                     name,
@@ -121,7 +121,7 @@ export default function PricingPage() {
                             id,
                             name,
                             price_base,
-                            brand:brands(id, name, logo_svg)
+                            brand:cat_brands(id, name, logo_svg)
                         )
                     )
                 `)
@@ -133,7 +133,7 @@ export default function PricingPage() {
             const activeStateCode = states.find(s => s.id === selectedStateId)?.stateCode || 'MH';
             const [priceRes, stockRes] = await Promise.all([
                 supabase
-                    .from('vehicle_prices')
+                    .from('cat_prices')
                     .select('vehicle_color_id, ex_showroom_price, updated_at')
                     .eq('state_code', activeStateCode),
                 supabase
@@ -154,7 +154,7 @@ export default function PricingPage() {
 
             // 3. Fetch Brand Regional Deltas for this state
             const { data: brandDeltas } = await supabase
-                .from('brand_regional_configs')
+                .from('cat_regional_configs')
                 .select('brand_id, delta_percentage')
                 .eq('state_code', activeStateCode);
 

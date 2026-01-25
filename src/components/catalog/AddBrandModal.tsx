@@ -102,7 +102,7 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData,
 
             if (initialData?.id) {
                 const { error } = await supabase
-                    .from('brands')
+                    .from('cat_brands')
                     .update({
                         name: formData.name,
                         website_url: formData.landingUrl,
@@ -113,7 +113,7 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData,
                     .eq('id', initialData.id);
                 if (error) throw error;
             } else {
-                const { data, error } = await supabase.from('brands').insert([{
+                const { data, error } = await supabase.from('cat_brands').insert([{
                     name: formData.name,
                     slug: formData.name.toLowerCase().replace(/\s+/g, '-'),
                     website_url: formData.landingUrl,

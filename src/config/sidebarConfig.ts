@@ -189,8 +189,8 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN', 'DEALERSHIP_STAFF']
       },
       {
-        title: 'Customers',
-        href: '/customers',
+        title: 'Members',
+        href: '/members',
         icon: UserCheck,
         color: 'text-blue-400',
         allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],

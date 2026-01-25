@@ -15,7 +15,7 @@ export default function StoreLayout({
 
     return (
         <FavoritesProvider>
-            <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-sans selection:bg-red-500/30 transition-colors duration-300">
+            <div className="marketplace min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-sans selection:bg-red-500/30 transition-colors duration-300">
                 <MarketplaceHeader onLoginClick={() => setIsLoginOpen(true)} />
 
                 <main className="flex-1 pt-0">{children}</main>

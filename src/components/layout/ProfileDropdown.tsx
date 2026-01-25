@@ -227,9 +227,11 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
         return (
             <button
                 onClick={onLoginClick}
-                className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all group ${scrolled || (mounted && theme === 'light')
+                className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all group ${scrolled
                     ? 'border-slate-900/10 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-white'
-                    : 'border-white/20 text-white/80 hover:text-white hover:bg-white/10'
+                    : (isLight
+                        ? 'border-slate-900/20 text-slate-900/80 hover:text-slate-900 hover:bg-slate-900/5'
+                        : 'border-white/20 text-white/80 hover:text-white hover:bg-white/10')
                     }`}
                 title="Sign In"
             >
@@ -299,14 +301,14 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
             {/* Trigger Button */}
             <button
                 onClick={() => setIsOpen(true)}
-                className={`flex items-center gap-2 md:gap-3 p-2 md:pl-3 md:pr-2 md:py-1.5 rounded-full border transition-all group ${!isGlass && mounted && theme === 'light'
-                    ? 'border-slate-900/10 bg-slate-100 text-slate-900'
-                    : !isGlass && mounted && theme === 'dark'
-                        ? 'border-white/10 bg-[#0f1115] text-white'
-                        : 'border-white/20 hover:bg-white/10 text-white' // Glass Style
+                className={`flex items-center gap-2 md:gap-3 p-2 md:pl-3 md:pr-2 md:py-1.5 rounded-full border transition-all group ${scrolled
+                    ? 'border-slate-200/40 bg-slate-100/40 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 shadow-sm'
+                    : (isLight
+                        ? 'border-slate-900/20 text-slate-900/80 hover:text-slate-900 hover:bg-slate-900/5'
+                        : 'border-white/20 hover:bg-white/10 text-white/90')
                     }`}
             >
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black shadow-lg shadow-brand-primary/20 bg-gradient-to-br from-brand-primary to-[#F4B000] border-2 border-white dark:border-slate-800 overflow-hidden shrink-0">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black shadow-lg shadow-brand-primary/20 bg-gradient-to-br from-brand-primary to-[#F4B000] overflow-hidden shrink-0">
                     {user.user_metadata?.avatar_url ? (
                         <img
                             src={user.user_metadata.avatar_url}
@@ -326,17 +328,13 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                 </div>
                 <span
                     suppressHydrationWarning
-                    className={`text-[11px] font-black uppercase tracking-[0.18em] ${!isGlass && mounted && theme === 'dark'
-                        ? 'text-white'
-                        : !isGlass && mounted && theme === 'light'
-                            ? 'text-slate-900'
-                            : 'text-white'
+                    className={`text-[11px] font-black uppercase tracking-[0.18em] transition-colors ${scrolled ? 'text-slate-900 dark:text-white' : (isLight ? 'text-slate-900' : 'text-white')
                         }`}
                 >
                     Hi, {displayName}
                 </span>
                 <div
-                    className={`transition-transform duration-300 ${isOpen ? 'rotate-180 text-blue-500' : (!isGlass && mounted && theme === 'light' ? 'text-slate-500' : 'text-white/70')}`}
+                    className={`transition-all duration-300 ${isOpen ? 'rotate-180 text-blue-500' : (scrolled ? 'text-slate-400 dark:text-slate-500' : 'text-white/70')}`}
                 >
                     <ChevronDown size={14} />
                 </div>

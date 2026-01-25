@@ -79,7 +79,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
             onUpdate(updatedList);
 
             const newSlug = `${family.slug}-color-${normalizedName.toLowerCase()}`.replace(/ /g, '-');
-            const { error } = await supabase.from('catalog_items').update({
+            const { error } = await supabase.from('cat_items').update({
                 name: normalizedName,
                 slug: newSlug,
                 specs: { ...existingColors.find((c: any) => c.id === id).specs, [l2Label]: normalizedName }
@@ -125,7 +125,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
             };
 
             const { data, error: dbError } = await supabase
-                .from('catalog_items')
+                .from('cat_items')
                 .upsert(payload, { onConflict: 'slug' })
                 .select()
                 .single();
@@ -174,7 +174,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
             setIsReorderSaving(true);
             await Promise.all(
                 updatedList.map((item: any) =>
-                    supabase.from('catalog_items').update({ position: item.position }).eq('id', item.id)
+                    supabase.from('cat_items').update({ position: item.position }).eq('id', item.id)
                 )
             );
             setShowReorderSaved(true);
@@ -240,7 +240,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
             const supabase = createClient();
             const color = existingColors.find((c: any) => c.id === activeColorId);
             const newSpecs = { ...color.specs, hex_primary: tempPrimary, hex_secondary: tempSecondary };
-            const { error } = await supabase.from('catalog_items').update({ specs: newSpecs }).eq('id', activeColorId);
+            const { error } = await supabase.from('cat_items').update({ specs: newSpecs }).eq('id', activeColorId);
 
             if (error) throw error;
             toast.success('Color hex updated');
@@ -270,12 +270,12 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
 
             if (applyVideosToAll) {
                 const updatePromises = updatedList.map((item: any) =>
-                    supabase.from('catalog_items').update({ specs: item.specs }).eq('id', item.id)
+                    supabase.from('cat_items').update({ specs: item.specs }).eq('id', item.id)
                 );
                 await Promise.all(updatePromises);
             } else {
                 const updatedColor = updatedList.find((c: any) => c.id === activeColorId);
-                const { error } = await supabase.from('catalog_items').update({ specs: updatedColor.specs }).eq('id', activeColorId);
+                const { error } = await supabase.from('cat_items').update({ specs: updatedColor.specs }).eq('id', activeColorId);
                 if (error) throw error;
             }
             toast.success('Media saved successfully');
@@ -380,7 +380,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                                                 // TODO: Add Delete Confirmation
                                                 if (confirm(`Are you sure you want to delete this ${l2Label.toLowerCase()}?`)) {
                                                     const supabase = createClient();
-                                                    supabase.from('catalog_items').delete().eq('id', color.id).then(({ error }) => {
+                                                    supabase.from('cat_items').delete().eq('id', color.id).then(({ error }) => {
                                                         if (error) {
                                                             toast.error('Failed to delete color');
                                                         } else {
@@ -400,12 +400,12 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
 
                                 <div className="flex gap-2">
                                     {/* Color Picker (25%) */}
-                                        <button
-                                            onClick={() => openSmartPicker(color)}
-                                            className="w-1/4 flex items-center justify-center py-4 rounded-2xl border-2 border-slate-50 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
-                                            title="Smart Color Picker"
-                                            aria-label={`Pick ${l2Label.toLowerCase()} colors for ${color.name}`}
-                                        >
+                                    <button
+                                        onClick={() => openSmartPicker(color)}
+                                        className="w-1/4 flex items-center justify-center py-4 rounded-2xl border-2 border-slate-50 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
+                                        title="Smart Color Picker"
+                                        aria-label={`Pick ${l2Label.toLowerCase()} colors for ${color.name}`}
+                                    >
                                         <div className="w-8 h-8 rounded-full shadow-lg border-2 border-white dark:border-white/10" style={{ backgroundColor: color.specs.hex_primary || '#000000' }} />
                                     </button>
 

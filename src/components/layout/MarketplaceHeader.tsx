@@ -89,6 +89,8 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         };
     }, []);
 
+    const isHome = pathname === '/';
+
     // For the home page (StoreTV), we follow the global theme
     // We only use fallback if not mounted
     const isLight = mounted ? theme === 'light' : true;
@@ -110,14 +112,16 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const navGapClass = navPreset === 'tight' ? 'gap-8 mr-4' : 'gap-14 mr-6';
     const rightGapClass = navPreset === 'tight' ? 'gap-3 lg:gap-6' : 'gap-4 lg:gap-10';
 
-    const navLinkClass = scrolled
+    const isHeaderTransparent = isHome && !scrolled;
+
+    const navLinkClass = !isHeaderTransparent
         ? `${navTextClass} text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-white transition-all duration-300`
         : `${isLight ? 'text-slate-900/90 hover:text-blue-600' : 'text-white/90 hover:text-blue-400'} ${navTextClass} transition-all duration-300 drop-shadow-md`;
     const activeNavClass =
         'relative text-slate-900 dark:text-white after:absolute after:-bottom-2 after:left-0 after:right-0 after:h-[2px] after:bg-brand-primary after:rounded-full';
     const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
-    const mobileMenuButtonClass = scrolled
+    const mobileMenuButtonClass = !isHeaderTransparent
         ? 'text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/5'
         : isLight
             ? 'text-slate-900 hover:bg-slate-900/5'
@@ -138,17 +142,18 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         window.location.reload();
     };
 
-    const isHome = pathname === '/';
 
     return (
         <AppHeaderShell
             scrolled={scrolled}
             visible={isVisible}
-            transparentAtTop={false}
+            transparentAtTop={isHome}
+            variant="marketplace"
+            className={!isHeaderTransparent ? 'header-glass' : ''}
             left={
                 <Link href="/" className="flex items-center group">
                     <div className="h-8 md:h-10 lg:h-12 transition-all duration-300">
-                        <Logo mode="dark" size="100%" variant="full" />
+                        <Logo mode="auto" size={40} variant="full" />
                     </div>
                 </Link>
             }
@@ -192,13 +197,23 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                     <div className="hidden md:flex items-center gap-3">
                         <Link
                             href="/"
-                            className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center transition-all group text-white/80 hover:text-white hover:bg-white/10"
+                            className={`w-10 h-10 rounded-full border transition-all group flex items-center justify-center ${isHeaderTransparent
+                                ? (isLight
+                                    ? 'border-slate-900/10 bg-slate-900/5 text-slate-900/80 hover:text-slate-900 hover:bg-slate-900/10'
+                                    : 'border-white/20 text-white/80 hover:text-white hover:bg-white/10')
+                                : 'border-slate-200/40 bg-slate-100/40 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 shadow-sm'
+                                }`}
                         >
                             <HomeIcon size={18} />
                         </Link>
                         <Link
                             href="/store/catalog"
-                            className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center transition-all group text-white/80 hover:text-white hover:bg-white/10"
+                            className={`w-10 h-10 rounded-full border transition-all group flex items-center justify-center ${isHeaderTransparent
+                                ? (isLight
+                                    ? 'border-slate-900/10 bg-slate-900/5 text-slate-900/80 hover:text-slate-900 hover:bg-slate-900/10'
+                                    : 'border-white/20 text-white/80 hover:text-white hover:bg-white/10')
+                                : 'border-slate-200/40 bg-slate-100/40 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 shadow-sm'
+                                }`}
                         >
                             <MotorcycleIcon size={20} />
                         </Link>
@@ -209,7 +224,12 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                         >
                             <Link
                                 href="/wishlist"
-                                className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center transition-all group relative text-white/80 hover:text-white hover:bg-white/10"
+                                className={`w-10 h-10 rounded-full border transition-all group relative flex items-center justify-center ${isHeaderTransparent
+                                    ? (isLight
+                                        ? 'border-slate-900/10 bg-slate-900/5 text-slate-900/80 hover:text-slate-900 hover:bg-slate-900/10'
+                                        : 'border-white/20 text-white/80 hover:text-white hover:bg-white/10')
+                                    : 'border-slate-200/50 bg-slate-100/40 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 shadow-sm'
+                                    }`}
                             >
                                 <Heart size={18} />
                                 {favorites.length > 0 && (
@@ -276,7 +296,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                                 )}
                             </AnimatePresence>
                         </div>
-                        <ProfileDropdown onLoginClick={onLoginClick} scrolled={scrolled} theme={theme} />
+                        <ProfileDropdown onLoginClick={onLoginClick} scrolled={!isHeaderTransparent} theme={theme} />
                     </div>
 
                     <button

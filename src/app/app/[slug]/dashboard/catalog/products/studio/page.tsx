@@ -108,7 +108,7 @@ export default function UnifiedStudioPage() {
         const supabase = createClient();
         setIsLoading(true);
         // Fetch children (Variants & Colors) only for this family
-        const { data: children } = await supabase.from('catalog_items').select('*').eq('parent_id', fId);
+        const { data: children } = await supabase.from('cat_items').select('*').eq('parent_id', fId);
 
         if (children) {
             const variantItems = children
@@ -121,7 +121,7 @@ export default function UnifiedStudioPage() {
             if (variantItems.length > 0) {
                 const variantIds = variantItems.map(v => v.id);
                 const { data: skusData } = await supabase
-                    .from('catalog_items')
+                    .from('cat_items')
                     .select('*')
                     .eq('type', 'SKU')
                     .in('parent_id', variantIds);
@@ -163,17 +163,17 @@ export default function UnifiedStudioPage() {
         const supabase = createClient();
 
         try {
-            const { data: bData } = await supabase.from('brands').select('*');
+            const { data: bData } = await supabase.from('cat_brands').select('*');
             if (bData) setBrands(bData);
 
-            const { data: tData } = await supabase.from('catalog_templates').select('*');
+            const { data: tData } = await supabase.from('cat_templates').select('*');
             if (tData) setTemplates(tData);
 
             // Fetch Stats & Catalog Items for Lists (Families are top level, so safe to fetch all for studio list?)
             // Actually, we should filter by brand later, but fetching all FAMILIES is okay if not too huge.
             // For now fetching all items is what caused the bleed if we didn't filter.
             // But here we are just fetching the "Pool". Isolation happens in Step Components via props.
-            const { data: allItems } = await supabase.from('catalog_items').select('*');
+            const { data: allItems } = await supabase.from('cat_items').select('*');
             if (allItems) {
                 setCatalogItems(allItems);
                 const stats: Record<string, { families: number, variants: number, skus: number }> = {};
@@ -225,7 +225,7 @@ export default function UnifiedStudioPage() {
             const stepParam = searchParams.get('step');
 
             if (familyId) {
-                const { data: fData } = await supabase.from('catalog_items').select('*').eq('id', familyId).single();
+                const { data: fData } = await supabase.from('cat_items').select('*').eq('id', familyId).single();
                 if (fData) {
                     setFamilyData(fData);
                     const tmpl = tData?.find(t => t.id === fData.template_id);
@@ -405,7 +405,7 @@ export default function UnifiedStudioPage() {
                             onDelete={async (id: string) => {
                                 if (confirm('Are you sure you want to delete this Model Family? This will delete all associated Variants and SKUs.')) {
                                     const supabase = createClient();
-                                    const { error } = await supabase.from('catalog_items').delete().eq('id', id);
+                                    const { error } = await supabase.from('cat_items').delete().eq('id', id);
                                     if (!error) {
                                         setCatalogItems(prev => prev.filter(item => item.id !== id));
                                         if (familyData?.id === id) setFamilyData(null);

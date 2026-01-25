@@ -2,6 +2,17 @@
 
 import { createClient } from '@/lib/supabase/server';
 
+// Hardcoded Serviceable Districts for now
+const SERVICEABLE_DISTRICTS = [
+    'MUMBAI',
+    'MUMBAI SUBURBAN',
+    'THANE',
+    'PALGHAR',
+    'RAIGAD',
+    'PUNE',
+    'NASHIK'
+];
+
 export async function checkServiceability(pincode: string) {
     if (!pincode || pincode.length !== 6) {
         return { isServiceable: false, error: 'Invalid pincode' };
@@ -10,14 +21,14 @@ export async function checkServiceability(pincode: string) {
     const supabase = await createClient();
 
     try {
+        // Query the correct table 'loc_pincodes'
         const { data, error } = await supabase
-            .from('pincodes')
-            .select('status, city, area')
+            .from('loc_pincodes')
+            .select('status, city, area, district, state, rto_code')
             .eq('pincode', pincode)
             .single();
 
-        if (error) {
-            // If not found in our list, it's not serviceable unless we have a different default
+        if (error || !data) {
             return {
                 isServiceable: false,
                 location: null,
@@ -25,12 +36,32 @@ export async function checkServiceability(pincode: string) {
             };
         }
 
+        // 1. Check strict Status (Deliverable/Not Deliverable)
+        let isServiceable = data.status === 'Deliverable';
+
+        // 2. Override: if District is in whitelist, force TRUE
+        const districtUpper = data.district?.toUpperCase();
+        if (SERVICEABLE_DISTRICTS.includes(districtUpper)) {
+            isServiceable = true;
+        }
+
+        // 3. Fallback: if City is Mumbai (covers edge cases)
+        if (data.city?.toUpperCase().includes('MUMBAI')) {
+            isServiceable = true;
+        }
+
+        const stateCode = data.rto_code ? data.rto_code.substring(0, 2).toUpperCase() : '';
+
         return {
-            isServiceable: data.status === 'Deliverable',
-            location: data.city || data.area || 'Unknown',
-            status: data.status
+            isServiceable,
+            location: data.area || data.city || data.district || 'Unknown',
+            status: isServiceable ? 'Deliverable' : 'Not Deliverable',
+            district: data.district,
+            state: data.state,
+            stateCode
         };
     } catch (err) {
+        console.error('Serviceability Check Failed:', err);
         return { isServiceable: false, error: 'Check failed' };
     }
 }

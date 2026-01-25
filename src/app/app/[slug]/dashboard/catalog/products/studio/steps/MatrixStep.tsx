@@ -75,7 +75,7 @@ export default function MatrixStep({ family, template, variants, colors, existin
                     }
                 };
 
-                const { error } = await supabase.from('catalog_items').update(payload).eq('id', sku.id);
+                const { error } = await supabase.from('cat_items').update(payload).eq('id', sku.id);
                 if (error) throw error;
 
                 successCount++;
@@ -110,7 +110,7 @@ export default function MatrixStep({ family, template, variants, colors, existin
             const supabase = createClient();
 
             if (exists) {
-                const { error } = await supabase.from('catalog_items').delete().eq('id', exists.id);
+                const { error } = await supabase.from('cat_items').delete().eq('id', exists.id);
                 if (error) throw error;
                 onUpdate(existingSkus.filter((s: any) => s.id !== exists.id));
                 toast.success('SKU removed');
@@ -148,7 +148,7 @@ export default function MatrixStep({ family, template, variants, colors, existin
                     video_url: inherited.videos[0] || null
                 };
                 const { data, error } = await supabase
-                    .from('catalog_items')
+                    .from('cat_items')
                     .upsert(payload, { onConflict: 'slug' })
                     .select()
                     .single();
@@ -178,8 +178,8 @@ export default function MatrixStep({ family, template, variants, colors, existin
         try {
             const supabase = createClient();
             // Rule: Only one SKU can be primary for this specific variant row
-            await supabase.from('catalog_items').update({ is_primary: false }).eq('parent_id', sku.parent_id).eq('type', 'SKU');
-            const { data, error } = await supabase.from('catalog_items').update({ is_primary: true }).eq('id', sku.id).select().single();
+            await supabase.from('cat_items').update({ is_primary: false }).eq('parent_id', sku.parent_id).eq('type', 'SKU');
+            const { data, error } = await supabase.from('cat_items').update({ is_primary: true }).eq('id', sku.id).select().single();
 
             if (error) throw error;
 
@@ -201,7 +201,7 @@ export default function MatrixStep({ family, template, variants, colors, existin
             video_url: videos[0] || null,
             specs: { ...activeMediaSku.specs, gallery: images, primary_image: primary, video_urls: videos, pdf_urls: pdfs }
         };
-        const { data } = await supabase.from('catalog_items').update(payload).eq('id', activeMediaSku.id).select().single();
+        const { data } = await supabase.from('cat_items').update(payload).eq('id', activeMediaSku.id).select().single();
         if (data) {
             onUpdate(existingSkus.map((s: any) => s.id === activeMediaSku.id ? data : s));
         }
@@ -210,7 +210,7 @@ export default function MatrixStep({ family, template, variants, colors, existin
             const otherSkus = existingSkus.filter((s: any) => s.parent_id === activeMediaSku.parent_id && s.id !== activeMediaSku.id);
             if (otherSkus.length > 0) {
                 const updatePromises = otherSkus.map((s: any) =>
-                    supabase.from('catalog_items').update({
+                    supabase.from('cat_items').update({
                         video_url: videos[0] || null,
                         specs: { ...s.specs, video_urls: videos, pdf_urls: pdfs }
                     }).eq('id', s.id)
@@ -228,7 +228,7 @@ export default function MatrixStep({ family, template, variants, colors, existin
 
     const updatePrice = async (skuId: string, price: number) => {
         const supabase = createClient();
-        await supabase.from('catalog_items').update({ price_base: price }).eq('id', skuId);
+        await supabase.from('cat_items').update({ price_base: price }).eq('id', skuId);
         onUpdate(existingSkus.map((s: any) => s.id === skuId ? { ...s, price_base: price } : s));
     };
 
@@ -236,7 +236,7 @@ export default function MatrixStep({ family, template, variants, colors, existin
         const skusToUpdate = existingSkus.filter((s: any) => s.parent_id === variantId);
         if (skusToUpdate.length === 0) return;
         const supabase = createClient();
-        await Promise.all(skusToUpdate.map((sku: any) => supabase.from('catalog_items').update({ price_base: price }).eq('id', sku.id)));
+        await Promise.all(skusToUpdate.map((sku: any) => supabase.from('cat_items').update({ price_base: price }).eq('id', sku.id)));
         onUpdate(existingSkus.map((s: any) => s.parent_id === variantId ? { ...s, price_base: price } : s));
         setFocusedSkuId(null);
     };
@@ -542,7 +542,7 @@ export default function MatrixStep({ family, template, variants, colors, existin
                                     try {
                                         // Save Logic
                                         const supabase = createClient();
-                                        const { error } = await supabase.from('catalog_items').update({
+                                        const { error } = await supabase.from('cat_items').update({
                                             specs: editingSku.specs
                                         }).eq('id', editingSku.id);
 

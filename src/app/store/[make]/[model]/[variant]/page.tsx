@@ -70,11 +70,11 @@ export default async function Page({ params, searchParams }: Props) {
     ];
 
     const { data: variantItem, error } = await supabase
-        .from('catalog_items')
+        .from('cat_items')
         .select(`
             id, name, slug, price_base, specs,
-            brand:brands(name),
-            parent:catalog_items!parent_id(name, slug)
+            brand:cat_brands(name),
+            parent:cat_items!parent_id(name, slug)
         `)
         .in('slug', possibleSlugs)
         .eq('type', 'VARIANT')
@@ -109,13 +109,13 @@ export default async function Page({ params, searchParams }: Props) {
 
     // 3. Fetch RTO/Insurance Rules
     const { data: ruleData } = await supabase
-        .from('registration_rules')
+        .from('cat_reg_rules')
         .select('*')
         .eq('state_code', stateCode)
         .eq('status', 'ACTIVE');
 
     const { data: insuranceRuleData } = await supabase
-        .from('insurance_rules')
+        .from('cat_ins_rules')
         .select('*')
         .eq('status', 'ACTIVE')
         .eq('vehicle_type', 'TWO_WHEELER')
@@ -125,12 +125,13 @@ export default async function Page({ params, searchParams }: Props) {
 
     // Fetch Accessories & Services
     const { data: accessoriesData } = await supabase
-        .from('accessories')
-        .select('*')
+        .from('cat_items')
+        .select('*, template:cat_templates!inner(category)')
+        .eq('template.category', 'ACCESSORY')
         .eq('status', 'ACTIVE');
 
     const { data: servicesData } = await supabase
-        .from('services')
+        .from('cat_services')
         .select('*')
         .eq('status', 'ACTIVE');
 
@@ -154,7 +155,7 @@ export default async function Page({ params, searchParams }: Props) {
     // Current Studio implementation: Variant -> SKUs (each SKU is a Color).
     // Let's fetch child SKUs to get colors.
     const { data: skus } = await supabase
-        .from('catalog_items')
+        .from('cat_items')
         .select('id, name, slug, specs, price_base')
         .eq('parent_id', item.id)
         .eq('type', 'SKU');
@@ -195,7 +196,7 @@ export default async function Page({ params, searchParams }: Props) {
     const product = {
         id: item.id,
         make: item.brand?.name || resolvedParams.make,
-        model: item.parent?.name || '',
+        model: item.parent?.name || resolvedParams.model,
         variant: item.name,
         basePrice: Number(baseExShowroom),
         colors: colors,
@@ -207,12 +208,12 @@ export default async function Page({ params, searchParams }: Props) {
     const accessories = (accessoriesData || []).map((a: any) => ({
         id: a.id,
         name: a.name,
-        description: a.description,
-        price: Number(a.price),
-        discountPrice: Number(a.discount_price),
-        maxQty: a.max_qty,
-        isMandatory: a.is_mandatory,
-        category: a.category
+        description: a.specs?.description || a.name,
+        price: Number(a.price_base),
+        discountPrice: Number(a.price_base), // Assuming discount_price might not exist in cat_items
+        maxQty: 1,
+        isMandatory: false,
+        category: 'OTHERS'
     }));
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

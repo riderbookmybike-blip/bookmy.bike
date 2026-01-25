@@ -40,6 +40,8 @@ interface SidebarHUDProps {
     onShowVideo?: () => void;
     productImage: string;
     downPayment: number;
+    pricingSource?: string;
+    isEstimate?: boolean;
 }
 
 import { checkServiceability } from '@/actions/serviceArea';
@@ -65,6 +67,8 @@ export default function SidebarHUD({
     onShowVideo,
     productImage,
     downPayment,
+    pricingSource,
+    isEstimate,
 }: SidebarHUDProps) {
     const discountPercent = Math.round((savings / totalMRP) * 100);
     const loanAmount = totalOnRoad - downPayment;
@@ -219,6 +223,11 @@ export default function SidebarHUD({
                             <span className="text-xs font-[900] uppercase italic tracking-wider text-slate-900 dark:text-white/40 border-b border-dotted border-slate-300 dark:border-white/10">
                                 Final Price
                             </span>
+                            {pricingSource && (
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                    ({pricingSource})
+                                </span>
+                            )}
                             {/* Smart Serviceability Icon */}
                             <Info size={12} className={infoColorClass} />
 
@@ -239,12 +248,15 @@ export default function SidebarHUD({
                                                         : 'text-red-400 font-black'
                                                 }
                                             >
-                                                {serviceability.isServiceable ? 'Fully Serviceable' : 'Not Available Here'}
+                                                {serviceability.isServiceable ? 'Fully Serviceable' : 'Not Serviceable Area'}
                                             </span>
                                         </div>
                                         <span className="opacity-50 font-medium">
                                             {serviceability.city || serviceability.pincode}
                                         </span>
+                                        {isEstimate && (
+                                            <span className="text-amber-500 font-bold block mt-1">*Estimated Price (Non-Binding)</span>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -332,12 +344,19 @@ export default function SidebarHUD({
             <div className="p-8 bg-slate-50 dark:bg-white/[0.02] border-t border-slate-100 dark:border-white/5 space-y-4">
                 <button
                     onClick={onGetQuote}
-                    className="w-full h-18 py-6 bg-[#F4B000] hover:bg-[#E0A800] text-black rounded-[2rem] text-base font-black uppercase tracking-[0.2em] italic flex items-center justify-center gap-5 shadow-2xl shadow-[#F4B000]/30 active:scale-[0.98] transition-all group"
+                    disabled={serviceability.status === 'SET' && !serviceability.isServiceable}
+                    className={`w-full h-18 py-6 rounded-[2rem] text-base font-black uppercase tracking-[0.2em] italic flex items-center justify-center gap-5 shadow-2xl transition-all group
+                        ${(serviceability.status === 'SET' && !serviceability.isServiceable)
+                            ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed shadow-none'
+                            : 'bg-[#F4B000] hover:bg-[#E0A800] text-black shadow-[#F4B000]/30 active:scale-[0.98]'
+                        }`}
                 >
-                    GET QUOTE
-                    <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-2 transition-transform">
-                        <ChevronRight size={22} />
-                    </div>
+                    {(serviceability.status === 'SET' && !serviceability.isServiceable) ? 'NOT SERVICEABLE' : 'GET QUOTE'}
+                    {!((serviceability.status === 'SET' && !serviceability.isServiceable)) && (
+                        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-2 transition-transform">
+                            <ChevronRight size={22} />
+                        </div>
+                    )}
                 </button>
                 <div className="flex items-center gap-2 justify-center text-[10px] font-bold text-slate-500 uppercase tracking-[0.1em]">
                     <Clock size={12} className="text-brand-primary" />

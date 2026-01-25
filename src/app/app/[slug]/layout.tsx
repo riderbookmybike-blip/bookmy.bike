@@ -2,7 +2,12 @@ import { redirect } from 'next/navigation';
 import ShellLayout from '@/components/layout/ShellLayout';
 import TenantHydrator from '@/components/tenant/TenantHydrator';
 import { createClient } from '@/lib/supabase/server';
-import { TenantType, TenantProvider } from '@/lib/tenant/tenantContext';
+import {
+    TenantType,
+    TenantProvider,
+    TenantConfig,
+    Membership,
+} from '@/lib/tenant/tenantContext';
 import { CelebrationProvider } from '@/components/providers/CelebrationProvider';
 
 interface Tenant {
@@ -10,22 +15,17 @@ interface Tenant {
     name: string;
     slug: string;
     type: string;
-    config: any;
+    config: TenantConfig;
 }
 
-interface Membership {
-    id: string;
-    role: string;
-    status: string;
-    tenant_id: string;
-    user_id: string;
+interface LocalMembership extends Omit<Membership, 'tenants'> {
     tenants?: Tenant;
-    id_tenants?: Tenant | Tenant[];
+    tenant_id: string; // Ensure it's required locally
+    user_id: string;   // Ensure it's required locally
     tenant_name?: string;
     tenant_slug?: string;
     tenant_type?: string;
-    tenant_config?: any;
-    [key: string]: any;
+    tenant_config?: TenantConfig;
 }
 
 export default async function TenantDashboardLayout({
@@ -50,34 +50,36 @@ export default async function TenantDashboardLayout({
         .rpc('get_user_memberships', { p_user_id: user.id });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let memberships = (Array.isArray(rawMemberships) ? rawMemberships : []).map((m: any) => ({
+    const memberships: LocalMembership[] = (Array.isArray(rawMemberships) ? rawMemberships : []).map((m: any) => ({
         ...m,
         tenants: {
             id: m.tenant_id,
             name: m.tenant_name || '',
             slug: m.tenant_slug || '',
             type: m.tenant_type || '',
-            config: m.tenant_config,
+            config: (m.tenant_config as unknown as TenantConfig) || ({} as TenantConfig),
         },
     }));
 
     if (memberships.length === 0) {
         const { data: fallbackMemberships } = await supabase
             .from('id_team')
-            .select('role, status, id_tenants!inner(id, name, slug, type, config)')
+            .select('id, user_id, tenant_id, role, status, id_tenants!inner(id, name, slug, type, config)')
             .eq('user_id', user.id)
             .eq('status', 'ACTIVE');
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        memberships = (fallbackMemberships || []).map((m: any) => ({
-            ...m,
-            tenants: Array.isArray(m.id_tenants) ? m.id_tenants[0] : m.id_tenants,
-        }));
+        const fallback = (fallbackMemberships || []).map((m: any) => {
+            const t = Array.isArray(m.id_tenants) ? m.id_tenants[0] : m.id_tenants;
+            return {
+                ...m,
+                tenants: t as Tenant,
+            };
+        });
+        memberships.push(...fallback);
     }
 
-    // 2. Identify the matching membership for this slug
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let matched = memberships.find((m: any) => {
+    let matched = memberships.find((m: LocalMembership) => {
         const tenantSlug = (m.tenants?.slug || m.tenant_slug || '').toLowerCase();
         const mStatus = (m.status || 'ACTIVE').toUpperCase(); // Default to ACTIVE if field missing
         return tenantSlug === normalizedSlug && mStatus === 'ACTIVE';
@@ -86,8 +88,7 @@ export default async function TenantDashboardLayout({
     // 3. SPECIAL BYPASS: AUMS Admin Access
     if (!matched && normalizedSlug === 'aums') {
         const adminRoles = ['SUPER_ADMIN', 'SUPERADMIN', 'ADMIN', 'MARKETPLACE_ADMIN', 'OWNER'];
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        matched = memberships.find((m: any) => {
+        matched = memberships.find((m: LocalMembership) => {
             const userRole = (m.role || '').toUpperCase();
             const mStatus = (m.status || 'ACTIVE').toUpperCase();
             return adminRoles.includes(userRole) && mStatus === 'ACTIVE';
@@ -110,6 +111,7 @@ export default async function TenantDashboardLayout({
         || user.user_metadata?.name
         || user.email?.split('@')[0]
         || 'User';
+    const tenantConfig = (matched.tenants?.config as unknown as TenantConfig) || null;
     const tenantType = (matched.tenants?.type === 'SUPER_ADMIN' ? 'AUMS' : matched.tenants?.type) as TenantType;
 
     return (
@@ -121,8 +123,9 @@ export default async function TenantDashboardLayout({
                 tenantName={matched.tenants?.name || null}
                 tenantSlug={matched.tenants?.slug || null}
                 tenantType={tenantType}
-                tenantConfig={matched.tenants?.config || null}
-                memberships={memberships}
+                tenantConfig={tenantConfig}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                memberships={memberships as any}
             />
             <CelebrationProvider>
                 <ShellLayout>{children}</ShellLayout>

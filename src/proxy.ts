@@ -146,20 +146,12 @@ export async function proxy(request: NextRequest) {
             .eq('status', 'ACTIVE')
             .maybeSingle();
 
-        console.log('[Proxy Debug] AUMS Check:', {
-            userId: user.id,
-            hasMembership: !!membership,
-            role: membership?.role
-        });
-
         if (!membership || !['SUPER_ADMIN', 'OWNER'].includes(membership.role)) {
-            console.warn('[Proxy Debug] AUMS Access Denied');
             return NextResponse.rewrite(new URL('/403', request.url));
         }
         return response;
     }
 
-    console.log('[Proxy Debug] Dynamic Tenant Check:', { tenantSlug, userId: user.id });
 
     // Dynamic Partner Check
     const { data: tenantMembership } = await supabase
