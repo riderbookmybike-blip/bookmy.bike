@@ -89,7 +89,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         };
     }, []);
 
-    const isHome = pathname === '/';
+    const isHome = pathname === '/' || pathname === '/store';
 
     // For the home page (StoreTV), we follow the global theme
     // We only use fallback if not mounted
@@ -112,8 +112,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const navGapClass = navPreset === 'tight' ? 'gap-8 mr-4' : 'gap-14 mr-6';
     const rightGapClass = navPreset === 'tight' ? 'gap-3 lg:gap-6' : 'gap-4 lg:gap-10';
 
-    // TEST: Always show dark glass header (disable transparent mode)
-    const isHeaderTransparent = false; // was: isHome && !scrolled;
+    const isHeaderTransparent = isHome && !scrolled;
 
     const navLinkClass = !isHeaderTransparent
         ? `${navTextClass} text-white/70 hover:text-white transition-all duration-300`
@@ -125,8 +124,8 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const mobileMenuButtonClass = !isHeaderTransparent
         ? 'text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/5'
         : isLight
-          ? 'text-slate-900 hover:bg-slate-900/5'
-          : 'text-white hover:bg-white/10';
+            ? 'text-slate-900 hover:bg-slate-900/5'
+            : 'text-white hover:bg-white/10';
 
     const handleSignOut = async () => {
         const supabase = createClient();

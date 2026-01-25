@@ -233,13 +233,12 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
         return (
             <button
                 onClick={onLoginClick}
-                className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all group ${
-                    scrolled
-                        ? 'border-slate-900/10 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-white'
-                        : isLight
-                          ? 'border-slate-900/20 text-slate-900/80 hover:text-slate-900 hover:bg-slate-900/5'
-                          : 'border-white/20 text-white/80 hover:text-white hover:bg-white/10'
-                }`}
+                className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all group ${scrolled
+                    ? 'border-slate-900/10 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-white'
+                    : isLight
+                        ? 'border-slate-900/20 text-slate-900/80 hover:text-slate-900 hover:bg-slate-900/5'
+                        : 'border-white/20 text-white/80 hover:text-white hover:bg-white/10'
+                    }`}
                 title="Sign In"
             >
                 <div className="w-7 h-7 bg-transparent rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -309,9 +308,9 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 ref={dropdownRef}
-                className="h-10 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 flex items-center gap-3 border-white/20 text-white bg-black/20 backdrop-blur-md hover:bg-white hover:text-black hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] group"
+                className="h-10 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 flex items-center gap-3 border-white/20 text-white hover:bg-white hover:text-black hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] group"
             >
-                <div className="w-8 h-8 rounded-full overflow-hidden bg-brand-primary flex items-center justify-center text-black font-bold text-xs ring-2 ring-white/20">
+                <div className="w-8 h-8 rounded-full overflow-hidden bg-brand-primary flex items-center justify-center text-black font-bold text-xs ring-2 ring-white/20 group-hover:ring-transparent transition-all">
                     {user.user_metadata?.avatar_url ? (
                         <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full object-cover" />
                     ) : (
@@ -319,7 +318,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                     )}
                 </div>
                 <div className="flex items-center gap-1.5 leading-none">
-                    <span className="text-[11px] font-black uppercase tracking-widest">HI,</span>
+                    <span className="text-[11px] font-black uppercase tracking-widest group-hover:opacity-100 transition-opacity">HI,</span>
                     <span className="text-[11px] font-black uppercase tracking-widest whitespace-nowrap max-w-[150px] truncate">
                         {displayName}
                     </span>
@@ -447,8 +446,8 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                                                             {location.stateCode
                                                                 ? `(${location.stateCode})`
                                                                 : location.state
-                                                                  ? `(${location.state})`
-                                                                  : ''}
+                                                                    ? `(${location.state})`
+                                                                    : ''}
                                                         </div>
                                                     )}
                                                 </div>

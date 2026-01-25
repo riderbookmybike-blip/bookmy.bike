@@ -5,6 +5,7 @@ import { MarketplaceHeader } from '@/components/layout/MarketplaceHeader';
 import { MarketplaceFooter } from '@/components/layout/MarketplaceFooter';
 import LoginSidebar from '@/components/auth/LoginSidebar';
 import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
+import { usePathname } from 'next/navigation';
 
 export default function StoreLayout({
     children,
@@ -12,6 +13,8 @@ export default function StoreLayout({
     children: React.ReactNode;
 }) {
     const [isLoginOpen, setIsLoginOpen] = useState(false);
+    const pathname = usePathname();
+    const isLandingPage = pathname === '/store';
 
     return (
         <FavoritesProvider>
@@ -20,7 +23,7 @@ export default function StoreLayout({
 
                 <main className="flex-1 pt-0">{children}</main>
 
-                <MarketplaceFooter />
+                {!isLandingPage && <MarketplaceFooter />}
 
                 {/* Global Login Sidebar */}
                 <LoginSidebar isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} variant="RETAIL" />
