@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Heart, ArrowRight, Plus } from 'lucide-react';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { useCatalog } from '@/hooks/useCatalog';
-import { ProductCard } from '@/components/store/CatalogDesktop';
+import { ProductCard } from '@/components/store/MasterCatalog';
 
 export const WishlistClient = () => {
     const { favorites, clearFavorites } = useFavorites();

@@ -8,7 +8,7 @@ import { MasterCatalog } from '@/components/store/MasterCatalog';
 const CatalogSkeleton = () => (
     <div className="max-w-[1920px] mx-auto px-6 md:px-12 lg:px-20 pt-24 pb-20 space-y-8 bg-white dark:bg-[#0b0d10] min-h-screen">
         {/* Header Skeleton */}
-        <div className="flex items-center justify-between pb-6 border-b border-slate-200 dark:border-white/10 sticky top-24 z-30 bg-white/80 dark:bg-[#0b0d10]/80 backdrop-blur-xl">
+        <div className="flex items-center justify-between pb-6 border-b border-slate-200 dark:border-white/10 sticky top-[var(--header-h)] z-30 bg-white/80 dark:bg-[#0b0d10]/80 backdrop-blur-xl">
             <div className="space-y-2">
                 <div className="h-3 w-16 bg-slate-200 dark:bg-white/5 rounded-full animate-pulse" />
                 <div className="h-8 w-48 bg-slate-200 dark:bg-white/5 rounded-lg animate-pulse" />
