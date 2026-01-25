@@ -75,7 +75,7 @@ export default function SidebarHUD({
 
     const [serviceability, setServiceability] = React.useState<{
         pincode?: string;
-        city?: string;
+        taluka?: string;
         isServiceable: boolean;
         status: 'CHECKING' | 'SET' | 'UNSET';
     }>({ isServiceable: false, status: 'CHECKING' });
@@ -94,13 +94,13 @@ export default function SidebarHUD({
                     const result = await checkServiceability(data.pincode);
                     setServiceability({
                         pincode: data.pincode,
-                        city: result.location || data.city,
+                        taluka: result.location || data.taluka || data.city,
                         isServiceable: result.isServiceable,
                         status: 'SET'
                     });
                 } else {
                     setServiceability({
-                        city: data.city,
+                        taluka: data.taluka || data.city,
                         isServiceable: false, // Or keep as unset if no pincode
                         status: 'SET'
                     });
@@ -252,7 +252,7 @@ export default function SidebarHUD({
                                             </span>
                                         </div>
                                         <span className="opacity-50 font-medium">
-                                            {serviceability.city || serviceability.pincode}
+                                            {serviceability.taluka || serviceability.pincode}
                                         </span>
                                         {isEstimate && (
                                             <span className="text-amber-500 font-bold block mt-1">*Estimated Price (Non-Binding)</span>

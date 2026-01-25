@@ -151,7 +151,7 @@ export default function SettingsPage() {
                                         type="text"
                                         value={orgData.location}
                                         onChange={e => setOrgData({ ...orgData, location: e.target.value })}
-                                        placeholder="City, State"
+                                        placeholder="Taluka, State"
                                         className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                                     />
                                 </div>
@@ -208,4 +208,4 @@ export default function SettingsPage() {
         </div>
     );
 }
-    const basePath = tenantSlug ? `/app/${tenantSlug}/dashboard` : '/dashboard';
+const basePath = tenantSlug ? `/app/${tenantSlug}/dashboard` : '/dashboard';

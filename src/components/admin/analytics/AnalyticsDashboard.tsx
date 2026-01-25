@@ -118,10 +118,10 @@ export default function AnalyticsDashboard() {
                                             <span className="text-xs text-slate-500 truncate max-w-[200px] bg-slate-100 px-2 py-0.5 rounded">
                                                 {event.page_path}
                                             </span>
-                                            {event.city && event.city !== 'Unknown' && (
+                                            {event.taluka && event.taluka !== 'Unknown' && (
                                                 <span className="flex items-center gap-1 text-xs text-slate-400">
                                                     <MapPin className="w-3 h-3" />
-                                                    {event.city}
+                                                    {event.taluka}
                                                 </span>
                                             )}
                                         </div>
@@ -137,19 +137,19 @@ export default function AnalyticsDashboard() {
                     <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-2xl shadow-sm p-6">
                         <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                             <MapPin className="w-5 h-5 text-slate-400" />
-                            Top Cities
+                            Top Talukas
                         </h3>
                         <div className="space-y-3">
                             {locations.length === 0 ? (
                                 <p className="text-sm text-slate-400">No location data yet.</p>
                             ) : (
                                 locations.map((loc, idx) => (
-                                    <div key={loc.city} className="flex items-center justify-between">
+                                    <div key={loc.taluka} className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
                                             <span className={`text-xs font-mono w-5 h-5 flex items-center justify-center rounded ${idx < 3 ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500'}`}>
                                                 {idx + 1}
                                             </span>
-                                            <span className="text-sm font-medium text-slate-700">{loc.city}</span>
+                                            <span className="text-sm font-medium text-slate-700">{loc.taluka}</span>
                                         </div>
                                         <span className="text-sm font-bold text-slate-900">{loc.count}</span>
                                     </div>

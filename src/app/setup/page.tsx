@@ -215,7 +215,7 @@ export default function SetupWizard() {
                                 />
                             </div>
                             <div>
-                                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">Location / City</label>
+                                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">Location / Taluka</label>
                                 <input
                                     type="text"
                                     value={orgData.location}

@@ -532,7 +532,7 @@ export default function MatrixStep({ family, template, variants, colors, existin
                                         specs: { ...editingSku.specs, related_keywords: e.target.value }
                                     })}
                                     className="bg-transparent font-bold text-sm outline-none w-full border-b border-gray-200 dark:border-gray-700 focus:border-indigo-500"
-                                    placeholder="Comma separated tags e.g. sport, city, budget"
+                                    placeholder="Comma separated tags e.g. sport, taluka, budget"
                                 />
                             </div>
                         </div>

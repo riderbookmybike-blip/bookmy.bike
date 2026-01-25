@@ -24,7 +24,7 @@ export async function checkServiceability(pincode: string) {
         // Query the correct table 'loc_pincodes'
         const { data, error } = await supabase
             .from('loc_pincodes')
-            .select('status, city, area, district, state, rto_code')
+            .select('status, taluka, area, district, state, rto_code')
             .eq('pincode', pincode)
             .single();
 
@@ -45,8 +45,8 @@ export async function checkServiceability(pincode: string) {
             isServiceable = true;
         }
 
-        // 3. Fallback: if City is Mumbai (covers edge cases)
-        if (data.city?.toUpperCase().includes('MUMBAI')) {
+        // 3. Fallback: if Taluka is Mumbai (covers edge cases)
+        if (data.taluka?.toUpperCase().includes('MUMBAI')) {
             isServiceable = true;
         }
 
@@ -54,7 +54,7 @@ export async function checkServiceability(pincode: string) {
 
         return {
             isServiceable,
-            location: data.area || data.city || data.district || 'Unknown',
+            location: data.area || data.taluka || data.district || 'Unknown',
             status: isServiceable ? 'Deliverable' : 'Not Deliverable',
             district: data.district,
             state: data.state,

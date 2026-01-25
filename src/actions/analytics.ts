@@ -16,11 +16,11 @@ export interface RecentEvent {
     event_name?: string;
     created_at: string;
     session_id: string;
-    city?: string;
+    taluka?: string;
 }
 
 export interface LocationStat {
-    city: string;
+    taluka: string;
     count: number;
 }
 
@@ -88,7 +88,7 @@ export async function getRecentEvents(limit = 20): Promise<RecentEvent[]> {
             event_name,
             created_at,
             session_id,
-            analytics_sessions (city)
+            analytics_sessions (taluka)
         `)
         .order('created_at', { ascending: false })
         .limit(limit);
@@ -102,7 +102,7 @@ export async function getRecentEvents(limit = 20): Promise<RecentEvent[]> {
         event_name: item.event_name,
         created_at: item.created_at,
         session_id: item.session_id,
-        city: item.analytics_sessions?.city || 'Unknown'
+        taluka: item.analytics_sessions?.taluka || 'Unknown'
     }));
 }
 
@@ -113,8 +113,8 @@ export async function getLocationStats(): Promise<LocationStat[]> {
 
     const { data } = await adminClient
         .from('analytics_sessions')
-        .select('city')
-        .not('city', 'is', null)
+        .select('taluka')
+        .not('taluka', 'is', null)
         .limit(500) // Analyze last 500 sessions
         .order('created_at', { ascending: false } as any); // created_at might not exist on session, using started_at
     // Actually started_at is the correct field
@@ -124,16 +124,16 @@ export async function getLocationStats(): Promise<LocationStat[]> {
 
     if (!data) return [];
 
-    const cityCounts: Record<string, number> = {};
+    const talukaCounts: Record<string, number> = {};
     data.forEach((row: any) => {
-        const city = row.city;
-        if (city) {
-            cityCounts[city] = (cityCounts[city] || 0) + 1;
+        const taluka = row.taluka;
+        if (taluka) {
+            talukaCounts[taluka] = (talukaCounts[taluka] || 0) + 1;
         }
     });
 
-    return Object.entries(cityCounts)
-        .map(([city, count]) => ({ city, count }))
+    return Object.entries(talukaCounts)
+        .map(([taluka, count]) => ({ taluka, count }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 10); // Top 10 cities
 }

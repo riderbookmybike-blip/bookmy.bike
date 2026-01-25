@@ -32,7 +32,7 @@ interface Member {
     primary_phone: string;
     primary_email: string;
     member_status: string;
-    city: string;
+    taluka: string;
     rto: string;
     district: string;
     updated_at: string;
@@ -575,7 +575,7 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
                                                 </td>
                                                 <td className="px-4 py-2.5">
                                                     <div className="flex flex-col">
-                                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{member.district || member.city || '—'}</span>
+                                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{member.taluka || member.district || '—'}</span>
                                                         <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wide">{member.rto || 'NA'}</span>
                                                     </div>
                                                 </td>

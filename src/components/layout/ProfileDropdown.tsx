@@ -51,7 +51,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
     const [memberships, setMemberships] = useState<Membership[]>([]);
     const [isOpen, setIsOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
-    const [location, setLocation] = useState<{ area: string; city: string; district?: string; state?: string; stateCode?: string } | null>(null);
+    const [location, setLocation] = useState<{ area: string; taluka: string; district?: string; state?: string; stateCode?: string } | null>(null);
     const [uploading, setUploading] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -119,7 +119,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                     const parsed = JSON.parse(stored);
                     setLocation({
                         area: parsed.area,
-                        city: parsed.city,
+                        taluka: parsed.taluka || parsed.city,
                         district: parsed.district,
                         stateCode: parsed.stateCode
                     });
@@ -453,7 +453,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                                                 {location && (
                                                     <div className="inline-flex items-center gap-1 mt-2 px-2 py-1 rounded-full bg-blue-500/10 text-[9px] font-black uppercase tracking-[0.05em] text-blue-600 dark:text-blue-400">
                                                         <MapPin size={10} className="fill-blue-500/20" />
-                                                        {location.district || location.city} {location.stateCode ? `(${location.stateCode})` : location.state ? `(${location.state})` : ''}
+                                                        {location.district || location.taluka} {location.stateCode ? `(${location.stateCode})` : location.state ? `(${location.state})` : ''}
                                                     </div>
                                                 )}
                                             </div>

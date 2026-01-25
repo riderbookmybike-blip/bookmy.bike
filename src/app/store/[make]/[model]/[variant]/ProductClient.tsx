@@ -174,7 +174,7 @@ export default function ProductClient({
                 priceSnapshot={{
                     exShowroom: data.baseExShowroom,
                     onRoad: data.totalOnRoad,
-                    city: initialLocation?.city
+                    taluka: initialLocation?.taluka || initialLocation?.city
                 }}
             />
 

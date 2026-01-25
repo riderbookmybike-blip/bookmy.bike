@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 
 // Mock Tenants
 const MOCK_TENANTS = [
-    { id: 't1', name: 'AutoWorld Bangalore', city: 'Bangalore', role: 'Admin', status: 'Active' },
-    { id: 't2', name: 'BikeZone Mumbai', city: 'Mumbai', role: 'Manager', status: 'Trial' },
-    { id: 't3', name: 'SpeedyMotors Delhi', city: 'Delhi', role: 'Staff', status: 'Suspended' },
+    { id: 't1', name: 'AutoWorld Bangalore', taluka: 'Bangalore', role: 'Admin', status: 'Active' },
+    { id: 't2', name: 'BikeZone Mumbai', taluka: 'Mumbai', role: 'Manager', status: 'Trial' },
+    { id: 't3', name: 'SpeedyMotors Delhi', taluka: 'Delhi', role: 'Staff', status: 'Suspended' },
 ];
 
 export default function SelectTenantPage() {
@@ -60,7 +60,7 @@ export default function SelectTenantPage() {
                                             </div>
                                             <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-slate-400 sm:mt-0">
                                                 <p>
-                                                    {tenant.city}
+                                                    {tenant.taluka}
                                                 </p>
                                             </div>
                                         </div>

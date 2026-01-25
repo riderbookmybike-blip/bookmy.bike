@@ -5,7 +5,7 @@ const LOCATION_CACHE_KEY = 'bkmb_user_pincode';
 
 interface GeocodeResult {
     pincode: string | null;
-    city: string | null;
+    taluka: string | null;
     state?: string | null;
     country?: string | null;
     address?: string | null; // Full Formatted Address
@@ -33,7 +33,7 @@ export async function getSmartPincode(
             try {
                 const data = JSON.parse(cached) as GeocodeResult;
                 // Only return if we have valid data (prevent stuck nulls from previous errors)
-                if (data.city && data.pincode) {
+                if (data.taluka && data.pincode) {
 
                     return data;
                 }
@@ -47,7 +47,7 @@ export async function getSmartPincode(
     // 2. Mock Fallback (if no key provided)
     if (!googleMapsKey) {
         console.warn('No Google Maps Key provided. Using Mock Location.');
-        return { pincode: '400001', city: 'Mumbai', source: 'MOCK' };
+        return { pincode: '400001', taluka: 'Mumbai', source: 'MOCK' };
     }
 
     // 3. Call Google Maps API
@@ -66,8 +66,8 @@ export async function getSmartPincode(
             const formattedAddress = result.formatted_address; // Google's best formatted address
 
             // Extract City/State (Robust fallback)
-            let city = addressComponents.find((c: any) => c.types.includes('locality'))?.long_name;
-            if (!city) city = addressComponents.find((c: any) => c.types.includes('administrative_area_level_2'))?.long_name; // District
+            let taluka = addressComponents.find((c: any) => c.types.includes('locality'))?.long_name;
+            if (!taluka) taluka = addressComponents.find((c: any) => c.types.includes('administrative_area_level_2'))?.long_name; // District
 
             const state = addressComponents.find((c: any) => c.types.includes('administrative_area_level_1'))?.long_name;
             const country = addressComponents.find((c: any) => c.types.includes('country'))?.long_name;
@@ -75,7 +75,7 @@ export async function getSmartPincode(
             if (postalCode) {
                 const locationData: GeocodeResult = {
                     pincode: postalCode,
-                    city: city || null,
+                    taluka: taluka || null,
                     state: state || null,
                     country: country || null,
                     address: formattedAddress || null,
@@ -94,5 +94,5 @@ export async function getSmartPincode(
         console.error('Geocoding API failed', error);
     }
 
-    return { pincode: null, city: null, source: 'ERROR' };
+    return { pincode: null, taluka: null, source: 'ERROR' };
 }

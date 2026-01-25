@@ -7,7 +7,7 @@ import { resolveLocation } from '@/utils/locationResolver';
 interface LocationPickerProps {
     isOpen: boolean;
     onClose: () => void;
-    onLocationSet: (pincode: string, city: string, lat?: number, lng?: number) => void;
+    onLocationSet: (pincode: string, taluka: string, lat?: number, lng?: number) => void;
 }
 
 export function LocationPicker({ isOpen, onClose, onLocationSet }: LocationPickerProps) {
@@ -29,8 +29,8 @@ export function LocationPicker({ isOpen, onClose, onLocationSet }: LocationPicke
         try {
             const resolved = await resolveLocation(pincode);
             if (resolved) {
-                const city = resolved.city || resolved.district || pincode;
-                onLocationSet(pincode, city, resolved.lat, resolved.lng);
+                const taluka = resolved.taluka || resolved.district || pincode;
+                onLocationSet(pincode, taluka, resolved.lat, resolved.lng);
                 onClose();
             } else {
                 setError('Could not resolve pincode. Try another?');
@@ -67,7 +67,7 @@ export function LocationPicker({ isOpen, onClose, onLocationSet }: LocationPicke
                             <span className="text-brand-primary italic">Location</span>
                         </h2>
                         <p className="text-sm font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
-                            See accurate on-road pricing <br />for your specific city.
+                            See accurate on-road pricing <br />for your specific taluka.
                         </p>
                     </div>
 

@@ -162,11 +162,11 @@ export function LeadCaptureModal({ isOpen, onClose, productName, model, variant,
                             </div>
 
                             <div className="space-y-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">City</label>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Taluka</label>
                                 <input
                                     type="text"
-                                    name="city"
-                                    placeholder="Customer's City"
+                                    name="taluka"
+                                    placeholder="Customer's Taluka"
                                     className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-blue-500 outline-none font-bold text-slate-900 dark:text-white transition-all"
                                 />
                             </div>

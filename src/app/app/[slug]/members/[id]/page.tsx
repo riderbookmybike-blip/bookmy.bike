@@ -207,7 +207,7 @@ export default function MemberDetailPage() {
                                                             <div className="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-500"><MapPin size={18} /></div>
                                                             <div>
                                                                 <p className="text-sm font-bold">{addr.line1}</p>
-                                                                <p className="text-xs text-slate-500">{addr.city}, {addr.state} - {addr.pincode}</p>
+                                                                <p className="text-xs text-slate-500">{addr.taluka}, {addr.state} - {addr.pincode}</p>
                                                             </div>
                                                         </div>
                                                     ))}

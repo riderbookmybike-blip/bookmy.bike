@@ -556,7 +556,7 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
                         // Allow silent update of details (District/State)
                         localStorage.setItem('bkmb_user_pincode', JSON.stringify({
                             pincode: data.pincode,
-                            city: result.location || data.city,
+                            taluka: result.location || data.taluka || data.city,
                             district: result.district,
                             state: result.state,
                             stateCode: result.stateCode,
@@ -565,10 +565,10 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
                         // Trigger event for ProfileDropdown to update immediate
                         window.dispatchEvent(new Event('locationChanged'));
                         return;
-                    } else if (data.city) {
+                    } else if (data.taluka || data.city) {
                         setServiceability({
                             status: 'unset',
-                            location: data.city
+                            location: data.taluka || data.city
                         });
                         return;
                     }
@@ -585,13 +585,13 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
                         const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
                         const data = await res.json();
                         const pincode = data.postcode;
-                        const city = data.city || data.locality || data.principalSubdivision;
+                        const taluka = data.city || data.locality || data.principalSubdivision;
 
                         if (pincode) {
                             const result = await checkServiceability(pincode);
 
                             // Construct display location: District ONLY
-                            const displayLoc = result.district || result.location || city || pincode;
+                            const displayLoc = result.district || result.location || taluka || pincode;
 
                             setServiceability({
                                 status: result.isServiceable ? 'serviceable' : 'unserviceable',
@@ -599,22 +599,22 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
                             });
                             localStorage.setItem('bkmb_user_pincode', JSON.stringify({
                                 pincode,
-                                city: result.location || city,
+                                taluka: result.location || taluka,
                                 district: result.district,
                                 state: result.state,
                                 stateCode: result.stateCode,
                                 manuallySet: false
                             }));
-                        } else if (city && data.latitude && data.longitude) {
+                        } else if (taluka && data.latitude && data.longitude) {
                             const dist = calculateDistance(data.latitude, data.longitude, HUB_LOCATION.lat, HUB_LOCATION.lng);
                             setServiceability({
                                 status: (dist <= MAX_SERVICEABLE_DISTANCE_KM) ? 'serviceable' : 'unserviceable',
-                                location: city,
+                                location: taluka,
                                 distance: Math.round(dist)
                             });
                             localStorage.setItem('bkmb_user_pincode', JSON.stringify({
-                                city,
-                                district: city, // Fallback
+                                taluka,
+                                district: taluka, // Fallback
                                 lat: data.latitude,
                                 lng: data.longitude,
                                 manuallySet: false
@@ -633,7 +633,7 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
         checkCurrentServiceability();
     }, []);
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     const [sortBy, setSortBy] = useState<'popular' | 'price' | 'emi'>('popular');
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -1409,11 +1409,11 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
             <LocationPicker
                 isOpen={isLocationPickerOpen}
                 onClose={() => setIsLocationPickerOpen(false)}
-                onLocationSet={async (pincode, city, lat, lng) => {
+                onLocationSet={async (pincode, taluka, lat, lng) => {
                     const result = await checkServiceability(pincode);
 
                     let dist: number | undefined;
-                    let isServiceable = result.isServiceable;
+                    const isServiceable = result.isServiceable;
 
                     if (lat && lng) {
                         dist = calculateDistance(lat, lng, HUB_LOCATION.lat, HUB_LOCATION.lng);
@@ -1423,19 +1423,19 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
 
                     setServiceability({
                         status: isServiceable ? 'serviceable' : 'unserviceable',
-                        location: result.location || city,
+                        location: result.location || taluka,
                         distance: dist ? Math.round(dist) : undefined
                     });
 
                     localStorage.setItem('bkmb_user_pincode', JSON.stringify({
                         pincode,
-                        city: result.location || city,
+                        taluka: result.location || taluka,
                         lat,
                         lng,
                         manuallySet: true
                     }));
 
-                    toast.success(`Prices updated for ${result.location || city}${dist ? ` (${Math.round(dist)}km)` : ''}`);
+                    toast.success(`Prices updated for ${result.location || taluka}${dist ? ` (${Math.round(dist)}km)` : ''}`);
                 }}
             />
         </div >

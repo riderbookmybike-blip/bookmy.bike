@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
         for (let i = 0; i < MAHARASHTRA_PINCODES.length; i += batchSize) {
             const batch = MAHARASHTRA_PINCODES.slice(i, i + batchSize).map(p => ({
                 pincode: p.pincode,
-                city: p.city,
+                taluka: p.taluka,
                 district: p.district,
                 state: p.state,
                 area: p.area,

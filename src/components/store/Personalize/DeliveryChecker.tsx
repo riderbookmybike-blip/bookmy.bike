@@ -7,7 +7,7 @@ import { getPincodeDetails } from '@/actions/pincode';
 export default function DeliveryChecker() {
     const [pincode, setPincode] = useState('');
     const [status, setStatus] = useState<'IDLE' | 'LOADING' | 'VALID' | 'INVALID'>('IDLE');
-    const [city, setCity] = useState('');
+    const [taluka, setTaluka] = useState('');
 
     const checkPincode = async () => {
         if (pincode.length !== 6) return;
@@ -18,13 +18,13 @@ export default function DeliveryChecker() {
             if (result.success && result.data) {
                 const locData = result.data;
                 setStatus('VALID');
-                setCity(locData.city);
+                setTaluka(locData.taluka);
 
                 // Save to localStorage for other components (like ProfileDropdown)
                 const storageData = {
                     pincode: locData.pincode,
                     area: locData.area,
-                    city: locData.city,
+                    taluka: locData.taluka,
                     state: locData.state,
                     stateCode: locData.state_code || '' // Ensure state_code is handled if available
                 };
@@ -34,7 +34,7 @@ export default function DeliveryChecker() {
                 window.dispatchEvent(new Event('locationChanged'));
             } else {
                 setStatus('INVALID');
-                setCity('');
+                setTaluka('');
             }
         } catch (error) {
             console.error('Error checking pincode:', error);
@@ -70,7 +70,7 @@ export default function DeliveryChecker() {
                     {status === 'LOADING' && <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />}
                     {status === 'VALID' && (
                         <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-500 uppercase tracking-wider">
-                            <CheckCircle size={12} /> {city}
+                            <CheckCircle size={12} /> {taluka}
                         </span>
                     )}
                     {status === 'INVALID' && (
