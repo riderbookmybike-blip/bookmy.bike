@@ -125,8 +125,8 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const mobileMenuButtonClass = !isHeaderTransparent
         ? 'text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/5'
         : isLight
-            ? 'text-slate-900 hover:bg-slate-900/5'
-            : 'text-white hover:bg-white/10';
+          ? 'text-slate-900 hover:bg-slate-900/5'
+          : 'text-white hover:bg-white/10';
 
     const handleSignOut = async () => {
         const supabase = createClient();
@@ -143,7 +143,6 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         window.location.reload();
     };
 
-
     return (
         <AppHeaderShell
             scrolled={scrolled}
@@ -152,9 +151,9 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
             variant="marketplace"
             className={!isHeaderTransparent ? 'header-glass' : ''}
             left={
-                <Link href="/" className="flex items-center group">
-                    <div className="h-8 md:h-10 lg:h-12 transition-all duration-300">
-                        <Logo mode="auto" size={40} variant="full" />
+                <Link href="/" className="flex items-center group h-full">
+                    <div className="flex items-center justify-center transition-all duration-300">
+                        <Logo mode="dark" size={40} variant="full" />
                     </div>
                 </Link>
             }
@@ -198,23 +197,13 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                     <div className="hidden md:flex items-center gap-3">
                         <Link
                             href="/"
-                            className={`w-10 h-10 rounded-full border transition-all group flex items-center justify-center ${isHeaderTransparent
-                                ? (isLight
-                                    ? 'border-slate-900/10 bg-slate-900/5 text-slate-900/80 hover:text-slate-900 hover:bg-slate-900/10'
-                                    : 'border-white/20 text-white/80 hover:text-white hover:bg-white/10')
-                                : 'border-white/10 bg-white/5 text-white/70 hover:text-white hover:bg-white/10 shadow-sm'
-                                }`}
+                            className="w-10 h-10 rounded-full border transition-all duration-300 group flex items-center justify-center border-white/20 text-white hover:bg-white hover:text-black hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]"
                         >
                             <HomeIcon size={18} />
                         </Link>
                         <Link
                             href="/store/catalog"
-                            className={`w-10 h-10 rounded-full border transition-all group flex items-center justify-center ${isHeaderTransparent
-                                ? (isLight
-                                    ? 'border-slate-900/10 bg-slate-900/5 text-slate-900/80 hover:text-slate-900 hover:bg-slate-900/10'
-                                    : 'border-white/20 text-white/80 hover:text-white hover:bg-white/10')
-                                : 'border-white/10 bg-white/5 text-white/70 hover:text-white hover:bg-white/10 shadow-sm'
-                                }`}
+                            className="w-10 h-10 rounded-full border transition-all duration-300 group flex items-center justify-center border-white/20 text-white hover:bg-white hover:text-black hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]"
                         >
                             <MotorcycleIcon size={20} />
                         </Link>
@@ -225,12 +214,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                         >
                             <Link
                                 href="/wishlist"
-                                className={`w-10 h-10 rounded-full border transition-all group relative flex items-center justify-center ${isHeaderTransparent
-                                    ? (isLight
-                                        ? 'border-slate-900/10 bg-slate-900/5 text-slate-900/80 hover:text-slate-900 hover:bg-slate-900/10'
-                                        : 'border-white/20 text-white/80 hover:text-white hover:bg-white/10')
-                                    : 'border-white/10 bg-white/5 text-white/70 hover:text-white hover:bg-white/10 shadow-sm'
-                                    }`}
+                                className="w-10 h-10 rounded-full border transition-all duration-300 group relative flex items-center justify-center border-white/20 text-white hover:bg-white hover:text-black hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]"
                             >
                                 <Heart size={18} />
                                 {favorites.length > 0 && (
@@ -249,8 +233,12 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                                         className="absolute top-full right-0 mt-4 w-72 bg-white dark:bg-[#0f1115] rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-slate-200 dark:border-white/10 p-4 z-50 py-6"
                                     >
                                         <div className="px-4 mb-4 flex justify-between items-center">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">My Wishlist</span>
-                                            <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 rounded-full">{favorites.length} Items</span>
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                My Wishlist
+                                            </span>
+                                            <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 rounded-full">
+                                                {favorites.length} Items
+                                            </span>
                                         </div>
                                         <div className="space-y-2 max-h-80 overflow-y-auto px-1 custom-scrollbar">
                                             {favorites.slice(0, 3).map((v, idx) => {
@@ -262,15 +250,23 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                                                             className="flex items-center gap-4 p-3 hover:bg-slate-50 dark:hover:bg-white/5 rounded-2xl transition-all group/item pr-10"
                                                         >
                                                             <div className="w-16 h-12 bg-slate-100 dark:bg-white/5 rounded-xl flex items-center justify-center p-2 overflow-hidden flex-shrink-0">
-                                                                <img src={v.imageUrl} alt={v.model} className="w-full h-full object-contain group-hover/item:scale-110 transition-transform" />
+                                                                <img
+                                                                    src={v.imageUrl}
+                                                                    alt={v.model}
+                                                                    className="w-full h-full object-contain group-hover/item:scale-110 transition-transform"
+                                                                />
                                                             </div>
                                                             <div className="min-w-0">
-                                                                <p className="text-[10px] font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">{v.model}</p>
-                                                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">{v.variant}</p>
+                                                                <p className="text-[10px] font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">
+                                                                    {v.model}
+                                                                </p>
+                                                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">
+                                                                    {v.variant}
+                                                                </p>
                                                             </div>
                                                         </Link>
                                                         <button
-                                                            onClick={(e) => {
+                                                            onClick={e => {
                                                                 e.preventDefault();
                                                                 e.stopPropagation();
                                                                 removeFavorite(v.id);
@@ -290,7 +286,10 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                                                 className="w-full h-12 bg-slate-900 dark:bg-white text-white dark:text-black rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center hover:bg-black dark:hover:bg-white/90 transition-all hover:gap-2 group"
                                             >
                                                 View All Items
-                                                <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+                                                <ArrowRight
+                                                    size={14}
+                                                    className="opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all"
+                                                />
                                             </Link>
                                         </div>
                                     </motion.div>
@@ -302,7 +301,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
 
                     <button
                         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                        className={`p-2 rounded-xl transition-all lg:hidden ${mobileMenuButtonClass}`}
+                        className={`w-10 h-10 rounded-xl transition-all lg:hidden flex items-center justify-center ${mobileMenuButtonClass}`}
                     >
                         {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
                     </button>
