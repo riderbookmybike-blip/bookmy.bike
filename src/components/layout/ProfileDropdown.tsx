@@ -302,7 +302,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
             <button
                 onClick={() => setIsOpen(true)}
                 className={`flex items-center gap-2 md:gap-3 p-2 md:pl-3 md:pr-2 md:py-1.5 rounded-full border transition-all group ${scrolled
-                    ? 'border-slate-200/40 bg-slate-100/40 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 shadow-sm'
+                    ? 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10 shadow-sm'
                     : (isLight
                         ? 'border-slate-900/20 text-slate-900/80 hover:text-slate-900 hover:bg-slate-900/5'
                         : 'border-white/20 hover:bg-white/10 text-white/90')
@@ -328,13 +328,13 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                 </div>
                 <span
                     suppressHydrationWarning
-                    className={`text-[11px] font-black uppercase tracking-[0.18em] transition-colors ${scrolled ? 'text-slate-900 dark:text-white' : (isLight ? 'text-slate-900' : 'text-white')
+                    className={`text-[11px] font-black uppercase tracking-[0.18em] transition-colors ${scrolled ? 'text-white' : (isLight ? 'text-slate-900' : 'text-white')
                         }`}
                 >
                     Hi, {displayName}
                 </span>
                 <div
-                    className={`transition-all duration-300 ${isOpen ? 'rotate-180 text-blue-500' : (scrolled ? 'text-slate-400 dark:text-slate-500' : 'text-white/70')}`}
+                    className={`transition-all duration-300 ${isOpen ? 'rotate-180 text-brand-primary' : (scrolled ? 'text-white/50' : 'text-white/70')}`}
                 >
                     <ChevronDown size={14} />
                 </div>

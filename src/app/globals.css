@@ -334,22 +334,12 @@ body {
    ============================================= */
 /* Premium Layout Variables - Aligned with Approved Implementation Plan */
 :root {
-  --header-h: 64px;
-  --hero-offset: 16px;
-
-  @media (min-width: 768px) {
-    --header-h: 72px;
-    --hero-offset: 24px;
-  }
+  --header-h: 72px;
+  --hero-offset: 20px;
 
   @media (min-width: 1024px) {
-    --header-h: 80px;
-    --hero-offset: 28px;
-  }
-
-  @media (min-width: 1440px) {
-    --header-h: 84px;
-    --hero-offset: 28px;
+    --header-h: 96px;
+    --hero-offset: 32px;
   }
 }
 
