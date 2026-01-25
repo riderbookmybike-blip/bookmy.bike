@@ -112,7 +112,8 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const navGapClass = navPreset === 'tight' ? 'gap-8 mr-4' : 'gap-14 mr-6';
     const rightGapClass = navPreset === 'tight' ? 'gap-3 lg:gap-6' : 'gap-4 lg:gap-10';
 
-    const isHeaderTransparent = isHome && !scrolled;
+    // TEST: Always show dark glass header (disable transparent mode)
+    const isHeaderTransparent = false; // was: isHome && !scrolled;
 
     const navLinkClass = !isHeaderTransparent
         ? `${navTextClass} text-white/70 hover:text-white transition-all duration-300`
@@ -310,7 +311,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         >
             {/* Mobile Menu Overlay */}
             {isMobileMenuOpen && (
-                <div className="md:hidden bg-white dark:bg-[#0f1115] border-t border-slate-200 dark:border-white/5 p-6 space-y-8 animate-in slide-in-from-top-4 duration-300 shadow-2xl h-screen fixed inset-0 top-20 z-40 overflow-y-auto">
+                <div className="md:hidden bg-white dark:bg-[#0f1115] border-t border-slate-200 dark:border-white/5 p-6 space-y-8 animate-in slide-in-from-top-4 duration-300 shadow-2xl h-screen fixed inset-0 top-[var(--header-h)] z-40 overflow-y-auto">
                     <nav className="flex flex-col gap-6">
                         <Link
                             href="/"

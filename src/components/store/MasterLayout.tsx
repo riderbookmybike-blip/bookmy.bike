@@ -2,9 +2,11 @@
 
 import React from 'react';
 import Link from 'next/link';
+
 import Image from 'next/image';
 import { ArrowRight, Search, Zap, MapPin } from 'lucide-react';
 import { CATEGORIES, MARKET_METRICS, BRANDS } from '@/config/market';
+import { useState } from 'react';
 import { useCatalog } from '@/hooks/useCatalog';
 import { RiderPulse } from '@/components/store/RiderPulse';
 
@@ -17,89 +19,100 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
     const totalSkus = skuCount || items.length || 500; // Fallback to 500 if loading or empty
     const isTv = false; // TV logic moved to dedicated StoreTV component
 
+
+
+    // Hero Template: Night City (Chosen by User)
+    const heroImage = '/images/templates/t3_night.png';
+
     return (
         <div className="flex flex-col pb-0 transition-colors duration-300">
             {/* Premium Photography Hero Section */}
             <section
                 className={`relative flex flex-col justify-end overflow-hidden bg-white dark:bg-[#0b0d10] isolate transition-colors duration-500 ${isTv ? 'pt-16 pb-10' : 'pt-20 pb-12'}`}
             >
-                <div className="absolute inset-0 z-0 opacity-40 dark:opacity-50">
-                    <Image
-                        src="/images/hero/lifestyle_1.png"
-                        alt="Premium Superbike Lifestyle"
-                        fill
-                        className="object-cover"
-                        priority
+                <div className="absolute inset-0 z-0 pointer-events-none bg-slate-50 dark:bg-[#0B0D10] transition-all duration-700">
+                    <img
+                        src={heroImage}
+                        alt="BookMyBike Hero"
+                        className="w-full h-full object-cover object-center opacity-100 dark:opacity-40 animate-in fade-in duration-700"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-b from-white via-white/40 to-white dark:from-[#0b0d10] dark:via-[#0b0d10]/40 dark:to-[#0b0d10]" />
+                    <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/20 to-white/90 dark:from-[#0B0D10]/90 dark:via-[#0B0D10]/40 dark:to-[#0B0D10] mix-blend-normal transition-all duration-700" />
+                    {/* Extra contrast layer for text readability */}
+                    <div className="absolute inset-0 bg-black/10 dark:bg-black/40 pointer-events-none" />
                 </div>
 
                 <div className="mx-auto relative z-10 w-full text-center max-w-[1600px] px-6 md:px-12 lg:px-20 pt-12 pb-10">
                     <div className="space-y-6">
                         <div className="space-y-5">
-                            <div className="inline-flex items-center gap-3 px-6 py-3 bg-brand-primary/5 dark:bg-brand-primary/10 border border-brand-primary/10 dark:border-brand-primary/20 text-brand-primary dark:text-brand-primary rounded-full text-[11px] font-black uppercase tracking-[0.3em] backdrop-blur-md shadow-sm mb-6">
-                                <span className="flex h-2 w-2 rounded-full bg-brand-primary animate-ping" />
-                                India’s Lowest EMI Guarantee
+                            {/* Confidence Chip Badge - Subtle Fill, No Outline */}
+                            <div className="inline-flex items-center gap-2 px-5 py-2.5 text-emerald-300 rounded-full text-[10px] font-black uppercase tracking-[0.25em] mb-8 bg-emerald-950/30 backdrop-blur-md shadow-sm border border-emerald-500/20 shadow-emerald-900/20">
+                                India&apos;s Lowest EMI Guarantee
                             </div>
 
-                            <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-8xl xl:text-8xl pb-4 font-black italic uppercase tracking-tight md:tracking-tighter lg:tracking-[-0.04em] leading-none xl:leading-[0.9] 2xl:leading-tight">
-                                <span className="text-slate-900 dark:text-white transition-colors">Your Next</span>{' '}
-                                <br />
-                                <span className="text-[#F4B000] drop-shadow-md transition-all">Legend Awaits.</span>
+                            <h1 className="pb-8 font-black uppercase tracking-tighter leading-[0.9] text-center">
+                                {/* Top: "Redefining" - Medium Strong */}
+                                <span className="block text-3xl sm:text-4xl md:text-5xl text-slate-300 font-extrabold tracking-[0.15em] mb-2 drop-shadow-lg">
+                                    Redefining
+                                </span>
+
+                                {/* Middle: "How India Buys" - Large */}
+                                <span className="block text-5xl sm:text-6xl md:text-7xl text-white mb-2 drop-shadow-xl">
+                                    How India Buys
+                                </span>
+
+                                {/* Bottom: "Motorcycles" - Massive/Explosive */}
+                                <span className="block text-6xl sm:text-7xl md:text-8xl lg:text-[7rem] xl:text-[8rem] text-[#F4B000] drop-shadow-xl scale-y-110 origin-bottom">
+                                    Motorcycles
+                                </span>
                             </h1>
 
-                            <p className="max-w-[60ch] mx-auto font-medium text-slate-700 dark:text-zinc-300 leading-relaxed tracking-wide drop-shadow-sm text-lg sm:text-xl">
-                                Unified prices from verified dealers. Instant quotes. Lowest EMI guarantee.
-                            </p>
+                            <div className="max-w-4xl mx-auto flex flex-col md:flex-row justify-center items-center gap-2 md:gap-8 text-slate-200 text-lg sm:text-xl font-medium tracking-wide drop-shadow-md uppercase whitespace-nowrap">
+                                <span>Transparent prices.</span>
+                                <span>Verified dealers.</span>
+                                <span>Lowest EMI guarantee.</span>
+                            </div>
                         </div>
 
                         {/* Search + Drive Cluster */}
-                        <div className="w-full max-w-2xl mx-auto relative z-50 space-y-6">
+                        <div className="w-full max-w-2xl mx-auto relative z-50 space-y-6 mt-2">
                             <div className="flex flex-col items-center gap-4">
                                 <Link
                                     href="/store/catalog"
-                                    className="h-20 px-12 min-w-[280px] sm:min-w-[320px] bg-slate-900 dark:bg-white text-white dark:text-black rounded-full flex items-center justify-center gap-4 hover:bg-brand-primary dark:hover:bg-brand-primary hover:text-black dark:hover:text-black transition-all shadow-[0_20px_40px_rgba(244,176,0,0.25)] hover:shadow-[0_24px_60px_rgba(244,176,0,0.35)] group/btn overflow-hidden relative"
+                                    className="h-14 w-full max-w-xl px-10 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full flex items-center justify-center gap-3 hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
                                 >
-                                    <div className="relative z-10 flex items-center gap-3">
-                                        <Search size={22} className="opacity-80 relative -top-[1px]" />
-                                        <span className="text-lg font-black uppercase tracking-[0.15em] leading-none">
-                                            Search Bikes & Scooters
-                                        </span>
-                                    </div>
-                                    <div className="absolute inset-0 bg-brand-primary translate-y-full group-hover/btn:translate-y-0 transition-transform duration-500" />
+                                    <Search size={18} />
+                                    <span className="text-sm font-bold uppercase tracking-[0.15em]">
+                                        Search Motorcycle
+                                    </span>
                                 </Link>
                             </div>
                         </div>
 
-                        {/* Metrics Section */}
-                        <div className="w-full max-w-5xl mx-auto grid grid-cols-3 gap-4 md:gap-0 border-t border-slate-200/50 dark:border-white/5 transition-colors py-3 mt-3">
+                        {/* Metrics Section - Enhanced Visibility */}
+                        <div className="w-full max-w-5xl mx-auto grid grid-cols-3 gap-4 md:gap-0 border-t border-white/10 transition-colors py-6 mt-6 bg-black/40 backdrop-blur-md rounded-full">
                             <div className="text-center group cursor-default space-y-1">
-                                <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-[0.2em]">
-                                    {'>'} SKU
+                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] mb-1">
+                                    Models
                                 </p>
-                                <p className="text-4xl md:text-5xl font-black italic text-slate-900 dark:text-white tracking-tighter">
+                                <p className="text-3xl md:text-4xl font-black text-white tracking-tight drop-shadow-sm">
                                     {totalSkus}+
                                 </p>
                             </div>
                             <div className="text-center group cursor-default space-y-1 relative">
-                                <div className="hidden md:block absolute left-0 top-1/2 -translate-y-1/2 w-px h-8 bg-slate-200/70 dark:bg-white/10" />
-                                <div className="hidden md:block absolute right-0 top-1/2 -translate-y-1/2 w-px h-8 bg-slate-200/70 dark:bg-white/10" />
-                                <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-[0.2em]">
-                                    Avg savings vs market quote
+                                <div className="hidden md:block absolute left-0 top-1/2 -translate-y-1/2 w-px h-8 bg-white/10" />
+                                <div className="hidden md:block absolute right-0 top-1/2 -translate-y-1/2 w-px h-8 bg-white/10" />
+                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] mb-1">
+                                    Avg Savings
                                 </p>
-                                <p
-                                    className={`${isTv ? 'text-3xl md:text-4xl' : 'text-4xl md:text-5xl'} font-black italic text-slate-900 dark:text-white tracking-tighter`}
-                                >
+                                <p className="text-3xl md:text-4xl font-black text-white tracking-tight drop-shadow-sm">
                                     {MARKET_METRICS.avgSavings}
                                 </p>
                             </div>
                             <div className="text-center group cursor-default space-y-1">
-                                <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-[0.2em]">
-                                    Fast delivery options available
+                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] mb-1">
+                                    Delivery
                                 </p>
-                                <p
-                                    className={`${isTv ? 'text-3xl md:text-4xl' : 'text-4xl md:text-5xl'} font-black italic text-slate-900 dark:text-white tracking-tighter underline decoration-brand-primary decoration-4 underline-offset-4`}
-                                >
+                                <p className="text-3xl md:text-4xl font-black text-white tracking-tight underline cursor-pointer decoration-brand-primary/50 hover:decoration-brand-primary decoration-4 underline-offset-4 transition-all drop-shadow-sm">
                                     {MARKET_METRICS.deliveryTime}
                                 </p>
                             </div>
@@ -108,7 +121,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                 </div>
             </section>
 
-            {/* Brand Directory */}
+
             <section className="py-12 md:py-16 lg:py-20 bg-white dark:bg-[#0b0d10] transition-colors relative overflow-hidden">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-200 dark:via-white/10 to-transparent" />
 

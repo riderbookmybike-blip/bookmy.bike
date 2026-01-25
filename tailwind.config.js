@@ -8,7 +8,10 @@ module.exports = {
         extend: {
             // [AUMS] Inject Design Tokens
             colors: {
-                ...require('./src/config/design-tokens').colors,
+                ...require('./src/config/design-tokens').colors, // eslint-disable-line @typescript-eslint/no-require-imports
+            },
+            fontFamily: {
+                'bruno-ace': ['var(--font-bruno-ace)'],
             },
             screens: {
                 'h-sm': { 'raw': '(max-height: 820px)' },

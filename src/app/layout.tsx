@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter, JetBrains_Mono } from 'next/font/google';
+import { Inter, JetBrains_Mono, Bruno_Ace_SC } from 'next/font/google';
 import './globals.css';
 
 const inter = Inter({
@@ -11,6 +11,15 @@ const jetbrainsMono = JetBrains_Mono({
     variable: '--font-jetbrains-mono',
     subsets: ['latin'],
 });
+
+const brunoAce = Bruno_Ace_SC({
+    weight: '400',
+    variable: '--font-bruno-ace',
+    subsets: ['latin'],
+    display: 'swap',
+});
+
+
 
 import { headers } from 'next/headers';
 
@@ -48,7 +57,7 @@ export default function RootLayout({
         <html lang="en" suppressHydrationWarning>
             <body
                 suppressHydrationWarning
-                className={`${inter.variable} ${jetbrainsMono.variable} antialiased font-sans bg-[var(--background)] text-[var(--foreground)]`}
+                className={`${inter.variable} ${jetbrainsMono.variable} ${brunoAce.variable} antialiased font-sans bg-[var(--background)] text-[var(--foreground)]`}
             >
                 <AnalyticsScripts />
                 <ThemeProvider>

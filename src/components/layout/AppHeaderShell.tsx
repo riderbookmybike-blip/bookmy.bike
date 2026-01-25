@@ -34,9 +34,10 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
 
     // Variant-based background and border styles
     const getBgClass = () => {
-        if (transparentAtTop && !scrolled) {
-            return 'bg-transparent border-b border-transparent';
-        }
+        // TEST: Always show dark glass (disable transparent mode)
+        // if (transparentAtTop && !scrolled) {
+        //     return 'bg-transparent border-b border-transparent';
+        // }
 
         if (variant === 'dashboard') {
             // Dashboard: Clean, solid, professional
@@ -44,7 +45,7 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
         }
 
         // Marketplace: Premium Dark Glass (Smoked Glass) - Worked for both themes
-        return 'bg-black/40 dark:bg-black/60 backdrop-blur-3xl backdrop-saturate-[1.8] border-b border-white/10 shadow-lg dark:shadow-2xl transition-all duration-500';
+        return 'bg-black/50 dark:bg-black/70 backdrop-blur-3xl backdrop-saturate-[1.8] border-b border-white/10 shadow-lg dark:shadow-2xl transition-all duration-500';
     };
 
     const bgClass = getBgClass();

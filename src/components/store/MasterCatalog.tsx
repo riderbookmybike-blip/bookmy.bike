@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { checkServiceability } from '@/actions/serviceArea';
 import Link from 'next/link';
 import { buildProductUrl } from '@/lib/utils/urlHelper';
+
 import { BRANDS as defaultBrands } from '@/config/market';
 import type { useCatalogFilters } from '@/hooks/useCatalogFilters';
 import { getStableReviewCount } from '@/utils/vehicleUtils';
@@ -633,7 +634,7 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
         checkCurrentServiceability();
     }, []);
 
-     
+
     const [sortBy, setSortBy] = useState<'popular' | 'price' | 'emi'>('popular');
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -791,10 +792,10 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-[#0b0d10] transition-colors duration-500 font-sans">
             {/* Main Content Area - Visual Rest (No Container Box) */}
-            <main className="flex-1 mx-auto w-full max-w-[1600px] px-6 md:px-12 lg:px-20 pt-8 md:pt-12 lg:pt-16 pb-10 md:pb-16">
+            <main className="flex-1 mx-auto w-full max-w-[1600px] px-6 md:px-12 lg:px-20 pt-4 md:pt-6 lg:pt-8 pb-10 md:pb-16">
                 {/* Header Section - Aligned with Global Header */}
                 {/* Sticky Utility Bar */}
-                <header className="sticky top-20 z-40 -mx-6 px-6 md:-mx-12 md:px-12 lg:-mx-20 lg:px-20 py-4 backdrop-blur-xl bg-slate-50/80 dark:bg-[#0b0d10]/80 border-b border-slate-200 dark:border-white/5 mb-8 transition-all duration-300">
+                <header className="sticky top-[var(--header-h)] z-40 -mx-6 px-6 md:-mx-12 md:px-12 lg:-mx-20 lg:px-20 py-4 backdrop-blur-xl bg-slate-50/80 dark:bg-[#0b0d10]/80 border-b border-slate-200 dark:border-white/5 mb-8 transition-all duration-300">
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         {/* Left: Category Chips */}
                         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar mask-gradient-right">
@@ -869,7 +870,7 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
                 >
                     {/* Sidebar Filter - Left Column (Only List View) */}
                     {viewMode === 'list' && (
-                        <aside className="hidden xl:block w-80 flex-shrink-0 space-y-6 sticky top-24 self-start pt-2 transition-all animate-in fade-in slide-in-from-left-4">
+                        <aside className="hidden xl:block w-80 flex-shrink-0 space-y-6 sticky top-[calc(var(--header-h)+24px)] self-start pt-2 transition-all animate-in fade-in slide-in-from-left-4">
                             <div className="flex flex-col gap-8 p-6 bg-white/60 dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/5 rounded-[3rem] backdrop-blur-3xl shadow-2xl">
                                 {/* EMI Calculator Accordion */}
                                 <div className="space-y-4">
