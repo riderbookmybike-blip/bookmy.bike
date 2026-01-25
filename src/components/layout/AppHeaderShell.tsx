@@ -34,17 +34,17 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
 
     // Variant-based background and border styles
     const getBgClass = () => {
-        // TEST: Always show dark glass (disable transparent mode)
-        // if (transparentAtTop && !scrolled) {
-        //     return 'bg-transparent border-b border-transparent';
-        // }
+        // Premium behavior: Transparent at top, Glass when scrolled
+        if (transparentAtTop && !scrolled) {
+            return 'bg-transparent border-b border-transparent';
+        }
 
         if (variant === 'dashboard') {
             // Dashboard: Clean, solid, professional
             return 'bg-white dark:bg-[#0B0D10] border-b border-slate-200/60 dark:border-white/5 shadow-sm dark:shadow-none transition-all duration-300';
         }
 
-        // Marketplace: Premium Dark Glass (Smoked Glass) - Worked for both themes
+        // Marketplace: Premium Dark Glass (Smoked Glass) - When scrolled
         return 'bg-black/50 dark:bg-black/70 backdrop-blur-3xl backdrop-saturate-[1.8] border-b border-white/10 shadow-lg dark:shadow-2xl transition-all duration-500';
     };
 
@@ -62,7 +62,9 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
                 }
             />
             <header
-                className={`sticky top-0 z-50 w-full flex items-center transition-all duration-500 header ${bgClass} ${className}`}
+                className={`${
+                    transparentAtTop && !scrolled ? 'fixed top-0 left-0 right-0' : 'sticky top-0'
+                } z-50 w-full flex items-center transition-all duration-500 header ${bgClass} ${className}`}
                 style={{ height: 'var(--header-h)' }}
                 onMouseEnter={() =>
                     typeof window !== 'undefined' && window.dispatchEvent(new CustomEvent('showHeader'))

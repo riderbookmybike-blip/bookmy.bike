@@ -19,8 +19,6 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
     const totalSkus = skuCount || items.length || 500; // Fallback to 500 if loading or empty
     const isTv = false; // TV logic moved to dedicated StoreTV component
 
-
-
     // Hero Template: Night City (Chosen by User)
     const heroImage = '/images/templates/t3_night.png';
 
@@ -28,99 +26,120 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
         <div className="flex flex-col pb-0 transition-colors duration-300">
             {/* Premium Photography Hero Section */}
             <section
-                className={`relative flex flex-col justify-end overflow-hidden bg-white dark:bg-[#0b0d10] isolate transition-colors duration-500 ${isTv ? 'pt-16 pb-10' : 'pt-20 pb-12'}`}
+                className={`relative flex flex-col justify-center min-h-screen overflow-hidden bg-white dark:bg-[#0b0d10] isolate transition-colors duration-500 ${isTv ? 'pt-16 pb-10' : 'pt-20 pb-12'}`}
             >
-                <div className="absolute inset-0 z-0 pointer-events-none bg-slate-50 dark:bg-[#0B0D10] transition-all duration-700">
+                <div className="absolute inset-0 z-0 pointer-events-none bg-slate-950 transition-all duration-700">
                     <img
                         src={heroImage}
                         alt="BookMyBike Hero"
-                        className="w-full h-full object-cover object-center opacity-100 dark:opacity-40 animate-in fade-in duration-700"
+                        className="w-full h-full object-cover object-center opacity-90 dark:opacity-60 animate-in fade-in duration-700"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/20 to-white/90 dark:from-[#0B0D10]/90 dark:via-[#0B0D10]/40 dark:to-[#0B0D10] mix-blend-normal transition-all duration-700" />
-                    {/* Extra contrast layer for text readability */}
-                    <div className="absolute inset-0 bg-black/10 dark:bg-black/40 pointer-events-none" />
+                    {/* Deep Cinematic Vignette */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-90" />
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/80 mix-blend-multiply" />
                 </div>
 
-                <div className="mx-auto relative z-10 w-full text-center max-w-[1600px] px-6 md:px-12 lg:px-20 pt-12 pb-10">
-                    <div className="space-y-6">
-                        <div className="space-y-5">
-                            {/* Confidence Chip Badge - Subtle Fill, No Outline */}
-                            <div className="inline-flex items-center gap-2 px-5 py-2.5 text-emerald-300 rounded-full text-[10px] font-black uppercase tracking-[0.25em] mb-8 bg-emerald-950/30 backdrop-blur-md shadow-sm border border-emerald-500/20 shadow-emerald-900/20">
-                                India&apos;s Lowest EMI Guarantee
-                            </div>
+                <div className="relative z-10 w-full h-full flex flex-col justify-between min-h-screen pt-32 pb-20 max-w-[1600px] mx-auto px-6 md:px-12 lg:px-20">
+                    {/* 1. Top Section: Title & Content (Breathing Space) */}
+                    <div className="flex flex-col justify-center items-center w-full text-center">
+                        <style jsx>{`
+                            @keyframes shimmer {
+                                0% {
+                                    transform: translateX(-150%) skewX(-12deg);
+                                }
+                                20% {
+                                    transform: translateX(250%) skewX(-12deg);
+                                }
+                                100% {
+                                    transform: translateX(250%) skewX(-12deg);
+                                }
+                            }
+                        `}</style>
 
-                            <h1 className="pb-8 font-black uppercase tracking-tighter leading-[0.9] text-center">
-                                {/* Top: "Redefining" - Medium Strong */}
-                                <span className="block text-3xl sm:text-4xl md:text-5xl text-slate-300 font-extrabold tracking-[0.15em] mb-2 drop-shadow-lg">
-                                    Redefining
-                                </span>
+                        {/* Confidence Chip Badge - Premium Black Fill */}
+                        <div className="relative inline-flex items-center gap-2 px-6 py-3 bg-black/80 backdrop-blur-md text-white rounded-full text-[12px] font-black uppercase tracking-[0.25em] mb-10 shadow-2xl shadow-black/50 overflow-hidden group border border-white/10">
+                            <span className="relative z-10">India&apos;s Lowest EMI Guarantee</span>
 
-                                {/* Middle: "How India Buys" - Large */}
-                                <span className="block text-5xl sm:text-6xl md:text-7xl text-white mb-2 drop-shadow-xl">
-                                    How India Buys
-                                </span>
-
-                                {/* Bottom: "Motorcycles" - Massive/Explosive */}
-                                <span className="block text-6xl sm:text-7xl md:text-8xl lg:text-[7rem] xl:text-[8rem] text-[#F4B000] drop-shadow-xl scale-y-110 origin-bottom">
-                                    Motorcycles
-                                </span>
-                            </h1>
-
-                            <div className="max-w-4xl mx-auto flex flex-col md:flex-row justify-center items-center gap-2 md:gap-8 text-slate-200 text-lg sm:text-xl font-medium tracking-wide drop-shadow-md uppercase whitespace-nowrap">
-                                <span>Transparent prices.</span>
-                                <span>Verified dealers.</span>
-                                <span>Lowest EMI guarantee.</span>
-                            </div>
+                            {/* Micro-Shimmer Overlay */}
+                            <div
+                                className="absolute inset-0 z-0 pointer-events-none"
+                                style={{
+                                    background:
+                                        'linear-gradient(to right, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)',
+                                    width: '60%',
+                                    height: '100%',
+                                    animation: 'shimmer 8s infinite linear',
+                                    opacity: 0.3,
+                                }}
+                            />
                         </div>
 
-                        {/* Search + Drive Cluster */}
-                        <div className="w-full max-w-2xl mx-auto relative z-50 space-y-6 mt-2">
-                            <div className="flex flex-col items-center gap-4">
-                                <Link
-                                    href="/store/catalog"
-                                    className="h-14 w-full max-w-xl px-10 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full flex items-center justify-center gap-3 hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
-                                >
-                                    <Search size={18} />
-                                    <span className="text-sm font-bold uppercase tracking-[0.15em]">
-                                        Search Motorcycle
-                                    </span>
-                                </Link>
-                            </div>
-                        </div>
+                        <h1 className="pb-10 font-black uppercase tracking-tighter leading-[0.9] text-center">
+                            {/* Top: "Redefining" - Medium Strong */}
+                            <span className="block text-3xl sm:text-4xl md:text-5xl text-white font-extrabold tracking-[0.15em] mb-4 drop-shadow-lg">
+                                Redefining
+                            </span>
 
-                        {/* Metrics Section - Enhanced Visibility */}
-                        <div className="w-full max-w-5xl mx-auto grid grid-cols-3 gap-4 md:gap-0 border-t border-white/10 transition-colors py-6 mt-6 bg-black/40 backdrop-blur-md rounded-full">
-                            <div className="text-center group cursor-default space-y-1">
-                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] mb-1">
-                                    Models
-                                </p>
-                                <p className="text-3xl md:text-4xl font-black text-white tracking-tight drop-shadow-sm">
-                                    {totalSkus}+
-                                </p>
-                            </div>
-                            <div className="text-center group cursor-default space-y-1 relative">
-                                <div className="hidden md:block absolute left-0 top-1/2 -translate-y-1/2 w-px h-8 bg-white/10" />
-                                <div className="hidden md:block absolute right-0 top-1/2 -translate-y-1/2 w-px h-8 bg-white/10" />
-                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] mb-1">
-                                    Avg Savings
-                                </p>
-                                <p className="text-3xl md:text-4xl font-black text-white tracking-tight drop-shadow-sm">
-                                    {MARKET_METRICS.avgSavings}
-                                </p>
-                            </div>
-                            <div className="text-center group cursor-default space-y-1">
-                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] mb-1">
-                                    Delivery
-                                </p>
-                                <p className="text-3xl md:text-4xl font-black text-white tracking-tight underline cursor-pointer decoration-brand-primary/50 hover:decoration-brand-primary decoration-4 underline-offset-4 transition-all drop-shadow-sm">
-                                    {MARKET_METRICS.deliveryTime}
-                                </p>
-                            </div>
+                            {/* Middle: "How India Buys" - Large */}
+                            <span className="block text-5xl sm:text-6xl md:text-7xl text-white mb-4 drop-shadow-xl tracking-normal">
+                                How India Buys
+                            </span>
+
+                            {/* Bottom: "Motorcycles" - Pure White */}
+                            <span className="block text-6xl sm:text-7xl md:text-8xl lg:text-[7rem] xl:text-[8rem] text-white drop-shadow-2xl scale-y-110 origin-bottom tracking-tight">
+                                Motorcycles
+                            </span>
+                        </h1>
+
+                        <div className="max-w-4xl mx-auto flex flex-col md:flex-row justify-center items-center gap-4 md:gap-10 text-white text-xl sm:text-2xl font-medium tracking-wide drop-shadow-md uppercase whitespace-nowrap opacity-90">
+                            <span>Transparent prices.</span>
+                            <span>Verified dealers.</span>
+                            <span>Lowest EMI guarantee.</span>
+                        </div>
+                    </div>
+
+                    {/* 2. Middle Section: Search (Centered between Title and Stats) */}
+                    <div className="w-full max-w-2xl mx-auto relative z-50 flex items-center justify-center">
+                        <Link
+                            href="/store/catalog"
+                            className="h-16 w-full max-w-xl px-12 bg-white text-black rounded-full flex items-center justify-center gap-4 hover:bg-slate-100 transition-all duration-300 shadow-2xl shadow-black/50 hover:scale-[1.02]"
+                        >
+                            <Search size={22} />
+                            <span className="text-base font-bold uppercase tracking-[0.2em]">Search Motorcycle</span>
+                        </Link>
+                    </div>
+
+                    {/* Metrics Section - Premium Glass Effect - Pushed to Bottom */}
+                    <div className="w-full max-w-5xl mx-auto grid grid-cols-3 gap-4 md:gap-0 border border-white/10 transition-all duration-500 py-6 mt-6 bg-zinc-950/40 backdrop-blur-xl rounded-full mb-4 shadow-2xl shadow-black/50">
+                        <div className="text-center group cursor-default space-y-1">
+                            <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-[0.2em] mb-1">
+                                Models
+                            </p>
+                            <p className="text-3xl md:text-4xl font-black text-white tracking-tight drop-shadow-sm">
+                                {totalSkus}+
+                            </p>
+                        </div>
+                        <div className="text-center group cursor-default space-y-1 relative">
+                            <div className="hidden md:block absolute left-0 top-1/2 -translate-y-1/2 w-px h-8 bg-white/10" />
+                            <div className="hidden md:block absolute right-0 top-1/2 -translate-y-1/2 w-px h-8 bg-white/10" />
+                            <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-[0.2em] mb-1">
+                                Avg Savings
+                            </p>
+                            <p className="text-3xl md:text-4xl font-black text-white tracking-tight drop-shadow-sm">
+                                {MARKET_METRICS.avgSavings}
+                            </p>
+                        </div>
+                        <div className="text-center group cursor-default space-y-1">
+                            <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-[0.2em] mb-1">
+                                Delivery
+                            </p>
+                            <p className="text-3xl md:text-4xl font-black text-white tracking-tight underline cursor-pointer decoration-brand-primary/50 hover:decoration-brand-primary decoration-4 underline-offset-4 transition-all drop-shadow-sm">
+                                {MARKET_METRICS.deliveryTime}
+                            </p>
                         </div>
                     </div>
                 </div>
             </section>
-
 
             <section className="py-12 md:py-16 lg:py-20 bg-white dark:bg-[#0b0d10] transition-colors relative overflow-hidden">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-200 dark:via-white/10 to-transparent" />
@@ -233,9 +252,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                         <h3 className="text-3xl font-black uppercase italic tracking-tighter">
                                             {item.title}
                                         </h3>
-                                        <p className="text-sm text-zinc-400 font-medium leading-relaxed">
-                                            {item.desc}
-                                        </p>
+                                        <p className="text-sm text-zinc-400 font-medium leading-relaxed">{item.desc}</p>
                                     </div>
                                 </div>
                             ))}

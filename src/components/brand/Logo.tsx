@@ -19,15 +19,15 @@ interface LogoProps {
 }
 
 export const Logo: React.FC<LogoProps> = ({
-    className = "",
-    iconClassName = "",
+    className = '',
+    iconClassName = '',
     mode = 'auto',
     variant = 'full',
     monochrome = 'none',
     customColor,
     customColors,
     size = 'md',
-    style = {}
+    style = {},
 }) => {
     const [mounted, setMounted] = React.useState(false);
     const { theme } = useTheme();
@@ -42,17 +42,23 @@ export const Logo: React.FC<LogoProps> = ({
             h = size;
         } else {
             switch (size) {
-                case 'sm': h = 28; break;
-                case 'lg': h = 48; break;
+                case 'sm':
+                    h = 28;
+                    break;
+                case 'lg':
+                    h = 48;
+                    break;
                 case 'md':
-                default: h = 36; break;
+                default:
+                    h = 36;
+                    break;
             }
         }
 
         return {
             iconH: `${h * 1.1}px`, // Icon at 110% of base height for presence
-            iconW: `${(h * 1.1) * (80 / 109)}px`,
-            textH: `${h * 0.82}px` // Text at 82% of base height to align with Icon's optically center
+            iconW: `${h * 1.1 * (80 / 109)}px`,
+            textH: `${h * 0.82}px`, // Text at 82% of base height to align with Icon's optically center
         };
     }, [size]);
 
@@ -60,7 +66,7 @@ export const Logo: React.FC<LogoProps> = ({
     const activeMode = useMemo(() => {
         if (!mounted) return mode === 'auto' ? 'light' : mode;
         if (mode !== 'auto') return mode;
-        return (theme === 'dark' || theme === 'system') ? 'dark' : 'light';
+        return theme === 'dark' || theme === 'system' ? 'dark' : 'light';
     }, [mode, theme, mounted]);
 
     // Color Logic based on Variants and Monochrome overrides
@@ -70,7 +76,7 @@ export const Logo: React.FC<LogoProps> = ({
             return {
                 icon: customColors.icon || (activeMode === 'dark' ? BRAND_GOLD : BRAND_GOLD),
                 bookmy: customColors.bookmy || (activeMode === 'dark' ? '#FFFFFF' : '#000000'),
-                bike: customColors.bike || (activeMode === 'dark' ? BRAND_GOLD : BRAND_GOLD)
+                bike: customColors.bike || (activeMode === 'dark' ? BRAND_GOLD : BRAND_GOLD),
             };
         }
 
@@ -80,32 +86,32 @@ export const Logo: React.FC<LogoProps> = ({
         }
 
         if (monochrome === 'white') {
-            return { icon: "#FFFFFF", bookmy: "#FFFFFF", bike: "#FFFFFF" };
+            return { icon: '#FFFFFF', bookmy: '#FFFFFF', bike: '#FFFFFF' };
         }
         if (monochrome === 'black') {
-            return { icon: "#000000", bookmy: "#000000", bike: "#000000" };
+            return { icon: '#000000', bookmy: '#000000', bike: '#000000' };
         }
         if (monochrome === 'gold') {
-            return { icon: "url(#gold-gradient)", bookmy: "url(#gold-gradient)", bike: "url(#gold-gradient)" };
+            return { icon: 'url(#gold-gradient)', bookmy: 'url(#gold-gradient)', bike: 'url(#gold-gradient)' };
         }
         if (monochrome === 'silver') {
-            return { icon: "url(#silver-gradient)", bookmy: "url(#silver-gradient)", bike: "url(#silver-gradient)" };
+            return { icon: 'url(#silver-gradient)', bookmy: 'url(#silver-gradient)', bike: 'url(#silver-gradient)' };
         }
 
         // Standard Themed Variants
         if (activeMode === 'dark') {
             return {
                 icon: BRAND_GOLD,
-                bookmy: "#FFFFFF",
-                bike: BRAND_GOLD
+                bookmy: '#FFFFFF',
+                bike: BRAND_GOLD,
             };
         }
 
         // Default Light Mode
         return {
             icon: BRAND_GOLD,
-            bookmy: "#000000",
-            bike: BRAND_GOLD
+            bookmy: '#000000',
+            bike: BRAND_GOLD,
         };
     }, [activeMode, monochrome, customColor, customColors]);
 
@@ -171,7 +177,7 @@ export const Logo: React.FC<LogoProps> = ({
 
     return (
         <div
-            className={`flex items-center justify-center gap-2 group transition-all duration-300 ${className}`}
+            className={`flex items-center justify-center gap-2 group transition-all duration-300 h-full ${className}`}
             style={style}
         >
             {(variant === 'full' || variant === 'icon') && renderIcon()}
@@ -179,10 +185,18 @@ export const Logo: React.FC<LogoProps> = ({
 
             <style jsx global>{`
                 @keyframes shimmer {
-                    0% { filter: brightness(1) contrast(1); }
-                    15% { filter: brightness(1.4) contrast(1.1); }
-                    30% { filter: brightness(1) contrast(1); }
-                    100% { filter: brightness(1) contrast(1); }
+                    0% {
+                        filter: brightness(1) contrast(1);
+                    }
+                    15% {
+                        filter: brightness(1.4) contrast(1.1);
+                    }
+                    30% {
+                        filter: brightness(1) contrast(1);
+                    }
+                    100% {
+                        filter: brightness(1) contrast(1);
+                    }
                 }
                 .animate-shimmer {
                     animation: shimmer 4s infinite linear;
@@ -191,5 +205,3 @@ export const Logo: React.FC<LogoProps> = ({
         </div>
     );
 };
-
-
