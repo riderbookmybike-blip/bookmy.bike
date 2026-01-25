@@ -9,7 +9,7 @@ const leadSchema = z.object({
     name: z.string().min(2, "Name is too short"),
     phone: z.string().regex(/^[6-9]\d{9}$/, "Invalid Indian mobile number"),
     pincode: z.string().regex(/^\d{6}$/, "Invalid Pincode"), // Mandatory
-    city: z.string().optional(),
+    taluka: z.string().optional(),
     dob: z.string().optional(), // Added DOB
     model: z.string().optional(), // Optional
     variant: z.string().optional(),
@@ -58,7 +58,7 @@ export async function submitLead(formData: FormData) {
         name: toTitleCase(formData.get('name') as string),
         phone: formData.get('phone') as string,
         pincode: formData.get('pincode') as string,
-        city: toTitleCase(formData.get('city') as string),
+        taluka: toTitleCase(formData.get('taluka') as string),
         dob: formData.get('dob') as string,
         model: formData.get('model') as string,
         variant: formData.get('variant') as string,
@@ -101,7 +101,7 @@ export async function submitLead(formData: FormData) {
                 selected_dealer_tenant_id: rawData.selectedDealerId || null,
                 customer_name: data.name,
                 customer_phone: data.phone,
-                customer_city: data.city,
+                customer_taluka: data.taluka,
                 customer_pincode: data.pincode,
                 customer_dob: data.dob,
                 interest_model: data.model,

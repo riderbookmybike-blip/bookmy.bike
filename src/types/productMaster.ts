@@ -19,6 +19,8 @@ export interface ProductVariant {
     price: {
         exShowroom: number;
         onRoad: number;
+        offerPrice?: number;
+        discount?: number;
         pricingSource?: string; // e.g., 'MH', 'KA'
         isEstimate?: boolean;   // true if fallback used
     };
@@ -39,18 +41,21 @@ export interface ProductVariant {
         dimensions: {
             seatHeight?: string;
             kerbWeight?: string;
+            curbWeight?: string; // Add alias for backward compat
             fuelCapacity?: string;
         };
         features: {
-            bluetooth?: boolean;
+            bluetooth?: boolean | string; // Handled both type forms
             abs?: string;
         };
         mileage?: string;
     };
     imageUrl?: string;
+    color?: string; // Added for product card
     availableColors: {
         hexCode: string;
         secondaryHexCode?: string;
         name: string;
+        imageUrl?: string; // Added for color gallery
     }[];
 }

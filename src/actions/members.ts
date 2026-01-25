@@ -38,7 +38,7 @@ export type MemberAddressInput = {
     line1?: string;
     line2?: string;
     line3?: string;
-    city?: string;
+    taluka?: string;
     state?: string;
     country?: string;
     pincode?: string;
@@ -227,7 +227,7 @@ export async function getMembersForTenant(tenantId: string, search?: string, pag
             full_name, 
             created_at, 
             updated_at, 
-            city, 
+            taluka, 
             rto, 
             leads_count,
             bookings_count,
@@ -268,13 +268,14 @@ export async function getMembersForTenant(tenantId: string, search?: string, pag
                 full_name, 
                 created_at, 
                 updated_at, 
-                city, 
+                taluka, 
                 rto, 
                 leads_count,
                 bookings_count,
                 quotes_count,
                 primary_phone,
-                primary_email
+                primary_email,
+                id_member_tenants(tenant_id, status)
             `, { count: 'exact' })
             .eq('tenant_id', tenantId)
             .order('created_at', { ascending: false })
@@ -372,7 +373,9 @@ export async function getMemberSummaryForTenant(tenantId: string) {
                 primary_phone, 
                 primary_email, 
                 rto, 
-                district
+                district,
+                taluka,
+                id_member_tenants!inner(tenant_id, status)
             `)
             .eq('tenant_id', tenantId);
 
@@ -512,7 +515,7 @@ export async function addMemberAddress(input: MemberAddressInput) {
             line1: input.line1,
             line2: input.line2,
             line3: input.line3,
-            city: input.city,
+            taluka: input.taluka,
             state: input.state,
             country: input.country,
             pincode: input.pincode,

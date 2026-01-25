@@ -51,7 +51,7 @@ export function useCatalog() {
             const cached = localStorage.getItem('bkmb_user_pincode');
             if (!cached) return;
             try {
-                const data = JSON.parse(cached) as { state?: string; stateCode?: string; district?: string; city?: string };
+                const data = JSON.parse(cached) as { state?: string; stateCode?: string; district?: string; taluka?: string };
 
                 // prefer stateCode
                 let code = data.stateCode;
@@ -75,8 +75,8 @@ export function useCatalog() {
                 if (code) {
                     setStateCode(code);
                     // Construct Label: "District, Code" e.g. "Pune, MH"
-                    const cityPart = data.district || data.city || '';
-                    const label = cityPart ? `${cityPart}, ${code}` : code;
+                    const talukaPart = data.district || data.taluka || '';
+                    const label = talukaPart ? `${talukaPart}, ${code}` : code;
                     setLocationLabel(label);
                 }
             } catch (e) {
@@ -295,6 +295,8 @@ export function useCatalog() {
                                     return {
                                         exShowroom: basePrice,
                                         onRoad: Math.round(onRoadBreakdown.onRoadTotal),
+                                        offerPrice: Math.round(onRoadBreakdown.onRoadTotal), // Fallback to onroad as offer
+                                        discount: 0, // Fallback
                                         pricingSource,
                                         isEstimate
                                     };
@@ -335,6 +337,10 @@ export function useCatalog() {
                                                 const val = getSpec(['weight', 'kerb_weight', 'curb_weight', 'weight_kg']);
                                                 return val ? `${val} kg` : undefined;
                                             })(),
+                                            curbWeight: (() => {
+                                                const val = getSpec(['weight', 'kerb_weight', 'curb_weight', 'weight_kg']);
+                                                return val ? `${val} kg` : undefined;
+                                            })(),
                                             fuelCapacity: (() => {
                                                 const val = getSpec(['fuel_capacity', 'fuel_tank_capacity', 'tank_capacity', 'fuel_tank']);
                                                 return val ? `${val} L` : undefined;
@@ -368,7 +374,8 @@ export function useCatalog() {
                                             colorsMap.set(hex, {
                                                 hexCode: hex,
                                                 secondaryHexCode: sku.specs?.hex_secondary,
-                                                name: sku.specs?.Color || sku.name
+                                                name: sku.specs?.Color || sku.name,
+                                                imageUrl: sku.image_url || sku.specs?.primary_image
                                             });
                                         }
                                     });

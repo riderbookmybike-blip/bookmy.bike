@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
                 user_agent: userAgent,
                 // Only update location/device if provided (usually on session start)
                 ...(location && {
-                    city: location.city,
+                    taluka: location.taluka || location.city,
                     country: location.country,
                     latitude: location.latitude,
                     longitude: location.longitude,

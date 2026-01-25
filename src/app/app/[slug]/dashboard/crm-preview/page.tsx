@@ -21,10 +21,10 @@ import {
 } from 'lucide-react';
 
 const leadsMock = [
-    { id: '1', name: 'Rahul Sharma', phone: '+91 98765 43210', source: 'Website', status: 'NEW', model: 'Honda Activa 6G', city: 'Mumbai', type: 'NEW_LEAD' },
-    { id: '2', name: 'Amit Singh', phone: '+91 99887 76655', source: 'Migrated (Firebase)', status: 'CONTACTED', model: 'Aapli Regular', city: 'Pune', type: 'MIGRATED' },
-    { id: '3', name: 'Priya Patel', phone: '+91 91234 56789', source: 'Showroom', status: 'QUALIFIED', model: 'TVS Jupiter 125', city: 'Mumbai', type: 'NEW_LEAD' },
-    { id: '4', name: 'Suresh Raina', phone: '+91 98765 00000', source: 'Migrated (Firebase)', status: 'NEW', model: 'BMB Classic', city: 'Nagpur', type: 'MIGRATED' },
+    { id: '1', name: 'Rahul Sharma', phone: '+91 98765 43210', source: 'Website', status: 'NEW', model: 'Honda Activa 6G', taluka: 'Mumbai', type: 'NEW_LEAD' },
+    { id: '2', name: 'Amit Singh', phone: '+91 99887 76655', source: 'Migrated (Firebase)', status: 'CONTACTED', model: 'Aapli Regular', taluka: 'Pune', type: 'MIGRATED' },
+    { id: '3', name: 'Priya Patel', phone: '+91 91234 56789', source: 'Showroom', status: 'QUALIFIED', model: 'TVS Jupiter 125', taluka: 'Mumbai', type: 'NEW_LEAD' },
+    { id: '4', name: 'Suresh Raina', phone: '+91 98765 00000', source: 'Migrated (Firebase)', status: 'NEW', model: 'BMB Classic', taluka: 'Nagpur', type: 'MIGRATED' },
 ];
 
 const quotesMock = [
@@ -80,8 +80,8 @@ export default function CRMPreviewPage() {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === tab.id
-                                    ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-white shadow-xl scale-105'
-                                    : 'text-slate-500 hover:text-slate-700'
+                                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-white shadow-xl scale-105'
+                                : 'text-slate-500 hover:text-slate-700'
                                 }`}
                         >
                             <tab.icon size={14} />
@@ -109,7 +109,7 @@ export default function CRMPreviewPage() {
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={18} />
                         <input
                             type="text"
-                            placeholder="Search by name, phone or city..."
+                            placeholder="Search by name, phone or taluka..."
                             className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -146,13 +146,13 @@ export default function CRMPreviewPage() {
                                         <div className="text-sm font-black text-slate-900 dark:text-white uppercase italic tracking-tighter group-hover:text-indigo-600 transition-colors">
                                             {lead.name}
                                         </div>
-                                        <div className="text-[10px] font-bold text-slate-400 mt-0.5">{lead.phone} • {lead.city}</div>
+                                        <div className="text-[10px] font-bold text-slate-400 mt-0.5">{lead.phone} • {lead.taluka}</div>
                                     </div>
                                 </div>
                                 <div className="col-span-2 text-center flex flex-col items-center gap-1">
                                     <span className={`px-2.5 py-1 rounded-full text-[9px] font-black tracking-widest border uppercase ${lead.type === 'MIGRATED'
-                                            ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
-                                            : 'bg-slate-100 text-slate-500 border-slate-200'
+                                        ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                                        : 'bg-slate-100 text-slate-500 border-slate-200'
                                         }`}>
                                         {lead.source}
                                     </span>
@@ -163,7 +163,7 @@ export default function CRMPreviewPage() {
                                 </div>
                                 <div className="col-span-2 text-center">
                                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${lead.status === 'NEW' ? 'bg-blue-100 text-blue-600' :
-                                            lead.status === 'CONTACTED' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'
+                                        lead.status === 'CONTACTED' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'
                                         }`}>
                                         <span className="w-1.5 h-1.5 rounded-full bg-current" />
                                         {lead.status}
@@ -315,8 +315,8 @@ export default function CRMPreviewPage() {
                                 {Object.entries(booking.stages).map(([stage, status], idx) => (
                                     <div key={stage} className="flex flex-col items-center gap-4">
                                         <div className={`w-10 h-10 rounded-2xl flex items-center justify-center z-10 shadow-lg transition-all duration-500 ${status === 'COMPLETED' ? 'bg-emerald-500 text-white translate-y-0' :
-                                                status === 'ONGOING' ? 'bg-indigo-600 text-white -translate-y-2 scale-110 shadow-indigo-600/30' :
-                                                    'bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 text-slate-300 translate-y-0'
+                                            status === 'ONGOING' ? 'bg-indigo-600 text-white -translate-y-2 scale-110 shadow-indigo-600/30' :
+                                                'bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 text-slate-300 translate-y-0'
                                             }`}>
                                             {status === 'COMPLETED' ? <CheckCircle2 size={20} /> : <div className="text-[10px] font-black uppercase">{idx + 1}</div>}
                                         </div>
@@ -326,7 +326,7 @@ export default function CRMPreviewPage() {
                                                 {stage}
                                             </div>
                                             <div className={`text-[8px] font-bold mt-1 uppercase ${status === 'COMPLETED' ? 'text-emerald-500' :
-                                                    status === 'ONGOING' ? 'text-indigo-400 animate-pulse' : 'text-slate-300'
+                                                status === 'ONGOING' ? 'text-indigo-400 animate-pulse' : 'text-slate-300'
                                                 }`}>
                                                 {status}
                                             </div>

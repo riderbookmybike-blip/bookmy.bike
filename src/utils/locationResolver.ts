@@ -4,7 +4,7 @@ import { slugify } from './slugs';
 export type LocationContext = {
     pincode: string;
     area: string;
-    city: string;
+    taluka: string;
     district: string;
     state: string;
     pricing_region_slug: string;
@@ -31,10 +31,10 @@ export async function resolveLocation(pincode: string): Promise<LocationContext 
             const locationResult: LocationContext = {
                 pincode,
                 area: data.area || '',
-                city: data.city || '',
+                taluka: data.taluka || '',
                 district: data.district || '',
                 state: data.state || '',
-                pricing_region_slug: slugify(data.city || 'mumbai'),
+                pricing_region_slug: slugify(data.taluka || 'mumbai'),
                 lat: data.latitude,
                 lng: data.longitude
             };

@@ -36,7 +36,7 @@ export async function getPincodeDetails(pincode: string) {
 
             const newRecord = {
                 pincode: pincode,
-                city: details.Block || details.District, // Sometimes Block is better for City
+                taluka: details.Block || details.District, // Sometimes Block is better for Taluka
                 district: details.District,
                 state: details.State,
                 country: 'India',

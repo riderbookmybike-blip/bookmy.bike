@@ -18,7 +18,7 @@ export default function LocationsTab({ locations }: { locations: BankLocation[] 
                     </div>
                     <p className="text-slate-600 dark:text-slate-400 text-sm mb-4 leading-relaxed">
                         {loc.address}<br />
-                        {loc.city}, {loc.state} - {loc.pincode}
+                        {loc.taluka}, {loc.state} - {loc.pincode}
                     </p>
                     <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-black/20 p-2 rounded-lg inline-block border border-slate-200 dark:border-transparent">
                         <Phone size={14} className="text-slate-500" />

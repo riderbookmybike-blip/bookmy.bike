@@ -34,6 +34,6 @@ export function computeOnRoadPrice(
         insurance,
         otherCharges,
         onRoad: basePrice + rto + insurance + otherCharges,
-        region: location?.city || 'Pan India'
+        region: location?.taluka || 'Pan India'
     };
 }

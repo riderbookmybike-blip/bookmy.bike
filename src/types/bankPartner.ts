@@ -4,7 +4,7 @@ export interface BankLocation {
     id: string;
     branchName: string;
     address: string;
-    city: string;
+    taluka: string;
     state: string;
     pincode: string;
     contactNumber: string;
@@ -101,7 +101,7 @@ export const MOCK_BANK_PARTNERS: BankPartner[] = [
             supportPhone: '1800-202-6161'
         },
         locations: [
-            { id: 'l1', branchName: 'M G Road', city: 'Pune', state: 'Maharashtra', pincode: '411001', address: '123 MG Road', contactNumber: '020-12345678', isPrimary: true }
+            { id: 'l1', branchName: 'M G Road', taluka: 'Pune', state: 'Maharashtra', pincode: '411001', address: '123 MG Road', contactNumber: '020-12345678', isPrimary: true }
         ],
         team: [
             { id: 't1', name: 'Amit Sharma', role: 'Area Manager', email: 'amit@hdfc.com', phone: '9876543210' },

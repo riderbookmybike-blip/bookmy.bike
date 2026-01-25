@@ -12,7 +12,7 @@ async function getOrCreateCustomerProfile(data: {
     phone: string;
     pincode?: string;
     dob?: string;
-    city?: string;
+    taluka?: string;
 }) {
     // 1. Search for existing profile by WhatsApp/Phone
     // We check both whatsapp and potentially a phone field if it existed (based on migrations it's 'whatsapp')
@@ -155,7 +155,7 @@ export async function getLeads(tenantId?: string, status?: string) {
             customerName: l.customer_name,
             phone: l.customer_phone,
             pincode: l.customer_pincode,
-            city: l.customer_city,
+            taluka: l.customer_taluka,
             dob: l.customer_dob,
             status: l.status,
             source: l.utm_data?.utm_source || 'WEBSITE',
@@ -220,7 +220,7 @@ export async function createLeadAction(data: {
     customer_name: string;
     customer_phone: string;
     customer_pincode?: string;
-    customer_city?: string;
+    customer_taluka?: string;
     customer_dob?: string;
     interest_model?: string;
     owner_tenant_id: string;
@@ -228,7 +228,7 @@ export async function createLeadAction(data: {
 }) {
     // Enforce Title Case Name
     data.customer_name = toTitleCase(data.customer_name);
-    if (data.customer_city) data.customer_city = toTitleCase(data.customer_city);
+    if (data.customer_taluka) data.customer_taluka = toTitleCase(data.customer_taluka);
 
     // 1. Get or Create Persistent Customer Profile
     const customerId = await getOrCreateCustomerProfile({
@@ -236,7 +236,7 @@ export async function createLeadAction(data: {
         phone: data.customer_phone,
         pincode: data.customer_pincode,
         dob: data.customer_dob,
-        city: data.customer_city
+        taluka: data.customer_taluka
     });
 
     // 2. Automated Segregation Logic (Pincode & Junking)
@@ -260,7 +260,7 @@ export async function createLeadAction(data: {
             customer_name: data.customer_name,
             customer_phone: data.customer_phone,
             customer_pincode: data.customer_pincode,
-            customer_city: data.customer_city,
+            customer_taluka: data.customer_taluka,
             customer_dob: data.customer_dob,
             interest_model: data.interest_model,
             interest_text: data.interest_model, // Populate explicitly

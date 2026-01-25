@@ -1,7 +1,7 @@
 export interface PincodeRecord {
     id: string; // Unique ID (e.g., pincode itself or uuid)
     pincode: string;
-    city: string;
+    taluka: string;
     district: string;
     state: string;
     area: string;
