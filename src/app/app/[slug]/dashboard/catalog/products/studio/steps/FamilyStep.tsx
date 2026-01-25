@@ -48,7 +48,7 @@ export default function FamilyStep({ brand, template, familyData, families = [],
     useEffect(() => {
         const fetchHSN = async () => {
             const supabase = createClient();
-            const { data } = await supabase.from('hsn_codes').select('*').eq('is_active', true);
+            const { data } = await supabase.from('cat_hsn_codes').select('*').eq('is_active', true);
             if (data) setHsnList(data);
         };
         fetchHSN();
@@ -86,7 +86,7 @@ export default function FamilyStep({ brand, template, familyData, families = [],
 
             if (familyData?.id) {
                 // UPDATE existing record
-                const result = await supabase.from('catalog_items')
+                const result = await supabase.from('cat_items')
                     .update(payload)
                     .eq('id', familyData.id)
                     .select()
@@ -95,7 +95,7 @@ export default function FamilyStep({ brand, template, familyData, families = [],
                 error = result.error;
             } else {
                 // INSERT new record
-                const result = await supabase.from('catalog_items')
+                const result = await supabase.from('cat_items')
                     .insert(payload)
                     .select()
                     .single();
@@ -543,7 +543,7 @@ export default function FamilyStep({ brand, template, familyData, families = [],
                                     const supabase = createClient();
                                     // Fetch all SKUs for this family
                                     const { data: allSkus } = await supabase
-                                        .from('catalog_items')
+                                        .from('cat_items')
                                         .select('id, specs')
                                         .eq('brand_id', brand.id)
                                         .eq('template_id', template.id)
@@ -559,7 +559,7 @@ export default function FamilyStep({ brand, template, familyData, families = [],
                                     // Better: Update all SKUs that belong to this family.
                                     // Find variants of this family first.
                                     const { data: variants } = await supabase
-                                        .from('catalog_items')
+                                        .from('cat_items')
                                         .select('id')
                                         .eq('parent_id', familyData.id)
                                         .eq('type', 'VARIANT');
@@ -567,14 +567,14 @@ export default function FamilyStep({ brand, template, familyData, families = [],
                                     if (variants && variants.length > 0) {
                                         const variantIds = variants.map(v => v.id);
                                         const { data: skusToUpdate } = await supabase
-                                            .from('catalog_items')
+                                            .from('cat_items')
                                             .select('id, specs')
                                             .in('parent_id', variantIds)
                                             .eq('type', 'SKU');
 
                                         if (skusToUpdate) {
                                             const updates = skusToUpdate.map(sku => {
-                                                return supabase.from('catalog_items').update({
+                                                return supabase.from('cat_items').update({
                                                     video_url: videos[0] || null,
                                                     specs: {
                                                         ...sku.specs,

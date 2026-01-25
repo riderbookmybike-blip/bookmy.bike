@@ -73,7 +73,7 @@ export default function ReviewStep({ brand, family, template, variants, colors, 
     React.useEffect(() => {
         const fetchUsers = async () => {
             const supabase = createClient();
-            const { data } = await supabase.from('profiles').select('id, full_name, email');
+            const { data } = await supabase.from('id_members').select('id, full_name, email');
             if (data) setUsers(data);
         };
         fetchUsers();
@@ -95,7 +95,7 @@ export default function ReviewStep({ brand, family, template, variants, colors, 
         const newHistory = [historyEntry, ...(sku.history || [])].slice(0, 20);
 
         const { data, error } = await supabase
-            .from('catalog_items')
+            .from('cat_items')
             .update({
                 [field]: value,
                 updated_by: user?.id,
@@ -127,7 +127,7 @@ export default function ReviewStep({ brand, family, template, variants, colors, 
             };
 
             const { data, error } = await supabase
-                .from('catalog_items')
+                .from('cat_items')
                 .update({
                     status: 'INACTIVE',
                     updated_by: user?.id,
@@ -144,8 +144,8 @@ export default function ReviewStep({ brand, family, template, variants, colors, 
             if (!confirm('This SKU is already INACTIVE. Deleting it will move it to the ARCHIVE. Continue?')) return;
 
             // 1. Move to archived_records
-            const { error: archiveError } = await supabase.from('archived_records').insert({
-                original_table: 'catalog_items',
+            const { error: archiveError } = await supabase.from('sys_archived').insert({
+                original_table: 'cat_items',
                 original_id: sku.id,
                 data: sku,
                 archived_by: user?.id,
@@ -159,7 +159,7 @@ export default function ReviewStep({ brand, family, template, variants, colors, 
 
             // 2. Delete from catalog_items
             const { error: deleteError } = await supabase
-                .from('catalog_items')
+                .from('cat_items')
                 .delete()
                 .eq('id', sku.id);
 

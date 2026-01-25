@@ -18,7 +18,7 @@ export default async function TenantDashboard(props: { params: Promise<{ slug: s
 
     // 1. Fetch all memberships for the user via secure RPC
     // Handling JSONB return for maximum flexibility and to avoid schema mismatch errors
-    const { data: rawMembershipsData, error: rpcError } = await supabase
+    const { data: rawMembershipsData } = await supabase
         .rpc('get_user_memberships', { p_user_id: user.id });
 
     // Identify if we got an array (new JSONB approach) or direct data

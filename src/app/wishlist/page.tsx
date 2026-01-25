@@ -1,25 +1,15 @@
-import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+'use client';
 
-export default async function WishlistPage() {
-    const supabase = await createClient();
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+import React from 'react';
+import StoreLayout from '../store/layout';
+import { WishlistClient } from '@/components/store/WishlistClient';
 
-    if (!user) {
-        redirect('/login');
-    }
-
+export default function WishlistPage() {
     return (
-        <div className="container mx-auto px-4 py-16">
-            <div className="max-w-2xl mx-auto text-center">
-                <h1 className="text-4xl font-bold mb-4">My Wishlist</h1>
-                <p className="text-gray-600 mb-8">Coming Soon</p>
-                <div className="bg-gray-50 p-8 rounded-lg">
-                    <p className="text-sm text-gray-500">Saved bikes and favorites will be available here.</p>
-                </div>
-            </div>
-        </div>
+        <StoreLayout>
+            <main className="mx-auto max-w-[1600px] px-6 md:px-12 lg:px-20 py-1 md:py-2 min-h-[70vh]">
+                <WishlistClient />
+            </main>
+        </StoreLayout>
     );
 }

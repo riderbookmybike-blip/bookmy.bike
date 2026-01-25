@@ -15,12 +15,34 @@ import {
     LayoutGrid,
     ListFilter,
     Edit3,
-    Settings
+    Settings,
+    Plus,
+    Minus,
+    RotateCcw,
+    Maximize2,
+    Minimize2
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 
-// Helper to format text as Title Case
+// Haversine Distance Helper
+function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
+    var R = 6371;
+    var dLat = deg2rad(lat2 - lat1);
+    var dLon = deg2rad(lon2 - lon1);
+    var a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    var d = R * c;
+    return d;
+}
+
+function deg2rad(deg: number) {
+    return deg * (Math.PI / 180)
+}
+
 function toTitleCase(str: string | null | undefined): string {
     if (!str) return '';
     return str.toLowerCase().split(' ').map(word => {
@@ -28,16 +50,16 @@ function toTitleCase(str: string | null | undefined): string {
     }).join(' ');
 }
 
-// Helper to normalize RTO codes (Uppercase, remove non-alphanumeric)
 function normalizeRTO(rto: string | null | undefined): string {
     if (!rto) return '';
     return rto.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 }
 
+// Interfaces
 interface Pincode {
     pincode: string;
     area: string | null;
-    city: string | null;
+    taluka: string | null;
     district: string | null;
     state: string | null;
     status: string | null;
@@ -48,14 +70,303 @@ interface Pincode {
     rto_code: string | null;
 }
 
+interface GeoFeature {
+    type: string;
+    properties: {
+        district: string;
+        dt_code?: string;
+        st_nm?: string;
+        dtname?: string; // Some generic usage
+    };
+    geometry: {
+        type: string;
+        coordinates: any[];
+    };
+}
+
+interface GeoJSON {
+    type: string;
+    features: GeoFeature[];
+}
+
+// Data Normalization Map: Maps specific Talukas/Towns/Villages -> Official Parent District
+const RAW_DB_NORMALIZATION: Record<string, string> = {
+    // Existing Normalizations
+    "Wada": "Palghar",
+    "Kudus": "Palghar",
+    "Thane Taluka": "Thane",
+    "Thane West": "Thane",
+    "Mira Bhayandar": "Thane",
+    "Navi Mumbai": "Thane",
+    "Kalyan": "Thane",
+    "Dombivli": "Thane",
+    "Ulhasnagar": "Thane",
+    "Ambernath": "Thane",
+    "Badlapur": "Thane",
+    "Bhiwandi": "Thane",
+    "Murbad": "Thane",
+    "Shahapur": "Thane",
+    "Vasai": "Palghar",
+    "Virar": "Palghar",
+    "Palghar Taluka": "Palghar",
+    "Dahanu": "Palghar",
+    "Talasari": "Palghar",
+    "Jawhar": "Palghar",
+    "Mokhada": "Palghar",
+    "Vikramgad": "Palghar",
+    "Pune City": "Pune",
+    "Pimpri Chinchwad": "Pune",
+    "Haveli": "Pune",
+    "Mulshi": "Pune",
+    "Maval": "Pune",
+    "Khed": "Pune",
+    "Ambegaon": "Pune",
+    "Junnar": "Pune",
+    "Shirur": "Pune",
+    "Daund": "Pune",
+    "Indapur": "Pune",
+    "Baramati": "Pune",
+    "Purandar": "Pune",
+    "Bhor": "Pune",
+    "Velhe": "Pune",
+    // New Normalizations (User Feedback 68 -> 36)
+    "Sasale": "Ratnagiri",
+    "Shiroda": "Sindhudurg",
+    "Shirol": "Kolhapur",
+    "Sinnar": "Nashik",
+    "Solapur North": "Solapur",
+    "Solapur South": "Solapur",
+    "Taramumbari": "Sindhudurg",
+    "Trimbak": "Nashik",
+    "Trimbakeshwar": "Nashik",
+    "Umadi": "Sangli",
+    "Vayangani": "Sindhudurg",
+    "Vijaydurg": "Sindhudurg",
+    "Rajur": "Ahmednagar",
+    "Kotul": "Ahmednagar",
+    "Dahiwadi": "Satara",
+    "Mumbai City": "Mumbai",
+    "Mumbai Suburban": "Mumbai",
+    "Dharashiv": "Osmanabad",
+    "Chhatrapati Sambhaji Nagar": "Aurangabad",
+    "Raigad Fort": "Raigad",
+    "Mahad": "Raigad",
+    "Mangaon": "Raigad",
+    "Alibag": "Raigad",
+    "Pen": "Raigad",
+    "Panvel": "Raigad",
+    "Uran": "Raigad",
+    "Karjat": "Raigad",
+    "Khalapur": "Raigad",
+    "Roha": "Raigad"
+};
+
+const normalizeDistrictName = (name: string): string => {
+    if (!name) return 'Unknown';
+    const cleanName = name.trim();
+
+    // 1. Direct Lookup
+    if (RAW_DB_NORMALIZATION[cleanName]) return RAW_DB_NORMALIZATION[cleanName];
+
+    // 2. Case Insensitive Lookup
+    const lowerName = cleanName.toLowerCase();
+    for (const key in RAW_DB_NORMALIZATION) {
+        if (key.toLowerCase().trim() === lowerName) return RAW_DB_NORMALIZATION[key];
+    }
+
+    // 3. Fallback to Title Case
+    return toTitleCase(cleanName);
+};
+
+
+
+// Name Normalization Map (DB Name -> GeoJSON Name)
+// This fixes the "Sync" issue where DB has "Mumbai City" but Map has "Mumbai"
+const DISTRICT_MAPPING: Record<string, string> = {
+    "Mumbai City": "Mumbai",
+    "Mumbai Suburban": "Mumbai Suburban", // Check if map has this, often maps just have 'Mumbai' or 'Mumbai Suburban' separate
+    "Pune": "Pune",
+    "Thane": "Thane",
+    "Palghar": "Palghar",
+    "Raigad": "Raigad",
+    "Nashik": "Nashik",
+    "Ahmednagar": "Ahmednagar",
+    // Add typical mismatches here
+    "Aurangabad": "Aurangabad",
+    "Chhatrapati Sambhaji Nagar": "Aurangabad", // New name vs Old map name
+    "Dharashiv": "Osmanabad" // New Name vs Old Name
+};
+
+// Reverse lookup helper (GeoJSON Name -> DB Name Key for lookup)
+// Actually we iterate GeoJSON, so we need to find which DB entry matches it.
+// We can try exact match, then check Mapping.
+
 export default function ServiceAreaPage() {
+    // Map State
+    const [geoData, setGeoData] = useState<GeoJSON | null>(null);
+    const [mapBounds, setMapBounds] = useState<{ minLat: number, maxLat: number, minLon: number, maxLon: number } | null>(null);
+    const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+    const [hoveredDistrictLabel, setHoveredDistrictLabel] = useState<{ name: string, status: string, x: number, y: number } | null>(null);
+    const [adjacencyGraph, setAdjacencyGraph] = useState<Record<string, string[]>>({});
+    const [isFullScreen, setIsFullScreen] = useState(false);
+
+    // Map Interaction Handlers
+    const handleWheel = (e: React.WheelEvent) => {
+        if (!mapBounds) return;
+        const scaleSensitivity = 0.001;
+        const newScale = Math.min(Math.max(0.5, transform.scale - e.deltaY * scaleSensitivity), 5); // Limit zoom 0.5x to 5x
+
+        // Zoom towards center (simplified, can be mouse-pointer based but center is safer/easier)
+        // For mouse-pointer zoom, we need ref to svg container to get relative coords. 
+        // Let's stick to center zoom for simplicity unless requested otherwise.
+        setTransform(prev => ({ ...prev, scale: newScale }));
+    };
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        setIsDragging(true);
+        setDragStart({ x: e.clientX - transform.x, y: e.clientY - transform.y });
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!isDragging) return;
+        setTransform(prev => ({
+            ...prev,
+            x: e.clientX - dragStart.x,
+            y: e.clientY - dragStart.y
+        }));
+    };
+
+    const handleMouseUp = () => {
+        setIsDragging(false);
+    };
+
+    const handleZoomIn = () => setTransform(prev => ({ ...prev, scale: Math.min(prev.scale * 1.2, 5) }));
+    const handleZoomOut = () => setTransform(prev => ({ ...prev, scale: Math.max(prev.scale / 1.2, 0.5) }));
+    const handleResetView = () => setTransform({ x: 0, y: 0, scale: 1 });
+
+
+    // Fetch Map Data Effect
+    useEffect(() => {
+        fetch('/maps/maharashtra.json')
+            .then(res => res.json())
+            .then((data: GeoJSON) => {
+                setGeoData(data);
+                // Calculate Bounds
+                let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
+
+                const processCoords = (coords: any[]) => {
+                    coords.forEach(coord => {
+                        if (Array.isArray(coord[0])) {
+                            processCoords(coord);
+                        } else {
+                            const [lon, lat] = coord;
+                            if (lon < minLon) minLon = lon;
+                            if (lon > maxLon) maxLon = lon;
+                            if (lat < minLat) minLat = lat;
+                            if (lat > maxLat) maxLat = lat;
+                        }
+                    });
+                };
+
+                // ADJACENCY CALCULATION (Shared Border Logic)
+                // Map Point -> List of Districts using that point
+                const pointToDistricts = new Map<string, Set<string>>();
+
+                // Helper to flatten coords to single points
+                const extractPoints = (feature: any, districtName: string) => {
+                    const points: string[] = [];
+                    const visit = (coords: any[]) => {
+                        if (typeof coords[0] === 'number') {
+                            points.push(coords.join(','));
+                        } else {
+                            coords.forEach(c => visit(c));
+                        }
+                    };
+                    visit(feature.geometry.coordinates);
+
+                    // Add to Map
+                    points.forEach(p => {
+                        if (!pointToDistricts.has(p)) pointToDistricts.set(p, new Set());
+                        pointToDistricts.get(p)?.add(districtName);
+                    });
+                };
+
+                data.features.forEach(f => {
+                    processCoords(f.geometry.coordinates);
+
+                    // Build Adjacency Graph
+                    // Use normalized name to match logic
+                    let dName = f.properties.district || f.properties.dtname || 'Unknown';
+                    // We need to apply normalization here so the graph keys match the application keys
+                    // e.g. "Mumbai" in GeoJSON -> "Mumbai City" / "Mumbai Suburban" in App?
+                    // Actually, let's keep graph keys as GeoJSON names to start, but we need to link them.
+
+                    // Better approach: Use the SAME name normalization as elsewhere
+                    // If GeoJSON says "Mumbai", and we normalized DB "Mumbai City" -> "Mumbai", keys match.
+                    // But here we are building graph from GeoJSON.
+                    // Let's use the raw GeoJSON name for the graph, and normalize properly during lookup.
+                    // Actually, if we normalize HERE, it simplifies lookup.
+                    // But wait, our `normalizeDistrictName` maps DB names.
+                    // If GeoJSON has "Mumbai", and DB has "Mumbai City" -> "Mumbai City" (default, as we removed the fake mapping).
+                    // Wait, we need the reverse.
+
+                    // Simple fix: Store using raw names, but populate the graph for all aliases.
+                    // Or just use the exact internal name logic.
+
+                    extractPoints(f, dName);
+                });
+
+                // Build Graph
+                const graph: Record<string, string[]> = {};
+                pointToDistricts.forEach((districtsSet) => {
+                    const districts = Array.from(districtsSet);
+                    if (districts.length > 1) {
+                        // These districts share a point -> They are neighbors
+                        for (let i = 0; i < districts.length; i++) {
+                            for (let j = i + 1; j < districts.length; j++) {
+                                const d1 = districts[i];
+                                const d2 = districts[j];
+
+                                if (!graph[d1]) graph[d1] = [];
+                                if (!graph[d1].includes(d2)) graph[d1].push(d2);
+
+                                if (!graph[d2]) graph[d2] = [];
+                                if (!graph[d2].includes(d1)) graph[d2].push(d1);
+                            }
+                        }
+                    }
+                });
+
+                // Manual Fixes for known borders that might not share exact vertices due to simplified geometry
+                // e.g. Mumbai City <-> Mumbai Suburban sometimes don't touch in simple maps
+                if (!graph['Mumbai']) graph['Mumbai'] = ['Thane']; // Example, usually they touch.
+                if (graph['Mumbai'] && !graph['Mumbai'].includes('Thane')) graph['Mumbai'].push('Thane');
+
+                setAdjacencyGraph(graph);
+
+                // Add padding
+                const latPad = (maxLat - minLat) * 0.05;
+                const lonPad = (maxLon - minLon) * 0.05;
+                setMapBounds({
+                    minLat: minLat - latPad,
+                    maxLat: maxLat + latPad,
+                    minLon: minLon - lonPad,
+                    maxLon: maxLon + lonPad
+                });
+            })
+            .catch(err => console.error("Failed to load map data", err));
+    }, []);
+
+    // Existing State
     const [pincodes, setPincodes] = useState<Pincode[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | 'Deliverable' | 'Not Deliverable'>('all');
     const [updating, setUpdating] = useState<string | null>(null);
 
-    const [viewMode, setViewMode] = useState<'pincodes' | 'districts'>('pincodes');
+    const [viewMode, setViewMode] = useState<'pincodes' | 'districts' | 'map'>('pincodes');
     const [enabledDistricts, setEnabledDistricts] = useState<string[]>([]);
     const [tenantId, setTenantId] = useState<string | null>(null);
     const [filters, setFilters] = useState<Record<string, string[]>>({});
@@ -71,6 +382,31 @@ export default function ServiceAreaPage() {
 
     const supabase = createClient();
 
+    // Data Normalization Map (Fixes Granular/Bad DB Data -> Standard Dictionary)
+    const RAW_DB_NORMALIZATION: Record<string, string> = {
+        "Wada": "Palghar",
+        "Kudus": "Palghar",
+        "Thane Taluka": "Thane",
+        "Murbad": "Thane",
+        "Harsul": "Nashik",
+        "Korapgaon": "Nashik",
+        "Igatpuri": "Nashik",
+        "Mumbai City": "Mumbai City",
+        "Mumbai Suburban": "Mumbai Suburban",
+        "Raigad": "Raigad",
+        "Pune": "Pune",
+        "पुणे": "Pune"
+    };
+
+    const normalizeDistrictName = (name: string) => {
+        let dName = toTitleCase(name || '');
+        if (RAW_DB_NORMALIZATION[dName]) {
+            return RAW_DB_NORMALIZATION[dName];
+        }
+        if (dName === "Mumbai") return "Mumbai City";
+        return dName;
+    };
+
     useEffect(() => {
         const loadInitialData = async () => {
             const { data: { user } } = await supabase.auth.getUser();
@@ -79,7 +415,7 @@ export default function ServiceAreaPage() {
                 // For now, we'll fetch the tenant config based on slug
                 const slug = window.location.pathname.split('/')[2];
                 const { data: tenant } = await supabase
-                    .from('tenants')
+                    .from('id_tenants')
                     .select('id, config')
                     .eq('slug', slug)
                     .single();
@@ -87,7 +423,12 @@ export default function ServiceAreaPage() {
                 if (tenant) {
                     setTenantId(tenant.id);
                     const config = (tenant.config as any) || {};
-                    setEnabledDistricts(config.serviceable_districts || []);
+                    const rawDistricts: string[] = config.serviceable_districts || [];
+
+                    // Normalize the loaded districts so they match our application logic
+                    const normalizedEnabled = Array.from(new Set(rawDistricts.map(normalizeDistrictName)));
+
+                    setEnabledDistricts(normalizedEnabled);
                 }
             }
             fetchPincodes();
@@ -111,13 +452,32 @@ export default function ServiceAreaPage() {
     const fetchPincodes = async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase
-                .from('pincodes')
-                .select('*')
-                .order('pincode', { ascending: true });
+            let allPincodes: any[] = [];
+            let from = 0;
+            const batchSize = 1000;
+            let more = true;
 
-            if (error) throw error;
-            setPincodes(data || []);
+            while (more) {
+                const { data, error } = await supabase
+                    .from('loc_pincodes')
+                    .select('*', { count: 'exact' })
+                    .order('pincode', { ascending: true })
+                    .range(from, from + batchSize - 1);
+
+                if (error) throw error;
+
+                if (data) {
+                    allPincodes = [...allPincodes, ...data];
+                    if (data.length < batchSize) {
+                        more = false;
+                    } else {
+                        from += batchSize;
+                    }
+                } else {
+                    more = false;
+                }
+            }
+            setPincodes(allPincodes);
         } catch (err: any) {
             toast.error('Failed to load pincodes: ' + err.message);
         } finally {
@@ -130,7 +490,7 @@ export default function ServiceAreaPage() {
         const newStatus = currentStatus === 'Deliverable' ? 'Not Deliverable' : 'Deliverable';
         try {
             const { error } = await supabase
-                .from('pincodes')
+                .from('loc_pincodes')
                 .update({ status: newStatus })
                 .eq('pincode', pincode);
 
@@ -160,7 +520,7 @@ export default function ServiceAreaPage() {
             // 1. Update Tenant Config (Source of Truth)
             // We need to fetch the full config first to avoid overwriting other keys
             const { data: currentTenant } = await supabase
-                .from('tenants')
+                .from('id_tenants')
                 .select('config')
                 .eq('id', tenantId)
                 .single();
@@ -171,7 +531,7 @@ export default function ServiceAreaPage() {
             };
 
             const { error: configError } = await supabase
-                .from('tenants')
+                .from('id_tenants')
                 .update({ config: updatedConfig })
                 .eq('id', tenantId);
 
@@ -181,7 +541,7 @@ export default function ServiceAreaPage() {
             const statusValue = !currentEnabled ? 'Deliverable' : 'Not Deliverable';
 
             const { error: pincodeError } = await supabase
-                .from('pincodes')
+                .from('loc_pincodes')
                 .update({ status: statusValue })
                 .eq('district', district);
 
@@ -211,11 +571,11 @@ export default function ServiceAreaPage() {
         setUpdating(editingPincode.pincode);
         try {
             const { error } = await supabase
-                .from('pincodes')
+                .from('loc_pincodes')
                 .update({
                     state: editingPincode.state,
                     district: editingPincode.district,
-                    city: editingPincode.city,
+                    taluka: editingPincode.taluka,
                     area: editingPincode.area,
                     rto_code: normalizeRTO(editingPincode.rto_code)
                 })
@@ -242,16 +602,58 @@ export default function ServiceAreaPage() {
 
         setUpdating(originalDistrictName);
         try {
-            const { error: pincodeError } = await supabase
-                .from('pincodes')
-                .update({
-                    district: editingDistrict.name,
-                    state: editingDistrict.state,
-                    rto_code: normalizeRTO(editingDistrict.rtos[0]) || null // Simplified: set primary RTO
-                })
+            // 1. Fetch current DB RTOs to identify what was removed
+            const { data: dbData } = await supabase
+                .from('loc_pincodes')
+                .select('rto_code')
                 .eq('district', originalDistrictName);
 
-            if (pincodeError) throw pincodeError;
+            const currentDbRtos = Array.from(new Set((dbData || []).map(d => d.rto_code).filter(Boolean)));
+            const newRtos = editingDistrict.rtos.map(r => normalizeRTO(r)).filter(Boolean) as string[];
+
+            // 2. Identify Removed RTOs
+            const removedRtos = currentDbRtos.filter(oldR => !newRtos.includes(normalizeRTO(oldR) || ''));
+
+            // 3. Perform Updates
+            if (newRtos.length === 1) {
+                // CASE A: Bulk Override (Set ALL to Single Value)
+                const { error } = await supabase
+                    .from('loc_pincodes')
+                    .update({
+                        district: editingDistrict.name,
+                        state: editingDistrict.state,
+                        rto_code: newRtos[0]
+                    })
+                    .eq('district', originalDistrictName);
+                if (error) throw error;
+
+            } else {
+                // CASE B: List Update (Merge Removed into Primary)
+                // First update Name/State (without RTO change)
+                const { error: metaError } = await supabase
+                    .from('loc_pincodes')
+                    .update({
+                        district: editingDistrict.name,
+                        state: editingDistrict.state,
+                    })
+                    .eq('district', originalDistrictName);
+                if (metaError) throw metaError;
+
+                // Handle Removed RTOs: Reassign them to the first valid NEW RTO
+                if (removedRtos.length > 0 && newRtos.length > 0) {
+                    const fallbackRto = newRtos[0];
+                    for (const removed of removedRtos) {
+                        if (!removed) continue;
+                        // IMPORTANT: Rows already have the NEW district name from the update above
+                        await supabase
+                            .from('loc_pincodes')
+                            .update({ rto_code: fallbackRto })
+                            .eq('district', editingDistrict.name)
+                            .eq('rto_code', removed);
+                    }
+                    toast.success(`Merged ${removedRtos.length} removed RTO group(s) into ${fallbackRto}`);
+                }
+            }
 
             // Also update tenants config if the name changed
             if (editingDistrict.name !== originalDistrictName) {
@@ -260,7 +662,7 @@ export default function ServiceAreaPage() {
                 );
 
                 const { data: currentTenant } = await supabase
-                    .from('tenants')
+                    .from('id_tenants')
                     .select('config')
                     .eq('id', tenantId)
                     .single();
@@ -271,7 +673,7 @@ export default function ServiceAreaPage() {
                 };
 
                 await supabase
-                    .from('tenants')
+                    .from('id_tenants')
                     .update({ config: updatedConfig })
                     .eq('id', tenantId);
 
@@ -279,13 +681,21 @@ export default function ServiceAreaPage() {
             }
 
             // Refetch or update local state
+            // WAIT for DB replication/propagation (especially for bulk updates)
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
             await fetchPincodes();
             toast.success(`District ${editingDistrict.name} updated successfully`);
+
+            // Critical: Nullify state AFTER fetch to avoid UI flicker
             setEditingDistrict(null);
             setOriginalDistrictName(null);
+
+            // FORCE a full reset of the updating state
+            setUpdating(null);
         } catch (err: any) {
+            console.error('Error saving district:', err);
             toast.error('Failed to update district: ' + err.message);
-        } finally {
             setUpdating(null);
         }
     };
@@ -302,7 +712,7 @@ export default function ServiceAreaPage() {
     const filteredPincodes = pincodes.filter(p => {
         const matchesSearch =
             p.pincode.includes(searchQuery) ||
-            p.city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            p.taluka?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             p.area?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             p.district?.toLowerCase().includes(searchQuery.toLowerCase());
 
@@ -334,34 +744,114 @@ export default function ServiceAreaPage() {
     });
 
     const uniqueDistricts = React.useMemo(() => {
-        const districtMap = new Map<string, { name: string, state: string, rtos: string[] }>();
+        const districtMap = new Map<string, {
+            name: string,
+            state: string,
+            rtos: string[],
+            latSum: number,
+            lngSum: number,
+            count: number
+        }>();
+
         pincodes.forEach(p => {
             if (p.district) {
-                const key = p.district.toLowerCase();
-                const existing = districtMap.get(key);
+                // 1. Normalize Name (Fix "Wada" -> "Palghar")
+                let dName = normalizeDistrictName(p.district);
+
+                // Standardize Mumbai
+                if (dName === "Mumbai") dName = "Mumbai City"; // Default single "Mumbai" to City if ambiguous
+
+                const existing = districtMap.get(dName);
                 const rto = normalizeRTO(p.rto_code);
 
+                // Accumulate Lat/Lng for Centroid
+                const lat = Number(p.latitude) || 0;
+                const lng = Number(p.longitude) || 0;
+                const hasCoordinates = lat !== 0 && lng !== 0;
+
                 if (!existing) {
-                    districtMap.set(key, {
-                        name: p.district,
+                    districtMap.set(dName, {
+                        name: dName,
                         state: p.state || 'Unknown',
-                        rtos: rto ? [rto] : []
+                        rtos: rto ? [rto] : [],
+                        latSum: hasCoordinates ? lat : 0,
+                        lngSum: hasCoordinates ? lng : 0,
+                        count: hasCoordinates ? 1 : 0
                     });
-                } else if (rto && !existing.rtos.includes(rto)) {
-                    existing.rtos.push(rto);
+                } else {
+                    if (rto && !existing.rtos.includes(rto)) {
+                        existing.rtos.push(rto);
+                    }
+                    if (hasCoordinates) {
+                        existing.latSum += lat;
+                        existing.lngSum += lng;
+                        existing.count += 1;
+                    }
                 }
             }
         });
 
-        return Array.from(districtMap.values()).sort((a, b) => {
-            const aEnabled = enabledDistricts.some(d => d.toLowerCase() === a.name.toLowerCase());
-            const bEnabled = enabledDistricts.some(d => d.toLowerCase() === b.name.toLowerCase());
+        // 1. Calculate Centroids
+        let districtsWithCoords = Array.from(districtMap.values()).map(d => ({
+            ...d,
+            latitude: d.count > 0 ? d.latSum / d.count : 0,
+            longitude: d.count > 0 ? d.lngSum / d.count : 0
+        }));
 
-            if (aEnabled && !bEnabled) return -1;
-            if (!aEnabled && bEnabled) return 1;
-            return a.name.localeCompare(b.name);
+        // 2. Determine BORDER Status (Green/Orange/Red)
+        // Logic:
+        // Green: Explicitly Enabled
+        // Orange: Shares a border with a Green district (using Adjacency Graph)
+        // Red: Else
+
+        return districtsWithCoords.map(d => {
+            const isEnabled = enabledDistricts.some(ed => ed.toLowerCase() === d.name.toLowerCase());
+            let status: 'GREEN' | 'ORANGE' | 'RED' = 'RED';
+            let nearestHub = '';
+            let distanceToHub = 0;
+
+            if (isEnabled) {
+                status = 'GREEN';
+            } else {
+                // Check Adjacency
+                // We need to check if 'd.name' is a neighbor of any 'enabledDistrict'
+                // Problem: d.name is NORMALIZED (e.g. "Mumbai City"), but Graph keys might be "Mumbai" (GeoJSON).
+                // We need a robust lookup.
+
+                // 1. Get neighbours of current district
+                // Try direct match first
+                let neighbors = adjacencyGraph[d.name] || [];
+
+                // Try mapped matches (e.g. if d.name is "Mumbai City", map might have "Mumbai")
+                if (d.name.includes("Mumbai")) {
+                    neighbors = [...neighbors, ...(adjacencyGraph['Mumbai'] || [])];
+                }
+
+                // Also check if any enabled district lists THIS district as a neighbor
+                // (Adjacency is symmetric, but checking both sides is safer with aliases)
+
+                const isNeighborToGreen = enabledDistricts.some(ed => {
+                    // Check if 'ed' (Green) is in 'neighbors' list
+                    // Handle "Mumbai" alias again
+                    const result = neighbors.includes(ed) ||
+                        (ed === "Mumbai City" && neighbors.includes("Mumbai")) ||
+                        (ed === "Mumbai Suburban" && neighbors.includes("Mumbai"));
+                    return result;
+                });
+
+                if (isNeighborToGreen) {
+                    status = 'ORANGE';
+                }
+            }
+
+            return { ...d, status, nearestHub, distanceToHub };
+        }).sort((a, b) => {
+            // Sort: Green -> Orange -> Red
+            const scoreToNum = (s: string) => s === 'GREEN' ? 0 : s === 'ORANGE' ? 1 : 2;
+            return scoreToNum(a.status) - scoreToNum(b.status) || a.name.localeCompare(b.name);
         });
-    }, [pincodes, enabledDistricts]);
+
+    }, [pincodes, enabledDistricts, adjacencyGraph]);
 
     const filteredDistricts = uniqueDistricts.filter(d =>
         d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -388,7 +878,7 @@ export default function ServiceAreaPage() {
                 const query = searchQuery.toLowerCase();
                 const matchesSearch = !query ||
                     p.pincode.includes(query) ||
-                    p.city?.toLowerCase().includes(query) ||
+                    p.taluka?.toLowerCase().includes(query) ||
                     p.area?.toLowerCase().includes(query) ||
                     p.district?.toLowerCase().includes(query);
 
@@ -547,6 +1037,12 @@ export default function ServiceAreaPage() {
                                     >
                                         Districts
                                     </button>
+                                    <button
+                                        onClick={() => setViewMode('map')}
+                                        className={`px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-tighter transition-all ${viewMode === 'map' ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                    >
+                                        Map View
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -563,7 +1059,7 @@ export default function ServiceAreaPage() {
                         {[
                             { label: 'States', key: 'state' as keyof Pincode, icon: MapIcon, color: 'from-indigo-500 to-violet-500' },
                             { label: 'Districts', key: 'district' as keyof Pincode, icon: Building2, color: 'from-blue-500 to-cyan-500' },
-                            { label: 'Cities', key: 'city' as keyof Pincode, icon: MapPin, color: 'from-emerald-500 to-teal-500' },
+                            { label: 'Talukas', key: 'taluka' as keyof Pincode, icon: MapPin, color: 'from-emerald-500 to-teal-500' },
                             { label: 'Areas', key: 'area' as keyof Pincode, icon: LayoutGrid, color: 'from-amber-500 to-orange-500' },
                             { label: 'RTOs', key: 'rto_code' as keyof Pincode, icon: CheckCircle2, color: 'from-rose-500 to-pink-500' },
                         ].map((metric) => {
@@ -614,7 +1110,7 @@ export default function ServiceAreaPage() {
                                     <div className="relative flex-1 max-w-md group">
                                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
                                         <input
-                                            placeholder="Search by area, city or pincode..."
+                                            placeholder="Search by area, taluka or pincode..."
                                             className="w-full bg-slate-50 dark:bg-black/20 pl-12 pr-4 py-3 rounded-2xl border-none focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-white placeholder:text-slate-400 shadow-inner"
                                             value={searchQuery}
                                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -671,7 +1167,7 @@ export default function ServiceAreaPage() {
                                 <div className="grid grid-cols-12 gap-4 px-6 py-4 mb-2 border-b border-slate-50 dark:border-white/5">
                                     <ColumnHeader label="State" colKey="state" className="col-span-2" />
                                     <ColumnHeader label="District" colKey="district" className="col-span-2" />
-                                    <ColumnHeader label="City" colKey="city" className="col-span-2" />
+                                    <ColumnHeader label="Taluka" colKey="taluka" className="col-span-2" />
                                     <ColumnHeader label="Area" colKey="area" className="col-span-2" />
                                     <ColumnHeader label="Pincode" colKey="pincode" className="col-span-1 flex justify-center" />
                                     <ColumnHeader label="RTO" colKey="rto_code" className="col-span-1 flex justify-center" />
@@ -714,7 +1210,7 @@ export default function ServiceAreaPage() {
                                                 </div>
 
                                                 <div className="col-span-2">
-                                                    <div className="text-sm font-black italic text-slate-900 dark:text-white tracking-tighter truncate" title={toTitleCase(p.city)}>{toTitleCase(p.city)}</div>
+                                                    <div className="text-sm font-black italic text-slate-900 dark:text-white tracking-tighter truncate" title={toTitleCase(p.taluka)}>{toTitleCase(p.taluka)}</div>
                                                 </div>
 
                                                 <div className="col-span-2 flex flex-col justify-center">
@@ -773,7 +1269,7 @@ export default function ServiceAreaPage() {
                                 </div>
                             </div>
                         </div>
-                    ) : (
+                    ) : viewMode === 'districts' ? (
                         <div className="space-y-6">
                             {/* Districts Grid */}
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -849,6 +1345,260 @@ export default function ServiceAreaPage() {
                                 })}
                             </div>
                         </div>
+                    ) : (
+                        <div className="bg-white dark:bg-slate-900/40 rounded-[2.5rem] border border-slate-100 dark:border-white/5 p-6 shadow-sm backdrop-blur-2xl h-[700px] relative overflow-hidden flex flex-col">
+                            {/* Map Instructions */}
+                            <div className="absolute top-6 left-8 z-10 pointer-events-none">
+                                <h3 className="text-xl font-black italic uppercase tracking-tighter text-slate-900 dark:text-white">
+                                    Live <span className="text-indigo-600">Operations Map</span>
+                                </h3>
+                                <p className="text-xs font-bold text-slate-400 mt-1 max-w-xs">
+                                    <span className="text-emerald-500">Green: Live</span> • <span className="text-orange-500">Orange: Catchment (&lt;60km)</span> • <span className="text-rose-500">Red: Dead Zone</span>
+                                </p>
+                            </div>
+
+                            {/* Custom SVG Real Map */}
+                            <div
+                                className={`${isFullScreen
+                                    ? 'fixed inset-0 z-[100] w-screen h-screen rounded-none bg-slate-50 dark:bg-slate-900'
+                                    : 'flex-1 w-full h-full relative rounded-[2rem] bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-white/5'
+                                    } group cursor-grab active:cursor-grabbing overflow-hidden`}
+                                onWheel={handleWheel}
+                                onMouseDown={handleMouseDown}
+                                onMouseMove={handleMouseMove}
+                                onMouseUp={handleMouseUp}
+                                onMouseLeave={handleMouseUp}
+                            >
+                                {geoData && mapBounds ? (
+                                    <>
+                                        <div className="w-full h-full flex items-center justify-center">
+                                            <svg
+                                                width="100%"
+                                                height="100%"
+                                                viewBox={`0 0 800 600`}
+                                                className="w-full h-full drop-shadow-2xl filter transition-transform duration-75 ease-out will-change-transform"
+                                                preserveAspectRatio="xMidYMid meet"
+                                            >
+                                                <defs>
+                                                    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                                                        <feGaussianBlur stdDeviation="3" result="blur" />
+                                                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                                                    </filter>
+                                                </defs>
+
+                                                <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.scale})`}>
+                                                    {/* Render Districts */}
+                                                    {geoData.features.map((feature: any, i: number) => {
+                                                        const geoName = feature.properties.district || feature.properties.dtname || 'Unknown';
+
+                                                        // Name Normalization Map (DB Name -> GeoJSON Name)
+                                                        const DISTRICT_MAPPING: Record<string, string> = {
+                                                            "Mumbai City": "Mumbai",
+                                                            "Mumbai Suburban": "Mumbai",
+                                                            "Pune": "Pune",
+                                                            "Thane": "Thane",
+                                                            "Palghar": "Palghar",
+                                                            "Raigad": "Raigad",
+                                                            "Nashik": "Nashik",
+                                                            "Ahmednagar": "Ahmednagar",
+                                                            "Aurangabad": "Aurangabad",
+                                                            "Chhatrapati Sambhaji Nagar": "Aurangabad",
+                                                            "Dharashiv": "Osmanabad"
+                                                        };
+
+                                                        // Find ALL matching districts from DB (Many-to-One support)
+                                                        // e.g., 'Mumbai City' and 'Mumbai Suburban' both match 'Mumbai'
+                                                        const matchedDistricts = uniqueDistricts.filter(d => {
+                                                            const dbName = d.name;
+                                                            // 1. Exact Match
+                                                            if (dbName.toLowerCase() === geoName.toLowerCase()) return true;
+                                                            // 2. Mapped Match (DB Name -> GeoJSON Name)
+                                                            if (DISTRICT_MAPPING[dbName] === geoName) return true;
+                                                            // 3. Partial Match
+                                                            if (dbName.toLowerCase().includes(geoName.toLowerCase())) return true;
+                                                            if (geoName.toLowerCase().includes(dbName.toLowerCase())) return true;
+                                                            return false;
+                                                        });
+
+                                                        // aggregatedStatus: If ANY matched district is 'Deliverable', show GREEN.
+                                                        // Otherwise only RED if all are RED.
+                                                        // Wait, what determines GREEN? 
+                                                        // The list logic calculates status: 'GREEN' | 'ORANGE' | 'RED'
+
+                                                        let status = 'RED';
+                                                        let districtName = geoName;
+
+                                                        if (matchedDistricts.length > 0) {
+                                                            // If multiple matches (e.g. Mumbai City + Suburban), prioritize GREEN
+                                                            const hasGreen = matchedDistricts.some(d => d.status === 'GREEN');
+                                                            const hasOrange = matchedDistricts.some(d => d.status === 'ORANGE');
+
+                                                            status = hasGreen ? 'GREEN' : hasOrange ? 'ORANGE' : 'RED';
+
+                                                            // Combine names for tooltip if multiple
+                                                            if (matchedDistricts.length > 1) {
+                                                                districtName = matchedDistricts.map(d => d.name).join(' & ');
+                                                            } else {
+                                                                districtName = matchedDistricts[0].name;
+                                                            }
+                                                        }
+
+                                                        // Colors
+                                                        const fill = status === 'GREEN' ? '#10b981' : status === 'ORANGE' ? '#f97316' : '#e11d48'; // emerald, orange, rose
+
+                                                        // Project Coordinates Implementation
+                                                        const width = 800;
+                                                        const height = 600;
+                                                        const { minLat, maxLat, minLon, maxLon } = mapBounds;
+                                                        const latRange = maxLat - minLat;
+                                                        const lonRange = maxLon - minLon;
+
+                                                        // Helper to project a single point
+                                                        const project = (lon: number, lat: number) => {
+                                                            const x = ((lon - minLon) / lonRange) * width;
+                                                            const y = height - ((lat - minLat) / latRange) * height; // Invert Y
+                                                            return `${x},${y}`;
+                                                        };
+
+                                                        const drawPolygon = (coords: any[]) => {
+                                                            const type = feature.geometry.type;
+                                                            const renderRing = (ring: any[]) => {
+                                                                return "M " + ring.map((pt: any) => project(pt[0], pt[1])).join(" L ") + " Z ";
+                                                            };
+                                                            let path = "";
+                                                            if (type === 'Polygon') {
+                                                                feature.geometry.coordinates.forEach((ring: any[]) => {
+                                                                    path += renderRing(ring);
+                                                                });
+                                                            } else if (type === 'MultiPolygon') {
+                                                                feature.geometry.coordinates.forEach((polygon: any[]) => {
+                                                                    polygon.forEach((ring: any[]) => {
+                                                                        path += renderRing(ring);
+                                                                    });
+                                                                });
+                                                            }
+                                                            return path;
+                                                        };
+
+                                                        return (
+                                                            <g key={i} className="group/district transition-all duration-300">
+                                                                <path
+                                                                    d={drawPolygon(feature.geometry.coordinates)}
+                                                                    fill={fill}
+                                                                    fillOpacity={status === 'GREEN' ? 0.9 : status === 'ORANGE' ? 0.8 : 0.6}
+                                                                    stroke="white"
+                                                                    strokeWidth={1 / transform.scale}
+                                                                    className="transition-all duration-300 hover:brightness-110 cursor-pointer hover:stroke-indigo-500"
+                                                                    style={{ strokeWidth: 1.5 / transform.scale }}
+                                                                    onMouseEnter={(e) => {
+                                                                        setHoveredDistrictLabel({
+                                                                            name: districtName, // "Mumbai City & Mumbai Suburban"
+                                                                            status: status,
+                                                                            x: 0,
+                                                                            y: 0
+                                                                        });
+                                                                    }}
+                                                                    onMouseLeave={() => setHoveredDistrictLabel(null)}
+                                                                />
+                                                            </g>
+                                                        );
+                                                    })}
+                                                    {/* Render Labels (Smart Zoom-Dependent) */}
+                                                    {uniqueDistricts.map((d, i) => {
+                                                        // 1. Zoom Threshold Check
+                                                        // Adjusted Thresholds:
+                                                        // Names: > 1.5x (Easier to see)
+                                                        // RTOs: > 3.0x (Detailed but reachable)
+                                                        const showName = transform.scale > 1.5;
+                                                        const showRTO = transform.scale > 3.0;
+
+                                                        if (!showName && !showRTO) return null;
+
+                                                        const width = 800;
+                                                        const height = 600;
+                                                        const { minLat, maxLat, minLon, maxLon } = mapBounds;
+                                                        const latRange = maxLat - minLat;
+                                                        const lonRange = maxLon - minLon;
+
+                                                        if (d.latitude === 0 || d.longitude === 0) return null;
+
+                                                        const x = ((d.longitude - minLon) / lonRange) * width;
+                                                        const y = height - ((d.latitude - minLat) / latRange) * height;
+
+                                                        // Join multiple RTOs if available (e.g. "MH04, MH48")
+                                                        // Limit to 2 lines or strictly truncate to prevent overflow
+                                                        const rtoList = d.rtos || [];
+                                                        const rtoText = rtoList.length > 2
+                                                            ? `${rtoList.slice(0, 2).join(', ')}...`
+                                                            : rtoList.join(', ');
+
+                                                        return (
+                                                            <g key={`label-${i}`} transform={`translate(${x}, ${y})`} className="pointer-events-none fade-in duration-300">
+                                                                {showName && (
+                                                                    <text
+                                                                        textAnchor="middle"
+                                                                        y={showRTO ? -2 / transform.scale : 0}
+                                                                        style={{ fontSize: `${Math.max(4, 9 / transform.scale)}px` }}
+                                                                        className="fill-white font-black uppercase tracking-widest drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
+                                                                    >
+                                                                        {d.name.replace(' Division', '')}
+                                                                    </text>
+                                                                )}
+                                                                {showRTO && rtoText && (
+                                                                    <text
+                                                                        textAnchor="middle"
+                                                                        y={10 / transform.scale}
+                                                                        style={{ fontSize: `${Math.max(3, 7 / transform.scale)}px` }}
+                                                                        className="fill-indigo-100 font-bold uppercase tracking-wider drop-shadow-md opacity-90"
+                                                                    >
+                                                                        {rtoText}
+                                                                    </text>
+                                                                )}
+                                                            </g>
+                                                        );
+                                                    })}
+                                                </g>
+                                            </svg>
+
+                                            {/* Hover Tooltip (Floating Overlay) */}
+                                            {hoveredDistrictLabel && (
+                                                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md text-white px-4 py-2 rounded-xl shadow-2xl border border-white/10 pointer-events-none animate-in slide-in-from-bottom-2 fade-in zoom-in-95 duration-200 z-50 flex items-center gap-3">
+                                                    <div className={`w-2 h-2 rounded-full ${hoveredDistrictLabel.status === 'GREEN' ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : hoveredDistrictLabel.status === 'ORANGE' ? 'bg-orange-500' : 'bg-rose-500'}`} />
+                                                    <div>
+                                                        <p className="text-xs font-black uppercase tracking-widest leading-none mb-0.5">{hoveredDistrictLabel.name}</p>
+                                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{hoveredDistrictLabel.status === 'GREEN' ? 'Serviceable' : 'Not Serviceable'}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Map Controls (Fixed Position) */}
+                                        <div className="absolute top-4 right-4 flex flex-col gap-2 z-[200] pointer-events-auto">
+                                            <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur shadow-md rounded-lg p-2 text-xs font-bold text-slate-600 dark:text-slate-300 text-center border border-slate-200 dark:border-white/10">
+                                                {transform.scale.toFixed(1)}x
+                                            </div>
+                                            <button onClick={() => setIsFullScreen(!isFullScreen)} className="p-2 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-white/10 text-slate-600 dark:text-white hover:bg-slate-50 active:scale-95 transition-all" title={isFullScreen ? "Exit Full Screen" : "Full Screen"}>
+                                                {isFullScreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                                            </button>
+                                            <button onClick={handleZoomIn} className="p-2 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-white/10 text-slate-600 dark:text-white hover:bg-slate-50 active:scale-95 transition-all">
+                                                <Plus size={20} />
+                                            </button>
+                                            <button onClick={handleResetView} className="p-2 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-white/10 text-slate-600 dark:text-white hover:bg-slate-50 active:scale-95 transition-all">
+                                                <RotateCcw size={20} />
+                                            </button>
+                                            <button onClick={handleZoomOut} className="p-2 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-white/10 text-slate-600 dark:text-white hover:bg-slate-50 active:scale-95 transition-all">
+                                                <Minus size={20} />
+                                            </button>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="w-full h-full flex flex-col items-center justify-center gap-4">
+                                        <Loader2 className="w-10 h-10 text-indigo-500 animate-spin" />
+                                        <p className="text-slate-400 text-sm font-bold">Rendering Cartography...</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     )}
 
                     {editingPincode && (
@@ -898,12 +1648,12 @@ export default function ServiceAreaPage() {
                                         <div className="space-y-2">
                                             <label className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 tracking-widest">
                                                 <MapPin size={12} className="text-emerald-500" />
-                                                City
+                                                Taluka
                                             </label>
                                             <input
                                                 className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-inner"
-                                                value={editingPincode.city || ''}
-                                                onChange={e => setEditingPincode({ ...editingPincode, city: e.target.value })}
+                                                value={editingPincode.taluka || ''}
+                                                onChange={e => setEditingPincode({ ...editingPincode, taluka: e.target.value })}
                                             />
                                         </div>
                                         <div className="space-y-2">
@@ -1003,8 +1753,11 @@ export default function ServiceAreaPage() {
                                             <input
                                                 className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-inner placeholder:text-slate-300"
                                                 placeholder="e.g., MH-12"
-                                                value={editingDistrict.rtos[0] || ''}
-                                                onChange={e => setEditingDistrict({ ...editingDistrict, rtos: [e.target.value] })}
+                                                value={editingDistrict.rtos.join(', ')}
+                                                onChange={e => setEditingDistrict({
+                                                    ...editingDistrict,
+                                                    rtos: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
+                                                })}
                                             />
                                             <p className="text-[9px] text-slate-400 font-bold italic">Note: Changing this will update all pincodes in this district.</p>
                                         </div>

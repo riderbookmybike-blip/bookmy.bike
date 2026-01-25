@@ -175,7 +175,7 @@ export default function VariantStep({ family, template, existingVariants, onUpda
         if (isLookupMode) {
             const fetchBrands = async () => {
                 const supabase = createClient();
-                const { data } = await supabase.from('brands').select('id, name').order('name');
+                const { data } = await supabase.from('cat_brands').select('id, name').order('name');
                 if (data) setLookupBrands(data);
             };
             fetchBrands();
@@ -187,8 +187,8 @@ export default function VariantStep({ family, template, existingVariants, onUpda
             const fetchFamilies = async () => {
                 const supabase = createClient();
                 let query = supabase
-                    .from('catalog_items')
-                    .select('id, name, brand_id, brands:brand_id(name)')
+                    .from('cat_items')
+                    .select('id, name, brand_id, brands:cat_brands(name)')
                     .eq('type', 'FAMILY');
 
                 if (selectedBrandId !== 'ALL') {
@@ -209,7 +209,7 @@ export default function VariantStep({ family, template, existingVariants, onUpda
             const fetchVariants = async () => {
                 const supabase = createClient();
                 const { data } = await supabase
-                    .from('catalog_items')
+                    .from('cat_items')
                     .select('id, name')
                     .eq('type', 'VARIANT')
                     .eq('parent_id', selectedFamilyId)
@@ -259,7 +259,7 @@ export default function VariantStep({ family, template, existingVariants, onUpda
             };
 
             const { data, error: dbError } = await supabase
-                .from('catalog_items')
+                .from('cat_items')
                 .upsert(payload, { onConflict: 'slug' })
                 .select()
                 .single();
@@ -308,14 +308,14 @@ export default function VariantStep({ family, template, existingVariants, onUpda
             setIsReorderSaving(true);
             await Promise.all(
                 updatedList.map((item: any) =>
-                    supabase.from('catalog_items').update({ position: item.position }).eq('id', item.id)
+                    supabase.from('cat_items').update({ position: item.position }).eq('id', item.id)
                 )
             );
             setShowReorderSaved(true);
             if (reorderSavedTimeoutRef.current) {
                 window.clearTimeout(reorderSavedTimeoutRef.current);
             }
-            reorderSavedTimeoutRef = window.setTimeout(() => {
+            reorderSavedTimeoutRef.current = window.setTimeout(() => {
                 setShowReorderSaved(false);
             }, 1200);
         } catch (err) {
@@ -331,7 +331,7 @@ export default function VariantStep({ family, template, existingVariants, onUpda
         if (!confirm(`Are you sure you want to delete this ${l1Label.toLowerCase()}?`)) return;
         try {
             const supabase = createClient();
-            const { error } = await supabase.from('catalog_items').delete().eq('id', id);
+            const { error } = await supabase.from('cat_items').delete().eq('id', id);
             if (error) throw error;
             onUpdate(existingVariants.filter((v: any) => v.id !== id));
             toast.success('Variant deleted');
@@ -668,7 +668,7 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                             onUpdate(updatedList);
 
                             const supabase = createClient();
-                            await supabase.from('catalog_items').update({ specs: updatedSpecs }).eq('id', activeMediaVariant.id);
+                            await supabase.from('cat_items').update({ specs: updatedSpecs }).eq('id', activeMediaVariant.id);
                         }}
                         onClose={() => setIsMediaModalOpen(false)}
                     />
@@ -759,7 +759,7 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                                         };
 
                                         // 2. Update Database
-                                        const { error } = await supabase.from('catalog_items').update({
+                                        const { error } = await supabase.from('cat_items').update({
                                             name: nameTitle,
                                             slug: newSlug,
                                             specs: updatedSpecs

@@ -13,14 +13,14 @@ interface CatalogItemDB {
     price_base: number;
     brand_id: string;
     brand: { name: string; logo_svg?: string };
-    template: { name: string; code: string };
+    template: { name: string; code: string; category: string };
     children?: {
         id: string;
         type: string;
         name: string;
         slug: string;
-        displayName?: string; // Added displayName
-        modelSlug?: string; // Added modelSlug
+        displayName?: string;
+        modelSlug?: string;
         specs?: any;
         price_base?: number;
         position?: number;
@@ -43,41 +43,50 @@ export function useCatalog() {
     const [error, setError] = useState<string | null>(null);
     const [skuCount, setSkuCount] = useState<number>(0);
     const [stateCode, setStateCode] = useState('MH');
+    const [locationLabel, setLocationLabel] = useState('Mumbai, MH');
 
     useEffect(() => {
-        const resolveStateCode = () => {
+        const resolveLocation = () => {
             if (typeof window === 'undefined') return;
             const cached = localStorage.getItem('bkmb_user_pincode');
             if (!cached) return;
             try {
-                const data = JSON.parse(cached) as { state?: string | null; stateCode?: string | null };
-                if (data.stateCode) {
-                    setStateCode(data.stateCode.toUpperCase());
-                    return;
+                const data = JSON.parse(cached) as { state?: string; stateCode?: string; district?: string; city?: string };
+
+                // prefer stateCode
+                let code = data.stateCode;
+
+                // Fallback map if strict stateCode missing
+                if (!code && data.state) {
+                    const stateMap: Record<string, string> = {
+                        MAHARASHTRA: 'MH',
+                        KARNATAKA: 'KA',
+                        DELHI: 'DL',
+                        GUJARAT: 'GJ',
+                        TAMIL_NADU: 'TN',
+                        TELANGANA: 'TS',
+                        UTTAR_PRADESH: 'UP',
+                        WEST_BENGAL: 'WB',
+                        RAJASTHAN: 'RJ',
+                    };
+                    code = stateMap[data.state.toUpperCase()] || data.state.substring(0, 2).toUpperCase();
                 }
-                const stateMap: Record<string, string> = {
-                    MAHARASHTRA: 'MH',
-                    KARNATAKA: 'KA',
-                    DELHI: 'DL',
-                    GUJARAT: 'GJ',
-                    TAMIL_NADU: 'TN',
-                    TELANGANA: 'TS',
-                    UTTAR_PRADESH: 'UP',
-                    WEST_BENGAL: 'WB',
-                    RAJASTHAN: 'RJ',
-                };
-                const normalized = (data.state || '').toUpperCase();
-                if (normalized && stateMap[normalized]) {
-                    setStateCode(stateMap[normalized]);
+
+                if (code) {
+                    setStateCode(code);
+                    // Construct Label: "District, Code" e.g. "Pune, MH"
+                    const cityPart = data.district || data.city || '';
+                    const label = cityPart ? `${cityPart}, ${code}` : code;
+                    setLocationLabel(label);
                 }
             } catch (e) {
                 console.error('Error parsing stored location:', e);
             }
         };
 
-        resolveStateCode();
-        window.addEventListener('locationChanged', resolveStateCode);
-        return () => window.removeEventListener('locationChanged', resolveStateCode);
+        resolveLocation();
+        window.addEventListener('locationChanged', resolveLocation);
+        return () => window.removeEventListener('locationChanged', resolveLocation);
     }, []);
 
     useEffect(() => {
@@ -88,21 +97,21 @@ export function useCatalog() {
 
                 // Fetch Families + Children (Variants) + Grandchildren (SKUs)
                 const { data, error: dbError } = await supabase
-                    .from('catalog_items')
+                    .from('cat_items')
                     .select(`
                         id, type, name, slug, specs, price_base, brand_id,
-                        brand:brands(name, logo_svg),
-                        template:catalog_templates!inner(name, code, category),
-                        children:catalog_items!parent_id(
+                        brand:cat_brands(name, logo_svg),
+                        template:cat_templates!inner(name, code, category),
+                        children:cat_items!parent_id(
                             id,
                             type,
                             name,
                             slug,
                             specs,
                             price_base,
-                            parent:catalog_items!parent_id(name, slug),
+                            parent:cat_items!parent_id(name, slug),
                             position,
-                            skus:catalog_items!parent_id(
+                            skus:cat_items!parent_id(
                                 id,
                                 type,
                                 price_base,
@@ -111,13 +120,13 @@ export function useCatalog() {
                                 gallery_urls,
                                 video_url,
                                 specs,
-                                prices:vehicle_prices(ex_showroom_price, state_code)
+                                prices:cat_prices(ex_showroom_price, state_code, district, latitude, longitude)
                             )
                         )
                     `)
                     .eq('type', 'FAMILY')
                     .eq('status', 'ACTIVE')
-                    .not('template_id', 'is', null) // Ensure it has a template
+                    .not('template_id', 'is', null)
                     .eq('template.category', 'VEHICLE');
 
                 if (dbError) {
@@ -126,13 +135,13 @@ export function useCatalog() {
                 }
 
                 const { data: ruleData } = await supabase
-                    .from('registration_rules')
+                    .from('cat_reg_rules')
                     .select('*')
                     .eq('state_code', stateCode)
                     .eq('status', 'ACTIVE');
 
                 const { data: insuranceRuleData } = await supabase
-                    .from('insurance_rules')
+                    .from('cat_ins_rules')
                     .select('*')
                     .eq('status', 'ACTIVE')
                     .eq('vehicle_type', 'TWO_WHEELER')
@@ -154,15 +163,12 @@ export function useCatalog() {
                         if (templateName.includes('scooter')) bodyType = 'SCOOTER';
                         if (templateName.includes('helmet')) bodyType = 'ACCESSORY';
 
-                        // For each child (Variant), we create a listing item.
-                        // If there are no VARIANT nodes, fall back to any children or the family itself.
                         const familyChildren = family.children || [];
                         const variantChildren = familyChildren.filter(c => c.type === 'VARIANT');
                         let displayVariants = variantChildren.length > 0
                             ? variantChildren
                             : (familyChildren.length > 0 ? familyChildren : [family]);
 
-                        // Sort variants by position
                         displayVariants = displayVariants.sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
 
                         return displayVariants.map(variantItem => {
@@ -171,14 +177,16 @@ export function useCatalog() {
                                 || family.specs?.make
                                 || family.specs?.brand_name
                                 || 'Unknown';
-                            const variantSpecs = (variantItem as any).specs || {};
+
                             const variantSkus = (variantItem as any).skus;
                             const isSkuItem = (variantItem as any).type === 'SKU';
                             const allSkus = ((Array.isArray(variantSkus) && variantSkus.length > 0)
                                 ? variantSkus
-                                : (isSkuItem
-                                    ? [variantItem]
-                                    : familyChildren.flatMap(c => (c.type === 'SKU' ? [c] : (c.skus || []))))) as any;
+                                : (isSkuItem ? [variantItem] : [])) as any[];
+
+                            if (allSkus.length === 0 && Array.isArray(familyChildren)) {
+                                allSkus.push(...familyChildren.flatMap(c => (c.type === 'SKU' ? [c] : (c.skus || []))));
+                            }
 
                             return {
                                 id: variantItem.id,
@@ -199,27 +207,99 @@ export function useCatalog() {
                                 segment: 'COMMUTER',
                                 rating: 4.5,
 
-                                // Pricing - Find the "Starting At" price for this specific variant
                                 price: (() => {
-                                    const skuPrices = allSkus.map((sku: any) => {
-                                        const statePrice = sku.prices?.find((p: any) => p.state_code === 'MH')?.ex_showroom_price;
-                                        return statePrice || sku.price_base || variantItem.price_base || family.price_base || 0;
-                                    }).filter((p: number) => p > 0);
+                                    const skuPrices = allSkus.flatMap((sku: any) => sku.prices || []);
 
-                                    const basePrice = skuPrices.length > 0
-                                        ? Math.min(...skuPrices)
-                                        : (variantItem.price_base || family.price_base || 0);
+                                    // Get User Location from LocalStorage
+                                    let userLat: number | null = null;
+                                    let userLng: number | null = null;
+                                    const cached = localStorage.getItem('bkmb_user_pincode');
+                                    if (cached) {
+                                        try {
+                                            const uData = JSON.parse(cached);
+                                            // Prefer explicit lat/lng if available (from browser geo), else rely on district match
+                                            if (uData.lat && uData.lng) {
+                                                userLat = uData.lat;
+                                                userLng = uData.lng;
+                                            } else {
+                                                // Fallback: If we only have pincode/state, we default to "Maharashtra" center or similar? 
+                                                // Actually, if we don't have lat/lng, we can try string matching, 
+                                                // BUT for "Nearest", we need coordinates.
+                                                // For now, let's skip distance calc if no user coords, and fallback to string match.
+                                            }
+                                        } catch (e) { }
+                                    }
+
+                                    let activePriceObj = null;
+                                    let pricingSource = "";
+                                    let isEstimate = false;
+
+                                    if (skuPrices.length > 0) {
+                                        // A. Exact District Match (Best Case)
+                                        // We check current locationLabel logic or just string match if available
+                                        // But "Nearest" is better.
+
+                                        // 1. Calculate Distances if User has Lat/Lng
+                                        if (userLat && userLng) {
+                                            const withDistance = skuPrices.map((p: any) => {
+                                                if (!p.latitude || !p.longitude) return { ...p, distance: 999999 };
+                                                const dist = Math.sqrt(
+                                                    Math.pow(p.latitude - userLat, 2) +
+                                                    Math.pow(p.longitude - userLng, 2)
+                                                );
+                                                return { ...p, distance: dist };
+                                            });
+                                            // Sort by nearest
+                                            withDistance.sort((a: any, b: any) => a.distance - b.distance);
+                                            activePriceObj = withDistance[0];
+                                        }
+
+                                        // B. Fallback to State Match if no coords or no result
+                                        if (!activePriceObj) {
+                                            activePriceObj = skuPrices.find((p: any) => p.state_code === stateCode);
+                                        }
+
+                                        // C. Hard Fallback (Any Price - e.g. Mumbai)
+                                        if (!activePriceObj) {
+                                            activePriceObj = skuPrices.find((p: any) => p.state_code === 'MH'); // Default Anchor
+                                            isEstimate = true;
+                                        }
+                                    }
+
+                                    if (activePriceObj) {
+                                        pricingSource = activePriceObj.district
+                                            ? `${activePriceObj.district}, ${activePriceObj.state_code}`
+                                            : activePriceObj.state_code;
+
+                                        // If we fell back to MH but user is not in MH, mark estimate
+                                        if (!activePriceObj.district && activePriceObj.state_code === 'MH' && stateCode !== 'MH') {
+                                            isEstimate = true;
+                                        }
+                                        // If "Nearest", we might want to mark estimate if distance is > X km? 
+                                        // User asked to just show nearest.
+
+                                        if (isEstimate) {
+                                            pricingSource = `Nearest: ${pricingSource}`;
+                                        }
+                                    }
+
+                                    // 3. Fallback to Base Price if nothing found
+                                    const basePrice = activePriceObj?.ex_showroom_price
+                                        || variantItem.price_base
+                                        || family.price_base
+                                        || 0;
 
                                     const engineCc = family.specs?.engine_cc || 110;
                                     const onRoadBreakdown = calculateOnRoad(Number(basePrice), engineCc, effectiveRule, insuranceRule);
 
                                     return {
                                         exShowroom: basePrice,
-                                        onRoad: Math.round(onRoadBreakdown.onRoadTotal)
+                                        onRoad: Math.round(onRoadBreakdown.onRoadTotal),
+                                        pricingSource,
+                                        isEstimate
                                     };
                                 })(),
 
-                                // Specs - prioritize variant specs then fallback to family specs
                                 specifications: (() => {
                                     const vs = variantItem.specs || {};
                                     const fs = family.specs || {};
@@ -267,8 +347,6 @@ export function useCatalog() {
                                     };
                                 })(),
 
-                                // Images
-                                // Images - Prioritize Primary SKU then any SKU, fallback to variant/family
                                 imageUrl: (() => {
                                     const primarySku = allSkus.find((s: any) => s.is_primary);
                                     const firstSku = allSkus[0];
@@ -282,7 +360,6 @@ export function useCatalog() {
                                         undefined;
                                 })(),
 
-                                // Colors - Extract unique colors from SKUs
                                 availableColors: (() => {
                                     const colorsMap = new Map();
                                     allSkus.forEach((sku: any) => {
@@ -302,7 +379,7 @@ export function useCatalog() {
                     });
                     setItems(mappedItems);
                     const { count: skuTotal, error: skuError } = await supabase
-                        .from('catalog_items')
+                        .from('cat_items')
                         .select('id', { count: 'exact', head: true })
                         .eq('type', 'SKU')
                         .eq('status', 'ACTIVE');
@@ -316,7 +393,6 @@ export function useCatalog() {
                 }
             } catch (err: any) {
                 console.error('Error fetching catalog:', err);
-                // Log detailed error if it's a Supabase error
                 if (err.message && err.details) {
                     console.error('Supabase Error Details:', {
                         message: err.message,
@@ -328,7 +404,6 @@ export function useCatalog() {
                 setError(err instanceof Error ? err.message : 'Unknown error');
                 setItems([]);
             } finally {
-
                 setIsLoading(false);
             }
         };

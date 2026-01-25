@@ -2,10 +2,7 @@
 
 import React, { useState } from 'react';
 import { usePDPData } from '@/hooks/usePDPData';
-import { DeviceLayout } from '@/components/layout/DeviceLayout';
-import { PDPMobile } from '@/components/store/PDPMobile';
-import { PDPTablet } from '@/components/store/PDPTablet';
-import { PDPDesktop } from '@/components/store/PDPDesktop';
+import { MasterPDP } from '@/components/store/MasterPDP';
 import { LeadCaptureModal } from '@/components/leads/LeadCaptureModal';
 import { EmailUpdateModal } from '@/components/auth/EmailUpdateModal';
 import { createClient } from '@/lib/supabase/client';
@@ -156,6 +153,8 @@ export default function ProductClient({
 
     const commonProps = {
         product,
+        makeParam,
+        modelParam,
         variantParam,
         data,
         handlers
@@ -163,11 +162,7 @@ export default function ProductClient({
 
     return (
         <>
-            <DeviceLayout
-                mobile={<PDPMobile {...commonProps} />}
-                tablet={<PDPTablet {...commonProps} />}
-                desktop={<PDPDesktop {...commonProps} />}
-            />
+            <MasterPDP {...commonProps} />
 
             <LeadCaptureModal
                 isOpen={showQuoteSuccess}

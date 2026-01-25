@@ -59,7 +59,7 @@ export default function UnifiedCatalogPage() {
 
         // 1. Fetch All Catalog Items for stat calculation
         const { data: allItems } = await supabase
-            .from('catalog_items')
+            .from('cat_items')
             .select('type, status');
 
         if (allItems) {
@@ -74,15 +74,15 @@ export default function UnifiedCatalogPage() {
         // 2. Fetch Families with nested children for the list
         // We ensure we fetch 'position' for variants and colors to respect user-defined sequence.
         const { data, error } = await supabase
-            .from('catalog_items')
+            .from('cat_items')
             .select(`
                 *,
-                brand:brands(name, logo_svg),
-                template:catalog_templates(name, hierarchy_config),
-                colors:catalog_items!parent_id(id, name, type, specs, position),
-                variants:catalog_items!parent_id(
+                brand:cat_brands(name, logo_svg),
+                template:cat_templates(name, hierarchy_config),
+                colors:cat_items!parent_id(id, name, type, specs, position),
+                variants:cat_items!parent_id(
                     id, name, type, position,
-                    skus:catalog_items!parent_id(id, name, type, specs, slug, status)
+                    skus:cat_items!parent_id(id, name, type, specs, slug, status)
                 )
             `)
             .eq('type', 'FAMILY')

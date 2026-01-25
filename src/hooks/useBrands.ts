@@ -16,7 +16,7 @@ export function useBrands() {
         async function fetchBrands() {
             try {
                 const supabase = createClient();
-                const { data, error } = await supabase.from('brands').select('id, name, slug').order('name');
+                const { data, error } = await supabase.from('cat_brands').select('id, name, slug').order('name');
 
                 if (error) throw error;
 

@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
         let tenantId: string | undefined = providedTenantId;
         if (!tenantId && tenantSlug) {
             const { data: tenant } = await supabaseAdmin
-                .from('tenants')
+                .from('id_tenants')
                 .select('id')
                 .eq('slug', tenantSlug)
                 .maybeSingle();
@@ -50,17 +50,17 @@ export async function POST(request: NextRequest) {
         // 1. Find User by Phone or Email
         let user: any = null;
 
-        // NEW: Try to find in profiles first (more reliable for 21k migrated users)
-        const { data: profileMatch } = await supabaseAdmin
-            .from('profiles')
-            .select('id, email, phone')
-            .or(`phone.eq.${phone},phone.eq.${formattedPhone},phone.eq.+${formattedPhone}${email ? `,email.eq.${email}` : ''}`)
+        // NEW: Try to find in id_members first (more reliable for 21k migrated users)
+        const { data: memberMatch } = await supabaseAdmin
+            .from('id_members')
+            .select('id, primary_email, primary_phone')
+            .or(`primary_phone.eq.${phone},primary_phone.eq.${formattedPhone},primary_phone.eq.+${formattedPhone}${email ? `,primary_email.eq.${email}` : ''}`)
             .maybeSingle();
 
-        if (profileMatch) {
-            console.log('[CheckMembership] Profile Match Found:', profileMatch.id);
+        if (memberMatch) {
+            console.log('[CheckMembership] Member Match Found:', memberMatch.id);
             // Even if profile exists, we check if they have an Auth account
-            const { data: { user: authUser } } = await supabaseAdmin.auth.admin.getUserById(profileMatch.id);
+            const { data: { user: authUser } } = await supabaseAdmin.auth.admin.getUserById(memberMatch.id);
             if (authUser) {
                 user = authUser;
             } else {
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
                     isMember: true, // They are technically a member if they have a profile
                     isNew: false,
                     isMigrated: true,
-                    userId: profileMatch.id,
+                    userId: memberMatch.id,
                     message: 'Pre-registered account found. Verification required.',
                 });
             }
@@ -108,16 +108,16 @@ export async function POST(request: NextRequest) {
 
         if (tenantId) {
             const { data: membership } = await supabaseAdmin
-                .from('memberships')
+                .from('id_member_tenants')
                 .select('role, status')
-                .eq('user_id', user.id)
+                .eq('member_id', user.id)
                 .eq('tenant_id', tenantId)
                 .eq('status', 'ACTIVE')
                 .maybeSingle();
 
             if (membership) {
                 isMember = true;
-                userRole = membership.role;
+                userRole = membership.role || 'BMB_USER';
             }
         } else {
             // Root domain

@@ -117,7 +117,7 @@ export async function checkExistingCustomer(phone: string) {
 export async function getLeads(tenantId?: string, status?: string) {
     console.log('Fetching leads for tenantId:', tenantId);
     const supabase = await createClient();
-    let query = supabase.from('leads').select('*').order('created_at', { ascending: false });
+    let query = supabase.from('crm_leads').select('*').order('created_at', { ascending: false });
 
     if (status && status !== 'ALL') {
         query = query.eq('status', status);
@@ -173,14 +173,14 @@ export async function getCustomerHistory(customerId: string) {
 
     // Fetch leads
     const { data: leads } = await supabase
-        .from('leads')
+        .from('crm_leads')
         .select('*')
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false });
 
     // Fetch quotes
     const { data: quotes } = await supabase
-        .from('quotes')
+        .from('crm_quotes')
         .select('*')
         .eq('lead_id', leads?.[0]?.id || '') // Simplification for now, better to link quotes to customer_id too later
         .order('created_at', { ascending: false });
@@ -195,7 +195,7 @@ export async function getCustomerHistory(customerId: string) {
 export async function getCatalogModels() {
     const supabase = await createClient();
     const { data, error } = await supabase
-        .from('catalog_items')
+        .from('cat_items')
         .select('name')
         .eq('type', 'FAMILY')
         .eq('status', 'ACTIVE');
@@ -254,7 +254,7 @@ export async function createLeadAction(data: {
 
     // Use adminClient to bypass RLS for Lead Creation (Backend Action)
     const { data: lead, error } = await adminClient
-        .from('leads')
+        .from('crm_leads')
         .insert({
             customer_id: customerId, // Linked to profile
             customer_name: data.customer_name,
@@ -291,9 +291,9 @@ export async function createLeadAction(data: {
 
 export async function getQuotes(tenantId?: string) {
     const supabase = await createClient();
-    let query = supabase.from('quotes').select(`
+    let query = supabase.from('crm_quotes').select(`
         *,
-        leads (customer_name)
+        leads:crm_leads (customer_name)
     `).order('created_at', { ascending: false });
 
     if (tenantId) {
@@ -320,7 +320,7 @@ export async function getQuotes(tenantId?: string) {
 export async function getQuotesForLead(leadId: string) {
     const supabase = await createClient();
     const { data, error } = await supabase
-        .from('quotes')
+        .from('crm_quotes')
         .select('*')
         .eq('lead_id', leadId)
         .order('created_at', { ascending: false });
@@ -347,7 +347,7 @@ export async function createQuoteAction(data: {
     // 1. Versioning Logic: If Lead & SKU match, increment version
     if (data.lead_id && data.variant_id) {
         const { data: existingLatest } = await supabase
-            .from('quotes')
+            .from('crm_quotes')
             .select('id, version')
             .eq('lead_id', data.lead_id)
             .eq('vehicle_sku_id', data.variant_id)
@@ -358,14 +358,14 @@ export async function createQuoteAction(data: {
             nextVersion = existingLatest.version + 1;
             // Mark previous as not latest
             await supabase
-                .from('quotes')
+                .from('crm_quotes')
                 .update({ is_latest: false })
                 .eq('id', existingLatest.id);
         }
     }
 
     const { data: quote, error } = await supabase
-        .from('quotes')
+        .from('crm_quotes')
         .insert({
             tenant_id: data.tenant_id,
             lead_id: data.lead_id,
@@ -398,7 +398,7 @@ export async function createQuoteVersion(parentQuoteId: string, commercials: Rec
 
     // Get parent version
     const { data: parent } = await supabase
-        .from('quotes')
+        .from('crm_quotes')
         .select('version, tenant_id, lead_id, variant_id')
         .eq('id', parentQuoteId)
         .single();
@@ -408,7 +408,7 @@ export async function createQuoteVersion(parentQuoteId: string, commercials: Rec
     const onRoadPrice = commercials.grand_total || 0;
 
     const { data: quote, error } = await supabase
-        .from('quotes')
+        .from('crm_quotes')
         .insert({
             tenant_id: parent.tenant_id,
             lead_id: parent.lead_id,
@@ -439,7 +439,7 @@ export async function createQuoteVersion(parentQuoteId: string, commercials: Rec
 export async function confirmQuote(id: string) {
     const supabase = await createClient();
     const { error } = await supabase
-        .from('quotes')
+        .from('crm_quotes')
         .update({ status: 'ACCEPTED', updated_at: new Date().toISOString() })
         .eq('id', id);
 
@@ -451,9 +451,9 @@ export async function confirmQuote(id: string) {
 
 export async function getBookings(tenantId?: string) {
     const supabase = await createClient();
-    let query = supabase.from('bookings').select(`
+    let query = supabase.from('crm_bookings').select(`
         *,
-        quotes (commercials, leads(customer_name))
+        quotes:crm_quotes (commercials, leads:crm_leads(customer_name))
     `).order('created_at', { ascending: false });
 
     if (tenantId) {
@@ -483,7 +483,7 @@ export async function getBookings(tenantId?: string) {
 export async function getBookingForLead(leadId: string) {
     const supabase = await createClient();
     const { data, error } = await supabase
-        .from('bookings')
+        .from('crm_bookings')
         .select('*')
         .eq('lead_id', leadId)
         .maybeSingle();
@@ -497,7 +497,7 @@ export async function createBookingFromQuote(quoteId: string) {
 
     // 1. Get Quote Details
     const { data: quote } = await supabase
-        .from('quotes')
+        .from('crm_quotes')
         .select('*')
         .eq('id', quoteId)
         .single();
@@ -506,7 +506,7 @@ export async function createBookingFromQuote(quoteId: string) {
 
     // 2. Create Booking
     const { data: booking, error } = await supabase
-        .from('bookings')
+        .from('crm_bookings')
         .insert({
             tenant_id: quote.tenant_id,
             quote_id: quote.id,
@@ -523,7 +523,7 @@ export async function createBookingFromQuote(quoteId: string) {
     if (error) throw error;
 
     // 3. Update Quote status
-    await supabase.from('quotes').update({ status: 'ACCEPTED' }).eq('id', quoteId);
+    await supabase.from('crm_quotes').update({ status: 'ACCEPTED' }).eq('id', quoteId);
 
     revalidatePath('/app/[slug]/sales-orders');
     return booking;
@@ -533,7 +533,7 @@ export async function createBookingFromQuote(quoteId: string) {
 export async function updateBookingStage(id: string, stage: string, statusUpdates: Record<string, any>) {
     const supabase = await createClient();
     const { error } = await supabase
-        .from('bookings')
+        .from('crm_bookings')
         .update({
             current_stage: stage,
             ...statusUpdates,

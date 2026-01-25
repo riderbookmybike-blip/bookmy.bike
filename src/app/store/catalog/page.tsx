@@ -1,13 +1,9 @@
 'use client';
 
 import React, { Suspense } from 'react';
-import { useCatalogFilters } from '@/hooks/useCatalogFilters';
-import { DeviceLayout } from '@/components/layout/DeviceLayout';
-import { CatalogMobile } from '@/components/store/CatalogMobile';
-import { CatalogTablet } from '@/components/store/CatalogTablet';
-import { CatalogDesktop } from '@/components/store/CatalogDesktop';
-
 import { useCatalog } from '@/hooks/useCatalog';
+import { useCatalogFilters } from '@/hooks/useCatalogFilters';
+import { MasterCatalog } from '@/components/store/MasterCatalog';
 
 const CatalogSkeleton = () => (
     <div className="max-w-[1920px] mx-auto px-6 md:px-12 lg:px-20 pt-24 pb-20 space-y-8 bg-white dark:bg-[#0b0d10] min-h-screen">
@@ -71,8 +67,6 @@ const CatalogSkeleton = () => (
     </div>
 );
 
-import { CatalogTV } from '@/components/store/tv/CatalogTV';
-
 function CatalogContent() {
     const { items, isLoading } = useCatalog();
     const filters = useCatalogFilters(items);
@@ -81,14 +75,7 @@ function CatalogContent() {
         return <CatalogSkeleton />;
     }
 
-    return (
-        <DeviceLayout
-            mobile={<CatalogMobile filters={filters} />}
-            tablet={<CatalogTablet filters={filters} />}
-            desktop={<CatalogDesktop filters={filters} />}
-            tv={<CatalogTV />}
-        />
-    );
+    return <MasterCatalog filters={filters} />;
 }
 
 export default function CatalogPage() {

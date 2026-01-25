@@ -19,16 +19,16 @@ export async function getAllProducts(): Promise<{ products: ProductVariant[], er
         // Fetch Families + Children (Variants) + Grandchildren (SKUs)
         // Using the same query structure as useCatalog.ts to ensure data consistency
         const { data, error } = await supabase
-            .from('catalog_items')
+            .from('cat_items')
             .select(`
                 id, type, name, slug, specs, price_base, brand_id,
-                brand:brands(name),
-                template:catalog_templates!inner(name, code, category),
-                children:catalog_items!parent_id(
+                brand:cat_brands(name),
+                template:cat_templates!inner(name, code, category),
+                children:cat_items!parent_id(
                     id, type, name, slug, specs, price_base, position,
-                    skus:catalog_items!parent_id(
+                    skus:cat_items!parent_id(
                         id, type, price_base, is_primary, image_url, specs,
-                        prices:vehicle_prices(ex_showroom_price, state_code)
+                        prices:cat_prices(ex_showroom_price, state_code)
                     )
                 )
             `)

@@ -63,28 +63,28 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
 
     const fetchBrands = async () => {
         setLoading(true);
-        const { data } = await supabase.from('brands').select('*').eq('is_active', true).order('name');
+        const { data } = await supabase.from('cat_brands').select('*').eq('is_active', true).order('name');
         setBrands(data || []);
         setLoading(false);
     };
 
     const fetchModels = async (brandId: string) => {
         setLoading(true);
-        const { data } = await supabase.from('vehicle_models').select('*').eq('brand_id', brandId);
+        const { data } = await supabase.from('cat_items').select('*').eq('brand_id', brandId).eq('type', 'FAMILY');
         setModels(data || []);
         setLoading(false);
     };
 
     const fetchVariants = async (modelId: string) => {
         setLoading(true);
-        const { data } = await supabase.from('vehicle_variants').select('*').eq('model_id', modelId);
+        const { data } = await supabase.from('cat_items').select('*').eq('parent_id', modelId).eq('type', 'VARIANT');
         setVariants(data || []);
         setLoading(false);
     };
 
     const fetchColors = async (variantId: string) => {
         setLoading(true);
-        const { data } = await supabase.from('vehicle_colors').select('*').eq('variant_id', variantId);
+        const { data } = await supabase.from('cat_items').select('*').eq('parent_id', variantId).eq('type', 'SKU');
         setColors(data || []);
         setLoading(false);
     };
@@ -120,7 +120,7 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
         try {
             // 1. Create Requisition
             const { data: req, error: reqErr } = await supabase
-                .from('purchase_requisitions')
+                .from('inv_requisitions')
                 .insert({
                     tenant_id: tenantId,
                     customer_name: customerName,
@@ -133,7 +133,7 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
 
             // 2. Create Requisition Item
             const { error: itemErr } = await supabase
-                .from('purchase_requisition_items')
+                .from('inv_req_items')
                 .insert({
                     requisition_id: req.id,
                     sku_id: selectedColor,
@@ -247,7 +247,7 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
                                         <span className="text-sm font-black text-slate-900 dark:text-white uppercase italic">{v.name}</span>
                                         <ChevronRight className="text-slate-300 group-hover:text-purple-500" size={18} />
                                     </div>
-                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{v.type} • {v.engine_capacity_cc}cc</span>
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{v.type} • {v.specs?.engine_cc || '-'}cc</span>
                                 </button>
                             ))}
                         </div>
@@ -263,7 +263,7 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
                                     className="p-5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl hover:border-purple-500 hover:bg-purple-500/5 transition-all flex items-center justify-between group"
                                 >
                                     <div className="flex items-center gap-4">
-                                        <div className="w-6 h-6 rounded-full border border-slate-200 dark:border-white/20" style={{ backgroundColor: c.color_hex || '#ccc' }} />
+                                        <div className="w-6 h-6 rounded-full border border-slate-200 dark:border-white/20" style={{ backgroundColor: c.specs?.hex_primary || '#ccc' }} />
                                         <span className="text-sm font-black text-slate-900 dark:text-white uppercase italic">{c.name}</span>
                                     </div>
                                     <ChevronRight className="text-slate-300 group-hover:text-purple-500" size={18} />

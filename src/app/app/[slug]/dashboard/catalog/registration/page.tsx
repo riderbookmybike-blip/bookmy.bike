@@ -58,7 +58,7 @@ export default function RegistrationMasterPage() {
     const fetchRules = async () => {
         const supabase = createClient();
         const { data, error } = await supabase
-            .from('registration_rules')
+            .from('cat_reg_rules')
             .select('*')
             .order('state_code', { ascending: true });
 
@@ -160,7 +160,7 @@ export default function RegistrationMasterPage() {
         if (confirm(`Are you sure you want to delete ${ids.length} registration rules?`)) {
             const supabase = createClient();
             const { error } = await supabase
-                .from('registration_rules')
+                .from('cat_reg_rules')
                 .delete()
                 .in('id', ids);
 
