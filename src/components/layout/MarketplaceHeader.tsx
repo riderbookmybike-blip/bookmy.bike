@@ -115,7 +115,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const isHeaderTransparent = isHome && !scrolled;
 
     const navLinkClass = !isHeaderTransparent
-        ? `${navTextClass} text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-white transition-all duration-300`
+        ? `${navTextClass} text-white/70 hover:text-white transition-all duration-300`
         : `${isLight ? 'text-slate-900/90 hover:text-blue-600' : 'text-white/90 hover:text-blue-400'} ${navTextClass} transition-all duration-300 drop-shadow-md`;
     const activeNavClass =
         'relative text-slate-900 dark:text-white after:absolute after:-bottom-2 after:left-0 after:right-0 after:h-[2px] after:bg-brand-primary after:rounded-full';
@@ -201,7 +201,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                                 ? (isLight
                                     ? 'border-slate-900/10 bg-slate-900/5 text-slate-900/80 hover:text-slate-900 hover:bg-slate-900/10'
                                     : 'border-white/20 text-white/80 hover:text-white hover:bg-white/10')
-                                : 'border-slate-200/40 bg-slate-100/40 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 shadow-sm'
+                                : 'border-white/10 bg-white/5 text-white/70 hover:text-white hover:bg-white/10 shadow-sm'
                                 }`}
                         >
                             <HomeIcon size={18} />
@@ -212,7 +212,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                                 ? (isLight
                                     ? 'border-slate-900/10 bg-slate-900/5 text-slate-900/80 hover:text-slate-900 hover:bg-slate-900/10'
                                     : 'border-white/20 text-white/80 hover:text-white hover:bg-white/10')
-                                : 'border-slate-200/40 bg-slate-100/40 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 shadow-sm'
+                                : 'border-white/10 bg-white/5 text-white/70 hover:text-white hover:bg-white/10 shadow-sm'
                                 }`}
                         >
                             <MotorcycleIcon size={20} />
@@ -228,7 +228,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                                     ? (isLight
                                         ? 'border-slate-900/10 bg-slate-900/5 text-slate-900/80 hover:text-slate-900 hover:bg-slate-900/10'
                                         : 'border-white/20 text-white/80 hover:text-white hover:bg-white/10')
-                                    : 'border-slate-200/50 bg-slate-100/40 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 shadow-sm'
+                                    : 'border-white/10 bg-white/5 text-white/70 hover:text-white hover:bg-white/10 shadow-sm'
                                     }`}
                             >
                                 <Heart size={18} />

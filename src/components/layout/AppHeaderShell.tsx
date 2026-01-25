@@ -43,8 +43,8 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
             return 'bg-white dark:bg-[#0B0D10] border-b border-slate-200/60 dark:border-white/5 shadow-sm dark:shadow-none transition-all duration-300';
         }
 
-        // Marketplace: Premium, Glassmorphism, Dynamic
-        return 'bg-white/85 dark:bg-black/60 backdrop-blur-xl backdrop-saturate-150 border-b border-slate-200/50 dark:border-white/10 shadow-lg dark:shadow-2xl transition-all duration-500';
+        // Marketplace: Premium Dark Glass (Smoked Glass) - Worked for both themes
+        return 'bg-black/40 dark:bg-black/60 backdrop-blur-3xl backdrop-saturate-[1.8] border-b border-white/10 shadow-lg dark:shadow-2xl transition-all duration-500';
     };
 
     const bgClass = getBgClass();
