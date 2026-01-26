@@ -596,7 +596,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
             {/* How it Works */}
             {/* How it Works Section */}
             {/* How it Works Section */}
-            <section className="h-screen ebook-section relative overflow-hidden bg-gradient-to-tr from-amber-950/30 via-[#0b0d10] to-[#0b0d10] text-white pt-[var(--header-h)] flex flex-col justify-start">
+            <section className="h-screen ebook-section relative overflow-hidden bg-gradient-to-tr from-emerald-950/40 via-[#0b0d10] to-[#0b0d10] text-white pt-[var(--header-h)] flex flex-col justify-start">
                 <div className="absolute inset-0 opacity-10 pointer-events-none">
                     <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_120%,#FFD700,transparent_70%)]" />
                 </div>
@@ -862,7 +862,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
             </section>
 
             {/* Restored Rider Pulse (Reviews) Section */}
-            <div className="ebook-section h-screen flex flex-col justify-start pt-[var(--header-h)] bg-gradient-to-br from-emerald-950/40 via-[#0b0d10] to-[#0b0d10]">
+            <div className="ebook-section h-screen flex flex-col justify-start pt-[var(--header-h)] bg-gradient-to-br from-amber-950/30 via-[#0b0d10] to-[#0b0d10]">
                 <RiderPulse />
             </div>
 
