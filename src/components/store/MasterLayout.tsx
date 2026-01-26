@@ -299,7 +299,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                         <motion.div
                                             animate={{ opacity: [1, 0, 1] }}
                                             transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-                                            className="w-1.5 h-1.5 rounded-full bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.5)]"
+                                            className="w-1.5 h-1.5 rounded-full bg-brand-primary shadow-[0_0_10px_rgba(255,157,0,0.5)]"
                                         />
                                     </div>
                                     <div className="flex items-baseline gap-4 whitespace-nowrap">
