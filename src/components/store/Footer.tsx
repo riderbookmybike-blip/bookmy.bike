@@ -94,7 +94,7 @@ export const Footer = () => {
                                 <h3 className="text-6xl md:text-8xl font-black uppercase tracking-tighter text-white leading-[0.85] italic drop-shadow-2xl">
                                     Redefining <br />{' '}
                                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-zinc-500">
-                                        How India Buys.
+                                        How India Rides.
                                     </span>
                                 </h3>
                                 <p className="text-lg text-zinc-400 leading-relaxed max-w-lg font-medium mt-[60px] border-l-2 border-white/5 pl-6">
