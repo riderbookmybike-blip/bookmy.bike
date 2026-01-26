@@ -296,7 +296,11 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                 <div className="md:w-48 flex-none space-y-4">
                                     <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-white/70 font-[family-name:var(--font-bruno-ace)] group-hover/bento:text-brand-primary transition-colors">
                                         <span>Inventory_Live</span>
-                                        <motion.div animate={{ opacity: [1, 0.5, 1] }} transition={{ repeat: Infinity, duration: 2 }} className="w-1.5 h-1.5 rounded-full bg-brand-primary" />
+                                        <motion.div
+                                            animate={{ opacity: [1, 0, 1] }}
+                                            transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                                            className="w-1.5 h-1.5 rounded-full bg-brand-primary shadow-[0_0_10px_rgba(255,100,0,0.5)]"
+                                        />
                                     </div>
                                     <div className="flex items-baseline gap-4 whitespace-nowrap">
                                         <span className="text-4xl font-black text-white italic tracking-tighter leading-none">380+</span>
@@ -338,7 +342,11 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                 <div className="md:w-48 flex-none space-y-4">
                                     <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-white/70 font-[family-name:var(--font-bruno-ace)]">
                                         <span>Savings_Calc</span>
-                                        <motion.div animate={{ opacity: [1, 0.5, 1] }} transition={{ repeat: Infinity, duration: 2 }} className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
+                                        <motion.div
+                                            animate={{ opacity: [1, 0, 1] }}
+                                            transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                                            className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]"
+                                        />
                                     </div>
                                     <div className="flex items-baseline gap-4 whitespace-nowrap">
                                         <p className="text-4xl font-black text-white italic tracking-tighter leading-none">{MARKET_METRICS.avgSavings}</p>
@@ -381,7 +389,11 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                 <div className="md:w-48 flex-none space-y-4">
                                     <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-white/70 font-[family-name:var(--font-bruno-ace)]">
                                         <span>Dispatch_Hub</span>
-                                        <div className="w-1.5 h-1.5 rounded-full bg-white/30" />
+                                        <motion.div
+                                            animate={{ opacity: [1, 0, 1] }}
+                                            transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                                            className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]"
+                                        />
                                     </div>
                                     <div className="flex items-baseline gap-4 whitespace-nowrap">
                                         <p className="text-4xl font-black text-white italic tracking-tighter leading-none">{MARKET_METRICS.deliveryTime}</p>
