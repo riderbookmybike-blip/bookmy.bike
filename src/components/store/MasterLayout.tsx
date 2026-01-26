@@ -275,7 +275,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                     </div>
 
                     {/* TELEMETRY BENTO: kinetic accordion grid */}
-                    <div className="w-full max-w-[1440px] grid grid-cols-1 md:grid-cols-4 gap-4 px-8 md:px-16 mx-auto place-items-stretch pointer-events-auto">
+                    <div className="w-full max-w-[1440px] grid grid-cols-1 md:grid-cols-4 gap-4 px-6 mx-auto place-items-stretch pointer-events-auto">
 
                         {/* block 1: SKU scanner */}
                         <motion.div
@@ -484,7 +484,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
 
 
             <section className="min-h-screen ebook-section relative overflow-hidden bg-gradient-to-bl from-red-950/40 via-[#0b0d10] to-[#0b0d10] flex flex-col items-center justify-center">
-                <div className="max-w-[1440px] mx-auto px-8 md:px-16 relative z-10 w-full">
+                <div className="max-w-[1440px] mx-auto px-6 relative z-10 w-full">
                     <div className="grid grid-cols-12 gap-8 lg:gap-16 items-center">
                         {/* Left Column: Context (4/12) */}
                         <div className="col-span-12 lg:col-span-4 space-y-8 relative z-20">
@@ -688,7 +688,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
 
 
 
-                <div className="max-w-[1440px] mx-auto px-8 md:px-16 relative z-10 h-full flex flex-col justify-center">
+                <div className="max-w-[1440px] mx-auto px-6 relative z-10 h-full flex flex-col justify-center">
                     <div className="grid grid-cols-12 gap-8 lg:gap-16 items-center h-full">
                         {/* Left Side: Static Context */}
                         <div className="col-span-12 lg:col-span-5 space-y-8 relative z-30 lg:pr-12">
@@ -843,7 +843,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                     />
                 </div>
 
-                <div className="max-w-[1440px] mx-auto px-8 md:px-16 relative z-10 h-full flex flex-col justify-center">
+                <div className="max-w-[1440px] mx-auto px-6 relative z-10 h-full flex flex-col justify-center">
                     <div className="grid grid-cols-12 gap-8 lg:gap-16 items-center h-full">
                         {/* Left Side: Static Context (Mirrors Process Section) */}
                         <div className="col-span-12 lg:col-span-5 space-y-8 relative z-30 lg:pr-12">
