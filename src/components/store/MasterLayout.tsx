@@ -275,7 +275,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                     </div>
 
                     {/* TELEMETRY BENTO: kinetic accordion grid */}
-                    <div className="w-full max-w-[1280px] grid grid-cols-1 md:grid-cols-4 gap-4 px-8 md:px-16 mx-auto place-items-stretch pointer-events-auto">
+                    <div className="w-full max-w-[1440px] grid grid-cols-1 md:grid-cols-4 gap-4 px-8 md:px-16 mx-auto place-items-stretch pointer-events-auto">
 
                         {/* block 1: SKU scanner */}
                         <motion.div
