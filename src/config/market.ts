@@ -27,7 +27,7 @@ export const CATEGORIES: CategoryMetadata[] = [
         title: 'Scooters',
         subtitle: 'Urban.',
         desc: 'Daily commuting made easy with comfort and great mileage. See transparent on-road prices and get instant quotes. Book your scooter in minutes.',
-        img: '/images/categories/scooter_nobg.png',
+        img: '/images/categories/scooter_blue_new.png',
         color: 'from-cyan-500/20',
         link: '/store/catalog?category=SCOOTER',
         bodyType: 'SCOOTER',
