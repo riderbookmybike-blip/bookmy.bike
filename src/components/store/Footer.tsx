@@ -1,14 +1,58 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { Logo } from '@/components/brand/Logo';
-import { Facebook, Twitter, Linkedin, Instagram, Heart, Newspaper } from 'lucide-react';
+import { Facebook, Twitter, Linkedin, Instagram, Heart, Newspaper, ArrowRight } from 'lucide-react';
 import { useBrands } from '@/hooks/useBrands';
 import { slugify } from '@/utils/slugs';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export const Footer = () => {
     const { brands } = useBrands();
+    const [activeSection, setActiveSection] = useState(0);
+
+    // Footer Data Structure for Accordion
+    const footerSections = [
+        {
+            title: 'Collection',
+            links: [
+                { label: 'All Inventory', href: '/store/catalog' },
+                { label: 'Scooters', href: '/store/catalog?category=SCOOTER' },
+                { label: 'Motorcycles', href: '/store/catalog?category=MOTORCYCLE' },
+                { label: 'Price: Low to High', href: '/store/catalog?sort=price_asc' },
+                { label: 'Best Mileage', href: '/store/catalog?sort=mileage' },
+            ]
+        },
+        {
+            title: 'Brands',
+            links: [
+                ...brands.slice(0, 4).map(b => ({ label: b.name, href: `/store/${b.slug || slugify(b.name)}` })),
+                { label: 'View All Brands', href: '/store/catalog', highlight: true }
+            ]
+        },
+        {
+            title: 'Ecosystem',
+            links: [
+                { label: 'About Us', href: '#' },
+                { label: 'Our Blog', href: '/blog' },
+                { label: 'Partner Login', href: '/login' },
+                { label: 'Media Kit', href: '/mediakit' },
+                { label: 'Contact', href: '#' },
+            ]
+        },
+        {
+            title: 'Services',
+            links: [
+                { label: 'Help Center', href: '#' },
+                { label: 'Finance Options', href: '#' },
+                { label: 'Insurance Hub', href: '#' },
+                { label: 'RTO Rules', href: '#' },
+                { label: 'Privacy Policy', href: '#' },
+            ]
+        }
+    ];
+
     return (
         <footer className="snap-start min-h-screen flex flex-col bg-[#0b0d10] border-t border-white/5 pt-[var(--header-h)] pb-12 overflow-hidden relative text-white">
             {/* Ambient Background Glows */}
@@ -27,10 +71,12 @@ export const Footer = () => {
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
             <div className="max-w-[1440px] mx-auto w-full px-8 md:px-16 relative z-10 flex-1 flex flex-col justify-center">
-                {/* Top Section: Trust & Brand */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-16 mb-20 relative">
-                    {/* Left: Brand Identity */}
-                    <div className="lg:col-span-5 flex flex-col justify-between h-full space-y-20">
+
+                {/* SPLIT LAYOUT: Left Content (5) | Right Accordion (7) */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-16 items-stretch mb-20 relative h-[60vh]">
+
+                    {/* LEFT COLUMN: Brand & Socials (5/12) */}
+                    <div className="lg:col-span-5 flex flex-col justify-between h-full relative z-20">
                         <div className="space-y-12">
                             <div className="space-y-8">
                                 <div className="flex items-center gap-4 mb-8">
@@ -58,52 +104,67 @@ export const Footer = () => {
                         </div>
                     </div>
 
-                    {/* Right: Navigation Grid (Glass Cards) */}
-                    <div className="lg:col-span-7 grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-12">
-                        <div className="space-y-8 p-8 bg-white/5 border border-white/5 rounded-[2rem] hover:bg-white/10 transition-colors backdrop-blur-sm">
-                            <FooterHeading>Collection</FooterHeading>
-                            <FooterLinkList>
-                                <FooterLink href="/store/catalog">All Inventory</FooterLink>
-                                <FooterLink href="/store/catalog?category=SCOOTER">Scooters</FooterLink>
-                                <FooterLink href="/store/catalog?category=MOTORCYCLE">Motorcycles</FooterLink>
-                                <FooterLink href="/store/catalog?sort=price_asc">Price: Low to High</FooterLink>
-                                <FooterLink href="/store/catalog?sort=mileage">Best Mileage</FooterLink>
-                            </FooterLinkList>
-                        </div>
+                    {/* RIGHT COLUMN: Interactive Accordion (7/12) */}
+                    <div className="lg:col-span-7 flex flex-col lg:flex-row gap-4 h-full">
+                        {footerSections.map((section, idx) => {
+                            const isActive = activeSection === idx;
+                            return (
+                                <motion.div
+                                    key={idx}
+                                    layout
+                                    onMouseEnter={() => setActiveSection(idx)}
+                                    className={`relative rounded-[2rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between ${isActive
+                                            ? 'flex-[3] bg-white text-black border-white shadow-[0_0_50px_rgba(255,255,255,0.1)]'
+                                            : 'flex-[1] bg-white/5 border-white/5 text-zinc-500 hover:bg-white/10'
+                                        }`}
+                                >
+                                    <div className="absolute inset-0 p-8 flex flex-col justify-between">
 
-                        <div id="footer-brands" className="space-y-8 p-8 bg-white/5 border border-white/5 rounded-[2rem] hover:bg-white/10 transition-colors backdrop-blur-sm scroll-mt-28">
-                            <FooterHeading>Brands</FooterHeading>
-                            <FooterLinkList>
-                                {brands.slice(0, 5).map(brand => (
-                                    <FooterLink key={brand.id} href={`/store/${brand.slug || slugify(brand.name)}`}>
-                                        {brand.name}
-                                    </FooterLink>
-                                ))}
-                                <FooterLink href="/store/catalog" highlight>View All Brands</FooterLink>
-                            </FooterLinkList>
-                        </div>
+                                        {/* Header / Vertical Title */}
+                                        <div className="flex justify-between items-start">
+                                            <span className={`text-xs font-black uppercase tracking-[0.2em] transition-colors ${isActive ? 'text-brand-primary' : 'text-zinc-500'}`}>
+                                                {`0${idx + 1}`}
+                                            </span>
+                                            {isActive && <ArrowRight className="text-black -rotate-45" />}
+                                        </div>
 
-                        <div className="space-y-8 p-8 bg-white/5 border border-white/5 rounded-[2rem] hover:bg-white/10 transition-colors backdrop-blur-sm">
-                            <FooterHeading>Ecosystem</FooterHeading>
-                            <FooterLinkList>
-                                <FooterLink href="#">About Us</FooterLink>
-                                <FooterLink href="/blog">Our Blog</FooterLink>
-                                <FooterLink href="/login">Partner Login</FooterLink>
-                                <FooterLink href="/mediakit">Media Kit</FooterLink>
-                                <FooterLink href="#">Contact</FooterLink>
-                            </FooterLinkList>
-                        </div>
+                                        {/* Content Area */}
+                                        <div className="relative flex-1 flex items-center">
 
-                        <div className="space-y-8 p-8 bg-white/5 border border-white/5 rounded-[2rem] hover:bg-white/10 transition-colors backdrop-blur-sm">
-                            <FooterHeading>Services</FooterHeading>
-                            <FooterLinkList>
-                                <FooterLink href="#">Help Center</FooterLink>
-                                <FooterLink href="#">Finance Options</FooterLink>
-                                <FooterLink href="#">Insurance Hub</FooterLink>
-                                <FooterLink href="#">RTO Rules</FooterLink>
-                                <FooterLink href="#">Privacy Policy</FooterLink>
-                            </FooterLinkList>
-                        </div>
+                                            {/* Inactive Vertical Text */}
+                                            <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 pointer-events-none transition-all duration-500 ${!isActive ? 'opacity-100' : 'opacity-0'}`}>
+                                                <span className="text-4xl font-black uppercase tracking-widest text-white/20 whitespace-nowrap">
+                                                    {section.title}
+                                                </span>
+                                            </div>
+
+                                            {/* Active List Content */}
+                                            <div className={`w-full transition-all duration-500 delay-100 ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 absolute inset-0 pointer-events-none'}`}>
+                                                <h4 className="text-4xl font-black uppercase italic tracking-tighter mb-8 leading-none">
+                                                    {section.title}
+                                                </h4>
+                                                <ul className="space-y-3">
+                                                    {section.links.map((link, i) => (
+                                                        <li key={i}>
+                                                            <Link
+                                                                href={link.href}
+                                                                className={`text-lg font-medium transition-colors flex items-center gap-2 group/link ${link.highlight
+                                                                        ? 'text-brand-primary hover:text-brand-primary/80'
+                                                                        : 'text-zinc-600 hover:text-black'
+                                                                    }`}
+                                                            >
+                                                                {link.label}
+                                                                <ArrowRight size={14} className="opacity-0 -translate-x-2 group-hover/link:opacity-100 group-hover/link:translate-x-0 transition-all text-brand-primary" />
+                                                            </Link>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -224,37 +285,6 @@ const ViewportDebug = () => {
         </div>
     );
 };
-
-// Sub-components for consistency
-const FooterHeading = ({ children }: { children: React.ReactNode }) => (
-    <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white mb-6">
-        {children}
-    </h4>
-);
-
-const FooterLinkList = ({ children }: { children: React.ReactNode }) => <ul className="space-y-5">{children}</ul>;
-
-const FooterLink = ({
-    href,
-    children,
-    highlight,
-}: {
-    href: string;
-    children: React.ReactNode;
-    highlight?: boolean;
-}) => (
-    <li>
-        <Link
-            href={href}
-            className={`text-xs font-bold transition-colors ${highlight
-                ? 'text-brand-primary dark:text-brand-primary hover:text-yellow-600 dark:hover:text-yellow-400'
-                : 'text-slate-500 dark:text-slate-400 hover:text-brand-primary dark:hover:text-brand-primary'
-                }`}
-        >
-            {children}
-        </Link>
-    </li>
-);
 
 const SocialIcon = ({ icon, href, brandColor }: { icon: React.ReactElement<any>; href: string; brandColor: string }) => {
     const [isHovered, setIsHovered] = React.useState(false);
