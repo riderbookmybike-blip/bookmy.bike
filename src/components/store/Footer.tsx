@@ -95,12 +95,26 @@ export const Footer = () => {
                             </div>
                         </div>
 
-                        <div className="flex gap-4">
-                            <SocialIcon icon={<Newspaper size={20} />} href="/blog" brandColor="#ffd700" />
-                            <SocialIcon icon={<Instagram size={20} />} href="https://instagram.com" brandColor="#E4405F" />
-                            <SocialIcon icon={<Twitter size={20} />} href="https://twitter.com" brandColor="#1DA1F2" />
-                            <SocialIcon icon={<Linkedin size={20} />} href="https://linkedin.com" brandColor="#0077B5" />
-                            <SocialIcon icon={<Facebook size={20} />} href="https://facebook.com" brandColor="#1877F2" />
+                        <div className="flex flex-col gap-6">
+                            <div className="flex gap-4">
+                                <SocialIcon icon={<Newspaper size={20} />} href="/blog" brandColor="#ffd700" />
+                                <SocialIcon icon={<Instagram size={20} />} href="https://instagram.com" brandColor="#E4405F" />
+                                <SocialIcon icon={<Twitter size={20} />} href="https://twitter.com" brandColor="#1DA1F2" />
+                                <SocialIcon icon={<Linkedin size={20} />} href="https://linkedin.com" brandColor="#0077B5" />
+                                <SocialIcon icon={<Facebook size={20} />} href="https://facebook.com" brandColor="#1877F2" />
+                            </div>
+
+                            {/* Minimized Metadata Block */}
+                            <div className="space-y-2">
+                                <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-[0.2em]">
+                                    © 2011-2026
+                                </p>
+                                <div className="flex items-center gap-2 text-[10px] text-zinc-500 font-medium uppercase tracking-widest select-none">
+                                    <span>Engineered with</span>
+                                    <Heart size={10} className="text-brand-primary fill-brand-primary animate-pulse" />
+                                    <span>in India</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -114,8 +128,8 @@ export const Footer = () => {
                                     layout
                                     onMouseEnter={() => setActiveSection(idx)}
                                     className={`relative rounded-[2rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between ${isActive
-                                            ? 'flex-[3] bg-white text-black border-white shadow-[0_0_50px_rgba(255,255,255,0.1)]'
-                                            : 'flex-[1] bg-white/5 border-white/5 text-zinc-500 hover:bg-white/10'
+                                        ? 'flex-[3] bg-white text-black border-white shadow-[0_0_50px_rgba(255,255,255,0.1)]'
+                                        : 'flex-[1] bg-white/5 border-white/5 text-zinc-500 hover:bg-white/10'
                                         }`}
                                 >
                                     <div className="absolute inset-0 p-8 flex flex-col justify-between">
@@ -149,8 +163,8 @@ export const Footer = () => {
                                                             <Link
                                                                 href={link.href}
                                                                 className={`text-lg font-medium transition-colors flex items-center gap-2 group/link ${link.highlight
-                                                                        ? 'text-brand-primary hover:text-brand-primary/80'
-                                                                        : 'text-zinc-600 hover:text-black'
+                                                                    ? 'text-brand-primary hover:text-brand-primary/80'
+                                                                    : 'text-zinc-600 hover:text-black'
                                                                     }`}
                                                             >
                                                                 {link.label}
@@ -168,20 +182,11 @@ export const Footer = () => {
                     </div>
                 </div>
 
-                {/* Bottom Section: Legal & Copyright Addressed */}
-                <div className="flex flex-col md:flex-row items-center justify-between pt-12 border-t border-white/5 gap-8">
-                    <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full bg-brand-primary animate-pulse" />
-                        <Logo mode="dark" size={24} variant="icon" />
-                        <p className="text-[11px] text-zinc-500 font-bold uppercase tracking-[0.3em]">
-                            © 2026 BookMyBike Technologies. Built for Excellence.
-                        </p>
-                    </div>
-
-                    <div className="flex items-center gap-6">
-                        <ViewportDebug />
-                    </div>
+                {/* Bottom Section: REMOVED (Content Moved Up) */}
+                <div className="hidden">
+                    <ViewportDebug />
                 </div>
+
             </div>
         </footer>
     );
