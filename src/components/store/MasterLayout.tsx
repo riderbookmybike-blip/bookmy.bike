@@ -294,15 +294,13 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                             <div className="space-y-4 relative z-10 mr-auto">
                                 <div className="flex items-center gap-3">
                                     <div className={`w-1.5 ${bentoHover === 'inventory' ? 'h-10' : 'h-6'} bg-brand-primary rounded-full transition-all duration-500`} />
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-black text-white tracking-[0.3em] uppercase font-[family-name:var(--font-bruno-ace)] group-hover/bento:text-brand-primary transition-colors">Inventory_Live</span>
-                                        <span className="text-sm font-bold text-white/50 uppercase">Worldwide Access</span>
-                                    </div>
+                                    <span className="text-[10px] font-black text-white/70 tracking-[0.3em] uppercase font-[family-name:var(--font-bruno-ace)] group-hover/bento:text-brand-primary transition-colors">Inventory_Live</span>
                                 </div>
                                 <div className="flex items-baseline gap-4 whitespace-nowrap">
                                     <span className="text-6xl md:text-7xl font-black text-white italic tracking-tighter leading-none">380+</span>
-                                    <div className="h-10 w-px bg-white/10" />
-                                    <span className="text-xl font-bold text-white uppercase tracking-widest drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">Active_Skus</span>
+                                </div>
+                                <div className="flex flex-col gap-1 mt-2">
+                                    <span className="text-[10px] font-bold text-white uppercase tracking-widest opacity-80">Active_Skus</span>
                                 </div>
                                 {bentoHover === 'inventory' && (
                                     <motion.p
@@ -336,7 +334,9 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-6xl md:text-7xl font-black text-white italic tracking-tighter leading-none">{MARKET_METRICS.avgSavings}</p>
-                                    <p className="text-[10px] font-bold text-white uppercase tracking-widest pl-1 mt-2">Avg. Dealer Rebate</p>
+                                </div>
+                                <div className="flex flex-col gap-1 mt-2">
+                                    <p className="text-[10px] font-bold text-white uppercase tracking-widest opacity-80">Avg. Dealer Rebate</p>
                                 </div>
                                 {bentoHover === 'savings' && (
                                     <motion.p
@@ -369,11 +369,12 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                             <div className="space-y-6">
                                 <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-white/70 font-[family-name:var(--font-bruno-ace)]">
                                     <span>Dispatch_Hub</span>
-                                    <span className="text-brand-primary drop-shadow-[0_0_5px_rgba(255,100,0,0.5)]">LHR_04</span>
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-6xl md:text-7xl font-black text-white italic tracking-tighter leading-none">{MARKET_METRICS.deliveryTime}</p>
-                                    <p className="text-[10px] font-bold text-white uppercase tracking-widest pl-1 mt-2">Hyper-Local Speed</p>
+                                </div>
+                                <div className="flex flex-col gap-1 mt-2">
+                                    <p className="text-[10px] font-bold text-white uppercase tracking-widest opacity-80">Hyper-Local Speed</p>
                                 </div>
                                 {bentoHover === 'dispatch' && (
                                     <motion.p
