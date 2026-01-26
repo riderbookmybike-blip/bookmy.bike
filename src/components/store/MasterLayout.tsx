@@ -867,7 +867,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
             </div>
 
             {/* Integrated Footer as Last Section */}
-            <div className="ebook-section h-screen pt-[var(--header-h)] bg-[#0b0d10]">
+            <div className="ebook-section h-screen bg-[#0b0d10]">
                 <Footer />
             </div>
         </div >
