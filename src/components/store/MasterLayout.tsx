@@ -297,7 +297,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                     <span className="text-[10px] font-black text-white/70 tracking-[0.3em] uppercase font-[family-name:var(--font-bruno-ace)] group-hover/bento:text-brand-primary transition-colors">Inventory_Live</span>
                                 </div>
                                 <div className="flex items-baseline gap-4 whitespace-nowrap">
-                                    <span className="text-6xl md:text-7xl font-black text-white italic tracking-tighter leading-none">380+</span>
+                                    <span className="text-4xl md:text-5xl font-black text-white italic tracking-tighter leading-none">380+</span>
                                 </div>
                                 <div className="flex flex-col gap-1 mt-2">
                                     <span className="text-[10px] font-bold text-white uppercase tracking-widest opacity-80">Active_Skus</span>
@@ -333,7 +333,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                     <motion.div animate={{ opacity: [1, 0, 1] }} transition={{ duration: 0.5, repeat: Infinity }} className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-6xl md:text-7xl font-black text-white italic tracking-tighter leading-none">{MARKET_METRICS.avgSavings}</p>
+                                    <p className="text-4xl md:text-5xl font-black text-white italic tracking-tighter leading-none">{MARKET_METRICS.avgSavings}</p>
                                 </div>
                                 <div className="flex flex-col gap-1 mt-2">
                                     <p className="text-[10px] font-bold text-white uppercase tracking-widest opacity-80">Avg. Dealer Rebate</p>
@@ -371,7 +371,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                     <span>Dispatch_Hub</span>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-6xl md:text-7xl font-black text-white italic tracking-tighter leading-none">{MARKET_METRICS.deliveryTime}</p>
+                                    <p className="text-4xl md:text-5xl font-black text-white italic tracking-tighter leading-none">{MARKET_METRICS.deliveryTime}</p>
                                 </div>
                                 <div className="flex flex-col gap-1 mt-2">
                                     <p className="text-[10px] font-bold text-white uppercase tracking-widest opacity-80">Hyper-Local Speed</p>
