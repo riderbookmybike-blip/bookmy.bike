@@ -41,7 +41,7 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
         }
 
         // Marketplace: Premium Dark Glass (Smoked Glass) - When scrolled
-        return 'bg-black/50 dark:bg-black/70 backdrop-blur-3xl backdrop-saturate-[1.8] border-b border-white/10 shadow-lg dark:shadow-2xl transition-all duration-500';
+        return 'bg-black/30 dark:bg-black/60 backdrop-blur-xl backdrop-saturate-[1.8] border-b border-white/5 shadow-lg dark:shadow-2xl transition-all duration-500';
     };
 
     const bgClass = getBgClass();

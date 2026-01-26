@@ -130,39 +130,12 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                         </div>
                     </div>
 
-                    {/* QUANTUM CHIP - SCALABLE VECTOR */}
-                    <div className="w-14 h-11 relative rounded-[8px] overflow-hidden shadow-md bg-[#F59E0B]">
+                    {/* QUANTUM CHIP - HIGH-FIDELITY VECTOR */}
+                    <div className="w-14 h-11 relative rounded-[4px] overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.3)] border border-amber-700/50">
                         <svg viewBox="0 0 56 44" fill="none" className="w-full h-full block">
-                            <rect width="100%" height="100%" fill="url(#chip-gradient)" />
-                            {/* CONTACTS */}
-                            <path d="M12 22H44" stroke="#78350f" strokeWidth="0.5" strokeOpacity="0.5" />
-                            <path d="M28 6V38" stroke="#78350f" strokeWidth="0.5" strokeOpacity="0.5" />
-                            <rect
-                                x="2"
-                                y="10"
-                                width="16"
-                                height="24"
-                                rx="4"
-                                stroke="#78350f"
-                                strokeWidth="0.5"
-                                strokeOpacity="0.4"
-                                fill="none"
-                            />
-                            <rect
-                                x="38"
-                                y="10"
-                                width="16"
-                                height="24"
-                                rx="4"
-                                stroke="#78350f"
-                                strokeWidth="0.5"
-                                strokeOpacity="0.4"
-                                fill="none"
-                            />
-                            {/* CHIP GLOSS */}
                             <defs>
                                 <linearGradient
-                                    id="chip-gradient"
+                                    id="chip-base"
                                     x1="0"
                                     y1="0"
                                     x2="56"
@@ -170,14 +143,69 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                                     gradientUnits="userSpaceOnUse"
                                 >
                                     <stop offset="0%" stopColor="#FCD34D" />
-                                    <stop offset="30%" stopColor="#F59E0B" />
-                                    <stop offset="60%" stopColor="#D97706" />
-                                    <stop offset="100%" stopColor="#F59E0B" />
+                                    <stop offset="40%" stopColor="#F59E0B" />
+                                    <stop offset="70%" stopColor="#D97706" />
+                                    <stop offset="100%" stopColor="#B45309" />
+                                </linearGradient>
+                                <linearGradient
+                                    id="chip-highlight"
+                                    x1="0"
+                                    y1="0"
+                                    x2="0"
+                                    y2="44"
+                                    gradientUnits="userSpaceOnUse"
+                                >
+                                    <stop offset="0%" stopColor="#fff" stopOpacity="0.4" />
+                                    <stop offset="100%" stopColor="#fff" stopOpacity="0" />
                                 </linearGradient>
                             </defs>
+                            {/* Base Fill */}
+                            <rect width="56" height="44" fill="url(#chip-base)" />
+                            {/* Grid Contacts */}
+                            <rect
+                                x="4"
+                                y="8"
+                                width="18"
+                                height="28"
+                                rx="2"
+                                fill="none"
+                                stroke="#78350f"
+                                strokeWidth="1.5"
+                            />
+                            <rect
+                                x="34"
+                                y="8"
+                                width="18"
+                                height="28"
+                                rx="2"
+                                fill="none"
+                                stroke="#78350f"
+                                strokeWidth="1.5"
+                            />
+                            <line x1="10" y1="8" x2="10" y2="36" stroke="#92400e" strokeWidth="0.5" />
+                            <line x1="16" y1="8" x2="16" y2="36" stroke="#92400e" strokeWidth="0.5" />
+                            <line x1="40" y1="8" x2="40" y2="36" stroke="#92400e" strokeWidth="0.5" />
+                            <line x1="46" y1="8" x2="46" y2="36" stroke="#92400e" strokeWidth="0.5" />
+                            <line x1="4" y1="16" x2="22" y2="16" stroke="#92400e" strokeWidth="0.5" />
+                            <line x1="4" y1="22" x2="22" y2="22" stroke="#92400e" strokeWidth="0.5" />
+                            <line x1="4" y1="28" x2="22" y2="28" stroke="#92400e" strokeWidth="0.5" />
+                            <line x1="34" y1="16" x2="52" y2="16" stroke="#92400e" strokeWidth="0.5" />
+                            <line x1="34" y1="22" x2="52" y2="22" stroke="#92400e" strokeWidth="0.5" />
+                            <line x1="34" y1="28" x2="52" y2="28" stroke="#92400e" strokeWidth="0.5" />
+                            {/* Central Bridge */}
+                            <rect
+                                x="22"
+                                y="18"
+                                width="12"
+                                height="8"
+                                rx="1"
+                                fill="none"
+                                stroke="#78350f"
+                                strokeWidth="1"
+                            />
+                            {/* Sheen */}
+                            <rect width="56" height="44" fill="url(#chip-highlight)" />
                         </svg>
-                        {/* HOLOGRAPHIC OVERLAY */}
-                        <div className="absolute inset-0 bg-gradient-to-tr from-white/30 to-transparent pointer-events-none mix-blend-overlay" />
                     </div>
 
                     <div className="space-y-4 border-t border-white/5 pt-6">

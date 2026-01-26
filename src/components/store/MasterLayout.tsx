@@ -202,9 +202,9 @@ export function MasterLayout() {
                     {/* telemetry chip: boot sequence header */}
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9, y: -20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        animate={{ opacity: 1, scale: 1.1, y: 0 }}
                         transition={{ duration: 1.2, ease: 'circOut' }}
-                        className="mb-14 md:mb-20 flex flex-col items-center mt-[12vh]"
+                        className="mb-14 md:mb-20 flex flex-col items-center mt-[15vh] relative z-[60]"
                     >
                         <div className="flex items-center gap-6 px-10 py-2.5 bg-zinc-900/80 border border-white/10 rounded-full backdrop-blur-xl transition-all hover:border-brand-primary/50 group/tele shadow-[0_0_30px_rgba(0,0,0,0.5)] overflow-hidden relative">
                             {/* Shimmer Light Effect */}
@@ -771,6 +771,7 @@ export function MasterLayout() {
                                 className="space-y-6"
                             >
                                 <div className="flex items-center gap-4">
+                                    <div className="w-12 h-0.5 bg-brand-primary" />
                                     <p className="text-sm font-black text-brand-primary uppercase tracking-[0.3em]">
                                         The Process
                                     </p>
@@ -848,7 +849,10 @@ export function MasterLayout() {
                                             <div
                                                 className={`${activeStep === i ? 'text-brand-primary order-1' : 'text-zinc-600'}`}
                                             >
-                                                {item.icon}
+                                                {React.cloneElement(
+                                                    item.icon as React.ReactElement<{ className?: string }>,
+                                                    { className: 'w-8 h-8 md:w-12 md:h-12' }
+                                                )}
                                             </div>
 
                                             {/* Step Number: Right if Active, Hidden if Inactive */}
@@ -898,7 +902,16 @@ export function MasterLayout() {
 
                                     {/* Decorative Background for Active Card */}
                                     {activeStep === i && (
-                                        <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-brand-primary/10 rounded-full blur-3xl pointer-events-none" />
+                                        <>
+                                            <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-brand-primary/10 rounded-full blur-3xl pointer-events-none" />
+                                            {/* Watermark Icon */}
+                                            <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-1/4 text-brand-primary/5 pointer-events-none">
+                                                {React.cloneElement(
+                                                    item.icon as React.ReactElement<{ className?: string }>,
+                                                    { className: 'w-96 h-96' }
+                                                )}
+                                            </div>
+                                        </>
                                     )}
                                 </motion.div>
                             ))}
