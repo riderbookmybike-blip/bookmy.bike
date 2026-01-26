@@ -291,24 +291,41 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                             <div className="absolute top-0 right-0 p-6 opacity-20 group-hover/bento:opacity-100 transition-opacity">
                                 <Zap size={24} className="text-brand-primary" />
                             </div>
-                            <div className="space-y-4 relative z-10 mr-auto">
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-1.5 ${bentoHover === 'inventory' ? 'h-10' : 'h-6'} bg-brand-primary rounded-full transition-all duration-500`} />
-                                    <span className="text-[10px] font-black text-white/70 tracking-[0.3em] uppercase font-[family-name:var(--font-bruno-ace)] group-hover/bento:text-brand-primary transition-colors">Inventory_Live</span>
+                            <div className="flex items-center gap-8 relative z-10 w-full h-full">
+                                {/* Left Column: Core Stats */}
+                                <div className="flex-1 space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-1.5 ${bentoHover === 'inventory' ? 'h-10' : 'h-6'} bg-brand-primary rounded-full transition-all duration-500`} />
+                                        <span className="text-[10px] font-black text-white/70 tracking-[0.3em] uppercase font-[family-name:var(--font-bruno-ace)] group-hover/bento:text-brand-primary transition-colors">Inventory_Live</span>
+                                    </div>
+                                    <div className="flex items-baseline gap-4 whitespace-nowrap">
+                                        <span className="text-4xl font-black text-white italic tracking-tighter leading-none">380+</span>
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        <span className="text-[10px] font-bold text-white uppercase tracking-widest opacity-80">Active_Skus</span>
+                                    </div>
+                                    <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                                        <motion.div
+                                            animate={{ x: ['-100%', '100%'], opacity: [0.3, 1, 0.3] }}
+                                            transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                                            className="h-full w-1/2 bg-brand-primary shadow-[0_0_15px_rgba(255,100,0,0.5)]"
+                                        />
+                                    </div>
                                 </div>
-                                <div className="flex items-baseline gap-4 whitespace-nowrap">
-                                    <span className="text-4xl md:text-5xl font-black text-white italic tracking-tighter leading-none">380+</span>
-                                </div>
-                                <div className="flex flex-col gap-1 mt-2">
-                                    <span className="text-[10px] font-bold text-white uppercase tracking-widest opacity-80">Active_Skus</span>
-                                </div>
+
+                                {/* Right Column: Expanded Details */}
                                 {bentoHover === 'inventory' && (
-                                    <motion.p
-                                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                                        className="text-[11px] text-zinc-400 font-medium leading-relaxed max-w-sm mt-2 line-clamp-2"
-                                    >
-                                        Access India's largest curated collection of premium motorcycles, updated real-time across all regional hubs.
-                                    </motion.p>
+                                    <>
+                                        <div className="w-px h-24 bg-white/10 skew-x-[-20deg] hidden md:block" />
+                                        <motion.div
+                                            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
+                                            className="flex-1 hidden md:block"
+                                        >
+                                            <p className="text-xs md:text-[13px] text-zinc-300 font-medium leading-relaxed max-w-[240px]">
+                                                Access India's largest curated collection of premium motorcycles, updated real-time across all regional hubs.
+                                            </p>
+                                        </motion.div>
+                                    </>
                                 )}
                             </div>
                             {/* high-tech visual ornament */}
@@ -327,31 +344,41 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                             transition={{ layout: { duration: 0.6, ease: [0.23, 1, 0.32, 1] } }}
                             className={`${bentoHover === 'savings' || bentoHover === null ? 'md:col-span-2' : 'md:col-span-1'} p-8 bg-zinc-900/80 border ${bentoHover === 'savings' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-3xl group/savings h-[220px] flex flex-col justify-center cursor-pointer shadow-2xl transition-all duration-500`}
                         >
-                            <div className="space-y-6">
-                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-white/70 font-[family-name:var(--font-bruno-ace)]">
-                                    <span>Savings_Calc</span>
-                                    <motion.div animate={{ opacity: [1, 0, 1] }} transition={{ duration: 0.5, repeat: Infinity }} className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
+                            <div className="flex items-center gap-8 relative z-10 w-full h-full">
+                                {/* Left Column: Core Stats */}
+                                <div className="flex-1 space-y-4">
+                                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-white/70 font-[family-name:var(--font-bruno-ace)]">
+                                        <span>Savings_Calc</span>
+                                        <motion.div animate={{ opacity: [1, 1, 1] }} className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
+                                    </div>
+                                    <div className="flex items-baseline gap-4 whitespace-nowrap">
+                                        <p className="text-4xl font-black text-white italic tracking-tighter leading-none">{MARKET_METRICS.avgSavings}</p>
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        <p className="text-[10px] font-bold text-white uppercase tracking-widest opacity-80">Avg. Dealer Rebate</p>
+                                    </div>
+                                    <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                                        <motion.div
+                                            initial={{ width: 0 }} animate={{ width: '85%' }} transition={{ delay: 2, duration: 1 }}
+                                            className="h-full bg-brand-primary shadow-[0_0_15px_rgba(255,100,0,0.5)]"
+                                        />
+                                    </div>
                                 </div>
-                                <div className="space-y-1">
-                                    <p className="text-4xl md:text-5xl font-black text-white italic tracking-tighter leading-none">{MARKET_METRICS.avgSavings}</p>
-                                </div>
-                                <div className="flex flex-col gap-1 mt-2">
-                                    <p className="text-[10px] font-bold text-white uppercase tracking-widest opacity-80">Avg. Dealer Rebate</p>
-                                </div>
-                                {bentoHover === 'savings' && (
-                                    <motion.p
-                                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                                        className="text-[11px] text-zinc-400 font-medium leading-relaxed max-w-sm line-clamp-2"
-                                    >
-                                        Leverage our Lowest EMI Guarantee and exclusive dealer rebates to save an average of ₹12,000 per booking.
-                                    </motion.p>
+
+                                {/* Right Column: Expanded Details */}
+                                {(bentoHover === 'savings' || bentoHover === null) && (
+                                    <>
+                                        <div className="w-px h-24 bg-white/10 skew-x-[-20deg] hidden md:block" />
+                                        <motion.div
+                                            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
+                                            className="flex-1 hidden md:block"
+                                        >
+                                            <p className="text-xs md:text-[13px] text-zinc-300 font-medium leading-relaxed max-w-[240px]">
+                                                Leverage our Lowest EMI Guarantee and exclusive dealer rebates to save an average of ₹12,000 per booking.
+                                            </p>
+                                        </motion.div>
+                                    </>
                                 )}
-                                <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                                    <motion.div
-                                        initial={{ width: 0 }} animate={{ width: '85%' }} transition={{ delay: 2, duration: 1 }}
-                                        className="h-full bg-brand-primary shadow-[0_0_15px_rgba(255,100,0,0.5)]"
-                                    />
-                                </div>
                             </div>
                         </motion.div>
 
@@ -366,34 +393,44 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                             transition={{ layout: { duration: 0.6, ease: [0.23, 1, 0.32, 1] } }}
                             className={`${bentoHover === 'dispatch' ? 'md:col-span-2' : 'md:col-span-1'} p-8 bg-zinc-900/80 border ${bentoHover === 'dispatch' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-3xl group/dispatch h-[220px] flex flex-col justify-center cursor-pointer shadow-2xl transition-all duration-500`}
                         >
-                            <div className="space-y-6">
-                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-white/70 font-[family-name:var(--font-bruno-ace)]">
-                                    <span>Dispatch_Hub</span>
+                            <div className="flex items-center gap-8 relative z-10 w-full h-full">
+                                {/* Left Column: Core Stats */}
+                                <div className="flex-1 space-y-4">
+                                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-white/70 font-[family-name:var(--font-bruno-ace)]">
+                                        <span>Dispatch_Hub</span>
+                                    </div>
+                                    <div className="flex items-baseline gap-4 whitespace-nowrap">
+                                        <p className="text-4xl font-black text-white italic tracking-tighter leading-none">{MARKET_METRICS.deliveryTime}</p>
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        <p className="text-[10px] font-bold text-white uppercase tracking-widest opacity-80">Hyper-Local Speed</p>
+                                    </div>
+                                    <div className="flex gap-1">
+                                        {[...Array(6)].map((_, i) => (
+                                            <motion.div
+                                                key={i}
+                                                animate={{ backgroundColor: ['rgba(255,255,255,0.05)', 'rgba(255,100,0,0.4)', 'rgba(255,255,255,0.05)'] }}
+                                                transition={{ delay: 2 + (i * 0.1), duration: 1, repeat: Infinity }}
+                                                className="h-1 flex-1 bg-white/5 rounded-full"
+                                            />
+                                        ))}
+                                    </div>
                                 </div>
-                                <div className="space-y-1">
-                                    <p className="text-4xl md:text-5xl font-black text-white italic tracking-tighter leading-none">{MARKET_METRICS.deliveryTime}</p>
-                                </div>
-                                <div className="flex flex-col gap-1 mt-2">
-                                    <p className="text-[10px] font-bold text-white uppercase tracking-widest opacity-80">Hyper-Local Speed</p>
-                                </div>
+
+                                {/* Right Column: Expanded Details */}
                                 {bentoHover === 'dispatch' && (
-                                    <motion.p
-                                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                                        className="text-[11px] text-zinc-400 font-medium leading-relaxed max-w-sm line-clamp-2"
-                                    >
-                                        Hyper-local processing at LHR_04 ensures your premium ride is dispatched and ready in record time.
-                                    </motion.p>
-                                )}
-                                <div className="flex gap-1">
-                                    {[...Array(6)].map((_, i) => (
+                                    <>
+                                        <div className="w-px h-24 bg-white/10 skew-x-[-20deg] hidden md:block" />
                                         <motion.div
-                                            key={i}
-                                            animate={{ backgroundColor: ['rgba(255,255,255,0.05)', 'rgba(255,100,0,0.4)', 'rgba(255,255,255,0.05)'] }}
-                                            transition={{ delay: 2 + (i * 0.1), duration: 1, repeat: Infinity }}
-                                            className="h-1 flex-1 bg-white/5 rounded-full"
-                                        />
-                                    ))}
-                                </div>
+                                            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
+                                            className="flex-1 hidden md:block"
+                                        >
+                                            <p className="text-xs md:text-[13px] text-zinc-300 font-medium leading-relaxed max-w-[240px]">
+                                                Hyper-local processing at LHR_04 ensures your premium ride is dispatched and ready in record time.
+                                            </p>
+                                        </motion.div>
+                                    </>
+                                )}
                             </div>
                         </motion.div>
                     </div>
