@@ -167,8 +167,8 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                         }}
                     />
 
-                    {/* aperture layer 2: peripheral lens flare/vignette */}
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_0%,rgba(0,0,0,0.4)_50%,#000_95%)] z-20" />
+                    {/* aperture layer 2: peripheral lens flare/vignette - Simplified for consistency */}
+                    <div className="absolute inset-0 bg-black/40 z-20" />
 
                     {/* aperture layer 3: digital scanning grid */}
                     <div
@@ -208,7 +208,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                 <div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
                                 <div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/70 group-hover/tele:text-brand-primary transition-colors font-[family-name:var(--font-bruno-ace)]">
+                            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white group-hover/tele:text-brand-primary transition-colors font-[family-name:var(--font-bruno-ace)]">
                                 INDIA'S LOWEST EMI GUARANTEE
                             </span>
                             <div className="flex gap-1.5">
@@ -225,7 +225,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                             initial={{ opacity: 0, letterSpacing: '1.2em' }}
                             animate={{ opacity: 1, letterSpacing: '0.4em' }}
                             transition={{ duration: 2, ease: [0.16, 1, 0.3, 1] }}
-                            className="text-xs md:text-sm font-black uppercase text-brand-primary/60 mb-6 drop-shadow-[0_0_15px_rgba(255,100,0,0.3)] font-[family-name:var(--font-bruno-ace)]"
+                            className="text-xs md:text-sm font-black uppercase text-brand-primary mb-6 transition-all duration-300 drop-shadow-[0_0_20px_rgba(255,157,0,0.5)] font-[family-name:var(--font-bruno-ace)]"
                         >
                             The Highest Fidelity Marketplace
                         </motion.div>
@@ -271,8 +271,11 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
 
                         {/* block 1: inventory scanner */}
                         <motion.div
-                            initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1 }}
-                            className="col-span-1 md:col-span-2 relative p-8 bg-zinc-900/40 border border-white/5 rounded-3xl backdrop-blur-3xl overflow-hidden group/bento min-h-[220px] flex flex-col justify-center"
+                            initial={{ opacity: 0, x: -30 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            whileHover={{ scale: 1.02, y: -5 }}
+                            transition={{ delay: 1, duration: 0.4 }}
+                            className="col-span-1 md:col-span-2 relative p-8 bg-zinc-900/60 border border-white/10 rounded-3xl backdrop-blur-3xl overflow-hidden group/bento min-h-[220px] flex flex-col justify-center cursor-pointer shadow-2xl hover:border-brand-primary/30"
                         >
                             <div className="absolute top-0 right-0 p-6 opacity-20 group-hover/bento:opacity-100 transition-opacity">
                                 <Zap size={24} className="text-brand-primary" />
@@ -299,8 +302,11 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
 
                         {/* block 2: savings matrix */}
                         <motion.div
-                            initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.2 }}
-                            className="col-span-1 p-8 bg-zinc-900/40 border border-white/5 rounded-3xl backdrop-blur-3xl group/savings min-h-[220px] flex flex-col justify-center"
+                            initial={{ opacity: 0, y: 30 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            whileHover={{ scale: 1.02, y: -5 }}
+                            transition={{ delay: 1.2, duration: 0.4 }}
+                            className="col-span-1 p-8 bg-zinc-900/60 border border-white/10 rounded-3xl backdrop-blur-3xl group/savings min-h-[220px] flex flex-col justify-center cursor-pointer shadow-2xl hover:border-brand-primary/30"
                         >
                             <div className="space-y-6">
                                 <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 font-[family-name:var(--font-bruno-ace)]">
@@ -322,8 +328,11 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
 
                         {/* block 3: dispatch telemetry */}
                         <motion.div
-                            initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.4 }}
-                            className="col-span-1 p-8 bg-zinc-900/40 border border-white/5 rounded-3xl backdrop-blur-3xl group/dispatch min-h-[220px] flex flex-col justify-center"
+                            initial={{ opacity: 0, x: 30 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            whileHover={{ scale: 1.02, y: -5 }}
+                            transition={{ delay: 1.4, duration: 0.4 }}
+                            className="col-span-1 p-8 bg-zinc-900/60 border border-white/10 rounded-3xl backdrop-blur-3xl group/dispatch min-h-[220px] flex flex-col justify-center cursor-pointer shadow-2xl hover:border-brand-primary/30"
                         >
                             <div className="space-y-6">
                                 <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 font-[family-name:var(--font-bruno-ace)]">
