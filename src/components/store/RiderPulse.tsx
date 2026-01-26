@@ -31,7 +31,7 @@ export const RiderPulse = () => {
         // We utilize transparent backgrounds here to let that flow through.
         <section className="h-full w-full flex flex-col justify-center relative overflow-hidden">
 
-            <div className="max-w-[1440px] mx-auto px-8 md:px-16 h-full flex flex-col justify-center relative z-10 w-full">
+            <div className="max-w-[1440px] mx-auto px-6 h-full flex flex-col justify-center relative z-10 w-full">
                 <div className="grid grid-cols-12 gap-8 lg:gap-16 items-center h-full">
 
                     {/* LEFT COLUMN: Static Context (5/12) - Matches 'Select Your Vibe' */}
