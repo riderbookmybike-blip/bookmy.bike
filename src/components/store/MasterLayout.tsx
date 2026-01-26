@@ -321,10 +321,6 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                     </>
                                 )}
                             </div>
-                            {/* high-tech visual ornament */}
-                            <div className="absolute -bottom-12 -right-12 w-48 h-48 border border-brand-primary/10 rounded-full pointer-events-none">
-                                <motion.div animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: "linear" }} className="w-full h-full border-t-2 border-brand-primary/40 rounded-full shadow-[0_0_30px_rgba(255,100,0,0.1)]" />
-                            </div>
                         </motion.div>
 
                         {/* block 2: savings matrix (Default Expanded) */}
