@@ -16,6 +16,7 @@ export const Footer = () => {
     const footerSections = [
         {
             title: 'Collection',
+            gradient: 'from-amber-400 to-yellow-600',
             links: [
                 { label: 'All Inventory', href: '/store/catalog' },
                 { label: 'Scooters', href: '/store/catalog?category=SCOOTER' },
@@ -26,6 +27,7 @@ export const Footer = () => {
         },
         {
             title: 'Brands',
+            gradient: 'from-yellow-500 to-amber-700',
             links: [
                 ...brands.slice(0, 4).map(b => ({ label: b.name, href: `/store/${b.slug || slugify(b.name)}` })),
                 { label: 'View All Brands', href: '/store/catalog', highlight: true }
@@ -33,6 +35,7 @@ export const Footer = () => {
         },
         {
             title: 'Ecosystem',
+            gradient: 'from-orange-400 to-amber-600',
             links: [
                 { label: 'About Us', href: '#' },
                 { label: 'Our Blog', href: '/blog' },
@@ -43,6 +46,7 @@ export const Footer = () => {
         },
         {
             title: 'Services',
+            gradient: 'from-amber-500 to-orange-700',
             links: [
                 { label: 'Help Center', href: '#' },
                 { label: 'Finance Options', href: '#' },
@@ -55,10 +59,10 @@ export const Footer = () => {
 
     return (
         <footer className="snap-start min-h-screen flex flex-col bg-[#0b0d10] border-t border-white/5 pt-[var(--header-h)] pb-12 overflow-hidden relative text-white">
-            {/* Ambient Background Glows */}
+            {/* Ambient Background Glows - BRAND GOLD THEME */}
             <div className="absolute inset-0 z-0 pointer-events-none">
-                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-primary/5 blur-[120px] rounded-full" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/10 blur-[120px] rounded-full" />
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-amber-500/10 blur-[120px] rounded-full" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-yellow-600/10 blur-[120px] rounded-full" />
             </div>
 
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
@@ -79,7 +83,7 @@ export const Footer = () => {
                                     </p>
                                 </div>
                                 <h3 className="text-6xl md:text-8xl font-black uppercase tracking-tighter text-white leading-[0.85] italic drop-shadow-2xl">
-                                    Redefining <br /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-zinc-200 to-zinc-600">Mobility.</span>
+                                    Redefining <br /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-yellow-500">Mobility.</span>
                                 </h3>
                                 <p className="text-lg text-zinc-400 leading-relaxed max-w-lg font-medium mt-[60px] border-l-2 border-white/10 pl-6">
                                     India&apos;s premier marketplace for the next generation of
@@ -121,15 +125,15 @@ export const Footer = () => {
                                     layout
                                     onMouseEnter={() => setActiveSection(idx)}
                                     className={`relative rounded-[2rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between ${isActive
-                                        ? 'flex-[3] bg-white text-black border-white shadow-[0_0_50px_rgba(255,255,255,0.1)]'
-                                        : 'flex-[1] bg-white/5 border-white/5 text-zinc-500 hover:bg-white/10'
+                                            ? `flex-[3] bg-gradient-to-br ${section.gradient} text-black border-amber-500/50 shadow-[0_0_80px_rgba(245,158,11,0.3)]`
+                                            : 'flex-[1] bg-white/5 border-white/5 text-zinc-500 hover:bg-white/10'
                                         }`}
                                 >
                                     <div className="absolute inset-0 p-8 flex flex-col justify-between">
 
                                         {/* Header / Vertical Title */}
                                         <div className="flex justify-between items-start">
-                                            <span className={`text-xs font-black uppercase tracking-[0.2em] transition-colors ${isActive ? 'text-brand-primary' : 'text-zinc-500'}`}>
+                                            <span className={`text-xs font-black uppercase tracking-[0.2em] transition-colors ${isActive ? 'text-black/80' : 'text-zinc-500'}`}>
                                                 {`0${idx + 1}`}
                                             </span>
                                             {isActive && <ArrowRight className="text-black -rotate-45" />}
@@ -147,7 +151,7 @@ export const Footer = () => {
 
                                             {/* Active List Content */}
                                             <div className={`w-full transition-all duration-500 delay-100 ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 absolute inset-0 pointer-events-none'}`}>
-                                                <h4 className="text-4xl font-black uppercase italic tracking-tighter mb-8 leading-none">
+                                                <h4 className="text-4xl font-black uppercase italic tracking-tighter mb-8 leading-none drop-shadow-sm">
                                                     {section.title}
                                                 </h4>
                                                 <ul className="space-y-3">
@@ -156,12 +160,12 @@ export const Footer = () => {
                                                             <Link
                                                                 href={link.href}
                                                                 className={`text-lg font-medium transition-colors flex items-center gap-2 group/link ${link.highlight
-                                                                    ? 'text-brand-primary hover:text-brand-primary/80'
-                                                                    : 'text-zinc-600 hover:text-black'
+                                                                        ? 'text-black hover:text-black/70 underline decoration-black/30'
+                                                                        : 'text-black/70 hover:text-black'
                                                                     }`}
                                                             >
                                                                 {link.label}
-                                                                <ArrowRight size={14} className="opacity-0 -translate-x-2 group-hover/link:opacity-100 group-hover/link:translate-x-0 transition-all text-brand-primary" />
+                                                                <ArrowRight size={14} className="opacity-0 -translate-x-2 group-hover/link:opacity-100 group-hover/link:translate-x-0 transition-all text-black" />
                                                             </Link>
                                                         </li>
                                                     ))}
