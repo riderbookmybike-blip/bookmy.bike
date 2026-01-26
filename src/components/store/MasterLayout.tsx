@@ -277,11 +277,11 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                     {/* TELEMETRY BENTO: kinetic accordion grid */}
                     <div className="w-full max-w-[1440px] grid grid-cols-1 md:grid-cols-4 gap-4 px-8 md:px-16 mx-auto place-items-stretch pointer-events-auto">
 
-                        {/* block 1: inventory scanner */}
+                        {/* block 1: SKU scanner */}
                         <motion.div
                             layout
                             onMouseEnter={() => setBentoHover('inventory')}
-                            onMouseLeave={() => setBentoHover('savings')}
+                            onMouseLeave={() => setBentoHover(null)}
                             initial={{ opacity: 0, x: -30 }}
                             animate={{ opacity: 1, x: 0 }}
                             whileHover={{ scale: 1.02, filter: 'brightness(1.2)' }}
@@ -295,7 +295,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                 {/* Left Column: Core Stats (Locked Width) */}
                                 <div className="md:w-48 flex-none space-y-4">
                                     <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-white/70 font-[family-name:var(--font-bruno-ace)] group-hover/bento:text-brand-primary transition-colors">
-                                        <span>Inventory_Live</span>
+                                        <span>SKU_Live</span>
                                         <motion.div
                                             animate={{ opacity: [1, 0, 1] }}
                                             transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
@@ -306,7 +306,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                         <span className="text-4xl font-black text-white italic tracking-tighter leading-none">380+</span>
                                     </div>
                                     <div className="flex flex-col gap-1">
-                                        <span className="text-[10px] font-bold text-white uppercase tracking-widest opacity-80 font-inter">Active_Skus</span>
+                                        <span className="text-[10px] font-bold text-white uppercase tracking-widest opacity-80 font-inter">Active_Sourcing</span>
                                     </div>
                                 </div>
 
@@ -331,10 +331,62 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                             </div>
                         </motion.div>
 
-                        {/* block 2: savings matrix (Default Expanded) */}
+                        {/* block 2: inventory sync (was dispatch) */}
+                        <motion.div
+                            layout
+                            onMouseEnter={() => setBentoHover('dispatch')}
+                            onMouseLeave={() => setBentoHover(null)}
+                            initial={{ opacity: 0, x: 30 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            whileHover={{ scale: 1.02, filter: 'brightness(1.2)' }}
+                            transition={{ layout: { duration: 0.6, ease: [0.23, 1, 0.32, 1] } }}
+                            className={`${bentoHover === 'dispatch' ? 'md:col-span-2' : 'md:col-span-1'} p-8 bg-zinc-900/80 border ${bentoHover === 'dispatch' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-3xl group/dispatch h-[220px] flex flex-col justify-center cursor-pointer shadow-2xl transition-all duration-500`}
+                        >
+                            <div className="flex items-center gap-8 relative z-10 w-full h-full">
+                                {/* Left Column: Core Stats (Locked Width) */}
+                                <div className="md:w-48 flex-none space-y-4">
+                                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-white/70 font-[family-name:var(--font-bruno-ace)]">
+                                        <span>Inventory_Sync</span>
+                                        <motion.div
+                                            animate={{ opacity: [1, 0, 1] }}
+                                            transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                                            className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]"
+                                        />
+                                    </div>
+                                    <div className="flex items-baseline gap-4 whitespace-nowrap">
+                                        <p className="text-4xl font-black text-white italic tracking-tighter leading-none">{MARKET_METRICS.deliveryTime}</p>
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        <p className="text-[10px] font-bold text-white uppercase tracking-widest opacity-80 font-inter">Logistics_Flow</p>
+                                    </div>
+                                </div>
+
+                                {/* Right Column: Expanded Details */}
+                                {bentoHover === 'dispatch' && (
+                                    <>
+                                        <div className="w-px h-24 bg-white/10 skew-x-[-20deg] hidden md:block" />
+                                        <motion.div
+                                            initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}
+                                            className="flex-1 hidden md:flex flex-col gap-2 p-4 bg-white/[0.03] border border-white/5 rounded-2xl backdrop-blur-sm"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
+                                                <span className="text-[9px] font-black text-red-500/80 tracking-[0.2em] uppercase font-mono">Archive_02: Logistics_Hub</span>
+                                            </div>
+                                            <p className="text-[12px] text-zinc-300 font-medium leading-[1.6] max-w-[240px]">
+                                                Hyper-local processing ensure your premium ride is dispatched and ready in record time.
+                                            </p>
+                                        </motion.div>
+                                    </>
+                                )}
+                            </div>
+                        </motion.div>
+
+                        {/* block 3: savings matrix (Now 3rd and Default Expanded) */}
                         <motion.div
                             layout
                             onMouseEnter={() => setBentoHover('savings')}
+                            onMouseLeave={() => setBentoHover(null)}
                             initial={{ opacity: 0, y: 30 }}
                             animate={{ opacity: 1, y: 0 }}
                             whileHover={{ scale: 1.02, filter: 'brightness(1.2)' }}
@@ -370,61 +422,10 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                         >
                                             <div className="flex items-center gap-2">
                                                 <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse" />
-                                                <span className="text-[9px] font-black text-green-500/80 tracking-[0.2em] uppercase font-mono">Archive_02: Finance_Calc</span>
+                                                <span className="text-[9px] font-black text-green-500/80 tracking-[0.2em] uppercase font-mono">Archive_03: Finance_Core</span>
                                             </div>
                                             <p className="text-[12px] text-zinc-300 font-medium leading-[1.6] max-w-[240px]">
                                                 Leverage our Lowest EMI Guarantee and exclusive dealer rebates to save an average of ₹12,000 per booking.
-                                            </p>
-                                        </motion.div>
-                                    </>
-                                )}
-                            </div>
-                        </motion.div>
-
-                        {/* block 3: dispatch telemetry */}
-                        <motion.div
-                            layout
-                            onMouseEnter={() => setBentoHover('dispatch')}
-                            onMouseLeave={() => setBentoHover('savings')}
-                            initial={{ opacity: 0, x: 30 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            whileHover={{ scale: 1.02, filter: 'brightness(1.2)' }}
-                            transition={{ layout: { duration: 0.6, ease: [0.23, 1, 0.32, 1] } }}
-                            className={`${bentoHover === 'dispatch' ? 'md:col-span-2' : 'md:col-span-1'} p-8 bg-zinc-900/80 border ${bentoHover === 'dispatch' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-3xl group/dispatch h-[220px] flex flex-col justify-center cursor-pointer shadow-2xl transition-all duration-500`}
-                        >
-                            <div className="flex items-center gap-8 relative z-10 w-full h-full">
-                                {/* Left Column: Core Stats (Locked Width) */}
-                                <div className="md:w-48 flex-none space-y-4">
-                                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-white/70 font-[family-name:var(--font-bruno-ace)]">
-                                        <span>Dispatch_Hub</span>
-                                        <motion.div
-                                            animate={{ opacity: [1, 0, 1] }}
-                                            transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-                                            className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]"
-                                        />
-                                    </div>
-                                    <div className="flex items-baseline gap-4 whitespace-nowrap">
-                                        <p className="text-4xl font-black text-white italic tracking-tighter leading-none">{MARKET_METRICS.deliveryTime}</p>
-                                    </div>
-                                    <div className="flex flex-col gap-1">
-                                        <p className="text-[10px] font-bold text-white uppercase tracking-widest opacity-80 font-inter">Hyper-Local Speed</p>
-                                    </div>
-                                </div>
-
-                                {/* Right Column: Expanded Details */}
-                                {bentoHover === 'dispatch' && (
-                                    <>
-                                        <div className="w-px h-24 bg-white/10 skew-x-[-20deg] hidden md:block" />
-                                        <motion.div
-                                            initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}
-                                            className="flex-1 hidden md:flex flex-col gap-2 p-4 bg-white/[0.03] border border-white/5 rounded-2xl backdrop-blur-sm"
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
-                                                <span className="text-[9px] font-black text-red-500/80 tracking-[0.2em] uppercase font-mono">Archive_03: Logistics_Sync</span>
-                                            </div>
-                                            <p className="text-[12px] text-zinc-300 font-medium leading-[1.6] max-w-[240px]">
-                                                Hyper-local processing at LHR_04 ensures your premium ride is dispatched and ready in record time.
                                             </p>
                                         </motion.div>
                                     </>
