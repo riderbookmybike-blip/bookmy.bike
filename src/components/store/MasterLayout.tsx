@@ -826,41 +826,12 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
             </section>
 
             {/* Featured Categories - "The Vibe Deck" */}
-            <section className="h-screen ebook-section relative flex flex-col justify-start bg-slate-50 dark:bg-[#0b0d10] transition-colors pt-[var(--header-h)] overflow-hidden">
-                {/* Immersive Background Layer - Shifts with Active Vibe */}
+            <section className="h-screen ebook-section relative flex flex-col justify-start bg-[#0b0d10] pt-[var(--header-h)] overflow-hidden">
+                {/* Stable Lighting Layer: Matches 'The Process' pattern for rock-solid stability */}
                 <div className="absolute inset-0 z-0 pointer-events-none">
-                    <AnimatePresence mode="wait">
-                        {activeVibe === 0 && (
-                            <motion.div
-                                key="vibe-scooter"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 0.8, ease: "easeInOut" }}
-                                className="absolute inset-0 bg-gradient-to-br from-blue-900/10 via-slate-950 to-black"
-                            />
-                        )}
-                        {activeVibe === 1 && (
-                            <motion.div
-                                key="vibe-motorcycle"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 0.8, ease: "easeInOut" }}
-                                className="absolute inset-0 bg-gradient-to-br from-rose-900/10 via-slate-950 to-black"
-                            />
-                        )}
-                        {activeVibe === 2 && (
-                            <motion.div
-                                key="vibe-moped"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 0.8, ease: "easeInOut" }}
-                                className="absolute inset-0 bg-gradient-to-br from-emerald-900/10 via-slate-950 to-black"
-                            />
-                        )}
-                    </AnimatePresence>
+                    <div className="absolute inset-0 bg-gradient-to-tr from-blue-950/40 via-[#0b0d10] to-black" />
+                    {/* Steady Bottom Glow: Subtle depth without the 'flash' instability */}
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-[60%] bg-[radial-gradient(circle_at_50%_100%,rgba(56,189,248,0.07),transparent_70%)]" />
                 </div>
 
                 <div className="max-w-[1440px] mx-auto px-6 relative z-10 h-full flex flex-col justify-center">
