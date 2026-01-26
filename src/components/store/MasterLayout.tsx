@@ -202,16 +202,23 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                         transition={{ duration: 1.2, ease: "circOut" }}
                         className="mb-14 md:mb-20 flex flex-col items-center mt-[12vh]"
                     >
-                        <div className="flex items-center gap-6 px-10 py-2.5 bg-zinc-900/80 border border-white/10 rounded-full backdrop-blur-xl transition-all hover:border-brand-primary/50 group/tele shadow-[0_0_30px_rgba(0,0,0,0.5)]">
-                            <div className="flex gap-1.5">
+                        <div className="flex items-center gap-6 px-10 py-2.5 bg-zinc-900/80 border border-white/10 rounded-full backdrop-blur-xl transition-all hover:border-brand-primary/50 group/tele shadow-[0_0_30px_rgba(0,0,0,0.5)] overflow-hidden relative">
+                            {/* Shimmer Light Effect */}
+                            <motion.div
+                                animate={{ x: ['-100%', '200%'] }}
+                                transition={{ duration: 6, repeat: Infinity, ease: "linear", repeatDelay: 1 }}
+                                className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-[-30deg] pointer-events-none"
+                            />
+
+                            <div className="flex gap-1.5 z-10">
                                 <motion.div animate={{ opacity: [1, 0.3, 1] }} transition={{ repeat: Infinity, duration: 2 }} className="w-1.5 h-1.5 rounded-full bg-brand-primary" />
                                 <div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
                                 <div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white group-hover/tele:text-brand-primary transition-colors font-[family-name:var(--font-bruno-ace)]">
+                            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white group-hover/tele:text-brand-primary transition-colors font-[family-name:var(--font-bruno-ace)] z-10 relative">
                                 INDIA'S LOWEST EMI GUARANTEE
                             </span>
-                            <div className="flex gap-1.5">
+                            <div className="flex gap-1.5 z-10">
                                 <div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
                                 <div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
                                 <motion.div animate={{ opacity: [1, 0.3, 1] }} transition={{ repeat: Infinity, duration: 2 }} className="w-1.5 h-1.5 rounded-full bg-brand-primary" />
