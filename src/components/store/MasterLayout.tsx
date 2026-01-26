@@ -306,7 +306,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                         <span className="text-4xl font-black text-white italic tracking-tighter leading-none">380+</span>
                                     </div>
                                     <div className="flex flex-col gap-1">
-                                        <span className="text-[10px] font-bold text-white uppercase tracking-widest opacity-80 font-inter">Active_Sourcing</span>
+                                        <span className="text-[10px] font-bold text-white tracking-widest opacity-80 font-inter">active_sourcing</span>
                                     </div>
                                 </div>
 
@@ -319,8 +319,8 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                             className="flex-1 hidden md:flex flex-col gap-2 p-4 bg-white/[0.03] border border-white/5 rounded-2xl backdrop-blur-sm"
                                         >
                                             <div className="flex items-center gap-2">
-                                                <div className="w-1 h-1 rounded-full bg-orange-500 animate-pulse" />
-                                                <span className="text-[9px] font-black text-orange-500/80 tracking-[0.2em] uppercase font-mono">Archive_01: Inventory_Core</span>
+                                                <div className="w-1 h-1 rounded-full bg-amber-500 animate-pulse" />
+                                                <span className="text-[9px] font-black text-amber-500/80 tracking-[0.2em] uppercase font-mono">Archive_01: Inventory_Core</span>
                                             </div>
                                             <p className="text-[12px] text-zinc-300 font-medium leading-[1.6] max-w-[240px]">
                                                 Access India's largest curated collection of premium motorcycles, updated real-time across regional hubs.
@@ -357,7 +357,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                         <p className="text-4xl font-black text-white italic tracking-tighter leading-none">{MARKET_METRICS.deliveryTime}</p>
                                     </div>
                                     <div className="flex flex-col gap-1">
-                                        <p className="text-[10px] font-bold text-white uppercase tracking-widest opacity-80 font-inter">Logistics_Flow</p>
+                                        <p className="text-[10px] font-bold text-white tracking-widest opacity-80 font-inter">logistics_flow</p>
                                     </div>
                                 </div>
 
@@ -837,9 +837,9 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                             transition={{ duration: 1.5, ease: "easeInOut" }}
                             className="absolute inset-0"
                         >
-                            <div className={`absolute inset-0 bg-gradient-to-tr ${activeVibe === 0 ? 'from-cyan-950/30' : activeVibe === 1 ? 'from-rose-950/30' : 'from-amber-950/30'} via-[#0b0d10] to-black`} />
+                            <div className={`absolute inset-0 bg-gradient-to-tr ${activeVibe === 0 ? 'from-violet-950/30' : activeVibe === 1 ? 'from-rose-950/30' : 'from-amber-950/30'} via-[#0b0d10] to-black`} />
                             {/* Aurora Glow: Matches category vibe */}
-                            <div className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-[70%] bg-[radial-gradient(circle_at_50%_100%,${activeVibe === 0 ? 'rgba(6,182,212,0.1)' : activeVibe === 1 ? 'rgba(244,63,94,0.1)' : 'rgba(245,158,11,0.1)'},transparent_70%)]`} />
+                            <div className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-[70%] bg-[radial-gradient(circle_at_50%_100%,${activeVibe === 0 ? 'rgba(167,139,250,0.1)' : activeVibe === 1 ? 'rgba(244,63,94,0.1)' : 'rgba(245,158,11,0.1)'},transparent_70%)]`} />
                         </motion.div>
                     </AnimatePresence>
                 </div>

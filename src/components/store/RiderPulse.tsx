@@ -44,7 +44,6 @@ export const RiderPulse = () => {
                             className="space-y-6"
                         >
                             <div className="flex items-center gap-4">
-                                <div className="h-px w-12 bg-white" />
                                 <p className="text-sm font-black text-brand-primary uppercase tracking-[0.3em]">
                                     The Community Pulse
                                 </p>
