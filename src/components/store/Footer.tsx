@@ -79,7 +79,7 @@ export const Footer = () => {
 
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-            <div className="max-w-[1440px] mx-auto w-full px-8 md:px-16 relative z-10 flex-1 flex flex-col justify-center">
+            <div className="max-w-[1440px] mx-auto w-full px-6 relative z-10 flex-1 flex flex-col justify-center">
 
                 {/* SPLIT LAYOUT: Left Content (5) | Right Accordion (7) */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-16 items-stretch relative h-[60vh]">
