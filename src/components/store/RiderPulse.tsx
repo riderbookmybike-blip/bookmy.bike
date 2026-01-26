@@ -99,7 +99,7 @@ export const RiderPulse = () => {
                                     <div className="absolute inset-0 p-8 md:p-12 flex flex-col justify-between z-20">
 
                                         {/* Top Row: Stars & Icon */}
-                                        <div className="flex justify-between items-start">
+                                        <div className={`flex items-start ${isActive ? 'justify-between' : 'justify-center'}`}>
                                             <div className="flex gap-1">
                                                 {[1, 2, 3, 4, 5].map(s => (
                                                     <Star
@@ -109,10 +109,12 @@ export const RiderPulse = () => {
                                                     />
                                                 ))}
                                             </div>
-                                            <Quote
-                                                size={32}
-                                                className={`${isActive ? 'text-brand-primary/20 rotate-180' : 'text-white/5 rotate-180'} transition-colors duration-500`}
-                                            />
+                                            {isActive && (
+                                                <Quote
+                                                    size={32}
+                                                    className="text-brand-primary/20 rotate-180 transition-colors duration-500"
+                                                />
+                                            )}
                                         </div>
 
                                         {/* Middle Content: Quote area */}
