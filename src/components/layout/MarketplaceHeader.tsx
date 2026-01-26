@@ -101,7 +101,8 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
             (viewport.width === 1280 && viewport.height === 720) ||
             (viewport.width >= 1110 && viewport.width <= 1200 && viewport.height >= 600 && viewport.height <= 700))
     );
-    const showTextNav = !isTv && pathname !== '/' && (!pathname.startsWith('/store/') || pathname === '/store');
+    const showTextNav = false;
+
 
     // Quick rollback: set navPreset to 'wide'.
     const navPreset: 'tight' | 'wide' = 'tight';

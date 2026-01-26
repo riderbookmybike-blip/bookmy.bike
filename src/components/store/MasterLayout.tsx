@@ -23,6 +23,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
     const totalSkus = skuCount || items.length || 500; // Fallback to 500 if loading or empty
     const isTv = false; // TV logic moved to dedicated StoreTV component
 
+
     // Hero Template: Night City (Chosen by User)
     const heroImage = '/images/templates/t3_night.png';
 
@@ -32,12 +33,35 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
 
     // Brands Section Visual Hooks
     const [hoveredBrand, setHoveredBrand] = useState<string | null>(null);
+    const [drumRotation, setDrumRotation] = useState(0);
+
+    // Brands Drum Animation Loop (State-driven)
+    React.useEffect(() => {
+        let rafId: number;
+        let lastTime = Date.now();
+
+        const animate = () => {
+            const now = Date.now();
+            const delta = now - lastTime;
+            lastTime = now;
+
+            if (!hoveredBrand) {
+                // Slower, consistent rotation when not hovered (approx 80s per revolution)
+                setDrumRotation(prev => (prev - (delta * 0.0045)));
+            }
+            rafId = requestAnimationFrame(animate);
+        };
+
+        rafId = requestAnimationFrame(animate);
+        return () => cancelAnimationFrame(rafId);
+    }, [hoveredBrand]);
 
     // Protocol Section Visual Hooks
-    const [activeStep, setActiveStep] = useState(0);
+    const [activeStep, setActiveStep] = useState<number | null>(0); // Default to 0, but user can clear it
 
     // Categories Section Visual Hooks
-    const [activeVibe, setActiveVibe] = useState(1); // Default to center (Motorcycles/Racing)
+    const [activeVibe, setActiveVibe] = useState<number | null>(0); // Default to 0, but user can clear it
+    const [hasMounted, setHasMounted] = useState(false);
 
 
 
@@ -96,6 +120,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
 
         document.documentElement.classList.add('scrollbar-hide', 'overflow-y-auto');
         document.documentElement.style.scrollBehavior = 'auto';
+        setHasMounted(true);
 
         return () => {
             window.removeEventListener('wheel', handleWheel);
@@ -106,242 +131,460 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
 
     return (
         <div className="flex flex-col pb-0 transition-colors duration-300">
-            {/* Premium Photography Hero Section */}
+            {/* the hyper-aperture: kinetic chassis extraordinaria */}
             <section
-                className="relative flex flex-col justify-start h-screen ebook-section overflow-hidden bg-white dark:bg-[#0b0d10] isolate transition-colors duration-500 pt-[var(--header-h)]"
+                className="relative h-screen ebook-section overflow-hidden bg-black isolate flex flex-col items-center justify-center p-0"
+                onMouseMove={(e) => {
+                    const xPct = (e.clientX / window.innerWidth) * 100;
+                    const x = (e.clientX / window.innerWidth - 0.5) * 30;
+                    const y = (e.clientY / window.innerHeight - 0.5) * 30;
+                    document.documentElement.style.setProperty('--hyper-x', `${x}px`);
+                    document.documentElement.style.setProperty('--hyper-y', `${y}px`);
+                    document.documentElement.style.setProperty('--mouse-x-pct', `${xPct}%`);
+                }}
             >
-                <div className="absolute inset-0 z-0 pointer-events-none bg-slate-950 transition-all duration-700">
-                    <img
-                        src={heroImage}
-                        alt="BookMyBike Hero"
-                        className="w-full h-full object-cover object-center opacity-90 dark:opacity-60 animate-in fade-in duration-700"
+                {/* layer 0: immersive tunnel chassis */}
+                <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+                    {/* deep background image */}
+                    <motion.div
+                        initial={{ scale: 1.2, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 0.4 }}
+                        transition={{ duration: 2.5, ease: [0.16, 1, 0.3, 1] }}
+                        className="absolute inset-0 w-full h-full will-change-transform"
+                        style={{
+                            transform: 'translate(calc(var(--hyper-x) * -0.2), calc(var(--hyper-y) * -0.2)) scale(1.1)',
+                        }}
+                    >
+                        <img src={heroImage} alt="Tunnel" className="w-full h-full object-cover grayscale contrast-125" />
+                    </motion.div>
+
+                    {/* aperture layer 1: mid frame */}
+                    <motion.div
+                        className="absolute inset-[10%] border border-white/5 rounded-[4rem] z-10 box-content"
+                        style={{
+                            transform: 'translate(calc(var(--hyper-x) * 0.1), calc(var(--hyper-y) * 0.1))',
+                        }}
                     />
-                    {/* Deep Cinematic Vignette */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-90" />
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/80 mix-blend-multiply" />
+
+                    {/* aperture layer 2: peripheral lens flare/vignette */}
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_0%,rgba(0,0,0,0.4)_50%,#000_95%)] z-20" />
+
+                    {/* aperture layer 3: digital scanning grid */}
+                    <div
+                        className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:120px_120px] z-30 opacity-40 mix-blend-overlay"
+                        style={{
+                            transform: 'translate(calc(var(--hyper-x) * 0.4), calc(var(--hyper-y) * 0.4))',
+                        }}
+                    />
+
+                    {/* drift elements: technical particles */}
+                    <div className="absolute inset-x-[15vw] inset-y-[15vh] z-40">
+                        {hasMounted && [...Array(20)].map((_, i) => (
+                            <motion.div
+                                key={i}
+                                initial={{ x: Math.random() * 100 + '%', y: Math.random() * 100 + '%', opacity: 0 }}
+                                animate={{ y: [null, '-20%', '120%'], opacity: [0, 0.4, 0] }}
+                                transition={{ duration: 10 + Math.random() * 20, repeat: Infinity, delay: Math.random() * 10 }}
+                                className="absolute w-[1px] h-[30px] bg-brand-primary"
+                            />
+                        ))}
+                    </div>
                 </div>
 
-                <div className="relative z-10 w-full flex flex-col justify-between pb-20 max-w-[1600px] mx-auto px-6 md:px-12 lg:px-20 mt-12">
-                    {/* 1. Top Section: Title & Content (Breathing Space) */}
-                    <div className="flex flex-col justify-center items-center w-full text-center">
-                        <style jsx>{`
-                            @keyframes shimmer {
-                                0% {
-                                    transform: translateX(-150%) skewX(-12deg);
-                                }
-                                20% {
-                                    transform: translateX(250%) skewX(-12deg);
-                                }
-                                100% {
-                                    transform: translateX(250%) skewX(-12deg);
-                                }
-                            }
-                        `}</style>
+                {/* THE KINETIC INTERFACE */}
+                <div className="relative z-50 w-full flex flex-col items-center">
 
-                        {/* Confidence Chip Badge - Premium Black Fill */}
-                        <div className="relative inline-flex items-center gap-2 px-6 py-3 bg-black/80 backdrop-blur-md text-white rounded-full text-[12px] font-black uppercase tracking-[0.25em] mb-[10px] md:mb-[12px] shadow-2xl shadow-black/50 overflow-hidden group border border-white/10">
-                            <span className="relative z-10">India&apos;s Lowest EMI Guarantee</span>
+                    {/* telemetry chip: boot sequence header */}
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9, y: -20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        transition={{ duration: 1.2, ease: "circOut" }}
+                        className="mb-14 md:mb-20 flex flex-col items-center mt-[12vh]"
+                    >
+                        <div className="flex items-center gap-6 px-10 py-2.5 bg-zinc-900/80 border border-white/10 rounded-full backdrop-blur-xl transition-all hover:border-brand-primary/50 group/tele shadow-[0_0_30px_rgba(0,0,0,0.5)]">
+                            <div className="flex gap-1.5">
+                                <motion.div animate={{ opacity: [1, 0.3, 1] }} transition={{ repeat: Infinity, duration: 2 }} className="w-1.5 h-1.5 rounded-full bg-brand-primary" />
+                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
+                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/70 group-hover/tele:text-brand-primary transition-colors font-[family-name:var(--font-bruno-ace)]">
+                                INDIA'S LOWEST EMI GUARANTEE
+                            </span>
+                            <div className="flex gap-1.5">
+                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
+                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
+                                <motion.div animate={{ opacity: [1, 0.3, 1] }} transition={{ repeat: Infinity, duration: 2 }} className="w-1.5 h-1.5 rounded-full bg-brand-primary" />
+                            </div>
+                        </div>
+                    </motion.div>
 
-                            {/* Micro-Shimmer Overlay */}
-                            <div
-                                className="absolute inset-0 z-0 pointer-events-none"
+                    {/* LIQUID CHROME TYPOGRAPHY */}
+                    <div className="relative flex flex-col items-center mb-16 select-none pointer-events-auto">
+                        <motion.div
+                            initial={{ opacity: 0, letterSpacing: '1.2em' }}
+                            animate={{ opacity: 1, letterSpacing: '0.4em' }}
+                            transition={{ duration: 2, ease: [0.16, 1, 0.3, 1] }}
+                            className="text-xs md:text-sm font-black uppercase text-brand-primary/60 mb-6 drop-shadow-[0_0_15px_rgba(255,100,0,0.3)] font-[family-name:var(--font-bruno-ace)]"
+                        >
+                            The Highest Fidelity Marketplace
+                        </motion.div>
+
+                        <div className="relative group/title">
+                            {/* reflective shadow layer */}
+                            <motion.h1
+                                initial={{ opacity: 0, y: 40 }} animate={{ opacity: 0.1, y: 0 }} transition={{ delay: 0.4, duration: 1.5 }}
+                                className="absolute -inset-2 text-7xl md:text-8xl lg:text-[clamp(4rem,12.5vw,10.5rem)] font-black uppercase text-white blur-3xl pointer-events-none opacity-20"
                                 style={{
-                                    background:
-                                        'linear-gradient(to right, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)',
-                                    width: '60%',
-                                    height: '100%',
-                                    animation: 'shimmer 8s infinite linear',
-                                    opacity: 0.3,
+                                    backgroundPosition: 'calc(100% - var(--mouse-x-pct)) 50%'
                                 }}
+                            >
+                                MOTORCYCLES
+                            </motion.h1>
+
+                            {/* main liquid-metal text */}
+                            <motion.h1
+                                initial={{ opacity: 0, scale: 0.95, y: 30 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+                                className="relative text-7xl md:text-8xl lg:text-[clamp(4rem,12vw,9.5rem)] font-black italic uppercase tracking-[-0.03em] leading-none text-transparent bg-clip-text bg-[linear-gradient(110deg,#fff_0%,#fff_40%,#ff9d00_50%,#fff_60%,#fff_100%)] bg-[length:200%_100%] transition-all duration-1000 font-[family-name:var(--font-bruno-ace)]"
+                                style={{
+                                    textShadow: '0 20px 50px rgba(0,0,0,0.5)',
+                                    WebkitTextFillColor: 'transparent',
+                                    backgroundPositionX: 'calc(100% - var(--mouse-x-pct))'
+                                }}
+                            >
+                                MOTORCYCLES
+                            </motion.h1>
+
+                            {/* kinetic scan line across text */}
+                            <motion.div
+                                animate={{ top: ['-20%', '120%'], opacity: [0, 1, 0] }}
+                                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                                className="absolute left-0 right-0 h-[30%] bg-gradient-to-b from-transparent via-brand-primary/5 to-transparent z-10 pointer-events-none"
                             />
                         </div>
-
-                        <h1 className="pb-[16px] md:pb-[20px] font-black uppercase tracking-tighter leading-[0.9] text-center">
-                            {/* Top: "Redefining" - Medium Strong */}
-                            <span className="block text-3xl sm:text-4xl md:text-5xl text-white font-extrabold tracking-[0.15em] mb-[6px] md:mb-[8px] drop-shadow-lg">
-                                Redefining
-                            </span>
-
-                            {/* Middle: "How India Buys" - Large */}
-                            <span className="block text-5xl sm:text-6xl md:text-7xl text-white mb-[12px] md:mb-[14px] drop-shadow-xl tracking-normal">
-                                How India Buys
-                            </span>
-
-                            {/* Bottom: "Motorcycles" - Pure White */}
-                            <span className="block text-6xl sm:text-7xl md:text-8xl lg:text-[7rem] xl:text-[8rem] text-white drop-shadow-2xl scale-y-110 origin-bottom tracking-tight">
-                                Motorcycles
-                            </span>
-                        </h1>
                     </div>
 
-                    {/* 2. Middle Section: Search (Centered between Title and Stats) - Mobile Psychology Adjustments */}
-                    <div className="w-full max-w-2xl mx-auto relative z-50 flex items-center justify-center mt-[20px] md:mt-[24px]">
-                        <Link
-                            href="/store/catalog"
-                            className="h-[52px] md:h-16 w-full max-w-xl px-12 bg-white text-black rounded-full flex items-center justify-center gap-4 hover:bg-slate-100 transition-all duration-300 shadow-2xl shadow-black/50 hover:scale-[1.02]"
+                    {/* TELEMETRY BENTO: high-fidelity modules */}
+                    <div className="w-full max-w-[1440px] grid grid-cols-1 md:grid-cols-4 gap-4 px-8 md:px-16 pointer-events-auto mx-auto place-items-center md:place-items-stretch">
+
+                        {/* block 1: inventory scanner */}
+                        <motion.div
+                            initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1 }}
+                            className="col-span-1 md:col-span-2 relative p-8 bg-zinc-900/40 border border-white/5 rounded-3xl backdrop-blur-3xl overflow-hidden group/bento min-h-[220px] flex flex-col justify-center"
                         >
-                            <Search size={22} className="opacity-60" />
-                            <span className="text-base font-medium md:font-bold uppercase tracking-[0.2em]">
-                                Check EMI & bikes
-                            </span>
-                        </Link>
-                    </div>
-
-                    {/* Metrics Section - Premium Glass Effect - Pushed to Bottom */}
-                    <div className="w-full max-w-5xl mx-auto grid grid-cols-3 gap-4 md:gap-0 border border-white/10 transition-all duration-500 py-6 mt-[20px] md:mt-[32px] bg-zinc-950/40 backdrop-blur-xl rounded-full mb-4 shadow-2xl shadow-black/50">
-                        <div className="text-center group cursor-default space-y-1">
-                            <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-[0.2em] mb-1">
-                                Models
-                            </p>
-                            <p className="text-3xl md:text-4xl font-black text-white tracking-tight drop-shadow-sm">
-                                {totalSkus}+
-                            </p>
-                        </div>
-                        <div className="text-center group cursor-default space-y-1 relative">
-                            <div className="hidden md:block absolute left-0 top-1/2 -translate-y-1/2 w-px h-8 bg-white/10" />
-                            <div className="hidden md:block absolute right-0 top-1/2 -translate-y-1/2 w-px h-8 bg-white/10" />
-                            <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-[0.2em] mb-1">
-                                Avg Savings
-                            </p>
-                            <p className="text-3xl md:text-4xl font-black text-white tracking-tight drop-shadow-sm">
-                                {MARKET_METRICS.avgSavings}
-                            </p>
-                        </div>
-                        <div className="text-center group cursor-default space-y-1">
-                            <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-[0.2em] mb-1">
-                                Delivery
-                            </p>
-                            <p className="text-3xl md:text-4xl font-black text-white tracking-tight underline cursor-pointer decoration-brand-primary/50 hover:decoration-brand-primary decoration-4 underline-offset-4 transition-all drop-shadow-sm">
-                                {MARKET_METRICS.deliveryTime}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section className="min-h-screen ebook-section flex flex-col justify-start bg-[#0b0d10] transition-colors relative overflow-hidden group/brand-sec pt-[var(--header-h)]">
-                <div className="max-w-[1600px] mx-auto px-6 md:px-12 lg:px-20 relative z-10 w-full h-full flex flex-col justify-center">
-                    {/* Header: The Syndicate */}
-                    <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-8">
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-4">
-                                <p className="text-sm font-black text-brand-primary uppercase tracking-[0.3em]">
-                                    The Syndicate
-                                </p>
+                            <div className="absolute top-0 right-0 p-6 opacity-20 group-hover/bento:opacity-100 transition-opacity">
+                                <Zap size={24} className="text-brand-primary" />
                             </div>
-                            <h2 className="text-6xl md:text-8xl font-black uppercase tracking-tighter italic leading-none text-white drop-shadow-2xl">
-                                Elite <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-zinc-600">Makers.</span>
-                            </h2>
-                        </div>
-                        <p className="text-right text-lg text-zinc-500 font-medium max-w-sm border-r-2 border-white/10 pr-6">
-                            A curated roster of engineering giants setting global standards.
-                        </p>
-                    </div>
+                            <div className="space-y-4 relative z-10 mr-auto">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-1.5 h-6 bg-brand-primary rounded-full group-hover/bento:h-10 transition-all duration-500" />
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-black text-brand-primary tracking-[0.3em] uppercase font-[family-name:var(--font-bruno-ace)]">Inventory_Live</span>
+                                        <span className="text-sm font-bold text-zinc-500 uppercase">Worldwide Access</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-baseline gap-4">
+                                    <span className="text-7xl font-black text-white italic tracking-tighter leading-none">{totalSkus}+</span>
+                                    <div className="h-10 w-px bg-white/10" />
+                                    <span className="text-xl font-bold text-brand-primary/40 uppercase tracking-widest">Active_Skus</span>
+                                </div>
+                            </div>
+                            {/* high-tech visual ornament (radar-like) */}
+                            <div className="absolute -bottom-12 -right-12 w-48 h-48 border border-brand-primary/10 rounded-full group-hover/bento:border-brand-primary/30 transition-colors pointer-events-none">
+                                <motion.div animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: "linear" }} className="w-full h-full border-t-2 border-brand-primary/40 rounded-full shadow-[0_0_30px_rgba(255,100,0,0.1)]" />
+                            </div>
+                        </motion.div>
 
-                    {/* The Power Cell Grid / Stripes */}
-                    <div className="w-full border-t border-l border-white/10 bg-[#0b0d10] relative grid grid-cols-1 md:grid-cols-2 lg:flex lg:flex-row lg:h-[70vh]">
-                        {/* Background Grid Pattern - Restricted to Grid Area */}
-                        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_800px_at_50%_200px,#ffffff05,transparent)] pointer-events-none" />
-                        {/* Corner Accents */}
-                        <div className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-brand-primary z-20" />
-                        <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-brand-primary z-20" />
-
-                        {[
-                            { name: 'APRILIA', color: '#F80000', tagline: 'BE A RACER' },
-                            { name: 'ATHER', color: '#10C25B', tagline: 'WARP SPEED' },
-                            { name: 'BAJAJ', color: '#005CAB', tagline: 'THE WORLD\'S FAVOURITE' },
-                            { name: 'CHETAK', color: '#D4AF37', tagline: 'LEGEND REBORN' },
-                            { name: 'HERO', color: '#E11B22', tagline: 'RIDE THE FUTURE' },
-                            { name: 'HONDA', color: '#CC0000', tagline: 'POWER OF DREAMS' },
-                            { name: 'KTM', color: '#FF6600', tagline: 'READY TO RACE' },
-                            { name: 'SUZUKI', color: '#164194', tagline: 'WAY OF LIFE' },
-                            { name: 'TVS', color: '#1C3E8A', tagline: 'RACING DNA' },
-                            { name: 'VESPA', color: '#0097DA', tagline: 'LIVE MORE VESPA' },
-                            { name: 'VIDA', color: '#FF5722', tagline: 'MAKE WAY' },
-                            { name: 'YAMAHA', color: '#183693', tagline: 'REVS YOUR HEART' },
-                        ].map((brand, i) => (
-                            <Link
-                                key={brand.name}
-                                href={`/store/catalog?brand=${brand.name}`}
-                                onMouseEnter={() => setHoveredBrand(brand.name)}
-                                onMouseLeave={() => setHoveredBrand(null)}
-                                className="group/cell relative border-r border-b lg:border-b-0 border-white/10 overflow-hidden hover:bg-white/[0.02] transition-all duration-500
-                                bg-[#0b0d10] z-10
-                                h-[220px] md:h-[280px] lg:h-auto
-                                flex flex-col lg:flex-row lg:justify-center lg:items-center
-                                p-8 md:p-10 lg:p-0
-                                lg:flex-1 lg:hover:grow-[2] lg:hover:w-[300px]"
-                            >
-                                {/* Active Glow Border */}
-                                <div
-                                    className="absolute inset-0 opacity-0 group-hover/cell:opacity-100 transition-all duration-500 z-0 pointer-events-none"
-                                    style={{
-                                        boxShadow: `inset 0 0 40px ${brand.color}20`
-                                    }}
-                                />
-                                <div
-                                    className="absolute top-0 left-0 w-full h-[2px] lg:w-[2px] lg:h-full scale-x-0 lg:scale-x-100 lg:scale-y-0 group-hover/cell:scale-x-100 lg:group-hover/cell:scale-y-100 transition-transform duration-500 origin-left lg:origin-top z-10"
-                                    style={{ backgroundColor: brand.color }}
-                                />
-                                <div
-                                    className="absolute bottom-0 right-0 w-[2px] h-full lg:w-full lg:h-[2px] scale-y-0 lg:scale-y-100 lg:scale-x-0 group-hover/cell:scale-y-100 lg:group-hover/cell:scale-x-100 transition-transform duration-500 origin-bottom lg:origin-right z-10"
-                                    style={{ backgroundColor: brand.color }}
-                                />
-
-                                {/* Mobile: Top Utility Labels */}
-                                <div className="relative z-10 flex justify-between items-start lg:hidden">
-                                    <span className="text-[10px] font-mono text-zinc-600 group-hover/cell:text-white transition-colors">
-                                        CELL_{String(i + 1).padStart(2, '0')}
-                                    </span>
-                                    <ArrowRight
-                                        size={20}
-                                        className="text-zinc-700 -rotate-45 group-hover/cell:text-white group-hover/cell:rotate-0 transition-all duration-500"
-                                        style={{ color: hoveredBrand === brand.name ? brand.color : undefined }}
+                        {/* block 2: savings matrix */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.2 }}
+                            className="col-span-1 p-8 bg-zinc-900/40 border border-white/5 rounded-3xl backdrop-blur-3xl group/savings min-h-[220px] flex flex-col justify-center"
+                        >
+                            <div className="space-y-6">
+                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 font-[family-name:var(--font-bruno-ace)]">
+                                    <span>Savings_Calc</span>
+                                    <motion.div animate={{ opacity: [1, 0, 1] }} transition={{ duration: 0.5, repeat: Infinity }} className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-5xl font-black text-white italic tracking-tighter leading-none">{MARKET_METRICS.avgSavings}</p>
+                                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest pl-1 mt-2">Avg. Dealer Rebate</p>
+                                </div>
+                                <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                                    <motion.div
+                                        initial={{ width: 0 }} animate={{ width: '85%' }} transition={{ delay: 2, duration: 1 }}
+                                        className="h-full bg-brand-primary shadow-[0_0_15px_rgba(255,100,0,0.5)]"
                                     />
                                 </div>
+                            </div>
+                        </motion.div>
 
-                                {/* Main Content */}
-                                <div className="relative z-10 overflow-hidden flex flex-col lg:items-center lg:justify-center lg:w-full lg:h-full">
-
-                                    {/* Desktop: Tagline Reveal (Vertical Mode) */}
-                                    <div className="hidden lg:block absolute top-12 left-1/2 -translate-x-1/2 opacity-0 group-hover/cell:opacity-100 transition-opacity duration-500 delay-100 whitespace-nowrap">
-                                        <p
-                                            className="text-[10px] font-black uppercase tracking-[0.3em]"
-                                            style={{ color: brand.color }}
-                                        >
-                                            {brand.tagline}
-                                        </p>
-                                    </div>
-
-                                    {/* Mobile: Tagline Slide-in */}
-                                    <div className="lg:hidden h-0 group-hover/cell:h-auto overflow-hidden transition-all duration-500 mb-2">
-                                        <p
-                                            className="text-[10px] md:text-xs font-black uppercase tracking-[0.3em] whitespace-nowrap translate-y-10 group-hover/cell:translate-y-0 transition-transform duration-500 delay-100"
-                                            style={{ color: brand.color }}
-                                        >
-                                            {brand.tagline}
-                                        </p>
-                                    </div>
-
-                                    {/* Kinetic Text Effect */}
-                                    <h3
-                                        className="text-5xl md:text-7xl font-black italic uppercase tracking-tighter text-zinc-800 group-hover/cell:text-white transition-colors duration-300 leading-[0.8]
-                                        lg:-rotate-90 lg:whitespace-nowrap lg:text-7xl xl:text-8xl lg:origin-center"
-                                    >
-                                        {brand.name}
-                                    </h3>
+                        {/* block 3: dispatch telemetry */}
+                        <motion.div
+                            initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.4 }}
+                            className="col-span-1 p-8 bg-zinc-900/40 border border-white/5 rounded-3xl backdrop-blur-3xl group/dispatch min-h-[220px] flex flex-col justify-center"
+                        >
+                            <div className="space-y-6">
+                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 font-[family-name:var(--font-bruno-ace)]">
+                                    <span>Dispatch_Hub</span>
+                                    <span className="text-brand-primary drop-shadow-[0_0_5px_rgba(255,100,0,0.5)]">LHR_04</span>
                                 </div>
-
-                                {/* Background Brand Text (Watermark) */}
-                                <div
-                                    className="absolute -right-4 -bottom-4 text-[8rem] font-black italic uppercase text-white/[0.02] tracking-tighter leading-none select-none pointer-events-none group-hover/cell:scale-110 group-hover/cell:text-white/[0.05] transition-all duration-700 ease-out
-                                    lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rotate-0"
-                                >
-                                    {brand.name[0]}
+                                <div className="space-y-1">
+                                    <p className="text-5xl font-black text-white italic tracking-tighter leading-none">{MARKET_METRICS.deliveryTime}</p>
+                                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest pl-1 mt-2">Hyper-Local Speed</p>
                                 </div>
-                            </Link>
-                        ))}
+                                <div className="flex gap-1">
+                                    {[...Array(6)].map((_, i) => (
+                                        <motion.div
+                                            key={i}
+                                            animate={{ backgroundColor: ['rgba(255,255,255,0.05)', 'rgba(255,100,0,0.4)', 'rgba(255,255,255,0.05)'] }}
+                                            transition={{ delay: 2 + (i * 0.1), duration: 1, repeat: Infinity }}
+                                            className="h-1 flex-1 bg-white/5 rounded-full"
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+
+                    {/* INTERFACE TRIGGER */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.8 }}
+                        className="mt-12 md:mt-20 flex flex-col items-center gap-6"
+                    >
+                        <Link
+                            href="/store/catalog"
+                            className="group relative h-20 w-96 flex items-center justify-center bg-transparent overflow-visible"
+                        >
+                            {/* animated liquid border */}
+                            <svg className="absolute inset-0 w-full h-full overflow-visible">
+                                <rect
+                                    x="0" y="0" width="100%" height="100%" fill="transparent" rx="10" stroke="#fff" strokeWidth="1" strokeOpacity="0.1"
+                                    className="group-hover:stroke-brand-primary/50 transition-colors"
+                                />
+                                <motion.rect
+                                    x="0" y="0" width="100%" height="100%" fill="transparent" rx="10" stroke="#ff9d00" strokeWidth="2"
+                                    strokeDasharray="100, 400" strokeDashoffset="0"
+                                    animate={{ strokeDashoffset: -500 }}
+                                    transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                                />
+                            </svg>
+
+                            <div className="relative z-10 flex items-center gap-4 text-xs font-black uppercase tracking-[0.4rem] text-white group-hover:text-brand-primary transition-colors font-[family-name:var(--font-bruno-ace)]">
+                                <Search size={18} />
+                                Initialize_Marketplace
+                            </div>
+
+                            {/* magnetic hover pull (visual only via scale) */}
+                            <div className="absolute inset-0 bg-brand-primary/5 rounded-xl scale-95 group-hover:scale-110 opacity-0 group-hover:opacity-100 transition-all duration-500 blur-xl" />
+                        </Link>
+
+                        <div className="flex gap-12 opacity-30 text-[9px] font-mono tracking-widest">
+                            <span className="flex items-center gap-2"><div className="w-1 h-1 bg-white rounded-full" /> SECURE_LINK: ENABLED</span>
+                            <span className="flex items-center gap-2"><div className="w-1 h-1 bg-white rounded-full" /> HAPTIC_FEEDBACK: ACTIVE</span>
+                            <span className="flex items-center gap-2 underline">v2.6_OS_CORE</span>
+                        </div>
+                    </motion.div>
+                </div>
+
+                {/* cinematic letterbox / vignette overlay */}
+                <div className="absolute top-0 inset-x-0 h-40 bg-gradient-to-b from-black to-transparent z-40" />
+                <div className="absolute bottom-0 inset-x-0 h-40 bg-gradient-to-t from-black to-transparent z-40" />
+            </section>
+
+
+
+
+
+            <section className="min-h-screen ebook-section relative overflow-hidden bg-[#0b0d10] flex flex-col items-center justify-center">
+                <div className="max-w-[1440px] mx-auto px-8 md:px-16 relative z-10 w-full">
+                    <div className="grid grid-cols-12 gap-8 lg:gap-16 items-center">
+                        {/* Left Column: Context (4/12) */}
+                        <div className="col-span-12 lg:col-span-4 space-y-8 relative z-20">
+                            <div>
+                                <h2 className="text-zinc-500 font-black uppercase tracking-[0.4em] text-xs mb-4">THE SYNDICATE</h2>
+                                <h1 className="text-8xl xl:text-9xl font-extrabold italic uppercase tracking-[-0.05em] leading-[0.85] text-white">
+                                    ELITE<br />MAKERS<span className="text-brand-primary">.</span>
+                                </h1>
+                            </div>
+                            <p className="text-zinc-500 text-lg leading-relaxed max-w-sm">
+                                A curated roster of engineering giants setting global standards. Seamless, elite performance across every brand.
+                            </p>
+                        </div>
+
+                        {/* Right Column: 3D Cylindrical Monolith (8/12) */}
+                        <div className="col-span-12 lg:col-span-8 h-[65vh] relative perspective-[2000px] flex items-center justify-end lg:pr-[250px]">
+                            {/* The 3D Drum Container */}
+                            <div
+                                className="relative w-[220px] h-[400px] preserve-3d transition-transform duration-1000 ease-out"
+                                style={{
+                                    transformStyle: 'preserve-3d',
+                                    transform: `rotateY(${drumRotation}deg)`,
+                                }}
+                            >
+                                {[
+                                    { name: 'APRILIA', color: '#F80000', tagline: 'BE A RACER' },
+                                    { name: 'ATHER', color: '#10C25B', tagline: 'WARP SPEED' },
+                                    { name: 'BAJAJ', color: '#005CAB', tagline: 'THE WORLD\'S FAVOURITE' },
+                                    { name: 'CHETAK', color: '#D4AF37', tagline: 'LEGEND REBORN' },
+                                    { name: 'HERO', color: '#E11B22', tagline: 'RIDE THE FUTURE' },
+                                    { name: 'HONDA', color: '#CC0000', tagline: 'POWER OF DREAMS' },
+                                    { name: 'KTM', color: '#FF6600', tagline: 'READY TO RACE' },
+                                    { name: 'SUZUKI', color: '#164194', tagline: 'WAY OF LIFE' },
+                                    { name: 'TVS', color: '#1C3E8A', tagline: 'RACING DNA' },
+                                    { name: 'VESPA', color: '#0097DA', tagline: 'LIVE MORE VESPA' },
+                                    { name: 'VIDA', color: '#FF5722', tagline: 'MAKE WAY' },
+                                    { name: 'YAMAHA', color: '#183693', tagline: 'REVS YOUR HEART' },
+                                ].map((brand, i) => {
+                                    const angle = (i * 360) / 12;
+                                    const radius = 375; // Adjusted for a more flush, gap-free drum
+
+                                    const isHovered = hoveredBrand === brand.name;
+                                    const isAnyHovered = hoveredBrand !== null;
+
+                                    // Calculate if this card is 'front-center' based on drumRotation
+                                    // drumRotation is -angle when a card is centered. So angle + drumRotation should be close to 0 (or multiples of 360)
+                                    const currentAngle = (angle + drumRotation) % 360;
+                                    const normalizedAngle = currentAngle < 0 ? currentAngle + 360 : currentAngle;
+                                    const isAtFront = normalizedAngle < 15 || normalizedAngle > 345;
+
+                                    // Find brand data from DB for the icon
+                                    const dbBrand = brands?.find(b => b.name.toUpperCase() === brand.name.toUpperCase());
+
+                                    return (
+                                        <div
+                                            key={brand.name}
+                                            className="absolute inset-0 transition-opacity duration-500 preserve-3d"
+                                            style={{
+                                                transform: `rotateY(${angle}deg) translateZ(${radius}px)`,
+                                                backfaceVisibility: 'hidden',
+                                                zIndex: (isHovered && isAtFront) ? 50 : 1,
+                                                opacity: (isAnyHovered && !isHovered) ? 0.1 : 1, // Slightly visible padosi for depth
+                                            }}
+                                        >
+                                            {/* Clickable/Hoverable Hit Area (Static Size) */}
+                                            <div
+                                                onMouseEnter={() => {
+                                                    // Only allow hover expansion if the card is already at the front
+                                                    if (isAtFront) {
+                                                        setHoveredBrand(brand.name);
+                                                    }
+                                                }}
+                                                onMouseLeave={() => setHoveredBrand(null)}
+                                                onClick={() => {
+                                                    if (!isAtFront) {
+                                                        // If side card clicked, bring it to front
+                                                        setDrumRotation(-angle);
+                                                    } else {
+                                                        // If already focused card clicked, navigate
+                                                        window.location.href = `/store/catalog?brand=${brand.name}`;
+                                                    }
+                                                }}
+                                                className="absolute inset-0 z-40 cursor-pointer"
+                                            />
+
+                                            <div
+                                                className={`absolute inset-0 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] rounded-3xl pointer-events-none ${isHovered && isAtFront
+                                                    ? 'shadow-[0_0_120px_rgba(255,255,255,0.25)] border border-white/20'
+                                                    : 'backdrop-blur-md text-zinc-400 border-y border-white/5'
+                                                    }`}
+                                                style={{
+                                                    transform: (isHovered && isAtFront) ? 'scale(1.2) translateZ(150px)' : 'none',
+                                                    backgroundColor: (isHovered && isAtFront) ? brand.color : undefined,
+                                                    backfaceVisibility: 'hidden',
+                                                }}
+                                            >
+                                                {/* Ribbed Glass Texture Overlay (Only for inactive cards) */}
+                                                {(!isHovered || !isAtFront) && (
+                                                    <div className="absolute inset-0 opacity-[0.05] pointer-events-none z-10"
+                                                        style={{
+                                                            backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 8px, rgba(255,255,255,0.1) 8px, rgba(255,255,255,0.1) 9px)'
+                                                        }}
+                                                    />
+                                                )}
+
+                                                {/* Soft Lighting: Provides depth without harsh edge lines */}
+                                                {(!isHovered || !isAtFront) && (
+                                                    <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-black/30 z-20 pointer-events-none transition-opacity duration-700" />
+                                                )}
+
+                                                {/* Subtle Bottom Glow Hint (Brand Specific) */}
+                                                <div
+                                                    className={`absolute bottom-0 inset-x-0 h-1 z-20 transition-opacity duration-500 blur-sm ${(isHovered && isAtFront) ? 'opacity-100' : 'opacity-30'}`}
+                                                    style={{ backgroundColor: brand.color }}
+                                                />
+
+                                                {/* Inactive State: Vertical Text - Centered & Standard Rotation */}
+                                                {(!isHovered || !isAtFront) && (
+                                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                                                        <span className="text-4xl font-black uppercase italic tracking-tighter -rotate-90 whitespace-nowrap opacity-40 text-white transition-all duration-500">
+                                                            {brand.name}
+                                                        </span>
+                                                    </div>
+                                                )}
+
+                                                {/* Active State: Full Content */}
+                                                <div className={`absolute inset-0 p-8 flex flex-col justify-between z-30 transition-all duration-500 ${(isHovered && isAtFront) ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+                                                    <div className="flex justify-between items-start">
+                                                        {/* Brand Icon (Preferred: Icon version from metadata) - 50% Larger */}
+                                                        {(dbBrand?.brand_logos?.icon || dbBrand?.logo_svg) ? (
+                                                            <div
+                                                                className="w-16 h-16 flex items-center justify-center brightness-0 invert opacity-90 [&>svg]:w-full [&>svg]:h-full [&>svg]:block"
+                                                                dangerouslySetInnerHTML={{ __html: dbBrand?.brand_logos?.icon || dbBrand?.logo_svg || '' }}
+                                                            />
+                                                        ) : (
+                                                            <span className="text-4xl font-black italic text-white/40">
+                                                                {brand.name[0]}
+                                                            </span>
+                                                        )}
+
+                                                        <div className="text-white/60">
+                                                            <ArrowRight className="-rotate-45" size={24} />
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Center section: LARGE Vertical Brand Name */}
+                                                    <div className="flex-1 flex items-center justify-center relative">
+                                                        <h3 className="text-white font-black italic uppercase tracking-[-0.05em] leading-none whitespace-nowrap -rotate-90 text-6xl md:text-7xl lg:text-8xl opacity-100 drop-shadow-[0_0_30px_rgba(0,0,0,0.5)]">
+                                                            {brand.name}
+                                                        </h3>
+                                                    </div>
+
+                                                    {/* Bottom section: Tagline & CTA */}
+                                                    <div className="space-y-6">
+                                                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/50 leading-none text-center">
+                                                            {brand.tagline}
+                                                        </p>
+                                                        <div className="flex justify-center">
+                                                            <div
+                                                                className="flex items-center gap-3 bg-black/60 backdrop-blur-md text-white border border-white/20 px-8 py-4 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-brand-primary hover:text-black hover:border-brand-primary transition-all cursor-pointer group/active-btn"
+                                                            >
+                                                                Enter Factory
+                                                                <ArrowRight size={14} className="group-hover/active-btn:translate-x-1 transition-transform" />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Brand Letter Watermark */}
+                                                <div
+                                                    className={`absolute -right-4 top-1/2 -translate-y-1/2 text-[12rem] font-black italic uppercase select-none pointer-events-none transition-all duration-1000 ${(isHovered && isAtFront)
+                                                        ? 'text-white/[0.1] scale-100 opacity-100'
+                                                        : 'text-white/[0.02] scale-110 opacity-0'
+                                                        }`}
+                                                >
+                                                    {brand.name[0]}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Lighting and Shadow Hints */}
+                            <div className={`absolute inset-0 bg-gradient-to-r from-[#0b0d10] via-transparent to-[#0b0d10] pointer-events-none z-10 transition-opacity duration-700 ${hoveredBrand ? 'opacity-0' : 'opacity-100'}`} />
+                            <div className="absolute bottom-10 inset-x-0 h-20 bg-[radial-gradient(ellipse_at_center,rgba(255,b2k,0,0.1),transparent_70%)] blur-2xl pointer-events-none z-0" />
+                        </div>
                     </div>
                 </div>
             </section>
@@ -356,10 +599,10 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
 
 
 
-                <div className="max-w-[1600px] mx-auto px-6 md:px-12 lg:px-20 relative z-10 h-full flex flex-col justify-center">
+                <div className="max-w-[1440px] mx-auto px-8 md:px-16 relative z-10 h-full flex flex-col justify-center">
                     <div className="grid grid-cols-12 gap-8 lg:gap-16 items-center h-full">
                         {/* Left Side: Static Context */}
-                        <div className="col-span-12 lg:col-span-4 space-y-8 relative z-20">
+                        <div className="col-span-12 lg:col-span-5 space-y-8 relative z-30 lg:pr-12">
                             <motion.div
                                 initial={{ opacity: 0, x: -50 }}
                                 whileInView={{ opacity: 1, x: 0 }}
@@ -372,7 +615,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                         The Process
                                     </p>
                                 </div>
-                                <h2 className="text-6xl xl:text-8xl font-black uppercase tracking-tighter italic leading-[0.85] text-white cursor-pointer group/text">
+                                <h2 className="text-7xl xl:text-9xl font-extrabold uppercase tracking-[-0.05em] italic leading-[0.85] text-white cursor-pointer group/text">
                                     {['Select.', 'Quote.', 'Ride.'].map((text, i) => (
                                         <div
                                             key={i}
@@ -400,7 +643,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                         </div>
 
                         {/* Right Side: The Monolith Accordion */}
-                        <div className="col-span-12 lg:col-span-8 h-[60vh] flex gap-4">
+                        <div className="col-span-12 lg:col-span-7 h-[60vh] flex gap-4">
                             {[
                                 {
                                     step: '01',
@@ -511,10 +754,10 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                     />
                 </div>
 
-                <div className="max-w-[1600px] mx-auto px-6 md:px-12 lg:px-20 relative z-10 h-full flex flex-col justify-center">
+                <div className="max-w-[1440px] mx-auto px-8 md:px-16 relative z-10 h-full flex flex-col justify-center">
                     <div className="grid grid-cols-12 gap-8 lg:gap-16 items-center h-full">
                         {/* Left Side: Static Context (Mirrors Process Section) */}
-                        <div className="col-span-12 lg:col-span-4 space-y-8 relative z-20">
+                        <div className="col-span-12 lg:col-span-5 space-y-8 relative z-30 lg:pr-12">
                             <motion.div
                                 initial={{ opacity: 0, x: -50 }}
                                 whileInView={{ opacity: 1, x: 0 }}
@@ -527,7 +770,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                         Curated Collections
                                     </p>
                                 </div>
-                                <h2 className="text-6xl xl:text-8xl font-black uppercase tracking-tighter italic leading-[0.85] text-white">
+                                <h2 className="text-7xl xl:text-9xl font-extrabold uppercase tracking-[-0.05em] italic leading-[0.85] text-white">
                                     Select <br /> Your <br /> Vibe
                                 </h2>
                             </motion.div>
@@ -538,7 +781,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                         </div>
 
                         {/* Right Side: The Monolith Accordion */}
-                        <div className="col-span-12 lg:col-span-8 h-[60vh] flex flex-col lg:flex-row gap-4">
+                        <div className="col-span-12 lg:col-span-7 h-[60vh] flex flex-col lg:flex-row gap-4">
                             {CATEGORIES.map((cat, i) => (
                                 <Link
                                     key={i}
