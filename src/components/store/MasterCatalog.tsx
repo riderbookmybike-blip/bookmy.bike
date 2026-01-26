@@ -289,22 +289,6 @@ export const ProductCard = ({
                             </span>
                         </div>
                     )}
-
-                    {v.rating !== undefined && v.rating >= 4.7 && (
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-950 dark:bg-white backdrop-blur-xl text-white dark:text-black rounded-xl shadow-xl border border-white/10 dark:border-black/5 ring-4 ring-black/5 dark:ring-white/5">
-                            <Star size={10} className="fill-brand-primary text-brand-primary" />
-                            <span className="text-[9px] font-black uppercase tracking-[0.15em]">Best Seller</span>
-                        </div>
-                    )}
-                    {/* Only showing one badge as requested, Priority: Best Seller > Discount */}
-                    {(v.rating === undefined || v.rating < 4.7) && v.price?.discount && v.price.discount > 0 && (
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 backdrop-blur-xl text-white rounded-xl shadow-lg shadow-emerald-500/20 border border-white/20">
-                            <Zap size={10} className="fill-white" />
-                            <span className="text-[9px] font-black uppercase tracking-[0.15em]">
-                                SAVE ₹{v.price.discount.toLocaleString('en-IN')}
-                            </span>
-                        </div>
-                    )}
                 </div>
 
                 <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
