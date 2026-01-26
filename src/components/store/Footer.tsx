@@ -12,8 +12,20 @@ export const Footer = () => {
     const { brands } = useBrands();
     const [activeSection, setActiveSection] = useState(0);
 
+    interface FooterLink {
+        label: string;
+        href: string;
+        highlight?: boolean;
+    }
+
+    interface FooterSection {
+        title: string;
+        gradient: string;
+        links: FooterLink[];
+    }
+
     // Footer Data Structure for Accordion
-    const footerSections = [
+    const footerSections: FooterSection[] = [
         {
             title: 'Collection',
             gradient: 'from-amber-400 to-yellow-600',
@@ -125,8 +137,8 @@ export const Footer = () => {
                                     layout
                                     onMouseEnter={() => setActiveSection(idx)}
                                     className={`relative rounded-[2rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between ${isActive
-                                            ? `flex-[3] bg-gradient-to-br ${section.gradient} text-black border-amber-500/50 shadow-[0_0_80px_rgba(245,158,11,0.3)]`
-                                            : 'flex-[1] bg-white/5 border-white/5 text-zinc-500 hover:bg-white/10'
+                                        ? `flex-[3] bg-gradient-to-br ${section.gradient} text-black border-amber-500/50 shadow-[0_0_80px_rgba(245,158,11,0.3)]`
+                                        : 'flex-[1] bg-white/5 border-white/5 text-zinc-500 hover:bg-white/10'
                                         }`}
                                 >
                                     <div className="absolute inset-0 p-8 flex flex-col justify-between">
@@ -160,8 +172,8 @@ export const Footer = () => {
                                                             <Link
                                                                 href={link.href}
                                                                 className={`text-lg font-medium transition-colors flex items-center gap-2 group/link ${link.highlight
-                                                                        ? 'text-black hover:text-black/70 underline decoration-black/30'
-                                                                        : 'text-black/70 hover:text-black'
+                                                                    ? 'text-black hover:text-black/70 underline decoration-black/30'
+                                                                    : 'text-black/70 hover:text-black'
                                                                     }`}
                                                             >
                                                                 {link.label}
