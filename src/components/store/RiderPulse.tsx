@@ -1,38 +1,44 @@
-import React from 'react';
-import { ChevronRight, Star } from 'lucide-react';
+import React, { useState } from 'react';
+import { ChevronRight, Star, Quote } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export const RiderPulse = () => {
+    const [activeReview, setActiveReview] = useState(0);
+
     const reviews = [
         {
             name: 'Arjun Kapoor',
             handle: 'TVS Jupiter',
             quote: '"Booking my bike online should be as easy as ordering food. I want to see my on-road price, compare EMIs, and confirm the delivery date—without visiting five different showrooms or decoding hidden charges."',
+            color: 'from-orange-500'
         },
         {
             name: 'Meera Reddy',
             handle: 'Honda Activa',
             quote: '"The transparency is what I loved. No hidden costs, everything upfront. The delivery was right on time as promised. This is exactly what the two-wheeler market needed."',
+            color: 'from-blue-500'
         },
         {
             name: 'Karan Malhotra',
             handle: 'Suzuki V-Strom',
             quote: '"Finally a platform that understands what riders need. The EMI comparison tool saved me so much time and money. Highly recommended for anyone looking to buy a bike."',
+            color: 'from-amber-500'
         },
     ];
 
     return (
-        <section className="min-h-screen snap-start flex flex-col justify-center py-12 md:py-16 bg-[#0b0d10] text-white overflow-hidden relative border-t border-white/5">
-            {/* Background Texture similar to Vibe Deck for consistency */}
-            <div className="absolute inset-0 z-0">
-                <div className="absolute top-0 right-0 w-2/3 h-2/3 bg-brand-primary/5 blur-[100px] rounded-full pointer-events-none" />
-                <div className="absolute bottom-0 left-0 w-1/2 h-1/2 bg-blue-900/10 blur-[100px] rounded-full pointer-events-none" />
-            </div>
+        // Note: The parent container (MasterLayout) controls the section background gradient.
+        // We utilize transparent backgrounds here to let that flow through.
+        <section className="h-full w-full flex flex-col justify-center relative overflow-hidden">
 
-            <div className="max-w-[1440px] mx-auto px-8 md:px-16 space-y-12 md:space-y-16 relative z-10">
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 md:gap-8">
+            {/* Content Container */}
+            <div className="max-w-[1440px] mx-auto px-8 md:px-16 h-full flex flex-col justify-center gap-12 relative z-10 w-full">
+
+                {/* Header Section */}
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 md:gap-8 shrink-0">
                     <div className="space-y-4 md:space-y-6">
                         <div className="flex items-center gap-4">
-                            <div className="h-px w-12 bg-brand-primary" />
+                            <div className="h-px w-12 bg-white" />
                             <p className="text-sm font-black text-brand-primary uppercase tracking-[0.3em]">
                                 The Community Pulse
                             </p>
@@ -44,69 +50,99 @@ export const RiderPulse = () => {
                             Hear from the riders who defined their own path.
                         </p>
                     </div>
+
+                    {/* Navigation Controls (Visual Only) */}
                     <div className="flex gap-4">
-                        <button className="w-14 h-14 rounded-full border border-white/10 bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors backdrop-blur-md group">
-                            <ChevronRight size={24} className="rotate-180 text-zinc-400 group-hover:text-white transition-colors" />
+                        <button className="w-14 h-14 rounded-full border border-white/10 bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors backdrop-blur-md group cursor-not-allowed opacity-50">
+                            <ChevronRight size={24} className="rotate-180 text-zinc-400" />
                         </button>
-                        <button className="w-14 h-14 rounded-full bg-brand-primary text-black flex items-center justify-center hover:bg-brand-primary/90 transition-all shadow-[0_0_20px_rgba(244,176,0,0.3)] hover:scale-105">
+                        <button className="w-14 h-14 rounded-full bg-brand-primary text-black flex items-center justify-center transition-all shadow-[0_0_20px_rgba(244,176,0,0.3)] cursor-not-allowed opacity-50">
                             <ChevronRight size={24} />
                         </button>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                    {reviews.map((m, i) => (
-                        <div
-                            key={i}
-                            className="group p-10 bg-white/5 border border-white/5 rounded-[2.5rem] space-y-8 hover:bg-white/10 hover:border-brand-primary/30 transition-all duration-500 relative hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.5)] backdrop-blur-sm"
-                        >
-                            <div className="absolute top-10 right-10 opacity-10 group-hover:opacity-20 transition-opacity">
-                                <svg width="48" height="48" viewBox="0 0 40 40" fill="currentColor">
-                                    <path d="M10 10v10h10V10H10zm0 20h10V20H10v10zm20-20v10h10V10H30zm0 20h10V20H30v10z" />
-                                </svg>
-                            </div>
+                {/* VIBE-STYLE LAYOUT: Expanding Accordion */}
+                <div className="flex flex-col lg:flex-row gap-4 h-[50vh] w-full">
+                    {reviews.map((m, i) => {
+                        const isActive = activeReview === i;
+                        return (
+                            <motion.div
+                                key={i}
+                                layout
+                                onMouseEnter={() => setActiveReview(i)}
+                                className={`relative rounded-[2.5rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between group/card ${isActive
+                                        ? 'flex-[3] bg-white text-black border-white shadow-[0_20px_60px_rgba(0,0,0,0.5)]'
+                                        : 'flex-[1] bg-black/40 border-white/10 text-zinc-500 hover:bg-black/60'
+                                    }`}
+                            >
+                                {/* Active Gradient Splash */}
+                                {isActive && (
+                                    <div className={`absolute inset-0 bg-gradient-to-br ${m.color} to-transparent opacity-10 pointer-events-none`} />
+                                )}
 
-                            <div className="flex gap-1.5">
-                                {[1, 2, 3, 4, 5].map(s => (
-                                    <Star key={s} size={16} className="text-brand-primary fill-brand-primary drop-shadow-[0_0_8px_rgba(244,176,0,0.5)]" />
-                                ))}
-                            </div>
+                                {/* Inner Content Layout */}
+                                <div className="absolute inset-0 p-8 md:p-12 flex flex-col justify-between z-20">
 
-                            <p className="text-lg md:text-xl font-medium text-zinc-300 leading-relaxed italic">
-                                {m.quote}
-                            </p>
+                                    {/* Top Row: Stars & Icon */}
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex gap-1">
+                                            {[1, 2, 3, 4, 5].map(s => (
+                                                <Star
+                                                    key={s}
+                                                    size={18}
+                                                    className={`${isActive ? 'text-brand-primary fill-brand-primary' : 'text-zinc-600 fill-zinc-600'} transition-colors duration-500`}
+                                                />
+                                            ))}
+                                        </div>
+                                        <Quote
+                                            size={40}
+                                            className={`${isActive ? 'text-brand-primary/20 rotate-180' : 'text-white/5 rotate-180'} transition-colors duration-500`}
+                                        />
+                                    </div>
 
-                            <div className="pt-8 border-t border-white/5 flex items-center gap-5">
-                                <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-white/10 overflow-hidden relative group-hover:border-brand-primary/50 transition-colors">
-                                    <img
-                                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${m.name}`}
-                                        alt={m.name}
-                                        className="w-full h-full object-cover scale-110 group-hover:scale-100 transition-transform duration-500"
-                                    />
-                                </div>
-                                <div>
-                                    <p className="text-base font-black uppercase tracking-widest italic text-white group-hover:text-brand-primary transition-colors">
-                                        {m.name}
-                                    </p>
-                                    <div className="inline-flex items-center gap-2 mt-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/5">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />
-                                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
-                                            {m.handle}
-                                        </p>
+                                    {/* Middle Content: Quote area */}
+                                    <div className="relative flex-1 flex items-center">
+                                        {/* Active State Quote */}
+                                        <div className={`transition-all duration-500 delay-100 ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 absolute inset-0'}`}>
+                                            <p className="text-xl md:text-3xl font-bold leading-tight italic">
+                                                {m.quote}
+                                            </p>
+                                        </div>
+
+                                        {/* Inactive State Vertical Name */}
+                                        <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 pointer-events-none transition-all duration-500 ${!isActive ? 'opacity-100' : 'opacity-0'}`}>
+                                            <span className="text-4xl font-black uppercase tracking-widest text-white/20 whitespace-nowrap">
+                                                {m.name}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Bottom Row: User Profile */}
+                                    <div className={`flex items-center gap-4 transition-all duration-500 ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+                                        <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-brand-primary/20">
+                                            <img
+                                                src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${m.name}`}
+                                                alt={m.name}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-black uppercase tracking-widest">
+                                                {m.name}
+                                            </p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />
+                                                <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                                                    {m.handle}
+                                                </p>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                <div className="flex justify-center gap-3 pt-8">
-                    {[1, 2, 3, 4, 5, 6].map(dot => (
-                        <div
-                            key={dot}
-                            className={`h-1.5 rounded-full ${dot === 1 ? 'bg-brand-primary w-8' : 'bg-white/10 w-8 hover:bg-white/20'} transition-all duration-300 cursor-pointer`}
-                        />
-                    ))}
+                            </motion.div>
+                        );
+                    })}
                 </div>
             </div>
         </section>
