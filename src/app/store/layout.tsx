@@ -1,21 +1,23 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MarketplaceHeader } from '@/components/layout/MarketplaceHeader';
 import { MarketplaceFooter } from '@/components/layout/MarketplaceFooter';
 import LoginSidebar from '@/components/auth/LoginSidebar';
 import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
 import { usePathname } from 'next/navigation';
 
-export default function StoreLayout({
-    children,
-}: {
-    children: React.ReactNode;
-}) {
+export default function StoreLayout({ children }: { children: React.ReactNode }) {
     const [isLoginOpen, setIsLoginOpen] = useState(false);
+
+    useEffect(() => {
+        const handleOpenLogin = () => setIsLoginOpen(true);
+        window.addEventListener('openLogin', handleOpenLogin);
+        return () => window.removeEventListener('openLogin', handleOpenLogin);
+    }, []);
+
     const pathname = usePathname();
     const isLandingPage = pathname === '/store' || pathname === '/';
-
 
     return (
         <FavoritesProvider>

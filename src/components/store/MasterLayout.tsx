@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 import Image from 'next/image';
 import { ArrowRight, Search, Zap, MapPin } from 'lucide-react';
@@ -11,25 +11,22 @@ import { useState } from 'react';
 import { useCatalog } from '@/hooks/useCatalog';
 import { useBrands } from '@/hooks/useBrands';
 import { RiderPulse } from '@/components/store/RiderPulse';
+import { EliteCircle } from './sections/EliteCircle';
 import { Footer } from './Footer';
 
 interface StoreDesktopProps {
     variant?: 'default' | 'tv';
 }
 
-export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProps) {
+export function MasterLayout() {
     const { items, skuCount } = useCatalog();
     const { brands } = useBrands();
-    const totalSkus = skuCount || items.length || 500; // Fallback to 500 if loading or empty
-    const isTv = false; // TV logic moved to dedicated StoreTV component
-
 
     // Hero Template: Night City (Chosen by User)
     const heroImage = '/images/templates/t3_night.png';
 
     const containerRef = React.useRef<HTMLDivElement>(null);
-    const [activeSection, setActiveSection] = React.useState(0);
-    const [isScrolling, setIsScrolling] = React.useState(false);
+    // Removed unused activeSection and isScrolling state
 
     // Brands Section Visual Hooks
     const [hoveredBrand, setHoveredBrand] = useState<string | null>(null);
@@ -48,7 +45,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
 
             if (!hoveredBrand && !isSnapping) {
                 // Slower, consistent rotation when not hovered (approx 80s per revolution)
-                setDrumRotation(prev => (prev - (delta * 0.0045)));
+                setDrumRotation(prev => prev - delta * 0.0045);
             }
             rafId = requestAnimationFrame(animate);
         };
@@ -65,14 +62,8 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
     const [hasMounted, setHasMounted] = useState(false);
     const [bentoHover, setBentoHover] = useState<'inventory' | 'savings' | 'dispatch' | null>('savings');
 
-
-
-
-    const totalSections = 5; // Hero, Brands, How it Works, Categories, RiderPulse, Footer (integrated)
-
     const activeSectionRef = React.useRef(0);
     const lastScrollTime = React.useRef(0);
-    const [_, forceUpdate] = React.useState(0); // For UI sync if needed
 
     // Strict E-Book Scroll Control (Zero Glitch Logic)
     React.useEffect(() => {
@@ -89,11 +80,11 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
 
                 activeSectionRef.current = nextIndex;
                 lastScrollTime.current = now;
-                setActiveSection(nextIndex);
+                // Removed setActiveSection call
 
                 window.scrollTo({
                     top: targetSection.offsetTop,
-                    behavior: 'smooth'
+                    behavior: 'smooth',
                 });
             }
         };
@@ -135,8 +126,8 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
         <div className="flex flex-col pb-0 transition-colors duration-300">
             {/* the hyper-aperture: kinetic chassis extraordinaria */}
             <section
-                className="relative h-screen ebook-section overflow-hidden bg-gradient-to-br from-blue-950/40 via-black to-black isolate flex flex-col items-center justify-center p-0"
-                onMouseMove={(e) => {
+                className="relative h-screen ebook-section overflow-hidden bg-gradient-to-br from-rose-900/60 via-[#0b0d10] to-[#0b0d10] isolate flex flex-col items-center justify-center p-0"
+                onMouseMove={e => {
                     const xPct = (e.clientX / window.innerWidth) * 100;
                     const x = (e.clientX / window.innerWidth - 0.5) * 30;
                     const y = (e.clientY / window.innerHeight - 0.5) * 30;
@@ -157,7 +148,11 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                             transform: 'translate(calc(var(--hyper-x) * -0.2), calc(var(--hyper-y) * -0.2)) scale(1.1)',
                         }}
                     >
-                        <img src={heroImage} alt="Tunnel" className="w-full h-full object-cover grayscale contrast-125" />
+                        <img
+                            src={heroImage}
+                            alt="Tunnel"
+                            className="w-full h-full object-cover grayscale contrast-125"
+                        />
                     </motion.div>
 
                     {/* aperture layer 1: mid frame */}
@@ -181,48 +176,64 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
 
                     {/* drift elements: technical particles */}
                     <div className="absolute inset-x-[15vw] inset-y-[15vh] z-40">
-                        {hasMounted && [...Array(20)].map((_, i) => (
-                            <motion.div
-                                key={i}
-                                initial={{ x: Math.random() * 100 + '%', y: Math.random() * 100 + '%', opacity: 0 }}
-                                animate={{ y: [null, '-20%', '120%'], opacity: [0, 0.4, 0] }}
-                                transition={{ duration: 10 + Math.random() * 20, repeat: Infinity, delay: Math.random() * 10 }}
-                                className="absolute w-[1px] h-[30px] bg-brand-primary"
-                            />
-                        ))}
+                        {hasMounted &&
+                            [...Array(20)].map((_, i) => (
+                                <motion.div
+                                    key={i}
+                                    initial={{
+                                        x: i * 5 + '%',
+                                        y: ((i * 7) % 100) + '%',
+                                        opacity: 0,
+                                    }}
+                                    animate={{ y: [null, '-20%', '120%'], opacity: [0, 0.4, 0] }}
+                                    transition={{
+                                        duration: 10 + (i % 5) * 4,
+                                        repeat: Infinity,
+                                        delay: i % 10,
+                                    }}
+                                    className="absolute w-[1px] h-[30px] bg-brand-primary"
+                                />
+                            ))}
                     </div>
                 </div>
 
                 {/* THE KINETIC INTERFACE */}
                 <div className="relative z-50 w-full flex flex-col items-center">
-
                     {/* telemetry chip: boot sequence header */}
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9, y: -20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        transition={{ duration: 1.2, ease: "circOut" }}
+                        transition={{ duration: 1.2, ease: 'circOut' }}
                         className="mb-14 md:mb-20 flex flex-col items-center mt-[12vh]"
                     >
                         <div className="flex items-center gap-6 px-10 py-2.5 bg-zinc-900/80 border border-white/10 rounded-full backdrop-blur-xl transition-all hover:border-brand-primary/50 group/tele shadow-[0_0_30px_rgba(0,0,0,0.5)] overflow-hidden relative">
                             {/* Shimmer Light Effect */}
                             <motion.div
                                 animate={{ x: ['-100%', '200%'] }}
-                                transition={{ duration: 6, repeat: Infinity, ease: "linear", repeatDelay: 1 }}
+                                transition={{ duration: 6, repeat: Infinity, ease: 'linear', repeatDelay: 1 }}
                                 className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-[-30deg] pointer-events-none"
                             />
 
                             <div className="flex gap-1.5 z-10">
-                                <motion.div animate={{ opacity: [1, 0.3, 1] }} transition={{ repeat: Infinity, duration: 2 }} className="w-1.5 h-1.5 rounded-full bg-brand-primary" />
+                                <motion.div
+                                    animate={{ opacity: [1, 0.3, 1] }}
+                                    transition={{ repeat: Infinity, duration: 2 }}
+                                    className="w-1.5 h-1.5 rounded-full bg-brand-primary"
+                                />
                                 <div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
                                 <div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
                             </div>
                             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white group-hover/tele:text-brand-primary transition-colors font-[family-name:var(--font-bruno-ace)] z-10 relative">
-                                INDIA'S LOWEST EMI GUARANTEE
+                                INDIA&apos;S LOWEST EMI GUARANTEE
                             </span>
                             <div className="flex gap-1.5 z-10">
                                 <div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
                                 <div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
-                                <motion.div animate={{ opacity: [1, 0.3, 1] }} transition={{ repeat: Infinity, duration: 2 }} className="w-1.5 h-1.5 rounded-full bg-brand-primary" />
+                                <motion.div
+                                    animate={{ opacity: [1, 0.3, 1] }}
+                                    transition={{ repeat: Infinity, duration: 2 }}
+                                    className="w-1.5 h-1.5 rounded-full bg-brand-primary"
+                                />
                             </div>
                         </div>
                     </motion.div>
@@ -241,10 +252,12 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                         <div className="relative group/title">
                             {/* reflective shadow layer */}
                             <motion.h1
-                                initial={{ opacity: 0, y: 40 }} animate={{ opacity: 0.1, y: 0 }} transition={{ delay: 0.4, duration: 1.5 }}
+                                initial={{ opacity: 0, y: 40 }}
+                                animate={{ opacity: 0.1, y: 0 }}
+                                transition={{ delay: 0.4, duration: 1.5 }}
                                 className="absolute -inset-2 text-7xl md:text-8xl lg:text-[clamp(4rem,12.5vw,10.5rem)] font-black uppercase text-white blur-3xl pointer-events-none opacity-20"
                                 style={{
-                                    backgroundPosition: 'calc(100% - var(--mouse-x-pct)) 50%'
+                                    backgroundPosition: 'calc(100% - var(--mouse-x-pct)) 50%',
                                 }}
                             >
                                 MOTORCYCLES
@@ -259,7 +272,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                 style={{
                                     textShadow: '0 20px 50px rgba(0,0,0,0.5)',
                                     WebkitTextFillColor: 'transparent',
-                                    backgroundPositionX: 'calc(100% - var(--mouse-x-pct))'
+                                    backgroundPositionX: 'calc(100% - var(--mouse-x-pct))',
                                 }}
                             >
                                 MOTORCYCLES
@@ -268,7 +281,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                             {/* kinetic scan line across text */}
                             <motion.div
                                 animate={{ top: ['-20%', '120%'], opacity: [0, 1, 0] }}
-                                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                                transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
                                 className="absolute left-0 right-0 h-[30%] bg-gradient-to-b from-transparent via-brand-primary/5 to-transparent z-10 pointer-events-none"
                             />
                         </div>
@@ -276,7 +289,6 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
 
                     {/* TELEMETRY BENTO: kinetic accordion grid */}
                     <div className="w-full max-w-[1440px] grid grid-cols-1 md:grid-cols-4 gap-4 px-6 mx-auto place-items-stretch pointer-events-auto">
-
                         {/* block 1: SKU scanner */}
                         <motion.div
                             layout
@@ -298,15 +310,19 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                         <span>SKU_Live</span>
                                         <motion.div
                                             animate={{ opacity: [1, 0.1, 1] }}
-                                            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                                            transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
                                             className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0"
                                         />
                                     </div>
                                     <div className="flex items-baseline gap-4 whitespace-nowrap">
-                                        <span className="text-4xl font-black text-white italic tracking-tighter leading-none">380+</span>
+                                        <span className="text-4xl font-black text-white italic tracking-tighter leading-none">
+                                            380+
+                                        </span>
                                     </div>
                                     <div className="flex flex-col gap-1">
-                                        <span className="text-[10px] font-bold text-white tracking-widest opacity-80 font-inter">active_sourcing</span>
+                                        <span className="text-[10px] font-bold text-white tracking-widest px-2 py-1 rounded font-inter opacity-60">
+                                            active_sourcing
+                                        </span>
                                     </div>
                                 </div>
 
@@ -315,15 +331,19 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                     <>
                                         <div className="w-px h-24 bg-white/10 skew-x-[-20deg] hidden md:block" />
                                         <motion.div
-                                            initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}
+                                            initial={{ opacity: 0, x: 10 }}
+                                            animate={{ opacity: 1, x: 0 }}
                                             className="flex-1 hidden md:flex flex-col gap-2 p-4 bg-white/[0.03] border border-white/5 rounded-2xl backdrop-blur-sm"
                                         >
                                             <div className="flex items-center gap-2">
                                                 <div className="w-1 h-1 rounded-full bg-amber-500 animate-pulse" />
-                                                <span className="text-[9px] font-black text-amber-500/80 tracking-[0.2em] uppercase font-mono">Archive_01: Inventory_Core</span>
+                                                <span className="text-[9px] font-black text-amber-500/80 tracking-[0.2em] uppercase font-mono">
+                                                    Archive_01: Inventory_Core
+                                                </span>
                                             </div>
                                             <p className="text-[12px] text-zinc-300 font-medium leading-[1.6] max-w-[240px]">
-                                                Access India's largest curated collection of premium motorcycles, updated real-time across regional hubs.
+                                                Access India&apos;s largest curated collection of premium motorcycles,
+                                                updated real-time across regional hubs.
                                             </p>
                                         </motion.div>
                                     </>
@@ -349,15 +369,19 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                         <span>Inventory_Sync</span>
                                         <motion.div
                                             animate={{ opacity: [1, 0.1, 1] }}
-                                            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                                            transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
                                             className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"
                                         />
                                     </div>
                                     <div className="flex items-baseline gap-4 whitespace-nowrap">
-                                        <p className="text-4xl font-black text-white italic tracking-tighter leading-none">{MARKET_METRICS.deliveryTime}</p>
+                                        <p className="text-4xl font-black text-white italic tracking-tighter leading-none">
+                                            {MARKET_METRICS.deliveryTime}
+                                        </p>
                                     </div>
                                     <div className="flex flex-col gap-1">
-                                        <p className="text-[10px] font-bold text-white tracking-widest opacity-80 font-inter">logistics_flow</p>
+                                        <p className="text-[10px] font-bold text-white tracking-widest px-2 py-1 rounded font-inter opacity-60">
+                                            logistics_flow
+                                        </p>
                                     </div>
                                 </div>
 
@@ -366,15 +390,19 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                     <>
                                         <div className="w-px h-24 bg-white/10 skew-x-[-20deg] hidden md:block" />
                                         <motion.div
-                                            initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}
+                                            initial={{ opacity: 0, x: 10 }}
+                                            animate={{ opacity: 1, x: 0 }}
                                             className="flex-1 hidden md:flex flex-col gap-2 p-4 bg-white/[0.03] border border-white/5 rounded-2xl backdrop-blur-sm"
                                         >
                                             <div className="flex items-center gap-2">
                                                 <div className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
-                                                <span className="text-[9px] font-black text-red-500/80 tracking-[0.2em] uppercase font-mono">Archive_02: Logistics_Hub</span>
+                                                <span className="text-[9px] font-black text-red-500/80 tracking-[0.2em] uppercase font-mono">
+                                                    Archive_02: Logistics_Hub
+                                                </span>
                                             </div>
                                             <p className="text-[12px] text-zinc-300 font-medium leading-[1.6] max-w-[240px]">
-                                                Hyper-local processing ensure your premium ride is dispatched and ready in record time.
+                                                Hyper-local processing ensure your premium ride is dispatched and ready
+                                                in record time.
                                             </p>
                                         </motion.div>
                                     </>
@@ -400,15 +428,19 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                         <span>Savings_Calc</span>
                                         <motion.div
                                             animate={{ opacity: [1, 0.1, 1] }}
-                                            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                                            transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
                                             className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"
                                         />
                                     </div>
                                     <div className="flex items-baseline gap-4 whitespace-nowrap">
-                                        <p className="text-4xl font-black text-white italic tracking-tighter leading-none">{MARKET_METRICS.avgSavings}</p>
+                                        <p className="text-4xl font-black text-white italic tracking-tighter leading-none">
+                                            {MARKET_METRICS.avgSavings}
+                                        </p>
                                     </div>
                                     <div className="flex flex-col gap-1">
-                                        <p className="text-[10px] font-bold text-green-500 tracking-widest bg-green-500/10 px-2 py-1 rounded">dealer_rebate</p>
+                                        <p className="text-[10px] font-bold text-white tracking-widest px-2 py-1 rounded opacity-60">
+                                            dealer_rebate
+                                        </p>
                                     </div>
                                 </div>
 
@@ -417,15 +449,19 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                     <>
                                         <div className="w-px h-24 bg-white/10 skew-x-[-20deg] hidden md:block" />
                                         <motion.div
-                                            initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}
+                                            initial={{ opacity: 0, x: 10 }}
+                                            animate={{ opacity: 1, x: 0 }}
                                             className="flex-1 hidden md:flex flex-col gap-2 p-4 bg-white/[0.03] border border-white/5 rounded-2xl backdrop-blur-sm"
                                         >
                                             <div className="flex items-center gap-2">
                                                 <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse" />
-                                                <span className="text-[9px] font-black text-green-500/80 tracking-[0.2em] uppercase font-mono">Archive_03: Finance_Core</span>
+                                                <span className="text-[9px] font-black text-green-500/80 tracking-[0.2em] uppercase font-mono">
+                                                    Archive_03: Finance_Core
+                                                </span>
                                             </div>
                                             <p className="text-[12px] text-zinc-300 font-medium leading-[1.6] max-w-[240px]">
-                                                Leverage our Lowest EMI Guarantee and exclusive dealer rebates to save an average of ₹12,000 per booking.
+                                                Leverage our Lowest EMI Guarantee and exclusive dealer rebates to save
+                                                an average of ₹12,000 per booking.
                                             </p>
                                         </motion.div>
                                     </>
@@ -436,7 +472,9 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
 
                     {/* INTERFACE TRIGGER */}
                     <motion.div
-                        initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.8 }}
+                        initial={{ opacity: 0, y: 40 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 1.8 }}
                         className="mt-12 md:mt-20 flex flex-col items-center gap-6"
                     >
                         <Link
@@ -446,14 +484,30 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                             {/* animated liquid border */}
                             <svg className="absolute inset-0 w-full h-full overflow-visible">
                                 <rect
-                                    x="0" y="0" width="100%" height="100%" fill="transparent" rx="10" stroke="#fff" strokeWidth="1" strokeOpacity="0.1"
+                                    x="0"
+                                    y="0"
+                                    width="100%"
+                                    height="100%"
+                                    fill="transparent"
+                                    rx="10"
+                                    stroke="#fff"
+                                    strokeWidth="1"
+                                    strokeOpacity="0.1"
                                     className="group-hover:stroke-brand-primary/50 transition-colors"
                                 />
                                 <motion.rect
-                                    x="0" y="0" width="100%" height="100%" fill="transparent" rx="10" stroke="#ff9d00" strokeWidth="2"
-                                    strokeDasharray="100, 400" strokeDashoffset="0"
+                                    x="0"
+                                    y="0"
+                                    width="100%"
+                                    height="100%"
+                                    fill="transparent"
+                                    rx="10"
+                                    stroke="#ff9d00"
+                                    strokeWidth="2"
+                                    strokeDasharray="100, 400"
+                                    strokeDashoffset="0"
                                     animate={{ strokeDashoffset: -500 }}
-                                    transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                                    transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
                                 />
                             </svg>
 
@@ -467,8 +521,12 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                         </Link>
 
                         <div className="flex gap-12 opacity-30 text-[9px] font-mono tracking-widest">
-                            <span className="flex items-center gap-2"><div className="w-1 h-1 bg-white rounded-full" /> SECURE_LINK: ENABLED</span>
-                            <span className="flex items-center gap-2"><div className="w-1 h-1 bg-white rounded-full" /> HAPTIC_FEEDBACK: ACTIVE</span>
+                            <span className="flex items-center gap-2">
+                                <div className="w-1 h-1 bg-white rounded-full" /> SECURE_LINK: ENABLED
+                            </span>
+                            <span className="flex items-center gap-2">
+                                <div className="w-1 h-1 bg-white rounded-full" /> HAPTIC_FEEDBACK: ACTIVE
+                            </span>
                             <span className="flex items-center gap-2 underline">v2.6_OS_CORE</span>
                         </div>
                     </motion.div>
@@ -479,23 +537,24 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                 <div className="absolute bottom-0 inset-x-0 h-40 bg-gradient-to-t from-black to-transparent z-40" />
             </section>
 
-
-
-
-
-            <section className="min-h-screen ebook-section relative overflow-hidden bg-gradient-to-bl from-red-950/40 via-[#0b0d10] to-[#0b0d10] flex flex-col items-center justify-center">
+            <section className="min-h-screen ebook-section relative overflow-hidden bg-gradient-to-bl from-orange-800/60 via-[#0b0d10] to-[#0b0d10] flex flex-col items-center justify-center">
                 <div className="max-w-[1440px] mx-auto px-6 relative z-10 w-full">
                     <div className="grid grid-cols-12 gap-8 lg:gap-16 items-center">
                         {/* Left Column: Context (4/12) */}
                         <div className="col-span-12 lg:col-span-4 space-y-8 relative z-20">
                             <div>
-                                <h2 className="text-zinc-500 font-black uppercase tracking-[0.4em] text-xs mb-4">THE SYNDICATE</h2>
+                                <h2 className="text-zinc-500 font-black uppercase tracking-[0.4em] text-xs mb-4">
+                                    THE SYNDICATE
+                                </h2>
                                 <h1 className="text-8xl xl:text-9xl font-extrabold italic uppercase tracking-[-0.05em] leading-[0.85] text-white">
-                                    ELITE<br />MAKERS<span className="text-brand-primary">.</span>
+                                    ELITE
+                                    <br />
+                                    MAKERS<span className="text-brand-primary">.</span>
                                 </h1>
                             </div>
                             <p className="text-zinc-500 text-lg leading-relaxed max-w-sm">
-                                A curated roster of engineering giants setting global standards. Seamless, elite performance across every brand.
+                                A curated roster of engineering giants setting global standards. Seamless, elite
+                                performance across every brand.
                             </p>
                         </div>
 
@@ -512,7 +571,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                 {[
                                     { name: 'APRILIA', color: '#F80000', tagline: 'BE A RACER' },
                                     { name: 'ATHER', color: '#10C25B', tagline: 'WARP SPEED' },
-                                    { name: 'BAJAJ', color: '#005CAB', tagline: 'THE WORLD\'S FAVOURITE' },
+                                    { name: 'BAJAJ', color: '#005CAB', tagline: "THE WORLD'S FAVOURITE" },
                                     { name: 'CHETAK', color: '#D4AF37', tagline: 'LEGEND REBORN' },
                                     { name: 'HERO', color: '#E11B22', tagline: 'RIDE THE FUTURE' },
                                     { name: 'HONDA', color: '#CC0000', tagline: 'POWER OF DREAMS' },
@@ -536,7 +595,9 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                     const isAtFront = normalizedAngle < 15 || normalizedAngle > 345;
 
                                     // Find brand data from DB for the icon
-                                    const dbBrand = brands?.find(b => b.name.toUpperCase() === brand.name.toUpperCase());
+                                    const dbBrand = brands?.find(
+                                        b => b.name.toUpperCase() === brand.name.toUpperCase()
+                                    );
 
                                     return (
                                         <div
@@ -545,8 +606,8 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                             style={{
                                                 transform: `rotateY(${angle}deg) translateZ(${radius}px)`,
                                                 backfaceVisibility: 'hidden',
-                                                zIndex: (isHovered && isAtFront) ? 50 : 1,
-                                                opacity: (isAnyHovered && !isHovered) ? 0.1 : 1, // Slightly visible padosi for depth
+                                                zIndex: isHovered && isAtFront ? 50 : 1,
+                                                opacity: isAnyHovered && !isHovered ? 0.1 : 1, // Slightly visible padosi for depth
                                             }}
                                         >
                                             {/* Clickable/Hoverable Hit Area (Static Size) */}
@@ -574,21 +635,27 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                             />
 
                                             <div
-                                                className={`absolute inset-0 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] rounded-3xl pointer-events-none ${isHovered && isAtFront
-                                                    ? 'shadow-[0_0_120px_rgba(255,255,255,0.25)] border border-white/20'
-                                                    : 'backdrop-blur-md text-zinc-400 border-y border-white/5'
-                                                    }`}
+                                                className={`absolute inset-0 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] rounded-3xl pointer-events-none ${
+                                                    isHovered && isAtFront
+                                                        ? 'shadow-[0_0_120px_rgba(255,255,255,0.25)] border border-white/20'
+                                                        : 'backdrop-blur-md text-zinc-400 border-y border-white/5'
+                                                }`}
                                                 style={{
-                                                    transform: (isHovered && isAtFront) ? 'scale(1.2) translateZ(150px)' : 'none',
-                                                    backgroundColor: (isHovered && isAtFront) ? brand.color : undefined,
+                                                    transform:
+                                                        isHovered && isAtFront
+                                                            ? 'scale(1.2) translateZ(150px)'
+                                                            : 'none',
+                                                    backgroundColor: isHovered && isAtFront ? brand.color : undefined,
                                                     backfaceVisibility: 'hidden',
                                                 }}
                                             >
                                                 {/* Ribbed Glass Texture Overlay (Only for inactive cards) */}
                                                 {(!isHovered || !isAtFront) && (
-                                                    <div className="absolute inset-0 opacity-[0.05] pointer-events-none z-10"
+                                                    <div
+                                                        className="absolute inset-0 opacity-[0.05] pointer-events-none z-10"
                                                         style={{
-                                                            backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 8px, rgba(255,255,255,0.1) 8px, rgba(255,255,255,0.1) 9px)'
+                                                            backgroundImage:
+                                                                'repeating-linear-gradient(90deg, transparent, transparent 8px, rgba(255,255,255,0.1) 8px, rgba(255,255,255,0.1) 9px)',
                                                         }}
                                                     />
                                                 )}
@@ -600,7 +667,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
 
                                                 {/* Subtle Bottom Glow Hint (Brand Specific) */}
                                                 <div
-                                                    className={`absolute bottom-0 inset-x-0 h-1 z-20 transition-opacity duration-500 blur-sm ${(isHovered && isAtFront) ? 'opacity-100' : 'opacity-30'}`}
+                                                    className={`absolute bottom-0 inset-x-0 h-1 z-20 transition-opacity duration-500 blur-sm ${isHovered && isAtFront ? 'opacity-100' : 'opacity-30'}`}
                                                     style={{ backgroundColor: brand.color }}
                                                 />
 
@@ -614,11 +681,12 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                                 )}
 
                                                 {/* Active State: Full Content */}
-                                                <div className={`absolute inset-0 p-8 flex flex-col justify-between z-30 transition-all duration-500 ${(isHovered && isAtFront) ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+                                                <div
+                                                    className={`absolute inset-0 p-8 flex flex-col justify-between z-30 transition-all duration-500 ${isHovered && isAtFront ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+                                                >
                                                     <div className="flex justify-between items-start">
                                                         {/* Brand Icon (Small Top Left) - OPTIONAL: We can keep it or remove it since we have a huge one in center now. Let's keep it minimal or remove. Actually, let's keep the layout clean. Top Right Arrow only. */}
                                                         <div /> {/* Spacer */}
-
                                                         <div className="text-white/60">
                                                             <ArrowRight className="-rotate-45" size={24} />
                                                         </div>
@@ -626,10 +694,15 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
 
                                                     {/* Center section: LARGE Hero Logo */}
                                                     <div className="flex-1 flex items-center justify-center relative">
-                                                        {(dbBrand?.brand_logos?.icon || dbBrand?.logo_svg) ? (
+                                                        {dbBrand?.brand_logos?.icon || dbBrand?.logo_svg ? (
                                                             <div
                                                                 className="w-48 h-48 flex items-center justify-center brightness-0 invert opacity-100 drop-shadow-[0_0_30px_rgba(255,255,255,0.3)] [&>svg]:w-full [&>svg]:h-full [&>svg]:block"
-                                                                dangerouslySetInnerHTML={{ __html: dbBrand?.brand_logos?.icon || dbBrand?.logo_svg || '' }}
+                                                                dangerouslySetInnerHTML={{
+                                                                    __html:
+                                                                        dbBrand?.brand_logos?.icon ||
+                                                                        dbBrand?.logo_svg ||
+                                                                        '',
+                                                                }}
                                                             />
                                                         ) : (
                                                             <span className="text-9xl font-black italic text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.3)]">
@@ -644,11 +717,12 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                                             {brand.tagline}
                                                         </p>
                                                         <div className="flex justify-center">
-                                                            <div
-                                                                className="flex items-center gap-3 bg-black/60 backdrop-blur-md text-white border border-white/20 px-8 py-4 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-brand-primary hover:text-black hover:border-brand-primary transition-all cursor-pointer group/active-btn"
-                                                            >
+                                                            <div className="flex items-center gap-3 bg-black/60 backdrop-blur-md text-white border border-white/20 px-8 py-4 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-brand-primary hover:text-black hover:border-brand-primary transition-all cursor-pointer group/active-btn">
                                                                 Enter Factory
-                                                                <ArrowRight size={14} className="group-hover/active-btn:translate-x-1 transition-transform" />
+                                                                <ArrowRight
+                                                                    size={14}
+                                                                    className="group-hover/active-btn:translate-x-1 transition-transform"
+                                                                />
                                                             </div>
                                                         </div>
                                                     </div>
@@ -656,10 +730,11 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
 
                                                 {/* Brand Letter Watermark */}
                                                 <div
-                                                    className={`absolute -right-4 top-1/2 -translate-y-1/2 text-[12rem] font-black italic uppercase select-none pointer-events-none transition-all duration-1000 ${(isHovered && isAtFront)
-                                                        ? 'text-white/[0.1] scale-100 opacity-100'
-                                                        : 'text-white/[0.02] scale-110 opacity-0'
-                                                        }`}
+                                                    className={`absolute -right-4 top-1/2 -translate-y-1/2 text-[12rem] font-black italic uppercase select-none pointer-events-none transition-all duration-1000 ${
+                                                        isHovered && isAtFront
+                                                            ? 'text-white/[0.1] scale-100 opacity-100'
+                                                            : 'text-white/[0.02] scale-110 opacity-0'
+                                                    }`}
                                                 >
                                                     {brand.name[0]}
                                                 </div>
@@ -679,12 +754,10 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
             {/* How it Works */}
             {/* How it Works Section */}
             {/* How it Works Section */}
-            <section className="h-screen ebook-section relative overflow-hidden bg-gradient-to-tr from-emerald-950/40 via-[#0b0d10] to-[#0b0d10] text-white pt-[var(--header-h)] flex flex-col justify-start">
+            <section className="h-screen ebook-section relative overflow-hidden bg-gradient-to-tr from-amber-700/60 via-[#0b0d10] to-[#0b0d10] text-white pt-[var(--header-h)] flex flex-col justify-start">
                 <div className="absolute inset-0 opacity-10 pointer-events-none">
                     <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_120%,#FFD700,transparent_70%)]" />
                 </div>
-
-
 
                 <div className="max-w-[1440px] mx-auto px-6 relative z-10 h-full flex flex-col justify-center">
                     <div className="grid grid-cols-12 gap-8 lg:gap-16 items-center h-full">
@@ -707,10 +780,11 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                         <div
                                             key={i}
                                             onMouseEnter={() => setActiveStep(i)}
-                                            className={`transition-all duration-500 ease-out origin-left ${activeStep === i
-                                                ? 'text-white translate-x-4 scale-105'
-                                                : 'text-white/20 hover:text-white/60 hover:translate-x-2'
-                                                }`}
+                                            className={`transition-all duration-500 ease-out origin-left ${
+                                                activeStep === i
+                                                    ? 'text-white translate-x-4 scale-105'
+                                                    : 'text-white/20 hover:text-white/60 hover:translate-x-2'
+                                            }`}
                                         >
                                             {text}
                                         </div>
@@ -758,17 +832,22 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                     key={i}
                                     layout
                                     onMouseEnter={() => setActiveStep(i)}
-                                    className={`relative rounded-[2rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${activeStep === i
-                                        ? 'flex-[3] bg-white text-black border-white shadow-[0_0_50px_rgba(255,255,255,0.2)]'
-                                        : 'flex-[1] bg-zinc-900/60 border-white/5 text-zinc-500 hover:bg-zinc-800'
-                                        }`}
+                                    className={`relative rounded-[2rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+                                        activeStep === i
+                                            ? 'flex-[3] bg-white text-black border-white shadow-[0_0_50px_rgba(255,255,255,0.2)]'
+                                            : 'flex-[1] bg-zinc-900/60 border-white/5 text-zinc-500 hover:bg-zinc-800'
+                                    }`}
                                 >
                                     {/* Inner Content Layout */}
                                     <div className="absolute inset-0 p-8 flex flex-col justify-between">
                                         {/* Header */}
-                                        <div className={`flex items-start w-full ${activeStep === i ? 'justify-between' : 'justify-center'}`}>
+                                        <div
+                                            className={`flex items-start w-full ${activeStep === i ? 'justify-between' : 'justify-center'}`}
+                                        >
                                             {/* Icon: Left if Active, Center if Inactive */}
-                                            <div className={`${activeStep === i ? 'text-brand-primary order-1' : 'text-zinc-600'}`}>
+                                            <div
+                                                className={`${activeStep === i ? 'text-brand-primary order-1' : 'text-zinc-600'}`}
+                                            >
                                                 {item.icon}
                                             </div>
 
@@ -831,20 +910,8 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
             <section className="h-screen ebook-section relative flex flex-col justify-start bg-[#0b0d10] pt-[var(--header-h)] overflow-hidden">
                 {/* Vibrant Background Layer: Silken 'Aurora' cross-fades to avoid the flash */}
                 <div className="absolute inset-0 z-0 pointer-events-none">
-                    <AnimatePresence mode="popLayout">
-                        <motion.div
-                            key={`bg-vibe-${activeVibe}`}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 1.5, ease: "easeInOut" }}
-                            className="absolute inset-0"
-                        >
-                            <div className={`absolute inset-0 bg-gradient-to-tr ${activeVibe === 0 ? 'from-violet-950/30' : activeVibe === 1 ? 'from-rose-950/30' : 'from-amber-950/30'} via-[#0b0d10] to-black`} />
-                            {/* Aurora Glow: Matches category vibe */}
-                            <div className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-[70%] bg-[radial-gradient(circle_at_50%_100%,${activeVibe === 0 ? 'rgba(167,139,250,0.1)' : activeVibe === 1 ? 'rgba(244,63,94,0.1)' : 'rgba(245,158,11,0.1)'},transparent_70%)]`} />
-                        </motion.div>
-                    </AnimatePresence>
+                    <div className="absolute inset-0 bg-gradient-to-tr from-emerald-800/50 via-[#0b0d10] to-black" />
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-[70%] bg-[radial-gradient(circle_at_50%_100%,rgba(52,211,153,0.25),transparent_70%)]" />
                 </div>
 
                 <div className="max-w-[1440px] mx-auto px-6 relative z-10 h-full flex flex-col justify-center">
@@ -880,23 +947,30 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                     key={i}
                                     href={cat.link}
                                     onMouseEnter={() => setActiveVibe(i)}
-                                    className={`group relative overflow-hidden rounded-[2rem] border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between ${activeVibe === i
-                                        ? 'flex-[3] bg-white/10 border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-md'
-                                        : 'flex-[1] bg-white/5 border-white/5 opacity-60 hover:opacity-100 hover:bg-white/10'
-                                        }`}
+                                    className={`group relative overflow-hidden rounded-[2rem] border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between ${
+                                        activeVibe === i
+                                            ? 'flex-[3] bg-white/10 border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-md'
+                                            : 'flex-[1] bg-white/5 border-white/5 opacity-60 hover:opacity-100 hover:bg-white/10'
+                                    }`}
                                 >
                                     {/* Background Mesh Gradient (Subtle) */}
-                                    <div className={`absolute inset-0 opacity-20 bg-gradient-to-br ${cat.color} to-transparent mix-blend-overlay`} />
+                                    <div
+                                        className={`absolute inset-0 opacity-20 bg-gradient-to-br ${cat.color} to-transparent mix-blend-overlay`}
+                                    />
 
                                     {/* Interactive Layout Container: Nested vertical sandwich to fix overlap */}
                                     <div className="absolute inset-0 p-8 md:p-10 flex flex-col justify-between z-20">
-
                                         {/* Top Header: Title & Meta */}
                                         <div className="flex justify-between items-start w-full">
-                                            <div className={`space-y-3 transition-opacity duration-500 ${activeVibe === i ? 'opacity-100' : 'opacity-0 lg:opacity-0'}`}>
+                                            <div
+                                                className={`space-y-3 transition-opacity duration-500 ${activeVibe === i ? 'opacity-100' : 'opacity-0 lg:opacity-0'}`}
+                                            >
                                                 <div className="flex gap-2">
                                                     {cat.features.slice(0, 2).map((f, idx) => (
-                                                        <span key={idx} className="px-3 py-1 bg-black/40 backdrop-blur-md rounded-full text-[10px] font-bold uppercase tracking-widest text-white/80 border border-white/10">
+                                                        <span
+                                                            key={idx}
+                                                            className="px-3 py-1 bg-black/40 backdrop-blur-md rounded-full text-[10px] font-bold uppercase tracking-widest text-white/80 border border-white/10"
+                                                        >
                                                             {f}
                                                         </span>
                                                     ))}
@@ -914,7 +988,9 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                         </div>
 
                                         {/* THE VEHICLE: Nested in flow between Title and Desc to fix overlap */}
-                                        <div className={`flex-1 flex items-center justify-center transition-all duration-700 ease-out ${activeVibe === i ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}>
+                                        <div
+                                            className={`flex-1 flex items-center justify-center transition-all duration-700 ease-out ${activeVibe === i ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}
+                                        >
                                             <div className="relative w-[65%] h-[65%] pointer-events-none">
                                                 <Image
                                                     src={cat.img}
@@ -926,20 +1002,27 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                         </div>
 
                                         {/* Vertical Text for Inactive State (Desktop Only) */}
-                                        <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 pointer-events-none transition-opacity duration-500 ${activeVibe !== i ? 'opacity-100 hidden lg:block' : 'opacity-0 hidden'}`}>
+                                        <div
+                                            className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 pointer-events-none transition-opacity duration-500 ${activeVibe !== i ? 'opacity-100 hidden lg:block' : 'opacity-0 hidden'}`}
+                                        >
                                             <span className="text-6xl font-black uppercase italic tracking-tighter text-white/40 whitespace-nowrap">
                                                 {cat.title}
                                             </span>
                                         </div>
 
                                         {/* Content Bottom (Active Only) */}
-                                        <div className={`relative z-20 transition-all duration-700 delay-100 ${activeVibe === i ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+                                        <div
+                                            className={`relative z-20 transition-all duration-700 delay-100 ${activeVibe === i ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
+                                        >
                                             <p className="text-sm md:text-base font-medium text-zinc-300 leading-relaxed max-w-md">
                                                 {cat.desc}
                                             </p>
                                             <div className="mt-8 inline-flex items-center gap-3 px-8 py-4 bg-white text-black rounded-full font-black uppercase tracking-widest text-xs hover:bg-brand-primary transition-colors cursor-pointer group/btn">
                                                 Explore {cat.title}
-                                                <ArrowRight size={16} className="transition-transform group-hover/btn:translate-x-1" />
+                                                <ArrowRight
+                                                    size={16}
+                                                    className="transition-transform group-hover/btn:translate-x-1"
+                                                />
                                             </div>
                                         </div>
                                     </div>
@@ -951,14 +1034,17 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
             </section>
 
             {/* Restored Rider Pulse (Reviews) Section */}
-            <div className="ebook-section h-screen flex flex-col justify-start pt-[var(--header-h)] bg-gradient-to-br from-amber-950/30 via-[#0b0d10] to-[#0b0d10]">
+            <div className="ebook-section h-screen flex flex-col justify-start pt-[var(--header-h)] bg-gradient-to-br from-blue-900/50 via-[#0b0d10] to-[#0b0d10]">
                 <RiderPulse />
             </div>
+
+            {/* Cinematic Sections */}
+            <EliteCircle />
 
             {/* Integrated Footer as Last Section */}
             <div className="ebook-section h-screen bg-[#0b0d10]">
                 <Footer />
             </div>
-        </div >
+        </div>
     );
 }
