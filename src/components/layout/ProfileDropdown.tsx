@@ -233,17 +233,10 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
         return (
             <button
                 onClick={onLoginClick}
-                className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all group ${scrolled
-                    ? 'border-slate-900/10 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-white'
-                    : isLight
-                        ? 'border-slate-900/20 text-slate-900/80 hover:text-slate-900 hover:bg-slate-900/5'
-                        : 'border-white/20 text-white/80 hover:text-white hover:bg-white/10'
-                    }`}
+                className="w-10 h-10 rounded-full border border-white/20 text-white flex items-center justify-center transition-all duration-300 hover:bg-white hover:text-black hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] group"
                 title="Sign In"
             >
-                <div className="w-7 h-7 bg-transparent rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
-                    <UserIcon size={18} className="text-current" />
-                </div>
+                <UserIcon size={20} />
             </button>
         );
     }
