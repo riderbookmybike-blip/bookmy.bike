@@ -408,7 +408,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                         <p className="text-4xl font-black text-white italic tracking-tighter leading-none">{MARKET_METRICS.avgSavings}</p>
                                     </div>
                                     <div className="flex flex-col gap-1">
-                                        <p className="text-[10px] font-bold text-white uppercase tracking-widest opacity-80 font-inter">Avg. Dealer Rebate</p>
+                                        <p className="text-[10px] font-bold text-red-500 tracking-widest bg-red-500/10 px-2 py-1 rounded">dealer_rebate</p>
                                     </div>
                                 </div>
 
@@ -616,28 +616,26 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                                 {/* Active State: Full Content */}
                                                 <div className={`absolute inset-0 p-8 flex flex-col justify-between z-30 transition-all duration-500 ${(isHovered && isAtFront) ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
                                                     <div className="flex justify-between items-start">
-                                                        {/* Brand Icon (Preferred: Icon version from metadata) - 50% Larger */}
-                                                        {(dbBrand?.brand_logos?.icon || dbBrand?.logo_svg) ? (
-                                                            <div
-                                                                className="w-16 h-16 flex items-center justify-center brightness-0 invert opacity-90 [&>svg]:w-full [&>svg]:h-full [&>svg]:block"
-                                                                dangerouslySetInnerHTML={{ __html: dbBrand?.brand_logos?.icon || dbBrand?.logo_svg || '' }}
-                                                            />
-                                                        ) : (
-                                                            <span className="text-4xl font-black italic text-white/40">
-                                                                {brand.name[0]}
-                                                            </span>
-                                                        )}
+                                                        {/* Brand Icon (Small Top Left) - OPTIONAL: We can keep it or remove it since we have a huge one in center now. Let's keep it minimal or remove. Actually, let's keep the layout clean. Top Right Arrow only. */}
+                                                        <div /> {/* Spacer */}
 
                                                         <div className="text-white/60">
                                                             <ArrowRight className="-rotate-45" size={24} />
                                                         </div>
                                                     </div>
 
-                                                    {/* Center section: LARGE Vertical Brand Name */}
+                                                    {/* Center section: LARGE Hero Logo */}
                                                     <div className="flex-1 flex items-center justify-center relative">
-                                                        <h3 className="text-white font-black italic uppercase tracking-[-0.05em] leading-none whitespace-nowrap -rotate-90 text-6xl md:text-7xl lg:text-8xl opacity-100 drop-shadow-[0_0_30px_rgba(0,0,0,0.5)]">
-                                                            {brand.name}
-                                                        </h3>
+                                                        {(dbBrand?.brand_logos?.icon || dbBrand?.logo_svg) ? (
+                                                            <div
+                                                                className="w-48 h-48 flex items-center justify-center brightness-0 invert opacity-100 drop-shadow-[0_0_30px_rgba(255,255,255,0.3)] [&>svg]:w-full [&>svg]:h-full [&>svg]:block"
+                                                                dangerouslySetInnerHTML={{ __html: dbBrand?.brand_logos?.icon || dbBrand?.logo_svg || '' }}
+                                                            />
+                                                        ) : (
+                                                            <span className="text-9xl font-black italic text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.3)]">
+                                                                {brand.name[0]}
+                                                            </span>
+                                                        )}
                                                     </div>
 
                                                     {/* Bottom section: Tagline & CTA */}
@@ -737,22 +735,22 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                 {
                                     step: '01',
                                     title: 'Selection',
-                                    subtitle: 'Unrivaled Inventory',
-                                    desc: `Access real-time inventory from premium dealers. ${totalSkus}+ bikes available instantly.`,
+                                    subtitle: 'LIVE INVENTORY FEED',
+                                    desc: `Direct access to regional hubs. 3.8k+ units ready for immediate allocation.`,
                                     icon: <Search className="w-8 h-8 md:w-12 md:h-12" />,
                                 },
                                 {
                                     step: '02',
                                     title: 'Quotation',
-                                    subtitle: 'Transparent Pricing',
-                                    desc: 'Zero hidden costs. Get a precise on-road quote tailored to your location in seconds.',
+                                    subtitle: 'ALGORITHMIC PRICING',
+                                    desc: 'Zero opacity. Instant, distinct on-road valuation with no hidden dealer margins.',
                                     icon: <MapPin className="w-8 h-8 md:w-12 md:h-12" />,
                                 },
                                 {
                                     step: '03',
                                     title: 'Delivery',
-                                    subtitle: 'Instant Ownership',
-                                    desc: `Digital paperwork, instant approval. Ride out in under ${MARKET_METRICS.deliveryTime}.`,
+                                    subtitle: 'RAPID DEPLOYMENT',
+                                    desc: `Digital documentation execution. Asset handover achieved in under 4 hours.`,
                                     icon: <Zap className="w-8 h-8 md:w-12 md:h-12" />,
                                 },
                             ].map((item, i) => (
@@ -768,20 +766,25 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                     {/* Inner Content Layout */}
                                     <div className="absolute inset-0 p-8 flex flex-col justify-between">
                                         {/* Header */}
-                                        <div className="flex items-start justify-between">
-                                            <span className={`text-xl font-bold tracking-widest ${activeStep === i ? 'text-black' : 'text-zinc-600'}`}>
-                                                {item.step}
-                                            </span>
-                                            <div className={`${activeStep === i ? 'text-brand-primary' : 'text-zinc-600'}`}>
+                                        <div className={`flex items-start w-full ${activeStep === i ? 'justify-between' : 'justify-center'}`}>
+                                            {/* Icon: Left if Active, Center if Inactive */}
+                                            <div className={`${activeStep === i ? 'text-brand-primary order-1' : 'text-zinc-600'}`}>
                                                 {item.icon}
                                             </div>
+
+                                            {/* Step Number: Right if Active, Hidden if Inactive */}
+                                            {activeStep === i && (
+                                                <span className="text-xl font-bold tracking-widest text-black order-2">
+                                                    {item.step}
+                                                </span>
+                                            )}
                                         </div>
 
-                                        {/* Main Title (Vertical when inactive, Horizontal when active) */}
-                                        <div className="relative">
+                                        {/* Main Title (Vertical Center when inactive, Horizontal when active) */}
+                                        <div className="relative flex-1 flex flex-col justify-end">
                                             {activeStep !== i && (
-                                                <div className="absolute bottom-0 left-0 origin-bottom-left -rotate-90 translate-x-8 w-[300px]">
-                                                    <span className="text-4xl font-black uppercase tracking-tighter opacity-50 whitespace-nowrap">
+                                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 whitespace-nowrap">
+                                                    <span className="text-4xl font-black uppercase tracking-tighter opacity-50 text-zinc-600">
                                                         {item.title}
                                                     </span>
                                                 </div>
