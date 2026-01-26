@@ -408,7 +408,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                         <p className="text-4xl font-black text-white italic tracking-tighter leading-none">{MARKET_METRICS.avgSavings}</p>
                                     </div>
                                     <div className="flex flex-col gap-1">
-                                        <p className="text-[10px] font-bold text-red-500 tracking-widest bg-red-500/10 px-2 py-1 rounded">dealer_rebate</p>
+                                        <p className="text-[10px] font-bold text-green-500 tracking-widest bg-green-500/10 px-2 py-1 rounded">dealer_rebate</p>
                                     </div>
                                 </div>
 
@@ -784,7 +784,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                         <div className="relative flex-1 flex flex-col justify-end">
                                             {activeStep !== i && (
                                                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 whitespace-nowrap">
-                                                    <span className="text-4xl font-black uppercase tracking-tighter opacity-50 text-zinc-600">
+                                                    <span className="text-6xl font-black uppercase italic tracking-tighter text-white/40">
                                                         {item.title}
                                                     </span>
                                                 </div>
