@@ -127,7 +127,7 @@ export const RiderPulse = () => {
 
                                             {/* Inactive State Vertical Name */}
                                             <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 pointer-events-none transition-all duration-500 ${!isActive ? 'opacity-100' : 'opacity-0'}`}>
-                                                <span className="text-4xl font-black uppercase tracking-widest text-white/20 whitespace-nowrap">
+                                                <span className="text-6xl font-black uppercase italic tracking-tighter text-white/40 whitespace-nowrap">
                                                     {m.name}
                                                 </span>
                                             </div>
