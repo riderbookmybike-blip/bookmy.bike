@@ -273,9 +273,9 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                         <motion.div
                             initial={{ opacity: 0, x: -30 }}
                             animate={{ opacity: 1, x: 0 }}
-                            whileHover={{ scale: 1.02, y: -5 }}
+                            whileHover={{ scale: 1.02, y: -5, filter: 'brightness(1.2)' }}
                             transition={{ delay: 1, duration: 0.4 }}
-                            className="col-span-1 md:col-span-2 relative p-8 bg-zinc-900/60 border border-white/10 rounded-3xl backdrop-blur-3xl overflow-hidden group/bento min-h-[220px] flex flex-col justify-center cursor-pointer shadow-2xl hover:border-brand-primary/30"
+                            className="col-span-1 md:col-span-2 relative p-8 bg-zinc-900/60 border border-white/10 rounded-3xl backdrop-blur-3xl overflow-hidden group/bento min-h-[220px] flex flex-col justify-center cursor-pointer shadow-2xl hover:border-brand-primary/50 transition-all"
                         >
                             <div className="absolute top-0 right-0 p-6 opacity-20 group-hover/bento:opacity-100 transition-opacity">
                                 <Zap size={24} className="text-brand-primary" />
@@ -284,14 +284,14 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                 <div className="flex items-center gap-3">
                                     <div className="w-1.5 h-6 bg-brand-primary rounded-full group-hover/bento:h-10 transition-all duration-500" />
                                     <div className="flex flex-col">
-                                        <span className="text-[10px] font-black text-brand-primary tracking-[0.3em] uppercase font-[family-name:var(--font-bruno-ace)]">Inventory_Live</span>
-                                        <span className="text-sm font-bold text-zinc-500 uppercase">Worldwide Access</span>
+                                        <span className="text-[10px] font-black text-white tracking-[0.3em] uppercase font-[family-name:var(--font-bruno-ace)] group-hover/bento:text-brand-primary transition-colors">Inventory_Live</span>
+                                        <span className="text-sm font-bold text-zinc-400 uppercase">Worldwide Access</span>
                                     </div>
                                 </div>
                                 <div className="flex items-baseline gap-4">
                                     <span className="text-7xl font-black text-white italic tracking-tighter leading-none">{totalSkus}+</span>
                                     <div className="h-10 w-px bg-white/10" />
-                                    <span className="text-xl font-bold text-brand-primary/40 uppercase tracking-widest">Active_Skus</span>
+                                    <span className="text-xl font-bold text-brand-primary uppercase tracking-widest drop-shadow-[0_0_10px_rgba(255,157,0,0.3)]">Active_Skus</span>
                                 </div>
                             </div>
                             {/* high-tech visual ornament (radar-like) */}
@@ -304,12 +304,12 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                         <motion.div
                             initial={{ opacity: 0, y: 30 }}
                             animate={{ opacity: 1, y: 0 }}
-                            whileHover={{ scale: 1.02, y: -5 }}
+                            whileHover={{ scale: 1.02, y: -5, filter: 'brightness(1.2)' }}
                             transition={{ delay: 1.2, duration: 0.4 }}
-                            className="col-span-1 p-8 bg-zinc-900/60 border border-white/10 rounded-3xl backdrop-blur-3xl group/savings min-h-[220px] flex flex-col justify-center cursor-pointer shadow-2xl hover:border-brand-primary/30"
+                            className="col-span-1 p-8 bg-zinc-900/60 border border-white/10 rounded-3xl backdrop-blur-3xl group/savings min-h-[220px] flex flex-col justify-center cursor-pointer shadow-2xl hover:border-brand-primary/50 transition-all"
                         >
                             <div className="space-y-6">
-                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 font-[family-name:var(--font-bruno-ace)]">
+                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-white/70 font-[family-name:var(--font-bruno-ace)]">
                                     <span>Savings_Calc</span>
                                     <motion.div animate={{ opacity: [1, 0, 1] }} transition={{ duration: 0.5, repeat: Infinity }} className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
                                 </div>
@@ -330,12 +330,12 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                         <motion.div
                             initial={{ opacity: 0, x: 30 }}
                             animate={{ opacity: 1, x: 0 }}
-                            whileHover={{ scale: 1.02, y: -5 }}
+                            whileHover={{ scale: 1.02, y: -5, filter: 'brightness(1.2)' }}
                             transition={{ delay: 1.4, duration: 0.4 }}
-                            className="col-span-1 p-8 bg-zinc-900/60 border border-white/10 rounded-3xl backdrop-blur-3xl group/dispatch min-h-[220px] flex flex-col justify-center cursor-pointer shadow-2xl hover:border-brand-primary/30"
+                            className="col-span-1 p-8 bg-zinc-900/60 border border-white/10 rounded-3xl backdrop-blur-3xl group/dispatch min-h-[220px] flex flex-col justify-center cursor-pointer shadow-2xl hover:border-brand-primary/50 transition-all"
                         >
                             <div className="space-y-6">
-                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 font-[family-name:var(--font-bruno-ace)]">
+                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-white/70 font-[family-name:var(--font-bruno-ace)]">
                                     <span>Dispatch_Hub</span>
                                     <span className="text-brand-primary drop-shadow-[0_0_5px_rgba(255,100,0,0.5)]">LHR_04</span>
                                 </div>
