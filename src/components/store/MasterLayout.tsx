@@ -825,13 +825,12 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                 </div>
             </section>
 
-            {/* Featured Categories - "The Vibe Deck" */}
             <section className="h-screen ebook-section relative flex flex-col justify-start bg-[#0b0d10] pt-[var(--header-h)] overflow-hidden">
                 {/* Stable Lighting Layer: Matches 'The Process' pattern for rock-solid stability */}
                 <div className="absolute inset-0 z-0 pointer-events-none">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-blue-950/40 via-[#0b0d10] to-black" />
-                    {/* Steady Bottom Glow: Subtle depth without the 'flash' instability */}
-                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-[60%] bg-[radial-gradient(circle_at_50%_100%,rgba(56,189,248,0.07),transparent_70%)]" />
+                    <div className="absolute inset-0 bg-gradient-to-tr from-zinc-900/40 via-[#0b0d10] to-black" />
+                    {/* Neutral Silver Glow: Subtle depth without the 'flash' instability */}
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-[60%] bg-[radial-gradient(circle_at_50%_100%,rgba(255,255,255,0.03),transparent_70%)]" />
                 </div>
 
                 <div className="max-w-[1440px] mx-auto px-6 relative z-10 h-full flex flex-col justify-center">
@@ -846,7 +845,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                 className="space-y-6"
                             >
                                 <div className="flex items-center gap-4">
-                                    <p className="text-sm font-black text-brand-primary uppercase tracking-[0.3em]">
+                                    <p className="text-sm font-black text-white uppercase tracking-[0.3em]">
                                         Curated Collections
                                     </p>
                                 </div>
@@ -875,10 +874,10 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                     {/* Background Mesh Gradient (Subtle) */}
                                     <div className={`absolute inset-0 opacity-20 bg-gradient-to-br ${cat.color} to-transparent mix-blend-overlay`} />
 
-                                    {/* Interactive Layout Container */}
+                                    {/* Interactive Layout Container: Nested vertical sandwich to fix overlap */}
                                     <div className="absolute inset-0 p-8 md:p-10 flex flex-col justify-between z-20">
 
-                                        {/* Top Header: Always visible, but adapts */}
+                                        {/* Top Header: Title & Meta */}
                                         <div className="flex justify-between items-start w-full">
                                             <div className={`space-y-3 transition-opacity duration-500 ${activeVibe === i ? 'opacity-100' : 'opacity-0 lg:opacity-0'}`}>
                                                 <div className="flex gap-2">
@@ -900,6 +899,18 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                             />
                                         </div>
 
+                                        {/* THE VEHICLE: Nested in flow between Title and Desc to fix overlap */}
+                                        <div className={`flex-1 flex items-center justify-center transition-all duration-700 ease-out ${activeVibe === i ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}>
+                                            <div className="relative w-[65%] h-[65%] pointer-events-none">
+                                                <Image
+                                                    src={cat.img}
+                                                    alt={cat.title}
+                                                    fill
+                                                    className="object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.5)]"
+                                                />
+                                            </div>
+                                        </div>
+
                                         {/* Vertical Text for Inactive State (Desktop Only) */}
                                         <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 pointer-events-none transition-opacity duration-500 ${activeVibe !== i ? 'opacity-100 hidden lg:block' : 'opacity-0 hidden'}`}>
                                             <span className="text-6xl font-black uppercase italic tracking-tighter text-white/40 whitespace-nowrap">
@@ -916,18 +927,6 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                                 Explore {cat.title}
                                                 <ArrowRight size={16} className="transition-transform group-hover/btn:translate-x-1" />
                                             </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Floating Product Image */}
-                                    <div className={`absolute inset-0 flex items-center justify-center pointer-events-none transition-all duration-700 ease-out ${activeVibe === i ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}>
-                                        <div className="relative w-[85%] h-[85%]">
-                                            <Image
-                                                src={cat.img}
-                                                alt={cat.title}
-                                                fill
-                                                className="object-contain drop-shadow-[0_30px_60px_rgba(0,0,0,0.5)]"
-                                            />
                                         </div>
                                     </div>
                                 </Link>
