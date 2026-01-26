@@ -61,13 +61,6 @@ export const Footer = () => {
                 <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/10 blur-[120px] rounded-full" />
             </div>
 
-            {/* Immersive Watermark */}
-            <div className="absolute inset-0 z-0 flex items-center justify-center select-none pointer-events-none opacity-[0.03]">
-                <h2 className="text-[25vw] font-black uppercase tracking-tighter leading-none text-white">
-                    BMB.
-                </h2>
-            </div>
-
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
             <div className="max-w-[1440px] mx-auto w-full px-8 md:px-16 relative z-10 flex-1 flex flex-col justify-center">
