@@ -826,11 +826,22 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
             </section>
 
             <section className="h-screen ebook-section relative flex flex-col justify-start bg-[#0b0d10] pt-[var(--header-h)] overflow-hidden">
-                {/* Stable Lighting Layer: Matches 'The Process' pattern for rock-solid stability */}
+                {/* Vibrant Background Layer: Silken 'Aurora' cross-fades to avoid the flash */}
                 <div className="absolute inset-0 z-0 pointer-events-none">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-zinc-900/40 via-[#0b0d10] to-black" />
-                    {/* Neutral Silver Glow: Subtle depth without the 'flash' instability */}
-                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-[60%] bg-[radial-gradient(circle_at_50%_100%,rgba(255,255,255,0.03),transparent_70%)]" />
+                    <AnimatePresence mode="popLayout">
+                        <motion.div
+                            key={`bg-vibe-${activeVibe}`}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 1.5, ease: "easeInOut" }}
+                            className="absolute inset-0"
+                        >
+                            <div className={`absolute inset-0 bg-gradient-to-tr ${activeVibe === 0 ? 'from-cyan-950/30' : activeVibe === 1 ? 'from-rose-950/30' : 'from-amber-950/30'} via-[#0b0d10] to-black`} />
+                            {/* Aurora Glow: Matches category vibe */}
+                            <div className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-[70%] bg-[radial-gradient(circle_at_50%_100%,${activeVibe === 0 ? 'rgba(6,182,212,0.1)' : activeVibe === 1 ? 'rgba(244,63,94,0.1)' : 'rgba(245,158,11,0.1)'},transparent_70%)]`} />
+                        </motion.div>
+                    </AnimatePresence>
                 </div>
 
                 <div className="max-w-[1440px] mx-auto px-6 relative z-10 h-full flex flex-col justify-center">
