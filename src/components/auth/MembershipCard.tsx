@@ -131,7 +131,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                     </div>
 
                     {/* QUANTUM CHIP - HIGH-FIDELITY VECTOR */}
-                    <div className="w-14 h-11 relative rounded-[4px] overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.3)] border border-amber-700/50">
+                    <div className="w-16 h-12 relative rounded-[4px] overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.3)]">
                         <svg viewBox="0 0 56 44" fill="none" className="w-full h-full block">
                             <defs>
                                 <linearGradient
