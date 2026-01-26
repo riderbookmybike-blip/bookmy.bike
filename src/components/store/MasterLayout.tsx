@@ -134,7 +134,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
         <div className="flex flex-col pb-0 transition-colors duration-300">
             {/* the hyper-aperture: kinetic chassis extraordinaria */}
             <section
-                className="relative h-screen ebook-section overflow-hidden bg-black isolate flex flex-col items-center justify-center p-0"
+                className="relative h-screen ebook-section overflow-hidden bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900/40 via-black to-black isolate flex flex-col items-center justify-center p-0"
                 onMouseMove={(e) => {
                     const xPct = (e.clientX / window.innerWidth) * 100;
                     const x = (e.clientX / window.innerWidth - 0.5) * 30;
@@ -397,7 +397,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
 
 
 
-            <section className="min-h-screen ebook-section relative overflow-hidden bg-[#0b0d10] flex flex-col items-center justify-center">
+            <section className="min-h-screen ebook-section relative overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#0f172a] via-[#0b0d10] to-[#0b0d10] flex flex-col items-center justify-center">
                 <div className="max-w-[1440px] mx-auto px-8 md:px-16 relative z-10 w-full">
                     <div className="grid grid-cols-12 gap-8 lg:gap-16 items-center">
                         {/* Left Column: Context (4/12) */}
@@ -596,7 +596,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
             {/* How it Works */}
             {/* How it Works Section */}
             {/* How it Works Section */}
-            <section className="h-screen ebook-section relative overflow-hidden bg-[#0b0d10] text-white pt-[var(--header-h)] flex flex-col justify-start">
+            <section className="h-screen ebook-section relative overflow-hidden bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-blue-950/30 via-[#0b0d10] to-[#0b0d10] text-white pt-[var(--header-h)] flex flex-col justify-start">
                 <div className="absolute inset-0 opacity-10 pointer-events-none">
                     <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_120%,#FFD700,transparent_70%)]" />
                 </div>
