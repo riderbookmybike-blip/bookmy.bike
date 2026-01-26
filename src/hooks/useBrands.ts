@@ -1,12 +1,18 @@
-import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
-
 export interface Brand {
     id: string;
     name: string;
     slug: string;
     logo_svg?: string;
+    brand_logos?: {
+        original?: string;
+        dark?: string;
+        light?: string;
+        icon?: string;
+    };
 }
+
+import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
 
 export function useBrands() {
     const [brands, setBrands] = useState<Brand[]>([]);
@@ -19,7 +25,7 @@ export function useBrands() {
                 const supabase = createClient();
                 const { data, error } = await supabase
                     .from('cat_brands')
-                    .select('id, name, slug, logo_svg')
+                    .select('id, name, slug, logo_svg, brand_logos')
                     .eq('is_active', true)
                     .eq('brand_category', 'VEHICLE')
                     .order('name');

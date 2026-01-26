@@ -19,11 +19,11 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData,
         name: '',
         landingUrl: '',
         logo_svg: '', // Keep for backward compat
-        brand_logos: { original: '', dark: '', light: '' } as Record<string, string>,
+        brand_logos: { original: '', dark: '', light: '', icon: '' } as Record<string, string>,
         specifications: {} as Record<string, any>
     });
 
-    const [activeTheme, setActiveTheme] = useState<'original' | 'dark' | 'light'>('original');
+    const [activeTheme, setActiveTheme] = useState<'original' | 'dark' | 'light' | 'icon'>('original');
 
     const [isAdaptive, setIsAdaptive] = useState(false);
     const supabase = createClient();
@@ -34,7 +34,7 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData,
                 name: initialData.name || '',
                 landingUrl: initialData.website_url || '',
                 logo_svg: initialData.logo_svg || '',
-                brand_logos: initialData.brand_logos || { original: initialData.logo_svg || '', dark: '', light: '' },
+                brand_logos: initialData.brand_logos || { original: initialData.logo_svg || '', dark: '', light: '', icon: '' },
                 specifications: initialData.specifications || {}
             });
             setIsAdaptive(false);
@@ -43,7 +43,7 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData,
                 name: '',
                 landingUrl: '',
                 logo_svg: '',
-                brand_logos: { original: '', dark: '', light: '' },
+                brand_logos: { original: '', dark: '', light: '', icon: '' },
                 specifications: {}
             });
             setIsAdaptive(false);
@@ -227,7 +227,7 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData,
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Brand Logo Identity</label>
 
                                 <div className="flex bg-slate-100 dark:bg-white/5 rounded-full p-1 border border-slate-200 dark:border-white/5">
-                                    {(['original', 'dark', 'light'] as const).map(theme => (
+                                    {(['original', 'dark', 'light', 'icon'] as const).map(theme => (
                                         <button
                                             key={theme}
                                             type="button"

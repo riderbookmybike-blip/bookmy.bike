@@ -14,7 +14,8 @@ export default function StoreLayout({
 }) {
     const [isLoginOpen, setIsLoginOpen] = useState(false);
     const pathname = usePathname();
-    const isLandingPage = pathname === '/store';
+    const isLandingPage = pathname === '/store' || pathname === '/';
+
 
     return (
         <FavoritesProvider>

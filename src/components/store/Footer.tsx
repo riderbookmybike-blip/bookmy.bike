@@ -10,43 +10,46 @@ import { slugify } from '@/utils/slugs';
 export const Footer = () => {
     const { brands } = useBrands();
     return (
-        <footer className="snap-start min-h-screen flex flex-col bg-white dark:bg-[#0b0d10] border-t border-slate-100 dark:border-white/5 pt-[var(--header-h)] pb-12 transition-colors duration-500 overflow-hidden relative">
-            {/* Magazine Style Background Text */}
-            <div className="absolute inset-0 z-0 flex items-center justify-center select-none pointer-events-none opacity-[0.02] dark:opacity-[0.04]">
-                <h2 className="text-[25vw] font-black uppercase tracking-tighter leading-none">
+        <footer className="snap-start min-h-screen flex flex-col bg-[#0b0d10] border-t border-white/5 pt-[var(--header-h)] pb-12 overflow-hidden relative text-white">
+            {/* Ambient Background Glows */}
+            <div className="absolute inset-0 z-0 pointer-events-none">
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-primary/5 blur-[120px] rounded-full" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/10 blur-[120px] rounded-full" />
+            </div>
+
+            {/* Immersive Watermark */}
+            <div className="absolute inset-0 z-0 flex items-center justify-center select-none pointer-events-none opacity-[0.03]">
+                <h2 className="text-[25vw] font-black uppercase tracking-tighter leading-none text-white">
                     BMB.
                 </h2>
             </div>
 
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-brand-primary/20 to-transparent" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-            {/* Mirroring Header's Logo Slot exactly (Structure & Classes) */}
-            <div className="w-full h-[var(--header-h)] max-w-[1600px] mx-auto px-6 md:px-12 lg:px-20 relative z-20">
-                <div className="flex items-center h-full mt-[700px]">
-                    <div className="flex items-center justify-center transition-all duration-300">
-                        <Logo mode="auto" size={40} variant="full" />
-                    </div>
-                </div>
-            </div>
-
-            <div className="max-w-[1600px] mx-auto w-full px-6 md:px-12 lg:px-20 relative z-10 flex-1 pt-20 md:pt-32">
+            <div className="max-w-[1440px] mx-auto w-full px-8 md:px-16 relative z-10 flex-1 flex flex-col justify-center">
                 {/* Top Section: Trust & Brand */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-24 mb-16 relative">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-16 mb-20 relative">
                     {/* Left: Brand Identity */}
-                    <div className="lg:col-span-6 flex flex-col justify-between h-full space-y-20">
+                    <div className="lg:col-span-5 flex flex-col justify-between h-full space-y-20">
                         <div className="space-y-12">
                             <div className="space-y-8">
-                                <h3 className="text-6xl md:text-8xl font-black uppercase tracking-tighter text-slate-900 dark:text-white leading-[0.85]">
-                                    Redefining <br /> New era of <br /> mobility.
+                                <div className="flex items-center gap-4 mb-8">
+                                    <div className="h-px w-12 bg-brand-primary" />
+                                    <p className="text-sm font-black text-brand-primary uppercase tracking-[0.3em]">
+                                        The Next Chapter
+                                    </p>
+                                </div>
+                                <h3 className="text-6xl md:text-8xl font-black uppercase tracking-tighter text-white leading-[0.85] italic drop-shadow-2xl">
+                                    Redefining <br /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-zinc-200 to-zinc-600">Mobility.</span>
                                 </h3>
-                                <p className="text-xl text-slate-500 dark:text-slate-400 leading-relaxed max-w-lg font-medium mt-[60px]">
+                                <p className="text-lg text-zinc-400 leading-relaxed max-w-lg font-medium mt-[60px] border-l-2 border-white/10 pl-6">
                                     India&apos;s premier marketplace for the next generation of
                                     riders. Engineering excellence into every booking.
                                 </p>
                             </div>
                         </div>
 
-                        <div className="flex gap-4 pt-10">
+                        <div className="flex gap-4">
                             <SocialIcon icon={<Newspaper size={20} />} href="/blog" brandColor="#ffd700" />
                             <SocialIcon icon={<Instagram size={20} />} href="https://instagram.com" brandColor="#E4405F" />
                             <SocialIcon icon={<Twitter size={20} />} href="https://twitter.com" brandColor="#1DA1F2" />
@@ -55,9 +58,9 @@ export const Footer = () => {
                         </div>
                     </div>
 
-                    {/* Right: Navigation Grid */}
-                    <div className="lg:col-span-6 grid grid-cols-2 md:grid-cols-2 gap-x-12 gap-y-16">
-                        <div className="space-y-10">
+                    {/* Right: Navigation Grid (Glass Cards) */}
+                    <div className="lg:col-span-7 grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-12">
+                        <div className="space-y-8 p-8 bg-white/5 border border-white/5 rounded-[2rem] hover:bg-white/10 transition-colors backdrop-blur-sm">
                             <FooterHeading>Collection</FooterHeading>
                             <FooterLinkList>
                                 <FooterLink href="/store/catalog">All Inventory</FooterLink>
@@ -68,18 +71,19 @@ export const Footer = () => {
                             </FooterLinkList>
                         </div>
 
-                        <div id="footer-brands" className="space-y-10 scroll-mt-28">
+                        <div id="footer-brands" className="space-y-8 p-8 bg-white/5 border border-white/5 rounded-[2rem] hover:bg-white/10 transition-colors backdrop-blur-sm scroll-mt-28">
                             <FooterHeading>Brands</FooterHeading>
                             <FooterLinkList>
-                                {brands.map(brand => (
+                                {brands.slice(0, 5).map(brand => (
                                     <FooterLink key={brand.id} href={`/store/${brand.slug || slugify(brand.name)}`}>
                                         {brand.name}
                                     </FooterLink>
                                 ))}
+                                <FooterLink href="/store/catalog" highlight>View All Brands</FooterLink>
                             </FooterLinkList>
                         </div>
 
-                        <div className="space-y-10">
+                        <div className="space-y-8 p-8 bg-white/5 border border-white/5 rounded-[2rem] hover:bg-white/10 transition-colors backdrop-blur-sm">
                             <FooterHeading>Ecosystem</FooterHeading>
                             <FooterLinkList>
                                 <FooterLink href="#">About Us</FooterLink>
@@ -90,7 +94,7 @@ export const Footer = () => {
                             </FooterLinkList>
                         </div>
 
-                        <div className="space-y-10">
+                        <div className="space-y-8 p-8 bg-white/5 border border-white/5 rounded-[2rem] hover:bg-white/10 transition-colors backdrop-blur-sm">
                             <FooterHeading>Services</FooterHeading>
                             <FooterLinkList>
                                 <FooterLink href="#">Help Center</FooterLink>
@@ -104,10 +108,11 @@ export const Footer = () => {
                 </div>
 
                 {/* Bottom Section: Legal & Copyright Addressed */}
-                <div className="flex flex-col md:flex-row items-center justify-between pt-12 border-t border-slate-100 dark:border-white/5 gap-8">
+                <div className="flex flex-col md:flex-row items-center justify-between pt-12 border-t border-white/5 gap-8">
                     <div className="flex items-center gap-3">
                         <div className="w-2 h-2 rounded-full bg-brand-primary animate-pulse" />
-                        <p className="text-[11px] text-slate-400 font-bold uppercase tracking-[0.3em]">
+                        <Logo mode="dark" size={24} variant="icon" />
+                        <p className="text-[11px] text-zinc-500 font-bold uppercase tracking-[0.3em]">
                             © 2026 BookMyBike Technologies. Built for Excellence.
                         </p>
                     </div>
