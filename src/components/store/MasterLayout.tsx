@@ -34,6 +34,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
     // Brands Section Visual Hooks
     const [hoveredBrand, setHoveredBrand] = useState<string | null>(null);
     const [drumRotation, setDrumRotation] = useState(0);
+    const [isSnapping, setIsSnapping] = useState(false);
 
     // Brands Drum Animation Loop (State-driven)
     React.useEffect(() => {
@@ -45,7 +46,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
             const delta = now - lastTime;
             lastTime = now;
 
-            if (!hoveredBrand) {
+            if (!hoveredBrand && !isSnapping) {
                 // Slower, consistent rotation when not hovered (approx 80s per revolution)
                 setDrumRotation(prev => (prev - (delta * 0.0045)));
             }
@@ -416,7 +417,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                         <div className="col-span-12 lg:col-span-8 h-[65vh] relative perspective-[2000px] flex items-center justify-end lg:pr-[250px]">
                             {/* The 3D Drum Container */}
                             <div
-                                className="relative w-[220px] h-[400px] preserve-3d transition-transform duration-1000 ease-out"
+                                className={`relative w-[220px] h-[400px] preserve-3d transition-transform ${isSnapping ? 'duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)]' : 'duration-0 ease-linear'}`}
                                 style={{
                                     transformStyle: 'preserve-3d',
                                     transform: `rotateY(${drumRotation}deg)`,
@@ -474,7 +475,10 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                                 onClick={() => {
                                                     if (!isAtFront) {
                                                         // If side card clicked, bring it to front
+                                                        setIsSnapping(true);
                                                         setDrumRotation(-angle);
+                                                        // Release snapping lock after transition completes
+                                                        setTimeout(() => setIsSnapping(false), 1000);
                                                     } else {
                                                         // If already focused card clicked, navigate
                                                         window.location.href = `/store/catalog?brand=${brand.name}`;
