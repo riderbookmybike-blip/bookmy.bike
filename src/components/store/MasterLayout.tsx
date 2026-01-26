@@ -286,7 +286,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                             animate={{ opacity: 1, x: 0 }}
                             whileHover={{ scale: 1.02, filter: 'brightness(1.2)' }}
                             transition={{ layout: { duration: 0.6, ease: [0.23, 1, 0.32, 1] } }}
-                            className={`${bentoHover === 'inventory' ? 'md:col-span-2' : 'md:col-span-1'} relative p-8 bg-zinc-900/80 border ${bentoHover === 'inventory' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-3xl overflow-hidden group/bento min-h-[240px] flex flex-col justify-center cursor-pointer shadow-2xl transition-all duration-500`}
+                            className={`${bentoHover === 'inventory' ? 'md:col-span-2' : 'md:col-span-1'} relative p-8 bg-zinc-900/80 border ${bentoHover === 'inventory' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-3xl overflow-hidden group/bento min-h-[220px] flex flex-col justify-center cursor-pointer shadow-2xl transition-all duration-500`}
                         >
                             <div className="absolute top-0 right-0 p-6 opacity-20 group-hover/bento:opacity-100 transition-opacity">
                                 <Zap size={24} className="text-brand-primary" />
@@ -327,7 +327,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                             animate={{ opacity: 1, y: 0 }}
                             whileHover={{ scale: 1.02, filter: 'brightness(1.2)' }}
                             transition={{ layout: { duration: 0.6, ease: [0.23, 1, 0.32, 1] } }}
-                            className={`${bentoHover === 'savings' || bentoHover === null ? 'md:col-span-2' : 'md:col-span-1'} p-8 bg-zinc-900/80 border ${bentoHover === 'savings' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-3xl group/savings min-h-[240px] flex flex-col justify-center cursor-pointer shadow-2xl transition-all duration-500`}
+                            className={`${bentoHover === 'savings' || bentoHover === null ? 'md:col-span-2' : 'md:col-span-1'} p-8 bg-zinc-900/80 border ${bentoHover === 'savings' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-3xl group/savings min-h-[220px] flex flex-col justify-center cursor-pointer shadow-2xl transition-all duration-500`}
                         >
                             <div className="space-y-6">
                                 <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-white/70 font-[family-name:var(--font-bruno-ace)]">
@@ -364,7 +364,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                             animate={{ opacity: 1, x: 0 }}
                             whileHover={{ scale: 1.02, filter: 'brightness(1.2)' }}
                             transition={{ layout: { duration: 0.6, ease: [0.23, 1, 0.32, 1] } }}
-                            className={`${bentoHover === 'dispatch' ? 'md:col-span-2' : 'md:col-span-1'} p-8 bg-zinc-900/80 border ${bentoHover === 'dispatch' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-3xl group/dispatch min-h-[240px] flex flex-col justify-center cursor-pointer shadow-2xl transition-all duration-500`}
+                            className={`${bentoHover === 'dispatch' ? 'md:col-span-2' : 'md:col-span-1'} p-8 bg-zinc-900/80 border ${bentoHover === 'dispatch' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-3xl group/dispatch min-h-[220px] flex flex-col justify-center cursor-pointer shadow-2xl transition-all duration-500`}
                         >
                             <div className="space-y-6">
                                 <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-white/70 font-[family-name:var(--font-bruno-ace)]">
