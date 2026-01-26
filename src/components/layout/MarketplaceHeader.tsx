@@ -72,39 +72,36 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     }, []);
 
     const isHome = pathname === '/' || pathname === '/store';
-    const isLight = mounted ? theme === 'light' : true;
 
-    // Performance: Memoize isTv to avoid recalculation on every render
-    const isTv = React.useMemo(() => {
-        if (!viewport) return false;
-        const { width, height } = viewport;
-        const dpr = typeof window !== 'undefined' ? window.devicePixelRatio : 1;
-        return (
-            width >= 2000 ||
-            (width === 960 && height === 540 && dpr >= 2) ||
-            (width === 1280 && height === 720 && dpr >= 2) ||
-            (width >= 1110 && width <= 1200 && height >= 600 && height <= 700)
-        );
-    }, [viewport]);
-    const showTextNav = true;
+    // For the home page (StoreTV), we follow the global theme
+    // We only use fallback if not mounted
+    const isLight = mounted ? theme === 'light' : true;
+    const isTv = Boolean(
+        viewport &&
+        (viewport.width >= 2000 ||
+            (viewport.width === 960 && viewport.height === 540) ||
+            (viewport.width === 1280 && viewport.height === 720) ||
+            (viewport.width >= 1110 && viewport.width <= 1200 && viewport.height >= 600 && viewport.height <= 700))
+    );
+    const showTextNav = false;
 
 
     // Quick rollback: set navPreset to 'wide'.
     const navPreset: 'tight' | 'wide' = 'tight';
     const navTextClass =
         navPreset === 'tight'
-            ? 'text-[10px] font-black uppercase tracking-[0.25em] font-[family-name:var(--font-bruno-ace)]'
-            : 'text-[11px] font-black uppercase tracking-[0.3em] font-[family-name:var(--font-bruno-ace)]';
-    const navGapClass = navPreset === 'tight' ? 'gap-10 mr-8' : 'gap-14 mr-6';
-    const rightGapClass = navPreset === 'tight' ? 'gap-3 lg:gap-8' : 'gap-4 lg:gap-10';
+            ? 'text-[12px] font-black uppercase tracking-[0.18em]'
+            : 'text-[11px] font-black uppercase tracking-[0.3em]';
+    const navGapClass = navPreset === 'tight' ? 'gap-8 mr-4' : 'gap-14 mr-6';
+    const rightGapClass = navPreset === 'tight' ? 'gap-3 lg:gap-6' : 'gap-4 lg:gap-10';
 
     const isHeaderTransparent = isHome && !scrolled;
 
     const navLinkClass = !isHeaderTransparent
-        ? `${navTextClass} text-white/50 hover:text-white transition-all duration-300`
-        : `${isLight ? 'text-slate-900/60 hover:text-black' : 'text-white/60 hover:text-white'} ${navTextClass} transition-all duration-300 drop-shadow-md`;
+        ? `${navTextClass} text-white/70 hover:text-white transition-all duration-300`
+        : `${isLight ? 'text-slate-900/90 hover:text-blue-600' : 'text-white/90 hover:text-blue-400'} ${navTextClass} transition-all duration-300 drop-shadow-md`;
     const activeNavClass =
-        'relative text-white after:absolute after:-bottom-2 after:left-0 after:right-0 after:h-[2px] after:bg-brand-primary after:rounded-full after:shadow-[0_0_10px_rgba(255,157,0,0.5)]';
+        'relative text-slate-900 dark:text-white after:absolute after:-bottom-2 after:left-0 after:right-0 after:h-[2px] after:bg-brand-primary after:rounded-full';
     const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
     const mobileMenuButtonClass = !isHeaderTransparent
@@ -134,10 +131,10 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
             visible={isVisible}
             transparentAtTop={isHome}
             variant="marketplace"
-            className={!isHeaderTransparent ? 'header-glass border-b border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.3)]' : ''}
+            className={!isHeaderTransparent ? 'header-glass' : ''}
             left={
                 <Link href="/" className="flex items-center group h-full">
-                    <div className="flex items-center justify-center transition-all duration-300 scale-110">
+                    <div className="flex items-center justify-center transition-all duration-300">
                         <Logo mode="dark" size={40} variant="full" />
                     </div>
                 </Link>
@@ -162,8 +159,8 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                                 href="#brands"
                                 onClick={e => {
                                     e.preventDefault();
-                                    const brandsSection = document.querySelector('.ebook-section:nth-child(2)');
-                                    if (brandsSection) brandsSection.scrollIntoView({ behavior: 'smooth' });
+                                    const footer = document.getElementById('footer-brands');
+                                    if (footer) footer.scrollIntoView({ behavior: 'smooth' });
                                 }}
                                 className={`${navLinkClass}`}
                             >
