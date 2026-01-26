@@ -304,13 +304,6 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                     <div className="flex flex-col gap-1">
                                         <span className="text-[10px] font-bold text-white uppercase tracking-widest opacity-80 font-inter">Active_Skus</span>
                                     </div>
-                                    <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                                        <motion.div
-                                            animate={{ x: ['-100%', '100%'], opacity: [0.3, 1, 0.3] }}
-                                            transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                                            className="h-full w-1/2 bg-brand-primary shadow-[0_0_15px_rgba(255,100,0,0.5)]"
-                                        />
-                                    </div>
                                 </div>
 
                                 {/* Right Column: Expanded Details */}
@@ -357,12 +350,6 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                     <div className="flex flex-col gap-1">
                                         <p className="text-[10px] font-bold text-white uppercase tracking-widest opacity-80 font-inter">Avg. Dealer Rebate</p>
                                     </div>
-                                    <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                                        <motion.div
-                                            initial={{ width: 0 }} animate={{ width: '85%' }} transition={{ delay: 2, duration: 1 }}
-                                            className="h-full bg-brand-primary shadow-[0_0_15px_rgba(255,100,0,0.5)]"
-                                        />
-                                    </div>
                                 </div>
 
                                 {/* Right Column: Expanded Details */}
@@ -405,16 +392,6 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                     </div>
                                     <div className="flex flex-col gap-1">
                                         <p className="text-[10px] font-bold text-white uppercase tracking-widest opacity-80 font-inter">Hyper-Local Speed</p>
-                                    </div>
-                                    <div className="flex gap-1">
-                                        {[...Array(6)].map((_, i) => (
-                                            <motion.div
-                                                key={i}
-                                                animate={{ backgroundColor: ['rgba(255,255,255,0.05)', 'rgba(255,100,0,0.4)', 'rgba(255,255,255,0.05)'] }}
-                                                transition={{ delay: 2 + (i * 0.1), duration: 1, repeat: Infinity }}
-                                                className="h-1 flex-1 bg-white/5 rounded-full"
-                                            />
-                                        ))}
                                     </div>
                                 </div>
 
