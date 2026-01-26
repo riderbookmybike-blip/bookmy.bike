@@ -225,7 +225,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                             initial={{ opacity: 0, letterSpacing: '1.2em' }}
                             animate={{ opacity: 1, letterSpacing: '0.4em' }}
                             transition={{ duration: 2, ease: [0.16, 1, 0.3, 1] }}
-                            className="text-xs md:text-sm font-black uppercase text-brand-primary mb-6 transition-all duration-300 drop-shadow-[0_0_20px_rgba(255,157,0,0.5)] font-[family-name:var(--font-bruno-ace)]"
+                            className="text-sm md:text-base font-black uppercase text-white mb-6 transition-all duration-300 drop-shadow-[0_0_20px_rgba(255,255,255,0.8)] font-[family-name:var(--font-bruno-ace)]"
                         >
                             The Highest Fidelity Marketplace
                         </motion.div>
