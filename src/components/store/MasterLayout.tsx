@@ -315,11 +315,15 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                     <>
                                         <div className="w-px h-24 bg-white/10 skew-x-[-20deg] hidden md:block" />
                                         <motion.div
-                                            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
-                                            className="flex-1 hidden md:block"
+                                            initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}
+                                            className="flex-1 hidden md:flex flex-col gap-2 p-4 bg-white/[0.03] border border-white/5 rounded-2xl backdrop-blur-sm"
                                         >
-                                            <p className="text-xs md:text-[13px] text-zinc-300 font-medium leading-relaxed max-w-[240px]">
-                                                Access India's largest curated collection of premium motorcycles, updated real-time across all regional hubs.
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-1 h-1 rounded-full bg-orange-500 animate-pulse" />
+                                                <span className="text-[9px] font-black text-orange-500/80 tracking-[0.2em] uppercase font-mono">Archive_01: Inventory_Core</span>
+                                            </div>
+                                            <p className="text-[12px] text-zinc-300 font-medium leading-[1.6] max-w-[240px]">
+                                                Access India's largest curated collection of premium motorcycles, updated real-time across regional hubs.
                                             </p>
                                         </motion.div>
                                     </>
@@ -361,10 +365,14 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                     <>
                                         <div className="w-px h-24 bg-white/10 skew-x-[-20deg] hidden md:block" />
                                         <motion.div
-                                            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
-                                            className="flex-1 hidden md:block"
+                                            initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}
+                                            className="flex-1 hidden md:flex flex-col gap-2 p-4 bg-white/[0.03] border border-white/5 rounded-2xl backdrop-blur-sm"
                                         >
-                                            <p className="text-xs md:text-[13px] text-zinc-300 font-medium leading-relaxed max-w-[240px]">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse" />
+                                                <span className="text-[9px] font-black text-green-500/80 tracking-[0.2em] uppercase font-mono">Archive_02: Finance_Calc</span>
+                                            </div>
+                                            <p className="text-[12px] text-zinc-300 font-medium leading-[1.6] max-w-[240px]">
                                                 Leverage our Lowest EMI Guarantee and exclusive dealer rebates to save an average of ₹12,000 per booking.
                                             </p>
                                         </motion.div>
@@ -408,10 +416,14 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                     <>
                                         <div className="w-px h-24 bg-white/10 skew-x-[-20deg] hidden md:block" />
                                         <motion.div
-                                            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
-                                            className="flex-1 hidden md:block"
+                                            initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}
+                                            className="flex-1 hidden md:flex flex-col gap-2 p-4 bg-white/[0.03] border border-white/5 rounded-2xl backdrop-blur-sm"
                                         >
-                                            <p className="text-xs md:text-[13px] text-zinc-300 font-medium leading-relaxed max-w-[240px]">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
+                                                <span className="text-[9px] font-black text-red-500/80 tracking-[0.2em] uppercase font-mono">Archive_03: Logistics_Sync</span>
+                                            </div>
+                                            <p className="text-[12px] text-zinc-300 font-medium leading-[1.6] max-w-[240px]">
                                                 Hyper-local processing at LHR_04 ensures your premium ride is dispatched and ready in record time.
                                             </p>
                                         </motion.div>
