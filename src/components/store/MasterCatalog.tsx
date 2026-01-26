@@ -791,8 +791,8 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-[#0b0d10] transition-colors duration-500 font-sans">
-            <main className="flex-1 mx-auto w-full max-w-[1440px] px-8 md:px-16 pt-16 md:pt-24 pb-10 md:pb-16">
-                <header className="sticky top-[calc(var(--header-h)+1.5rem)] z-40 -mx-8 px-8 md:-mx-16 md:px-16 py-6 backdrop-blur-xl bg-slate-50/80 dark:bg-[#0b0d10]/80 border-y border-slate-200 dark:border-white/5 mb-8 rounded-3xl transition-all duration-300">
+            <main className="flex-1 mx-auto w-full max-w-[1440px] px-8 md:px-16 pt-20 md:pt-32 pb-10 md:pb-16">
+                <header className="sticky top-[calc(var(--header-h)+2rem)] z-40 -mx-8 px-8 md:-mx-16 md:px-16 py-6 backdrop-blur-xl bg-slate-50/80 dark:bg-[#0b0d10]/80 border-y border-slate-200 dark:border-white/5 mb-8 rounded-3xl transition-all duration-300">
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         {/* Left: Category Chips */}
                         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar mask-gradient-right">
