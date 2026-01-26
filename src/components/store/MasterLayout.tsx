@@ -902,16 +902,7 @@ export function MasterLayout() {
 
                                     {/* Decorative Background for Active Card */}
                                     {activeStep === i && (
-                                        <>
-                                            <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-brand-primary/10 rounded-full blur-3xl pointer-events-none" />
-                                            {/* Watermark Icon */}
-                                            <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-1/4 text-brand-primary/5 pointer-events-none">
-                                                {React.cloneElement(
-                                                    item.icon as React.ReactElement<{ className?: string }>,
-                                                    { className: 'w-96 h-96' }
-                                                )}
-                                            </div>
-                                        </>
+                                        <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-brand-primary/10 rounded-full blur-3xl pointer-events-none" />
                                     )}
                                 </motion.div>
                             ))}
