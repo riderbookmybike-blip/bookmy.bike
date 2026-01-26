@@ -72,7 +72,12 @@ export const ProductCard = ({
     const { isFavorite, toggleFavorite } = useFavorites();
     const isSaved = isFavorite(v.id);
     const [selectedColorImage, setSelectedColorImage] = useState<string | null>(null);
-
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [ratingCount, setRatingCount] = useState(() => {
+        // Initialize with random count between 500-999 * 100
+        const randomFactor = Math.floor(Math.random() * (999 - 500 + 1) + 500);
+        return randomFactor * 100;
+    });
 
     const basePrice = v.price?.offerPrice || v.price?.onRoad || v.price?.exShowroom || 0;
 
@@ -254,14 +259,6 @@ export const ProductCard = ({
         );
     }
 
-    const [ratingCount, setRatingCount] = useState(0);
-
-    React.useEffect(() => {
-        // Initialize with random count between 500-999 * 100
-        const randomFactor = Math.floor(Math.random() * (999 - 500 + 1) + 500);
-        setRatingCount(randomFactor * 100);
-    }, []);
-
     const handleCardClick = () => {
         setRatingCount(prev => prev + 1);
     };
@@ -300,16 +297,14 @@ export const ProductCard = ({
                         </div>
                     )}
                     {/* Only showing one badge as requested, Priority: Best Seller > Discount */}
-                    {!v.rating || v.rating < 4.7 ? (
-                        v.price?.discount && (
-                            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 backdrop-blur-xl text-white rounded-xl shadow-lg shadow-emerald-500/20 border border-white/20">
-                                <Zap size={10} className="fill-white" />
-                                <span className="text-[9px] font-black uppercase tracking-[0.15em]">
-                                    SAVE ₹{v.price.discount.toLocaleString('en-IN')}
-                                </span>
-                            </div>
-                        )
-                    ) : null}
+                    {(!v.rating || v.rating < 4.7) && v.price?.discount && v.price.discount > 0 && (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 backdrop-blur-xl text-white rounded-xl shadow-lg shadow-emerald-500/20 border border-white/20">
+                            <Zap size={10} className="fill-white" />
+                            <span className="text-[9px] font-black uppercase tracking-[0.15em]">
+                                SAVE ₹{v.price.discount.toLocaleString('en-IN')}
+                            </span>
+                        </div>
+                    )}
                 </div>
 
                 <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
