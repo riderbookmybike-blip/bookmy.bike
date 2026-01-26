@@ -70,7 +70,10 @@ export function EliteCircle() {
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0b0d10] via-transparent to-black/60" />
             </div>
 
-            <div className="relative z-10 w-full max-w-[1440px] px-6 mx-auto h-full flex flex-col justify-center py-12">
+            <div
+                className="relative z-10 w-full max-w-[1440px] px-6 mx-auto flex flex-col justify-center items-center"
+                style={{ minHeight: 'calc(100vh - var(--header-h))' }}
+            >
                 <div className="grid grid-cols-12 gap-8 lg:gap-16 items-center">
                     {/* Left Column: Vertical Identity */}
                     <div className="col-span-12 lg:col-span-4 space-y-8 relative z-30">
