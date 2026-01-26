@@ -585,9 +585,8 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                 })}
                             </div>
 
-                            {/* Lighting and Shadow Hints */}
-                            <div className={`absolute inset-0 bg-gradient-to-r from-[#0b0d10] via-transparent to-[#0b0d10] pointer-events-none z-10 transition-opacity duration-700 ${hoveredBrand ? 'opacity-0' : 'opacity-100'}`} />
-                            <div className="absolute bottom-10 inset-x-0 h-20 bg-[radial-gradient(ellipse_at_center,rgba(255,b2k,0,0.1),transparent_70%)] blur-2xl pointer-events-none z-0" />
+                            {/* Lighting and Shadow Hints - Refined to remove boxy containers */}
+                            <div className="absolute bottom-[-10%] inset-x-0 h-40 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.03),transparent_70%)] blur-3xl pointer-events-none z-0" />
                         </div>
                     </div>
                 </div>
