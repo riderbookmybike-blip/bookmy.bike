@@ -141,17 +141,20 @@ export default function LoginSidebar({
 
     const detectLocation = () => {
         if ('geolocation' in navigator) {
-            navigator.geolocation.getCurrentPosition(async position => {
-                const { latitude, longitude } = position.coords;
-                const result = await getSmartPincode(latitude, longitude, process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY);
-                setLocation({
-                    pincode: result.pincode,
-                    latitude: result.latitude || latitude,
-                    longitude: result.longitude || longitude,
-                });
-            }, () => {
-                setLocation(prev => ({ ...prev, pincode: null }));
-            });
+            navigator.geolocation.getCurrentPosition(
+                async position => {
+                    const { latitude, longitude } = position.coords;
+                    const result = await getSmartPincode(latitude, longitude, process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY);
+                    setLocation({
+                        pincode: result.pincode,
+                        latitude: result.latitude || latitude,
+                        longitude: result.longitude || longitude,
+                    });
+                },
+                () => {
+                    setLocation(prev => ({ ...prev, pincode: null }));
+                }
+            );
         }
     };
 
@@ -356,9 +359,10 @@ export default function LoginSidebar({
             .eq('status', 'ACTIVE');
 
         // Session Set
-        const primaryMembership = (memberships && memberships.length > 0) ? memberships[0] : null;
+        const primaryMembership = memberships && memberships.length > 0 ? memberships[0] : null;
         const finalRole = detectedRole || primaryMembership?.role || 'BMB_USER';
-        const displayName = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'User';
+        const displayName =
+            user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
         localStorage.setItem('user_role', finalRole);
         localStorage.setItem('active_role', finalRole);
         localStorage.setItem('base_role', 'BMB_USER');
@@ -437,10 +441,14 @@ export default function LoginSidebar({
                         initial="hidden"
                         animate="visible"
                         exit="exit"
-                        className="relative w-full sm:w-[480px] h-full sm:h-[96vh] bg-white/95 dark:bg-[#0F172A]/95 backdrop-blur-3xl border border-white/20 shadow-2xl flex flex-col overflow-hidden sm:rounded-[2.5rem]"
+                        className="relative w-full sm:w-[480px] h-full sm:h-[96vh] bg-slate-950/90 backdrop-blur-3xl border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden sm:rounded-[2.5rem]"
                     >
-                        {/* Decorative Glows - Gold Only */}
-                        <div className="absolute top-[-20%] right-[-20%] w-[500px] h-[500px] bg-[#F4B000]/10 rounded-full blur-[100px] pointer-events-none" />
+                        {/* DECORATIVE PRISM GLOWS */}
+                        <div className="absolute top-[-10%] right-[-10%] w-[400px] h-[400px] bg-[#F4B000]/20 rounded-full blur-[100px] pointer-events-none" />
+                        <div className="absolute bottom-[-10%] left-[-10%] w-[300px] h-[300px] bg-indigo-600/20 rounded-full blur-[80px] pointer-events-none" />
+
+                        {/* Grainy Texture Over Glass */}
+                        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.08] mix-blend-overlay pointer-events-none" />
 
                         {/* Header */}
                         <div className="flex-none p-8 flex items-center justify-between z-10">
@@ -535,12 +543,20 @@ export default function LoginSidebar({
                                                 <input
                                                     type="text"
                                                     value={manualPincode}
-                                                    onChange={e => setManualPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                                    placeholder={location.pincode ? `Auto: ${location.pincode}` : 'Enter 6-digit pincode'}
+                                                    onChange={e =>
+                                                        setManualPincode(e.target.value.replace(/\D/g, '').slice(0, 6))
+                                                    }
+                                                    placeholder={
+                                                        location.pincode
+                                                            ? `Auto: ${location.pincode}`
+                                                            : 'Enter 6-digit pincode'
+                                                    }
                                                     className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl p-5 text-lg font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all"
                                                 />
                                                 <p className="text-[10px] text-slate-400">
-                                                    {location.pincode ? 'Location detected. You can edit if needed.' : 'Allow location or enter your pincode manually.'}
+                                                    {location.pincode
+                                                        ? 'Location detected. You can edit if needed.'
+                                                        : 'Allow location or enter your pincode manually.'}
                                                 </p>
                                             </div>
                                         )}
@@ -624,8 +640,7 @@ export default function LoginSidebar({
                                                         authMethod === 'EMAIL'
                                                             ? handleSendEmailOtp(identifier)
                                                             : handleSendPhoneOtp(identifier);
-                                                    }
-                                                    else if (step === 'OTP') handleLogin();
+                                                    } else if (step === 'OTP') handleLogin();
                                                 }}
                                                 disabled={loading || (step === 'OTP' && otp.length < 4)}
                                                 className="w-full py-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl text-xs font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-xl disabled:opacity-50"

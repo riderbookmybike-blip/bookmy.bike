@@ -30,14 +30,12 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const pathname = usePathname();
 
     useEffect(() => {
-        setMounted(true);
-        let lastScrollY = window.scrollY;
+        setTimeout(() => setMounted(true), 0);
 
         const handleScroll = () => {
             const currentScrollY = window.scrollY;
             setScrolled(currentScrollY > 100);
             setIsVisible(true);
-            lastScrollY = currentScrollY;
         };
 
         const handleShowHeader = () => setIsVisible(true);
@@ -50,16 +48,25 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
 
         const supabase = createClient();
         const syncAuth = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
             const fallbackName = typeof window !== 'undefined' ? localStorage.getItem('user_name') : null;
-            const name = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || fallbackName;
+            const name =
+                user?.user_metadata?.full_name ||
+                user?.user_metadata?.name ||
+                user?.email?.split('@')[0] ||
+                fallbackName;
             setUserName(name);
         };
 
         syncAuth();
 
         const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-            const name = session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || session?.user?.email?.split('@')[0];
+            const name =
+                session?.user?.user_metadata?.full_name ||
+                session?.user?.user_metadata?.name ||
+                session?.user?.email?.split('@')[0];
             if (name) setUserName(name);
         });
 
@@ -85,7 +92,6 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     );
     const showTextNav = false;
 
-
     // Quick rollback: set navPreset to 'wide'.
     const navPreset: 'tight' | 'wide' = 'tight';
     const navTextClass =
@@ -107,8 +113,8 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const mobileMenuButtonClass = !isHeaderTransparent
         ? 'text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/5'
         : isLight
-            ? 'text-slate-900 hover:bg-slate-900/5'
-            : 'text-white hover:bg-white/10';
+          ? 'text-slate-900 hover:bg-slate-900/5'
+          : 'text-white hover:bg-white/10';
 
     const handleSignOut = async () => {
         const supabase = createClient();
@@ -337,9 +343,13 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                             Zero
                         </Link>
                         <Link
-                            href="/members"
-                            onClick={() => setIsMobileMenuOpen(false)}
-                            className="text-xl font-black uppercase tracking-tighter text-blue-600"
+                            href="#elite-circle"
+                            onClick={e => {
+                                e.preventDefault();
+                                setIsMobileMenuOpen(false);
+                                document.getElementById('elite-circle')?.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                            className="text-xl font-black uppercase tracking-tighter text-[#F4B000]"
                         >
                             Elite Circle
                         </Link>
@@ -376,10 +386,10 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                                     </div>
                                     <button
                                         onClick={() => {
-                                            onLoginClick();
                                             setIsMobileMenuOpen(false);
+                                            onLoginClick();
                                         }}
-                                        className="w-full py-4 bg-brand-primary text-black rounded-xl text-sm font-black uppercase tracking-widest hover:bg-[#F4B000] transition-colors"
+                                        className="w-full py-4 bg-brand-primary text-black rounded-xl text-sm font-black uppercase tracking-widest hover:bg-[#F4B000] transition-colors flex items-center justify-center"
                                     >
                                         Login / Sign Up
                                     </button>
