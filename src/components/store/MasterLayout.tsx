@@ -63,6 +63,7 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
     // Categories Section Visual Hooks
     const [activeVibe, setActiveVibe] = useState<number | null>(0); // Default to 0, but user can clear it
     const [hasMounted, setHasMounted] = useState(false);
+    const [bentoHover, setBentoHover] = useState<'inventory' | 'savings' | 'dispatch' | null>('savings');
 
 
 
@@ -273,47 +274,60 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                         </div>
                     </div>
 
-                    {/* TELEMETRY BENTO: high-fidelity modules */}
-                    <div className="w-full max-w-[1440px] grid grid-cols-1 md:grid-cols-4 gap-4 px-8 md:px-16 pointer-events-auto mx-auto place-items-center md:place-items-stretch">
+                    {/* TELEMETRY BENTO: kinetic accordion grid */}
+                    <div className="w-full max-w-[1440px] grid grid-cols-1 md:grid-cols-4 gap-4 px-8 md:px-16 mx-auto place-items-stretch pointer-events-auto">
 
                         {/* block 1: inventory scanner */}
                         <motion.div
+                            layout
+                            onMouseEnter={() => setBentoHover('inventory')}
+                            onMouseLeave={() => setBentoHover('savings')}
                             initial={{ opacity: 0, x: -30 }}
                             animate={{ opacity: 1, x: 0 }}
-                            whileHover={{ scale: 1.05, y: -10, filter: 'brightness(1.5)' }}
-                            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                            className="col-span-1 md:col-span-2 relative p-8 bg-zinc-900/80 border border-white/20 rounded-3xl backdrop-blur-3xl overflow-hidden group/bento min-h-[220px] flex flex-col justify-center cursor-pointer shadow-2xl hover:border-brand-primary hover:shadow-brand-primary/20 transition-all duration-300"
+                            whileHover={{ scale: 1.02, filter: 'brightness(1.2)' }}
+                            transition={{ layout: { duration: 0.6, ease: [0.23, 1, 0.32, 1] } }}
+                            className={`${bentoHover === 'inventory' ? 'md:col-span-2' : 'md:col-span-1'} relative p-8 bg-zinc-900/80 border ${bentoHover === 'inventory' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-3xl overflow-hidden group/bento min-h-[240px] flex flex-col justify-center cursor-pointer shadow-2xl transition-all duration-500`}
                         >
                             <div className="absolute top-0 right-0 p-6 opacity-20 group-hover/bento:opacity-100 transition-opacity">
                                 <Zap size={24} className="text-brand-primary" />
                             </div>
                             <div className="space-y-4 relative z-10 mr-auto">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-1.5 h-6 bg-brand-primary rounded-full group-hover/bento:h-10 transition-all duration-500" />
+                                    <div className={`w-1.5 ${bentoHover === 'inventory' ? 'h-10' : 'h-6'} bg-brand-primary rounded-full transition-all duration-500`} />
                                     <div className="flex flex-col">
-                                        <span className="text-[10px] font-black text-white tracking-[0.3em] uppercase font-[family-name:var(--font-bruno-ace)]">Inventory_Live</span>
+                                        <span className="text-[10px] font-black text-white tracking-[0.3em] uppercase font-[family-name:var(--font-bruno-ace)] group-hover/bento:text-brand-primary transition-colors">Inventory_Live</span>
                                         <span className="text-sm font-bold text-white/50 uppercase">Worldwide Access</span>
                                     </div>
                                 </div>
-                                <div className="flex items-baseline gap-4">
-                                    <span className="text-7xl font-black text-white italic tracking-tighter leading-none">380+</span>
+                                <div className="flex items-baseline gap-4 whitespace-nowrap">
+                                    <span className="text-6xl md:text-7xl font-black text-white italic tracking-tighter leading-none">380+</span>
                                     <div className="h-10 w-px bg-white/10" />
                                     <span className="text-xl font-bold text-white uppercase tracking-widest drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">Active_Skus</span>
                                 </div>
+                                {bentoHover === 'inventory' && (
+                                    <motion.p
+                                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                                        className="text-[11px] text-zinc-400 font-medium leading-relaxed max-w-sm mt-2"
+                                    >
+                                        Access India's largest curated collection of premium motorcycles, updated real-time across all regional hubs.
+                                    </motion.p>
+                                )}
                             </div>
-                            {/* high-tech visual ornament (radar-like) */}
-                            <div className="absolute -bottom-12 -right-12 w-48 h-48 border border-brand-primary/10 rounded-full group-hover/bento:border-brand-primary/30 transition-colors pointer-events-none">
+                            {/* high-tech visual ornament */}
+                            <div className="absolute -bottom-12 -right-12 w-48 h-48 border border-brand-primary/10 rounded-full pointer-events-none">
                                 <motion.div animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: "linear" }} className="w-full h-full border-t-2 border-brand-primary/40 rounded-full shadow-[0_0_30px_rgba(255,100,0,0.1)]" />
                             </div>
                         </motion.div>
 
-                        {/* block 2: savings matrix */}
+                        {/* block 2: savings matrix (Default Expanded) */}
                         <motion.div
+                            layout
+                            onMouseEnter={() => setBentoHover('savings')}
                             initial={{ opacity: 0, y: 30 }}
                             animate={{ opacity: 1, y: 0 }}
-                            whileHover={{ scale: 1.05, y: -10, filter: 'brightness(1.5)' }}
-                            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                            className="col-span-1 p-8 bg-zinc-900/80 border border-white/20 rounded-3xl backdrop-blur-3xl group/savings min-h-[220px] flex flex-col justify-center cursor-pointer shadow-2xl hover:border-brand-primary hover:shadow-brand-primary/20 transition-all duration-300"
+                            whileHover={{ scale: 1.02, filter: 'brightness(1.2)' }}
+                            transition={{ layout: { duration: 0.6, ease: [0.23, 1, 0.32, 1] } }}
+                            className={`${bentoHover === 'savings' || bentoHover === null ? 'md:col-span-2' : 'md:col-span-1'} p-8 bg-zinc-900/80 border ${bentoHover === 'savings' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-3xl group/savings min-h-[240px] flex flex-col justify-center cursor-pointer shadow-2xl transition-all duration-500`}
                         >
                             <div className="space-y-6">
                                 <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-white/70 font-[family-name:var(--font-bruno-ace)]">
@@ -321,9 +335,17 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                     <motion.div animate={{ opacity: [1, 0, 1] }} transition={{ duration: 0.5, repeat: Infinity }} className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-5xl font-black text-white italic tracking-tighter leading-none">{MARKET_METRICS.avgSavings}</p>
-                                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest pl-1 mt-2">Avg. Dealer Rebate</p>
+                                    <p className="text-6xl md:text-7xl font-black text-white italic tracking-tighter leading-none">{MARKET_METRICS.avgSavings}</p>
+                                    <p className="text-[10px] font-bold text-white uppercase tracking-widest pl-1 mt-2">Avg. Dealer Rebate</p>
                                 </div>
+                                {bentoHover === 'savings' && (
+                                    <motion.p
+                                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                                        className="text-[11px] text-zinc-400 font-medium leading-relaxed max-w-sm"
+                                    >
+                                        Leverage our Lowest EMI Guarantee and exclusive dealer rebates to save an average of ₹12,000 per booking.
+                                    </motion.p>
+                                )}
                                 <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                                     <motion.div
                                         initial={{ width: 0 }} animate={{ width: '85%' }} transition={{ delay: 2, duration: 1 }}
@@ -335,11 +357,14 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
 
                         {/* block 3: dispatch telemetry */}
                         <motion.div
+                            layout
+                            onMouseEnter={() => setBentoHover('dispatch')}
+                            onMouseLeave={() => setBentoHover('savings')}
                             initial={{ opacity: 0, x: 30 }}
                             animate={{ opacity: 1, x: 0 }}
-                            whileHover={{ scale: 1.05, y: -10, filter: 'brightness(1.5)' }}
-                            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                            className="col-span-1 p-8 bg-zinc-900/80 border border-white/20 rounded-3xl backdrop-blur-3xl group/dispatch min-h-[220px] flex flex-col justify-center cursor-pointer shadow-2xl hover:border-brand-primary hover:shadow-brand-primary/20 transition-all duration-300"
+                            whileHover={{ scale: 1.02, filter: 'brightness(1.2)' }}
+                            transition={{ layout: { duration: 0.6, ease: [0.23, 1, 0.32, 1] } }}
+                            className={`${bentoHover === 'dispatch' ? 'md:col-span-2' : 'md:col-span-1'} p-8 bg-zinc-900/80 border ${bentoHover === 'dispatch' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-3xl group/dispatch min-h-[240px] flex flex-col justify-center cursor-pointer shadow-2xl transition-all duration-500`}
                         >
                             <div className="space-y-6">
                                 <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-white/70 font-[family-name:var(--font-bruno-ace)]">
@@ -347,9 +372,17 @@ export function MasterLayout({ variant: _variant = 'default' }: StoreDesktopProp
                                     <span className="text-brand-primary drop-shadow-[0_0_5px_rgba(255,100,0,0.5)]">LHR_04</span>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-5xl font-black text-white italic tracking-tighter leading-none">{MARKET_METRICS.deliveryTime}</p>
-                                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest pl-1 mt-2">Hyper-Local Speed</p>
+                                    <p className="text-6xl md:text-7xl font-black text-white italic tracking-tighter leading-none">{MARKET_METRICS.deliveryTime}</p>
+                                    <p className="text-[10px] font-bold text-white uppercase tracking-widest pl-1 mt-2">Hyper-Local Speed</p>
                                 </div>
+                                {bentoHover === 'dispatch' && (
+                                    <motion.p
+                                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                                        className="text-[11px] text-zinc-400 font-medium leading-relaxed max-w-sm"
+                                    >
+                                        Hyper-local processing at LHR_04 ensures your premium ride is dispatched and ready in record time.
+                                    </motion.p>
+                                )}
                                 <div className="flex gap-1">
                                     {[...Array(6)].map((_, i) => (
                                         <motion.div
