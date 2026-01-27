@@ -71,7 +71,11 @@ export const ProductCard = ({
 }) => {
     const { isFavorite, toggleFavorite } = useFavorites();
     const isSaved = isFavorite(v.id);
-    const [selectedColorImage, setSelectedColorImage] = useState<string | null>(null);
+    const [selectedColorImage, setSelectedColorImage] = useState<string | null>(v.imageUrl || null);
+    const [selectedColorZoom, setSelectedColorZoom] = useState<number | null>(v.zoomFactor || null);
+    const [selectedColorFlip, setSelectedColorFlip] = useState<boolean>(v.isFlipped || false);
+    const [selectedColorOffsetX, setSelectedColorOffsetX] = useState<number>(v.offsetX || 0);
+    const [selectedColorOffsetY, setSelectedColorOffsetY] = useState<number>(v.offsetY || 0);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [ratingCount, setRatingCount] = useState(() => {
         // Initialize with random count between 500-999 * 100
@@ -249,7 +253,7 @@ export const ProductCard = ({
                                     }).url}
                                     className="px-10 py-4 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(244,176,0,0.3)] hover:shadow-[0_0_30px_rgba(244,176,0,0.5)] hover:-translate-y-1 transition-all"
                                 >
-                                    GET QUOTE
+                                    Know More
                                 </Link>
                             )}
                         </div>
@@ -304,7 +308,7 @@ export const ProductCard = ({
                             });
                             toast.success(isSaved ? 'Removed from Wishlist' : 'Added to Wishlist');
                         }}
-                        className={`w-8 h-8 backdrop-blur-xl border border-slate-200 dark:border-white/20 rounded-full flex items-center justify-center transition-all shadow-sm ${isSaved ? 'bg-rose-50 dark:bg-rose-500/20 border-rose-200 text-rose-500 opacity-100' : 'bg-white/60 dark:bg-black/20 text-slate-400 hover:text-rose-500 opacity-60 hover:opacity-100 hover:scale-110'}`}
+                        className={`w-8 h-8 backdrop-blur-xl border border-slate-200 dark:border-white/20 rounded-full flex items-center justify-center transition-all shadow-sm bg-white/60 dark:bg-black/10 ${isSaved ? 'text-rose-500 opacity-100' : 'text-slate-400 hover:text-rose-500 opacity-60 hover:opacity-100 hover:scale-110'}`}
                         title={isSaved ? 'Saved to Wishlist' : 'Save to Wishlist'}
                     >
                         <motion.div
@@ -319,9 +323,15 @@ export const ProductCard = ({
                 </div>
 
                 <motion.img
-                    initial={{ scale: 0.95, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    whileHover={{ scale: 1.05 }}
+                    initial={{ scale: 1.05, opacity: 0 }}
+                    animate={{
+                        scale: selectedColorZoom !== null ? selectedColorZoom : (v.zoomFactor || 1.0),
+                        scaleX: (selectedColorFlip !== undefined ? selectedColorFlip : v.isFlipped) ? -1 : 1,
+                        x: selectedColorOffsetX !== undefined ? selectedColorOffsetX : (v.offsetX || 0),
+                        y: selectedColorOffsetY !== undefined ? selectedColorOffsetY : (v.offsetY || 0),
+                        opacity: 1
+                    }}
+                    whileHover={{ scale: (selectedColorZoom || v.zoomFactor || 1.0) + 0.05 }}
                     transition={{ duration: 0.5, ease: "easeOut" }}
                     src={
                         selectedColorImage ||
@@ -356,7 +366,13 @@ export const ProductCard = ({
                                         key={i}
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            if (c.imageUrl) setSelectedColorImage(c.imageUrl);
+                                            if (c.imageUrl) {
+                                                setSelectedColorImage(c.imageUrl);
+                                                setSelectedColorZoom(c.zoomFactor || null);
+                                                setSelectedColorFlip(c.isFlipped || false);
+                                                setSelectedColorOffsetX(c.offsetX || 0);
+                                                setSelectedColorOffsetY(c.offsetY || 0);
+                                            }
                                         }}
                                         className="w-5 h-5 rounded-full border border-white dark:border-slate-900 shadow-sm relative cursor-pointer hover:scale-125 transition-transform"
                                         style={{ background: c.hexCode }}
@@ -382,36 +398,42 @@ export const ProductCard = ({
                 <div className="mt-1.5 md:mt-4 pt-1.5 md:pt-4 border-t border-slate-100 dark:border-white/5 grid grid-cols-2 gap-4">
                     <div className="flex flex-col items-start">
                         <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-0.5 italic">
-                            On-Road {v.price?.pricingSource ? `(${v.price.pricingSource})` : ''}
+                            On-Road
                         </p>
                         <div className="flex items-baseline gap-1.5">
                             <span className="text-xl md:text-2xl font-black italic text-slate-900 dark:text-white px-1 pb-1">
                                 ₹{basePrice.toLocaleString('en-IN')}
                             </span>
                         </div>
-                        {v.price?.isEstimate && (
-                            <p className="text-[9px] font-bold text-amber-500 uppercase tracking-widest mb-1 italic">
-                                *Estimated Price
+                        {v.price?.pricingSource && (
+                            <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest italic">
+                                Price for {v.price.pricingSource}
                             </p>
                         )}
-                        {safeServiceability.location ? (
-                            <div className={`flex items-center gap-1 mt-1 ${isUnserviceable ? 'text-rose-500' : 'text-slate-400'}`}>
-                                <MapPin size={8} className={isUnserviceable ? 'text-rose-500' : 'text-brand-primary'} />
-                                <p className="text-[9px] font-bold uppercase tracking-widest truncate max-w-[100px] italic">
-                                    {isUnserviceable ? `${safeServiceability.location} - Not Serviceable` : safeServiceability.location}
-                                </p>
-                            </div>
-                        ) : safeServiceability.status === 'loading' ? (
-                            <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest animate-pulse mt-1">
-                                Detecting Location...
+                        {v.price?.isEstimate && (
+                            <p className="text-[9px] font-bold text-amber-500 uppercase tracking-widest italic">
+                                *Estimated
                             </p>
-                        ) : null}
+                        )}
                     </div>
-                    <div className="flex flex-col items-end">
-                        <p className="text-[10px] font-black text-green-600 dark:text-green-500 uppercase tracking-widest mb-0.5 italic">Lowest EMI</p>
+                    <div className="flex flex-col items-end group/emi relative">
+                        <div className="flex items-center gap-1 mb-0.5">
+                            <p className="text-[10px] font-black text-green-600 dark:text-green-500 uppercase tracking-widest italic">Lowest EMI</p>
+                            <CircleHelp size={12} className="text-slate-400 group-hover/emi:text-green-500 transition-colors cursor-help" />
+                        </div>
                         <div className="flex items-baseline gap-1">
                             <span className="text-xl md:text-2xl font-black text-green-600 dark:text-green-500 italic">₹{emiValue.toLocaleString('en-IN')}</span>
                             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">/mo</span>
+                        </div>
+                        {/* EMI Tooltip */}
+                        <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-slate-900 dark:bg-slate-800 text-white text-[10px] rounded-xl shadow-xl opacity-0 invisible group-hover/emi:opacity-100 group-hover/emi:visible transition-all duration-200 z-50 pointer-events-none">
+                            <p className="leading-relaxed">
+                                This EMI is calculated on <span className="font-bold text-green-400">₹{downpayment.toLocaleString('en-IN')}</span> downpayment at <span className="font-bold text-green-400">{tenure} months</span>.
+                            </p>
+                            <p className="mt-1.5 text-slate-300">
+                                Adjust your downpayment & tenure or set your budget from the <span className="font-bold text-brand-primary">Filters</span> above.
+                            </p>
+                            <div className="absolute bottom-0 right-4 translate-y-1/2 rotate-45 w-2 h-2 bg-slate-900 dark:bg-slate-800"></div>
                         </div>
                     </div>
                 </div>
@@ -439,7 +461,7 @@ export const ProductCard = ({
                             }).url}
                             className="group/btn relative w-full h-10 md:h-11 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 transition-all"
                         >
-                            Get Best Quote
+                            Know More
                             <ArrowRight size={12} className="opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all" />
                         </Link>
                     )}
@@ -770,8 +792,8 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-[#0b0d10] transition-colors duration-500 font-sans">
-            <main className="flex-1 mx-auto w-full max-w-[1440px] px-8 md:px-16 pt-12 md:pt-16 pb-10 md:pb-16">
-                <header className="sticky top-[var(--header-h)] z-40 -mx-8 px-8 md:-mx-16 md:px-16 py-8 backdrop-blur-xl bg-slate-50/80 dark:bg-[#0b0d10]/80 border-b border-slate-200 dark:border-white/5 mb-8 transition-all duration-300">
+            <main className="flex-1 mx-auto w-full max-w-[1440px] px-6 pt-12 md:pt-16 pb-10 md:pb-16">
+                <header className="sticky top-[var(--header-h)] z-40 -mx-6 px-6 py-5 backdrop-blur-xl bg-slate-50/80 dark:bg-[#0b0d10]/80 border-b border-slate-200 dark:border-white/5 mb-12 transition-all duration-300">
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         {/* Left: Category Chips */}
                         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar mask-gradient-right">
@@ -820,23 +842,25 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
 
                             <button
                                 onClick={() => setIsFilterOpen(true)}
-                                className="flex items-center gap-2 px-5 py-2 bg-slate-900 dark:bg-white text-white dark:text-black rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-md"
+                                className={`relative flex items-center gap-2 px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all ${activeFilterCount > 0
+                                    ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-md'
+                                    : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/10 hover:text-slate-900 dark:hover:text-white'
+                                    }`}
                             >
                                 <SlidersHorizontal size={12} strokeWidth={2.5} />
                                 <span className="hidden sm:inline">Filters</span>
                                 {activeFilterCount > 0 && (
-                                    <span className="flex items-center justify-center bg-[#F4B000] text-black w-4 h-4 rounded-full text-[8px] ml-1">
+                                    <span className="flex items-center justify-center bg-[#F4B000] text-black w-4 h-4 rounded-full text-[8px]">
                                         {activeFilterCount}
                                     </span>
                                 )}
+                                {/* Results Count Badge - Only show when filters applied */}
+                                {activeFilterCount > 0 && (
+                                    <span className="absolute -top-2 -right-2 flex items-center justify-center bg-rose-500 text-white min-w-5 h-5 px-1.5 rounded-full text-[9px] font-black shadow-lg">
+                                        {results.length}
+                                    </span>
+                                )}
                             </button>
-
-                            <div className="text-right hidden sm:block">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Showing</p>
-                                <p className="text-lg font-black text-slate-900 dark:text-white italic leading-none">
-                                    {results.length} <span className="text-[10px] not-italic text-slate-400 font-bold">Vehicles</span>
-                                </p>
-                            </div>
                         </div>
                     </div>
                 </header>

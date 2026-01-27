@@ -47,6 +47,7 @@ export default function UnifiedCatalogPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [stats, setStats] = useState({ products: 0, families: 0, skus: 0, drafts: 0 });
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('ALL');
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
     useEffect(() => {
@@ -78,7 +79,7 @@ export default function UnifiedCatalogPage() {
             .select(`
                 *,
                 brand:cat_brands(name, logo_svg),
-                template:cat_templates(name, hierarchy_config),
+                template:cat_templates(name, hierarchy_config, category),
                 colors:cat_items!parent_id(id, name, type, specs, position),
                 variants:cat_items!parent_id(
                     id, name, type, position,
@@ -162,6 +163,7 @@ export default function UnifiedCatalogPage() {
                         variant,
                         sku,
                         brandName,
+                        templateCategory: (family as any).template?.category || 'VEHICLE',
                         templateName: (family as any).template?.name || '',
                         familyName,
                         familyPosition: (family as any).position || 999,
@@ -193,6 +195,10 @@ export default function UnifiedCatalogPage() {
                 item.fullSkuName.toLowerCase().includes(lowerTerm) ||
                 item.skuSlug.toLowerCase().includes(lowerTerm)
             );
+        }
+
+        if (selectedCategory !== 'ALL') {
+            skus = skus.filter(item => item.templateCategory === selectedCategory);
         }
 
         // Apply Sorting
@@ -248,9 +254,7 @@ export default function UnifiedCatalogPage() {
         }
 
         return skus;
-
-        return skus;
-    }, [items, searchTerm, sortConfig]);
+    }, [items, searchTerm, sortConfig, selectedCategory]);
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-8 lg:p-12">
@@ -333,7 +337,30 @@ export default function UnifiedCatalogPage() {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-                        <div className="flex gap-3">
+                        <div className="flex items-center gap-6">
+                            <div className="flex items-center p-1 bg-slate-100 dark:bg-white/5 rounded-2xl gap-1">
+                                {[
+                                    { id: 'ALL', label: 'All', icon: Database },
+                                    { id: 'VEHICLE', label: 'Vehicles', icon: Zap },
+                                    { id: 'ACCESSORY', label: 'Accessories', icon: Plus },
+                                    { id: 'SERVICE', label: 'Services', icon: Search }
+                                ].map((cat) => (
+                                    <button
+                                        key={cat.id}
+                                        onClick={() => setSelectedCategory(cat.id)}
+                                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${selectedCategory === cat.id
+                                            ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm'
+                                            : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                                            }`}
+                                    >
+                                        <cat.icon size={12} />
+                                        {cat.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="h-6 w-[1px] bg-slate-200 dark:bg-white/10" />
+
                             <button className="p-4 rounded-xl bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-emerald-600 transition-colors">
                                 <Filter size={20} />
                             </button>
