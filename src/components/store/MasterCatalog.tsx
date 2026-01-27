@@ -91,6 +91,11 @@ export const ProductCard = ({
     const marketAdjustedPrice = bestOffer ? (v.price?.onRoad || 0) + bestOffer.price : (v.price?.offerPrice || v.price?.onRoad || v.price?.exShowroom || 0);
     const basePrice = marketAdjustedPrice;
 
+    // Savings calculation
+    const onRoad = v.price?.onRoad || 0;
+    const offerPrice = v.price?.offerPrice || basePrice;
+    const savings = onRoad - offerPrice;
+
     // Continuous EMI Flip Logic
     const TENURE_OPTIONS = [12, 24, 36, 48, 60];
     const EMI_FACTORS: Record<number, number> = { 12: 0.091, 24: 0.049, 36: 0.035, 48: 0.028, 60: 0.024 };
@@ -200,8 +205,12 @@ export const ProductCard = ({
                             <p className="text-sm font-black text-slate-900 dark:text-white italic">{v.specifications?.dimensions?.kerbWeight || v.specifications?.dimensions?.curbWeight || '-'}</p>
                         </div>
                         <div className="space-y-1">
-                            <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-emerald-500/80">ARAI Mileage</p>
-                            <p className="text-sm font-black text-slate-900 dark:text-white">{(v.specifications as any)?.mileage || (v.specifications as any)?.arai || '-'}</p>
+                            <p className={`text-[8px] font-black uppercase tracking-widest ${savings >= 0 ? 'text-emerald-500/80' : 'text-rose-500/80'}`}>
+                                {savings >= 0 ? 'Total Savings' : 'Price Surge'}
+                            </p>
+                            <p className={`text-sm font-black ${savings >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                {savings !== 0 ? `₹${Math.abs(savings).toLocaleString('en-IN')}` : 'No Change'}
+                            </p>
                         </div>
                     </div>
 
@@ -219,7 +228,7 @@ export const ProductCard = ({
                                         {bestOffer ? (
                                             <div className="flex flex-col items-start leading-none">
                                                 <span className="text-[10px] font-bold text-green-600 dark:text-green-500 uppercase tracking-widest">
-                                                    Lowest in {serviceability?.location?.split(',')[0]}
+                                                    Lowest in {v.price?.pricingSource || serviceability?.location?.split(',')[0]}
                                                 </span>
                                                 <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                                                     by {bestOffer.dealer}
@@ -227,10 +236,15 @@ export const ProductCard = ({
                                             </div>
                                         ) : (
                                             v.price?.offerPrice && v.price?.onRoad && (
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex flex-col">
                                                     <span className="text-[10px] font-bold text-slate-400 line-through">
                                                         ₹{v.price.onRoad.toLocaleString('en-IN')}
                                                     </span>
+                                                    {v.price.pricingSource && (
+                                                        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-0.5">
+                                                            Price for {v.price.pricingSource}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             )
                                         )}
@@ -296,17 +310,17 @@ export const ProductCard = ({
                 <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-white/10 dark:to-black/30 z-0" />
 
                 <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
-                    {/* Mileage Badge (New) */}
-                    {((v.specifications as any)?.mileage || (v.specifications as any)?.arai) && (
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-black/80 backdrop-blur-xl text-slate-900 dark:text-white rounded-xl shadow-sm border border-black/5 group/mileage transition-all hover:scale-105">
+                    {/* Savings/Surge Badge */}
+                    {savings !== 0 && (
+                        <div className={`flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-black/80 backdrop-blur-xl rounded-xl shadow-sm border border-black/5 transition-all hover:scale-105 ${savings > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                             <motion.div
                                 animate={{ scale: [1, 1.2, 1] }}
                                 transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                             >
-                                <Zap size={10} className="fill-brand-primary text-brand-primary" />
+                                <Zap size={10} className={`fill-current text-current`} />
                             </motion.div>
                             <span className="text-[10px] font-black uppercase tracking-wider">
-                                {((v.specifications as any)?.mileage || (v.specifications as any)?.arai)} km/l
+                                {savings > 0 ? 'Save' : 'Surge'} ₹{Math.abs(savings).toLocaleString('en-IN')}
                             </span>
                         </div>
                     )}
@@ -423,7 +437,7 @@ export const ProductCard = ({
                             </span>
                         </div>
                         {v.price?.pricingSource && (
-                            <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest italic">
+                            <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest italic mt-1 bg-slate-100 dark:bg-white/5 px-1.5 py-0.5 rounded-md inline-block w-fit">
                                 Price for {v.price.pricingSource}
                             </p>
                         )}

@@ -71,6 +71,7 @@ export function useCatalog() {
     const [error, setError] = useState<string | null>(null);
     const [skuCount, setSkuCount] = useState<number>(0);
     const [stateCode, setStateCode] = useState('MH');
+    const [userDistrict, setUserDistrict] = useState<string | null>(null);
     const [locationLabel, setLocationLabel] = useState('Mumbai, MH');
 
     useEffect(() => {
@@ -83,6 +84,7 @@ export function useCatalog() {
 
                 // prefer stateCode
                 let code = data.stateCode;
+                const dist = data.district; // Capture district
 
                 // Fallback map if strict stateCode missing
                 if (!code && data.state) {
@@ -102,6 +104,7 @@ export function useCatalog() {
 
                 if (code) {
                     setStateCode(code);
+                    if (dist) setUserDistrict(dist);
                     // Construct Label: "District, Code" e.g. "Pune, MH"
                     const talukaPart = data.district || data.taluka || '';
                     const label = talukaPart ? `${talukaPart}, ${code}` : code;
@@ -115,7 +118,7 @@ export function useCatalog() {
         resolveLocation();
         window.addEventListener('locationChanged', resolveLocation);
         return () => window.removeEventListener('locationChanged', resolveLocation);
-    }, []);
+    }, [stateCode, userDistrict]);
 
     useEffect(() => {
         const fetchItems = async () => {
@@ -201,7 +204,7 @@ export function useCatalog() {
                         data as any[],
                         ruleData || [],
                         insuranceRuleData || [],
-                        { stateCode, userLat, userLng }
+                        { stateCode, userLat, userLng, userDistrict }
                     );
 
                     setItems(mappedItems);

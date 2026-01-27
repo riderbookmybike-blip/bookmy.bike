@@ -13,6 +13,7 @@ export async function fetchCatalogServerSide(): Promise<ProductVariant[]> {
     let stateCode = 'MH'; // Default
     let userLat: number | null = null;
     let userLng: number | null = null;
+    let userDistrict: string | null = null;
 
     if (locationCookie) {
         try {
@@ -36,6 +37,10 @@ export async function fetchCatalogServerSide(): Promise<ProductVariant[]> {
             if (data.lat && data.lng) {
                 userLat = data.lat;
                 userLng = data.lng;
+            }
+            if (data.district) {
+                // Ensure district is clean string
+                userDistrict = data.district;
             }
         } catch (e) {
             console.error('Error parsing location cookie:', e);
@@ -108,7 +113,7 @@ export async function fetchCatalogServerSide(): Promise<ProductVariant[]> {
             data as any[],
             ruleData || [],
             insuranceRuleData || [],
-            { stateCode, userLat, userLng }
+            { stateCode, userLat, userLng, userDistrict }
         );
     }
 
