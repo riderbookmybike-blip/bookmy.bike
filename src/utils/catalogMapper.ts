@@ -186,11 +186,16 @@ export function mapCatalogItems(
                         // Calculate On-Road for both Reference and Active
                         const engineCc = family.specs?.engine_cc || 110;
 
-                        const refBase = referencePriceObj?.ex_showroom_price || variantItem.price_base || family.price_base || 0;
-                        const refOnRoad = calculateOnRoad(Number(refBase), engineCc, effectiveRule, insuranceRule).onRoadTotal;
-
+                        // Standard Base (Ex-Showroom)
                         const activeBase = activePriceObj?.ex_showroom_price || variantItem.price_base || family.price_base || 0;
-                        const activeOnRoad = calculateOnRoad(Number(activeBase), engineCc, effectiveRule, insuranceRule).onRoadTotal;
+                        const discountAmount = Number(activePriceObj?.offer_amount || 0);
+
+                        // Calculate standard on-road
+                        const standardBreakdown = calculateOnRoad(Number(activeBase), engineCc, effectiveRule, insuranceRule);
+                        const refOnRoad = standardBreakdown.onRoadTotal;
+
+                        // Calculate active on-road (with discount)
+                        const activeOnRoad = refOnRoad - discountAmount;
 
                         if (activePriceObj) {
                             const stateName = STATE_NAMES[activePriceObj.state_code] || activePriceObj.state_code;
@@ -205,16 +210,17 @@ export function mapCatalogItems(
                             exShowroom: activeBase,
                             onRoad: Math.round(refOnRoad),
                             offerPrice: Math.round(activeOnRoad),
-                            discount: Math.max(0, Math.round(refOnRoad - activeOnRoad)),
+                            discount: Math.round(discountAmount),
                             pricingSource,
                             isEstimate
                         };
                     }
 
+                    const fallbackPrice = (variantItem as any).price_base || family.price_base || 0;
                     return {
-                        exShowroom: (variantItem as any).price_base || family.price_base || 0,
-                        onRoad: (variantItem as any).price_base || family.price_base || 0,
-                        offerPrice: (variantItem as any).price_base || family.price_base || 0,
+                        exShowroom: fallbackPrice,
+                        onRoad: fallbackPrice,
+                        offerPrice: fallbackPrice,
                         discount: 0,
                         pricingSource: "",
                         isEstimate: false
