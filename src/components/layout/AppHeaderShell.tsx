@@ -50,7 +50,7 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
         <>
             {/* Top trigger zone for mouse interaction when header is hidden */}
             <div
-                className="fixed top-0 left-0 right-0 h-4 z-[60] pointer-events-auto"
+                className="fixed top-0 left-0 right-0 h-4 z-[110] pointer-events-auto"
                 onMouseEnter={() =>
                     visible === false &&
                     typeof window !== 'undefined' &&
@@ -58,7 +58,7 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
                 }
             />
             <header
-                className={`fixed top-0 left-0 right-0 z-50 w-full flex items-center transition-all duration-500 header ${bgClass} ${className}`}
+                className={`fixed top-0 left-0 right-0 z-[100] w-full flex items-center transition-all duration-500 header ${bgClass} ${className}`}
                 style={{ height: 'var(--header-h)' }}
                 onMouseEnter={() =>
                     typeof window !== 'undefined' && window.dispatchEvent(new CustomEvent('showHeader'))

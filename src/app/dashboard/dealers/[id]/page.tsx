@@ -21,7 +21,6 @@ import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { ServiceAreaManager } from '@/components/dashboard/dealers/ServiceAreaManager';
-import { ServiceAreaManager } from '@/components/dashboard/dealers/ServiceAreaManager';
 import { DealerPricelist } from '@/components/dashboard/dealers/DealerPricelist';
 
 export default function DealerProfilePage({ params }: { params: Promise<{ id: string }> }) {

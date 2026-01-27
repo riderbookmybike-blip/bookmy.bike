@@ -54,6 +54,7 @@ export default function LoginSidebar({
     const [manualPincode, setManualPincode] = useState('');
     const [showSignupPrompt, setShowSignupPrompt] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [termsAccepted, setTermsAccepted] = useState(false);
 
     // Timer & Delayed Fallback
     const [resendTimer, setResendTimer] = useState(0);
@@ -441,33 +442,40 @@ export default function LoginSidebar({
                         initial="hidden"
                         animate="visible"
                         exit="exit"
-                        className="relative w-full sm:w-[480px] h-full sm:h-[96vh] bg-slate-950/90 backdrop-blur-3xl border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden sm:rounded-[2.5rem]"
+                        className="relative w-full sm:w-[480px] h-full sm:h-[96vh] bg-white/85 dark:bg-[#0B0F1A]/85 backdrop-blur-xl border border-slate-200 dark:border-white/10 shadow-2xl flex flex-col overflow-hidden sm:rounded-[2.5rem]"
                     >
                         {/* DECORATIVE PRISM GLOWS */}
-                        <div className="absolute top-[-10%] right-[-10%] w-[400px] h-[400px] bg-[#F4B000]/20 rounded-full blur-[100px] pointer-events-none" />
-                        <div className="absolute bottom-[-10%] left-[-10%] w-[300px] h-[300px] bg-indigo-600/20 rounded-full blur-[80px] pointer-events-none" />
+                        <div className="absolute top-[-10%] right-[-10%] w-[400px] h-[400px] bg-[#F4B000]/15 rounded-full blur-[100px] pointer-events-none z-0" />
+                        <div className="absolute bottom-[-10%] left-[-10%] w-[300px] h-[300px] bg-slate-500/10 rounded-full blur-[80px] pointer-events-none z-0" />
+
+                        {/* Full-Height Background Image with Mask */}
+                        <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+                            <img
+                                src="/images/biker_ladakh_vertical.png"
+                                alt="Rider background"
+                                className="absolute inset-0 w-full h-full object-cover object-center opacity-50 dark:opacity-35 mix-blend-multiply dark:mix-blend-overlay"
+                            />
+                            {/* Layered Masks for Legibility */}
+                            <div className="absolute inset-x-0 top-0 h-[50%] bg-gradient-to-b from-white via-white/80 to-transparent dark:from-[#0B0F1A] dark:via-[#0B0F1A]/80 dark:to-transparent" />
+                            <div className="absolute inset-x-0 bottom-0 h-[30%] bg-gradient-to-t from-white via-white/60 to-transparent dark:from-[#0B0F1A] dark:via-[#0B0F1A]/60 dark:to-transparent" />
+                        </div>
 
                         {/* Grainy Texture Over Glass */}
-                        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.08] mix-blend-overlay pointer-events-none" />
+                        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.08] mix-blend-overlay pointer-events-none z-0" />
 
                         {/* Header */}
-                        <div className="flex-none p-8 flex items-center justify-between z-10">
-                            <div className="scale-90 origin-left">
-                                <Logo mode="auto" size={32} variant="full" />
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <ThemeToggle className="w-10 h-10" />
-                                <button
-                                    onClick={onClose}
-                                    className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors text-slate-500 dark:text-slate-400"
-                                >
-                                    <X size={20} />
-                                </button>
-                            </div>
+                        {/* Header - Empty to keep close button but remove Logo from top */}
+                        <div className="flex-none p-8 flex items-center justify-end relative z-10 h-24">
+                            <button
+                                onClick={onClose}
+                                className="w-10 h-10 rounded-full bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 flex items-center justify-center transition-colors text-black dark:text-white"
+                            >
+                                <X size={20} />
+                            </button>
                         </div>
 
                         {/* Main Content (Scrollable) */}
-                        <div className="flex-1 overflow-y-auto px-8 z-10 flex flex-col justify-center min-h-[400px]">
+                        <div className="flex-1 overflow-y-auto px-8 z-10 flex flex-col justify-center min-h-[400px] pt-12">
                             <AnimatePresence mode="wait">
                                 <motion.div
                                     key={step}
@@ -477,23 +485,28 @@ export default function LoginSidebar({
                                     exit="exit"
                                     className="space-y-8"
                                 >
+                                    {/* LOGO - Moved here for better vertical positioning */}
+                                    <div className="flex justify-center scale-125 pb-4">
+                                        <Logo mode="auto" size={48} variant="icon" />
+                                    </div>
+
                                     {/* HEADLINES */}
-                                    <div className="space-y-3">
-                                        <h2 className="text-4xl xs:text-5xl font-black italic uppercase tracking-tighter text-slate-900 dark:text-white leading-[0.9]">
+                                    <div className="space-y-3 flex flex-col items-center">
+                                        <h2 className="text-4xl xs:text-5xl font-black italic uppercase tracking-tighter text-black dark:text-white leading-[0.9] text-center">
                                             {step === 'INITIAL'
                                                 ? 'Start Your'
                                                 : step === 'SIGNUP'
-                                                  ? 'Create'
-                                                  : 'Verify'}
+                                                    ? 'Create'
+                                                    : 'Verify'}
                                             <span className="block text-[#F4B000]">
                                                 {step === 'INITIAL'
                                                     ? 'Journey.'
                                                     : step === 'SIGNUP'
-                                                      ? 'Profile.'
-                                                      : 'Identity.'}
+                                                        ? 'Profile.'
+                                                        : 'Identity.'}
                                             </span>
                                         </h2>
-                                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 max-w-xs leading-relaxed">
+                                        <p className="text-sm font-bold text-black dark:text-white max-w-xs leading-relaxed text-center mx-auto">
                                             {step === 'INITIAL' &&
                                                 'Enter your 10-digit mobile number to login or create a new account instantly.'}
                                             {step === 'SIGNUP' &&
@@ -521,7 +534,7 @@ export default function LoginSidebar({
                                     <div className="space-y-6">
                                         {step === 'SIGNUP' && (
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-black dark:text-white block text-center w-full">
                                                     Full Name
                                                 </label>
                                                 <input
@@ -529,7 +542,7 @@ export default function LoginSidebar({
                                                     value={fullName}
                                                     onChange={e => setFullName(e.target.value)}
                                                     placeholder="Your Name"
-                                                    className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl p-5 text-lg font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all"
+                                                    className="w-[80%] max-w-sm mx-auto block bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl p-5 text-lg font-bold text-black dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/40 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all text-center"
                                                     autoFocus
                                                 />
                                             </div>
@@ -537,7 +550,7 @@ export default function LoginSidebar({
 
                                         {step === 'SIGNUP' && (
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-black dark:text-white block text-center w-full">
                                                     Pincode (Required)
                                                 </label>
                                                 <input
@@ -551,9 +564,9 @@ export default function LoginSidebar({
                                                             ? `Auto: ${location.pincode}`
                                                             : 'Enter 6-digit pincode'
                                                     }
-                                                    className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl p-5 text-lg font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all"
+                                                    className="w-[80%] max-w-sm mx-auto block bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl p-5 text-lg font-bold text-black dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/40 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all text-center"
                                                 />
-                                                <p className="text-[10px] text-slate-400">
+                                                <p className="text-[10px] font-bold text-black dark:text-white">
                                                     {location.pincode
                                                         ? 'Location detected. You can edit if needed.'
                                                         : 'Allow location or enter your pincode manually.'}
@@ -562,23 +575,14 @@ export default function LoginSidebar({
                                         )}
 
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-black dark:text-white block text-center w-full">
                                                 {step === 'OTP'
                                                     ? 'OTP Code'
                                                     : authMethod === 'EMAIL'
-                                                      ? 'Email Address'
-                                                      : 'Mobile Number'}
+                                                        ? 'Email Address'
+                                                        : 'Mobile Number'}
                                             </label>
-                                            <div className="relative group">
-                                                <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-brand-primary transition-colors">
-                                                    {step === 'OTP' ? (
-                                                        <Lock size={20} />
-                                                    ) : authMethod === 'EMAIL' ? (
-                                                        <Globe size={20} />
-                                                    ) : (
-                                                        <Phone size={20} />
-                                                    )}
-                                                </div>
+                                            <div className="relative group w-[80%] max-w-sm mx-auto">
                                                 <input
                                                     ref={inputRef}
                                                     type={
@@ -609,10 +613,10 @@ export default function LoginSidebar({
                                                         step === 'INITIAL' && authMethod === 'PHONE' ? 10 : undefined
                                                     }
                                                     disabled={step !== 'INITIAL' && step !== 'OTP'}
-                                                    className={`w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl py-5 pl-14 pr-5 text-xl font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all ${step === 'OTP' ? 'tracking-[0.5em]' : 'tracking-wide'}`}
+                                                    className={`w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl py-5 px-5 text-xl font-bold text-black dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/40 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all text-center ${step === 'OTP' ? 'tracking-[0.5em]' : 'tracking-wide'}`}
                                                     onKeyDown={e => {
                                                         if (e.key === 'Enter') {
-                                                            if (step === 'INITIAL' && authMethod === 'EMAIL')
+                                                            if (step === 'INITIAL' && authMethod === 'EMAIL' && (authMethod === 'EMAIL' || termsAccepted))
                                                                 handleCheckUser();
                                                             if (step === 'SIGNUP')
                                                                 authMethod === 'EMAIL'
@@ -630,11 +634,20 @@ export default function LoginSidebar({
                                             </div>
                                         </div>
 
+                                        {/* TERMS DISCLAIMER (Replaced Checkbox) */}
+                                        {step === 'INITIAL' && (
+                                            <p className="w-[80%] max-w-sm mx-auto text-[9px] font-bold text-black dark:text-white uppercase tracking-widest text-center whitespace-nowrap opacity-50">
+                                                By proceeding, you agree to our <span className="text-brand-primary">Terms</span> & <span className="text-brand-primary">Privacy</span>.
+                                            </p>
+                                        )}
+
                                         {/* Continue Button (For Steps other than INITIAL PHONE which auto-submits) */}
                                         {(step !== 'INITIAL' || authMethod === 'EMAIL') && (
                                             <button
                                                 onClick={() => {
-                                                    if (step === 'INITIAL') handleCheckUser();
+                                                    if (step === 'INITIAL') {
+                                                        handleCheckUser();
+                                                    }
                                                     else if (step === 'SIGNUP') {
                                                         if (!validateSignupRequirements()) return;
                                                         authMethod === 'EMAIL'
@@ -643,9 +656,9 @@ export default function LoginSidebar({
                                                     } else if (step === 'OTP') handleLogin();
                                                 }}
                                                 disabled={loading || (step === 'OTP' && otp.length < 4)}
-                                                className="w-full py-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl text-xs font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-xl disabled:opacity-50"
+                                                className="w-[80%] max-w-sm mx-auto py-5 bg-black dark:bg-white text-white dark:text-black rounded-2xl text-xs font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-xl disabled:opacity-50"
                                             >
-                                                {step === 'SIGNUP' ? 'Complete Signup' : 'Proceed'}{' '}
+                                                {step === 'INITIAL' ? 'Agree & Proceed' : step === 'SIGNUP' ? 'Complete Signup' : 'Verify & Proceed'}{' '}
                                                 <ChevronRight size={16} />
                                             </button>
                                         )}
@@ -662,7 +675,7 @@ export default function LoginSidebar({
                                                         detectLocation();
                                                     }
                                                 }}
-                                                className="w-full py-5 bg-[#F4B000] text-black rounded-2xl text-xs font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-xl animate-in fade-in slide-in-from-bottom-4"
+                                                className="w-[80%] max-w-sm mx-auto py-5 bg-[#F4B000] text-black rounded-2xl text-xs font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-xl animate-in fade-in slide-in-from-bottom-4"
                                             >
                                                 Create Account <ArrowRight size={16} />
                                             </button>
@@ -670,10 +683,10 @@ export default function LoginSidebar({
 
                                         {/* OTP ACTIONS */}
                                         {step === 'OTP' && (
-                                            <div className="flex justify-between items-center px-1">
+                                            <div className="flex justify-between items-center px-1 w-[80%] max-w-sm mx-auto">
                                                 <button
                                                     onClick={() => setStep('INITIAL')}
-                                                    className="text-[10px] font-bold text-slate-500 hover:text-brand-primary transition-colors uppercase tracking-wider"
+                                                    className="text-[10px] font-black text-black dark:text-white hover:text-brand-primary transition-colors uppercase tracking-wider"
                                                 >
                                                     Change Number
                                                 </button>
@@ -684,7 +697,7 @@ export default function LoginSidebar({
                                                             : handleSendPhoneOtp(identifier)
                                                     }
                                                     disabled={resendTimer > 0}
-                                                    className="text-[10px] font-bold text-slate-900 dark:text-white hover:text-brand-primary transition-colors uppercase tracking-wider disabled:opacity-50"
+                                                    className="text-[10px] font-black text-black dark:text-white hover:text-brand-primary transition-colors uppercase tracking-wider disabled:opacity-50"
                                                 >
                                                     {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend Code'}
                                                 </button>
@@ -715,13 +728,13 @@ export default function LoginSidebar({
                                     {/* New User Prompt */}
                                     {step === 'INITIAL' && (
                                         <div className="pt-2 text-center">
-                                            <p className="text-xs text-slate-500 font-medium">
+                                            <p className="text-xs text-black dark:text-white font-bold">
                                                 New here?{' '}
-                                                <span className="text-brand-primary font-bold cursor-default">
+                                                <span className="text-brand-primary font-black cursor-default">
                                                     Sign up is free.
                                                 </span>
                                             </p>
-                                            <p className="text-[10px] text-slate-400 mt-1">
+                                            <p className="text-[10px] font-bold text-black dark:text-white mt-1 opacity-60">
                                                 Just enter your number above.
                                             </p>
                                         </div>
@@ -738,7 +751,7 @@ export default function LoginSidebar({
                                     <a
                                         key={i}
                                         href="#"
-                                        className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 hover:bg-brand-primary hover:text-black transition-all"
+                                        className="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-black dark:text-white hover:bg-brand-primary hover:text-black hover:shadow-[0_0_15px_rgba(244,176,0,0.6)] transition-all"
                                     >
                                         <Icon size={14} />
                                     </a>
@@ -746,15 +759,15 @@ export default function LoginSidebar({
                             </div>
 
                             {/* Links */}
-                            <div className="flex justify-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                            <div className="flex justify-center gap-4 text-[10px] font-black uppercase tracking-widest text-black dark:text-white">
                                 <a href="#" className="hover:text-brand-primary transition-colors">
                                     Terms
                                 </a>
-                                <span className="text-slate-200 dark:text-slate-800">•</span>
+                                <span className="opacity-20">•</span>
                                 <a href="#" className="hover:text-brand-primary transition-colors">
                                     Privacy
                                 </a>
-                                <span className="text-slate-200 dark:text-slate-800">•</span>
+                                <span className="opacity-20">•</span>
                                 <a href="#" className="hover:text-brand-primary transition-colors">
                                     Support
                                 </a>

@@ -13,14 +13,45 @@ CREATE TABLE IF NOT EXISTS public.id_dealer_service_areas (
 -- RLS
 ALTER TABLE public.id_dealer_service_areas ENABLE ROW LEVEL SECURITY;
 
+-- Helper for RLS (Idempotent)
+CREATE OR REPLACE FUNCTION public.check_is_tenant_owner_for_pricing(p_user_id UUID, p_tenant_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    -- Check id_team first (if it exists)
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'id_team') THEN
+        RETURN EXISTS (
+            SELECT 1 FROM public.id_team 
+            WHERE user_id = p_user_id 
+            AND tenant_id = p_tenant_id
+            AND role IN ('OWNER', 'ADMIN', 'SUPER_ADMIN')
+            AND status = 'ACTIVE'
+        );
+    END IF;
+
+    -- Fallback to id_members if id_team is missing (Legacy support)
+    RETURN EXISTS (
+        SELECT 1 FROM public.id_members 
+        WHERE (id = p_user_id OR email = (select email from auth.users where id = p_user_id))
+        AND tenant_id = p_tenant_id
+    );
+END;
+$$;
+
+DROP POLICY IF EXISTS "Allow authenticated read service areas" ON public.id_dealer_service_areas;
 CREATE POLICY "Allow authenticated read service areas" 
 ON public.id_dealer_service_areas FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Allow tenant modification of service areas" ON public.id_dealer_service_areas;
 CREATE POLICY "Allow tenant modification of service areas" 
 ON public.id_dealer_service_areas FOR ALL TO authenticated USING (
-    tenant_id IN (
-        SELECT tenant_id FROM public.id_members WHERE id::text = auth.uid()::text OR email = auth.email()
-    )
+    public.check_is_tenant_owner_for_pricing(auth.uid(), tenant_id)
+)
+WITH CHECK (
+    public.check_is_tenant_owner_for_pricing(auth.uid(), tenant_id)
 );
 
 -- RPC to get Market Best Offers

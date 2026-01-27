@@ -12,10 +12,13 @@ import {
     Package,
     Heart,
     Bell,
+    Settings,
     HelpCircle,
     LogOut,
+    ChevronDown,
     MapPin,
     X,
+    MessageSquare,
     Facebook,
     Twitter,
     Instagram,
@@ -46,6 +49,7 @@ interface ProfileDropdownProps {
 export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdownProps) {
     const [user, setUser] = useState<User | null>(null);
     const [memberships, setMemberships] = useState<Membership[]>([]);
+    const [activeTab, setActiveTab] = useState<'account' | 'workspace'>('account');
     const [isOpen, setIsOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
     const [location, setLocation] = useState<{
@@ -58,7 +62,9 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
     const [uploading, setUploading] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const dropdownRef = useRef<HTMLButtonElement>(null);
+    const dropdownRef = useRef<HTMLButtonElement>(null); // Fixed: Ref is attached to a button
+
+    // Close on click outside is now handled by the Backdrop overlay in the logic below
 
     useEffect(() => {
         const supabase = createClient();
@@ -153,6 +159,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
 
         clearFavorites();
 
+        // Only clear auth-related keys
         localStorage.removeItem('user_name');
         localStorage.removeItem('user_role');
         localStorage.removeItem('active_role');
@@ -220,6 +227,8 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
         return labels[role] || role;
     };
 
+    const isLight = mounted ? theme === 'light' : true;
+
     // Trigger Button Logic matches original
     if (!user) {
         return (
@@ -239,6 +248,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
         user.email?.split('@')[0] ||
         'User';
 
+    /** Animation Variants borrowed from LoginSidebar */
     const overlayVariants = {
         hidden: { opacity: 0 },
         visible: { opacity: 1 },
@@ -246,21 +256,23 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
     };
 
     const sidebarVariants: Variants = {
-        hidden: { x: '100%', opacity: 0 },
+        hidden: { x: '100%', opacity: 0, scale: 0.95 },
         visible: {
             x: 0,
             opacity: 1,
+            scale: 1,
             transition: {
                 type: 'spring',
-                damping: 30,
+                damping: 25,
                 stiffness: 300,
-                mass: 1,
+                mass: 0.8,
             },
         },
         exit: {
             x: '100%',
             opacity: 0,
-            transition: { duration: 0.3, ease: 'easeIn' },
+            scale: 0.95,
+            transition: { duration: 0.2, ease: 'easeIn' },
         },
     };
 
@@ -281,15 +293,21 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
         visible: { opacity: 1, x: 0 },
     };
 
+    // Force glass style when not scrolled to match MarketplaceHeader icons
+    const isGlass = !scrolled;
+
     return (
         <>
-            {/* Trigger Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 ref={dropdownRef}
-                className="h-10 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 flex items-center gap-3 border-white/20 text-white hover:bg-white hover:text-black hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] group"
+                className={`h-10 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 flex items-center gap-3 group z-[101] ${scrolled || theme === 'dark'
+                    ? 'border-white/20 text-white hover:bg-white hover:text-black hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]'
+                    : 'border-slate-200 bg-white text-slate-900 hover:border-slate-400 shadow-sm'
+                    }`}
             >
-                <div className="w-8 h-8 rounded-full overflow-hidden bg-brand-primary flex items-center justify-center text-black font-bold text-xs ring-2 ring-white/20 group-hover:ring-transparent transition-all">
+                <div className={`w-8 h-8 rounded-full overflow-hidden bg-brand-primary flex items-center justify-center text-black font-bold text-xs ring-2 transition-all ${scrolled || theme === 'dark' ? 'ring-white/20 group-hover:ring-transparent' : 'ring-slate-100 group-hover:ring-brand-primary/20'
+                    }`}>
                     {user.user_metadata?.avatar_url ? (
                         <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full object-cover" />
                     ) : (
@@ -297,9 +315,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                     )}
                 </div>
                 <div className="flex items-center gap-1.5 leading-none">
-                    <span className="text-[11px] font-black uppercase tracking-widest group-hover:opacity-100 transition-opacity">
-                        HI,
-                    </span>
+                    <span className="text-[11px] font-black uppercase tracking-widest group-hover:opacity-100 transition-opacity">HI,</span>
                     <span className="text-[11px] font-black uppercase tracking-widest whitespace-nowrap max-w-[150px] truncate">
                         {displayName}
                     </span>
@@ -311,7 +327,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                 createPortal(
                     <AnimatePresence>
                         {isOpen && (
-                            <div className="fixed inset-0 z-[100] overflow-hidden font-sans">
+                            <div className="fixed inset-0 z-[100] flex justify-end items-center overflow-hidden sm:p-4 font-sans">
                                 {/* Backdrop */}
                                 <motion.div
                                     variants={overlayVariants}
@@ -319,71 +335,63 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                                     animate="visible"
                                     exit="exit"
                                     onClick={() => setIsOpen(false)}
-                                    className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"
+                                    className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
                                 />
 
-                                {/* Sidebar - Frosted Daylight */}
+                                {/* Sidebar */}
                                 <motion.div
                                     variants={sidebarVariants}
                                     initial="hidden"
                                     animate="visible"
                                     exit="exit"
-                                    className="absolute right-0 top-0 bottom-0 w-full sm:w-[480px] bg-white/80 backdrop-blur-3xl shadow-2xl border-l border-white/40 flex flex-col sm:rounded-l-[40px] overflow-hidden"
-                                    style={{
-                                        boxShadow:
-                                            '-20px 0 50px -10px rgba(0,0,0,0.1), inset 1px 0 0 0 rgba(255,255,255,0.5)',
-                                    }}
+                                    className="relative w-full sm:w-[480px] h-full sm:h-[96vh] bg-white/95 dark:bg-[#0F172A]/95 backdrop-blur-3xl border border-slate-200 dark:border-white/20 shadow-2xl flex flex-col overflow-hidden sm:rounded-[2.5rem] ml-auto"
                                 >
-                                    {/* God Ray Lighting */}
-                                    <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-b from-white/70 via-white/10 to-transparent pointer-events-none" />
+                                    {/* Decorative Glows */}
+                                    <div className="absolute top-[-20%] right-[-20%] w-[500px] h-[500px] bg-[#F4B000]/10 rounded-full blur-[100px] pointer-events-none" />
 
-                                    {/* Soft Pastel Glows */}
-                                    <div className="absolute top-[-10%] left-[-20%] w-[300px] h-[300px] bg-[#BAE6FD]/40 rounded-full blur-[80px] pointer-events-none mix-blend-multiply" />
-                                    <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-[#FCD34D]/30 rounded-full blur-[100px] pointer-events-none mix-blend-multiply" />
-
-                                    {/* Header */}
-                                    <div className="flex-none px-8 py-8 flex items-center justify-between z-10 shrink-0">
+                                    {/* Header - Reduced Padding */}
+                                    <div className="flex-none px-6 py-5 flex items-center justify-between z-10 shrink-0">
                                         <div className="h-8 shrink-0">
                                             <Logo
-                                                mode="dark" // Using dark mode logo for contrast against white glass
-                                                size={36}
+                                                mode="auto"
+                                                size={32}
                                                 variant="full"
                                                 customColors={{
                                                     bike: '#F4B000',
                                                 }}
                                             />
                                         </div>
-                                        <div className="flex items-center gap-3">
-                                            <ThemeToggle className="w-10 h-10" />
+                                        <div className="flex items-center gap-2">
+                                            <ThemeToggle className="w-9 h-9" />
                                             <button
                                                 onClick={() => setIsOpen(false)}
-                                                className="w-10 h-10 rounded-full bg-slate-900/5 hover:bg-slate-900/10 flex items-center justify-center transition-colors text-slate-500"
+                                                className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors text-slate-500 dark:text-slate-400"
                                             >
-                                                <X size={20} />
+                                                <X size={18} />
                                             </button>
                                         </div>
                                     </div>
 
-                                    {/* Main Content */}
-                                    <div className="flex-1 overflow-y-auto px-8 z-10 flex flex-col min-h-0 custom-scrollbar pb-6 gap-8">
+                                    {/* Main Content - Condensed Spacing */}
+                                    <div className="flex-1 overflow-y-auto px-6 z-10 flex flex-col min-h-0 custom-scrollbar pb-2">
                                         <motion.div
                                             variants={containerVariants}
                                             initial="hidden"
                                             animate="visible"
-                                            className="space-y-8"
+                                            className="space-y-4"
                                         >
-                                            {/* USER CARD (Light Variant) */}
+                                            {/* COMPACT USER CARD */}
                                             <motion.div
                                                 variants={itemVariants}
-                                                className="bg-white/50 p-6 rounded-[2.5rem] border border-white/60 flex items-center gap-6 relative overflow-hidden group shadow-lg shadow-sky-100/50"
+                                                className="bg-slate-50 dark:bg-white/[0.03] p-4 rounded-3xl border border-slate-100 dark:border-white/5 flex items-center gap-4 relative overflow-hidden group"
                                             >
                                                 <div className="absolute top-0 right-0 p-4 opacity-30">
-                                                    <div className="w-32 h-32 bg-brand-primary/10 rounded-full blur-2xl absolute -top-5 -right-5 pointer-events-none" />
+                                                    <div className="w-24 h-24 bg-brand-primary/20 rounded-full blur-2xl absolute -top-5 -right-5 pointer-events-none" />
                                                 </div>
 
-                                                {/* Avatar */}
+                                                {/* Smaller Avatar */}
                                                 <div className="relative shrink-0 group/avatar">
-                                                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center text-white text-3xl font-black shadow-xl overflow-hidden relative z-10 ring-4 ring-white">
+                                                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-brand-primary to-[#F4B000] flex items-center justify-center text-white text-xl font-black shadow-lg shadow-brand-primary/20 overflow-hidden relative z-10 ring-2 ring-white dark:ring-[#0F172A]">
                                                         {user.user_metadata?.avatar_url ? (
                                                             <img
                                                                 src={user.user_metadata.avatar_url}
@@ -403,13 +411,13 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                                                     </div>
                                                     <button
                                                         onClick={() => fileInputRef.current?.click()}
-                                                        className="absolute bottom-0 right-0 w-8 h-8 bg-brand-primary text-black rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform z-20 border-2 border-white"
+                                                        className="absolute bottom-0 right-0 w-6 h-6 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform z-20 border-2 border-white dark:border-[#0F172A]"
                                                         title="Change Photo"
                                                     >
                                                         {uploading ? (
-                                                            <div className="w-3 h-3 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                                                            <div className="w-2 h-2 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                                         ) : (
-                                                            <Camera size={14} />
+                                                            <Camera size={10} />
                                                         )}
                                                     </button>
                                                     <input
@@ -422,162 +430,219 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                                                 </div>
 
                                                 <div className="relative z-10 min-w-0 flex-1">
-                                                    <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter leading-none truncate">
+                                                    <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight leading-tight truncate">
                                                         {user.user_metadata?.full_name || 'BookMyBike User'}
                                                     </h3>
-                                                    <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wider truncate">
+                                                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-0.5 tracking-wide uppercase truncate">
                                                         {user.email}
                                                     </p>
                                                     {location && (
-                                                        <div className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-full bg-slate-900 text-[10px] font-black uppercase tracking-[0.05em] text-white">
-                                                            <MapPin size={12} className="text-[#F4B000]" />
+                                                        <div className="inline-flex items-center gap-1 mt-2 px-2 py-1 rounded-full bg-blue-500/10 text-[9px] font-black uppercase tracking-[0.05em] text-blue-600 dark:text-blue-400">
+                                                            <MapPin size={10} className="fill-blue-500/20" />
                                                             {location.district || location.taluka}{' '}
-                                                            {location.stateCode || ''}
+                                                            {location.stateCode
+                                                                ? `(${location.stateCode})`
+                                                                : location.state
+                                                                    ? `(${location.state})`
+                                                                    : ''}
                                                         </div>
                                                     )}
                                                 </div>
                                             </motion.div>
 
-                                            {/* MY ACCOUNT LINKS */}
-                                            <motion.div variants={itemVariants} className="space-y-4">
-                                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-2">
+                                            {/* Tabs Toggle */}
+                                            <div className="flex p-1 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/5 mx-1">
+                                                <button
+                                                    onClick={() => setActiveTab('account')}
+                                                    className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${activeTab === 'account'
+                                                        ? 'bg-white dark:bg-brand-primary text-black shadow-md shadow-black/5 dark:shadow-none'
+                                                        : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-white/50 dark:hover:bg-white/5'
+                                                        }`}
+                                                >
+                                                    <UserIcon size={12} strokeWidth={3} />
                                                     My Account
-                                                </h4>
-                                                <div className="flex flex-col gap-3">
-                                                    {[
-                                                        {
-                                                            label: 'Profile Settings',
-                                                            icon: UserIcon,
-                                                            href: '/profile',
-                                                            color: 'text-slate-900',
-                                                            bg: 'bg-slate-100',
-                                                        },
-                                                        {
-                                                            label: 'My Orders',
-                                                            icon: Package,
-                                                            href: '/orders',
-                                                            color: 'text-orange-600',
-                                                            bg: 'bg-orange-50',
-                                                        },
-                                                        {
-                                                            label: 'Wishlist',
-                                                            icon: Heart,
-                                                            href: '/wishlist',
-                                                            color: 'text-rose-600',
-                                                            bg: 'bg-rose-50',
-                                                        },
-                                                        {
-                                                            label: 'Notifications',
-                                                            icon: Bell,
-                                                            href: '/notifications',
-                                                            color: 'text-purple-600',
-                                                            bg: 'bg-purple-50',
-                                                        },
-                                                    ].map(item => (
-                                                        <a
-                                                            key={item.label}
-                                                            href={item.href}
-                                                            className="flex items-center gap-4 p-4 rounded-3xl bg-white/50 border border-white/60 hover:bg-white hover:border-white hover:shadow-xl hover:shadow-slate-200/50 transition-all group"
-                                                        >
-                                                            <div
-                                                                className={`w-10 h-10 rounded-2xl ${item.bg} flex items-center justify-center ${item.color} group-hover:scale-110 transition-transform shadow-sm shrink-0`}
-                                                            >
-                                                                <item.icon size={20} />
-                                                            </div>
-                                                            <div className="flex-1 flex items-center justify-between">
-                                                                <p className="text-sm font-black text-slate-900 uppercase tracking-wide">
-                                                                    {item.label}
-                                                                </p>
-                                                                <ChevronRight
-                                                                    size={16}
-                                                                    className="text-slate-300 group-hover:text-slate-900 transition-colors"
-                                                                />
-                                                            </div>
-                                                        </a>
-                                                    ))}
-                                                </div>
-                                            </motion.div>
+                                                </button>
+                                                <button
+                                                    onClick={() => setActiveTab('workspace')}
+                                                    className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${activeTab === 'workspace'
+                                                        ? 'bg-white dark:bg-brand-primary text-black shadow-md shadow-black/5 dark:shadow-none'
+                                                        : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-white/50 dark:hover:bg-white/5'
+                                                        }`}
+                                                >
+                                                    <Building2 size={12} strokeWidth={3} />
+                                                    My Workspace
+                                                </button>
+                                            </div>
 
-                                            {/* MEMBERSHIPS */}
-                                            {memberships.length > 0 && (
-                                                <motion.div variants={itemVariants} className="space-y-4">
-                                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-2">
-                                                        Workspace Access
-                                                    </h4>
-                                                    <div className="space-y-3">
-                                                        {memberships.map(m => (
+                                            {/* Compact Quick Actions List */}
+                                            {activeTab === 'account' && (
+                                                <motion.div
+                                                    variants={itemVariants}
+                                                    initial="hidden"
+                                                    animate="visible"
+                                                    exit="hidden"
+                                                    className="space-y-4 pt-2"
+                                                >
+                                                    <div className="flex flex-col gap-1.5">
+                                                        {[
+                                                            {
+                                                                label: 'Profile Settings',
+                                                                icon: UserIcon,
+                                                                href: '/profile',
+                                                                color: 'text-blue-500',
+                                                                bg: 'bg-blue-500/10',
+                                                            },
+                                                            {
+                                                                label: 'My Orders',
+                                                                icon: Package,
+                                                                href: '/orders',
+                                                                color: 'text-orange-500',
+                                                                bg: 'bg-orange-500/10',
+                                                            },
+                                                            {
+                                                                label: 'Wishlist',
+                                                                icon: Heart,
+                                                                href: '/wishlist',
+                                                                color: 'text-rose-500',
+                                                                bg: 'bg-rose-500/10',
+                                                            },
+                                                            {
+                                                                label: 'Notifications',
+                                                                icon: Bell,
+                                                                href: '/notifications',
+                                                                color: 'text-purple-500',
+                                                                bg: 'bg-purple-500/10',
+                                                            },
+                                                        ].map(item => (
                                                             <a
-                                                                key={m.tenants.slug}
-                                                                href={`/app/${m.tenants.slug}/dashboard`}
-                                                                className="flex items-center gap-4 p-4 rounded-3xl bg-slate-900 border border-slate-800 hover:bg-black transition-all group relative overflow-hidden shadow-xl"
+                                                                key={item.label}
+                                                                href={item.href}
+                                                                className="flex items-center gap-3 p-2.5 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 hover:border-brand-primary/30 dark:hover:border-brand-primary/30 transition-all group hover:shadow-md hover:shadow-brand-primary/5 dark:hover:bg-white/[0.06]"
                                                             >
-                                                                <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-white group-hover:text-[#F4B000] transition-colors shrink-0">
-                                                                    {getTenantIcon(m.tenants.type)}
+                                                                <div
+                                                                    className={`w-8 h-8 rounded-lg ${item.bg} flex items-center justify-center ${item.color} group-hover:scale-110 transition-transform shadow-sm shrink-0`}
+                                                                >
+                                                                    <item.icon size={16} />
                                                                 </div>
-                                                                <div className="flex-1 min-w-0">
-                                                                    <h5 className="font-black text-sm text-white uppercase tracking-tight truncate">
-                                                                        {m.tenants.name}
-                                                                    </h5>
-                                                                    <div className="flex items-center gap-2 mt-1">
-                                                                        <span className="px-2 py-0.5 rounded bg-white/10 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-                                                                            {m.tenants.type.replace('_', ' ')}
-                                                                        </span>
-                                                                        <span className="text-[10px] font-black text-[#F4B000] uppercase tracking-widest">
-                                                                            {getRoleLabel(m.role)}
-                                                                        </span>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-slate-500 group-hover:text-white transition-colors">
-                                                                    <ChevronRight size={16} />
+                                                                <div className="flex-1 flex items-center justify-between">
+                                                                    <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-wider leading-tight">
+                                                                        {item.label}
+                                                                    </p>
+                                                                    <ChevronRight
+                                                                        size={12}
+                                                                        className="text-slate-300 group-hover:text-brand-primary transition-colors"
+                                                                    />
                                                                 </div>
                                                             </a>
                                                         ))}
                                                     </div>
                                                 </motion.div>
                                             )}
+
+                                            {/* Compact Memberships */}
+                                            {activeTab === 'workspace' && (
+                                                <motion.div
+                                                    variants={itemVariants}
+                                                    initial="hidden"
+                                                    animate="visible"
+                                                    exit="hidden"
+                                                    className="space-y-2 pt-2"
+                                                >
+                                                    {memberships.length === 0 ? (
+                                                        <div className="p-8 text-center border-2 border-dashed border-slate-100 dark:border-white/5 rounded-2xl">
+                                                            <div className="w-10 h-10 rounded-full bg-slate-50 dark:bg-white/5 mx-auto flex items-center justify-center mb-3">
+                                                                <Building2 className="text-slate-300 dark:text-slate-600" size={18} />
+                                                            </div>
+                                                            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                                                                No Workspaces Found
+                                                            </p>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-1.5">
+                                                            {memberships.map(m => (
+                                                                <a
+                                                                    key={m.tenants.slug}
+                                                                    href={`/app/${m.tenants.slug}/dashboard`}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 hover:border-brand-primary/50 transition-all group hover:shadow-md hover:shadow-brand-primary/5 relative overflow-hidden"
+                                                                >
+                                                                    <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-black border border-slate-100 dark:border-white/10 flex items-center justify-center text-slate-400 group-hover:text-brand-primary group-hover:scale-105 transition-all shrink-0">
+                                                                        {getTenantIcon(m.tenants.type)}
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <div className="flex flex-col">
+                                                                            <div className="flex items-center justify-between">
+                                                                                <h5 className="font-black text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
+                                                                                    {m.tenants.name}
+                                                                                </h5>
+                                                                            </div>
+                                                                            <div className="flex items-center gap-2 mt-0.5">
+                                                                                <span className="px-1.5 py-px rounded bg-slate-100 dark:bg-white/10 text-[7px] font-bold text-slate-500 uppercase tracking-wider">
+                                                                                    {m.tenants.type.replace('_', ' ')}
+                                                                                </span>
+                                                                                <span className="text-[8px] font-bold text-slate-300">
+                                                                                    •
+                                                                                </span>
+                                                                                <span className="text-[8px] font-black text-brand-primary uppercase tracking-widest flex items-center gap-1">
+                                                                                    {getRoleLabel(m.role)}
+                                                                                </span>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="w-8 h-8 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-300 group-hover:text-brand-primary group-hover:bg-brand-primary/10 transition-colors">
+                                                                        <ChevronRight size={12} />
+                                                                    </div>
+                                                                </a>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </motion.div>
+                                            )}
                                         </motion.div>
+                                    </div>
 
-                                        {/* Footer */}
-                                        <div className="mt-auto pt-8 border-t border-slate-200/50">
-                                            <div className="flex items-center gap-4">
+                                    {/* Compact Footer */}
+                                    <div className="flex-none p-5 z-10 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-[#0F172A]/50">
+                                        <div className="flex items-center gap-3">
+                                            <a
+                                                href="/help"
+                                                className="flex-1 flex items-center justify-center gap-2 px-3 py-3 border border-slate-200 dark:border-white/10 rounded-2xl text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all bg-white dark:bg-white/[0.03] hover:shadow-md"
+                                            >
+                                                <HelpCircle size={14} />
+                                                Help
+                                            </a>
+                                            <button
+                                                onClick={handleLogout}
+                                                className="flex-1 flex items-center justify-center gap-2 px-3 py-3 bg-rose-500 text-white rounded-2xl text-[9px] font-black uppercase tracking-[0.15em] hover:bg-rose-600 transition-all shadow-lg shadow-rose-500/20 hover:shadow-rose-500/30 hover:-translate-y-0.5"
+                                            >
+                                                <LogOut size={14} />
+                                                Sign Out
+                                            </button>
+                                        </div>
+
+                                        <div className="flex justify-center gap-5 mt-4">
+                                            {[Facebook, Twitter, Instagram, Linkedin].map((Icon, i) => (
                                                 <a
-                                                    href="/help"
-                                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-4 border border-slate-200 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 hover:text-slate-900 bg-white/50 hover:bg-white hover:shadow-lg transition-all"
+                                                    key={i}
+                                                    href="#"
+                                                    className="w-6 h-6 rounded-full bg-transparent flex items-center justify-center text-slate-400 hover:text-brand-primary transition-all hover:scale-110"
                                                 >
-                                                    <HelpCircle size={16} />
-                                                    Help
+                                                    <Icon size={14} />
                                                 </a>
-                                                <button
-                                                    onClick={handleLogout}
-                                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-4 bg-rose-50 text-rose-500 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] hover:bg-rose-500 hover:text-white transition-all shadow-sm hover:shadow-rose-500/30"
-                                                >
-                                                    <LogOut size={16} />
-                                                    Sign Out
-                                                </button>
-                                            </div>
-
-                                            <div className="flex justify-center gap-6 mt-6">
-                                                {[Facebook, Twitter, Instagram, Linkedin].map((Icon, i) => (
-                                                    <a
-                                                        key={i}
-                                                        href="#"
-                                                        className="w-8 h-8 rounded-full bg-transparent flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all hover:scale-110"
-                                                    >
-                                                        <Icon size={18} />
-                                                    </a>
-                                                ))}
-                                            </div>
-                                            <div className="text-center mt-4 pb-2">
-                                                <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">
-                                                    BookMyBike v2.4.0
-                                                </p>
-                                            </div>
+                                            ))}
+                                        </div>
+                                        <div className="text-center mt-3">
+                                            <p className="text-[9px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-widest">
+                                                BookMyBike v2.4.0
+                                            </p>
                                         </div>
                                     </div>
                                 </motion.div>
-                            </div>
-                        )}
-                    </AnimatePresence>,
+                            </div >
+                        )
+                        }
+                    </AnimatePresence >,
                     document.body
                 )}
         </>

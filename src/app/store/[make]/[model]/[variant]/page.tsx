@@ -5,6 +5,7 @@ import { calculateOnRoad } from '@/lib/utils/pricingUtility';
 import { createClient } from '@/lib/supabase/server';
 import { slugify } from '@/utils/slugs';
 import ProductClient from './ProductClient';
+import { cookies } from 'next/headers';
 
 type Props = {
     params: Promise<{
@@ -54,9 +55,14 @@ export default async function Page({ params, searchParams }: Props) {
     const resolvedParams = await params;
     const resolvedSearchParams = await searchParams;
     const supabase = await createClient();
+    const cookieStore = await cookies(); // Access cookies
 
-    // 1. Resolve Location (Keep existing logic)
-    const location = await resolveLocation(resolvedSearchParams.pincode || '');
+    // 1. Resolve Location
+    // Priority: query param > cookie > default
+    const pincodeFromCookie = cookieStore.get('bkmb_user_pincode')?.value || '';
+    const pincodeToResolve = resolvedSearchParams.pincode || pincodeFromCookie || '';
+
+    const location = await resolveLocation(pincodeToResolve);
     const stateCode = location?.state === 'Maharashtra' ? 'MH' : 'MH';
 
     // 2. Fetch Variant from Unified Catalog
@@ -150,6 +156,23 @@ export default async function Page({ params, searchParams }: Props) {
 
     const onRoadBreakdown = calculateOnRoad(Number(baseExShowroom), engineCc, effectiveRule, insuranceRule);
 
+    // 4.5 Fetch Market Offers (Dealer Pricing)
+    let marketOffers: Record<string, number> = {};
+    if (location?.district) {
+        const { data: offers } = await supabase.rpc('get_market_best_offers', {
+            p_district_name: location.district,
+            p_state_code: stateCode
+        });
+
+        if (offers) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            offers.forEach((o: any) => {
+                // Store the raw offer amount (usually negative for discount)
+                marketOffers[o.vehicle_color_id] = Number(o.best_offer);
+            });
+        }
+    }
+
     // 5. Map to Product Object
     // Note: unified schema stores colors as SKUs (children of Variant) or inside specs?
     // Current Studio implementation: Variant -> SKUs (each SKU is a Color).
@@ -178,19 +201,24 @@ export default async function Page({ params, searchParams }: Props) {
         // Derive clean ID (slug) for URL
         const cleanId = sku.specs?.color_slug || slugify(cleanName);
 
+        // Calculate Dealer Offer (Invert negative value for usePDPData subtraction)
+        const rawOffer = marketOffers[sku.id] || 0;
+        const dealerOfferValue = rawOffer < 0 ? Math.abs(rawOffer) : -rawOffer; // If offer is -2000 (discount), we send 2000
+
         return {
             id: cleanId, // Use clean slug as stable ID
             name: cleanName,
             hex: sku.specs?.hex_primary || sku.specs?.hex_code || '#000000',
             image: sku.specs?.primary_image || sku.specs?.gallery?.[0] || null,
             video: sku.video_url || sku.specs?.video_urls?.[0] || sku.specs?.video_url || null,
-            priceOverride: sku.price_base // SKU might override price
+            priceOverride: sku.price_base, // SKU might override price
+            dealerOffer: dealerOfferValue // Inject Dealer Offer
         };
     });
 
     // If no SKUs, make a default One
     if (colors.length === 0) {
-        colors.push({ id: 'default', name: 'Standard', hex: '#000000', image: null, video: null, priceOverride: null });
+        colors.push({ id: 'default', name: 'Standard', hex: '#000000', image: null, video: null, priceOverride: null, dealerOffer: 0 });
     }
 
     const product = {
