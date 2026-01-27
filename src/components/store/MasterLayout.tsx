@@ -204,7 +204,7 @@ export function MasterLayout() {
                         initial={{ opacity: 0, scale: 0.9, y: -20 }}
                         animate={{ opacity: 1, scale: 1.1, y: 0 }}
                         transition={{ duration: 1.2, ease: 'circOut' }}
-                        className="mb-14 md:mb-20 flex flex-col items-center mt-[15vh] relative z-[60]"
+                        className="mb-8 md:mb-12 flex flex-col items-center mt-[8vh] relative z-[60]"
                     >
                         <div className="flex items-center gap-6 px-10 py-2.5 bg-zinc-900/80 border border-white/10 rounded-full backdrop-blur-xl transition-all hover:border-brand-primary/50 group/tele shadow-[0_0_30px_rgba(0,0,0,0.5)] overflow-hidden relative">
                             {/* Shimmer Light Effect */}
@@ -635,11 +635,10 @@ export function MasterLayout() {
                                             />
 
                                             <div
-                                                className={`absolute inset-0 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] rounded-3xl pointer-events-none ${
-                                                    isHovered && isAtFront
+                                                className={`absolute inset-0 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] rounded-3xl pointer-events-none ${isHovered && isAtFront
                                                         ? 'shadow-[0_0_120px_rgba(255,255,255,0.25)] border border-white/20'
                                                         : 'backdrop-blur-md text-zinc-400 border-y border-white/5'
-                                                }`}
+                                                    }`}
                                                 style={{
                                                     transform:
                                                         isHovered && isAtFront
@@ -730,11 +729,10 @@ export function MasterLayout() {
 
                                                 {/* Brand Letter Watermark */}
                                                 <div
-                                                    className={`absolute -right-4 top-1/2 -translate-y-1/2 text-[12rem] font-black italic uppercase select-none pointer-events-none transition-all duration-1000 ${
-                                                        isHovered && isAtFront
+                                                    className={`absolute -right-4 top-1/2 -translate-y-1/2 text-[12rem] font-black italic uppercase select-none pointer-events-none transition-all duration-1000 ${isHovered && isAtFront
                                                             ? 'text-white/[0.1] scale-100 opacity-100'
                                                             : 'text-white/[0.02] scale-110 opacity-0'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {brand.name[0]}
                                                 </div>
@@ -781,11 +779,10 @@ export function MasterLayout() {
                                         <div
                                             key={i}
                                             onMouseEnter={() => setActiveStep(i)}
-                                            className={`transition-all duration-500 ease-out origin-left ${
-                                                activeStep === i
+                                            className={`transition-all duration-500 ease-out origin-left ${activeStep === i
                                                     ? 'text-white translate-x-4 scale-105'
                                                     : 'text-white/20 hover:text-white/60 hover:translate-x-2'
-                                            }`}
+                                                }`}
                                         >
                                             {text}
                                         </div>
@@ -833,11 +830,10 @@ export function MasterLayout() {
                                     key={i}
                                     layout
                                     onMouseEnter={() => setActiveStep(i)}
-                                    className={`relative rounded-[2rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
-                                        activeStep === i
+                                    className={`relative rounded-[2rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${activeStep === i
                                             ? 'flex-[3] bg-white text-black border-white shadow-[0_0_50px_rgba(255,255,255,0.2)]'
                                             : 'flex-[1] bg-zinc-900/60 border-white/5 text-zinc-500 hover:bg-zinc-800'
-                                    }`}
+                                        }`}
                                 >
                                     {/* Inner Content Layout */}
                                     <div className="absolute inset-0 p-8 flex flex-col justify-between">
@@ -951,11 +947,10 @@ export function MasterLayout() {
                                     key={i}
                                     href={cat.link}
                                     onMouseEnter={() => setActiveVibe(i)}
-                                    className={`group relative overflow-hidden rounded-[2rem] border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between ${
-                                        activeVibe === i
+                                    className={`group relative overflow-hidden rounded-[2rem] border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between ${activeVibe === i
                                             ? 'flex-[3] bg-white/10 border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-md'
                                             : 'flex-[1] bg-white/5 border-white/5 opacity-60 hover:opacity-100 hover:bg-white/10'
-                                    }`}
+                                        }`}
                                 >
                                     {/* Background Mesh Gradient (Subtle) */}
                                     <div

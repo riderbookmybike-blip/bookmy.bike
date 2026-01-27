@@ -33,6 +33,7 @@ import AddBrandModal from '@/components/catalog/AddBrandModal';
 import { CatalogItem, CatalogTemplate } from '@/types/store';
 
 // Modular Step Components
+import CategoryStep from './steps/CategoryStep';
 import BrandStep from './steps/BrandStep';
 import TemplateStep from './steps/TemplateStep';
 import FamilyStep from './steps/FamilyStep';
@@ -53,6 +54,7 @@ const getTemplateIcon = (code: string) => {
 };
 
 const STEPS = [
+    { id: 'category', title: 'Type', icon: Box, color: 'text-orange-500' },
     { id: 'brand', title: 'Brand', icon: Landmark, color: 'text-blue-500' },
     { id: 'template', title: 'Templates', icon: Fingerprint, color: 'text-cyan-500' },
     { id: 'model', title: 'Model', icon: Box, color: 'text-purple-500' },
@@ -75,6 +77,7 @@ export default function UnifiedStudioPage() {
     const [templates, setTemplates] = useState<CatalogTemplate[]>([]);
 
     // Selection State
+    const [selectedCategory, setSelectedCategory] = useState<string | null>('VEHICLE');
     const [brand, setBrand] = useState<any>(null);
     const [template, setTemplate] = useState<CatalogTemplate | null>(null);
 
@@ -151,7 +154,8 @@ export default function UnifiedStudioPage() {
 
     // Reset when Step Back changes high level context
     useEffect(() => {
-        if (currentStep < 2) { // Brand or Template Step
+        if (currentStep < 3) { // Category, Brand or Template Step
+            if (currentStep < 2) setTemplate(null);
             setFamilyData(null);
         }
     }, [currentStep]);
@@ -241,6 +245,9 @@ export default function UnifiedStudioPage() {
                         if (!isNaN(stepIndex) && stepIndex >= 0 && stepIndex < STEPS.length) {
                             setCurrentStep(stepIndex);
                         }
+                    } else if (fData.template_id) {
+                        const tmpl = tData?.find(t => t.id === fData.template_id);
+                        if (tmpl?.category) setSelectedCategory(tmpl.category);
                     }
                 }
             }
@@ -293,8 +300,13 @@ export default function UnifiedStudioPage() {
                                     <h1 className="text-2xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter leading-none">Product Studio</h1>
 
                                     {/* Context Breadcrumb */}
-                                    {(brand || template || familyData) && (
+                                    {(selectedCategory || brand || template || familyData) && (
                                         <div className="flex items-center gap-2 ml-4 pl-4 border-l-2 border-slate-200 dark:border-white/10 opacity-50">
+                                            {selectedCategory && (
+                                                <div className="flex items-center gap-1 text-[10px] uppercase font-bold text-slate-500">
+                                                    <span className="text-slate-300">/</span> {selectedCategory}
+                                                </div>
+                                            )}
                                             {brand && (
                                                 <div className="flex items-center gap-1 text-[10px] uppercase font-bold text-slate-500">
                                                     <span className="text-slate-300">/</span> {brand.name}
@@ -357,6 +369,12 @@ export default function UnifiedStudioPage() {
             <main className="flex-1 max-w-[1600px] w-full mx-auto py-8 px-12 relative">
                 <div className="min-h-[600px] mb-24">
                     {currentStep === 0 && (
+                        <CategoryStep
+                            selectedCategory={selectedCategory}
+                            onSelectCategory={(id: string) => setSelectedCategory(id)}
+                        />
+                    )}
+                    {currentStep === 1 && (
                         <BrandStep
                             brands={brands}
                             stats={brandStats}
@@ -373,14 +391,14 @@ export default function UnifiedStudioPage() {
                             template={template}
                         />
                     )}
-                    {currentStep === 1 && (
+                    {currentStep === 2 && (
                         <TemplateStep
-                            templates={templates}
+                            templates={templates.filter(t => t.category === selectedCategory || !selectedCategory)}
                             selectedTemplate={template?.id ?? null}
                             onSelectTemplate={(id: string) => setTemplate(templates.find(t => t.id === id) ?? null)}
                         />
                     )}
-                    {currentStep === 2 && brand && template && (
+                    {currentStep === 3 && brand && template && (
                         <FamilyStep
                             brand={brand}
                             template={template}
@@ -416,10 +434,10 @@ export default function UnifiedStudioPage() {
                             }}
                         />
                     )}
-                    {currentStep === 3 && familyData && template && <VariantStep family={familyData} template={template} existingVariants={variants} onUpdate={setVariants} />}
-                    {currentStep === 4 && familyData && template && <ColorStep family={familyData} template={template} existingColors={colors} onUpdate={setColors} />}
-                    {currentStep === 5 && familyData && template && <MatrixStep family={familyData} template={template} variants={variants} colors={colors} existingSkus={skus} onUpdate={setSkus} />}
-                    {currentStep === 6 && (
+                    {currentStep === 4 && familyData && template && <VariantStep family={familyData} template={template} existingVariants={variants} onUpdate={setVariants} />}
+                    {currentStep === 5 && familyData && template && <ColorStep family={familyData} template={template} existingColors={colors} onUpdate={setColors} />}
+                    {currentStep === 6 && familyData && template && <MatrixStep family={familyData} template={template} variants={variants} colors={colors} existingSkus={skus} onUpdate={setSkus} />}
+                    {currentStep === 7 && (
                         <ReviewStep
                             brand={brand}
                             family={familyData}
@@ -430,7 +448,7 @@ export default function UnifiedStudioPage() {
                             onUpdate={setSkus}
                         />
                     )}
-                    {currentStep === 7 && (
+                    {currentStep === 8 && (
                         <PublishStep
                             onFinish={handleNext}
                         />
@@ -459,7 +477,7 @@ export default function UnifiedStudioPage() {
 
                         <button
                             onClick={handleNext}
-                            disabled={(currentStep === 0 && !brand) || (currentStep === 1 && !template)}
+                            disabled={(currentStep === 0 && !selectedCategory) || (currentStep === 1 && !brand) || (currentStep === 2 && !template)}
                             className="flex items-center gap-3 px-8 py-3 bg-slate-900 text-white rounded-[1.25rem] font-black uppercase text-[10px] tracking-[0.2em] shadow-2xl shadow-slate-900/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none"
                         >
                             {currentStep === STEPS.length - 1 ? 'Go to Catalog' : (

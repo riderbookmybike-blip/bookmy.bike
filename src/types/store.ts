@@ -2,6 +2,7 @@ export interface CatalogTemplate {
     id: string;
     name: string;
     code: string;
+    category?: string;
     hierarchy_config: {
         l1: string;
         l2: string;

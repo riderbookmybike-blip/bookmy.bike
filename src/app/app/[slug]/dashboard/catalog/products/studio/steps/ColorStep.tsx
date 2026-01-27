@@ -251,10 +251,16 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
         }
     };
 
-    const handleSaveMedia = async (images: string[], videos: string[], pdfs: string[], primary: string | null, applyVideosToAll?: boolean) => {
-        if (!activeColorId) return;
+    const handleSaveMedia = async (images: string[], videos: string[], pdfs: string[], primary: string | null, applyVideosToAll?: boolean, zoomFactor?: number) => {
+        window.alert('DEBUG: handleSaveMedia reached in ColorStep.tsx');
+        console.error('DEBUG: handleSaveMedia called', { images, videos, pdfs, primary, applyVideosToAll, zoomFactor });
+        if (!activeColorId) {
+            console.error('DEBUG: No activeColorId found');
+            return;
+        }
 
         try {
+            console.log('DEBUG: Proceeding with save for ID:', activeColorId);
             const updatedList = existingColors.map((c: any) => {
                 if (c.id === activeColorId) {
                     return { ...c, specs: { ...c.specs, gallery: images, video_urls: videos, pdf_urls: pdfs, primary_image: primary } };
@@ -268,15 +274,69 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
             onUpdate(updatedList);
             const supabase = createClient();
 
+            // 1. Prepare assets payload
+            const assetsPayload: any[] = [];
+
+            // Add images
+            images.forEach((url, idx) => {
+                assetsPayload.push({
+                    item_id: activeColorId,
+                    type: 'IMAGE',
+                    url,
+                    is_primary: url === primary,
+                    zoom_factor: zoomFactor || 1.1,
+                    position: idx
+                });
+            });
+
+            // Add videos
+            videos.forEach((url, idx) => {
+                assetsPayload.push({
+                    item_id: activeColorId,
+                    type: 'VIDEO',
+                    url,
+                    position: idx
+                });
+            });
+
+            // Add PDFs
+            pdfs.forEach((url, idx) => {
+                assetsPayload.push({
+                    item_id: activeColorId,
+                    type: 'PDF',
+                    url,
+                    position: idx
+                });
+            });
+
             if (applyVideosToAll) {
+                // Update cat_items for all colors (specs)
                 const updatePromises = updatedList.map((item: any) =>
                     supabase.from('cat_items').update({ specs: item.specs }).eq('id', item.id)
                 );
                 await Promise.all(updatePromises);
+
+                // Update assets for the active color
+                await supabase.from('cat_assets').delete().eq('item_id', activeColorId);
+                if (assetsPayload.length > 0) {
+                    const { error } = await supabase.from('cat_assets').insert(assetsPayload);
+                    if (error) throw error;
+                }
             } else {
                 const updatedColor = updatedList.find((c: any) => c.id === activeColorId);
-                const { error } = await supabase.from('cat_items').update({ specs: updatedColor.specs }).eq('id', activeColorId);
-                if (error) throw error;
+
+                // Update cat_items
+                const { error: itemError } = await supabase.from('cat_items').update({
+                    specs: updatedColor.specs,
+                    zoom_factor: zoomFactor
+                }).eq('id', activeColorId);
+                if (itemError) throw itemError;
+
+                // Update cat_assets
+                await supabase.from('cat_assets').delete().eq('item_id', activeColorId);
+                if (assetsPayload.length > 0) {
+                    const { error: assetsError } = await supabase.from('cat_assets').insert(assetsPayload);
+                }
             }
             toast.success('Media saved successfully');
         } catch (error: any) {
@@ -673,6 +733,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                     initialVideos={activeColor.specs.video_urls?.length > 0 ? activeColor.specs.video_urls : (family.specs?.video_urls ?? [])}
                     initialPdfs={activeColor.specs.pdf_urls?.length > 0 ? activeColor.specs.pdf_urls : (family.specs?.pdf_urls ?? [])}
                     initialPrimary={activeColor.specs.primary_image}
+                    initialZoomFactor={activeColor.zoom_factor || 1.1}
 
                     // Inheritance Source
                     inheritedVideos={family.specs?.video_urls || []}

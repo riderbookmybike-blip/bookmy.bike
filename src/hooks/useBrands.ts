@@ -35,9 +35,17 @@ export function useBrands() {
                 if (data) {
                     setBrands(data);
                 }
-            } catch (err) {
-                console.error('Error fetching brands:', err);
-                setError(err instanceof Error ? err.message : 'Unknown error');
+            } catch (err: unknown) {
+                // Ignore AbortError - expected in React StrictMode double-render
+                const errObj = err as { name?: string; message?: string };
+                if (errObj?.name === 'AbortError' || errObj?.message?.includes('AbortError')) {
+                    return;
+                }
+                const errorMessage = err instanceof Error
+                    ? err.message
+                    : (err as { message?: string })?.message ?? JSON.stringify(err);
+                console.error('Error fetching brands:', errorMessage);
+                setError(errorMessage);
             } finally {
                 setIsLoading(false);
             }

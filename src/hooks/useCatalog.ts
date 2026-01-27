@@ -3,6 +3,33 @@ import { createClient } from '@/lib/supabase/client';
 import { ProductVariant } from '@/types/productMaster';
 import { calculateOnRoad } from '@/lib/utils/pricingUtility';
 
+// State code to full name mapping
+const STATE_NAMES: Record<string, string> = {
+    'MH': 'Maharashtra',
+    'KA': 'Karnataka',
+    'TN': 'Tamil Nadu',
+    'DL': 'Delhi',
+    'UP': 'Uttar Pradesh',
+    'GJ': 'Gujarat',
+    'RJ': 'Rajasthan',
+    'WB': 'West Bengal',
+    'AP': 'Andhra Pradesh',
+    'TS': 'Telangana',
+    'KL': 'Kerala',
+    'PB': 'Punjab',
+    'HR': 'Haryana',
+    'MP': 'Madhya Pradesh',
+    'BR': 'Bihar',
+    'OR': 'Odisha',
+    'AS': 'Assam',
+    'JH': 'Jharkhand',
+    'UK': 'Uttarakhand',
+    'CG': 'Chhattisgarh',
+    'HP': 'Himachal Pradesh',
+    'GA': 'Goa',
+    'ALL': 'India',
+};
+
 // New Unified Schema Types
 interface CatalogItemDB {
     id: string;
@@ -111,17 +138,22 @@ export function useCatalog() {
                             price_base,
                             parent:cat_items!parent_id(name, slug),
                             position,
-                            skus:cat_items!parent_id(
-                                id,
-                                type,
-                                price_base,
-                                is_primary,
-                                image_url,
-                                gallery_urls,
-                                video_url,
-                                specs,
-                                prices:cat_prices(ex_showroom_price, state_code, district, latitude, longitude)
-                            )
+                                skus:cat_items!parent_id(
+                                    id,
+                                    type,
+                                    price_base,
+                                    is_primary,
+                                    image_url,
+                                    gallery_urls,
+                                    video_url,
+                                    zoom_factor,
+                                    is_flipped,
+                                    offset_x,
+                                    offset_y,
+                                    specs,
+                                    assets:cat_assets(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
+                                    prices:cat_prices(ex_showroom_price, state_code, district, latitude, longitude)
+                                )
                         )
                     `)
                     .eq('type', 'FAMILY')
@@ -171,7 +203,7 @@ export function useCatalog() {
 
                         displayVariants = displayVariants.sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
 
-                        return displayVariants.map(variantItem => {
+                        return (displayVariants as any[]).map(variantItem => {
                             const makeName = family.brand?.name
                                 || family.specs?.brand
                                 || family.specs?.make
@@ -195,6 +227,7 @@ export function useCatalog() {
                                 model: family.name,
                                 variant: variantItem.name || family.name,
                                 displayName: `${makeName} ${family.name} ${variantItem.name !== family.name ? variantItem.name : ''}`.trim(),
+                                price_base: variantItem.price_base || 0,
                                 label: `${makeName} / ${family.name}`,
                                 slug: variantItem.slug,
                                 modelSlug: family.slug,
@@ -267,19 +300,17 @@ export function useCatalog() {
                                     }
 
                                     if (activePriceObj) {
-                                        pricingSource = activePriceObj.district
-                                            ? `${activePriceObj.district}, ${activePriceObj.state_code}`
-                                            : activePriceObj.state_code;
+                                        // Use full state name instead of state code
+                                        const stateName = STATE_NAMES[activePriceObj.state_code] || activePriceObj.state_code;
+                                        pricingSource = stateName;
 
                                         // If we fell back to MH but user is not in MH, mark estimate
                                         if (!activePriceObj.district && activePriceObj.state_code === 'MH' && stateCode !== 'MH') {
                                             isEstimate = true;
                                         }
-                                        // If "Nearest", we might want to mark estimate if distance is > X km? 
-                                        // User asked to just show nearest.
 
                                         if (isEstimate) {
-                                            pricingSource = `Nearest: ${pricingSource}`;
+                                            pricingSource = `Est: ${pricingSource}`;
                                         }
                                     }
 
@@ -358,7 +389,14 @@ export function useCatalog() {
                                     const firstSku = allSkus[0];
                                     const targetSku = primarySku || firstSku;
 
-                                    return targetSku?.image_url ||
+                                    // Try getting from assets first
+                                    const assets = (targetSku?.assets || []) as any[];
+                                    const primaryAsset = assets.find(a => a.type === 'IMAGE' && a.is_primary);
+                                    const firstImageAsset = assets.find(a => a.type === 'IMAGE');
+
+                                    return primaryAsset?.url ||
+                                        firstImageAsset?.url ||
+                                        targetSku?.image_url ||
                                         targetSku?.specs?.primary_image ||
                                         targetSku?.specs?.gallery?.[0] ||
                                         variantItem.specs?.image_url ||
@@ -371,15 +409,59 @@ export function useCatalog() {
                                     allSkus.forEach((sku: any) => {
                                         const hex = sku.specs?.hex_primary;
                                         if (hex && !colorsMap.has(hex)) {
+                                            const assets = (sku.assets || []) as any[];
+                                            const primaryAsset = assets.find(a => a.type === 'IMAGE' && a.is_primary);
+                                            const firstImageAsset = assets.find(a => a.type === 'IMAGE');
+
                                             colorsMap.set(hex, {
                                                 hexCode: hex,
                                                 secondaryHexCode: sku.specs?.hex_secondary,
                                                 name: sku.specs?.Color || sku.name,
-                                                imageUrl: sku.image_url || sku.specs?.primary_image
+                                                imageUrl: primaryAsset?.url || firstImageAsset?.url || sku.image_url || sku.specs?.primary_image,
+                                                zoomFactor: Number(primaryAsset?.zoom_factor || sku.zoom_factor || 1.0),
+                                                isFlipped: Boolean(primaryAsset?.is_flipped || sku.is_flipped || false),
+                                                offsetX: Number(primaryAsset?.offset_x || sku.offset_x || 0),
+                                                offsetY: Number(primaryAsset?.offset_y || sku.offset_y || 0)
                                             });
                                         }
                                     });
                                     return Array.from(colorsMap.values());
+                                })(),
+
+                                // Zoom factor for image normalization (from primary SKU)
+                                zoomFactor: (() => {
+                                    const primarySku = allSkus.find((s: any) => s.is_primary);
+                                    const firstSku = allSkus[0];
+                                    const targetSku = primarySku || firstSku;
+
+                                    const assets = (targetSku?.assets || []) as any[];
+                                    const primaryAsset = assets.find(a => a.type === 'IMAGE' && a.is_primary) || assets.find(a => a.type === 'IMAGE');
+
+                                    return Number(primaryAsset?.zoom_factor || targetSku?.zoom_factor || 1.0);
+                                })(),
+                                isFlipped: (() => {
+                                    const allSkus = (variantItem as any).skus || [];
+                                    const targetSku = allSkus.find((s: any) => s.is_primary) || allSkus[0];
+                                    const assets = (targetSku?.assets || []) as any[];
+                                    const primaryAsset = assets.find(a => a.type === 'IMAGE' && a.is_primary) || assets.find(a => a.type === 'IMAGE');
+
+                                    return Boolean(primaryAsset?.is_flipped || targetSku?.is_flipped || false);
+                                })(),
+                                offsetX: (() => {
+                                    const allSkus = (variantItem as any).skus || [];
+                                    const targetSku = allSkus.find((s: any) => s.is_primary) || allSkus[0];
+                                    const assets = (targetSku?.assets || []) as any[];
+                                    const primaryAsset = assets.find(a => a.type === 'IMAGE' && a.is_primary) || assets.find(a => a.type === 'IMAGE');
+
+                                    return Number(primaryAsset?.offset_x || targetSku?.offset_x || 0);
+                                })(),
+                                offsetY: (() => {
+                                    const allSkus = (variantItem as any).skus || [];
+                                    const targetSku = allSkus.find((s: any) => s.is_primary) || allSkus[0];
+                                    const assets = (targetSku?.assets || []) as any[];
+                                    const primaryAsset = assets.find(a => a.type === 'IMAGE' && a.is_primary) || assets.find(a => a.type === 'IMAGE');
+
+                                    return Number(primaryAsset?.offset_y || targetSku?.offset_y || 0);
                                 })()
                             };
                         });
@@ -399,6 +481,10 @@ export function useCatalog() {
                     setItems([]);
                 }
             } catch (err: any) {
+                // Ignore AbortError - expected in React StrictMode double-render
+                if (err?.name === 'AbortError' || err?.message?.includes('AbortError')) {
+                    return;
+                }
                 console.error('Error fetching catalog:', err);
                 if (err.message && err.details) {
                     console.error('Supabase Error Details:', {

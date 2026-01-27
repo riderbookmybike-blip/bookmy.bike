@@ -192,37 +192,94 @@ export default function MatrixStep({ family, template, variants, colors, existin
         }
     };
 
-    const handleMediaSave = async (images: string[], videos: string[], pdfs: string[], primary: string | null, applyVideosToAll?: boolean) => {
+    const handleMediaSave = async (images: string[], videos: string[], pdfs: string[], primary: string | null, applyVideosToAll?: boolean, zoomFactor?: number, isFlipped?: boolean, offsetX?: number, offsetY?: number) => {
+        console.log('DEBUG: MatrixStep handleMediaSave called', { images, videos, pdfs, primary, applyVideosToAll, zoomFactor, isFlipped, offsetX, offsetY });
         if (!activeMediaSku) return;
-        const supabase = createClient();
-        const payload = {
-            gallery_urls: images,
-            image_url: primary,
-            video_url: videos[0] || null,
-            specs: { ...activeMediaSku.specs, gallery: images, primary_image: primary, video_urls: videos, pdf_urls: pdfs }
-        };
-        const { data } = await supabase.from('cat_items').update(payload).eq('id', activeMediaSku.id).select().single();
-        if (data) {
-            onUpdate(existingSkus.map((s: any) => s.id === activeMediaSku.id ? data : s));
-        }
 
-        if (applyVideosToAll && (videos.length > 0 || pdfs.length > 0)) {
-            const otherSkus = existingSkus.filter((s: any) => s.parent_id === activeMediaSku.parent_id && s.id !== activeMediaSku.id);
-            if (otherSkus.length > 0) {
-                const updatePromises = otherSkus.map((s: any) =>
-                    supabase.from('cat_items').update({
-                        video_url: videos[0] || null,
-                        specs: { ...s.specs, video_urls: videos, pdf_urls: pdfs }
-                    }).eq('id', s.id)
-                );
-                await Promise.all(updatePromises);
-                onUpdate(existingSkus.map((s: any) => {
-                    if (s.parent_id === activeMediaSku.parent_id) {
-                        return { ...s, video_url: videos[0] || null, specs: { ...s.specs, video_urls: videos, pdf_urls: pdfs }, ...(s.id === activeMediaSku.id ? data : {}) };
-                    }
-                    return s;
-                }));
+        try {
+            const supabase = createClient();
+
+            // 1. Prepare assets payload
+            const assetsPayload: any[] = [];
+            images.forEach((url, idx) => {
+                assetsPayload.push({
+                    item_id: activeMediaSku.id,
+                    type: 'IMAGE',
+                    url,
+                    is_primary: url === primary,
+                    zoom_factor: zoomFactor || 1.0,
+                    is_flipped: isFlipped || false,
+                    offset_x: offsetX || 0,
+                    offset_y: offsetY || 0,
+                    position: idx
+                });
+            });
+            videos.forEach((url, idx) => {
+                assetsPayload.push({ item_id: activeMediaSku.id, type: 'VIDEO', url, position: idx });
+            });
+            pdfs.forEach((url, idx) => {
+                assetsPayload.push({ item_id: activeMediaSku.id, type: 'PDF', url, position: idx });
+            });
+
+            // 2. Perform database updates
+            const updatedSpecs = {
+                ...activeMediaSku.specs,
+                gallery: images,
+                primary_image: primary,
+                video_urls: videos,
+                pdf_urls: pdfs
+            };
+
+            const payload: any = {
+                gallery_urls: images,
+                image_url: primary,
+                video_url: videos[0] || null,
+                specs: updatedSpecs,
+                zoom_factor: zoomFactor || 1.1
+            };
+
+            const { data, error } = await supabase.from('cat_items').update(payload).eq('id', activeMediaSku.id).select().single();
+            if (error) throw error;
+
+            // Update assets table
+            await supabase.from('cat_assets').delete().eq('item_id', activeMediaSku.id);
+            if (assetsPayload.length > 0) {
+                const { error: assetsError } = await supabase.from('cat_assets').insert(assetsPayload);
+                if (assetsError) throw assetsError;
             }
+
+            if (data) {
+                onUpdate(existingSkus.map((s: any) => s.id === activeMediaSku.id ? data : s));
+            }
+
+            // Handle bulk update if needed
+            if (applyVideosToAll && (videos.length > 0 || pdfs.length > 0)) {
+                const otherSkus = existingSkus.filter((s: any) => s.parent_id === activeMediaSku.parent_id && s.id !== activeMediaSku.id);
+                if (otherSkus.length > 0) {
+                    const updatePromises = otherSkus.map(async (s: any) => {
+                        const newSpecs = { ...s.specs, video_urls: videos, pdf_urls: pdfs };
+                        await supabase.from('cat_items').update({
+                            video_url: videos[0] || null,
+                            specs: newSpecs
+                        }).eq('id', s.id);
+
+                        // Also update assets for other SKUs in same variant (Wait, usually assets are per color. Matrix handles SKUs which are Variant x Color)
+                        // This logic seems specific to propagation. For now let's keep it simple.
+                    });
+                    await Promise.all(updatePromises);
+                    onUpdate(existingSkus.map((s: any) => {
+                        if (s.parent_id === activeMediaSku.parent_id) {
+                            return { ...s, video_url: videos[0] || null, specs: { ...s.specs, video_urls: videos, pdf_urls: pdfs }, ...(s.id === activeMediaSku.id ? data : {}) };
+                        }
+                        return s;
+                    }));
+                }
+            }
+
+            toast.success('Media saved successfully');
+        } catch (error: any) {
+            console.error('MatrixStep save failed:', error);
+            toast.error('Failed to save media: ' + error.message);
         }
     };
 
@@ -443,6 +500,10 @@ export default function MatrixStep({ family, template, variants, colors, existin
                         inheritedPdfs={getInheritedAssets(activeMediaSku.parent_id, activeMediaSku.specs[l2Label]).pdfs}
                         inheritedFrom={`${family.brand?.name || 'Brand'} / ${family.name} / ${variants.find((v: any) => v.id === activeMediaSku.parent_id)?.name || 'Variant'}`}
                         initialPrimary={activeMediaSku.image_url || activeMediaSku.specs?.primary_image}
+                        initialZoomFactor={activeMediaSku.zoom_factor || 1.0}
+                        initialIsFlipped={activeMediaSku.is_flipped || false}
+                        initialOffsetX={activeMediaSku.offset_x || 0}
+                        initialOffsetY={activeMediaSku.offset_y || 0}
                         onSave={handleMediaSave}
                         onClose={() => setActiveMediaSku(null)}
                     />

@@ -16,6 +16,7 @@ import {
     Users
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import OnboardDealerModal from '@/components/dealers/OnboardDealerModal';
 
 interface Dealer {
     id: string;
@@ -33,22 +34,27 @@ export default function DealersPage() {
     const [dealers, setDealers] = useState<Dealer[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const fetchDealers = async () => {
+        setLoading(true);
+        const supabase = createClient();
+        const { data, error } = await supabase
+            .from('id_tenants')
+            .select('*')
+            .eq('type', 'DEALER')
+            .order('name', { ascending: true });
+
+        if (data) {
+            setDealers(data);
+        }
+        if (error) {
+            console.error('Error fetching dealers:', error);
+        }
+        setLoading(false);
+    };
 
     useEffect(() => {
-        const fetchDealers = async () => {
-            const supabase = createClient();
-            const { data, error } = await supabase
-                .from('tenants')
-                .select('*')
-                .eq('type', 'DEALER')
-                .order('name', { ascending: true });
-
-            if (data) {
-                setDealers(data);
-            }
-            setLoading(false);
-        };
-
         fetchDealers();
     }, []);
 
@@ -75,12 +81,21 @@ export default function DealersPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 dark:bg-indigo-600 text-white text-xs font-bold hover:bg-slate-800 dark:hover:bg-indigo-500 transition-all shadow-lg shadow-slate-200 dark:shadow-indigo-900/20">
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 dark:bg-indigo-600 text-white text-xs font-bold hover:bg-slate-800 dark:hover:bg-indigo-500 transition-all shadow-lg shadow-slate-200 dark:shadow-indigo-900/20"
+                    >
                         <Plus size={14} />
                         Onboard New Dealer
                     </button>
                 </div>
             </div>
+
+            <OnboardDealerModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSuccess={fetchDealers}
+            />
 
             {/* Search & Stats Section */}
             <div className="flex flex-col md:flex-row gap-4 items-center justify-between">

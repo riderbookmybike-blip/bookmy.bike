@@ -53,8 +53,16 @@ export interface ProductVariant {
         name: string;
         hexCode: string;
         imageUrl?: string;
+        zoomFactor?: number;
+        isFlipped?: boolean;
+        offsetX?: number;
+        offsetY?: number;
     }>;
     imageUrl: string;
+    zoomFactor?: number;
+    isFlipped?: boolean;
+    offsetX?: number;
+    offsetY?: number;
     color?: string; // Selected color
 }
 
