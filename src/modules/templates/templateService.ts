@@ -22,7 +22,7 @@ export interface RoleAssignment {
 
 export async function getAllTemplates(tenantFilter?: string) {
     const supabase = await createClient();
-    let query = supabase.from('dashboard_templates').select('*').order('name');
+    let query = supabase.from('sys_dashboard_templates').select('*').order('name');
 
     if (tenantFilter) {
         query = query.eq('tenant_type', tenantFilter);
@@ -36,10 +36,10 @@ export async function getAllTemplates(tenantFilter?: string) {
 export async function getAllAssignments() {
     const supabase = await createClient();
     const { data, error } = await supabase
-        .from('role_template_assignments')
+        .from('sys_role_templates')
         .select(`
             *,
-            dashboard_templates (name)
+            sys_dashboard_templates (name)
         `)
         .order('tenant_type')
         .order('role');
@@ -48,7 +48,7 @@ export async function getAllAssignments() {
 
     return data.map((item: any) => ({
         ...item,
-        template_name: item.dashboard_templates?.name
+        template_name: item.sys_dashboard_templates?.name
     })) as RoleAssignment[];
 }
 
@@ -57,7 +57,7 @@ export async function cloneTemplate(templateId: string, newName: string) {
 
     // 1. Fetch original
     const { data: original, error: fetchError } = await supabase
-        .from('dashboard_templates')
+        .from('sys_dashboard_templates')
         .select('*')
         .eq('id', templateId)
         .single();
@@ -66,7 +66,7 @@ export async function cloneTemplate(templateId: string, newName: string) {
 
     // 2. Insert copy
     const { data: newTemplate, error: insertError } = await supabase
-        .from('dashboard_templates')
+        .from('sys_dashboard_templates')
         .insert({
             name: newName,
             description: `Clone of ${original.name}`,
@@ -85,7 +85,7 @@ export async function cloneTemplate(templateId: string, newName: string) {
 export async function assignTemplateToRole(tenantType: string, role: string, templateId: string) {
     const supabase = await createClient();
     const { error } = await supabase
-        .from('role_template_assignments')
+        .from('sys_role_templates')
         .upsert({
             tenant_type: tenantType,
             role: role,

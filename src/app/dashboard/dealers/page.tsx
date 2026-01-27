@@ -4,19 +4,19 @@ import React, { useState, useEffect } from 'react';
 import {
     Building2,
     Search,
-    Filter,
     Plus,
-    MoreVertical,
     MapPin,
-    Phone,
-    Mail,
-    ChevronRight,
     ArrowUpRight,
-    BadgeCheck,
-    Users
+    Users,
+    Zap,
+    TrendingUp,
+    LayoutGrid,
+    ListFilter
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import OnboardDealerModal from '@/components/dealers/OnboardDealerModal';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
 
 interface Dealer {
     id: string;
@@ -24,13 +24,14 @@ interface Dealer {
     type: string;
     status: string;
     location?: string;
-    contact_person?: string;
-    phone?: string;
-    email?: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    config?: any;
     created_at: string;
 }
 
 export default function DealersPage() {
+    const params = useParams();
+    const slug = params?.slug as string;
     const [dealers, setDealers] = useState<Dealer[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -63,31 +64,40 @@ export default function DealersPage() {
         dealer.location?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    return (
-        <div className="space-y-8 animate-in fade-in duration-700 pb-12">
-            {/* Corporate Header Section */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-200 dark:border-white/5 pb-8">
-                <div className="space-y-1">
-                    <div className="flex items-center gap-2 px-2.5 py-1 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 rounded-lg w-fit">
-                        <Building2 size={12} className="text-indigo-600" />
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400">Platform Management</span>
-                    </div>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white mt-4">
-                        Dealership <span className="text-indigo-600">Network</span>
-                    </h1>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 font-medium max-w-xl">
-                        Manage and monitor the BookMyBike dealer ecosystem across all regions.
-                    </p>
-                </div>
+    const activeCount = filteredDealers.filter(d => d.status === 'ACTIVE').length;
 
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => setIsModalOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 dark:bg-indigo-600 text-white text-xs font-bold hover:bg-slate-800 dark:hover:bg-indigo-500 transition-all shadow-lg shadow-slate-200 dark:shadow-indigo-900/20"
-                    >
-                        <Plus size={14} />
-                        Onboard New Dealer
-                    </button>
+    return (
+        <div className="space-y-8 animate-in fade-in duration-700 pb-20">
+            {/* Header Section with Glass Effect */}
+            <div className="relative rounded-3xl p-8 overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 backdrop-blur-3xl" />
+                <div className="absolute inset-0 border border-white/10 rounded-3xl" />
+
+                <div className="relative flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 px-3 py-1 bg-white/50 dark:bg-white/10 backdrop-blur-md border border-white/20 rounded-full w-fit shadow-sm">
+                            <Building2 size={12} className="text-indigo-600 dark:text-indigo-400" />
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-900 dark:text-indigo-200">Platform Management</span>
+                        </div>
+                        <div>
+                            <h1 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white">
+                                Dealership <span className="text-indigo-600 dark:text-indigo-400">Network</span>
+                            </h1>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-2 max-w-lg leading-relaxed">
+                                Orchestrate the entire BookMyBike dealer ecosystem. Monitor performance, manage inventory, and configure offer strategies per node.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setIsModalOpen(true)}
+                            className="group relative inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-500/20 active:scale-95"
+                        >
+                            <Plus size={16} className="group-hover:rotate-90 transition-transform duration-300" />
+                            ONBOARD NEW NODE
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -97,105 +107,157 @@ export default function DealersPage() {
                 onSuccess={fetchDealers}
             />
 
-            {/* Search & Stats Section */}
-            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-                <div className="relative w-full md:w-96 group">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={16} />
-                    <input
-                        type="text"
-                        placeholder="Search dealers by name or location..."
-                        className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
+            {/* Stats & Search Bar */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                {/* Search */}
+                <div className="lg:col-span-2 relative group z-10">
+                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="relative bg-white dark:bg-slate-900/50 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl flex items-center p-1.5 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all shadow-sm group-hover:shadow-md">
+                        <div className="pl-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors">
+                            <Search size={18} />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Search nodes by name, ID or location..."
+                            className="w-full bg-transparent border-none px-4 py-2 text-sm font-medium focus:ring-0 outline-none placeholder:text-slate-400 text-slate-900 dark:text-white"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                        <div className="pr-1.5">
+                            <button className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 rounded-xl text-slate-400 transition-colors">
+                                <ListFilter size={16} />
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="flex items-center gap-4 text-sm font-bold text-slate-400">
-                    <div className="flex items-center gap-2">
-                        <span className="text-slate-900 dark:text-white">{filteredDealers.length}</span>
-                        Total Nodes
-                    </div>
-                    <div className="w-1 h-1 rounded-full bg-slate-300" />
-                    <div className="flex items-center gap-2 text-emerald-500">
-                        <span>{filteredDealers.filter(d => d.status === 'ACTIVE').length || 0}</span>
-                        Active
-                    </div>
+                {/* Stats */}
+                <div className="lg:col-span-2 flex gap-4">
+                    <StatCard
+                        label="Total Nodes"
+                        value={dealers.length}
+                        icon={LayoutGrid}
+                        trend="+12%"
+                        color="indigo"
+                    />
+                    <StatCard
+                        label="Active Network"
+                        value={activeCount}
+                        icon={Zap}
+                        trend="Stable"
+                        color="emerald"
+                    />
                 </div>
             </div>
 
-            {/* Dealers Grid/List */}
+            {/* Dealers Grid */}
             {loading ? (
-                <div className="py-20 flex flex-col items-center gap-4">
-                    <div className="w-10 h-10 border-4 border-slate-100 border-t-indigo-600 rounded-full animate-spin" />
-                    <p className="text-sm text-slate-400 font-medium">Fetching dealership cluster...</p>
+                <div className="py-32 flex flex-col items-center justify-center gap-6">
+                    <div className="relative">
+                        <div className="w-16 h-16 border-4 border-indigo-100 dark:border-indigo-900/30 rounded-full" />
+                        <div className="absolute inset-0 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                    <p className="text-sm text-slate-400 font-medium animate-pulse">Syncing network topology...</p>
                 </div>
             ) : filteredDealers.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredDealers.map((dealer) => (
-                        <DealerCard key={dealer.id} dealer={dealer} />
+                        <Link href={`/app/${slug}/dashboard/dealers/${dealer.id}`} key={dealer.id} className="block h-full">
+                            <DealerCard dealer={dealer} />
+                        </Link>
                     ))}
                 </div>
             ) : (
-                <div className="py-20 text-center bg-slate-50 dark:bg-white/5 rounded-3xl border border-dashed border-slate-200 dark:border-white/10">
-                    <Building2 className="mx-auto text-slate-300 mb-4" size={48} />
+                <div className="py-24 text-center bg-white/5 border border-dashed border-slate-200 dark:border-white/10 rounded-3xl">
+                    <div className="w-16 h-16 bg-slate-50 dark:bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <Search className="text-slate-400" size={24} />
+                    </div>
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white">No dealerships found</h3>
-                    <p className="text-sm text-slate-500">Try adjusting your search or onboard a new dealer.</p>
+                    <p className="text-sm text-slate-500 max-w-xs mx-auto mt-2">
+                        We couldn't find any nodes matching your search. Try a different query.
+                    </p>
                 </div>
             )}
         </div>
     );
 }
 
+const StatCard = ({ label, value, icon: Icon, trend, color }: any) => (
+    <div className="flex-1 bg-white dark:bg-slate-900/50 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-2xl p-4 flex items-center justify-between shadow-sm relative overflow-hidden group">
+        <div className={`absolute right-0 top-0 w-24 h-24 bg-${color}-500/5 rounded-full blur-2xl -mr-8 -mt-8 transition-opacity`} />
+        <div>
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{label}</div>
+            <div className="text-2xl font-black text-slate-900 dark:text-white group-hover:scale-105 transition-transform origin-left">
+                {value}
+            </div>
+        </div>
+        <div className="text-right">
+            <div className={`w-10 h-10 rounded-xl bg-${color}-500/10 flex items-center justify-center mb-1`}>
+                <Icon size={18} className={`text-${color}-500`} />
+            </div>
+            <div className={`text-[10px] font-bold text-${color}-500`}>{trend}</div>
+        </div>
+    </div>
+);
+
 const DealerCard = ({ dealer }: { dealer: Dealer }) => {
     return (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-indigo-500/30 transition-all group flex flex-col justify-between h-full">
-            <div className="space-y-4">
+        <div className="group bg-white dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-white/5 rounded-3xl p-6 shadow-sm hover:shadow-2xl hover:shadow-indigo-500/10 hover:border-indigo-500/30 transition-all duration-300 h-full flex flex-col justify-between relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/0 to-purple-500/0 group-hover:from-indigo-500/5 group-hover:to-purple-500/5 transition-colors duration-500" />
+
+            <div className="relative space-y-6">
                 <div className="flex justify-between items-start">
-                    <div className="w-12 h-12 rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center border border-slate-100 dark:border-white/5 shadow-sm group-hover:bg-indigo-50 dark:group-hover:bg-indigo-500/10 group-hover:border-indigo-100 dark:group-hover:border-indigo-500/20 transition-colors">
-                        <Building2 size={24} className="text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-50 to-white dark:from-slate-800 dark:to-slate-900 flex items-center justify-center border border-slate-100 dark:border-white/10 shadow-inner group-hover:scale-110 transition-transform duration-500">
+                        <Building2 size={28} className="text-slate-400 group-hover:text-indigo-600 transition-colors duration-300" />
                     </div>
-                    <div className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${dealer.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'}`}>
+                    <div className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${dealer.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/10' : 'bg-rose-500/10 text-rose-600 border-rose-500/10'}`}>
                         {dealer.status || 'ACTIVE'}
                     </div>
                 </div>
 
                 <div>
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white line-clamp-1 group-hover:text-indigo-600 transition-colors">
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white line-clamp-1 group-hover:text-indigo-600 transition-colors">
                         {dealer.name}
                     </h3>
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium mt-1">
-                        <MapPin size={12} className="text-slate-400" />
-                        {dealer.location || 'Location not set'}
+                    <div className="flex items-center gap-2 text-xs text-slate-500 font-medium mt-2">
+                        <MapPin size={12} className="text-indigo-500" />
+                        {dealer.location || 'Location not configured'}
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 py-4 border-y border-slate-50 dark:border-white/5">
-                    <div className="space-y-1">
-                        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Inventory</div>
-                        <div className="text-sm font-bold text-slate-900 dark:text-white">124 Units</div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5">
+                        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Inventory</div>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+                            <span className="text-sm font-bold text-slate-900 dark:text-white">124</span>
+                        </div>
                     </div>
-                    <div className="space-y-1">
-                        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Revenue</div>
-                        <div className="text-sm font-bold text-slate-900 dark:text-white">₹14.2 L</div>
+                    <div className="p-3 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5">
+                        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Revenue</div>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                            <span className="text-sm font-bold text-slate-900 dark:text-white">₹14.2 L</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div className="mt-6 flex items-center justify-between">
-                <div className="flex -space-x-2">
+            <div className="mt-8 flex items-center justify-between relative pt-6 border-t border-slate-100 dark:border-white/5">
+                <div className="flex -space-x-3 hover:space-x-1 transition-all">
                     {[1, 2, 3].map(i => (
-                        <div key={i} className="w-7 h-7 rounded-full border-2 border-white dark:border-slate-900 bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
+                        <div key={i} className="w-8 h-8 rounded-full border-2 border-white dark:border-slate-800 bg-slate-100 dark:bg-slate-700 flex items-center justify-center overflow-hidden shadow-sm">
                             <Users size={12} className="text-slate-400" />
                         </div>
                     ))}
-                    <div className="w-7 h-7 rounded-full border-2 border-white dark:border-slate-900 bg-indigo-50 dark:bg-indigo-900/40 flex items-center justify-center text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+                    <div className="w-8 h-8 rounded-full border-2 border-white dark:border-slate-800 bg-indigo-600 flex items-center justify-center text-[10px] font-bold text-white shadow-md">
                         +4
                     </div>
                 </div>
 
-                <button className="p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 text-slate-400 hover:text-indigo-600 transition-all">
-                    <ArrowUpRight size={18} />
-                </button>
+                <div className="flex items-center gap-2 text-xs font-bold text-indigo-600 opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0 transition-all duration-300">
+                    MANAGE NODE <ArrowUpRight size={14} />
+                </div>
             </div>
         </div>
     );

@@ -114,14 +114,16 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         href: '/dashboard/catalog/registration',
         icon: FileCheck,
         color: 'text-slate-500',
-        allowedTenants: ['MARKETPLACE', 'DEALER', 'AUMS']
+        allowedTenants: ['AUMS', 'MARKETPLACE'], // Restricted to platform admins
+        allowedRoles: ['SUPER_ADMIN', 'MARKETPLACE_ADMIN']
       },
       {
         title: 'Insurance Logic',
         href: '/dashboard/catalog/insurance',
         icon: ShieldCheck,
         color: 'text-emerald-500',
-        allowedTenants: ['MARKETPLACE', 'DEALER', 'AUMS']
+        allowedTenants: ['AUMS', 'MARKETPLACE'], // Restricted to platform admins
+        allowedRoles: ['SUPER_ADMIN', 'MARKETPLACE_ADMIN']
       },
       {
         title: 'Service Areas',
@@ -240,6 +242,13 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         color: 'text-purple-600',
         allowedTenants: ['MARKETPLACE', 'AUMS'],
         allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN']
+      },
+      {
+        title: 'Company Profile',
+        href: '/dashboard/company-profile',
+        icon: Settings,
+        color: 'text-slate-400',
+        allowedTenants: ['DEALER']
       },
       {
         title: 'Bank Settings',

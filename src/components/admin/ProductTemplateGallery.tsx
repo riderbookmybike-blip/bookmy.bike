@@ -97,7 +97,7 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
 
     const refreshTemplates = async () => {
         const supabase = createClient();
-        const { data } = await supabase.from('catalog_templates').select('*').order('name');
+        const { data } = await supabase.from('cat_templates').select('*').order('name');
         if (data) setTemplates(data);
     };
 
@@ -207,13 +207,13 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
 
             if (editingTemplate) {
                 const { error: updateError } = await supabase
-                    .from('catalog_templates')
+                    .from('cat_templates')
                     .update(payload)
                     .eq('id', editingTemplate.id);
                 if (updateError) throw updateError;
             } else {
                 const { error: insertError } = await supabase
-                    .from('catalog_templates')
+                    .from('cat_templates')
                     .insert(payload);
                 if (insertError) throw insertError;
             }

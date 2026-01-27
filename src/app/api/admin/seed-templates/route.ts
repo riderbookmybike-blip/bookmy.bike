@@ -32,7 +32,7 @@ export async function POST(request: Request) {
 
             // Let's try to match by name+tenant
             const { data: existing } = await supabase
-                .from('dashboard_templates')
+                .from('sys_dashboard_templates')
                 .select('id')
                 .eq('name', tmpl.name)
                 .eq('tenant_type', tmpl.tenant_type)
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
 
             if (!templateId) {
                 const { data: newTmpl, error: tmplError } = await supabase
-                    .from('dashboard_templates')
+                    .from('sys_dashboard_templates')
                     .insert({
                         name: tmpl.name,
                         description: tmpl.description,
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
             } else {
                 // Update existing system template
                 await supabase
-                    .from('dashboard_templates')
+                    .from('sys_dashboard_templates')
                     .update({
                         description: tmpl.description,
                         layout_config: tmpl.layout_config,
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
 
             // 2. Upsert Role Assignment
             const { error: assignError } = await supabase
-                .from('role_template_assignments')
+                .from('sys_role_templates')
                 .upsert(
                     {
                         tenant_type: tmpl.tenant_type,

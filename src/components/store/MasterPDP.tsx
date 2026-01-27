@@ -135,6 +135,7 @@ export function MasterPDP({ product, makeParam, modelParam, variantParam, data, 
 
     const getProductImage = () => {
         if (activeColorConfig?.image) return activeColorConfig.image;
+        if (activeColorConfig?.gallery_urls?.length > 0) return activeColorConfig.gallery_urls[0];
 
         switch (product.bodyType) {
             case 'SCOOTER':

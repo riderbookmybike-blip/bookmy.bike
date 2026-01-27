@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     Copy,
@@ -31,18 +31,39 @@ interface TemplateGalleryProps {
     initialAssignments?: Assignment[]; // Pass assignments
 }
 
+const PREFERRED_TENANTS = ['DEALER', 'BANK', 'AUMS'];
+
 export function TemplateGallery({ initialTemplates, initialAssignments = [] }: TemplateGalleryProps) {
     const router = useRouter();
     const [viewMode, setViewMode] = useState<'GALLERY' | 'ASSIGNMENTS'>('GALLERY');
-    const [filter, setFilter] = useState<string>('DEALER'); // Default to DEALER for better focus
     const [loadingId, setLoadingId] = useState<string | null>(null);
 
-    const tenants = ['DEALER', 'BANK', 'AUMS']; // Removed ALL for assignment clarity
+    const tenantOptions = useMemo(() => {
+        const dataTenants = Array.from(new Set(initialTemplates.map(t => t.tenant_type).filter(Boolean)));
+        const ordered = [
+            ...PREFERRED_TENANTS.filter(t => dataTenants.includes(t)),
+            ...dataTenants.filter(t => !PREFERRED_TENANTS.includes(t))
+        ];
+        const unique = Array.from(new Set([...ordered, ...PREFERRED_TENANTS]));
+        return ['ALL', ...unique];
+    }, [initialTemplates]);
+    const [filter, setFilter] = useState<string>(() => {
+        const dataTenants = Array.from(new Set(initialTemplates.map(t => t.tenant_type).filter(Boolean)));
+        const firstPreferred = PREFERRED_TENANTS.find(t => dataTenants.includes(t));
+        return firstPreferred || dataTenants[0] || 'ALL';
+    });
     const roles = ['OWNER', 'GM', 'MANAGER', 'TM', 'EXECUTIVE']; // Standard Roles
 
     const filteredTemplates = filter === 'ALL'
         ? initialTemplates
         : initialTemplates.filter(t => t.tenant_type === filter);
+
+    useEffect(() => {
+        if (viewMode === 'ASSIGNMENTS' && filter === 'ALL') {
+            const next = PREFERRED_TENANTS.find(t => tenantOptions.includes(t)) || tenantOptions.find(t => t !== 'ALL') || 'DEALER';
+            if (next !== filter) setFilter(next);
+        }
+    }, [filter, tenantOptions, viewMode]);
 
     const getAssignedTemplateId = (tenant: string, role: string) => {
         return initialAssignments.find(a => a.tenant_type === tenant && a.role === role)?.template_id || '';
@@ -137,7 +158,7 @@ export function TemplateGallery({ initialTemplates, initialAssignments = [] }: T
 
                     <div className="w-px h-8 bg-slate-200 dark:bg-slate-700 mx-2"></div>
 
-                    {tenants.map(t => (
+                    {tenantOptions.map(t => (
                         <button
                             key={t}
                             onClick={() => setFilter(t)}
@@ -203,6 +224,16 @@ export function TemplateGallery({ initialTemplates, initialAssignments = [] }: T
             {/* GALLERY VIEW */}
             {viewMode === 'GALLERY' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
+                    {filteredTemplates.length === 0 && (
+                        <div className="col-span-full bg-white dark:bg-slate-900 border border-dashed border-slate-200 dark:border-white/5 rounded-3xl p-10 text-center text-slate-500">
+                            <div className="text-sm font-bold text-slate-700 dark:text-slate-300">No templates found</div>
+                            <div className="text-xs mt-2">
+                                {filter === 'ALL'
+                                    ? 'Create a new template or seed templates to populate this gallery.'
+                                    : `No ${filter.toLowerCase()} templates yet. Try “ALL” or create a new one.`}
+                            </div>
+                        </div>
+                    )}
                     {filteredTemplates.map((tmpl) => (
                         <div key={tmpl.id} className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-3xl overflow-hidden hover:shadow-xl hover:border-indigo-500/20 transition-all duration-300 flex flex-col relative">
 

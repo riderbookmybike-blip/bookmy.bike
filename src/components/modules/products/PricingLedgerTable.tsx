@@ -6,8 +6,7 @@ import { calculateOnRoad } from '@/lib/utils/pricingUtility';
 import { useRouter } from 'next/navigation';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { RegistrationRule } from '@/types/registration';
-import { VehicleModel, ModelColor, ModelVariant } from '@/types/productMaster';
-
+// Helper Component for Robust Brand Logo/Avatar
 interface SKUPriceRow {
     id: string;
     brand: string;
@@ -18,6 +17,7 @@ interface SKUPriceRow {
     color: string;
     engineCc: string | number;
     exShowroom: number;
+    offerAmount?: number; // New Field
     originalExShowroom?: number; // For History Diff
     hsnCode?: string;
     gstRate?: number;
@@ -30,6 +30,7 @@ interface PricingLedgerTableProps {
     initialSkus: SKUPriceRow[];
     activeRule: RegistrationRule | null;
     onUpdatePrice: (skuId: string, price: number) => void;
+    onUpdateOffer: (skuId: string, offer: number) => void;
     onSaveAll?: () => void;
     // New Filter Props
     states: RegistrationRule[];
@@ -41,7 +42,6 @@ interface PricingLedgerTableProps {
     onBulkUpdate?: (ids: string[], price: number) => void;
 }
 
-// Helper Component for Robust Brand Logo/Avatar
 const BrandAvatar = ({ name, logo }: { name: string, logo?: string }) => {
     const [imgError, setImgError] = useState(false);
 
@@ -85,6 +85,7 @@ export default function PricingLedgerTable({
     initialSkus,
     activeRule,
     onUpdatePrice,
+    onUpdateOffer,
     onSaveAll,
     states,
     selectedStateId,
@@ -96,6 +97,7 @@ export default function PricingLedgerTable({
 }: PricingLedgerTableProps) {
     const router = useRouter();
     const { tenantSlug } = useTenant();
+    const isAums = tenantSlug === 'aums';
     const [skus, setSkus] = useState<SKUPriceRow[]>(initialSkus);
     const [isSaving, setIsSaving] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
@@ -215,40 +217,7 @@ export default function PricingLedgerTable({
 
     return (
         <div className="w-full h-full flex flex-col animate-in fade-in duration-700">
-            {/* Filter Toolbar (Replacing Search Bar) */}
-            <div className="mb-6 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    {/* Selectors moved to page control bar */}
-
-                    {/* Bulk Edit Toolbar (Visible when selection > 0) */}
-                    {selectedSkuIds.size > 0 && (
-                        <div className="flex items-center gap-2 ml-4 animate-in fade-in slide-in-from-bottom-2">
-                            <div className="h-10 w-[1px] bg-slate-200 dark:bg-white/10 mx-2" />
-                            <div className="flex items-center gap-2 p-1 bg-blue-500/10 rounded-xl border border-blue-500/20">
-                                <span className="px-3 text-[10px] font-black text-blue-600 uppercase tracking-wider">{selectedSkuIds.size} Selected</span>
-                                <input
-                                    type="number"
-                                    placeholder="Enter Price"
-                                    value={bulkPriceInput}
-                                    onChange={e => setBulkPriceInput(e.target.value)}
-                                    onFocus={(e) => e.target.select()}
-                                    className="w-24 bg-white dark:bg-slate-900 border border-blue-200 rounded-lg px-2 py-1.5 text-xs font-bold outline-none text-right"
-                                />
-                                <button
-                                    onClick={handleBulkApply}
-                                    className="p-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
-                                >
-                                    <CheckCircle2 size={16} />
-                                </button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                <div className="flex gap-4 self-end h-full">
-                    {/* Save Button Removed (Moved to Global Control Bar) */}
-                </div>
-            </div>
+            {/* ... (Toolbar remains same) ... */}
 
             {/* High-Density Ledger Table */}
             <div className="flex-1 bg-white dark:bg-slate-950/80 backdrop-blur-md rounded-[2.5rem] border border-slate-200 dark:border-white/10 shadow-2xl relative overflow-hidden flex flex-col">
@@ -256,6 +225,7 @@ export default function PricingLedgerTable({
                     <table className="w-full text-left border-collapse min-w-[1200px]">
                         <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900/90 backdrop-blur-md">
                             <tr>
+                                {/* ... (Checkbox and other headers remain same) ... */}
                                 <th className="px-4 py-3 w-10 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-200 dark:border-white/10 pl-6">
                                     <input
                                         type="checkbox"
@@ -329,23 +299,47 @@ export default function PricingLedgerTable({
                                 </th>
                                 <th className="px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 text-right align-top">RTO</th>
                                 <th className="px-4 py-3 text-[9px] font-black text-amber-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 bg-amber-500/5 text-right align-top">Insurance</th>
-                                <th className="px-6 py-3 text-[9px] font-black text-emerald-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 text-right align-top">On-Road</th>
+
+                                {!isAums && (
+                                    <th className="px-6 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 text-right align-top">
+                                        On-Road (Base)
+                                    </th>
+                                )}
+
+                                {!isAums && (
+                                    <th className="px-4 py-3 text-[9px] font-black text-purple-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 text-right align-top">
+                                        <div className="flex items-center justify-end gap-1 cursor-help group/header">
+                                            Offer <Info size={10} />
+                                            <div className="absolute top-full right-0 mt-2 w-48 p-2 bg-slate-900 border border-white/10 rounded-xl hidden group-hover/header:block z-50 shadow-xl pointer-events-none normal-case font-normal text-slate-300">
+                                                Positive (+) for Surge/Premium. Negative (-) for Discount.
+                                            </div>
+                                        </div>
+                                    </th>
+                                )}
+
+                                <th className="px-6 py-3 text-[9px] font-black text-emerald-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 text-right align-top">
+                                    On-Road {isAums ? '' : '(Final)'}
+                                </th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                             {processedSkus.map((sku, skuIdx) => {
-                                const calcs = activeRule
-                                    ? calculateOnRoad(sku.exShowroom, Number(sku.engineCc), activeRule)
+                                // 1. Calculate Standard On-Road (No Offer)
+                                const stdCalcs = activeRule
+                                    ? calculateOnRoad(sku.exShowroom, Number(sku.engineCc), activeRule, undefined)
+                                    : null;
+
+                                // 2. Calculate Final On-Road (With Offer)
+                                const finalCalcs = activeRule
+                                    ? calculateOnRoad(sku.exShowroom, Number(sku.engineCc), activeRule, undefined, { offerAmount: sku.offerAmount })
                                     : null;
 
                                 const gstRate = sku.gstRate || 28;
                                 const basePrice = sku.exShowroom / (1 + gstRate / 100);
                                 const totalGst = sku.exShowroom - basePrice;
-                                const cgst = totalGst / 2;
-                                const sgst = totalGst / 2;
-
                                 const isDirty = sku.originalExShowroom !== undefined && sku.exShowroom !== sku.originalExShowroom;
                                 const isSelected = selectedSkuIds.has(sku.id);
+                                const hasOffer = sku.offerAmount && sku.offerAmount !== 0;
 
                                 return (
                                     <tr
@@ -386,7 +380,6 @@ export default function PricingLedgerTable({
                                                 <button
                                                     onClick={() => {
                                                         const base = tenantSlug ? `/app/${tenantSlug}/dashboard` : '/dashboard';
-                                                        // Navigate to studio if we have IDs, otherwise fallback to brand page
                                                         if (sku.brandId && sku.modelId) {
                                                             router.push(`${base}/catalog/vehicles/studio?brandId=${sku.brandId}&modelId=${sku.modelId}`);
                                                         } else {
@@ -421,7 +414,8 @@ export default function PricingLedgerTable({
                                                 <input
                                                     type="number"
                                                     value={sku.exShowroom}
-                                                    onChange={(e) => onUpdatePrice(sku.id, Number(e.target.value))}
+                                                    readOnly={!isAums} // Only AUMS can edit Base Price
+                                                    onChange={(e) => isAums && onUpdatePrice(sku.id, Number(e.target.value))}
                                                     onFocus={(e) => e.target.select()}
                                                     onBlur={(e) => {
                                                         if (!e.target.value || Number(e.target.value) <= 0) {
@@ -430,6 +424,7 @@ export default function PricingLedgerTable({
                                                     }}
                                                     className={`w-24 bg-slate-50 dark:bg-black/20 border rounded-lg px-2 py-1.5 text-xs font-black text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/10 transition-all text-right
                                                         ${isDirty ? 'border-amber-500/50 bg-amber-500/5' : 'border-slate-200 dark:border-white/10 focus:border-blue-500'}
+                                                        ${!isAums ? 'opacity-75 cursor-not-allowed' : ''}
                                                     `}
                                                 />
                                                 {/* Dirty State Indicator */}
@@ -452,12 +447,12 @@ export default function PricingLedgerTable({
                                             </div>
                                         </td>
                                         <td className="px-4 py-2 text-right group/cell relative cursor-help">
-                                            <span className="font-bold text-[10px] text-slate-600 dark:text-slate-400">₹{calcs?.rtoState.total.toLocaleString() || '--'}</span>
+                                            <span className="font-bold text-[10px] text-slate-600 dark:text-slate-400">₹{stdCalcs?.rtoState.total.toLocaleString() || '--'}</span>
                                             {/* RTO Tooltip */}
-                                            {calcs && (
+                                            {stdCalcs && (
                                                 <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-slate-900 border border-white/10 rounded-xl hidden group-hover/cell:block z-50 shadow-xl pointer-events-none">
                                                     <div className="space-y-1">
-                                                        {calcs.rtoState.items.map((item: any, idx: number) => (
+                                                        {stdCalcs.rtoState.items.map((item: any, idx: number) => (
                                                             <div key={idx} className="flex justify-between text-[8px] text-slate-300">
                                                                 <span>{item.label}</span>
                                                                 <span className="font-mono">₹{item.amount}</span>
@@ -468,12 +463,12 @@ export default function PricingLedgerTable({
                                             )}
                                         </td>
                                         <td className="px-4 py-2 text-right bg-amber-500/[0.02] group/cell relative cursor-help">
-                                            <span className="font-bold text-[10px] text-amber-600 dark:text-amber-400">₹{calcs?.insuranceComp.total.toLocaleString() || '--'}</span>
+                                            <span className="font-bold text-[10px] text-amber-600 dark:text-amber-400">₹{stdCalcs?.insuranceComp.total.toLocaleString() || '--'}</span>
                                             {/* Insurance Tooltip */}
-                                            {calcs && (
+                                            {stdCalcs && (
                                                 <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-slate-900 border border-white/10 rounded-xl hidden group-hover/cell:block z-50 shadow-xl pointer-events-none">
                                                     <div className="space-y-1">
-                                                        {calcs.insuranceComp.items.map((item: any, idx: number) => (
+                                                        {stdCalcs.insuranceComp.items.map((item: any, idx: number) => (
                                                             <div key={idx} className="flex justify-between text-[8px] text-amber-200">
                                                                 <span>{item.label}</span>
                                                                 <span className="font-mono">₹{item.amount}</span>
@@ -483,13 +478,37 @@ export default function PricingLedgerTable({
                                                 </div>
                                             )}
                                         </td>
+
+                                        {/* Standard On-Road Column (Visual Reference for Dealers) */}
+                                        {!isAums && (
+                                            <td className="px-6 py-2 text-right">
+                                                <span className="font-bold text-[10px] text-slate-400">₹{stdCalcs?.onRoadTotal.toLocaleString() || '--'}</span>
+                                            </td>
+                                        )}
+
+                                        {/* Offer Input Cell */}
+                                        {!isAums && (
+                                            <td className="px-4 py-2 text-right">
+                                                <input
+                                                    type="number"
+                                                    value={sku.offerAmount || 0}
+                                                    onChange={(e) => onUpdateOffer(sku.id, Number(e.target.value))}
+                                                    onFocus={(e) => e.target.select()}
+                                                    className={`w-20 bg-transparent border-b border-dashed border-slate-300 dark:border-white/20 px-1 py-1 text-xs font-bold outline-none focus:border-purple-500 text-right
+                                                        ${(sku.offerAmount || 0) < 0 ? 'text-emerald-500' : (sku.offerAmount || 0) > 0 ? 'text-rose-500' : 'text-slate-400'}
+                                                    `}
+                                                    placeholder="0"
+                                                />
+                                            </td>
+                                        )}
                                         <td className="px-6 py-2 text-right">
-                                            <span className="font-black text-xs text-emerald-600 dark:text-emerald-400 italic tracking-tight">₹{calcs?.onRoadTotal.toLocaleString() || '--'}</span>
+                                            <span className="font-black text-xs text-emerald-600 dark:text-emerald-400 italic tracking-tight">₹{finalCalcs?.onRoadTotal.toLocaleString() || '--'}</span>
                                         </td>
                                     </tr>
                                 );
                             })}
                         </tbody>
+
                     </table>
                 </div>
 

@@ -20,7 +20,7 @@ export async function GET(request: Request) {
 
     // 2. Find Assignment
     const { data: assignment } = await supabase
-        .from('role_template_assignments')
+        .from('sys_role_templates')
         .select('template_id')
         .eq('tenant_type', tenantType)
         .eq('role', role)
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
 
     // 3. Fetch Template Config
     const { data: template } = await supabase
-        .from('dashboard_templates')
+        .from('sys_dashboard_templates')
         .select('layout_config')
         .eq('id', assignment.template_id)
         .single();

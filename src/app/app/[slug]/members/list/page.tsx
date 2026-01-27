@@ -247,6 +247,18 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
                     aValue = a.full_name || '';
                     bValue = b.full_name || '';
                     break;
+                case 'leads_count':
+                    aValue = a.leads_count || 0;
+                    bValue = b.leads_count || 0;
+                    break;
+                case 'quotes_count':
+                    aValue = a.quotes_count || 0;
+                    bValue = b.quotes_count || 0;
+                    break;
+                case 'bookings_count':
+                    aValue = a.bookings_count || 0;
+                    bValue = b.bookings_count || 0;
+                    break;
                 case 'status_priority':
                     aValue = getStatusPriority(a);
                     bValue = getStatusPriority(b);
@@ -505,9 +517,33 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
                                             <FilterDropdown title="District" options={filterOptions.district} type="district" />
                                         </div>
                                     </th>
-                                    <th className="px-4 py-4 text-center w-[10%] text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300">Leads</th>
-                                    <th className="px-4 py-4 text-center w-[10%] text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300">Quotes</th>
-                                    <th className="px-4 py-4 text-center w-[10%] text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300">Bookings</th>
+                                    <th className="px-4 py-4 text-center w-[10%]">
+                                        <button onClick={() => handleSort('leads_count')} className="group flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300 hover:text-indigo-600 transition-colors w-full">
+                                            Leads
+                                            <div className="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <ArrowUp size={8} className={sortConfig.key === 'leads_count' && sortConfig.direction === 'asc' ? 'text-indigo-600' : 'text-slate-300'} />
+                                                <ArrowDown size={8} className={sortConfig.key === 'leads_count' && sortConfig.direction === 'desc' ? 'text-indigo-600' : 'text-slate-300'} />
+                                            </div>
+                                        </button>
+                                    </th>
+                                    <th className="px-4 py-4 text-center w-[10%]">
+                                        <button onClick={() => handleSort('quotes_count')} className="group flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300 hover:text-indigo-600 transition-colors w-full">
+                                            Quotes
+                                            <div className="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <ArrowUp size={8} className={sortConfig.key === 'quotes_count' && sortConfig.direction === 'asc' ? 'text-indigo-600' : 'text-slate-300'} />
+                                                <ArrowDown size={8} className={sortConfig.key === 'quotes_count' && sortConfig.direction === 'desc' ? 'text-indigo-600' : 'text-slate-300'} />
+                                            </div>
+                                        </button>
+                                    </th>
+                                    <th className="px-4 py-4 text-center w-[10%]">
+                                        <button onClick={() => handleSort('bookings_count')} className="group flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300 hover:text-indigo-600 transition-colors w-full">
+                                            Bookings
+                                            <div className="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <ArrowUp size={8} className={sortConfig.key === 'bookings_count' && sortConfig.direction === 'asc' ? 'text-indigo-600' : 'text-slate-300'} />
+                                                <ArrowDown size={8} className={sortConfig.key === 'bookings_count' && sortConfig.direction === 'desc' ? 'text-indigo-600' : 'text-slate-300'} />
+                                            </div>
+                                        </button>
+                                    </th>
                                     <th className="px-4 py-4 text-left w-[12%]">
                                         <div className="flex items-center gap-2">
                                             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300">Status</span>
