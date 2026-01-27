@@ -60,6 +60,7 @@ export const ProductCard = ({
     serviceability,
     onLocationClick,
     isTv = false,
+    bestOffer,
 }: {
     v: ProductVariant;
     viewMode: 'grid' | 'list';
@@ -68,6 +69,7 @@ export const ProductCard = ({
     serviceability?: { status: 'loading' | 'serviceable' | 'unserviceable' | 'unset'; location?: string; distance?: number };
     onLocationClick?: () => void;
     isTv?: boolean;
+    bestOffer?: { price: number; dealer: string; isServiceable: boolean };
 }) => {
     const { isFavorite, toggleFavorite } = useFavorites();
     const isSaved = isFavorite(v.id);
@@ -83,7 +85,8 @@ export const ProductCard = ({
         return randomFactor * 100;
     });
 
-    const basePrice = v.price?.offerPrice || v.price?.onRoad || v.price?.exShowroom || 0;
+    const marketAdjustedPrice = bestOffer ? (v.price?.onRoad || 0) + bestOffer.price : (v.price?.offerPrice || v.price?.onRoad || v.price?.exShowroom || 0);
+    const basePrice = marketAdjustedPrice;
 
     // Continuous EMI Flip Logic
     const TENURE_OPTIONS = [12, 24, 36, 48, 60];
@@ -210,12 +213,23 @@ export const ProductCard = ({
                                         <span className="text-3xl font-black text-slate-900 dark:text-white leading-none tracking-tight">
                                             ₹{basePrice.toLocaleString('en-IN')}
                                         </span>
-                                        {v.price?.offerPrice && v.price?.onRoad && (
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[10px] font-bold text-slate-400 line-through">
-                                                    ₹{v.price.onRoad.toLocaleString('en-IN')}
+                                        {bestOffer ? (
+                                            <div className="flex flex-col items-start leading-none">
+                                                <span className="text-[10px] font-bold text-green-600 dark:text-green-500 uppercase tracking-widest">
+                                                    Lowest in {serviceability?.location?.split(',')[0]}
+                                                </span>
+                                                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                                    by {bestOffer.dealer}
                                                 </span>
                                             </div>
+                                        ) : (
+                                            v.price?.offerPrice && v.price?.onRoad && (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] font-bold text-slate-400 line-through">
+                                                        ₹{v.price.onRoad.toLocaleString('en-IN')}
+                                                    </span>
+                                                </div>
+                                            )
                                         )}
                                     </div>
                                 </div>
@@ -513,8 +527,38 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
 
     const [isTv] = useState(_variant === 'tv');
 
-    const [serviceability, setServiceability] = useState<{ status: 'loading' | 'serviceable' | 'unserviceable' | 'unset'; location?: string; distance?: number }>({ status: 'loading' });
+    const [serviceability, setServiceability] = useState<{ status: 'loading' | 'serviceable' | 'unserviceable' | 'unset'; location?: string; distance?: number; stateCode?: string }>({ status: 'loading' });
     const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
+    const [marketOffers, setMarketOffers] = useState<Record<string, { price: number; dealer: string; isServiceable: boolean }>>({});
+
+    // Fetch Market Offers when Serviceability Updates
+    React.useEffect(() => {
+        const fetchOffers = async () => {
+            if (serviceability.status === 'serviceable' && serviceability.location) {
+                const supabase = createClient();
+                const district = serviceability.location; // Assuming location is district name or we parse it
+                const stateCode = serviceability.stateCode || 'MH'; // Default fallback
+
+                const { data, error } = await supabase.rpc('get_market_best_offers', {
+                    p_district_name: district,
+                    p_state_code: stateCode
+                });
+
+                if (!error && data) {
+                    const offerMap: Record<string, { price: number; dealer: string; isServiceable: boolean }> = {};
+                    data.forEach((item: any) => {
+                        offerMap[item.vehicle_color_id] = {
+                            price: Number(item.best_offer), // Ensure number
+                            dealer: item.dealer_name,
+                            isServiceable: item.is_serviceable
+                        };
+                    });
+                    setMarketOffers(offerMap);
+                }
+            }
+        };
+        fetchOffers();
+    }, [serviceability.location, serviceability.status, serviceability.stateCode]);
 
     React.useEffect(() => {
         const checkCurrentServiceability = async () => {
@@ -534,7 +578,8 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
                     const result = await checkServiceability(profile.aadhaar_pincode);
                     setServiceability({
                         status: result.isServiceable ? 'serviceable' : 'unserviceable',
-                        location: result.location || profile.aadhaar_pincode
+                        location: result.location || profile.aadhaar_pincode,
+                        stateCode: result.stateCode
                     });
                     return;
                 }
@@ -553,7 +598,8 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
 
                         setServiceability({
                             status: result.isServiceable ? 'serviceable' : 'unserviceable',
-                            location: displayLoc
+                            location: displayLoc,
+                            stateCode: result.stateCode
                         });
                         // Allow silent update of details (District/State)
                         localStorage.setItem('bkmb_user_pincode', JSON.stringify({
@@ -597,7 +643,8 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
 
                             setServiceability({
                                 status: result.isServiceable ? 'serviceable' : 'unserviceable',
-                                location: displayLoc
+                                location: displayLoc,
+                                stateCode: result.stateCode
                             });
                             localStorage.setItem('bkmb_user_pincode', JSON.stringify({
                                 pincode,
@@ -1205,7 +1252,7 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
                                         onClick={clearAll}
                                         className="text-[9px] font-black uppercase tracking-widest text-brand-primary hover:text-slate-900 dark:hover:text-white transition-colors px-3 ml-2"
                                     >
-                                        Clear all
+                                        Clear all filters
                                     </button>
                                 </div>
                             )}
@@ -1227,6 +1274,7 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
                                     serviceability={serviceability}
                                     onLocationClick={() => setIsLocationPickerOpen(true)}
                                     isTv={isTv}
+                                    bestOffer={marketOffers[v.id]}
                                 />
                             ))}
                         </div>

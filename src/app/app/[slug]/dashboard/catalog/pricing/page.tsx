@@ -23,7 +23,9 @@ interface SKUPriceRow {
     color: string;
     engineCc: number;
     exShowroom: number;
+    offerAmount: number; // New Field (-ve Discount, +ve Surge)
     originalExShowroom?: number;
+    originalOfferAmount?: number; // For History Diff
     hsnCode?: string;
     gstRate?: number;
     updatedAt?: string;
@@ -106,7 +108,6 @@ export default function PricingPage() {
         setLoading(true);
         try {
             // 1. Fetch SKUs from Unified Catalog
-            // SKU -> Variant (Parent) -> Family (Grandparent)
             const { data: skuData, error: skuError } = await supabase
                 .from('cat_items')
                 .select(`
@@ -129,13 +130,19 @@ export default function PricingPage() {
 
             if (skuError) throw skuError;
 
-            // 2. Fetch Existing Prices for State
+            // 2. Fetch Base Prices (Global/State-level)
             const activeStateCode = states.find(s => s.id === selectedStateId)?.stateCode || 'MH';
-            const [priceRes, stockRes] = await Promise.all([
+            const [priceRes, offerRes, stockRes] = await Promise.all([
                 supabase
-                    .from('cat_prices')
+                    .from('vehicle_prices')
                     .select('vehicle_color_id, ex_showroom_price, updated_at')
                     .eq('state_code', activeStateCode),
+                // Fetch Dealer Specific Offers
+                tenantSlug !== 'aums' ? supabase
+                    .from('id_dealer_pricing_rules')
+                    .select('vehicle_color_id, offer_amount')
+                    .eq('state_code', activeStateCode)
+                    .eq('tenant_id', tenantId) : Promise.resolve({ data: [] }),
                 supabase
                     .from('vehicle_inventory')
                     .select('sku_id, status')
@@ -145,6 +152,7 @@ export default function PricingPage() {
             const { data: priceData, error: priceError } = priceRes;
             if (priceError) throw priceError;
 
+            const { data: offerData } = offerRes as any;
             const { data: stockData } = stockRes;
 
             const stockMap = new Map();
@@ -152,7 +160,17 @@ export default function PricingPage() {
                 stockMap.set(s.sku_id, (stockMap.get(s.sku_id) || 0) + 1);
             });
 
-            // 3. Fetch Brand Regional Deltas for this state
+            const priceMap = new Map();
+            priceData?.forEach((p: any) => {
+                priceMap.set(p.vehicle_color_id, p.ex_showroom_price);
+            });
+
+            const offerMap = new Map();
+            offerData?.forEach((o: any) => {
+                offerMap.set(o.vehicle_color_id, o.offer_amount);
+            });
+
+            // 3. Fetch Brand Regional Deltas
             const { data: brandDeltas } = await supabase
                 .from('cat_regional_configs')
                 .select('brand_id, delta_percentage')
@@ -161,16 +179,16 @@ export default function PricingPage() {
             const brandDeltaMap = new Map();
             brandDeltas?.forEach(d => brandDeltaMap.set(d.brand_id, d.delta_percentage));
 
-            const priceMap = new Map();
-            priceData?.forEach((p: any) => priceMap.set(p.vehicle_color_id, p.ex_showroom_price));
-
             let formattedSkus: SKUPriceRow[] = (skuData || []).map((sku: any) => {
                 const variant = sku.parent;
                 const family = variant?.parent;
                 const brand = family?.brand;
 
-                // Priority: State Price > (Base Price * (1 + Brand Delta %)) > 0
+                // Price Priority: Explicit State Price > Rule-based Calculation
                 const statePrice = priceMap.get(sku.id);
+                // Offer: Explicit Dealer Offer > 0
+                const stateOffer = offerMap.get(sku.id) || 0;
+
                 const basePrice = (sku.price_base || family?.price_base || 0);
                 const brandDelta = brandDeltaMap.get(brand?.id) || 0;
 
@@ -189,19 +207,18 @@ export default function PricingPage() {
                     color: sku.name,
                     engineCc: parseInt(sku.specs?.engine_cc || family?.specs?.engine_cc || '110'),
                     exShowroom: finalPrice,
-                    originalExShowroom: basePrice,
+                    offerAmount: stateOffer,
+                    originalExShowroom: finalPrice, // Used for dirty check on ex-showroom
+                    originalOfferAmount: stateOffer, // Used for dirty check on offer
                     stockCount: stockMap.get(sku.id) || 0
                 };
             });
 
-            // Filter by Brand if needed
             if (selectedBrand !== 'ALL') {
                 formattedSkus = formattedSkus.filter(s => s.brand === selectedBrand);
             }
 
-            // Client-side sort
             formattedSkus.sort((a, b) => a.brand.localeCompare(b.brand) || a.model.localeCompare(b.model));
-
             setSkus(formattedSkus);
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -217,6 +234,12 @@ export default function PricingPage() {
         setLastEditTime(Date.now());
     };
 
+    const handleUpdateOffer = (skuId: string, offer: number) => {
+        setSkus(prev => prev.map(s => s.id === skuId ? { ...s, offerAmount: offer } : s));
+        setHasUnsavedChanges(true);
+        setLastEditTime(Date.now());
+    };
+
     const handleBulkUpdate = (ids: string[], price: number) => {
         setSkus(prev => prev.map(s => ids.includes(s.id) ? { ...s, exShowroom: price } : s));
         setHasUnsavedChanges(true);
@@ -227,29 +250,54 @@ export default function PricingPage() {
         const activeStateCode = states.find(s => s.id === selectedStateId)?.stateCode;
         if (!activeStateCode) return;
 
-        // Prepare Upsert Payload
-        // We only upsert rows that match the current state.
-        // Optimization: In a real app, track 'dirty' rows only. For now, bulk upserting visible rows is fine for <1000 items.
-        // Actually, let's filter for dirty if possible, but we don't track original efficiently here.
-        // We will simple upsert all for the active state to ensure consistency.
+        // SEPARATE LOGIC:
+        // AUMS -> Saves Base Prices (vehicle_prices)
+        // DEALERS -> Saves Offers (id_dealer_pricing_rules)
 
-        const payload = skus.map(s => ({
-            vehicle_color_id: s.id,
-            state_code: activeStateCode,
-            ex_showroom_price: s.exShowroom,
-            updated_at: new Date().toISOString()
-        }));
+        const isAums = tenantSlug === 'aums';
+        const updates: Promise<any>[] = [];
 
-        // Use RPC to bypass RLS and handle bulk upsert securely
-        const { error } = await supabase.rpc('upsert_vehicle_prices_bypass', {
-            prices: payload
-        });
+        if (isAums) {
+            // Filter modified prices
+            // Note: We are saving ALL prices for now to ensure consistency, 
+            // but ideally should only save changed ones.
+            const pricePayload = skus.map(s => ({
+                vehicle_color_id: s.id,
+                state_code: activeStateCode,
+                ex_showroom_price: s.exShowroom,
+                // We don't touch offer_amount in vehicle_prices for AUMS anymore, 
+                // or we kept it as legacy? Migration 20260205_add_offer added it.
+                // But now we are moving to id_dealer_pricing_rules.
+                // We will ignore offer_amount in vehicle_prices now.
+                updated_at: new Date().toISOString()
+            }));
 
-        if (error) {
-            alert(`Failed to save prices: ${error.message} (${error.details || ''})`);
-            console.error('Save Error:', error);
+            // Use the Bypass RPC for Base Prices
+            updates.push(supabase.rpc('upsert_vehicle_prices_bypass', { prices: pricePayload }));
+        } else {
+            // Dealer Logic
+            const offerPayload = skus.map(s => ({
+                tenant_id: tenantId,
+                vehicle_color_id: s.id,
+                state_code: activeStateCode,
+                offer_amount: s.offerAmount
+            }));
+
+            // Use the New Dealer RPC
+            updates.push(supabase.rpc('upsert_dealer_offers', { offers: offerPayload }));
+        }
+
+        const results = await Promise.all(updates);
+        const hasErrors = results.some(r => r.error);
+
+        if (hasErrors) {
+            const errorMsg = results.find(r => r.error)?.error.message || 'Unknown error';
+            alert(`Failed to save changes: ${errorMsg}`);
+            console.error('Save Errors:', results);
         } else {
             setHasUnsavedChanges(false);
+            // Refresh to confirm sync
+            // fetchSKUsAndPrices(); 
         }
     };
 
@@ -433,6 +481,7 @@ export default function PricingPage() {
                                 initialSkus={skus}
                                 activeRule={activeRule}
                                 onUpdatePrice={handleUpdatePrice}
+                                onUpdateOffer={handleUpdateOffer}
                                 onBulkUpdate={handleBulkUpdate}
                                 onSaveAll={handleSaveAll}
                                 states={states}

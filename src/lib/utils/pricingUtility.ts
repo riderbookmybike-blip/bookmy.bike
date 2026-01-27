@@ -123,7 +123,7 @@ export function calculateOnRoad(
     engineCc: string | number,
     rule: RegistrationRule,
     insuranceRule?: InsuranceRule,
-    pricingOverride?: { exShowroom?: number; discount?: number; dealerOffer?: number; onRoadOverride?: number }
+    pricingOverride?: { exShowroom?: number; discount?: number; offerAmount?: number; onRoadOverride?: number }
 ) {
     // 1. Apply Ex-Showroom Override if present
     const exShowroom = pricingOverride?.exShowroom || baseExShowroom;
@@ -146,7 +146,11 @@ export function calculateOnRoad(
 
     // Apply specific discounts if any (Logic: Subtract from total)
     if (pricingOverride?.discount) calculatedOnRoad -= pricingOverride.discount;
-    if (pricingOverride?.dealerOffer) calculatedOnRoad -= pricingOverride.dealerOffer;
+
+    // Apply Offer/Surge (Logic: Add to total)
+    // Positive = Surge (Increases Price)
+    // Negative = Discount (Decreases Price)
+    if (pricingOverride?.offerAmount) calculatedOnRoad += pricingOverride.offerAmount;
 
     // 2. Apply Final Manual Override if present (Winning rule)
     const finalOnRoad = pricingOverride?.onRoadOverride || calculatedOnRoad;

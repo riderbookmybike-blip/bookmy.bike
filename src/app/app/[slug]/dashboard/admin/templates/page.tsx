@@ -8,19 +8,19 @@ export const dynamic = 'force-dynamic';
 
 async function getDashboardTemplates() {
     const supabase = await createClient();
-    const { data } = await supabase.from('dashboard_templates').select('*').order('created_at', { ascending: false });
+    const { data } = await supabase.from('sys_dashboard_templates').select('*').order('created_at', { ascending: false });
     return data || [];
 }
 
 async function getProductTemplates() {
     const supabase = await createClient();
-    const { data } = await supabase.from('catalog_templates').select('*').order('name');
+    const { data } = await supabase.from('cat_templates').select('*').order('name');
     return data || [];
 }
 
 async function getAssignments() {
     const supabase = await createClient();
-    const { data } = await supabase.from('role_template_assignments').select('*');
+    const { data } = await supabase.from('sys_role_templates').select('*');
     return data || [];
 }
 

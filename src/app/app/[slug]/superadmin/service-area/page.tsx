@@ -372,6 +372,7 @@ export default function ServiceAreaPage() {
     const [filters, setFilters] = useState<Record<string, string[]>>({});
     const [searchInputs, setSearchInputs] = useState<Record<string, string>>({});
     const [activeFilterColumn, setActiveFilterColumn] = useState<string | null>(null);
+    const [lookupLoading, setLookupLoading] = useState(false);
 
     const [editingDistrictName, setEditingDistrictName] = useState<string | null>(null);
 
@@ -560,6 +561,36 @@ export default function ServiceAreaPage() {
         }
     };
 
+    const fetchCoordinates = async (pincode: string) => {
+        if (!pincode) return;
+        setLookupLoading(true);
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?postalcode=${pincode}&country=India&format=json`, {
+                headers: {
+                    'Accept-Language': 'en-US,en;q=0.5',
+                    'User-Agent': 'BookMyBike-App'
+                }
+            });
+            const data = await res.json();
+            if (data && data.length > 0) {
+                const { lat, lon } = data[0];
+                setEditingPincode(prev => prev ? {
+                    ...prev,
+                    latitude: parseFloat(lat),
+                    longitude: parseFloat(lon)
+                } : null);
+                toast.success(`Coordinates fetched for ${pincode}`);
+            } else {
+                toast.error(`No coordinates found for pincode ${pincode}`);
+            }
+        } catch (err) {
+            console.error("Geocoding error:", err);
+            toast.error("Failed to fetch coordinates API error");
+        } finally {
+            setLookupLoading(false);
+        }
+    };
+
     const handleEdit = (pincode: Pincode) => {
         setEditingPincode(pincode);
     };
@@ -577,7 +608,9 @@ export default function ServiceAreaPage() {
                     district: editingPincode.district,
                     taluka: editingPincode.taluka,
                     area: editingPincode.area,
-                    rto_code: normalizeRTO(editingPincode.rto_code)
+                    rto_code: normalizeRTO(editingPincode.rto_code),
+                    latitude: editingPincode.latitude,
+                    longitude: editingPincode.longitude
                 })
                 .eq('pincode', editingPincode.pincode);
 
@@ -1677,6 +1710,45 @@ export default function ServiceAreaPage() {
                                                 className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-inner"
                                                 value={editingPincode.area || ''}
                                                 onChange={e => setEditingPincode({ ...editingPincode, area: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <label className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                                                    <MapIcon size={12} className="text-indigo-400" />
+                                                    Latitude
+                                                </label>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => fetchCoordinates(editingPincode.pincode)}
+                                                    disabled={lookupLoading}
+                                                    className="text-[9px] font-black uppercase text-indigo-500 hover:text-indigo-600 flex items-center gap-1 transition-colors disabled:opacity-50"
+                                                >
+                                                    {lookupLoading ? <Loader2 size={10} className="animate-spin" /> : <Zap size={10} />}
+                                                    Fetch from Map
+                                                </button>
+                                            </div>
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-inner placeholder:text-slate-300"
+                                                placeholder="e.g., 19.9972"
+                                                value={editingPincode.latitude || ''}
+                                                onChange={e => setEditingPincode({ ...editingPincode, latitude: e.target.value ? parseFloat(e.target.value) : null })}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                                                <MapIcon size={12} className="text-indigo-400" />
+                                                Longitude
+                                            </label>
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-inner placeholder:text-slate-300"
+                                                placeholder="e.g., 79.2961"
+                                                value={editingPincode.longitude || ''}
+                                                onChange={e => setEditingPincode({ ...editingPincode, longitude: e.target.value ? parseFloat(e.target.value) : null })}
                                             />
                                         </div>
                                     </div>

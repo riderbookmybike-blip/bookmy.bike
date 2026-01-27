@@ -10,12 +10,12 @@ export async function DELETE(
         const supabase = await createClient(); // Use server client which respects user session (AUMS only) or Service Role if needed.
 
         // Check if system
-        const { data: tmpl } = await supabase.from('dashboard_templates').select('is_system').eq('id', id).single();
+        const { data: tmpl } = await supabase.from('sys_dashboard_templates').select('is_system').eq('id', id).single();
         if (tmpl?.is_system) {
             return NextResponse.json({ success: false, error: 'Cannot delete system templates' }, { status: 403 });
         }
 
-        const { error } = await supabase.from('dashboard_templates').delete().eq('id', id);
+        const { error } = await supabase.from('sys_dashboard_templates').delete().eq('id', id);
 
         if (error) throw error;
 
