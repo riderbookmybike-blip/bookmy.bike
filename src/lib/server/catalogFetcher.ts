@@ -77,7 +77,7 @@ export async function fetchCatalogServerSide(): Promise<ProductVariant[]> {
                     offset_y,
                     specs,
                     assets:cat_assets(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
-                    prices:cat_prices(ex_showroom_price, offer_amount, state_code, district, latitude, longitude)
+                    prices:cat_prices(ex_showroom_price, state_code, district, latitude, longitude)
                 )
             )
         `)
@@ -107,13 +107,19 @@ export async function fetchCatalogServerSide(): Promise<ProductVariant[]> {
         .order('state_code', { ascending: false })
         .limit(1);
 
-    // 4. Map Items
+    // 4. Fetch Market Best Offers
+    const { data: offerData } = await supabase.rpc('get_market_best_offers', {
+        p_district_name: userDistrict || '',
+        p_state_code: stateCode
+    });
+
+    // 5. Map Items
     if (data) {
         return mapCatalogItems(
             data as any[],
             ruleData || [],
             insuranceRuleData || [],
-            { stateCode, userLat, userLng, userDistrict }
+            { stateCode, userLat, userLng, userDistrict, offers: offerData || [] }
         );
     }
 
