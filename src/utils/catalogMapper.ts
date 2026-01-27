@@ -70,6 +70,7 @@ interface MapOptions {
     userLat?: number | null;
     userLng?: number | null;
     userDistrict?: string | null;
+    offers?: any[];
 }
 
 export function mapCatalogItems(
@@ -78,7 +79,7 @@ export function mapCatalogItems(
     insuranceRuleData: any[],
     options: MapOptions
 ): ProductVariant[] {
-    const { stateCode, userLat, userLng, userDistrict } = options;
+    const { stateCode, userLat, userLng, userDistrict, offers } = options;
 
     const effectiveRule: any = ruleData?.[0] || {
         id: 'default',
@@ -144,12 +145,22 @@ export function mapCatalogItems(
                     let pricingSource = "";
                     let isEstimate = false;
 
-                    if (skuPrices.length > 0) {
-                        // 1. Find Reference Price (Standard State Match)
-                        const referencePriceObj = skuPrices.find((p: any) => p.state_code === stateCode) || skuPrices[0];
+                    // 1. Find Best Offer from RPC results
+                    let bestOfferAmount = 0;
+                    if (offers && Array.isArray(offers)) {
+                        const skuIds = allSkus.map((s: any) => s.id);
+                        const match = offers
+                            .filter((o: any) => skuIds.includes(o.vehicle_color_id))
+                            .sort((a: any, b: any) => Number(a.best_offer) - Number(b.best_offer))[0];
 
-                        // 2. Find Active Price (Best Case)
-                        // A. Exact District Match
+                        if (match) {
+                            bestOfferAmount = Number(match.best_offer);
+                        }
+                    }
+
+                    // 2. Find Location/Distance match from cat_prices
+                    if (skuPrices.length > 0) {
+                        // A. Exact District/Point Match
                         if (userLat && userLng) {
                             const withDistance = skuPrices.map((p: any) => {
                                 if (!p.latitude || !p.longitude) return { ...p, distance: 999999 };
@@ -183,20 +194,6 @@ export function mapCatalogItems(
                             isEstimate = true;
                         }
 
-                        // Calculate On-Road for both Reference and Active
-                        const engineCc = family.specs?.engine_cc || 110;
-
-                        // Standard Base (Ex-Showroom)
-                        const activeBase = activePriceObj?.ex_showroom_price || variantItem.price_base || family.price_base || 0;
-                        const discountAmount = Number(activePriceObj?.offer_amount || 0);
-
-                        // Calculate standard on-road
-                        const standardBreakdown = calculateOnRoad(Number(activeBase), engineCc, effectiveRule, insuranceRule);
-                        const refOnRoad = standardBreakdown.onRoadTotal;
-
-                        // Calculate active on-road (with discount)
-                        const activeOnRoad = refOnRoad - discountAmount;
-
                         if (activePriceObj) {
                             const stateName = STATE_NAMES[activePriceObj.state_code] || activePriceObj.state_code;
                             let sourceParts = [];
@@ -205,25 +202,25 @@ export function mapCatalogItems(
                             pricingSource = sourceParts.join(', ');
                             if (isEstimate) pricingSource = `Best: ${pricingSource}`;
                         }
-
-                        return {
-                            exShowroom: activeBase,
-                            onRoad: Math.round(refOnRoad),
-                            offerPrice: Math.round(activeOnRoad),
-                            discount: Math.round(discountAmount),
-                            pricingSource,
-                            isEstimate
-                        };
                     }
 
-                    const fallbackPrice = (variantItem as any).price_base || family.price_base || 0;
+                    // 3. Calculate Final Prices
+                    const engineCc = family.specs?.engine_cc || 110;
+
+                    const baseExShowroom = activePriceObj?.ex_showroom_price || (variantItem as any).price_base || family.price_base || 0;
+
+                    const standardBreakdown = calculateOnRoad(Number(baseExShowroom), engineCc, effectiveRule, insuranceRule);
+                    const onRoadTotal = standardBreakdown.onRoadTotal;
+
+                    const offerPrice = onRoadTotal + bestOfferAmount;
+
                     return {
-                        exShowroom: fallbackPrice,
-                        onRoad: fallbackPrice,
-                        offerPrice: fallbackPrice,
-                        discount: 0,
-                        pricingSource: "",
-                        isEstimate: false
+                        exShowroom: baseExShowroom,
+                        onRoad: Math.round(onRoadTotal),
+                        offerPrice: Math.round(offerPrice),
+                        discount: Math.abs(bestOfferAmount),
+                        pricingSource,
+                        isEstimate
                     };
                 })(),
 

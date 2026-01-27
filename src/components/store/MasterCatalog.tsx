@@ -432,16 +432,16 @@ export const ProductCard = ({
                             </span>
                         </div>
                         {v.price?.pricingSource && (
-                            <div className="flex items-center gap-1 mt-1 bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded-md w-fit">
-                                <MapPin size={8} className="text-brand-primary" />
-                                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest italic truncate max-w-[120px]">
+                            <div className="flex items-center gap-1.5 mt-2 bg-slate-100 dark:bg-white/5 px-2 py-1 rounded-lg w-fit border border-slate-200/50 dark:border-white/5">
+                                <MapPin size={12} className="text-brand-primary animate-bounce-subtle" />
+                                <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest italic">
                                     {v.price.pricingSource}
                                 </p>
                             </div>
                         )}
                         {v.price?.isEstimate && (
-                            <p className="text-[9px] font-bold text-amber-500 uppercase tracking-widest italic mt-1">
-                                *Estimated Price
+                            <p className="text-[9px] font-bold text-amber-500 uppercase tracking-widest italic mt-1 font-black">
+                                *ESTIMATED PRICE
                             </p>
                         )}
                     </div>

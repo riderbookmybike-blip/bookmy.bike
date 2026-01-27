@@ -59,9 +59,10 @@ interface CatalogItemDB {
             specs?: any;
             prices?: {
                 ex_showroom_price: number;
-                offer_amount: number;
                 state_code: string;
                 district?: string;
+                latitude?: number;
+                longitude?: number;
             }[];
         }[];
     }[];
@@ -158,7 +159,7 @@ export function useCatalog() {
                                     offset_y,
                                     specs,
                                     assets:cat_assets(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
-                                    prices:cat_prices(ex_showroom_price, offer_amount, state_code, district, latitude, longitude)
+                                    prices:cat_prices(ex_showroom_price, state_code, district, latitude, longitude)
                                 )
                         )
                     `)
@@ -187,6 +188,12 @@ export function useCatalog() {
                     .order('state_code', { ascending: false })
                     .limit(1);
 
+                // Fetch Market Best Offers for discounts
+                const { data: offerData } = await supabase.rpc('get_market_best_offers', {
+                    p_district_name: userDistrict || '',
+                    p_state_code: stateCode
+                });
+
                 if (data) {
                     // Get User Location from LocalStorage for Client Side Distance Calc
                     let userLat: number | null = null;
@@ -206,7 +213,7 @@ export function useCatalog() {
                         data as any[],
                         ruleData || [],
                         insuranceRuleData || [],
-                        { stateCode, userLat, userLng, userDistrict }
+                        { stateCode, userLat, userLng, userDistrict, offers: offerData || [] }
                     );
 
                     setItems(mappedItems);
