@@ -310,21 +310,12 @@ export const ProductCard = ({
                 <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-white/10 dark:to-black/30 z-0" />
 
                 <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
-                    {/* Savings Badge */}
-                    {savings > 0 && (
+                    {/* Savings Badge - Now using direct discount field for reliability */}
+                    {((v.price?.discount || 0) > 0) && (
                         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 dark:bg-emerald-600 text-white rounded-xl shadow-[0_4px_12px_rgba(16,185,129,0.3)] border border-emerald-400/30 transition-all hover:scale-105">
                             <Zap size={10} className="fill-white text-white" />
                             <span className="text-[10px] font-black uppercase tracking-wider">
-                                Save ₹{Math.abs(savings).toLocaleString('en-IN')}
-                            </span>
-                        </div>
-                    )}
-                    {/* Price Source Badge - more prominent */}
-                    {v.price?.pricingSource && (
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 dark:bg-black/80 backdrop-blur-md text-slate-800 dark:text-slate-200 rounded-xl shadow-sm border border-black/5 transition-all hover:scale-105">
-                            <MapPin size={10} className="text-brand-primary" />
-                            <span className="text-[9px] font-black uppercase tracking-wider">
-                                {v.price.pricingSource}
+                                Save ₹{v.price.discount?.toLocaleString('en-IN')}
                             </span>
                         </div>
                     )}
@@ -440,7 +431,14 @@ export const ProductCard = ({
                                 ₹{basePrice.toLocaleString('en-IN')}
                             </span>
                         </div>
-                        {/* Remove redundant bottom label since it's now a badge */}
+                        {v.price?.pricingSource && (
+                            <div className="flex items-center gap-1 mt-1 bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded-md w-fit">
+                                <MapPin size={8} className="text-brand-primary" />
+                                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest italic truncate max-w-[120px]">
+                                    {v.price.pricingSource}
+                                </p>
+                            </div>
+                        )}
                         {v.price?.isEstimate && (
                             <p className="text-[9px] font-bold text-amber-500 uppercase tracking-widest italic mt-1">
                                 *Estimated Price

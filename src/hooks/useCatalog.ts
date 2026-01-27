@@ -59,7 +59,9 @@ interface CatalogItemDB {
             specs?: any;
             prices?: {
                 ex_showroom_price: number;
+                offer_amount: number;
                 state_code: string;
+                district?: string;
             }[];
         }[];
     }[];
@@ -156,7 +158,7 @@ export function useCatalog() {
                                     offset_y,
                                     specs,
                                     assets:cat_assets(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
-                                    prices:cat_prices(ex_showroom_price, state_code, district, latitude, longitude)
+                                    prices:cat_prices(ex_showroom_price, offer_amount, state_code, district, latitude, longitude)
                                 )
                         )
                     `)
