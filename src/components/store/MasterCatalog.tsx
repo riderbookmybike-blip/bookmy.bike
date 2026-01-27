@@ -22,6 +22,7 @@ import Link from 'next/link';
 import { buildProductUrl } from '@/lib/utils/urlHelper';
 
 import { BRANDS as defaultBrands } from '@/config/market';
+import { useCatalog } from '@/hooks/useCatalog';
 import type { useCatalogFilters } from '@/hooks/useCatalogFilters';
 import { getStableReviewCount } from '@/utils/vehicleUtils';
 import type { ProductVariant } from '@/types/productMaster';
@@ -30,12 +31,14 @@ import { resolveLocation } from '@/utils/locationResolver';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { LocationPicker } from './LocationPicker';
 import { calculateDistance, HUB_LOCATION, MAX_SERVICEABLE_DISTANCE_KM } from '@/utils/geoUtils';
+import { removeLocationCookie } from '@/actions/locationCookie';
 
 type CatalogFilters = ReturnType<typeof useCatalogFilters>;
 
 interface CatalogDesktopProps {
     filters: CatalogFilters;
     variant?: 'default' | 'tv';
+    initialItems?: ProductVariant[]; // Added for SSR Hydration
 }
 
 const StarRating = ({ rating = 4.5, size = 10 }: { rating?: number; size?: number }) => {
@@ -491,7 +494,18 @@ export const ProductCard = ({
     );
 };
 
-export function MasterCatalog({ filters, variant: _variant = 'default' }: CatalogDesktopProps) {
+// ... ProductCard ends above ...
+
+
+export const MasterCatalog = ({ filters, variant: _variant = 'default', initialItems = [] }: CatalogDesktopProps) => {
+    // 1. Initialize with SSR Data (Instant Render)
+    const { items: clientItems, isLoading: isClientLoading } = useCatalog();
+
+    // Prefer client items once loaded, otherwise show server items
+    const displayItems = clientItems.length > 0 ? clientItems : initialItems;
+    // const isLoading = displayItems.length === 0 && isClientLoading; 
+
+    // Destructure filters from props
     const {
         searchQuery,
         setSearchQuery,
@@ -523,16 +537,32 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
         clearAll,
     } = filters;
 
+    // Derived State
     const makeOptions = (availableMakes && availableMakes.length > 0) ? availableMakes : defaultBrands;
+    const activeCategory = selectedBodyTypes.length === 1 ? selectedBodyTypes[0] : 'ALL';
 
+    // Fallback for filteredVehicles if untyped or missing
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const vehicles = Array.isArray(filteredVehicles) ? filteredVehicles : [];
+
+    // Local State
     const [isTv] = useState(_variant === 'tv');
+    const [sortBy, setSortBy] = useState<'popular' | 'price' | 'emi'>('popular');
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [isEmiOpen, setIsEmiOpen] = useState(true);
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
 
+    // Initial serviceability check (Client Side - keeps looking for updates)
     const [serviceability, setServiceability] = useState<{ status: 'loading' | 'serviceable' | 'unserviceable' | 'unset'; location?: string; distance?: number; stateCode?: string }>({ status: 'loading' });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
-    const [marketOffers, setMarketOffers] = useState<Record<string, { price: number; dealer: string; isServiceable: boolean }>>({});
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [marketOffers, setMarketOffers] = useState<Record<string, { price: number; dealer: string; dealerId?: string; isServiceable: boolean }>>({});
+    const AUMS_DEALER_ID = 'f3e6e266-3ca5-4c67-91ce-b7cc98e30ee5';
 
     // Fetch Market Offers when Serviceability Updates
-    React.useEffect(() => {
+    useEffect(() => {
         const fetchOffers = async () => {
             if (serviceability.status === 'serviceable' && serviceability.location) {
                 const supabase = createClient();
@@ -545,11 +575,12 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
                 });
 
                 if (!error && data) {
-                    const offerMap: Record<string, { price: number; dealer: string; isServiceable: boolean }> = {};
+                    const offerMap: Record<string, { price: number; dealer: string; dealerId?: string; isServiceable: boolean }> = {};
                     data.forEach((item: any) => {
                         offerMap[item.vehicle_color_id] = {
                             price: Number(item.best_offer), // Ensure number
                             dealer: item.dealer_name,
+                            dealerId: item.dealer_id,
                             isServiceable: item.is_serviceable
                         };
                     });
@@ -560,7 +591,7 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
         fetchOffers();
     }, [serviceability.location, serviceability.status, serviceability.stateCode]);
 
-    React.useEffect(() => {
+    useEffect(() => {
         const checkCurrentServiceability = async () => {
             if (typeof window === 'undefined') return;
             const supabase = createClient();
@@ -585,6 +616,8 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
                 }
             }
 
+            // ... (rest of serviceability check logic which is usually constant) ...
+
             // Tier 2: Local Storage
             const cached = localStorage.getItem('bkmb_user_pincode');
             if (cached) {
@@ -592,10 +625,8 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
                     const data = JSON.parse(cached);
                     if (data.pincode) {
                         const result = await checkServiceability(data.pincode);
-
                         // Construct display location: District ONLY
                         const displayLoc = result.district || result.location || data.pincode;
-
                         setServiceability({
                             status: result.isServiceable ? 'serviceable' : 'unserviceable',
                             location: displayLoc,
@@ -610,24 +641,17 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
                             stateCode: result.stateCode,
                             manuallySet: false
                         }));
-                        // Trigger event for ProfileDropdown to update immediate
                         window.dispatchEvent(new Event('locationChanged'));
-                        return;
-                    } else if (data.taluka || data.city) {
-                        setServiceability({
-                            status: 'unset',
-                            location: data.taluka || data.city
-                        });
                         return;
                     }
                 } catch {
                     localStorage.removeItem('bkmb_user_pincode');
                 }
             }
-
             // Tier 3: Browser Geolocation
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(async (position) => {
+                    // ... geo logic ...
                     const { latitude, longitude } = position.coords;
                     try {
                         const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
@@ -637,10 +661,7 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
 
                         if (pincode) {
                             const result = await checkServiceability(pincode);
-
-                            // Construct display location: District ONLY
                             const displayLoc = result.district || result.location || taluka || pincode;
-
                             setServiceability({
                                 status: result.isServiceable ? 'serviceable' : 'unserviceable',
                                 location: displayLoc,
@@ -654,41 +675,17 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
                                 stateCode: result.stateCode,
                                 manuallySet: false
                             }));
-                        } else if (taluka && data.latitude && data.longitude) {
-                            const dist = calculateDistance(data.latitude, data.longitude, HUB_LOCATION.lat, HUB_LOCATION.lng);
-                            setServiceability({
-                                status: (dist <= MAX_SERVICEABLE_DISTANCE_KM) ? 'serviceable' : 'unserviceable',
-                                location: taluka,
-                                distance: Math.round(dist)
-                            });
-                            localStorage.setItem('bkmb_user_pincode', JSON.stringify({
-                                taluka,
-                                district: taluka, // Fallback
-                                lat: data.latitude,
-                                lng: data.longitude,
-                                manuallySet: false
-                            }));
                         }
-                    } catch (err) {
+                    } catch {
                         setServiceability({ status: 'unset' });
                     }
-                }, () => {
-                    setServiceability({ status: 'unset' });
-                });
+                }, () => setServiceability({ status: 'unset' }));
             } else {
                 setServiceability({ status: 'unset' });
             }
         };
         checkCurrentServiceability();
     }, []);
-
-
-    const [sortBy, setSortBy] = useState<'popular' | 'price' | 'emi'>('popular');
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-    const [isEmiOpen, setIsEmiOpen] = useState(true);
-    const [isFilterOpen, setIsFilterOpen] = useState(false);
-    const activeCategory = selectedBodyTypes.length === 1 ? selectedBodyTypes[0] : 'ALL';
 
     // Calculate active filter count
     const activeFilterCount = useMemo(() => {
@@ -714,8 +711,9 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
         selectedFinishes.length,
         selectedSeatHeight.length,
         maxPrice,
-        maxEMI,
+        maxEMI
     ]);
+
 
     // Keyboard handlers
     React.useEffect(() => {
@@ -1264,19 +1262,32 @@ export function MasterCatalog({ filters, variant: _variant = 'default' }: Catalo
                                 }`}
                         >
                             {/* Results Grid */}
-                            {results.map(v => (
-                                <ProductCard
-                                    key={v.id}
-                                    v={v}
-                                    viewMode={viewMode}
-                                    downpayment={downpayment}
-                                    tenure={tenure}
-                                    serviceability={serviceability}
-                                    onLocationClick={() => setIsLocationPickerOpen(true)}
-                                    isTv={isTv}
-                                    bestOffer={marketOffers[v.id]}
-                                />
-                            ))}
+                            {results.map((v) => {
+                                // Aggregate best offer from all SKUs in this variant (exclude AUMS)
+                                const bestVariantOffer = v.skuIds?.reduce((best: any, skuId: string) => {
+                                    const offer = marketOffers[skuId];
+                                    if (!offer) return best;
+                                    if (offer.dealerId === AUMS_DEALER_ID || offer.dealer?.toUpperCase() === 'AUMS') {
+                                        return best;
+                                    }
+                                    if (!best || offer.price < best.price) return offer;
+                                    return best;
+                                }, null);
+
+                                return (
+                                    <ProductCard
+                                        key={v.id}
+                                        v={v}
+                                        viewMode={viewMode}
+                                        downpayment={downpayment}
+                                        tenure={tenure}
+                                        serviceability={serviceability}
+                                        onLocationClick={() => setIsLocationPickerOpen(true)}
+                                        isTv={isTv}
+                                        bestOffer={bestVariantOffer || undefined}
+                                    />
+                                );
+                            })}
                         </div>
                     </div>
                 </div>

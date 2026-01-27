@@ -58,6 +58,10 @@ export async function POST(req: NextRequest) {
 
         if (eventError) {
             console.error('Analytics Event Error:', eventError);
+            // Don't block local/dev flows on analytics table errors
+            if (process.env.NODE_ENV !== 'production') {
+                return NextResponse.json({ success: false, ignored: true });
+            }
             return NextResponse.json({ success: false }, { status: 500 });
         }
 

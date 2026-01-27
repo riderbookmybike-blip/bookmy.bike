@@ -101,26 +101,14 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
 
                 const rule = ruleMap.get(item.id);
                 const statePrice = priceMap.get(item.id) || item.price_base || 0;
-
-                // Calculation Logic
-                const engineCcStr = item.specs?.['Engine CC'] || item.specs?.engine?.displacement || "110";
-                const engineCc = parseInt(engineCcStr.replace(/[^\d]/g, '') || "110");
+                const engineCc = parseInt(item.specs?.['Engine CC']?.replace(/[^\d]/g, '') || "110");
 
                 let rto = 0;
                 let insurance = 0;
 
                 if (regRules) {
                     try {
-                        // Map DB snake_case to camelCase for the utility
-                        const mappedRule = {
-                            ...regRules,
-                            stateTenure: regRules.state_tenure || regRules.stateTenure || 15,
-                            bhTenure: regRules.bh_tenure || regRules.bhTenure || 2,
-                            companyMultiplier: regRules.company_multiplier || regRules.companyMultiplier || 2,
-                            ruleName: regRules.rule_name || regRules.ruleName,
-                            stateCode: regRules.state_code || regRules.stateCode
-                        };
-                        const rtoCalc = calculateRTO(statePrice, mappedRule as any, 'STATE', engineCc);
+                        const rtoCalc = calculateRTO(statePrice, regRules as any, 'STATE', engineCc);
                         rto = rtoCalc.total;
                     } catch (e) { console.error('RTO Calc Error', e); }
                 }
@@ -133,6 +121,7 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                 }
 
                 const onRoadBase = statePrice + rto + insurance;
+                const currentOffer = rule ? (rule as any).offer_amount : 0;
 
                 return {
                     id: item.id,
@@ -145,8 +134,8 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                     rtoAmount: rto,
                     insuranceAmount: insurance,
                     onRoadBase: onRoadBase,
-                    offerAmount: rule ? rule.offer_amount : 0,
-                    inputOffer: rule?.offer_amount?.toString() ?? '',
+                    offerAmount: currentOffer,
+                    inputOffer: currentOffer !== 0 ? currentOffer.toString() : '',
                     hasRule: !!rule,
                     ruleId: rule?.id,
                     isDirty: false

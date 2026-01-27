@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { X, MapPin, Loader2, ArrowRight } from 'lucide-react';
 import { resolveLocation } from '@/utils/locationResolver';
+import { setLocationCookie } from '@/actions/locationCookie';
 
 interface LocationPickerProps {
     isOpen: boolean;
@@ -29,6 +30,12 @@ export function LocationPicker({ isOpen, onClose, onLocationSet }: LocationPicke
         try {
             const resolved = await resolveLocation(pincode);
             if (resolved) {
+                // Set Server Cookie
+                await setLocationCookie(pincode);
+
+                // localStorage fallback for older components if needed (cleaning gradually)
+                localStorage.setItem('bkmb_user_pincode', JSON.stringify(resolved));
+
                 const taluka = resolved.taluka || resolved.district || pincode;
                 onLocationSet(pincode, taluka, resolved.lat, resolved.lng);
                 onClose();

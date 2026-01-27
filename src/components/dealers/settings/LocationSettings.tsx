@@ -173,18 +173,69 @@ function LocationModal({ dealerId, initialData, onClose, onSuccess }: any) {
         if (pincode.length === 6) {
             setLookupLoading(true);
             try {
-                const response = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
-                const data = await response.json();
+                // 1. Fetch address details from Postal Pincode API
+                const postalRes = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+                const postalData = await postalRes.json();
 
-                if (data?.[0]?.Status === 'Success') {
-                    const postOffice = data[0].PostOffice[0];
+                let foundState = '';
+                let foundDistrict = '';
+                let foundTaluka = '';
+
+                if (postalData?.[0]?.Status === 'Success') {
+                    const postOffice = postalData[0].PostOffice[0];
+                    foundState = postOffice.State;
+                    foundDistrict = postOffice.District;
+                    foundTaluka = postOffice.Block;
+
                     setFormData(prev => ({
                         ...prev,
-                        state: postOffice.State,
-                        district: postOffice.District,
-                        taluka: postOffice.Block,
-                        pincode: pincode
+                        state: foundState,
+                        district: foundDistrict,
+                        taluka: foundTaluka,
                     }));
+                }
+
+                // 2. Fetch coordinates from Nominatim (OSM)
+                const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?postalcode=${pincode}&country=India&format=json`, {
+                    headers: {
+                        'Accept-Language': 'en-US,en;q=0.5',
+                        'User-Agent': 'BookMyBike-App'
+                    }
+                });
+                const geoData = await geoRes.json();
+
+                if (geoData && geoData.length > 0) {
+                    const { lat, lon } = geoData[0];
+                    const latitude = parseFloat(lat);
+                    const longitude = parseFloat(lon);
+
+                    setFormData(prev => ({
+                        ...prev,
+                        latitude,
+                        longitude
+                    }) as any);
+
+                    // 3. Proactively update loc_pincodes if coords are missing there
+                    // This powers the ServiceAreaManager proximity logic
+                    const supabase = createClient();
+                    const { data: existingPin } = await supabase
+                        .from('loc_pincodes')
+                        .select('latitude, longitude')
+                        .eq('pincode', pincode)
+                        .maybeSingle();
+
+                    if (existingPin && (!(existingPin as any).latitude || !(existingPin as any).longitude)) {
+                        await supabase
+                            .from('loc_pincodes')
+                            .update({
+                                latitude,
+                                longitude,
+                                district: foundDistrict || (existingPin as any).district,
+                                state: foundState || (existingPin as any).state,
+                                taluka: foundTaluka || (existingPin as any).taluka
+                            })
+                            .eq('pincode', pincode);
+                    }
                 }
             } catch (error) {
                 console.error('Failed to fetch pincode details', error);

@@ -15,8 +15,6 @@ export default function FavoritesPage() {
     const { addToCompare, isInCompare, removeFromCompare, compareList } = useCompare();
 
     // Filter vehicles that are in favorites
-    const favoriteVehicles = vehicles.filter(v => favorites.includes(v.id));
-
     if (isLoading) {
         return (
             <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-6">
@@ -25,6 +23,9 @@ export default function FavoritesPage() {
             </div>
         );
     }
+
+    // Filter vehicles that are in favorites
+    const favoriteVehicles = vehicles.filter(v => favorites.some(f => f.id === v.id));
 
     return (
         <PageFrame variant="wide" className="space-y-10">
@@ -66,11 +67,8 @@ export default function FavoritesPage() {
             {/* Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-8">
                 {favoriteVehicles.map((v, idx) => {
-                    // Pricing Logic (Mock)
-                    const basePriceStr = v.make === 'Royal Enfield' ? '2.15' : '0.85';
-                    const basePrice = parseFloat(basePriceStr) * 100000;
-                    const onRoadPrice = Math.round(basePrice * 1.15);
-                    const offerPrice = Math.round(onRoadPrice * 0.94);
+                    // Real Pricing Logic from useCatalog
+                    const offerPrice = v.price?.offerPrice || 0;
 
                     return (
                         <div
@@ -81,7 +79,13 @@ export default function FavoritesPage() {
                             <div className="aspect-[4/3] bg-slate-100 dark:bg-[#14161b] flex items-center justify-center p-6 overflow-hidden relative group-hover:bg-slate-200 dark:group-hover:bg-[#1b1e24] transition-colors">
                                 {/* Remove Button */}
                                 <button
-                                    onClick={() => toggleFavorite(v.id)}
+                                    onClick={() => toggleFavorite({
+                                        id: v.id,
+                                        model: v.model,
+                                        variant: v.variant,
+                                        slug: v.slug,
+                                        imageUrl: v.imageUrl
+                                    })}
                                     className="absolute top-4 right-4 z-20 w-8 h-8 bg-white/80 dark:bg-black/40 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-500/10 hover:border-red-500/20 transition-all"
                                 >
                                     <X size={14} />

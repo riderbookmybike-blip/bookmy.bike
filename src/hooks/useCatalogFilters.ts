@@ -129,10 +129,11 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         else params.delete('maxEMI');
 
         const queryString = params.toString();
-        const url = queryString ? `${pathname}?${queryString}` : pathname;
-
-        // Use replace to avoid filling up history stack during typing/sliding
-        router.replace(url, { scroll: false });
+        if (queryString !== searchParams.toString()) {
+            console.log('[useCatalogFilters] Updating URL:', queryString);
+            const url = queryString ? `${pathname}?${queryString}` : pathname;
+            router.replace(url, { scroll: false });
+        }
     }, [
         debouncedSearch,
         selectedMakes,
@@ -144,8 +145,6 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         downpayment,
         tenure,
         availableMakes,
-        pathname,
-        router,
     ]);
 
     const filteredVehicles = useMemo(() => {

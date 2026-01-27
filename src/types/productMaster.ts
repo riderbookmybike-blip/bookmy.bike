@@ -24,6 +24,7 @@ export interface ProductVariant {
         pricingSource?: string; // e.g., 'MH', 'KA'
         isEstimate?: boolean;   // true if fallback used
     };
+    skuIds?: string[]; // IDs of all SKUs belonging to this variant for pricing aggregation
     specifications: {
         engine: {
             displacement?: number;
