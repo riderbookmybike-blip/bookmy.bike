@@ -69,6 +69,7 @@ interface MapOptions {
     stateCode: string;
     userLat?: number | null;
     userLng?: number | null;
+    userDistrict?: string | null;
 }
 
 export function mapCatalogItems(
@@ -77,7 +78,7 @@ export function mapCatalogItems(
     insuranceRuleData: any[],
     options: MapOptions
 ): ProductVariant[] {
-    const { stateCode, userLat, userLng } = options;
+    const { stateCode, userLat, userLng, userDistrict } = options;
 
     const effectiveRule: any = ruleData?.[0] || {
         id: 'default',
@@ -144,7 +145,11 @@ export function mapCatalogItems(
                     let isEstimate = false;
 
                     if (skuPrices.length > 0) {
-                        // A. Exact District Match (Best Case) - Calculate Distances if User has Lat/Lng
+                        // 1. Find Reference Price (Standard State Match)
+                        const referencePriceObj = skuPrices.find((p: any) => p.state_code === stateCode) || skuPrices[0];
+
+                        // 2. Find Active Price (Best Case)
+                        // A. Exact District Match
                         if (userLat && userLng) {
                             const withDistance = skuPrices.map((p: any) => {
                                 if (!p.latitude || !p.longitude) return { ...p, distance: 999999 };
@@ -154,51 +159,65 @@ export function mapCatalogItems(
                                 );
                                 return { ...p, distance: dist };
                             });
-                            // Sort by nearest
                             withDistance.sort((a: any, b: any) => a.distance - b.distance);
                             activePriceObj = withDistance[0];
                         }
 
-                        // B. Fallback to State Match if no coords or no result
+                        // A.5 District Name Match
+                        if (!activePriceObj && userDistrict) {
+                            activePriceObj = skuPrices.find((p: any) =>
+                                p.district?.toLowerCase().trim() === userDistrict?.toLowerCase().trim()
+                            );
+                        }
+
+                        // B. State Match (Fallback)
                         if (!activePriceObj) {
                             activePriceObj = skuPrices.find((p: any) => p.state_code === stateCode);
                         }
 
-                        // C. Hard Fallback (Any Price - e.g. Mumbai/Default Anchor)
+                        // C. Lowest Price (Hard Fallback)
                         if (!activePriceObj) {
-                            activePriceObj = skuPrices.find((p: any) => p.state_code === 'MH');
-                            isEstimate = true;
-                        }
-                    }
-
-                    if (activePriceObj) {
-                        const stateName = STATE_NAMES[activePriceObj.state_code] || activePriceObj.state_code;
-                        pricingSource = stateName;
-
-                        if (!activePriceObj.district && activePriceObj.state_code === 'MH' && stateCode !== 'MH') {
+                            activePriceObj = skuPrices.reduce((min: any, curr: any) => {
+                                return (curr.ex_showroom_price < min.ex_showroom_price) ? curr : min;
+                            }, skuPrices[0]);
                             isEstimate = true;
                         }
 
-                        if (isEstimate) {
-                            pricingSource = `Est: ${pricingSource}`;
+                        // Calculate On-Road for both Reference and Active
+                        const engineCc = family.specs?.engine_cc || 110;
+
+                        const refBase = referencePriceObj?.ex_showroom_price || variantItem.price_base || family.price_base || 0;
+                        const refOnRoad = calculateOnRoad(Number(refBase), engineCc, effectiveRule, insuranceRule).onRoadTotal;
+
+                        const activeBase = activePriceObj?.ex_showroom_price || variantItem.price_base || family.price_base || 0;
+                        const activeOnRoad = calculateOnRoad(Number(activeBase), engineCc, effectiveRule, insuranceRule).onRoadTotal;
+
+                        if (activePriceObj) {
+                            const stateName = STATE_NAMES[activePriceObj.state_code] || activePriceObj.state_code;
+                            let sourceParts = [];
+                            if (activePriceObj.district) sourceParts.push(activePriceObj.district);
+                            sourceParts.push(stateName);
+                            pricingSource = sourceParts.join(', ');
+                            if (isEstimate) pricingSource = `Best: ${pricingSource}`;
                         }
+
+                        return {
+                            exShowroom: activeBase,
+                            onRoad: Math.round(refOnRoad),
+                            offerPrice: Math.round(activeOnRoad),
+                            discount: Math.max(0, Math.round(refOnRoad - activeOnRoad)),
+                            pricingSource,
+                            isEstimate
+                        };
                     }
-
-                    const basePrice = activePriceObj?.ex_showroom_price
-                        || variantItem.price_base
-                        || family.price_base
-                        || 0;
-
-                    const engineCc = family.specs?.engine_cc || 110;
-                    const onRoadBreakdown = calculateOnRoad(Number(basePrice), engineCc, effectiveRule, insuranceRule);
 
                     return {
-                        exShowroom: basePrice,
-                        onRoad: Math.round(onRoadBreakdown.onRoadTotal),
-                        offerPrice: Math.round(onRoadBreakdown.onRoadTotal),
+                        exShowroom: (variantItem as any).price_base || family.price_base || 0,
+                        onRoad: (variantItem as any).price_base || family.price_base || 0,
+                        offerPrice: (variantItem as any).price_base || family.price_base || 0,
                         discount: 0,
-                        pricingSource,
-                        isEstimate
+                        pricingSource: "",
+                        isEstimate: false
                     };
                 })(),
 
