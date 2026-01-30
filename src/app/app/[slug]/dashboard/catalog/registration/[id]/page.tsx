@@ -130,7 +130,7 @@ export default function RegistrationDetailPage() {
 
         // Robust lookup: UUID vs State Code
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
-        let query = supabase.from('registration_rules').select('*');
+        let query = supabase.from('cat_reg_rules').select('*');
 
         if (isUuid) {
             query = query.eq('id', targetId);
@@ -189,7 +189,7 @@ export default function RegistrationDetailPage() {
 
         const supabase = createClient();
         const { error } = await supabase
-            .from('registration_rules')
+            .from('cat_reg_rules')
             .delete()
             .in('id', ids);
 
@@ -217,7 +217,7 @@ export default function RegistrationDetailPage() {
         const dbPayload = mapFrontendToDb(rule);
 
         const { error } = await supabase
-            .from('registration_rules')
+            .from('cat_reg_rules')
             .upsert(dbPayload);
 
         if (!error) {

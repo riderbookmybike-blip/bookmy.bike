@@ -22,15 +22,21 @@ interface SKUPriceRow {
     variant: string;
     color: string;
     engineCc: number;
+    suitableFor?: string;
     exShowroom: number;
     offerAmount: number; // New Field (-ve Discount, +ve Surge)
     originalExShowroom?: number;
     originalOfferAmount?: number; // For History Diff
+    originalInclusionType?: 'MANDATORY' | 'OPTIONAL' | 'BUNDLE';
     hsnCode?: string;
     gstRate?: number;
     updatedAt?: string;
     brandLogo?: string;
     stockCount?: number;
+    inclusionType?: 'MANDATORY' | 'OPTIONAL' | 'BUNDLE';
+    type?: 'vehicles' | 'accessories' | 'service';
+    category: string;
+    subCategory: string;
 }
 
 export default function PricingPage() {
@@ -72,18 +78,24 @@ export default function PricingPage() {
     }, [lastEditTime, hasUnsavedChanges]);
 
     const fetchRules = async () => {
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from('cat_reg_rules')
             .select('*')
             .eq('status', 'ACTIVE')
             .order('state_code');
+
+        if (error) {
+            console.error('Fetch Rules Error:', error);
+            if (error.message) console.error('Fetch Rules Message:', error.message);
+            return;
+        }
 
         if (data && data.length > 0) {
             // Transform DB rows to RegistrationRule type if needed, but the schema matches mostly
             const mappedRules = data.map((r: any) => ({
                 ...r,
                 displayId: r.display_id,
-                ruleName: `${r.rule_name} (${r.state_code})`,
+                ruleName: r.rule_name, // Simplified: already contains "State (Code)" usually, or we can format here
                 stateCode: r.state_code,
                 vehicleType: r.vehicle_type
             }));
@@ -93,11 +105,17 @@ export default function PricingPage() {
     };
 
     const fetchBrands = async () => {
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from('cat_brands')
             .select('id, name, logo_svg')
             .eq('is_active', true)
             .order('name');
+
+        if (error) {
+            console.error('Fetch Brands Error:', error);
+            if (error.message) console.error('Fetch Brands Message:', error.message);
+            return;
+        }
 
         if (data) {
             setBrands(data.map((b: any) => b.name));
@@ -111,17 +129,17 @@ export default function PricingPage() {
             const { data: skuData, error: skuError } = await supabase
                 .from('cat_items')
                 .select(`
-                    id,
-                    name,
-                    specs,
-                    price_base,
+                    id, name, slug, specs, price_base, template_id, parent_id, inclusion_type,
+                    template:cat_templates(category, name),
                     parent:parent_id (
                         id,
                         name,
+                        specs,
                         parent:parent_id (
                             id,
                             name,
                             price_base,
+                            specs,
                             brand:cat_brands(id, name, logo_svg)
                         )
                     )
@@ -140,20 +158,21 @@ export default function PricingPage() {
                 // Fetch Dealer Specific Offers
                 tenantSlug !== 'aums' ? supabase
                     .from('id_dealer_pricing_rules')
-                    .select('vehicle_color_id, offer_amount')
+                    .select('vehicle_color_id, offer_amount, inclusion_type')
                     .eq('state_code', activeStateCode)
-                    .eq('tenant_id', tenantId) : Promise.resolve({ data: [] }),
-                supabase
-                    .from('vehicle_inventory')
-                    .select('sku_id, status')
-                    .eq('status', 'AVAILABLE')
+                    .eq('tenant_id', tenantId) : Promise.resolve({ data: [] as any, error: null as any }),
+                // Temporarily disabling stock fetch as table seems to be missing
+                Promise.resolve({ data: [] as any, error: null as any })
             ]);
 
             const { data: priceData, error: priceError } = priceRes;
             if (priceError) throw priceError;
 
-            const { data: offerData } = offerRes as any;
-            const { data: stockData } = stockRes;
+            const { data: offerData, error: offerError } = offerRes as any;
+            if (offerError) console.error('Offer Fetch Error:', offerError);
+
+            const { data: stockData, error: stockError } = stockRes;
+            if (stockError) console.error('Stock Fetch Error:', stockError);
 
             const stockMap = new Map();
             stockData?.forEach((s: any) => {
@@ -171,46 +190,77 @@ export default function PricingPage() {
             });
 
             // 3. Fetch Brand Regional Deltas
-            const { data: brandDeltas } = await supabase
+            const { data: brandDeltas, error: deltaError } = await supabase
                 .from('cat_regional_configs')
                 .select('brand_id, delta_percentage')
                 .eq('state_code', activeStateCode);
+
+            if (deltaError) {
+                console.error('Delta Fetch Error:', deltaError);
+                if (deltaError.message) console.error('Delta Fetch Message:', deltaError.message);
+                if (deltaError.details) console.error('Delta Fetch Details:', deltaError.details);
+            }
 
             const brandDeltaMap = new Map();
             brandDeltas?.forEach(d => brandDeltaMap.set(d.brand_id, d.delta_percentage));
 
             let formattedSkus: SKUPriceRow[] = (skuData || []).map((sku: any) => {
-                const variant = sku.parent;
-                const family = variant?.parent;
-                const brand = family?.brand;
+                // Supabase joins can sometimes return arrays depending on FK definitions
+                const skuTemplate = Array.isArray(sku.template) ? sku.template[0] : sku.template;
+                const variant = Array.isArray(sku.parent) ? sku.parent[0] : sku.parent;
+                const family = variant ? (Array.isArray(variant.parent) ? variant.parent[0] : variant.parent) : null;
+                const brand = family ? (Array.isArray(family.brand) ? family.brand[0] : family.brand) : null;
 
                 // Price Priority: Explicit State Price > Rule-based Calculation
                 const statePrice = priceMap.get(sku.id);
+                const pricingRule = (offerData || []).find((o: any) => o.vehicle_color_id === sku.id);
                 // Offer: Explicit Dealer Offer > 0
-                const stateOffer = offerMap.get(sku.id) || 0;
+                const stateOffer = pricingRule?.offer_amount || offerMap.get(sku.id) || 0;
+                const stateInclusion = pricingRule?.inclusion_type || sku.inclusion_type || 'OPTIONAL';
 
                 const basePrice = (sku.price_base || family?.price_base || 0);
                 const brandDelta = brandDeltaMap.get(brand?.id) || 0;
 
                 const finalPrice = statePrice !== undefined
                     ? statePrice
-                    : Math.round(basePrice * (1 + brandDelta / 100));
+                    : Math.round(Number(basePrice) * (1 + Number(brandDelta) / 100));
+
+                const finalInclusionType = stateInclusion as 'MANDATORY' | 'OPTIONAL' | 'BUNDLE';
+
+                // Better type identification: Template Category > Defaults
+                let itemType: 'vehicles' | 'accessories' | 'service' = 'vehicles';
+                const tempCat = skuTemplate?.category?.toUpperCase();
+
+                if (tempCat === 'ACCESSORY') itemType = 'accessories';
+                else if (tempCat === 'SERVICE') itemType = 'service';
+                else if (sku.specs?.type?.toLowerCase() === 'accessories') itemType = 'accessories';
+                else if (sku.specs?.type?.toLowerCase() === 'service') itemType = 'service';
+
+                const categoryLabel = itemType === 'vehicles' ? 'Vehicle' : (itemType === 'accessories' ? 'Accessory' : 'Service');
+                const subCategoryLabel = skuTemplate?.name || 'General';
 
                 return {
                     id: sku.id,
-                    brand: brand?.name || 'UNKNOWN',
+                    brand: brand?.name || (itemType === 'vehicles' ? 'UNKNOWN' : 'GENERAL'),
                     brandId: brand?.id,
                     brandLogo: brand?.logo_svg,
-                    model: family?.name || 'UNKNOWN',
+                    category: categoryLabel,
+                    subCategory: subCategoryLabel,
+                    model: family?.name || sku.name || 'UNKNOWN',
                     modelId: family?.id,
-                    variant: variant?.name || 'UNKNOWN',
-                    color: sku.name,
-                    engineCc: parseInt(sku.specs?.engine_cc || family?.specs?.engine_cc || '110'),
+                    variant: variant?.name || '',
+                    // Clean Color Name: Remove Variant Name from SKU Name if present
+                    color: (sku.specs?.color) || (variant?.name ? sku.name.replace(new RegExp(`^${variant.name}\\s*`, 'i'), '') : sku.name),
+                    engineCc: parseInt(sku.specs?.engine_cc || family?.specs?.engine_cc || '0'),
+                    suitableFor: sku.specs?.suitable_for || '',
                     exShowroom: finalPrice,
                     offerAmount: stateOffer,
-                    originalExShowroom: finalPrice, // Used for dirty check on ex-showroom
-                    originalOfferAmount: stateOffer, // Used for dirty check on offer
-                    stockCount: stockMap.get(sku.id) || 0
+                    inclusionType: finalInclusionType,
+                    type: itemType,
+                    originalExShowroom: finalPrice,
+                    originalOfferAmount: stateOffer,
+                    originalInclusionType: finalInclusionType,
+                    stockCount: 0
                 };
             });
 
@@ -220,7 +270,7 @@ export default function PricingPage() {
 
             formattedSkus.sort((a, b) => a.brand.localeCompare(b.brand) || a.model.localeCompare(b.model));
             setSkus(formattedSkus);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error fetching data:', error);
         } finally {
             setLoading(false);
@@ -236,6 +286,12 @@ export default function PricingPage() {
 
     const handleUpdateOffer = (skuId: string, offer: number) => {
         setSkus(prev => prev.map(s => s.id === skuId ? { ...s, offerAmount: offer } : s));
+        setHasUnsavedChanges(true);
+        setLastEditTime(Date.now());
+    };
+
+    const handleUpdateInclusion = (skuId: string, type: 'MANDATORY' | 'OPTIONAL' | 'BUNDLE') => {
+        setSkus(prev => prev.map(s => s.id === skuId ? { ...s, inclusionType: type } : s));
         setHasUnsavedChanges(true);
         setLastEditTime(Date.now());
     };
@@ -273,18 +329,19 @@ export default function PricingPage() {
             }));
 
             // Use the Bypass RPC for Base Prices
-            updates.push(supabase.rpc('upsert_vehicle_prices_bypass', { prices: pricePayload }));
+            updates.push(Promise.resolve(supabase.rpc('upsert_vehicle_prices_bypass', { prices: pricePayload })));
         } else {
             // Dealer Logic
             const offerPayload = skus.map(s => ({
                 tenant_id: tenantId,
                 vehicle_color_id: s.id,
                 state_code: activeStateCode,
-                offer_amount: s.offerAmount
+                offer_amount: s.offerAmount,
+                inclusion_type: s.inclusionType
             }));
 
             // Use the New Dealer RPC
-            updates.push(supabase.rpc('upsert_dealer_offers', { offers: offerPayload }));
+            updates.push(Promise.resolve(supabase.rpc('upsert_dealer_offers', { offers: offerPayload })));
         }
 
         const results = await Promise.all(updates);
@@ -308,7 +365,7 @@ export default function PricingPage() {
     const renderHeader = () => {
         // Calculate dynamic metrics
         const missingPrices = skus.filter(s => s.exShowroom === 0).length;
-        const pendingSaves = hasUnsavedChanges ? skus.filter(s => s.exShowroom !== s.originalExShowroom).length : 0;
+        const pendingSaves = hasUnsavedChanges ? skus.filter(s => s.exShowroom !== s.originalExShowroom || s.offerAmount !== s.originalOfferAmount || s.inclusionType !== s.originalInclusionType).length : 0;
         const activeState = states.find(s => s.id === selectedStateId)?.stateCode || '--';
 
         return (
@@ -366,13 +423,6 @@ export default function PricingPage() {
 
                 <div className="flex items-center gap-4">
                     {/* Brand Performance Shortcut */}
-                    <a
-                        href={`/app/${tenantSlug}/dashboard/catalog/pricing/brands`}
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-white/5 dark:hover:bg-white/10 text-[11px] font-black uppercase text-slate-500 transition-all border border-slate-100 dark:border-white/5"
-                    >
-                        <TrendingUp size={14} className="text-pink-500" />
-                        Configure Brand Performance Deltas
-                    </a>
 
                     <div className="h-6 w-px bg-slate-200 dark:bg-white/10" />
 
@@ -386,88 +436,15 @@ export default function PricingPage() {
         );
     };
 
-    const renderControlBar = () => (
-        <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-3 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-sm">
-            {/* Left: Filters */}
-            <div className="flex items-center gap-3">
-                {/* State Selector */}
-                <div className="relative group">
-                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                        <Landmark size={14} className="text-slate-400" />
-                    </div>
-                    <select
-                        value={selectedStateId}
-                        onChange={(e) => setSelectedStateId(e.target.value)}
-                        className="pl-9 pr-8 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide focus:ring-2 focus:ring-blue-500/20 outline-none appearance-none cursor-pointer hover:border-blue-400 transition-colors shadow-sm"
-                    >
-                        {states.map(s => (
-                            <option key={s.id} value={s.id}>{s.stateCode} - {s.ruleName}</option>
-                        ))}
-                    </select>
-                    <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                        <div className="w-0 h-0 border-l-[3px] border-l-transparent border-r-[3px] border-r-transparent border-t-[4px] border-t-slate-400" />
-                    </div>
-                </div>
-
-                {/* Brand Selector */}
-                <div className="relative group">
-                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                        <Car size={14} className="text-slate-400" />
-                    </div>
-                    <select
-                        value={selectedBrand}
-                        onChange={(e) => setSelectedBrand(e.target.value)}
-                        className="pl-9 pr-8 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide focus:ring-2 focus:ring-blue-500/20 outline-none appearance-none cursor-pointer hover:border-blue-400 transition-colors shadow-sm"
-                    >
-                        <option value="ALL">All Brands</option>
-                        {brands.map(b => (
-                            <option key={b} value={b}>{b}</option>
-                        ))}
-                    </select>
-                    <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                        <div className="w-0 h-0 border-l-[3px] border-l-transparent border-r-[3px] border-r-transparent border-t-[4px] border-t-slate-400" />
-                    </div>
-                </div>
-            </div>
-
-            {/* Right: Metrics Pills & Save Action */}
-            <div className="flex items-center gap-6">
-                <div className="flex items-center gap-4 hidden md:flex">
-                    <div className="flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity">
-                        <Car size={14} className="text-blue-500" />
-                        <div className="flex flex-col leading-none">
-                            <span className="text-[9px] font-black text-slate-400 uppercase">Tracked SKUs</span>
-                            <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200">{skus.length}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="w-px h-8 bg-slate-200 dark:bg-white/10 hidden md:block" />
-
-                <button
-                    onClick={handleSaveAll}
-                    disabled={!hasUnsavedChanges}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-black uppercase tracking-widest text-[10px] transition-all shadow-lg active:scale-95 ${hasUnsavedChanges
-                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-500/20'
-                        : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-600 cursor-not-allowed'
-                        }`}
-                >
-                    <Save size={14} /> Save Changes
-                </button>
-            </div>
-        </div>
-    );
-
     return (
         <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 transition-colors duration-500 overflow-hidden">
             {renderHeader()}
-            {renderControlBar()}
 
             <div className="flex-1 overflow-hidden px-4 pt-4">
                 <DetailPanel
                     title="Pricing Matrix"
                     hideHeader={true}
-                    // tabs prop removed to hide tab switcher
+                    showTabs={false}
                     renderContent={() => (
                         loading ? (
                             <div className="flex h-full items-center justify-center">
@@ -482,6 +459,7 @@ export default function PricingPage() {
                                 activeRule={activeRule}
                                 onUpdatePrice={handleUpdatePrice}
                                 onUpdateOffer={handleUpdateOffer}
+                                onUpdateInclusion={handleUpdateInclusion}
                                 onBulkUpdate={handleBulkUpdate}
                                 onSaveAll={handleSaveAll}
                                 states={states}
@@ -490,6 +468,8 @@ export default function PricingPage() {
                                 brands={brands}
                                 selectedBrand={selectedBrand}
                                 onBrandChange={setSelectedBrand}
+                                hasUnsavedChanges={hasUnsavedChanges}
+                                isSaving={false} // Placeholder or add state if needed
                             />
                         )
                     )}

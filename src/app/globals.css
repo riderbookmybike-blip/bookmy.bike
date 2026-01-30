@@ -416,3 +416,19 @@ body {
 .animate-marquee-reverse:hover {
     animation-play-state: paused;
 }
+
+/* =============================================
+   FORM UTILITIES
+   ============================================= */
+
+/* Hide number input spinners (up/down arrows) system-wide */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type='number'] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}

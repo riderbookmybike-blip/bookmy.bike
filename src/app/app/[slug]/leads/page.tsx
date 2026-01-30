@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import LeadList, { Lead } from '@/components/modules/leads/LeadList';
-import { LeadOverview, LeadHistory, LeadActivity, LeadQuotes, LeadBookings } from '@/components/modules/leads/LeadTabs';
+import { LeadOverview, LeadHistory, LeadActivity, LeadQuotes, LeadBookings, LeadDocuments } from '@/components/modules/leads/LeadTabs';
 import { Button } from '@/components/ui/button';
 import LeadForm from '@/components/modules/leads/LeadForm';
 import { useTenant } from '@/lib/tenant/tenantContext';
@@ -14,11 +14,10 @@ import StatsHeader from '@/components/modules/shared/StatsHeader';
 import ModuleLanding from '@/components/modules/shared/ModuleLanding';
 import {
     ArrowRight,
-    // Loader2, // Removed as per new logic
     Zap,
     Phone,
     Mail,
-    // ChevronLeft, // Removed as per new logic
+    Plus,
     FileText,
     History,
     Activity,
@@ -29,7 +28,8 @@ import {
     TrendingUp,
     Clock,
     LayoutGrid,
-    Search as SearchIcon
+    Search as SearchIcon,
+    Shield
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCelebration } from '@/components/providers/CelebrationProvider';
@@ -89,7 +89,7 @@ export default function LeadsPage() {
 
     const formatLeadId = (id: string) => {
         const cleanId = id.replace(/-/g, '').toUpperCase();
-        return `${cleanId.slice(0, 3)}-${cleanId.slice(3, 6)}`;
+        return `${cleanId.slice(0, 3)}-${cleanId.slice(3, 6)}-${cleanId.slice(6, 9)}`;
     };
 
     const handleFormSubmit = async (data: {
@@ -106,6 +106,7 @@ export default function LeadsPage() {
                 customer_name: data.customerName,
                 customer_phone: data.phone,
                 customer_pincode: data.pincode,
+                customer_dob: data.dob, // Fixed mapping
                 owner_tenant_id: tenantId,
                 source: 'MANUAL'
             });
@@ -115,20 +116,29 @@ export default function LeadsPage() {
             setIsFormOpen(false);
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Failed to create lead');
+            throw error; // Re-throw so LeadForm knows it failed
         }
     };
 
-    const handleQuoteSubmit = async (data: { customerName: string; product: { id: string; label: string; sku: string }; price: number }) => {
+    const handleQuoteSubmit = async (data: {
+        customerName: string;
+        product: { id: string; label: string; sku: string };
+        price: number;
+        color?: string;
+        colorId?: string;
+    }) => {
         try {
             if (!tenantId || !selectedLead) return;
             await createQuoteAction({
-                tenant_id: tenantId,
+                tenant_id: tenantId as string,
                 lead_id: selectedLead.id,
                 variant_id: data.product.id,
+                color_id: data.colorId,
                 commercials: {
                     label: data.product.label,
                     grand_total: data.price,
-                    variant_sku: data.product.sku
+                    variant_sku: data.product.sku,
+                    color_name: data.color
                 }
             });
             toast.success('Quote generated successfully');
@@ -143,6 +153,7 @@ export default function LeadsPage() {
         { id: 'overview', label: 'Overview', icon: <Zap size={14} /> },
         { id: 'quotes', label: 'Quotes', icon: <FileText size={14} /> },
         { id: 'booking', label: 'Booking', icon: <CreditCard size={14} /> },
+        { id: 'documents', label: 'Identity Vault', icon: <Shield size={14} /> },
         { id: 'history', label: 'Timeline', icon: <History size={14} /> },
         { id: 'activity', label: 'Activity', icon: <Activity size={14} /> },
     ];
@@ -153,6 +164,7 @@ export default function LeadsPage() {
             case 'overview': return <LeadOverview lead={selectedLead} />;
             case 'quotes': return <LeadQuotes leadId={selectedLead.id} />;
             case 'booking': return <LeadBookings leadId={selectedLead.id} />;
+            case 'documents': return <LeadDocuments memberId={selectedLead.customerId} tenantId={tenantId as string} />;
             case 'history': return <LeadHistory customerId={selectedLead.customerId} />;
             case 'activity': return <LeadActivity lead={selectedLead} />;
             default: return <LeadOverview lead={selectedLead} />;
@@ -288,9 +300,22 @@ export default function LeadsPage() {
                             <h2 className="text-xl font-black italic uppercase tracking-tighter text-slate-900 dark:text-white">
                                 Leads <span className="text-indigo-600">Index</span>
                             </h2>
-                            <button onClick={() => setSelectedLead(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-all text-slate-400">
-                                <LayoutGrid size={18} />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={handleNewLead}
+                                    className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/10 active:scale-95 group"
+                                    title="Add New Lead"
+                                >
+                                    <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" />
+                                </button>
+                                <button
+                                    onClick={() => setSelectedLead(null)}
+                                    className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-all text-slate-400"
+                                    title="Back to Grid"
+                                >
+                                    <LayoutGrid size={18} />
+                                </button>
+                            </div>
                         </div>
                         <div className="relative">
                             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
@@ -357,8 +382,16 @@ export default function LeadsPage() {
                                         <Mail size={20} />
                                     </a>
                                 </div>
-                                <Button onClick={() => setIsQuoteFormOpen(true)} className="h-14 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-indigo-600/20 active:scale-95 transition-all">
-                                    Generate_Quote
+                                <Button
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10px] uppercase tracking-widest px-8 rounded-2xl shadow-xl shadow-indigo-600/20 active:scale-95 transition-all"
+                                    onClick={() => {
+                                        if (selectedLead) {
+                                            window.open(`/store/catalog?leadId=${selectedLead.id}`, '_blank');
+                                        }
+                                    }}
+                                >
+                                    <Zap size={14} className="mr-2" />
+                                    Generate Quote
                                 </Button>
                             </div>
                         </div>
@@ -420,6 +453,7 @@ export default function LeadsPage() {
                 onClose={() => setIsQuoteFormOpen(false)}
                 onSubmit={handleQuoteSubmit}
                 initialCustomerName={selectedLead?.customerName}
+                pincode={selectedLead?.pincode}
             />
         </div>
     );

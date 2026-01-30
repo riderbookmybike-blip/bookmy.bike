@@ -68,7 +68,13 @@ const STEPS = [
 export default function UnifiedStudioPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { tenantSlug, tenantId } = useTenant();
+    const { tenantSlug, tenantId, tenantType } = useTenant();
+
+    useEffect(() => {
+        if (tenantType === 'DEALER') {
+            router.replace(`/app/${tenantSlug}/dashboard`);
+        }
+    }, [tenantType, tenantSlug, router]);
 
     const [currentStep, setCurrentStep] = useState(0);
 

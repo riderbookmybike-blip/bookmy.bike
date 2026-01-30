@@ -245,6 +245,7 @@ export default function ReviewStep({ brand, family, template, variants, colors, 
                                 <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Model</th>
                                 <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Variant</th>
                                 <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Color</th>
+                                <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Compatibility</th>
                                 <th onClick={() => toggleSort('PRICE')} className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center cursor-pointer hover:text-indigo-500 transition-colors">
                                     <div className="flex items-center justify-center gap-2">Price (Base) <ArrowUpDown size={10} /></div>
                                 </th>
@@ -344,6 +345,18 @@ export default function ReviewStep({ brand, family, template, variants, colors, 
                                                     <div className="flex items-center gap-2">
                                                         {hexPrimary && <div className="w-3 h-3 rounded-full shadow-sm border border-black/10" style={{ backgroundColor: hexPrimary }} />}
                                                         <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase">{colorName || '-'}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="p-3">
+                                                    <div className="flex flex-wrap gap-1 max-w-[200px]">
+                                                        {(sku.specs?.suitable_for || '').split(',').filter(Boolean).map((tag: string) => (
+                                                            <span key={tag} className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-md text-[7px] font-black uppercase tracking-wider border border-indigo-100 dark:border-indigo-800/50 italic whitespace-nowrap">
+                                                                {tag.trim()}
+                                                            </span>
+                                                        ))}
+                                                        {!(sku.specs?.suitable_for) && (
+                                                            <span className="text-[9px] text-slate-300 dark:text-slate-600 font-bold uppercase tracking-widest">-</span>
+                                                        )}
                                                     </div>
                                                 </td>
                                                 <td className="p-3">
