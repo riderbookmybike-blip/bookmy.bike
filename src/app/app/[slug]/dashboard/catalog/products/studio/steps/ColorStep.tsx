@@ -254,9 +254,19 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
         }
     };
 
-    const handleSaveMedia = async (images: string[], videos: string[], pdfs: string[], primary: string | null, applyVideosToAll?: boolean, zoomFactor?: number) => {
+    const handleSaveMedia = async (
+        images: string[],
+        videos: string[],
+        pdfs: string[],
+        primary: string | null,
+        applyVideosToAll?: boolean,
+        zoomFactor?: number,
+        isFlipped?: boolean,
+        offsetX?: number,
+        offsetY?: number
+    ) => {
         window.alert('DEBUG: handleSaveMedia reached in ColorStep.tsx');
-        console.error('DEBUG: handleSaveMedia called', { images, videos, pdfs, primary, applyVideosToAll, zoomFactor });
+        console.error('DEBUG: handleSaveMedia called', { images, videos, pdfs, primary, applyVideosToAll, zoomFactor, isFlipped, offsetX, offsetY });
         if (!activeColorId) {
             console.error('DEBUG: No activeColorId found');
             return;
