@@ -160,6 +160,7 @@ export function useCatalog(leadId?: string) {
                                     id,
                                     type,
                                     price_base,
+                                    specs,
                                     is_primary,
                                     image_url,
                                     gallery_urls,
