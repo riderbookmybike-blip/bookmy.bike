@@ -608,17 +608,14 @@ export default function SchemeEditor({ initialScheme, onSave, onCancel, chargesM
                     </div>
                 </section>
 
-                {/* 3. Dynamic Charges Table */}
                 <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-[32px] p-8 mt-8 shadow-sm dark:shadow-2xl shadow-black/20">
                     <div className="flex justify-between items-center mb-8">
-                        <h3 className="text-slate-900 dark:text-white font-black text-xs uppercase tracking-widest flex items-center gap-3">
-                            <span className="w-8 h-8 rounded-xl bg-purple-50 dark:bg-purple-600/20 text-purple-600 dark:text-purple-400 text-xs flex items-center justify-center border border-purple-500/10 dark:border-purple-500/20 shadow-lg shadow-purple-500/5 dark:shadow-purple-500/10">3</span>
-                            Charges & Fees
-                        </h3>
-                        <div className="flex items-center gap-3">
-                            <button onClick={addCharge} className="text-[10px] flex items-center gap-2 text-blue-600 dark:text-blue-400 bg-blue-500/5 px-4 py-2 rounded-full border border-blue-500/20 hover:bg-blue-500/10 transition-all font-black uppercase tracking-widest active:scale-95">
-                                <Plus size={14} /> Add Custom
-                            </button>
+                        <div>
+                            <h3 className="text-slate-900 dark:text-white font-black text-xs uppercase tracking-widest flex items-center gap-3">
+                                <span className="w-8 h-8 rounded-xl bg-purple-50 dark:bg-purple-600/20 text-purple-600 dark:text-purple-400 text-xs flex items-center justify-center border border-purple-500/10 dark:border-purple-500/20 shadow-lg shadow-purple-500/5 dark:shadow-purple-500/10">3</span>
+                                Charges & Fees
+                            </h3>
+                            <p className="text-[9px] text-slate-400 mt-1 ml-11 font-medium">Select charges from master templates • All settings managed in Charges tab</p>
                         </div>
                     </div>
 
@@ -662,113 +659,83 @@ export default function SchemeEditor({ initialScheme, onSave, onCancel, chargesM
                     )}
 
                     <div className="space-y-3">
+                        {scheme.charges.length === 0 && (
+                            <div className="bg-slate-50 dark:bg-white/5 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-2xl p-12 text-center">
+                                <Settings size={32} className="mx-auto text-slate-300 mb-3" />
+                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                                    No Charges Selected
+                                </p>
+                                <p className="text-[9px] text-slate-500 mt-1">
+                                    {chargesMaster && chargesMaster.length > 0
+                                        ? 'Select from master templates above'
+                                        : 'Create master charges in Charges tab first'}
+                                </p>
+                            </div>
+                        )}
+
                         {scheme.charges.map((charge, idx) => (
-                            <div key={charge.id} className="bg-slate-50 dark:bg-black/20 p-4 rounded-2xl border border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10 transition-colors">
-                                {/* Charge Header Row */}
-                                <div className="grid grid-cols-12 gap-3 items-center mb-4">
-                                    {/* Name */}
-                                    <div className="col-span-3">
-                                        <input
-                                            type="text"
-                                            placeholder="Charge Name"
-                                            value={charge.name}
-                                            onChange={(e) => updateCharge(charge.id, { name: e.target.value })}
-                                            className="w-full bg-transparent text-sm font-bold text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 outline-none"
-                                        />
-                                        <div className="flex gap-2 mt-1">
-                                            <button
-                                                onClick={() => updateCharge(charge.id, { impact: 'UPFRONT' })}
-                                                className={`text-[9px] uppercase font-black tracking-widest px-2 py-0.5 rounded border ${charge.impact === 'UPFRONT' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'text-slate-600 border-transparent hover:text-slate-400'}`}
-                                            >
-                                                Upfront
-                                            </button>
-                                            <button
-                                                onClick={() => updateCharge(charge.id, { impact: 'FUNDED' })}
-                                                className={`text-[9px] uppercase font-black tracking-widest px-2 py-0.5 rounded border ${charge.impact === 'FUNDED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'text-slate-600 border-transparent hover:text-slate-400'}`}
-                                            >
-                                                Funded
-                                            </button>
+                            <div key={charge.id} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10 transition-colors shadow-sm">
+                                {/* Read-Only Charge Display */}
+                                <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                        {/* Charge Name & Source */}
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <h4 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                                {charge.name}
+                                            </h4>
+                                            {charge.masterChargeId && (
+                                                <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-white/5 text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                                                    Master
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {/* Charge Details Grid */}
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            {/* Type Badge */}
+                                            <span className="px-3 py-1 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[9px] font-black uppercase tracking-widest border border-blue-200 dark:border-blue-500/20">
+                                                {charge.type === 'PERCENTAGE' ? '% Percentage' : charge.type === 'FIXED' ? '₹ Fixed' : 'Matrix'}
+                                            </span>
+
+                                            {/* Value Badge (if not Matrix) */}
+                                            {charge.type !== 'TABLE' && (
+                                                <span className="px-3 py-1 rounded-lg bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 text-xs font-bold border border-slate-200 dark:border-white/10">
+                                                    {charge.type === 'PERCENTAGE' ? `${charge.value}%` : `₹${charge.value}`}
+                                                    {charge.type === 'PERCENTAGE' && charge.calculationBasis && (
+                                                        <span className="ml-1.5 text-[9px] text-slate-500">
+                                                            {charge.calculationBasis === 'LOAN_AMOUNT' ? 'on Loan' :
+                                                                charge.calculationBasis === 'GROSS_LOAN_AMOUNT' ? 'on Gross' :
+                                                                    'on Ex-Show'}
+                                                        </span>
+                                                    )}
+                                                </span>
+                                            )}
+
+                                            {/* Impact Badge */}
+                                            <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${charge.impact === 'UPFRONT'
+                                                    ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/20'
+                                                    : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20'
+                                                }`}>
+                                                {charge.impact === 'UPFRONT' ? 'Upfront' : 'Funded'}
+                                            </span>
+
+                                            {/* GST Badge */}
+                                            {charge.taxStatus && charge.taxStatus !== 'NOT_APPLICABLE' && (
+                                                <span className="px-3 py-1 rounded-lg bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 text-[9px] font-black uppercase tracking-widest border border-purple-200 dark:border-purple-500/20">
+                                                    {charge.taxStatus === 'INCLUSIVE' ? 'GST Inc' : 'GST Exc'} {charge.taxRate}%
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
 
-                                    {/* Type Selection */}
-                                    <div className="col-span-2">
-                                        <select
-                                            value={charge.type}
-                                            onChange={(e) => updateCharge(charge.id, { type: e.target.value as ChargeType })}
-                                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 px-3 py-2 outline-none w-full appearance-none"
-                                        >
-                                            <option value="PERCENTAGE">% Perc.</option>
-                                            <option value="FIXED">₹ Fixed</option>
-                                            <option value="TABLE">Matrix</option>
-                                        </select>
-                                    </div>
-
-                                    {/* Value OR Basis */}
-                                    <div className="col-span-6 flex gap-2 items-center">
-                                        {charge.type !== 'TABLE' ? (
-                                            <>
-                                                <input
-                                                    type="number"
-                                                    value={charge.value}
-                                                    onChange={(e) => updateCharge(charge.id, { value: Number(e.target.value) })}
-                                                    className="w-20 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg px-2 py-2 text-xs font-mono text-slate-900 dark:text-white outline-none focus:border-blue-500/30"
-                                                />
-                                                {charge.type === 'PERCENTAGE' && (
-                                                    <select
-                                                        value={charge.calculationBasis}
-                                                        onChange={(e) => updateCharge(charge.id, { calculationBasis: e.target.value as ChargeCalculationBasis })}
-                                                        className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg text-[9px] font-bold text-slate-500 dark:text-slate-400 px-2 py-2 outline-none w-24 appearance-none text-center"
-                                                    >
-                                                        <option value="LOAN_AMOUNT">Loan Amt</option>
-                                                        <option value="GROSS_LOAN_AMOUNT">Gross Loan</option>
-                                                        <option value="VEHICLE_PRICE">Ex-Showroom</option>
-                                                    </select>
-                                                )}
-
-                                                <div className="h-6 w-px bg-slate-200 dark:bg-white/10 mx-1" />
-
-                                                {/* Consolidated GST Fields */}
-                                                <div className="flex items-center gap-1.5 flex-1">
-                                                    <select
-                                                        value={charge.taxStatus}
-                                                        onChange={(e) => updateCharge(charge.id, {
-                                                            taxStatus: e.target.value as any,
-                                                            taxRate: e.target.value === 'EXCLUSIVE' ? (charge.taxRate || 18) : charge.taxRate
-                                                        })}
-                                                        className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-lg text-[9px] font-black uppercase tracking-tighter text-slate-600 dark:text-slate-400 px-2 py-2 outline-none appearance-none flex-1 text-center"
-                                                    >
-                                                        <option value="NOT_APPLICABLE">N/A</option>
-                                                        <option value="INCLUSIVE">GST Inc.</option>
-                                                        <option value="EXCLUSIVE">GST Exc.</option>
-                                                    </select>
-
-                                                    {charge.taxStatus !== 'NOT_APPLICABLE' && (
-                                                        <div className="flex items-center gap-1">
-                                                            <input
-                                                                type="number"
-                                                                value={charge.taxRate || 0}
-                                                                onChange={e => updateCharge(charge.id, { taxRate: Number(e.target.value) })}
-                                                                className="w-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/5 rounded px-1 py-1.5 text-[10px] font-mono text-slate-900 dark:text-white outline-none"
-                                                            />
-                                                            <span className="text-[10px] text-slate-500">%</span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <div className="text-[10px] text-blue-400 font-black uppercase tracking-widest flex items-center justify-center flex-1 gap-2 bg-blue-500/10 px-3 py-2 rounded-lg border border-blue-500/20">
-                                                <Calculator size={14} /> Matrix Configured Below
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Delete */}
-                                    <div className="col-span-1 flex justify-end">
-                                        <button onClick={() => removeCharge(charge.id)} className="w-8 h-8 rounded-lg bg-red-500/5 text-slate-600 hover:text-red-500 hover:bg-red-500/10 transition-all flex items-center justify-center">
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
+                                    {/* Delete Button */}
+                                    <button
+                                        onClick={() => removeCharge(charge.id)}
+                                        className="ml-4 w-9 h-9 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-200 dark:hover:border-red-500/20 transition-all flex items-center justify-center border border-transparent"
+                                        title="Remove from scheme"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
                                 </div>
 
                                 {/* MATRIX EDITOR (Spreadsheet Style) */}
