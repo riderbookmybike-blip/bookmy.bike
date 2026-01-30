@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Settings, Users, Building2, Palette, CheckCircle2, Loader2, User } from 'lucide-react';
+import { Settings, Users, Building2, Palette, CheckCircle2, Loader2, Sparkles } from 'lucide-react';
 import { useTenant, TenantConfig } from '@/lib/tenant/tenantContext';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
@@ -12,6 +12,7 @@ export default function SettingsPage() {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'ORG' | 'BRAND'>('ORG');
     const [saving, setSaving] = useState(false);
+    const basePath = tenantSlug ? `/app/${tenantSlug}/dashboard` : '/dashboard';
 
     // Form State
     const [orgData, setOrgData] = useState({
@@ -121,6 +122,12 @@ export default function SettingsPage() {
                         <Users size={18} /> Team Members
                     </Link>
                     <Link
+                        href={`${basePath}/settings/reward-wheel`}
+                        className="w-full text-left px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5 text-sm font-bold flex items-center gap-3 transition-colors"
+                    >
+                        <Sparkles size={18} /> Reward Wheel
+                    </Link>
+                    <Link
                         href={`${basePath}/settings/profile`}
                         className="w-full text-left px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5 text-sm font-bold flex items-center gap-3 transition-colors"
                     >
@@ -208,4 +215,3 @@ export default function SettingsPage() {
         </div>
     );
 }
-const basePath = tenantSlug ? `/app/${tenantSlug}/dashboard` : '/dashboard';

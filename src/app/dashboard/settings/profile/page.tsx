@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { createClient } from '@/lib/supabase/client';
 import { User, Phone, Mail, Link as LinkIcon, ArrowRight, Shield, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
+import { normalizeIndianPhone } from '@/lib/utils/inputFormatters';
 import Link from 'next/link';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -53,7 +54,7 @@ export default function ProfileSettingsPage() {
 
         const supabase = createClient();
         const { error } = await supabase.auth.updateUser({
-            phone: `+91${phoneValues.phone.replace(/\D/g, '').slice(-10)}`
+            phone: `+91${normalizeIndianPhone(phoneValues.phone)}`
         });
 
         if (error) {
@@ -72,7 +73,7 @@ export default function ProfileSettingsPage() {
 
         const supabase = createClient();
         const { error } = await supabase.auth.verifyOtp({
-            phone: `+91${phoneValues.phone.replace(/\D/g, '').slice(-10)}`,
+            phone: `+91${normalizeIndianPhone(phoneValues.phone)}`,
             token: phoneValues.otp,
             type: 'phone_change'
         });
@@ -208,7 +209,7 @@ export default function ProfileSettingsPage() {
                                             <input
                                                 type="tel"
                                                 value={phoneValues.phone}
-                                                onChange={e => setPhoneValues({ ...phoneValues, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                                                onChange={e => setPhoneValues({ ...phoneValues, phone: normalizeIndianPhone(e.target.value) })}
                                                 placeholder="98765 43210"
                                                 className="flex-1 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500 transition-colors"
                                                 autoFocus
