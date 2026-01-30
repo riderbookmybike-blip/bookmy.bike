@@ -19,6 +19,14 @@ export const MobileBottomNav = () => {
 
     return (
         <nav className="fixed bottom-0 left-0 right-0 z-[110] safe-area-bottom h-[72px] bg-gradient-to-t from-black/80 via-black/60 to-transparent backdrop-blur-lg">
+            {/* Spotlight Effect from Footer */}
+            <div
+                className="absolute bottom-full left-1/2 -translate-x-1/2 w-[200%] h-[50vh] pointer-events-none"
+                style={{
+                    background: 'radial-gradient(ellipse 60% 50% at 50% 100%, rgba(244, 176, 0, 0.12) 0%, transparent 70%)',
+                    filter: 'blur(25px)',
+                }}
+            />
             <div className="flex items-center justify-between h-full px-2">
                 {NAV_ITEMS.map((item) => {
                     const Icon = item.icon;
