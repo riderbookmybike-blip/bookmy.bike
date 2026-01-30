@@ -48,6 +48,8 @@ export interface ProductVariant {
     offsetY?: number;
     color?: string; // Selected color
     suitableFor?: string;
+    studioName?: string; // Dealer/Studio name from best offer
+    dealerId?: string;   // Dealer tenant ID
 }
 
 export interface VehicleSpecifications {

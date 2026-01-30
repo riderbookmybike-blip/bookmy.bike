@@ -28,7 +28,7 @@ export async function getAllProducts(): Promise<{ products: ProductVariant[], er
                     id, type, name, slug, specs, price_base, position,
                     skus:cat_items!parent_id(
                         id, type, price_base, is_primary, image_url, specs,
-                        prices:cat_prices(ex_showroom_price, state_code, district)
+                        prices:vehicle_prices(ex_showroom_price, state_code)
                     )
                 )
             `)

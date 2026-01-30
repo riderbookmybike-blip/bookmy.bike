@@ -248,6 +248,7 @@ export default function ReviewStep({ brand, family, template, variants, colors, 
                                 <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Assets / Inheritance</th>
                                 <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">SKU Identity</th>
                                 <th className="p-3 pr-8 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Status</th>
+                                <th className="p-3"></th>
                             </tr>
                         </thead>
 
@@ -342,18 +343,6 @@ export default function ReviewStep({ brand, family, template, variants, colors, 
                                                     <div className="flex items-center gap-2">
                                                         {hexPrimary && <div className="w-3 h-3 rounded-full shadow-sm border border-black/10" style={{ backgroundColor: hexPrimary }} />}
                                                         <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase">{colorName || '-'}</span>
-                                                    </div>
-                                                </td>
-
-                                                <td className="p-3">
-                                                    <div className="relative group/price w-32 mx-auto">
-                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 italic">₹</span>
-                                                        <input
-                                                            type="number"
-                                                            value={sku.price_base || 0}
-                                                            onChange={(e) => updateSkuField(sku, 'price_base', parseFloat(e.target.value))}
-                                                            className="w-full pl-7 pr-3 py-1.5 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl text-[10px] font-black text-center focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-500 outline-none transition-all"
-                                                        />
                                                     </div>
                                                 </td>
                                                 <td className="p-3">

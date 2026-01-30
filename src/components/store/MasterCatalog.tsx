@@ -98,11 +98,14 @@ export const ProductCard = ({
     const basePrice = marketAdjustedPrice;
     const pricingLabel = serviceability?.location || v.price?.pricingSource || 'India';
     const locationLabel = pricingLabel.toUpperCase();
-    const cleanedLocation = pricingLabel.replace(/^Best:\s*/i, '').trim();
+    // Clean up location: remove "Best:", "BASE:", etc.
+    const cleanedLocation = pricingLabel.replace(/^(Best:|BASE:)\s*/i, '').trim();
     const districtLabel = cleanedLocation.split(',')[0]?.trim();
     const dealerLabel = bestOffer?.dealer?.trim();
-    const dealerLabelDisplay = dealerLabel ? `STUDIO ${dealerLabel}` : 'UNASSIGNED';
-    const districtLabelDisplay = districtLabel || 'UNKNOWN';
+    const dealerLabelDisplay = dealerLabel || 'UNASSIGNED';
+    const districtLabelDisplay = districtLabel || serviceability?.location || 'UNKNOWN';
+    // If dealer offer exists, price is CONFIRMED not estimated
+    const isConfirmedPrice = !!bestOffer;
     // Savings calculation
     const onRoad = v.price?.onRoad || 0;
     const offerPrice = v.price?.offerPrice || basePrice;
@@ -250,7 +253,16 @@ export const ProductCard = ({
                                                     Lowest in {v.price?.pricingSource || serviceability?.location?.split(',')[0]}
                                                 </span>
                                                 <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                                                    by {bestOffer.dealer.startsWith('STUDIO') ? bestOffer.dealer : `STUDIO ${bestOffer.dealer}`}
+                                                    by {bestOffer.dealer}
+                                                </span>
+                                            </div>
+                                        ) : v.studioName ? (
+                                            <div className="flex flex-col items-start leading-none">
+                                                <span className="text-[10px] font-bold text-green-600 dark:text-green-500 uppercase tracking-widest">
+                                                    Price for {v.price?.pricingSource || serviceability?.location?.split(',')[0]}
+                                                </span>
+                                                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                                    by {v.studioName}
                                                 </span>
                                             </div>
                                         ) : (
@@ -541,7 +553,7 @@ export const ProductCard = ({
                                 )}
                             </div>
                         )}
-                        {v.price?.isEstimate && (
+                        {v.price?.isEstimate && !isConfirmedPrice && (
                             <p className="text-[9px] font-bold text-amber-500 uppercase tracking-widest italic mt-1 font-black">
                                 *ESTIMATED PRICE
                             </p>
@@ -670,7 +682,7 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
     const [isFilterOpen, setIsFilterOpen] = useState(false);
 
     // Initial serviceability check (Client Side - keeps looking for updates)
-    const [serviceability, setServiceability] = useState<{ status: 'loading' | 'serviceable' | 'unserviceable' | 'unset'; location?: string; distance?: number; stateCode?: string }>({ status: 'loading' });
+    const [serviceability, setServiceability] = useState<{ status: 'loading' | 'serviceable' | 'unserviceable' | 'unset'; location?: string; district?: string; stateCode?: string }>({ status: 'loading' });
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -680,29 +692,55 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
     // Fetch Market Offers when Serviceability Updates
     useEffect(() => {
         const fetchOffers = async () => {
-            if (serviceability.status === 'serviceable' && serviceability.location) {
-                const supabase = createClient();
-                const district = serviceability.location; // Assuming location is district name or we parse it
-                const stateCode = serviceability.stateCode || 'MH'; // Default fallback
+            // ALWAYS call RPC - default to MH state if no location
+            const supabase = createClient();
+            const stateCode = serviceability.stateCode || 'MH'; // Default fallback
+            const district = serviceability.district || null;
 
-                const { data, error } = await supabase.rpc('get_market_best_offers', {
-                    p_district_name: district,
-                    p_state_code: stateCode
+            console.log('[MasterCatalog] Calling RPC with:', { stateCode, district });
+
+            const { data, error } = await supabase.rpc('get_market_best_offers', {
+                p_state_code: stateCode,
+                p_district: serviceability.district || null  // Pass district if available
+            });
+
+            if (!error && data) {
+                const offerMap: Record<string, { price: number; dealer: string; dealerId?: string; isServiceable: boolean; bundleValue?: number; bundlePrice?: number }> = {};
+                data.forEach((item: any) => {
+                    offerMap[item.vehicle_color_id] = {
+                        price: Number(item.best_offer), // Ensure number
+                        dealer: item.dealer_name,
+                        dealerId: item.dealer_id,
+                        isServiceable: item.is_serviceable,
+                        bundleValue: Number(item.bundle_value || 0),
+                        bundlePrice: Number(item.bundle_price ?? item.bundle_value ?? 0)
+                    };
                 });
+                setMarketOffers(offerMap);
 
-                if (!error && data) {
-                    const offerMap: Record<string, { price: number; dealer: string; dealerId?: string; isServiceable: boolean; bundleValue?: number; bundlePrice?: number }> = {};
-                    data.forEach((item: any) => {
-                        offerMap[item.vehicle_color_id] = {
-                            price: Number(item.best_offer), // Ensure number
-                            dealer: item.dealer_name,
-                            dealerId: item.dealer_id,
-                            isServiceable: item.is_serviceable,
-                            bundleValue: Number(item.bundle_value || 0),
-                            bundlePrice: Number(item.bundle_price ?? item.bundle_value ?? 0)
-                        };
+                // Debug: Log studio name availability
+                if (typeof window !== 'undefined') {
+                    const sampleOffer = Object.values(offerMap)[0];
+                    console.log('[MasterCatalog] Market offers loaded:', {
+                        offerCount: Object.keys(offerMap).length,
+                        sampleDealer: sampleOffer?.dealer,
+                        sampleDealerId: sampleOffer?.dealerId,
+                        location: serviceability.location,
+                        stateCode: serviceability.stateCode,
+                        status: serviceability.status
                     });
-                    setMarketOffers(offerMap);
+
+                    // Update debug panel
+                    (window as any).__BMB_DEBUG__ = {
+                        ...(window as any).__BMB_DEBUG__,
+                        district: serviceability.location,
+                        stateCode: serviceability.stateCode,
+                        pricingSource: 'MARKET_RULES',
+                        locSource: 'AUTO',
+                        dealerId: sampleOffer?.dealerId,
+                        studioName: sampleOffer?.dealer,
+                        marketOffersCount: Object.keys(offerMap).length
+                    };
                 }
             }
         };
@@ -738,16 +776,19 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
 
             // Tier 2: Local Storage
             const cached = localStorage.getItem('bkmb_user_pincode');
+            console.log('[Location] Cached data:', cached);
             if (cached) {
                 try {
                     const data = JSON.parse(cached);
                     if (data.pincode) {
+                        console.log('[Location] Using cached pincode:', data.pincode);
                         const result = await checkServiceability(data.pincode);
                         // Construct display location: District ONLY
                         const displayLoc = result.district || result.location || data.pincode;
                         setServiceability({
                             status: result.isServiceable ? 'serviceable' : 'unserviceable',
                             location: displayLoc,
+                            district: result.district,
                             stateCode: result.stateCode
                         });
                         // Allow silent update of details (District/State)
@@ -760,7 +801,7 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                             manuallySet: false
                         }));
                         window.dispatchEvent(new Event('locationChanged'));
-                        return;
+                        return; // STOP HERE - don't ask for geolocation
                     }
                 } catch {
                     localStorage.removeItem('bkmb_user_pincode');
@@ -768,38 +809,70 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
             }
             // Tier 3: Browser Geolocation
             if (navigator.geolocation) {
+                console.log('[Location] Requesting geolocation...');
                 navigator.geolocation.getCurrentPosition(async (position) => {
-                    // ... geo logic ...
                     const { latitude, longitude } = position.coords;
-                    try {
-                        const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
-                        const data = await res.json();
-                        const pincode = data.postcode;
-                        const taluka = data.city || data.locality || data.principalSubdivision;
+                    console.log('[Location] Geolocation success:', { latitude, longitude });
 
-                        if (pincode) {
+                    try {
+                        // Use our own database to find nearest pincode - no external APIs!
+                        const supabaseClient = createClient();
+                        const { data: nearestData, error: nearestError } = await supabaseClient
+                            .rpc('get_nearest_pincode', { p_lat: latitude, p_lon: longitude });
+
+                        console.log('[Location] Nearest pincode from DB:', nearestData, nearestError);
+
+                        if (nearestData && nearestData.length > 0) {
+                            const nearest = nearestData[0];
+                            const pincode = nearest.pincode;
+                            const stateCode = nearest.rto_code?.substring(0, 2) || 'MH';
+
+                            // Use checkServiceability to verify and get full details
                             const result = await checkServiceability(pincode);
-                            const displayLoc = result.district || result.location || taluka || pincode;
+                            console.log('[Location] Serviceability result:', result);
+
+                            const displayLoc = result.district || nearest.district || nearest.taluka || pincode;
                             setServiceability({
                                 status: result.isServiceable ? 'serviceable' : 'unserviceable',
                                 location: displayLoc,
-                                stateCode: result.stateCode
+                                district: result.district || nearest.district,
+                                stateCode: result.stateCode || stateCode
                             });
                             localStorage.setItem('bkmb_user_pincode', JSON.stringify({
                                 pincode,
-                                taluka: result.location || taluka,
-                                district: result.district,
-                                state: result.state,
-                                stateCode: result.stateCode,
+                                taluka: result.taluka || nearest.taluka,
+                                district: result.district || nearest.district,
+                                state: result.state || nearest.state,
+                                stateCode: result.stateCode || stateCode,
                                 manuallySet: false
                             }));
+                            return;
                         }
-                    } catch {
+
+                        // Fallback if RPC fails - use state-level
+                        console.log('[Location] RPC failed, using Maharashtra fallback');
+                        setServiceability({
+                            status: 'serviceable',
+                            location: 'MAHARASHTRA',
+                            district: 'ALL',
+                            stateCode: 'MH'
+                        });
+                    } catch (err) {
+                        console.error('[Location] DB lookup error:', err);
                         setServiceability({ status: 'unset' });
                     }
-                }, () => setServiceability({ status: 'unset' }));
+                }, (err) => {
+                    console.error('[Location] Geolocation error:', err.code, err.message);
+                    // Set unset so user sees the prompt with button
+                    setServiceability({ status: 'unset' });
+                }, {
+                    enableHighAccuracy: true,
+                    timeout: 10000, // 10 seconds timeout
+                    maximumAge: 300000 // Use cached location if less than 5 min old
+                });
             } else {
-                setServiceability({ status: 'unset' });
+                console.log('[Location] Geolocation not available, defaulting to MH');
+                setServiceability({ status: 'serviceable', location: 'MAHARASHTRA', district: 'ALL', stateCode: 'MH' });
             }
         };
         checkCurrentServiceability();
@@ -952,6 +1025,48 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
         }
         return vehicles;
     }, [filteredVehicles, sortBy, downpayment]);
+
+    // Location Gate - Block catalog until location is fetched
+    if (serviceability.status === 'loading' || serviceability.status === 'unset') {
+        return (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/90 backdrop-blur-md">
+                <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 max-w-md mx-4 text-center shadow-2xl">
+                    <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-brand-primary to-orange-500 flex items-center justify-center">
+                        <MapPin size={40} className="text-white" />
+                    </div>
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-3">
+                        Enable Location
+                    </h2>
+                    <p className="text-slate-500 dark:text-slate-400 mb-6 text-sm leading-relaxed">
+                        We need your location to show accurate prices from dealers in your area.
+                        Please allow location access when prompted.
+                    </p>
+                    {serviceability.status === 'loading' && (
+                        <>
+                            <div className="flex items-center justify-center gap-2 text-brand-primary">
+                                <div className="w-4 h-4 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
+                                <span className="text-sm font-bold">Detecting location...</span>
+                            </div>
+                            <button
+                                onClick={() => setServiceability({ status: 'serviceable', location: 'MAHARASHTRA', district: 'ALL', stateCode: 'MH' })}
+                                className="mt-4 px-4 py-2 text-sm text-slate-500 hover:text-slate-900 dark:hover:text-white underline"
+                            >
+                                Skip → Use Maharashtra
+                            </button>
+                        </>
+                    )}
+                    {serviceability.status === 'unset' && (
+                        <button
+                            onClick={() => setServiceability({ status: 'serviceable', location: 'MAHARASHTRA', district: 'ALL', stateCode: 'MH' })}
+                            className="px-6 py-3 bg-brand-primary text-white font-bold rounded-full hover:bg-brand-primary/90 transition-colors"
+                        >
+                            Continue with Maharashtra
+                        </button>
+                    )}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-[#0b0d10] transition-colors duration-500 font-sans">
@@ -1609,8 +1724,9 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
 
                     setServiceability({
                         status: isServiceable ? 'serviceable' : 'unserviceable',
-                        location: result.location || taluka,
-                        distance: dist ? Math.round(dist) : undefined
+                        location: result.district || result.location || taluka,
+                        district: result.district,
+                        stateCode: result.stateCode
                     });
 
                     localStorage.setItem('bkmb_user_pincode', JSON.stringify({

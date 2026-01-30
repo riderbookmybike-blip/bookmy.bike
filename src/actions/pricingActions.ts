@@ -21,22 +21,19 @@ export async function getDistrictFromPincode(pincode: string): Promise<string | 
  * Fetches the ex-showroom price for a product (item) in a specific district.
  * Falls back to the item's default price if district pricing is unavailable.
  */
-export async function getDealerPriceAction(itemId: string, district?: string): Promise<number> {
+export async function getDealerPriceAction(itemId: string, stateCode?: string): Promise<number> {
     const supabase = await createClient();
 
-    // 1. Try to get district-specific price from cat_prices
-    if (district) {
-        const { data: distPrice, error: distError } = await supabase
-            .from('cat_prices')
-            .select('ex_showroom_price')
-            .eq('vehicle_color_id', itemId) // itemId here is actually the SKU/Color ID
-            .eq('district', district)
-            .eq('is_active', true)
-            .maybeSingle();
+    // 1. Try to get price from vehicle_prices (single source of truth)
+    const { data: price, error } = await supabase
+        .from('vehicle_prices')
+        .select('ex_showroom_price')
+        .eq('vehicle_color_id', itemId)
+        .eq('state_code', stateCode || 'MH')
+        .maybeSingle();
 
-        if (distPrice?.ex_showroom_price) {
-            return parseFloat(distPrice.ex_showroom_price);
-        }
+    if (price?.ex_showroom_price) {
+        return parseFloat(price.ex_showroom_price);
     }
 
     // 2. Fallback: Get the base price from cat_items if district price not found

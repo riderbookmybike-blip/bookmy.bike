@@ -321,32 +321,80 @@ const ViewportDebug = () => {
 
                         {(window as any).__BMB_DEBUG__ ? (
                             <div className="space-y-2">
-                                {/* Pricing Source */}
+                                {/* USER LOCATION */}
                                 <div className="space-y-1">
-                                    <p className="text-slate-500 uppercase">Pricing Resolution</p>
+                                    <p className="text-slate-400 uppercase text-[8px] font-bold">📍 User Location</p>
+                                    <div className="bg-blue-500/10 border border-blue-500/20 p-2 rounded-md space-y-1">
+                                        <div className="flex justify-between">
+                                            <span>Pincode:</span>
+                                            <span className="text-blue-400 font-mono">{(window as any).__BMB_DEBUG__.pincode || 'NOT_SET'}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>District:</span>
+                                            <span className="text-white">{(window as any).__BMB_DEBUG__.district || 'NOT_SET'}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>State:</span>
+                                            <span className="text-white">{(window as any).__BMB_DEBUG__.stateCode || 'NOT_SET'}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>Loc Source:</span>
+                                            <span className="text-orange-400">{(window as any).__BMB_DEBUG__.locSource || 'AUTO'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* PRICING RESOLUTION */}
+                                <div className="space-y-1">
+                                    <p className="text-slate-400 uppercase text-[8px] font-bold">💰 Pricing</p>
                                     <div className="bg-white/5 p-2 rounded-md">
                                         <div className="flex justify-between">
                                             <span>Source:</span>
                                             <span className="text-emerald-400">{(window as any).__BMB_DEBUG__.pricingSource || 'MARKET_BEST'}</span>
                                         </div>
                                         <div className="flex justify-between mt-1">
-                                            <span>Location:</span>
-                                            <span className="text-white">{(window as any).__BMB_DEBUG__.district || 'Global'}</span>
+                                            <span>Offers Loaded:</span>
+                                            <span className="text-cyan-400">{(window as any).__BMB_DEBUG__.marketOffersCount || 0}</span>
                                         </div>
-                                        <div className="flex justify-between mt-1">
-                                            <span>Loc Source:</span>
-                                            <span className="text-orange-400">{(window as any).__BMB_DEBUG__.locSource || 'AUTO'}</span>
-                                        </div>
-                                        {(window as any).__BMB_DEBUG__.pincode && (
-                                            <div className="flex justify-between mt-1">
-                                                <span>Pincode:</span>
-                                                <span className="text-slate-300 font-mono">{(window as any).__BMB_DEBUG__.pincode}</span>
+                                    </div>
+                                </div>
+
+                                {/* STUDIO/DEALER INFO */}
+                                <div className="space-y-1">
+                                    <p className="text-slate-400 uppercase text-[8px] font-bold">🏪 Studio/Dealer</p>
+                                    <div className="bg-amber-500/10 border border-amber-500/20 p-2 rounded-md space-y-1">
+                                        {(window as any).__BMB_DEBUG__.studioName ? (
+                                            <>
+                                                <div className="flex justify-between">
+                                                    <span>✅ Served:</span>
+                                                    <span className="text-amber-400 font-mono text-[9px]">{(window as any).__BMB_DEBUG__.studioName}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span>ID:</span>
+                                                    <span className="text-slate-300 font-mono text-[8px]">{(window as any).__BMB_DEBUG__.dealerId || 'N/A'}</span>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="text-red-400 text-[9px] italic">
+                                                ⚠️ Studio name NOT loaded<br />
+                                                <span className="text-slate-500 text-[8px]">Check: Location set? Offers loaded?</span>
                                             </div>
                                         )}
-                                        {(window as any).__BMB_DEBUG__.dealerId && (
-                                            <div className="flex justify-between mt-1 border-t border-white/5 pt-1">
-                                                <span>Dealer:</span>
-                                                <span className="text-amber-400">{(window as any).__BMB_DEBUG__.dealerId}</span>
+                                    </div>
+                                </div>
+
+                                {/* EXPECTED (For debugging) */}
+                                <div className="space-y-1">
+                                    <p className="text-slate-400 uppercase text-[8px] font-bold">🎯 Expected</p>
+                                    <div className="bg-green-500/10 border border-green-500/20 p-2 rounded-md space-y-1 text-[9px]">
+                                        <div className="text-green-400">
+                                            {(window as any).__BMB_DEBUG__.marketOffersCount > 0
+                                                ? `${(window as any).__BMB_DEBUG__.marketOffersCount} dealer offers loaded`
+                                                : 'No dealer offers (check RPC)'}
+                                        </div>
+                                        {(window as any).__BMB_DEBUG__.stateCode && (
+                                            <div className="text-slate-400">
+                                                For {(window as any).__BMB_DEBUG__.stateCode}: Should show dealer name from RPC
                                             </div>
                                         )}
                                     </div>

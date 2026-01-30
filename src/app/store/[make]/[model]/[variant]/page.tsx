@@ -229,6 +229,24 @@ export default async function Page({ params, searchParams }: Props) {
         .eq('parent_id', item.id)
         .eq('type', 'SKU');
 
+    // 2.6 Fetch Prices from vehicle_prices (Authoritative Source)
+    const skuIds = (skus || []).map((s: any) => s.id);
+    let vehiclePrices: Record<string, number> = {};
+    if (skuIds.length > 0) {
+        const { data: priceRecords } = await supabase
+            .from('vehicle_prices')
+            .select('vehicle_color_id, ex_showroom_price, state_code, offer_amount')
+            .in('vehicle_color_id', skuIds)
+            .eq('state_code', stateCode);
+
+        if (priceRecords) {
+            priceRecords.forEach((p: any) => {
+                const price = parseFloat(p.ex_showroom_price);
+                vehiclePrices[p.vehicle_color_id] = price;
+            });
+        }
+    }
+
     // 3. Fetch RTO/Insurance Rules
     const { data: ruleData } = await supabase
         .from('cat_reg_rules')
@@ -268,7 +286,9 @@ export default async function Page({ params, searchParams }: Props) {
     const insuranceRule: any = insuranceRuleData?.[0];
 
     // 4. Calculate On-Road
-    const baseExShowroom = item.price_base || 0;
+    // Use vehiclePrices from vehicle_prices table (authoritative), fallback to price_base only if none found
+    const firstSkuId = skuIds[0];
+    const baseExShowroom = vehiclePrices[firstSkuId] || item.price_base || 0;
     const engineCc = item.specs?.engine_cc || 110;
 
     const onRoadBreakdown = calculateOnRoad(Number(baseExShowroom), engineCc, effectiveRule, insuranceRule);

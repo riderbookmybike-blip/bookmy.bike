@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Landmark, Sparkles, TrendingUp, Info, Save, CheckCircle2, Car, Copy, Edit2, ArrowRight, ArrowUpDown, Search, Filter, Package, ExternalLink, Activity, Loader2 } from 'lucide-react';
+import { Landmark, Sparkles, TrendingUp, Info, Save, CheckCircle2, Car, Copy, Edit2, ArrowRight, ArrowUpDown, Search, Filter, Package, ExternalLink, Activity, Loader2, Power, AlertCircle } from 'lucide-react';
 import { calculateOnRoad } from '@/lib/utils/pricingUtility';
 import { useRouter } from 'next/navigation';
 import { useTenant } from '@/lib/tenant/tenantContext';
@@ -31,6 +31,8 @@ interface SKUPriceRow {
     category: string;
     subCategory: string;
     suitableFor?: string;
+    status?: 'ACTIVE' | 'INACTIVE' | 'DRAFT';
+    localIsActive?: boolean;
 }
 
 interface PricingLedgerTableProps {
@@ -39,6 +41,8 @@ interface PricingLedgerTableProps {
     onUpdatePrice: (skuId: string, price: number) => void;
     onUpdateOffer: (skuId: string, offer: number) => void;
     onUpdateInclusion: (skuId: string, type: 'MANDATORY' | 'OPTIONAL' | 'BUNDLE') => void;
+    onUpdateStatus: (skuId: string, status: 'ACTIVE' | 'INACTIVE') => void;
+    onUpdateLocalStatus?: (skuId: string, isActive: boolean) => void;
     onSaveAll?: () => void;
     states: RegistrationRule[];
     selectedStateId: string;
@@ -96,6 +100,8 @@ export default function PricingLedgerTable({
     onUpdatePrice,
     onUpdateOffer,
     onUpdateInclusion,
+    onUpdateStatus,
+    onUpdateLocalStatus,
     onSaveAll,
     states,
     selectedStateId,
@@ -138,6 +144,8 @@ export default function PricingLedgerTable({
         setActiveFilterColumn(null); // Close dropdown on select
     };
 
+    const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ACTIVE');
+
     // Derived Logic: Filters -> Unique Values for Dropdown (Cascading)
     const getUniqueValues = (key: keyof SKUPriceRow) => {
         const values = new Set<string>();
@@ -148,6 +156,11 @@ export default function PricingLedgerTable({
         // 0. Filter by Active Category (Tab)
         if (activeCategory) {
             baseSet = baseSet.filter(sku => (sku.type || 'vehicles').toLowerCase() === activeCategory.toLowerCase());
+        }
+
+        // 0.1 Filter by Status (Global Filter)
+        if (statusFilter !== 'ALL') {
+            baseSet = baseSet.filter(sku => (sku.status || 'INACTIVE') === statusFilter);
         }
 
         // 1. Cross-Filter: For the current column's options, respect all OTHER active filters
@@ -177,6 +190,12 @@ export default function PricingLedgerTable({
         // 0. Filter by Active Category (Tab)
         if (activeCategory) {
             result = result.filter(sku => (sku.type || 'vehicles').toLowerCase() === activeCategory.toLowerCase());
+        }
+
+        // 0.1 Filter by Status
+        if (statusFilter !== 'ALL') {
+            // Treat null/undefined as INACTIVE
+            result = result.filter(sku => (sku.status || 'INACTIVE') === statusFilter);
         }
 
         // 1. Filter Dropdowns
@@ -213,7 +232,7 @@ export default function PricingLedgerTable({
         }
 
         return result;
-    }, [initialSkus, filters, sortConfig, activeCategory]);
+    }, [initialSkus, filters, sortConfig, activeCategory, statusFilter]);
 
     // Selection Logic
     const toggleSelection = (id: string) => {
@@ -276,6 +295,20 @@ export default function PricingLedgerTable({
                                     ))}
                                 </select>
                             </div>
+
+                            {/* Status Filter */}
+                            <div className="relative">
+                                <Power size={12} className={`absolute left-3 top-1/2 -translate-y-1/2 ${statusFilter === 'ACTIVE' ? 'text-emerald-500' : 'text-slate-400'}`} />
+                                <select
+                                    value={statusFilter}
+                                    onChange={(e) => setStatusFilter(e.target.value as any)}
+                                    className="pl-8 pr-8 py-1.5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tight focus:ring-2 focus:ring-blue-500/20 outline-none appearance-none cursor-pointer"
+                                >
+                                    <option value="ACTIVE">Active</option>
+                                    <option value="INACTIVE">New Launches</option>
+                                    <option value="ALL">All Status</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div className="h-6 w-px bg-slate-200 dark:bg-white/10" />
@@ -334,6 +367,9 @@ export default function PricingLedgerTable({
                                             onChange={toggleAll}
                                             className="rounded border-slate-300 text-blue-600 focus:ring-0 cursor-pointer w-3 h-3"
                                         />
+                                    </th>
+                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 text-center w-[80px]">
+                                        Avail.
                                     </th>
                                     {['brand', 'category', 'subCategory', 'model', 'variant', 'color'].map((key) => {
                                         const label = key === 'subCategory' ? 'Sub Category' : key;
@@ -470,22 +506,73 @@ export default function PricingLedgerTable({
                                                     className="rounded border-slate-300 text-blue-600 focus:ring-0 cursor-pointer w-3 h-3 opacity-30 group-hover:opacity-100 transition-opacity"
                                                 />
                                             </td>
+                                            <td className="px-4 py-2 text-center relative group/status">
+                                                <button
+                                                    onClick={() => {
+                                                        if (isAums) {
+                                                            // SUPERADMIN: Global Activation
+                                                            const newStatus = sku.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+                                                            if (newStatus === 'ACTIVE' && (!sku.exShowroom || sku.exShowroom <= 0)) {
+                                                                alert('Cannot activate SKU without Ex-Showroom Price.');
+                                                                return;
+                                                            }
+                                                            if (onUpdateStatus) onUpdateStatus(sku.id, newStatus);
+                                                        } else {
+                                                            // DEALER: Local Inventory Toggle
+                                                            // Cannot enable if Global is INACTIVE
+                                                            if (sku.status !== 'ACTIVE') {
+                                                                return; // Silent fail (button disabled visually)
+                                                            }
+                                                            if (onUpdateLocalStatus) onUpdateLocalStatus(sku.id, !sku.localIsActive);
+                                                        }
+                                                    }}
+                                                    disabled={!isAums && sku.status !== 'ACTIVE'}
+                                                    className={`
+                                                        w-8 h-5 rounded-full flex items-center transition-all duration-300 relative
+                                                        ${isAums
+                                                            ? (sku.status === 'ACTIVE'
+                                                                ? 'bg-emerald-500 shadow-lg shadow-emerald-500/20'
+                                                                : (!sku.exShowroom || sku.exShowroom <= 0) ? 'bg-slate-100 dark:bg-slate-800 cursor-not-allowed opacity-50' : 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300')
+                                                            : (sku.status === 'ACTIVE'
+                                                                ? (sku.localIsActive ? 'bg-emerald-500 shadow-lg shadow-emerald-500/20' : 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300')
+                                                                : 'bg-slate-100 dark:bg-slate-800 cursor-not-allowed opacity-30')
+                                                        }
+                                                    `}
+                                                >
+                                                    <div className={`
+                                                        w-3 h-3 rounded-full bg-white shadow-sm absolute top-1 transition-all duration-300
+                                                        ${isAums
+                                                            ? (sku.status === 'ACTIVE' ? 'left-4' : 'left-1')
+                                                            : (sku.localIsActive && sku.status === 'ACTIVE' ? 'left-4' : 'left-1')
+                                                        }
+                                                    `} />
+                                                </button>
+
+                                                {/* Tooltip for Disabled State */}
+                                                {isAums && sku.status !== 'ACTIVE' && (!sku.exShowroom || sku.exShowroom <= 0) && (
+                                                    <div className="absolute left-10 top-1/2 -translate-y-1/2 w-32 p-2 bg-slate-900 border border-white/10 rounded-lg hidden group-hover/status:block z-50 pointer-events-none">
+                                                        <div className="flex items-center gap-2 text-[10px] text-rose-300 font-bold leading-tight">
+                                                            <AlertCircle size={12} className="shrink-0" />
+                                                            <span>Set Price to Activate</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Dealer Inactive Context */}
+                                                {!isAums && sku.status !== 'ACTIVE' && (
+                                                    <div className="absolute left-10 top-1/2 -translate-y-1/2 w-32 p-2 bg-slate-900 border border-white/10 rounded-lg hidden group-hover/status:block z-50 pointer-events-none">
+                                                        <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold leading-tight">
+                                                            <Info size={12} className="shrink-0" />
+                                                            <span>Global Launch Pending</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </td>
                                             <td className="px-4 py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/5 flex items-center justify-center overflow-hidden border border-slate-200 dark:border-white/10 relative group-hover:bg-white dark:group-hover:bg-slate-900 transition-colors">
-                                                        {sku.brandLogo ? (
-                                                            <img
-                                                                src={sku.brandLogo}
-                                                                alt={sku.brand}
-                                                                className="w-5 h-5 object-contain opacity-60 group-hover:opacity-100 grayscale hover:grayscale-0 transition-all"
-                                                            />
-                                                        ) : (
-                                                            <div className="text-[10px] font-black text-slate-300 dark:text-white/10 uppercase">
-                                                                {sku.brand.substring(0, 2)}
-                                                            </div>
-                                                        )}
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-none">{sku.brand}</span>
                                                     </div>
-                                                    <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-none">{sku.brand}</span>
                                                 </div>
                                             </td>
                                             <td className="px-4 py-4">
