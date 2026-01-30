@@ -149,6 +149,11 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
             {/* 2. Top Header Layer - REMOVED (Content moved to Detail Panel) */}
             <div className="relative z-30 px-6 pt-24 min-h-[50px] pointer-events-none" />
             <div className="relative flex-1 flex flex-col items-center justify-center z-20 px-6">
+                {/* Brand Watermark behind image */}
+                <span className="absolute font-black text-[90px] uppercase tracking-[0.2em] opacity-[0.03] italic text-zinc-900 select-none whitespace-nowrap z-0 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+                    {product.make}
+                </span>
+
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={activeColorIdx}
@@ -421,7 +426,7 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                             ))}
                             <StarHalf size={10} className="fill-[#F4B000] text-[#F4B000]" />
                         </div>
-                        <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none">• 947K+ RATINGS</span>
+                        <span className="text-[10px] font-black text-zinc-900 uppercase tracking-widest leading-none">• 947K+ RATINGS</span>
                     </div>
 
                     <div className="flex gap-1.5 opacity-40">
