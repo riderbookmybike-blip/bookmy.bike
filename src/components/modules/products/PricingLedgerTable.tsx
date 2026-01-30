@@ -277,9 +277,9 @@ export default function PricingLedgerTable({
 
     return (
         <div className="w-full h-full flex flex-col animate-in fade-in duration-700">
-            {/* New Unified Toolbar - Standalone Floating Card */}
-            <div className="px-6 pt-6 sticky top-0 z-30 bg-slate-50 dark:bg-slate-950/50 backdrop-blur-sm -mx-6">
-                <div className="flex items-center justify-between px-6 py-3 bg-white dark:bg-slate-900/80 border border-slate-200/60 dark:border-white/5 rounded-full shadow-lg backdrop-blur-xl mb-6">
+            {/* Modernized Unified Toolbar */}
+            <div className="px-6 pt-6 sticky top-0 z-30 bg-gradient-to-b from-slate-50 via-slate-50/95 to-transparent dark:from-slate-950/50 dark:via-slate-950/40 dark:to-transparent backdrop-blur-sm -mx-6">
+                <div className="flex items-center justify-between px-8 py-4 bg-gradient-to-r from-white via-slate-50/50 to-white dark:from-slate-900/90 dark:via-slate-800/80 dark:to-slate-900/90 border border-slate-200/60 dark:border-white/5 rounded-2xl shadow-xl shadow-slate-900/5 backdrop-blur-xl mb-6">
                     <div className="flex items-center gap-8">
                         {/* Compact Filters - Moved to first position */}
                         <div className="flex items-center gap-3">
@@ -313,8 +313,8 @@ export default function PricingLedgerTable({
 
                         <div className="h-6 w-px bg-slate-200 dark:bg-white/10" />
 
-                        {/* Category Tabs */}
-                        <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-full">
+                        {/* Enhanced Category Tabs */}
+                        <div className="relative flex bg-gradient-to-br from-slate-100 to-slate-50 dark:from-white/5 dark:to-white/10 p-1.5 rounded-2xl shadow-inner">
                             {[
                                 { id: 'vehicles', label: 'Vehicles', icon: Car },
                                 { id: 'accessories', label: 'Accessories', icon: Package },
@@ -323,12 +323,12 @@ export default function PricingLedgerTable({
                                 <button
                                     key={cat.id}
                                     onClick={() => setActiveCategory(cat.id as any)}
-                                    className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${activeCategory === cat.id
-                                        ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm'
-                                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                                    className={`relative flex items-center gap-2.5 px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-300 ${activeCategory === cat.id
+                                        ? 'bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-700 text-indigo-600 dark:text-indigo-400 shadow-lg shadow-indigo-500/10 scale-105'
+                                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:scale-102'
                                         }`}
                                 >
-                                    <cat.icon size={12} />
+                                    <cat.icon size={14} className={activeCategory === cat.id ? 'drop-shadow-sm' : ''} />
                                     {cat.label}
                                 </button>
                             ))}
@@ -341,10 +341,11 @@ export default function PricingLedgerTable({
                                 <button
                                     onClick={handleSave}
                                     disabled={isSaving || isParentSaving}
-                                    className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-800/10 dark:disabled:bg-white/5 disabled:text-slate-400 dark:disabled:text-white/20 text-white px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-500/20 active:scale-95 flex items-center gap-2 border border-indigo-500/20 disabled:border-transparent"
+                                    className="group relative bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 disabled:from-slate-200 disabled:to-slate-300 dark:disabled:from-slate-800/20 dark:disabled:to-slate-700/20 disabled:text-slate-400 dark:disabled:text-white/20 text-white px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-300 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 active:scale-95 flex items-center gap-2.5 border border-indigo-500/20 disabled:border-transparent disabled:shadow-none overflow-hidden"
                                 >
-                                    {(isSaving || isParentSaving) ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                                    Save Changes
+                                    <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                                    {(isSaving || isParentSaving) ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                                    <span>Save Changes</span>
                                 </button>
                             </div>
                         )}
@@ -352,9 +353,9 @@ export default function PricingLedgerTable({
                 </div>
             </div>
 
-            {/* High-Density Ledger Table - Standalone Card */}
+            {/* Enhanced Ledger Table Card */}
             <div className="flex-1 px-6 pb-6">
-                <div className="h-full bg-white dark:bg-slate-900/40 backdrop-blur-md rounded-[2rem] border border-slate-200 dark:border-white/10 shadow-xl relative overflow-hidden flex flex-col">
+                <div className="h-full bg-gradient-to-br from-white via-slate-50/30 to-white dark:from-slate-900/60 dark:via-slate-800/40 dark:to-slate-900/60 backdrop-blur-md rounded-3xl border border-slate-200/60 dark:border-white/10 shadow-2xl shadow-slate-900/10 relative overflow-hidden flex flex-col">
                     <div className="overflow-auto scrollbar-thin flex-1">
                         <table className="w-full text-left border-collapse min-w-[1200px]">
                             <thead className="sticky top-0 z-10 bg-slate-100/80 dark:bg-slate-900/90 backdrop-blur-md">

@@ -404,67 +404,76 @@ export default function PricingPage() {
         const activeState = states.find(s => s.id === selectedStateId)?.stateCode || '--';
 
         return (
-            <div className="flex justify-between items-center px-6 py-4 border-b border-slate-200 dark:border-white/5 bg-white dark:bg-slate-950 sticky top-0 z-20">
-                <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-4">
-                        <div className="p-2.5 rounded-2xl bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20">
-                            <Landmark size={22} strokeWidth={2.5} />
+            <div className="relative flex justify-between items-center px-8 py-6 border-b border-slate-200/60 dark:border-white/5 bg-gradient-to-br from-white via-slate-50/50 to-white dark:from-slate-950 dark:via-slate-900/50 dark:to-slate-950 sticky top-0 z-20 backdrop-blur-xl shadow-lg shadow-slate-900/5">
+                {/* Glassmorphism overlay */}
+                <div className="absolute inset-0 bg-white/60 dark:bg-slate-950/60 backdrop-blur-xl -z-10" />
+
+                <div className="flex items-center gap-8">
+                    <div className="flex items-center gap-5">
+                        <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all duration-300 hover:scale-105">
+                            <Landmark size={24} strokeWidth={2.5} className="drop-shadow-sm" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-none">
+                            <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-none bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
                                 On-Road Pricing
                             </h2>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-1">
                                 Regulatory Ledger
                             </p>
                         </div>
                     </div>
 
-                    <div className="h-8 w-px bg-slate-200 dark:bg-white/10 hidden lg:block" />
+                    <div className="h-10 w-px bg-gradient-to-b from-transparent via-slate-300 dark:via-white/20 to-transparent hidden lg:block" />
 
-                    {/* Page KPIs */}
-                    <div className="hidden xl:flex items-center gap-3">
-                        <KPIItem
-                            label="Tracked SKUs"
-                            value={skus.length}
-                            icon={Package}
-                            description="Total unique color/variant combinations in this state"
-                            color="indigo"
-                        />
-                        <KPIItem
-                            label="Pending Saves"
-                            value={pendingSaves}
-                            icon={Save}
-                            description="SKUs modified in current session awaiting commit"
-                            color={pendingSaves > 0 ? 'amber' : 'slate'}
-                            trend={pendingSaves > 0 ? { value: 'Dirty', positive: false } : undefined}
-                        />
-                        <KPIItem
-                            label="Missing Prices"
-                            value={missingPrices}
-                            icon={Target}
-                            description="SKUs requiring ex-showroom price definition"
-                            color={missingPrices > 0 ? 'rose' : 'emerald'}
-                        />
-                        <KPIItem
-                            label="Active Region"
-                            value={activeState}
-                            icon={Activity}
-                            description="Currently selected region for regulatory computation"
-                            color="blue"
-                        />
+                    {/* Page KPIs - Enhanced */}
+                    <div className="hidden xl:flex items-center gap-4">
+                        <div className="group relative px-4 py-3 rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100/50 dark:from-indigo-950/30 dark:to-indigo-900/20 border border-indigo-200/50 dark:border-indigo-500/20 hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-300 hover:scale-105">
+                            <div className="flex items-center gap-3">
+                                <Package size={18} className="text-indigo-600 dark:text-indigo-400" />
+                                <div>
+                                    <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">SKUs</div>
+                                    <div className="text-lg font-black text-indigo-600 dark:text-indigo-400 tabular-nums">{skus.length}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className={`group relative px-4 py-3 rounded-xl transition-all duration-300 hover:scale-105 ${pendingSaves > 0 ? 'bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-900/20 border border-amber-200/50 dark:border-amber-500/20 hover:shadow-lg hover:shadow-amber-500/20 animate-pulse' : 'bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-white/10'}`}>
+                            <div className="flex items-center gap-3">
+                                <Save size={18} className={pendingSaves > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'} />
+                                <div>
+                                    <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pending</div>
+                                    <div className={`text-lg font-black tabular-nums ${pendingSaves > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}`}>{pendingSaves}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className={`group relative px-4 py-3 rounded-xl transition-all duration-300 hover:scale-105 ${missingPrices > 0 ? 'bg-gradient-to-br from-rose-50 to-rose-100/50 dark:from-rose-950/30 dark:to-rose-900/20 border border-rose-200/50 dark:border-rose-500/20 hover:shadow-lg hover:shadow-rose-500/20' : 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/20 border border-emerald-200/50 dark:border-emerald-500/20 hover:shadow-lg hover:shadow-emerald-500/10'}`}>
+                            <div className="flex items-center gap-3">
+                                <Target size={18} className={missingPrices > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'} />
+                                <div>
+                                    <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Missing</div>
+                                    <div className={`text-lg font-black tabular-nums ${missingPrices > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>{missingPrices}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="group relative px-4 py-3 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20 border border-blue-200/50 dark:border-blue-500/20 hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-300 hover:scale-105">
+                            <div className="flex items-center gap-3">
+                                <Activity size={18} className="text-blue-600 dark:text-blue-400" />
+                                <div>
+                                    <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Region</div>
+                                    <div className="text-lg font-black text-blue-600 dark:text-blue-400 tabular-nums">{activeState}</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-4">
-                    {/* Brand Performance Shortcut */}
-
-                    <div className="h-6 w-px bg-slate-200 dark:bg-white/10" />
-
-                    {/* Unsaved Changes Indicator */}
-                    <div className={`flex items-center gap-2 text-[10px] font-bold px-3 py-1.5 rounded-full transition-all ${hasUnsavedChanges ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' : 'opacity-0'}`}>
-                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                        UNSAVED CHANGES
+                    {/* Unsaved Changes Indicator - Enhanced */}
+                    <div className={`flex items-center gap-2.5 text-xs font-bold px-4 py-2 rounded-full transition-all duration-300 ${hasUnsavedChanges ? 'bg-gradient-to-r from-amber-100 to-amber-50 dark:from-amber-900/40 dark:to-amber-950/30 text-amber-700 dark:text-amber-300 border border-amber-300/50 dark:border-amber-500/30 shadow-lg shadow-amber-500/20 scale-100' : 'opacity-0 scale-95'}`}>
+                        <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shadow-lg shadow-amber-500/50" />
+                        <span className="uppercase tracking-wider">Unsaved Changes</span>
                     </div>
                 </div>
             </div>
