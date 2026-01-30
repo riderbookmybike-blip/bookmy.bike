@@ -46,6 +46,15 @@ export const MobileHeader = () => {
                     <Logo className="h-6 w-auto" mode={logoMode} />
                 </div>
 
+                {/* Spotlight Effect from Header */}
+                <div
+                    className="absolute top-full left-1/2 -translate-x-1/2 w-[200%] h-[60vh] pointer-events-none"
+                    style={{
+                        background: 'radial-gradient(ellipse 50% 40% at 50% 0%, rgba(244, 176, 0, 0.15) 0%, transparent 60%)',
+                        filter: 'blur(20px)',
+                    }}
+                />
+
                 {/* Hamburger on the Right */}
                 <button
                     onClick={() => setIsMenuOpen(!isMenuOpen)}
