@@ -421,17 +421,6 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                         </div>
                         <span className="text-[10px] font-black text-zinc-900 uppercase tracking-widest leading-none">• 947K+ RATINGS</span>
                     </div>
-
-                    {/* Clear Swipe Hint for Colors */}
-                    {colors.length > 1 && (
-                        <div className="flex items-center gap-2">
-                            <ChevronRight size={12} className="text-zinc-400 animate-pulse" />
-                            <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
-                                Swipe for {colors.length} colors
-                            </span>
-                            <ChevronRight size={12} className="text-zinc-400 animate-pulse" />
-                        </div>
-                    )}
                 </div>
 
                 <button
