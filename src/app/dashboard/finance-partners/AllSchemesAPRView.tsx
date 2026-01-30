@@ -341,6 +341,13 @@ export default function AllSchemesAPRView({ banks }: { banks: any[] }) {
                                     onSort={handleSort}
                                 />
                                 <SortableHeader
+                                    label="Total Cost"
+                                    field="totalCost"
+                                    currentField={sortField}
+                                    direction={sortDirection}
+                                    onSort={handleSort}
+                                />
+                                <SortableHeader
                                     label="IRR"
                                     field="irr"
                                     currentField={sortField}
@@ -425,6 +432,14 @@ export default function AllSchemesAPRView({ banks }: { banks: any[] }) {
                                             </div>
                                             <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
                                                 per month
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-lg font-black text-rose-600 dark:text-rose-400">
+                                                ₹{item.totalCost.toLocaleString()}
+                                            </div>
+                                            <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
+                                                extra paid
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
