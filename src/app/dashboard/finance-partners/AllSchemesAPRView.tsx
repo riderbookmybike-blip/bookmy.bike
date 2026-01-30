@@ -299,6 +299,13 @@ export default function AllSchemesAPRView({ banks }: { banks: any[] }) {
                                     onSort={handleSort}
                                 />
                                 <SortableHeader
+                                    label="Type"
+                                    field="interestType"
+                                    currentField={sortField}
+                                    direction={sortDirection}
+                                    onSort={handleSort}
+                                />
+                                <SortableHeader
                                     label="Upfront"
                                     field="upfrontCharges"
                                     currentField={sortField}
@@ -334,6 +341,13 @@ export default function AllSchemesAPRView({ banks }: { banks: any[] }) {
                                     onSort={handleSort}
                                 />
                                 <SortableHeader
+                                    label="IRR"
+                                    field="irr"
+                                    currentField={sortField}
+                                    direction={sortDirection}
+                                    onSort={handleSort}
+                                />
+                                <SortableHeader
                                     label="APR"
                                     field="apr"
                                     currentField={sortField}
@@ -345,7 +359,7 @@ export default function AllSchemesAPRView({ banks }: { banks: any[] }) {
                         <tbody>
                             {filteredAndSortedData.length === 0 ? (
                                 <tr>
-                                    <td colSpan={9} className="text-center py-12">
+                                    <td colSpan={11} className="text-center py-12">
                                         <div className="text-slate-400">
                                             <Filter size={48} className="mx-auto mb-4 opacity-20" />
                                             <p className="font-bold text-sm">No schemes match your filters</p>
@@ -378,6 +392,14 @@ export default function AllSchemesAPRView({ banks }: { banks: any[] }) {
                                         <td className="px-6 py-4 text-sm font-bold text-blue-600 dark:text-blue-400">
                                             {item.roi}%
                                         </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`text-xs font-black px-2 py-1 rounded-lg ${item.interestType === 'REDUCING'
+                                                    ? 'bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20'
+                                                    : 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20'
+                                                }`}>
+                                                {item.interestType}
+                                            </span>
+                                        </td>
                                         <td className="px-6 py-4 text-sm font-bold text-amber-600 dark:text-amber-400">
                                             ₹{item.upfrontCharges.toLocaleString()}
                                         </td>
@@ -398,6 +420,11 @@ export default function AllSchemesAPRView({ banks }: { banks: any[] }) {
                                             </div>
                                             <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
                                                 per month
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className={`text-lg font-black ${getAPRColor(item.irr)}`}>
+                                                {item.irr}%
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
