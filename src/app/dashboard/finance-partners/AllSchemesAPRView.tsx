@@ -426,6 +426,9 @@ export default function AllSchemesAPRView({ banks }: { banks: any[] }) {
                                         <td className="px-6 py-4 text-sm font-bold text-slate-700 dark:text-slate-300">
                                             ₹{item.downpayment.toLocaleString()}
                                         </td>
+                                        <td className="px-6 py-4 text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                                            ₹{item.grossLoanAmount.toLocaleString()}
+                                        </td>
                                         <td className="px-6 py-4">
                                             <div className="text-lg font-black text-slate-900 dark:text-white">
                                                 ₹{item.emi.toLocaleString()}
