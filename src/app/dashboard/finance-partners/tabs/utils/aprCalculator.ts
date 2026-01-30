@@ -361,7 +361,7 @@ export function calculateAPR(
         },
         netMargin: Math.round(netMargin),
         downpayment: Math.round(downpayment),
-        emi: Math.round(emi),
+        grossLoanAmount: Math.round(finalGrossLoan),
         emi: Math.round(emi),
         totalCost: Math.round(totalCost),
         totalCostPercentage: Math.round((totalCost / assetValue) * 10000) / 100, // xx.xx%
