@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Zap } from 'lucide-react';
 
 interface FinanceTabProps {
@@ -33,6 +33,30 @@ export default function FinanceTab({
     annualInterest,
     initialFinance
 }: FinanceTabProps) {
+    // Local state for immediate UI feedback
+    const [displayValue, setDisplayValue] = useState(downPayment);
+    const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+
+    // Sync display value when prop changes (e.g., from external reset)
+    useEffect(() => {
+        setDisplayValue(downPayment);
+    }, [downPayment]);
+
+    // Debounced update handler
+    const handleSliderChange = (value: number) => {
+        setDisplayValue(value); // Immediate UI update
+
+        // Clear existing timer
+        if (debounceTimer.current) {
+            clearTimeout(debounceTimer.current);
+        }
+
+        // Set new timer for actual update
+        debounceTimer.current = setTimeout(() => {
+            setUserDownPayment(value);
+        }, 300); // 300ms debounce
+    };
+
     const TabHeader = ({ icon: Icon, title, subtext }: any) => (
         <div className="flex items-center gap-6 px-4 mb-8">
             <div className="w-14 h-14 bg-brand-primary/10 rounded-2xl flex items-center justify-center border border-brand-primary/30 text-brand-primary shrink-0">
@@ -65,7 +89,7 @@ export default function FinanceTab({
                         <p className="text-[10px] font-bold text-slate-400">Adjust to fit your budget</p>
                     </div>
                     <div className="text-3xl font-black italic text-brand-primary font-mono drop-shadow-[0_0_15px_rgba(244,176,0,0.3)]">
-                        ₹{downPayment.toLocaleString()}
+                        ₹{displayValue.toLocaleString()}
                     </div>
                 </div>
 
@@ -109,15 +133,15 @@ export default function FinanceTab({
                         <div
                             className="absolute h-2 rounded-full transition-all duration-200"
                             style={{
-                                width: `${((downPayment - minDownPayment) / (maxDownPayment - minDownPayment)) * 100}%`,
+                                width: `${((displayValue - minDownPayment) / (maxDownPayment - minDownPayment)) * 100}%`,
                                 background: (() => {
-                                    const dpPercent = (downPayment / totalOnRoad) * 100;
+                                    const dpPercent = (displayValue / totalOnRoad) * 100;
                                     if (dpPercent < 10) return 'linear-gradient(90deg, #ef4444, #f87171)'; // Red
                                     if (dpPercent < 20) return 'linear-gradient(90deg, #f97316, #fb923c)'; // Orange
                                     return 'linear-gradient(90deg, #10b981, #34d399)'; // Green
                                 })(),
                                 boxShadow: (() => {
-                                    const dpPercent = (downPayment / totalOnRoad) * 100;
+                                    const dpPercent = (displayValue / totalOnRoad) * 100;
                                     if (dpPercent < 10) return '0 0 15px rgba(239, 68, 68, 0.5)';
                                     if (dpPercent < 20) return '0 0 15px rgba(249, 115, 22, 0.5)';
                                     return '0 0 15px rgba(16, 185, 129, 0.5)';
@@ -131,8 +155,8 @@ export default function FinanceTab({
                             min={minDownPayment}
                             max={maxDownPayment}
                             step={1000}
-                            value={downPayment}
-                            onChange={e => setUserDownPayment(parseInt(e.target.value))}
+                            value={displayValue}
+                            onChange={e => handleSliderChange(parseInt(e.target.value))}
                             className="w-full h-full appearance-none cursor-pointer relative z-20 bg-transparent focus:outline-none slider-enhanced"
                             style={{
                                 WebkitAppearance: 'none',
@@ -143,11 +167,11 @@ export default function FinanceTab({
 
                 <div className="flex justify-between text-[9px] font-bold text-slate-400 uppercase tracking-wider">
                     <span>Min: ₹{minDownPayment.toLocaleString()}</span>
-                    <span className={`font-black ${(downPayment / totalOnRoad) * 100 < 10 ? 'text-red-500' :
-                        (downPayment / totalOnRoad) * 100 < 20 ? 'text-orange-500' :
+                    <span className={`font-black ${(displayValue / totalOnRoad) * 100 < 10 ? 'text-red-500' :
+                        (displayValue / totalOnRoad) * 100 < 20 ? 'text-orange-500' :
                             'text-emerald-500'
                         }`}>
-                        {((downPayment / totalOnRoad) * 100).toFixed(1)}% Down
+                        {((displayValue / totalOnRoad) * 100).toFixed(1)}% Down
                     </span>
                     <span>Max: ₹{maxDownPayment.toLocaleString()}</span>
                 </div>

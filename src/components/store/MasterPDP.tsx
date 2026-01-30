@@ -198,7 +198,7 @@ export function MasterPDP({ product, makeParam, modelParam, variantParam, data, 
         }
     };
 
-    const ConfigItemRow = ({ item, isSelected, onToggle, isMandatory = false, isRadio = false, breakdown }: any) => {
+    const ConfigItemRow = ({ item, isSelected, onToggle, isMandatory = false, isRadio = false, breakdown, priceImpact }: any) => {
         const quantity = isSelected ? quantities[item.id] || 1 : 0;
         const finalPrice = item.discountPrice > 0 ? item.discountPrice : item.price;
         const billedAmount = isSelected ? finalPrice * quantity : 0;
@@ -244,11 +244,23 @@ export function MasterPDP({ product, makeParam, modelParam, variantParam, data, 
                             {configTab === 'INSURANCE' ? <ShieldIcon size={20} /> : <Zap size={20} />}
                         </div>
                         <div>
-                            <p
-                                className={`text-xs md:text-sm font-black uppercase italic tracking-wider transition-colors ${isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}
-                            >
-                                {item.displayName || item.name}
-                            </p>
+                            <div className="flex items-center gap-2">
+                                <p
+                                    className={`text-xs md:text-sm font-black uppercase italic tracking-wider transition-colors ${isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}
+                                >
+                                    {item.displayName || item.name}
+                                </p>
+                                {/* Price Impact Badge */}
+                                {priceImpact !== undefined && priceImpact !== 0 && (
+                                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-md whitespace-nowrap
+                                        ${priceImpact > 0
+                                            ? 'text-orange-600 bg-orange-500/10 border border-orange-500/20'
+                                            : 'text-emerald-600 bg-emerald-500/10 border border-emerald-500/20'}
+                                    `}>
+                                        {priceImpact > 0 ? '+' : ''}₹{Math.abs(priceImpact).toLocaleString()}
+                                    </span>
+                                )}
+                            </div>
                             {item.description && (
                                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 line-clamp-1">
                                     {item.description}

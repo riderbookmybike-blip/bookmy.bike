@@ -35,7 +35,13 @@ export default function VisualsRow({
     onCloseVideo = () => { },
 }: VisualsRowProps) {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [imageLoaded, setImageLoaded] = useState(false);
     const activeColorName = colors.find(c => c.id === selectedColor)?.name;
+
+    // Reset loading state when image changes
+    React.useEffect(() => {
+        setImageLoaded(false);
+    }, [productImage, currentImageIndex]);
 
     // Mock gallery for now, ensuring we have at least one image
     const galaxyImages = [productImage, productImage, productImage]; // Placeholder for multiple angles
@@ -59,10 +65,19 @@ export default function VisualsRow({
 
                 {/* PART 1: Image Area (75%) - Strictly contained */}
                 <div className="relative flex-[3] z-10 flex items-center justify-center overflow-hidden">
+                    {/* Skeleton Loader */}
+                    {!imageLoaded && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-[65%] h-[70%] bg-gradient-to-br from-slate-200 to-slate-100 dark:from-white/5 dark:to-white/[0.02] rounded-3xl animate-pulse" />
+                        </div>
+                    )}
+
                     <img
                         src={productImage || '/images/categories/scooter_nobg.png'}
                         alt="Product Visual"
-                        className="w-full max-w-[65%] max-h-[90%] object-contain brightness-[1.1] contrast-[1.1] drop-shadow-[0_40px_80px_rgba(0,0,0,0.5)] dark:drop-shadow-[0_60px_100px_rgba(0,0,0,0.9)] animate-in fade-in zoom-in-95 duration-700"
+                        onLoad={() => setImageLoaded(true)}
+                        className={`w-full max-w-[65%] max-h-[90%] object-contain brightness-[1.1] contrast-[1.1] drop-shadow-[0_40px_80px_rgba(0,0,0,0.5)] dark:drop-shadow-[0_60px_100px_rgba(0,0,0,0.9)] transition-opacity duration-500 ${imageLoaded ? 'opacity-100 animate-in fade-in zoom-in-95 duration-700' : 'opacity-0'
+                            }`}
                         key={currentImageIndex}
                     />
 
