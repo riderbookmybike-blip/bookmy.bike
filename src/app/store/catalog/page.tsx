@@ -8,9 +8,13 @@ export const metadata: Metadata = {
     description: 'Browse the latest bikes and scooters with best market offers.',
 };
 
-export default async function CatalogPage() {
+export default async function CatalogPage(props: { searchParams: Promise<{ leadId?: string }> }) {
+    const searchParams = await props.searchParams;
+    const leadId = searchParams.leadId;
+
     // Server-side fetch (uses cookies for location logic automatically)
-    const initialItems = await fetchCatalogServerSide();
+    // If leadId is present, the fetcher will resolve dealer context.
+    const initialItems = await fetchCatalogServerSide(leadId);
 
     return <CatalogClient initialItems={initialItems} />;
 }

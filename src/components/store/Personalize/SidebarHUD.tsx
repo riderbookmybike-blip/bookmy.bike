@@ -15,7 +15,10 @@ import {
     Clock,
     CheckCircle2,
     Youtube,
+    HelpCircle,
 } from 'lucide-react';
+
+import { formatDisplayIdForUI, unformatDisplayId } from '@/lib/displayId';
 
 interface SidebarHUDProps {
     product: any;
@@ -32,6 +35,8 @@ interface SidebarHUDProps {
         isDeduction?: boolean;
         isTotal?: boolean;
         isInfo?: boolean;
+        helpText?: string[] | string;
+        breakdown?: { label: string; amount: number }[];
     }[];
     onGetQuote: () => void;
     onShare: () => void;
@@ -42,6 +47,11 @@ interface SidebarHUDProps {
     downPayment: number;
     pricingSource?: string;
     isEstimate?: boolean;
+    leadName?: string;
+    schemeId?: string;
+    financeCharges?: { id: string; label: string; value: number; helpText?: string }[];
+    annualInterest: number;
+    interestType?: string;
 }
 
 import { checkServiceability } from '@/actions/serviceArea';
@@ -69,9 +79,17 @@ export default function SidebarHUD({
     downPayment,
     pricingSource,
     isEstimate,
+    leadName,
+    schemeId,
+    financeCharges = [],
+    annualInterest,
+    interestType
 }: SidebarHUDProps) {
+    console.log('SidebarHUD Debug:', { schemeId, leadName, pricingSource });
     const discountPercent = Math.round((savings / totalMRP) * 100);
-    const loanAmount = totalOnRoad - downPayment;
+    // Ensure negative zero or small decimals show as 0
+    const displayDownPayment = downPayment < 1 ? 0 : downPayment;
+    const loanAmount = totalOnRoad - displayDownPayment;
 
     const [serviceability, setServiceability] = React.useState<{
         pincode?: string;
@@ -156,6 +174,18 @@ export default function SidebarHUD({
                     </button>
                 </div>
 
+                {leadName && (
+                    <div className="mb-4 p-4 bg-brand-primary/10 border border-brand-primary/20 rounded-2xl animate-pulse">
+                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-brand-primary">
+                            <Zap size={14} />
+                            Quoting for Customer
+                        </div>
+                        <div className="text-xl font-black text-slate-900 dark:text-white uppercase mt-1">
+                            {leadName}
+                        </div>
+                    </div>
+                )}
+
                 <div className="flex gap-6 items-center pt-2">
                     <div className="w-32 h-32 flex items-center justify-center group overflow-hidden relative">
                         <div className="absolute inset-0 bg-gradient-to-tr from-slate-100 to-white dark:from-white/5 dark:to-white/10 rounded-[2rem] opacity-50" />
@@ -207,12 +237,32 @@ export default function SidebarHUD({
                                         {item.label}
                                     </span>
                                     <span
-                                        className={`font-mono font-black ${item.isDeduction ? 'text-emerald-500' : item.isInfo ? 'text-brand-primary' : 'text-slate-700 dark:text-slate-300'}`}
+                                        className={`font-mono font-black ${item.isDeduction ? 'text-emerald-500' : item.isInfo ? 'text-brand-primary' : 'text-slate-700 dark:text-slate-300'} flex items-center gap-1.5`}
                                     >
-                                        {item.isDeduction ? '-' : ''}
-                                        {typeof item.value === 'number'
-                                            ? `₹${item.value.toLocaleString()}`
-                                            : item.value}
+                                        <span>
+                                            {item.isDeduction ? '-' : ''}
+                                            {typeof item.value === 'number'
+                                                ? `₹${item.value.toLocaleString()}`
+                                                : item.value}
+                                        </span>
+                                        {item.helpText && (
+                                            <span className="relative group/help cursor-help">
+                                                <HelpCircle size={12} className="text-slate-400 group-hover/help:text-slate-600" />
+                                                <div className="absolute right-0 bottom-full mb-2 w-max max-w-[220px] rounded-xl bg-neutral-900 text-white text-[9px] font-black uppercase tracking-widest px-3 py-2 opacity-0 group-hover/help:opacity-100 transition-opacity pointer-events-none shadow-2xl z-50">
+                                                    {Array.isArray(item.helpText)
+                                                        ? (
+                                                            <div className="space-y-1">
+                                                                {item.helpText.map((line, lineIdx) => (
+                                                                    <div key={lineIdx} className="flex justify-between gap-4">
+                                                                        <span className="text-white/70">{line}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )
+                                                        : item.helpText}
+                                                </div>
+                                            </span>
+                                        )}
                                     </span>
                                 </div>
                             ))}
@@ -269,14 +319,6 @@ export default function SidebarHUD({
                         </div>
                     </div>
 
-                    {savings > 0 && (
-                        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
-                            <Zap size={10} className="text-emerald-500 fill-current" />
-                            <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600">
-                                Total Savings: ₹{savings.toLocaleString()}
-                            </span>
-                        </div>
-                    )}
                 </div>
             </div>
 
@@ -286,9 +328,21 @@ export default function SidebarHUD({
                     {/* List-style Finance Details */}
                     <div className="space-y-4">
                         {[
-                            { label: 'How much you pay now?', value: `₹${(downPayment || 0).toLocaleString()}` },
+
+                            { label: 'Down Payment', value: `₹${(displayDownPayment).toLocaleString()}` },
+                            // Dynamic Charges
+                            ...financeCharges.map(charge => ({
+                                label: charge.label,
+                                value: typeof charge.value === 'number' ? `₹${charge.value.toLocaleString()}` : charge.value,
+                                isDeduction: false,
+                                helpText: charge.helpText
+                            })),
                             { label: 'Loan Amount', value: `₹${loanAmount.toLocaleString()}` },
-                            { label: 'Fixed Interest Rate', value: '9.5%', isHighlight: true },
+                            {
+                                label: `Interest Rate (${interestType || 'REDUCING'})`,
+                                value: `${(annualInterest * 100).toFixed(2)}%`,
+                                isHighlight: true
+                            },
                             { label: 'Duration', value: `${emiTenure} Months` },
                             {
                                 label: 'Approval Probability',
@@ -312,15 +366,29 @@ export default function SidebarHUD({
                                 isHighlight: true,
                                 colorClass: 'text-brand-primary',
                             },
-                        ].map((item, idx) => (
+                            // Applied Scheme - moved to bottom
+                            (schemeId || 'QGH-X2A-SMY') ? {
+                                label: 'Applied Scheme',
+                                value: formatDisplayIdForUI(unformatDisplayId(schemeId || 'QGH-X2A-SMY')),
+                                isHighlight: false
+                            } : null,
+                        ].filter(Boolean).map((item: any, idx) => (
                             <div key={idx} className="flex justify-between items-center text-[10px]">
                                 <span className="font-bold text-slate-500/80 uppercase tracking-widest">
                                     {item.label}
                                 </span>
                                 <span
-                                    className={`font-mono font-black tracking-tight uppercase ${item.isHighlight ? item.colorClass || 'text-brand-primary italic' : 'text-slate-900 dark:text-white'}`}
+                                    className={`font-mono font-black tracking-tight uppercase ${item.isHighlight ? item.colorClass || 'text-brand-primary italic' : 'text-slate-900 dark:text-white'} flex items-center gap-1.5`}
                                 >
                                     {item.value}
+                                    {item.helpText && (
+                                        <div className="relative group/help cursor-help">
+                                            <HelpCircle size={10} className="text-slate-400 group-hover/help:text-slate-600" />
+                                            <div className="absolute right-0 bottom-full mb-2 w-max max-w-[200px] rounded-lg bg-neutral-900 text-white text-[9px] font-bold uppercase tracking-wide px-2 py-1 opacity-0 group-hover/help:opacity-100 transition-opacity pointer-events-none shadow-xl z-50">
+                                                {item.helpText}
+                                            </div>
+                                        </div>
+                                    )}
                                 </span>
                             </div>
                         ))}
@@ -351,7 +419,7 @@ export default function SidebarHUD({
                             : 'bg-[#F4B000] hover:bg-[#E0A800] text-black shadow-[#F4B000]/30 active:scale-[0.98]'
                         }`}
                 >
-                    {(serviceability.status === 'SET' && !serviceability.isServiceable) ? 'NOT SERVICEABLE' : 'GET QUOTE'}
+                    {leadName ? 'SAVE QUOTE' : (serviceability.status === 'SET' && !serviceability.isServiceable) ? 'NOT SERVICEABLE' : 'GET QUOTE'}
                     {!((serviceability.status === 'SET' && !serviceability.isServiceable)) && (
                         <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-2 transition-transform">
                             <ChevronRight size={22} />

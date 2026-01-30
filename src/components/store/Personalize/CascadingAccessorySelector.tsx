@@ -70,7 +70,7 @@ export default function CascadingAccessorySelector({ category, items, selectedId
                 <div>
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">{label || category}</p>
                     <h4 className="text-xl font-black italic text-slate-900 dark:text-white">
-                        {activeItem ? activeItem.name : 'Select Option'}
+                        {activeItem ? (activeItem.displayName || activeItem.name) : 'Select Option'}
                     </h4>
                 </div>
                 {activeItem && (
