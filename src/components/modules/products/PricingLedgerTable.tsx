@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Landmark, Sparkles, TrendingUp, Info, Save, CheckCircle2, Car, Copy, Edit2, ArrowRight, ArrowUpDown, Search, Filter, Package, ExternalLink, Activity, Loader2, Power, AlertCircle } from 'lucide-react';
+import { Landmark, Sparkles, TrendingUp, Info, Save, CheckCircle2, Car, Copy, Edit2, ArrowRight, ArrowUpDown, Search, Filter, Package, ExternalLink, Activity, Loader2, Power, AlertCircle, Zap } from 'lucide-react';
 import { calculateOnRoad } from '@/lib/utils/pricingUtility';
 import { useRouter } from 'next/navigation';
 import { useTenant } from '@/lib/tenant/tenantContext';
@@ -606,8 +606,11 @@ export default function PricingLedgerTable({
                                                                 onUpdatePrice(sku.id, sku.originalExShowroom || 0);
                                                             }
                                                         }}
-                                                        className={`w-24 bg-slate-50 dark:bg-black/20 border rounded-lg px-2 py-1.5 text-xs font-black text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/10 transition-all text-right
-                                                        ${isDirty ? 'border-amber-500/50 bg-amber-500/5' : 'border-slate-200 dark:border-white/10 focus:border-blue-500'}
+                                                        className={`w-28 bg-gradient-to-br rounded-xl px-3 py-2 text-sm font-black outline-none transition-all duration-300 text-right
+                                                        ${isDirty
+                                                                ? 'from-amber-50 to-amber-100/50 dark:from-amber-950/20 dark:to-amber-900/10 border-2 border-amber-400/50 dark:border-amber-500/40 text-amber-700 dark:text-amber-400 shadow-lg shadow-amber-500/20'
+                                                                : 'from-slate-50 to-slate-100/50 dark:from-black/20 dark:to-black/10 border-2 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white hover:border-indigo-300 dark:hover:border-indigo-500/30 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20'
+                                                            }
                                                         ${!isAums ? 'opacity-75 cursor-not-allowed' : ''}
                                                     `}
                                                     />
@@ -719,19 +722,23 @@ export default function PricingLedgerTable({
                                                             : sku.exShowroom.toLocaleString()}
                                                     </span>
                                                 ) : activeCategory === 'vehicles' ? (
-                                                    <input
-                                                        type="number"
-                                                        value={finalCalcs?.onRoadTotal || 0}
-                                                        onChange={(e) => {
-                                                            // offerAmount = entered value - base on-road
-                                                            const enteredOffer = Number(e.target.value);
-                                                            const baseOnRoad = stdCalcs?.onRoadTotal || 0;
-                                                            const newOfferAmount = enteredOffer - baseOnRoad;
-                                                            onUpdateOffer(sku.id, newOfferAmount);
-                                                        }}
-                                                        onFocus={(e) => e.target.select()}
-                                                        className="w-24 bg-emerald-500/5 border border-emerald-500/30 rounded-lg px-2 py-1.5 text-xs font-black text-emerald-600 dark:text-emerald-400 outline-none focus:ring-2 focus:ring-emerald-500/20 text-right"
-                                                    />
+                                                    <div className="relative group/offer">
+                                                        <input
+                                                            type="number"
+                                                            value={finalCalcs?.onRoadTotal || 0}
+                                                            onChange={(e) => {
+                                                                // offerAmount = entered value - base on-road
+                                                                const enteredOffer = Number(e.target.value);
+                                                                const baseOnRoad = stdCalcs?.onRoadTotal || 0;
+                                                                const newOfferAmount = enteredOffer - baseOnRoad;
+                                                                onUpdateOffer(sku.id, newOfferAmount);
+                                                            }}
+                                                            onFocus={(e) => e.target.select()}
+                                                            className="w-28 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/20 dark:to-emerald-900/10 border-2 border-emerald-300/50 dark:border-emerald-500/30 rounded-xl px-3 py-2 text-sm font-black text-emerald-700 dark:text-emerald-400 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 dark:focus:ring-emerald-500/30 text-right transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/20 focus:shadow-xl focus:shadow-emerald-500/30 focus:scale-105"
+                                                        />
+                                                        {/* Glow effect on focus */}
+                                                        <div className="absolute inset-0 rounded-xl bg-emerald-500/0 group-focus-within/offer:bg-emerald-500/5 blur-xl transition-all duration-300 -z-10" />
+                                                    </div>
                                                 ) : (
                                                     <span className="font-black text-xs text-emerald-600 dark:text-emerald-400 italic tracking-tight">
                                                         ₹{(sku.exShowroom + (sku.offerAmount || 0)).toLocaleString()}
@@ -739,17 +746,34 @@ export default function PricingLedgerTable({
                                                 )}
                                             </td>
 
-                                            {/* Discount - Auto-calculated */}
+                                            {/* Discount - Auto-calculated with Enhanced Badges */}
                                             {!isAums && activeCategory === 'vehicles' && (
                                                 <td className="px-4 py-2 text-right">
                                                     {(() => {
                                                         const baseOnRoad = stdCalcs?.onRoadTotal || 0;
                                                         const offerOnRoad = finalCalcs?.onRoadTotal || 0;
                                                         const discount = baseOnRoad - offerOnRoad;
+
+                                                        if (discount === 0) {
+                                                            return <span className="text-xs font-bold text-slate-400">—</span>;
+                                                        }
+
+                                                        const isDiscount = discount > 0;
                                                         return (
-                                                            <span className={`font-bold text-xs ${discount > 0 ? 'text-emerald-500' : discount < 0 ? 'text-rose-500' : 'text-slate-400'}`}>
-                                                                {discount !== 0 ? (discount > 0 ? `-${discount.toLocaleString()}` : `+${Math.abs(discount).toLocaleString()}`) : '0'}
-                                                            </span>
+                                                            <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-300 ${isDiscount
+                                                                ? 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/20 border border-emerald-300/50 dark:border-emerald-500/30 shadow-sm shadow-emerald-500/10'
+                                                                : 'bg-gradient-to-br from-rose-50 to-rose-100/50 dark:from-rose-950/30 dark:to-rose-900/20 border border-rose-300/50 dark:border-rose-500/30 shadow-sm shadow-rose-500/10'
+                                                                }`}>
+                                                                {isDiscount ? (
+                                                                    <Sparkles size={12} className="text-emerald-600 dark:text-emerald-400 animate-pulse" />
+                                                                ) : (
+                                                                    <Zap size={12} className="text-rose-600 dark:text-rose-400" />
+                                                                )}
+                                                                <span className={`font-black text-xs tabular-nums ${isDiscount ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'
+                                                                    }`}>
+                                                                    {isDiscount ? `-₹${discount.toLocaleString()}` : `+₹${Math.abs(discount).toLocaleString()}`}
+                                                                </span>
+                                                            </div>
                                                         );
                                                     })()}
                                                 </td>
