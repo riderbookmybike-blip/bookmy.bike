@@ -120,48 +120,46 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
             {/* Texture Overlay (Noise) */}
             <div className="absolute inset-0 opacity-[0.15] pointer-events-none mix-blend-overlay bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
 
-            {/* Studio Spotlights - 3 from Left, 2 from Right */}
-            {/* Left Spotlights */}
+            {/* 3 Cone-Shaped Spotlights from Header */}
+            {/* Left Cone */}
             <div
-                className="absolute top-0 left-[10%] w-[120px] h-[70vh] pointer-events-none z-[5]"
+                className="absolute top-0 left-[15%] pointer-events-none z-[5]"
                 style={{
-                    background: 'linear-gradient(165deg, rgba(255, 255, 255, 0.25) 0%, transparent 60%)',
-                    filter: 'blur(30px)',
-                    transform: 'skewX(-15deg)',
-                }}
-            />
-            <div
-                className="absolute top-0 left-[25%] w-[100px] h-[60vh] pointer-events-none z-[5]"
-                style={{
-                    background: 'linear-gradient(170deg, rgba(244, 176, 0, 0.2) 0%, transparent 55%)',
-                    filter: 'blur(25px)',
-                    transform: 'skewX(-10deg)',
-                }}
-            />
-            <div
-                className="absolute top-0 left-[5%] w-[90px] h-[50vh] pointer-events-none z-[5]"
-                style={{
-                    background: 'linear-gradient(160deg, rgba(255, 255, 255, 0.15) 0%, transparent 50%)',
-                    filter: 'blur(35px)',
-                    transform: 'skewX(-20deg)',
+                    width: '0',
+                    height: '0',
+                    borderLeft: '80px solid transparent',
+                    borderRight: '80px solid transparent',
+                    borderTop: '70vh solid rgba(255, 255, 255, 0.3)',
+                    filter: 'blur(40px)',
+                    opacity: 0.8,
                 }}
             />
 
-            {/* Right Spotlights */}
+            {/* Center Cone */}
             <div
-                className="absolute top-0 right-[15%] w-[110px] h-[65vh] pointer-events-none z-[5]"
+                className="absolute top-0 left-1/2 -translate-x-1/2 pointer-events-none z-[5]"
                 style={{
-                    background: 'linear-gradient(195deg, rgba(255, 255, 255, 0.22) 0%, transparent 58%)',
-                    filter: 'blur(28px)',
-                    transform: 'skewX(12deg)',
+                    width: '0',
+                    height: '0',
+                    borderLeft: '100px solid transparent',
+                    borderRight: '100px solid transparent',
+                    borderTop: '75vh solid rgba(244, 176, 0, 0.35)',
+                    filter: 'blur(45px)',
+                    opacity: 0.9,
                 }}
             />
+
+            {/* Right Cone */}
             <div
-                className="absolute top-0 right-[8%] w-[95px] h-[55vh] pointer-events-none z-[5]"
+                className="absolute top-0 right-[15%] pointer-events-none z-[5]"
                 style={{
-                    background: 'linear-gradient(200deg, rgba(244, 176, 0, 0.18) 0%, transparent 52%)',
-                    filter: 'blur(32px)',
-                    transform: 'skewX(18deg)',
+                    width: '0',
+                    height: '0',
+                    borderLeft: '80px solid transparent',
+                    borderRight: '80px solid transparent',
+                    borderTop: '70vh solid rgba(255, 255, 255, 0.3)',
+                    filter: 'blur(40px)',
+                    opacity: 0.8,
                 }}
             />
 
