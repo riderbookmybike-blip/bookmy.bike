@@ -310,8 +310,8 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                             className="flex items-center gap-1.5 active:opacity-70 group"
                         >
                             <span className="text-[10px] font-black italic text-zinc-900 uppercase tracking-widest group-hover:text-black transition-colors">On-Road Price</span>
-                            <div className="w-4 h-4 rounded-full border border-zinc-200 flex items-center justify-center bg-white/50">
-                                <Info size={9} className="text-zinc-500" />
+                            <div className="w-3.5 h-3.5 rounded-full border border-zinc-300 flex items-center justify-center bg-white/50">
+                                <Info size={9} className="text-zinc-400" />
                             </div>
                         </button>
                         <div className="flex items-baseline justify-start gap-0.5">
@@ -327,7 +327,7 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                             className="flex items-center gap-1.5 active:opacity-70 group"
                         >
                             <span className="text-[10px] font-black italic text-[#138808] uppercase tracking-widest">Lowest EMI</span>
-                            <div className="w-4 h-4 rounded-full border border-[#138808]/20 flex items-center justify-center bg-[#138808]/5">
+                            <div className="w-3.5 h-3.5 rounded-full border border-[#138808]/20 flex items-center justify-center bg-[#138808]/5">
                                 <Info size={9} className="text-[#138808]/60" />
                             </div>
                         </button>
@@ -404,9 +404,9 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                 </AnimatePresence>
 
                 <div className="flex items-center gap-2 mb-4">
-                    <div className="flex items-center gap-1 opacity-60 mix-blend-multiply">
-                        <MapPin size={10} className="text-zinc-900" />
-                        <span className="text-[9px] font-black uppercase tracking-widest text-zinc-900">{location}</span>
+                    <div className="flex items-center gap-1 opacity-50">
+                        <MapPin size={9} className="text-zinc-600" />
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-600">{location}</span>
                     </div>
                 </div>
 
