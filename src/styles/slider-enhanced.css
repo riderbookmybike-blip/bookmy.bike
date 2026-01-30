@@ -1,0 +1,51 @@
+/* Enhanced Slider Styles - Glassmorphic Color-Coded Thumb */
+
+/* Chrome, Safari, Edge */
+.slider-enhanced::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: grab;
+    position: relative;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.slider-enhanced::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+    cursor: grabbing;
+}
+
+.slider-enhanced::-webkit-slider-thumb:active {
+    cursor: grabbing;
+    transform: scale(1.05);
+}
+
+/* Firefox */
+.slider-enhanced::-moz-range-thumb {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: grab;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slider-enhanced::-moz-range-thumb:hover {
+    transform: scale(1.15);
+}
+
+/* Track styles */
+.slider-enhanced::-webkit-slider-runnable-track {
+    background: transparent;
+    border: none;
+}
+
+.slider-enhanced::-moz-range-track {
+    background: transparent;
+    border: none;
+}
