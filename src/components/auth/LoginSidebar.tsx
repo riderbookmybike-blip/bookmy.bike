@@ -82,6 +82,7 @@ export default function LoginSidebar({
     });
 
     const inputRef = useRef<HTMLInputElement>(null);
+    const OTP_LENGTH = 4;
 
     // AUTO-SUBMIT LOGIC: Trigger check when Phone is 10 digits
     useEffect(() => {
@@ -319,6 +320,13 @@ export default function LoginSidebar({
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        if (step === 'OTP' && otp.length === OTP_LENGTH && !loading) {
+            handleLogin();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [step, otp, loading]);
 
     const completeLogin = async (user: SupabaseUser | null, _session: Session | null) => {
         const supabase = createClient();
@@ -592,7 +600,7 @@ export default function LoginSidebar({
                                                     onChange={e => {
                                                         const val = e.target.value;
                                                         if (step === 'OTP') {
-                                                            setOtp(val.replace(/\D/g, '').slice(0, 6)); // OTP usually 4-6
+                                                            setOtp(val.replace(/\D/g, '').slice(0, OTP_LENGTH));
                                                         } else {
                                                             if (authMethod === 'PHONE') {
                                                                 // Numeric Only

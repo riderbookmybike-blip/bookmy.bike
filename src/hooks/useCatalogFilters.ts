@@ -70,7 +70,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
     // Dynamic EMI States
     const [downpayment, setDownpayment] = useState(() => {
         const dp = searchParams.get('dp');
-        return dp ? parseInt(dp) : 15000;
+        return dp ? parseInt(dp) : 0;
     });
     const [tenure, setTenure] = useState(() => {
         const t = searchParams.get('tenure');
@@ -119,7 +119,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         else params.delete('cc');
         if (selectedFinishes.length > 0) params.set('finish', selectedFinishes.join(','));
         else params.delete('finish');
-        if (downpayment !== 15000) params.set('dp', downpayment.toString());
+        if (downpayment !== 0) params.set('dp', downpayment.toString());
         else params.delete('dp');
         if (tenure !== 36) params.set('tenure', tenure.toString());
         else params.delete('tenure');
@@ -257,7 +257,9 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         setSelectedSeatHeight([]);
         setSelectedFinishes([]);
         setMaxPrice(1000000);
+        setMaxPrice(1000000);
         setMaxEMI(20000);
+        setDownpayment(0);
     };
 
     return {

@@ -98,9 +98,36 @@ export function calculateInsurance(exShowroom: number, engineCc: number = 110, r
 
     const res = calculateInsurancePremium(mappedRule, ctx);
 
+    const gstRate = Number(mappedRule.gstPercentage || 0);
+    const applyGst = (amount: number) => Math.round(amount + (amount * gstRate / 100));
+
+    const odTotal = res.odTotal || 0;
+    const tpTotal = res.tpTotal || 0;
+    const addonsTotalRaw = res.addonsTotal || 0;
+
+    const odTotalWithGst = applyGst(odTotal);
+    const tpTotalWithGst = applyGst(tpTotal);
+    const addonsTotalWithGst = applyGst(addonsTotalRaw);
+
+    const baseTotal = applyGst(odTotal + tpTotal);
+
     return {
-        total: res.totalPremium,
+        total: baseTotal,
+        baseTotal,
+        addonsTotal: addonsTotalWithGst,
+        odTotal,
+        tpTotal,
+        addonsTotalRaw,
+        odTotalWithGst,
+        tpTotalWithGst,
+        addonsTotalWithGst,
+        odTenure: ctx.odTenure,
+        tpTenure: ctx.tpTenure,
+        gstRate,
         idv: res.idv,
+        odItems: res.odBreakdown,
+        tpItems: res.tpBreakdown,
+        addonItems: res.addonBreakdown,
         items: [
             ...res.odBreakdown,
             ...res.tpBreakdown,
@@ -109,7 +136,8 @@ export function calculateInsurance(exShowroom: number, engineCc: number = 110, r
         ].map(i => ({
             label: i.label,
             amount: i.amount,
-            detail: i.meta
+            detail: i.meta,
+            componentId: (i as any).componentId
         }))
     };
 }
@@ -142,7 +170,7 @@ export function calculateOnRoad(
     const insuranceLib = calculateInsurance(exShowroom, cc, insuranceRule);
 
     // Calculate Base On-Road (before final override)
-    let calculatedOnRoad = exShowroom + rtoState.total + insuranceComp.total;
+    let calculatedOnRoad = exShowroom + rtoState.total + (insuranceComp.baseTotal || insuranceComp.total);
 
     // Apply specific discounts if any (Logic: Subtract from total)
     if (pricingOverride?.discount) calculatedOnRoad -= pricingOverride.discount;

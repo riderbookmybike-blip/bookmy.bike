@@ -8,31 +8,48 @@ import { ProductVariant } from '@/types/productMaster';
 interface QuoteFormProps {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit: (data: { customerName: string, product: ProductVariant, price: number }) => void;
+    onSubmit: (data: { customerName: string, product: ProductVariant, price: number, district?: string, color?: string, colorId?: string }) => void;
     initialCustomerName?: string;
+    pincode?: string;
 }
 
-export default function QuoteForm({ isOpen, onClose, onSubmit, initialCustomerName }: QuoteFormProps) {
+import { getDistrictFromPincode } from '@/actions/pricingActions';
+
+export default function QuoteForm({ isOpen, onClose, onSubmit, initialCustomerName, pincode }: QuoteFormProps) {
     const [selectedProduct, setSelectedProduct] = useState<ProductVariant | null>(null);
+    const [selectedColor, setSelectedColor] = useState<{ id: string, name: string, hexCode: string } | null>(null);
     const [quotePrice, setQuotePrice] = useState(0);
     const [customerName, setCustomerName] = useState(initialCustomerName || '');
+    const [district, setDistrict] = useState<string | undefined>();
 
-    // Update customer name if prop changes
+    // Update customer name and resolve district if pincode changes
     React.useEffect(() => {
         if (initialCustomerName) {
             setCustomerName(initialCustomerName);
         }
     }, [initialCustomerName]);
 
+    React.useEffect(() => {
+        if (pincode) {
+            getDistrictFromPincode(pincode).then(d => {
+                if (d) setDistrict(d);
+            });
+        }
+    }, [pincode]);
+
     const handleSubmit = () => {
         if (!selectedProduct || !customerName) return;
         onSubmit({
             customerName,
             product: selectedProduct,
-            price: quotePrice
+            price: quotePrice,
+            district,
+            color: selectedColor?.name,
+            colorId: selectedColor?.id
         });
         // Reset
         setSelectedProduct(null);
+        setSelectedColor(null);
         setCustomerName('');
         setQuotePrice(0);
         onClose();
@@ -66,6 +83,7 @@ export default function QuoteForm({ isOpen, onClose, onSubmit, initialCustomerNa
                     {!selectedProduct ? (
                         <div className="border border-gray-200 rounded-lg overflow-hidden h-[400px]">
                             <QuoteProductSelector
+                                district={district}
                                 onSelect={(p, price) => {
                                     setSelectedProduct(p);
                                     setQuotePrice(price);
@@ -80,13 +98,39 @@ export default function QuoteForm({ isOpen, onClose, onSubmit, initialCustomerNa
                                     <p className="text-xs text-blue-700 mt-1 font-mono">{selectedProduct.sku}</p>
                                 </div>
                                 <button
-                                    onClick={() => setSelectedProduct(null)}
+                                    onClick={() => {
+                                        setSelectedProduct(null);
+                                        setSelectedColor(null);
+                                    }}
                                     className="text-xs text-blue-600 hover:text-blue-800 underline"
                                 >
-                                    Change
+                                    Change Model
                                 </button>
                             </div>
-                            <div className="mt-4 pt-4 border-t border-blue-200 flex justify-between items-end">
+
+                            {/* Color Selection */}
+                            <div className="mt-6">
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-blue-800 mb-3">Choose Color</label>
+                                <div className="flex flex-wrap gap-3">
+                                    {selectedProduct.availableColors?.map(color => (
+                                        <button
+                                            key={color.id}
+                                            onClick={() => setSelectedColor(color)}
+                                            className={`group relative flex flex-col items-center gap-2 transition-all ${selectedColor?.id === color.id ? 'scale-110' : 'opacity-60 hover:opacity-100'}`}
+                                        >
+                                            <div
+                                                className={`w-10 h-10 rounded-full border-2 transition-all ${selectedColor?.id === color.id ? 'border-blue-600 ring-4 ring-blue-600/10' : 'border-white/20'}`}
+                                                style={{ backgroundColor: color.hexCode }}
+                                            />
+                                            <span className="text-[8px] font-bold text-blue-900 uppercase tracking-tighter text-center max-w-[50px] leading-tight">
+                                                {color.name}
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="mt-6 pt-4 border-t border-blue-200 flex justify-between items-end">
                                 <span className="text-sm text-blue-800">Unit Price</span>
                                 <span className="text-2xl font-bold text-blue-900">₹{quotePrice.toLocaleString()}</span>
                             </div>
@@ -103,9 +147,9 @@ export default function QuoteForm({ isOpen, onClose, onSubmit, initialCustomerNa
                         Cancel
                     </button>
                     <button
-                        disabled={!selectedProduct || !customerName}
+                        disabled={!selectedProduct || !customerName || !selectedColor}
                         onClick={handleSubmit}
-                        className={`px-6 py-2 text-white font-bold rounded-lg shadow-md transition-all ${!selectedProduct || !customerName ? 'bg-gray-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+                        className={`px-6 py-2 text-white font-bold rounded-lg shadow-md transition-all ${!selectedProduct || !customerName || !selectedColor ? 'bg-gray-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
                             }`}
                     >
                         Generate Quote

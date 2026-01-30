@@ -191,12 +191,15 @@ export function formatDisplayId(id: string, prefix?: string): string {
  * @returns {string} Formatted ID (e.g., "2KX-4H9-M7A" or "LEAD #2KX-4H9-M7A")
  */
 export function formatDisplayIdForUI(id: string, prefix?: string): string {
-    if (!id || id.length !== 9) {
-        return id || '';
-    }
+    if (!id) return '';
 
-    // Split into 3-3-3 format
-    const formatted = `${id.substring(0, 3)}-${id.substring(3, 6)}-${id.substring(6, 9)}`;
+    // If it's not the standard 9 chars, we still try to chunk it every 3
+    let formatted = id;
+    if (id.length >= 6) {
+        // Match groups of 3 and join with dash
+        const matches = id.match(/.{1,3}/g);
+        formatted = matches ? matches.join('-') : id;
+    }
 
     if (prefix) {
         return `${prefix} #${formatted}`;

@@ -28,7 +28,7 @@ export async function getAllProducts(): Promise<{ products: ProductVariant[], er
                     id, type, name, slug, specs, price_base, position,
                     skus:cat_items!parent_id(
                         id, type, price_base, is_primary, image_url, specs,
-                        prices:cat_prices(ex_showroom_price, state_code)
+                        prices:cat_prices(ex_showroom_price, state_code, district)
                     )
                 )
             `)
@@ -123,6 +123,18 @@ export async function getAllProducts(): Promise<{ products: ProductVariant[], er
                         exShowroom: basePrice,
                         onRoad: 0 // Client-side calculation would require RTO rules
                     },
+                    districtPrices: nodeSkus.flatMap((s: any) =>
+                        s.prices?.map((p: any) => ({
+                            district: p.district,
+                            exShowroom: parseFloat(p.ex_showroom_price)
+                        })) || []
+                    ).filter((p: any) => p.exShowroom > 0),
+                    availableColors: nodeSkus.map((s: any) => ({
+                        id: s.id,
+                        name: s.specs?.Color || s.specs?.Colour || s.name || 'Standard',
+                        hexCode: s.specs?.hex_primary || '#CCCCCC',
+                        imageUrl: s.image_url || s.specs?.primary_image || s.specs?.image_url
+                    })),
                     imageUrl: imageUrl,
                     specifications: {
                         engine: {

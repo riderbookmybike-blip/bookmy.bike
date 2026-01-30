@@ -23,34 +23,16 @@ export interface ProductVariant {
         discount?: number;
         pricingSource?: string; // e.g., 'MH', 'KA'
         isEstimate?: boolean;   // true if fallback used
+        bundleValue?: number;   // Value of free bundled accessories
+        bundlePrice?: number;   // Discounted price of bundled accessories
+        bundleSavings?: number; // Bundle MRP - Bundle Price
+        totalSavings?: number;  // Vehicle Discount + Bundle Value
     };
     skuIds?: string[]; // IDs of all SKUs belonging to this variant for pricing aggregation
-    specifications: {
-        engine: {
-            displacement?: number;
-            maxPower?: string;
-            maxTorque?: string;
-        };
-        transmission: {
-            type: string;
-            gears?: string;
-        };
-        battery?: {
-            range?: string;
-            chargingTime?: string;
-        };
-        dimensions: {
-            seatHeight?: string;
-            kerbWeight?: string;
-            curbWeight?: string; // Add alias for backward compat
-            fuelCapacity?: string;
-        };
-        features: {
-            bluetooth?: boolean | string; // Handled both type forms
-            abs?: string;
-        };
-    };
+    districtPrices?: Array<{ district: string, exShowroom: number }>;
+    specifications: VehicleSpecifications;
     availableColors: Array<{
+        id: string; // The SKU ID for this specific color
         name: string;
         hexCode: string;
         imageUrl?: string;
@@ -65,6 +47,33 @@ export interface ProductVariant {
     offsetX?: number;
     offsetY?: number;
     color?: string; // Selected color
+    suitableFor?: string;
+}
+
+export interface VehicleSpecifications {
+    engine: {
+        displacement?: string;
+        maxPower?: string;
+        maxTorque?: string;
+    };
+    transmission: {
+        type: string;
+        gears?: string;
+    };
+    battery?: {
+        range?: string;
+        chargingTime?: string;
+    };
+    dimensions: {
+        seatHeight?: string;
+        kerbWeight?: string;
+        curbWeight?: string; // Add alias for backward compat
+        fuelCapacity?: string;
+    };
+    features: {
+        bluetooth?: boolean | string; // Handled both type forms
+        abs?: string;
+    };
 }
 
 // Mock Data for Development/Fallback
@@ -95,15 +104,15 @@ export const MOCK_VEHICLES: ProductVariant[] = [
             pricingSource: 'Delhi',
         },
         specifications: {
-            engine: { displacement: 349, maxPower: '20.2 bhp', maxTorque: '27 Nm' },
+            engine: { displacement: '349 cc', maxPower: '20.2 bhp', maxTorque: '27 Nm' },
             transmission: { type: 'Manual', gears: '5 Speed' },
             dimensions: { seatHeight: '790 mm', kerbWeight: '181 kg', curbWeight: '181 kg', fuelCapacity: '13 L' },
             features: { bluetooth: false, abs: 'Dual Channel' },
         },
         availableColors: [
-            { name: 'Rebel Blue', hexCode: '#0047AB' },
-            { name: 'Rebel Red', hexCode: '#D22B2B' },
-            { name: 'Rebel Black', hexCode: '#1A1A1A' }
+            { id: 'rebel-blue', name: 'Rebel Blue', hexCode: '#0047AB' },
+            { id: 'rebel-red', name: 'Rebel Red', hexCode: '#D22B2B' },
+            { id: 'rebel-black', name: 'Rebel Black', hexCode: '#1A1A1A' }
         ],
         imageUrl: '/images/bikes/hunter350.png',
         color: 'Rebel Blue'
@@ -131,14 +140,14 @@ export const MOCK_VEHICLES: ProductVariant[] = [
             onRoad: 245000,
         },
         specifications: {
-            engine: { displacement: 349, maxPower: '20.2 bhp', maxTorque: '27 Nm' },
+            engine: { displacement: '349 cc', maxPower: '20.2 bhp', maxTorque: '27 Nm' },
             transmission: { type: 'Manual', gears: '5 Speed' },
             dimensions: { seatHeight: '805 mm', kerbWeight: '195 kg', curbWeight: '195 kg', fuelCapacity: '13 L' },
             features: { bluetooth: false, abs: 'Dual Channel' },
         },
         availableColors: [
-            { name: 'Desert Sand', hexCode: '#C2B280' },
-            { name: 'Marsh Grey', hexCode: '#4B5320' }
+            { id: 'desert-sand', name: 'Desert Sand', hexCode: '#C2B280' },
+            { id: 'marsh-grey', name: 'Marsh Grey', hexCode: '#4B5320' }
         ],
         imageUrl: '/images/bikes/classic350.png',
         color: 'Desert Sand'
@@ -167,14 +176,14 @@ export const MOCK_VEHICLES: ProductVariant[] = [
             discount: 5000,
         },
         specifications: {
-            engine: { displacement: 348, maxPower: '20.8 bhp', maxTorque: '30 Nm' },
+            engine: { displacement: '348 cc', maxPower: '20.8 bhp', maxTorque: '30 Nm' },
             transmission: { type: 'Manual', gears: '5 Speed' },
             dimensions: { seatHeight: '800 mm', kerbWeight: '181 kg', curbWeight: '181 kg', fuelCapacity: '15 L' },
             features: { bluetooth: true, abs: 'Dual Channel' },
         },
         availableColors: [
-            { name: 'Precious Red Metallic', hexCode: '#8B0000' },
-            { name: 'Matte Marshal Green Metallic', hexCode: '#2F4F4F' }
+            { id: 'precious-red', name: 'Precious Red Metallic', hexCode: '#8B0000' },
+            { id: 'marshal-green', name: 'Matte Marshal Green Metallic', hexCode: '#2F4F4F' }
         ],
         imageUrl: '/images/bikes/hness350.png',
         color: 'Precious Red Metallic'

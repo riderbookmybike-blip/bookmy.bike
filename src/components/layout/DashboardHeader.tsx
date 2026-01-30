@@ -4,6 +4,7 @@ import { useTheme } from '@/components/providers/ThemeProvider';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { useRouter } from 'next/navigation';
 import { ProfileDropdown } from './ProfileDropdown';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 // Removed: import { DashboardGreeting } from './DashboardGreeting';
 // Removed: import { WorkspaceSwitcher } from '@/components/layout/WorkspaceSwitcher';
 
@@ -45,7 +46,8 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
                         <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white dark:border-slate-950" />
                     </button>
 
-                    <div className="pl-4 border-l border-slate-200 dark:border-white/10 ml-2">
+                    <div className="pl-4 border-l border-slate-200 dark:border-white/10 ml-2 flex items-center gap-4">
+                        <ThemeToggle className="w-10 h-10 text-slate-400 hover:text-indigo-500 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl" />
                         <ProfileDropdown onLoginClick={handleLoginClick} scrolled={true} theme={theme} />
                     </div>
                 </div>

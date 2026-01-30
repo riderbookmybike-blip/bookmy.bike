@@ -301,10 +301,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 ref={dropdownRef}
-                className={`h-10 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 flex items-center gap-3 group z-[101] ${scrolled || theme === 'dark'
-                    ? 'border-white/20 text-white hover:bg-white hover:text-black hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]'
-                    : 'border-slate-200 bg-white text-slate-900 hover:border-slate-400 shadow-sm'
-                    }`}
+                className={`h-10 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 flex items-center gap-3 group z-[101] border-white/20 text-white hover:bg-white hover:text-black hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]`}
             >
                 <div className={`w-8 h-8 rounded-full overflow-hidden bg-brand-primary flex items-center justify-center text-black font-bold text-xs ring-2 transition-all ${scrolled || theme === 'dark' ? 'ring-white/20 group-hover:ring-transparent' : 'ring-slate-100 group-hover:ring-brand-primary/20'
                     }`}>
@@ -362,7 +359,6 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                                             />
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <ThemeToggle className="w-9 h-9" />
                                             <button
                                                 onClick={() => setIsOpen(false)}
                                                 className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors text-slate-500 dark:text-slate-400"
@@ -460,7 +456,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
                                                         }`}
                                                 >
                                                     <UserIcon size={12} strokeWidth={3} />
-                                                    My Account
+                                                    The O' Circle
                                                 </button>
                                                 <button
                                                     onClick={() => setActiveTab('workspace')}

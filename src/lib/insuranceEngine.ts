@@ -59,7 +59,8 @@ export function calculateInsurance(rule: InsuranceRule, ctx: InsuranceCalculatio
                 items.push({
                     label: comp.label,
                     amount,
-                    meta: comp.type === 'PERCENTAGE' ? `${comp.percentage}% of ${comp.basis || 'EX_SHOWROOM'} x ${multiplier}y` : 'Formula Applied'
+                    meta: comp.type === 'PERCENTAGE' ? `${comp.percentage}% of ${comp.basis || 'EX_SHOWROOM'} x ${multiplier}y` : 'Formula Applied',
+                    componentId: comp.id
                 });
                 total += amount;
             }

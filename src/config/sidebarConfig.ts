@@ -95,7 +95,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         href: '/dashboard/catalog/products',
         icon: Box,
         color: 'text-indigo-500',
-        allowedTenants: ['MARKETPLACE', 'DEALER', 'AUMS'],
+        allowedTenants: ['MARKETPLACE', 'AUMS'],
         allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN'],
         permissions: ['read']
       },

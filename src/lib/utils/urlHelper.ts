@@ -11,6 +11,7 @@ interface BuildUrlOptions {
     pincode?: string;
     region?: string;
     dealer?: string;
+    leadId?: string;
 }
 
 interface UrlResult {
@@ -38,7 +39,7 @@ function slugify(text: string): string {
  * Pattern: /store/{make}/{model}/{variant}?color=...&pincode=...
  */
 export function buildProductUrl(options: BuildUrlOptions): UrlResult {
-    const { make, model, variant, color, pincode, region, dealer } = options;
+    const { make, model, variant, color, pincode, region, dealer, leadId } = options;
 
     // 1. Identifiers (Path Segments)
     const makeSlug = slugify(make);
@@ -58,6 +59,7 @@ export function buildProductUrl(options: BuildUrlOptions): UrlResult {
     if (color) params.set('color', slugify(color));
     if (pincode) params.set('pincode', pincode);
     if (region) params.set('region', slugify(region));
+    if (leadId) params.set('leadId', leadId);
 
     const queryString = params.toString() ? `?${params.toString()}` : '';
 

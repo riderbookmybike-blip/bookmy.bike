@@ -105,12 +105,12 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                 >
                     {/* TOP SECTION: OFFICIAL LOGO & BRANDING */}
                     <div className="flex justify-between items-start">
-                        {/* LEFT: THE ELITE CIRCLE BRANDING */}
+                        {/* LEFT: THE O' CIRCLE BRANDING */}
                         <div className="mt-2 flex flex-col gap-1">
                             <div className="flex items-center gap-1.5">
                                 <div className="w-1 h-1 rounded-full bg-[#F4B000]" />
                                 <span className="text-[9px] font-black uppercase tracking-[0.3em] text-[#F4B000]">
-                                    The Elite Circle
+                                    The O' Circle
                                 </span>
                             </div>
                             <div className="w-8 h-[1px] bg-gradient-to-r from-[#F4B000]/50 to-transparent" />
