@@ -48,14 +48,15 @@ export const MobileContextFeed = () => {
     }
 
     return (
-        <div className="h-screen w-full bg-black relative overscroll-none">
+        <div className="w-full bg-black relative overscroll-none" style={{ height: '100dvh', maxHeight: '100dvh' }}>
 
             {/* 1. Global Floating Header (Hamburger & Logo) */}
             <MobileHeader />
 
             {/* 2. Vertical Snap Scroll Feed */}
             <div
-                className="h-full w-full overflow-y-scroll snap-y snap-mandatory scroll-smooth no-scrollbar"
+                className="w-full overflow-y-scroll snap-y snap-mandatory scroll-smooth no-scrollbar"
+                style={{ height: '100dvh' }}
                 onScroll={handleScroll}
             >
                 {items.map((product, index) => (
@@ -67,7 +68,7 @@ export const MobileContextFeed = () => {
                 ))}
 
                 {/* End of Feed Screen */}
-                <div className="h-full bg-black flex flex-col items-center justify-center snap-start p-10 text-center">
+                <div className="bg-black flex flex-col items-center justify-center snap-start p-10 text-center" style={{ height: '100dvh' }}>
                     <div className="w-20 h-20 bg-zinc-900 rounded-full flex items-center justify-center mb-6">
                         <ChevronDown className="text-zinc-700 animate-bounce" size={32} />
                     </div>
