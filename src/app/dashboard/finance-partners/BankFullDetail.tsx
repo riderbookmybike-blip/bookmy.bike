@@ -16,6 +16,7 @@ import { formatDisplayIdForUI } from '@/lib/displayId';
 import { Shield, Map, CreditCard, Target, CircleDollarSign } from 'lucide-react';
 import TargetsTab from './tabs/TargetsTab';
 import PayoutsTab from './tabs/PayoutsTab';
+import APRTab from './tabs/APRTab';
 
 interface BankFullDetailProps {
     id: string;
@@ -172,6 +173,7 @@ export default function BankFullDetail({ id }: BankFullDetailProps) {
                         { id: 'schemes', label: 'Schemes', icon: Calculator },
                         { id: 'targets', label: 'Targets', icon: Target },
                         { id: 'payouts', label: 'Payouts', icon: CircleDollarSign },
+                        { id: 'apr', label: 'APR', icon: Calculator },
                         { id: 'team', label: 'Team', icon: Users },
                         { id: 'locations', label: 'Locations', icon: MapPin },
                     ].map((tab) => (
@@ -205,6 +207,7 @@ export default function BankFullDetail({ id }: BankFullDetailProps) {
                 )}
                 {activeTab === 'targets' && <TargetsTab partner={partner} />}
                 {activeTab === 'payouts' && <PayoutsTab partner={partner} />}
+                {activeTab === 'apr' && <APRTab partner={partner} />}
                 {activeTab === 'locations' && <LocationsTab locations={partner.locations} />}
                 {activeTab === 'team' && <TeamTab team={partner.team} admin={partner.admin} />}
                 {activeTab === 'schemes' && (
