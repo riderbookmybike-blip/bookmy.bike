@@ -107,8 +107,8 @@ export const MobilePDPCarousel = ({ product }: PDPCarouselProps) => {
                         key={section.id}
                         onClick={() => setActiveSection(idx)}
                         className={`rounded-full transition-all duration-300 ${idx === activeSection
-                                ? 'bg-white w-6 h-2'
-                                : 'bg-white/40 w-2 h-2'
+                            ? 'bg-white w-6 h-2'
+                            : 'bg-white/40 w-2 h-2'
                             }`}
                     />
                 ))}
@@ -194,30 +194,210 @@ export const MobilePDPCarousel = ({ product }: PDPCarouselProps) => {
     );
 };
 
-// Placeholder section components
-const ImageSection = ({ product }: { product: any }) => (
-    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-900 to-black">
-        <p className="text-white text-2xl font-bold">Image Section</p>
-    </div>
-);
+// Section 1: Product Image
+const ImageSection = ({ product }: { product: any }) => {
+    const activeColor = product.availableColors?.[0] || { imageUrl: product.imageUrl, hexCode: '#000000' };
+    const lightShade = activeColor.hexCode;
 
+    return (
+        <div
+            className="w-full h-full relative overflow-hidden"
+            style={{ background: lightShade }}
+        >
+            {/* Texture Overlay */}
+            <div className="absolute inset-0 opacity-[0.15] pointer-events-none mix-blend-overlay bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+
+            {/* Gradient */}
+            <div className="absolute inset-x-0 bottom-0 h-[40vh] bg-gradient-to-t from-white/40 via-white/20 to-transparent" />
+
+            {/* Brand Watermark */}
+            <div className="relative w-full h-full flex items-center justify-center">
+                <span className="absolute font-black text-[90px] uppercase tracking-[0.2em] opacity-[0.06] italic text-zinc-900 select-none">
+                    {product.make}
+                </span>
+
+                {/* Product Image */}
+                <div className="relative w-full h-[60%]">
+                    <img
+                        src={activeColor.imageUrl || product.imageUrl || '/images/placeholder-bike.png'}
+                        alt={product.model}
+                        className="w-full h-full object-contain drop-shadow-[0_45px_70px_rgba(0,0,0,0.5)]"
+                    />
+                </div>
+            </div>
+
+            {/* Product Info Overlay */}
+            <div className="absolute bottom-0 inset-x-0 p-6 pb-20 bg-gradient-to-t from-white to-transparent">
+                <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">
+                    {product.make}
+                </div>
+                <h1 className="text-3xl font-black text-zinc-900 mb-1">
+                    {product.model}
+                </h1>
+                <p className="text-sm text-zinc-600">
+                    {product.variant}
+                </p>
+            </div>
+        </div>
+    );
+};
+
+// Section 2: Details
 const DetailsSection = ({ product }: { product: any }) => (
-    <div className="w-full h-full flex items-center justify-center bg-white">
-        <p className="text-zinc-900 text-2xl font-bold">Details Section</p>
+    <div className="w-full h-full bg-white overflow-y-auto p-6 pt-20">
+        <h2 className="text-2xl font-black text-zinc-900 mb-6">Product Details</h2>
+        <div className="space-y-4">
+            <div>
+                <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Features</p>
+                <ul className="space-y-2">
+                    {(product.features || ['LED Headlamp', 'Digital Console', 'Disc Brakes']).map((feature: string, idx: number) => (
+                        <li key={idx} className="text-sm text-zinc-700 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-zinc-900" />
+                            {feature}
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        </div>
     </div>
 );
 
-const PricingSection = ({ product }: { product: any }) => (
-    <div className="w-full h-full flex items-center justify-center bg-zinc-50">
-        <p className="text-zinc-900 text-2xl font-bold">Pricing Section</p>
+// Section 3: Pricing
+const PricingSection = ({ product }: { product: any }) => {
+    const price = product.price || { onRoad: 85000, exShowroom: 70000, rto: 8000, insurance: 5000, other: 2000 };
+
+    return (
+        <div className="w-full h-full bg-zinc-50 overflow-y-auto p-6 pt-20">
+            <h2 className="text-2xl font-black text-zinc-900 mb-6">Pricing</h2>
+
+            {/* On-Road Price */}
+            <div className="bg-white rounded-2xl p-6 mb-4">
+                <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">On-Road Price</p>
+                <p className="text-4xl font-black text-zinc-900">₹{(price.onRoad / 100000).toFixed(2)}L</p>
+            </div>
+
+            {/* Breakdown */}
+            <div className="bg-white rounded-2xl p-6 space-y-3">
+                <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Breakdown</p>
+                <PriceRow label="Ex-Showroom" value={price.exShowroom} />
+                <PriceRow label="RTO" value={price.rto} />
+                <PriceRow label="Insurance" value={price.insurance} />
+                <PriceRow label="Other Charges" value={price.other} />
+            </div>
+        </div>
+    );
+};
+
+const PriceRow = ({ label, value }: { label: string; value: number }) => (
+    <div className="flex justify-between items-center">
+        <span className="text-sm text-zinc-600">{label}</span>
+        <span className="text-sm font-bold text-zinc-900">₹{value.toLocaleString()}</span>
     </div>
 );
 
-const EMISection = ({ product }: { product: any }) => (
-    <div className="w-full h-full flex items-center justify-center bg-white">
-        <p className="text-zinc-900 text-2xl font-bold">EMI Section</p>
-    </div>
-);
+// Section 4: EMI Calculator
+const EMISection = ({ product }: { product: any }) => {
+    const [downpayment, setDownpayment] = useState(20000);
+    const [tenure, setTenure] = useState(36);
+
+    const price = product.price || { onRoad: 85000 };
+    const totalOnRoad = price.onRoad || 85000;
+    const minDP = totalOnRoad * 0.05;
+    const maxDP = totalOnRoad * 0.50;
+
+    const loanAmount = totalOnRoad - downpayment;
+    const annualInterest = 0.12 / 12; // 12% annual = 1% monthly
+    const emi = Math.round(
+        (loanAmount * annualInterest * Math.pow(1 + annualInterest, tenure)) /
+        (Math.pow(1 + annualInterest, tenure) - 1)
+    );
+
+    return (
+        <div className="w-full h-full bg-white overflow-y-auto p-6 pt-20 pb-32">
+            <h2 className="text-2xl font-black text-zinc-900 mb-8">EMI Calculator</h2>
+
+            {/* Downpayment Slider */}
+            <div className="bg-zinc-50 rounded-2xl p-6 mb-6">
+                <div className="flex justify-between mb-4">
+                    <div>
+                        <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Downpayment</p>
+                        <p className="text-xs text-zinc-400">Adjust to fit budget</p>
+                    </div>
+                    <p className="text-2xl font-black text-zinc-900">₹{downpayment.toLocaleString()}</p>
+                </div>
+
+                <input
+                    type="range"
+                    min={minDP}
+                    max={maxDP}
+                    step={1000}
+                    value={downpayment}
+                    onChange={(e) => setDownpayment(parseInt(e.target.value))}
+                    className="w-full h-2 bg-zinc-200 rounded-full appearance-none cursor-pointer"
+                />
+
+                <div className="flex justify-between mt-2 text-xs text-zinc-500">
+                    <span>₹{minDP.toLocaleString()}</span>
+                    <span className="font-bold text-zinc-900">{((downpayment / totalOnRoad) * 100).toFixed(0)}%</span>
+                    <span>₹{maxDP.toLocaleString()}</span>
+                </div>
+            </div>
+
+            {/* Tenure Pills */}
+            <div className="space-y-3">
+                {[24, 36, 48, 60].map((t) => {
+                    const tEmi = Math.round(
+                        (loanAmount * annualInterest * Math.pow(1 + annualInterest, t)) /
+                        (Math.pow(1 + annualInterest, t) - 1)
+                    );
+                    const isSelected = tenure === t;
+
+                    return (
+                        <button
+                            key={t}
+                            onClick={() => setTenure(t)}
+                            className={`w-full p-4 rounded-2xl border-2 transition-all ${isSelected
+                                    ? 'bg-zinc-900 border-zinc-900'
+                                    : 'bg-white border-zinc-200'
+                                }`}
+                        >
+                            <div className="flex justify-between items-center">
+                                <div className="text-left">
+                                    <p className={`text-sm font-bold ${isSelected ? 'text-white' : 'text-zinc-900'}`}>
+                                        {t} Months
+                                    </p>
+                                    <p className={`text-xs ${isSelected ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                                        Loan Tenure
+                                    </p>
+                                </div>
+                                <p className={`text-2xl font-black ${isSelected ? 'text-white' : 'text-zinc-900'}`}>
+                                    ₹{tEmi.toLocaleString()}
+                                </p>
+                            </div>
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Sticky EMI Display */}
+            <div className="fixed bottom-0 left-0 right-0 bg-zinc-900 p-6 border-t border-zinc-800">
+                <div className="flex justify-between items-center mb-3">
+                    <div>
+                        <p className="text-xs text-zinc-400 uppercase tracking-widest">Monthly EMI</p>
+                        <p className="text-3xl font-black text-white">₹{emi.toLocaleString()}/mo</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-xs text-zinc-400">Total</p>
+                        <p className="text-lg font-bold text-white">₹{(emi * tenure + downpayment).toLocaleString()}</p>
+                    </div>
+                </div>
+                <button className="w-full h-12 bg-white text-zinc-900 rounded-xl font-black text-sm uppercase tracking-wider">
+                    Get Instant Quote
+                </button>
+            </div>
+        </div>
+    );
+};
 
 const AccessoriesSection = ({ product }: { product: any }) => (
     <div className="w-full h-full flex items-center justify-center bg-zinc-50">
