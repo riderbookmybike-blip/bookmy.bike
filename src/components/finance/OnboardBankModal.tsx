@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Building2, Globe, User, Phone, Loader2, Rocket, Landmark } from 'lucide-react';
+import { X, Building2, Globe, Phone, Loader2, Rocket, Landmark } from 'lucide-react';
 import { onboardBank } from '@/app/dashboard/finance-partners/actions';
 
 interface OnboardBankModalProps {
@@ -17,7 +17,6 @@ export default function OnboardBankModal({ isOpen, onClose, onSuccess }: Onboard
         bankName: '',
         slug: '',
         website: '',
-        adminName: '',
         adminPhone: ''
     });
 
@@ -110,31 +109,19 @@ export default function OnboardBankModal({ isOpen, onClose, onSuccess }: Onboard
                     {/* Admin Section */}
                     <div className="space-y-4">
                         <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-1">Primary Administrator</label>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="relative group">
-                                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors" size={18} />
-                                <input
-                                    required
-                                    type="text"
-                                    placeholder="Admin Name"
-                                    className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-bold placeholder:text-slate-400 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all"
-                                    value={formData.adminName}
-                                    onChange={(e) => setFormData({ ...formData, adminName: e.target.value })}
-                                />
-                            </div>
-                            <div className="relative group">
-                                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors" size={18} />
-                                <input
-                                    required
-                                    type="tel"
-                                    placeholder="Mobile Number"
-                                    maxLength={10}
-                                    className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-bold placeholder:text-slate-400 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all"
-                                    value={formData.adminPhone}
-                                    onChange={(e) => setFormData({ ...formData, adminPhone: e.target.value.replace(/\D/g, '') })}
-                                />
-                            </div>
+                        <div className="relative group">
+                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors" size={18} />
+                            <input
+                                required
+                                type="tel"
+                                placeholder="Mobile Number"
+                                maxLength={10}
+                                className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-bold placeholder:text-slate-400 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all"
+                                value={formData.adminPhone}
+                                onChange={(e) => setFormData({ ...formData, adminPhone: e.target.value.replace(/\D/g, '') })}
+                            />
                         </div>
+                        <p className="text-[9px] text-slate-400 font-medium ml-1">User must be already registered on BookMyBike</p>
                     </div>
 
                     {error && (
