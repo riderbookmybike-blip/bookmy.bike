@@ -68,6 +68,7 @@ export default function ReviewStep({ brand, family, template, variants, colors, 
     const [filterSearch, setFilterSearch] = useState<string>('');
     const [sortField, setSortField] = useState<string>('SNO');
     const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>('ASC');
+    const [pricingState, setPricingState] = useState<string>('MH');
     const [users, setUsers] = useState<any[]>([]);
 
     React.useEffect(() => {
@@ -83,11 +84,29 @@ export default function ReviewStep({ brand, family, template, variants, colors, 
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
 
+        // Special: If Updating Price, also write to vehicle_prices for the selected state
+        if (field === 'price_base') {
+            try {
+                const numericVal = parseFloat(value) || 0;
+                await supabase.rpc('upsert_vehicle_prices_bypass', {
+                    prices: [{
+                        vehicle_color_id: sku.id,
+                        state_code: pricingState,
+                        ex_showroom_price: numericVal,
+                        offer_amount: 0
+                    }]
+                });
+                console.log(`Synced Price for ${pricingState}: ${numericVal}`);
+            } catch (err) {
+                console.error("Pricing Sync Failed", err);
+            }
+        }
+
         const historyEntry = {
             at: new Date().toISOString(),
             by: user?.id,
             action: 'updated',
-            field: field,
+            field: field === 'price_base' ? `price (${pricingState})` : field,
             from: sku[field],
             to: value
         };
@@ -224,6 +243,24 @@ export default function ReviewStep({ brand, family, template, variants, colors, 
                         <option value="ALL">All Styles</option>
                         {colors.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
+
+                    {/* State Selector for Pricing */}
+                    <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-500/20 rounded-2xl flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">Pricing For:</span>
+                        <select
+                            value={pricingState}
+                            onChange={(e) => setPricingState(e.target.value)}
+                            className="bg-transparent text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-300 outline-none cursor-pointer"
+                        >
+                            <option value="MH">Maharashtra (MH)</option>
+                            <option value="KA">Karnataka (KA)</option>
+                            <option value="DL">Delhi (DL)</option>
+                            <option value="UP">Uttar Pradesh (UP)</option>
+                            <option value="GJ">Gujarat (GJ)</option>
+                            <option value="RJ">Rajasthan (RJ)</option>
+                            <option value="ALL">All India (Base)</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-2 px-6 py-2 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-500/20 rounded-2xl">
@@ -245,9 +282,8 @@ export default function ReviewStep({ brand, family, template, variants, colors, 
                                 <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Model</th>
                                 <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Variant</th>
                                 <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Color</th>
-                                <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Compatibility</th>
                                 <th onClick={() => toggleSort('PRICE')} className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center cursor-pointer hover:text-indigo-500 transition-colors">
-                                    <div className="flex items-center justify-center gap-2">Price (Base) <ArrowUpDown size={10} /></div>
+                                    <div className="flex items-center justify-center gap-2">Ex-Showroom ({pricingState}) <ArrowUpDown size={10} /></div>
                                 </th>
                                 <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Assets / Inheritance</th>
                                 <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">SKU Identity</th>
@@ -347,18 +383,7 @@ export default function ReviewStep({ brand, family, template, variants, colors, 
                                                         <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase">{colorName || '-'}</span>
                                                     </div>
                                                 </td>
-                                                <td className="p-3">
-                                                    <div className="flex flex-wrap gap-1 max-w-[200px]">
-                                                        {(sku.specs?.suitable_for || '').split(',').filter(Boolean).map((tag: string) => (
-                                                            <span key={tag} className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-md text-[7px] font-black uppercase tracking-wider border border-indigo-100 dark:border-indigo-800/50 italic whitespace-nowrap">
-                                                                {tag.trim()}
-                                                            </span>
-                                                        ))}
-                                                        {!(sku.specs?.suitable_for) && (
-                                                            <span className="text-[9px] text-slate-300 dark:text-slate-600 font-bold uppercase tracking-widest">-</span>
-                                                        )}
-                                                    </div>
-                                                </td>
+
                                                 <td className="p-3">
                                                     <div className="relative group/price w-32 mx-auto">
                                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 italic">₹</span>
