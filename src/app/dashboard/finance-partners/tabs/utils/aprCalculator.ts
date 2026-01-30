@@ -207,7 +207,9 @@ export function calculateAPR(
     tenure: number = 36
 ): APRCalculation {
     // 1. Calculate loan amount (assetValue × LTV%)
-    const loanAmount = assetValue * (scheme.maxLTV / 100);
+    // Cap loan amount at 100% of asset value to prevent negative downpayment
+    const calculatedLoan = assetValue * (scheme.maxLTV / 100);
+    const loanAmount = Math.min(calculatedLoan, assetValue);
 
     // 2. Calculate upfront charges (need to iterate twice since some charges depend on gross loan)
     // First pass: calculate charges that don't depend on gross loan
@@ -240,7 +242,8 @@ export function calculateAPR(
     });
 
     // 3. Calculate downpayment (what customer pays upfront)
-    const downpayment = (assetValue - loanAmount) + upfrontCharges;
+    // Should be at least 0
+    const downpayment = Math.max(0, (assetValue - loanAmount) + upfrontCharges);
 
     // 4. Recalculate gross loan with accurate funded charges
     const finalGrossLoan = loanAmount + fundedCharges;
@@ -263,7 +266,12 @@ export function calculateAPR(
     // IRR is the monthly rate where: finalGrossLoan = Present Value of all EMI payments
     const irr = calculateIRR(finalGrossLoan, emi, tenure);
 
-    // 8. Calculate dealer payout
+    // 8. Calculate APR (Annual Percentage Rate)
+    // APR = effective annual rate on net disbursal (Gross Loan - Upfront Charges)
+    const netDisbursal = finalGrossLoan - upfrontCharges;
+    const apr = calculateAPRBinarySearch(netDisbursal, emi, tenure);
+
+    // 9. Calculate dealer payout
     let payoutValue: number;
     if (scheme.payoutType === 'PERCENTAGE') {
         // Calculate based on payout basis
@@ -304,7 +312,7 @@ export function calculateAPR(
         downpayment: Math.round(downpayment),
         emi: Math.round(emi),
         irr: Math.round(irr * 100) / 100,
-        apr: Math.round(irr * 100) / 100, // APR is same as IRR for now
+        apr: Math.round(apr * 100) / 100,
         isActive: scheme.isActive,
         tenure,
         assetValue
