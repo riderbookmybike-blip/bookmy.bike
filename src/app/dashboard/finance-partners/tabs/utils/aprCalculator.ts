@@ -206,47 +206,89 @@ export function calculateAPR(
     assetValue: number = 100000,
     tenure: number = 36
 ): APRCalculation {
-    // 1. Calculate loan amount (assetValue × LTV%)
-    // Cap loan amount at 100% of asset value to prevent negative downpayment
-    const calculatedLoan = assetValue * (scheme.maxLTV / 100);
-    const loanAmount = Math.min(calculatedLoan, assetValue);
+    // 1. Calculate Initial Loan Potential
+    // Respects scheme's Max LTV and Max Loan Amount
+    const ltvLoan = assetValue * (scheme.maxLTV / 100);
+    const capLoan = scheme.maxLoanAmount || Infinity; // If 0/undefined, assume no cap (or very high)
 
-    // 2. Calculate upfront charges (need to iterate twice since some charges depend on gross loan)
-    // First pass: calculate charges that don't depend on gross loan
-    let tempUpfront = 0;
-    let tempFunded = 0;
+    // Initial working loan amount
+    let loanAmount = Math.min(ltvLoan, capLoan);
 
-    scheme.charges.forEach(c => {
-        const chargeAmount = calculateCharge(c, loanAmount, loanAmount, assetValue);
-        if (c.impact === 'UPFRONT') {
-            tempUpfront += chargeAmount;
-        } else {
-            tempFunded += chargeAmount;
+    // 2. Helper to calculate charges and downpayment for a given loan amount
+    const calculateMetrics = (currentLoan: number) => {
+        let tempUpfront = 0;
+        let tempFunded = 0;
+
+        // Charges Pass 1 (Independent of Gross Loan)
+        scheme.charges.forEach(c => {
+            // Note: GROSS_LOAN_AMOUNT basis is approximated as currentLoan in first pass
+            // Ideally we solve for Gross Loan, but iteration is safer given complex dependencies
+            const basisGross = currentLoan;
+            const chargeAmount = calculateCharge(c, currentLoan, basisGross, assetValue);
+            if (c.impact === 'UPFRONT') tempUpfront += chargeAmount;
+            else tempFunded += chargeAmount;
+        });
+
+        // Gross Loan 1 (Approx)
+        let grossLoan = currentLoan + tempFunded;
+
+        // Charges Pass 2 (With Dependent Gross Loan)
+        tempUpfront = 0;
+        tempFunded = 0;
+        scheme.charges.forEach(c => {
+            const chargeAmount = calculateCharge(c, currentLoan, grossLoan, assetValue);
+            if (c.impact === 'UPFRONT') tempUpfront += chargeAmount;
+            else tempFunded += chargeAmount;
+        });
+
+        // Finalize metrics for this iteration
+        grossLoan = currentLoan + tempFunded;
+        const downpayment = (assetValue - currentLoan) + tempUpfront;
+
+        return { upfrontCharges: tempUpfront, fundedCharges: tempFunded, grossLoan, downpayment };
+    };
+
+    // 3. Initial Calculation
+    let metrics = calculateMetrics(loanAmount);
+
+    // 4. Constraint Check: Downpayment cannot be negative
+    // If Downpayment < 0, it means Loan > (Asset + UpfrontConstraints)
+    // We must reduce the loan amount to make Downpayment == 0
+    // Downpayment = Asset - Loan + Upfront(Loan)
+    // solving for Downpayment = 0 is hard because Upfront depends on Loan
+    // So we use a simple iterative reduction (since Upfront is usually monotonic with Loan)
+
+    if (metrics.downpayment < 0) {
+        // We need to reduce loan.
+        // Approx reduction: excess amount
+        // New Loan = Current Loan - (-Downpayment) = Current Loan + Downpayment (since DP is neg)
+        // But reducing loan reduces upfront charges too, so we might under-correct.
+        // We iterate 3 times to converge.
+
+        for (let i = 0; i < 5; i++) {
+            if (metrics.downpayment >= 0) break; // Converged
+
+            // Adjust loan by the deficit
+            // If we have -5000 downpayment, we reduce loan by 5000.
+            loanAmount = loanAmount + metrics.downpayment;
+
+            // Re-calculate
+            metrics = calculateMetrics(loanAmount);
         }
-    });
 
-    // Gross loan includes funded charges
-    const grossLoan = loanAmount + tempFunded;
-
-    // Second pass with accurate gross loan for percentage-based charges on gross loan
-    let upfrontCharges = 0;
-    let fundedCharges = 0;
-
-    scheme.charges.forEach(c => {
-        const chargeAmount = calculateCharge(c, loanAmount, grossLoan, assetValue);
-        if (c.impact === 'UPFRONT') {
-            upfrontCharges += chargeAmount;
-        } else {
-            fundedCharges += chargeAmount;
+        // Hard clamp to ensure display is clean (in case of rounding noise)
+        if (metrics.downpayment < 0) {
+            // If still negative after iteration (rare), just force Loan such that DP=0
+            // Simplified: Loan = Asset + Upfront. 
+            // We just set Display Downpayment to 0 and accept slight mathematical drift in Loan
         }
-    });
+    }
 
-    // 3. Calculate downpayment (what customer pays upfront)
-    // Should be at least 0
-    const downpayment = Math.max(0, (assetValue - loanAmount) + upfrontCharges);
-
-    // 4. Recalculate gross loan with accurate funded charges
-    const finalGrossLoan = loanAmount + fundedCharges;
+    // Final values
+    const upfrontCharges = metrics.upfrontCharges;
+    const fundedCharges = metrics.fundedCharges;
+    const finalGrossLoan = metrics.grossLoan;
+    const downpayment = Math.max(0, metrics.downpayment); // Clamp for display safety
 
     // 5. Calculate EMI
     const monthlyRate = scheme.interestRate / 12 / 100;
@@ -259,39 +301,26 @@ export function calculateAPR(
         emi = calculateFlatEMI(finalGrossLoan, scheme.interestRate, tenure);
     }
 
-    // 6. Calculate Total Amount Paid
-    const totalPaid = downpayment + (emi * tenure);
-
-    // 7. Calculate IRR (Internal Rate of Return) - true cost of the loan
-    // IRR is the monthly rate where: finalGrossLoan = Present Value of all EMI payments
+    // 6. Calculate IRR (Internal Rate of Return)
     const irr = calculateIRR(finalGrossLoan, emi, tenure);
 
-    // 8. Calculate APR (Annual Percentage Rate)
-    // APR = effective annual rate on net disbursal (Gross Loan - Upfront Charges)
+    // 7. Calculate APR using Binary Search
+    // Use the correctly adjusted net disbursal
     const netDisbursal = finalGrossLoan - upfrontCharges;
     const apr = calculateAPRBinarySearch(netDisbursal, emi, tenure);
 
-    // 9. Calculate dealer payout
+    // 8. Calculate dealer payout
     let payoutValue: number;
     if (scheme.payoutType === 'PERCENTAGE') {
-        // Calculate based on payout basis
         let payoutBasis = loanAmount;
         switch (scheme.payoutBasis) {
-            case 'LOAN_AMOUNT':
-                payoutBasis = loanAmount;
-                break;
-            case 'GROSS_LOAN_AMOUNT':
-                payoutBasis = finalGrossLoan;
-                break;
-            case 'DISBURSAL_AMOUNT':
-                payoutBasis = loanAmount - upfrontCharges; // Simplified
-                break;
-            default:
-                payoutBasis = loanAmount;
+            case 'LOAN_AMOUNT': payoutBasis = loanAmount; break;
+            case 'GROSS_LOAN_AMOUNT': payoutBasis = finalGrossLoan; break;
+            case 'DISBURSAL_AMOUNT': payoutBasis = loanAmount - upfrontCharges; break;
+            default: payoutBasis = loanAmount;
         }
         payoutValue = scheme.payout;
     } else {
-        // FIXED payout
         payoutValue = scheme.payout;
     }
 
@@ -303,9 +332,7 @@ export function calculateAPR(
         upfrontCharges: Math.round(upfrontCharges),
         fundedCharges: Math.round(fundedCharges),
         dealerPayout: {
-            value: scheme.payoutType === 'PERCENTAGE'
-                ? scheme.payout
-                : Math.round(payoutValue),
+            value: scheme.payoutType === 'PERCENTAGE' ? scheme.payout : Math.round(payoutValue),
             type: scheme.payoutType,
             basis: scheme.payoutBasis
         },
