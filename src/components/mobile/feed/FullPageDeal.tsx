@@ -120,49 +120,6 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
             {/* Texture Overlay (Noise) */}
             <div className="absolute inset-0 opacity-[0.15] pointer-events-none mix-blend-overlay bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
 
-            {/* 3 Cone-Shaped Spotlights from Header */}
-            {/* Left Cone */}
-            <div
-                className="absolute top-0 left-[15%] pointer-events-none z-[5]"
-                style={{
-                    width: '0',
-                    height: '0',
-                    borderLeft: '80px solid transparent',
-                    borderRight: '80px solid transparent',
-                    borderTop: '70vh solid rgba(255, 255, 255, 0.3)',
-                    filter: 'blur(40px)',
-                    opacity: 0.8,
-                }}
-            />
-
-            {/* Center Cone */}
-            <div
-                className="absolute top-0 left-1/2 -translate-x-1/2 pointer-events-none z-[5]"
-                style={{
-                    width: '0',
-                    height: '0',
-                    borderLeft: '100px solid transparent',
-                    borderRight: '100px solid transparent',
-                    borderTop: '75vh solid rgba(244, 176, 0, 0.35)',
-                    filter: 'blur(45px)',
-                    opacity: 0.9,
-                }}
-            />
-
-            {/* Right Cone */}
-            <div
-                className="absolute top-0 right-[15%] pointer-events-none z-[5]"
-                style={{
-                    width: '0',
-                    height: '0',
-                    borderLeft: '80px solid transparent',
-                    borderRight: '80px solid transparent',
-                    borderTop: '70vh solid rgba(255, 255, 255, 0.3)',
-                    filter: 'blur(40px)',
-                    opacity: 0.8,
-                }}
-            />
-
             {/* 1. Immersive Gradient Overlay to keep bottom content readable but HIGHLY colored */}
             <div className="absolute inset-x-0 bottom-0 h-[55vh] bg-gradient-to-t from-white/40 via-white/20 to-transparent z-10" />
 
