@@ -44,11 +44,14 @@ export interface CatalogItem {
 export interface Accessory {
     id: string;
     name: string;
+    displayName?: string;
     price: number;
     description?: string;
     discountPrice?: number;
     maxQty?: number;
     isMandatory?: boolean;
+    inclusionType?: 'MANDATORY' | 'OPTIONAL' | 'BUNDLE';
+    suitableFor?: string;
 }
 
 export interface ServiceOption {
@@ -59,6 +62,6 @@ export interface ServiceOption {
     description?: string;
     discountPrice?: number;
     isMandatory?: boolean;
+    inclusionType?: 'MANDATORY' | 'OPTIONAL' | 'BUNDLE';
     duration_months?: number;
 }
-

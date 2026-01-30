@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 
 import { AppHeaderShell } from './AppHeaderShell';
 import { ProfileDropdown } from './ProfileDropdown';
-// import { DashboardGreeting } from './DashboardGreeting';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 interface AumsHeaderProps {
     onLoginClick?: () => void;
@@ -69,6 +69,8 @@ export const AumsHeader = ({ onLoginClick, onMenuClick, showSearch = false }: Au
                         </>
                     )}
 
+
+                    <ThemeToggle className="w-10 h-10 text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100/40 dark:bg-white/5 border border-slate-200/40 dark:border-white/5 rounded-xl shadow-sm" />
                     <ProfileDropdown onLoginClick={handleLoginClick} scrolled={true} theme={theme} />
                 </div>
             }

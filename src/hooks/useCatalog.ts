@@ -68,7 +68,7 @@ interface CatalogItemDB {
     }[];
 }
 
-export function useCatalog() {
+export function useCatalog(leadId?: string) {
     const [items, setItems] = useState<ProductVariant[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -112,6 +112,17 @@ export function useCatalog() {
                     const talukaPart = data.district || data.taluka || '';
                     const label = talukaPart ? `${talukaPart}, ${code}` : code;
                     setLocationLabel(label);
+
+                    if (typeof window !== 'undefined') {
+                        (window as any).__BMB_DEBUG__ = {
+                            ...(window as any).__BMB_DEBUG__,
+                            pricingSource: leadId ? 'DEALER_OFFERS_RPC' : 'MARKET_BEST_RPC',
+                            district: data.district || 'MUMBAI_FALLBACK',
+                            leadId: leadId,
+                            locSource: 'CACHE',
+                            pincode: (data as any).pincode || 'UNKNOWN'
+                        };
+                    }
                 }
             } catch (e) {
                 console.error('Error parsing stored location:', e);
@@ -156,10 +167,8 @@ export function useCatalog() {
                                     zoom_factor,
                                     is_flipped,
                                     offset_x,
-                                    offset_y,
-                                    specs,
-                                    assets:cat_assets(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
-                                    prices:cat_prices(ex_showroom_price, state_code, district, latitude, longitude)
+                                     assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
+                                     prices:cat_prices!vehicle_color_id(ex_showroom_price, state_code, district, latitude, longitude)
                                 )
                         )
                     `)
@@ -188,11 +197,64 @@ export function useCatalog() {
                     .order('state_code', { ascending: false })
                     .limit(1);
 
-                // Fetch Market Best Offers for discounts
-                const { data: offerData } = await supabase.rpc('get_market_best_offers', {
-                    p_district_name: userDistrict || '',
-                    p_state_code: stateCode
-                });
+                // Fetch Offers (Market Best or Specific Dealer)
+                let offerData;
+                let resolvedDealerId: string | null = null;
+
+                if (leadId) {
+                    const { data: lead } = await supabase
+                        .from('crm_leads')
+                        .select('owner_tenant_id, customer_pincode')
+                        .eq('id', leadId)
+                        .single();
+
+                    if (lead) {
+                        // NEW LOGIC: Prefer Market Best price in the lead's district over the owner dealer's price
+                        if (lead.customer_pincode && lead.customer_pincode.length === 6) {
+                            const { data: pincodeData } = await supabase
+                                .from('loc_pincodes')
+                                .select('district, state_code')
+                                .eq('pincode', lead.customer_pincode)
+                                .single();
+
+                            if (pincodeData) {
+                                // Update local state for consistency
+                                setUserDistrict(pincodeData.district);
+                                setStateCode(pincodeData.state_code);
+                                // Force null resolvedDealerId to trigger market best logic
+                                resolvedDealerId = null;
+
+                                if (typeof window !== 'undefined') {
+                                    (window as any).__BMB_DEBUG__ = {
+                                        ...(window as any).__BMB_DEBUG__,
+                                        pricingSource: 'MARKET_BEST (Lead District)',
+                                        district: pincodeData.district,
+                                        locSource: 'LEAD_PINCODE',
+                                        pincode: lead.customer_pincode
+                                    };
+                                }
+                            } else {
+                                resolvedDealerId = lead.owner_tenant_id;
+                            }
+                        } else {
+                            resolvedDealerId = lead.owner_tenant_id;
+                        }
+                    }
+                }
+
+                if (resolvedDealerId) {
+                    const { data: dealerOffers } = await supabase.rpc('get_dealer_offers', {
+                        p_tenant_id: resolvedDealerId,
+                        p_state_code: stateCode
+                    });
+                    offerData = dealerOffers;
+                } else {
+                    const { data } = await supabase.rpc('get_market_best_offers', {
+                        p_district_name: userDistrict || '',
+                        p_state_code: stateCode
+                    });
+                    offerData = data;
+                }
 
                 if (data) {
                     // Get User Location from LocalStorage for Client Side Distance Calc
@@ -253,7 +315,7 @@ export function useCatalog() {
         };
 
         fetchItems();
-    }, [stateCode]);
+    }, [stateCode, userDistrict, leadId]);
 
     return { items, isLoading, error, skuCount };
 }

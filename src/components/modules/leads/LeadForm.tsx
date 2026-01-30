@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import SlideOver from '@/components/ui/SlideOver';
 import { Button } from '@/components/ui/button';
 import { User, Phone, MapPin, Bike, Send, Calendar, Cake } from 'lucide-react';
+import { normalizeIndianPhone, parseDateToISO } from '@/lib/utils/inputFormatters';
 
 interface LeadFormProps {
     isOpen: boolean;
@@ -42,22 +43,31 @@ export default function LeadForm({ isOpen, onClose, onSubmit }: LeadFormProps) {
         fetchModels();
     }, []);
 
+    const [docCount, setDocCount] = useState(0);
+
     // Phone Discovery Logic
     React.useEffect(() => {
         const checkPhone = async () => {
             if (phone.length === 10) {
                 setIsCheckingPhone(true);
                 try {
-                    const { checkExistingCustomer } = await import('@/actions/crm');
-                    const profile = await checkExistingCustomer(phone);
+                    const { checkExistingCustomer, getMemberDocuments } = await import('@/actions/crm');
+                    // 1. Check Profile
+                    const { data: profile, memberId } = await checkExistingCustomer(phone);
                     if (profile) {
                         setCustomerName(profile.name || '');
                         setPincode(profile.pincode || '');
-                        setDob(profile.dob || '');
+                        setDob(parseDateToISO(profile.dob || '') || '');
                         setIsExistingCustomer(true);
-                        // toast.success('Identity discovered in database');
+
+                        // 2. Check for Reusable Assets
+                        if (memberId) {
+                            const docs = await getMemberDocuments(memberId);
+                            setDocCount(docs.length);
+                        }
                     } else {
                         setIsExistingCustomer(false);
+                        setDocCount(0);
                     }
                 } catch (error) {
                     console.error('Phone check failed:', error);
@@ -66,6 +76,7 @@ export default function LeadForm({ isOpen, onClose, onSubmit }: LeadFormProps) {
                 }
             } else {
                 setIsExistingCustomer(false);
+                setDocCount(0);
             }
         };
         checkPhone();
@@ -86,13 +97,17 @@ export default function LeadForm({ isOpen, onClose, onSubmit }: LeadFormProps) {
                 model: model || undefined,
                 dob: dob || undefined
             });
-            // Reset form
+            // ONLY reset form if onSubmit succeeded
             setCustomerName('');
             setPhone('');
             setPincode('');
             setModel('');
             setDob('');
             setIsExistingCustomer(false);
+        } catch (error) {
+            // Error is already toasted by parent, we just stop here
+            // This keeps the states (customerName, phone, etc.) intact
+            console.log('[DEBUG] LeadForm submission failed, state preserved.');
         } finally {
             setIsSubmitting(false);
         }
@@ -117,7 +132,15 @@ export default function LeadForm({ isOpen, onClose, onSubmit }: LeadFormProps) {
                                 required
                                 type="tel"
                                 value={phone}
-                                onChange={(e) => setPhone(e.target.value)}
+                                onChange={(e) => setPhone(normalizeIndianPhone(e.target.value))}
+                                onPaste={(e) => {
+                                    const text = e.clipboardData.getData('text');
+                                    const normalized = normalizeIndianPhone(text);
+                                    if (normalized) {
+                                        e.preventDefault();
+                                        setPhone(normalized);
+                                    }
+                                }}
                                 placeholder="10-DIGIT SECURE NUMBER"
                                 className={`w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-[1.25rem] text-sm font-black tracking-tight focus:bg-white focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-300 ${isCheckingPhone ? 'opacity-50' : ''}`}
                             />
@@ -136,7 +159,14 @@ export default function LeadForm({ isOpen, onClose, onSubmit }: LeadFormProps) {
                                 Legal Name
                             </label>
                             {isExistingCustomer && (
-                                <span className="text-[8px] font-black uppercase bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full tracking-widest animate-in fade-in slide-in-from-right-2">Discovered</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[8px] font-black uppercase bg-emerald-100/50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 px-2 py-0.5 rounded-full tracking-widest animate-in fade-in slide-in-from-right-2">Discovered</span>
+                                    {docCount > 0 && (
+                                        <span className="text-[8px] font-black uppercase bg-indigo-100/50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 px-2 py-0.5 rounded-full tracking-widest animate-in fade-in slide-in-from-right-4">
+                                            {docCount} Assets Vaulted
+                                        </span>
+                                    )}
+                                </div>
                             )}
                         </div>
                         <div className="relative group">
@@ -184,6 +214,14 @@ export default function LeadForm({ isOpen, onClose, onSubmit }: LeadFormProps) {
                                     type="date"
                                     value={dob}
                                     onChange={(e) => setDob(e.target.value)}
+                                    onPaste={(e) => {
+                                        const text = e.clipboardData.getData('text');
+                                        const parsed = parseDateToISO(text);
+                                        if (parsed) {
+                                            e.preventDefault();
+                                            setDob(parsed);
+                                        }
+                                    }}
                                     className={`w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-[1.25rem] text-xs font-black tracking-tight focus:bg-white focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all uppercase ${isExistingCustomer && dob ? 'bg-emerald-50/30' : ''}`}
                                 />
                             </div>

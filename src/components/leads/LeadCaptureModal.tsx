@@ -5,6 +5,7 @@ import { submitLead } from '@/actions/lead';
 import { X, CheckCircle, Loader2, Briefcase } from 'lucide-react';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { createClient } from '@/lib/supabase/client';
+import { normalizeIndianPhone } from '@/lib/utils/inputFormatters';
 
 interface LeadCaptureModalProps {
     isOpen: boolean;
@@ -156,6 +157,17 @@ export function LeadCaptureModal({ isOpen, onClose, productName, model, variant,
                                         pattern="[6-9][0-9]{9}"
                                         maxLength={10}
                                         placeholder="Mobile Number"
+                                        onInput={(e) => {
+                                            e.currentTarget.value = normalizeIndianPhone(e.currentTarget.value);
+                                        }}
+                                        onPaste={(e) => {
+                                            const text = e.clipboardData.getData('text');
+                                            const normalized = normalizeIndianPhone(text);
+                                            if (normalized) {
+                                                e.preventDefault();
+                                                e.currentTarget.value = normalized;
+                                            }
+                                        }}
                                         className="w-full pl-12 pr-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-blue-500 outline-none font-bold text-slate-900 dark:text-white transition-all font-mono"
                                     />
                                 </div>

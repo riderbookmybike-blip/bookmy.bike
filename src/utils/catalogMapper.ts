@@ -79,7 +79,8 @@ export function mapCatalogItems(
     insuranceRuleData: any[],
     options: MapOptions
 ): ProductVariant[] {
-    const { stateCode, userLat, userLng, userDistrict, offers } = options;
+    const { stateCode, userLat, userLng, userDistrict } = options;
+    const offers = Array.isArray(options?.offers) ? options!.offers : [];
 
     const effectiveRule: any = ruleData?.[0] || {
         id: 'default',
@@ -147,6 +148,8 @@ export function mapCatalogItems(
 
                     // 1. Find Best Offer from RPC results
                     let bestOfferAmount = 0;
+                    let bundleValueAmount = 0;
+                    let bundlePriceAmount = 0;
                     if (offers && Array.isArray(offers)) {
                         const skuIds = allSkus.map((s: any) => s.id);
                         const match = offers
@@ -155,6 +158,12 @@ export function mapCatalogItems(
 
                         if (match) {
                             bestOfferAmount = Number(match.best_offer);
+                            bundleValueAmount = Number(match.bundle_value || 0);
+                            if (match.bundle_price !== undefined && match.bundle_price !== null) {
+                                bundlePriceAmount = Number(match.bundle_price || 0);
+                            } else {
+                                bundlePriceAmount = bundleValueAmount;
+                            }
                         }
                     }
 
@@ -201,6 +210,8 @@ export function mapCatalogItems(
                             sourceParts.push(stateName);
                             pricingSource = sourceParts.join(', ');
                             if (isEstimate) pricingSource = `Best: ${pricingSource}`;
+                            // If we have a best offer, we might want to override or supplement the pricing source
+                            // but for now we keep it as the location description.
                         }
                     }
 
@@ -212,13 +223,18 @@ export function mapCatalogItems(
                     const standardBreakdown = calculateOnRoad(Number(baseExShowroom), engineCc, effectiveRule, insuranceRule);
                     const onRoadTotal = standardBreakdown.onRoadTotal;
 
-                    const offerPrice = onRoadTotal + bestOfferAmount;
+                    const offerPrice = onRoadTotal + bestOfferAmount + bundlePriceAmount;
+                    const bundleSavingsAmount = Math.max(0, Math.round(bundleValueAmount - bundlePriceAmount));
 
                     return {
                         exShowroom: baseExShowroom,
                         onRoad: Math.round(onRoadTotal),
                         offerPrice: Math.round(offerPrice),
                         discount: Math.abs(bestOfferAmount),
+                        bundleValue: Math.round(bundleValueAmount),
+                        bundlePrice: Math.round(bundlePriceAmount),
+                        bundleSavings: bundleSavingsAmount,
+                        totalSavings: Math.abs(bestOfferAmount) + bundleSavingsAmount,
                         pricingSource,
                         isEstimate
                     };
@@ -354,6 +370,12 @@ export function mapCatalogItems(
                     const primaryAsset = assets.find(a => a.type === 'IMAGE' && a.is_primary) || assets.find(a => a.type === 'IMAGE');
 
                     return Number(primaryAsset?.offset_y || targetSku?.offset_y || 0);
+                })(),
+                suitableFor: (() => {
+                    const primarySku = allSkus.find((s: any) => s.is_primary);
+                    const firstSku = allSkus[0];
+                    const targetSku = primarySku || firstSku;
+                    return targetSku?.specs?.suitable_for || variantItem.specs?.suitable_for || family.specs?.suitable_for || undefined;
                 })()
             };
         });

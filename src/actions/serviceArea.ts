@@ -57,6 +57,8 @@ export async function checkServiceability(pincode: string) {
             location: data.area || data.taluka || data.district || 'Unknown',
             status: isServiceable ? 'Deliverable' : 'Not Deliverable',
             district: data.district,
+            taluka: data.taluka,
+            area: data.area,
             state: data.state,
             stateCode
         };

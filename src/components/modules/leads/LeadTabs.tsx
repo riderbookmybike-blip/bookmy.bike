@@ -16,7 +16,8 @@ import {
     History,
     ChevronRight,
     Bike,
-    Loader2
+    Loader2,
+    AlertCircle
 } from 'lucide-react';
 import { Lead } from './LeadList';
 import { getCustomerHistory } from '@/actions/crm';
@@ -226,17 +227,18 @@ export function LeadTransactions() {
     );
 }
 
+import DocumentManager from './DocumentManager';
+
 // Tab: Documents
-export function LeadDocuments() {
-    return (
-        <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-3xl p-16 flex flex-col items-center justify-center text-center group cursor-pointer hover:border-indigo-500/30 transition-all">
-            <div className="w-16 h-16 bg-slate-50 dark:bg-white/5 rounded-2xl flex items-center justify-center mb-6 border border-slate-100 dark:border-white/10 group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white transition-all">
-                <FileText className="text-slate-400" size={24} />
-            </div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white">Secure Identity Vault</p>
-            <p className="text-xs text-slate-500 mt-2">Initialize secure document upload protocol</p>
+export function LeadDocuments({ memberId, tenantId }: { memberId?: string; tenantId?: string }) {
+    if (!memberId || !tenantId) return (
+        <div className="py-20 text-center opacity-40">
+            <AlertCircle className="mx-auto text-slate-400 mb-4" size={48} />
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Member Identity Not Linked</p>
         </div>
     );
+
+    return <DocumentManager memberId={memberId} tenantId={tenantId} />;
 }
 
 // Tab: Activity (Timeline)
@@ -320,7 +322,7 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                         </div>
                         <div>
                             <div className="flex items-center gap-2">
-                                <h4 className="font-bold text-slate-900 dark:text-white">QT-{quote.id.slice(0, 4).toUpperCase()}</h4>
+                                <h4 className="font-bold text-slate-900 dark:text-white">{quote.display_id || `QT-${quote.id.slice(0, 4).toUpperCase()}`}</h4>
                                 {quote.is_latest && <span className="text-[9px] font-black px-2 py-0.5 bg-green-500/10 text-green-500 rounded uppercase tracking-tighter">Latest</span>}
                             </div>
                             <p className="text-xs text-slate-500 mt-1">{quote.commercials?.label || 'Standard Quote'} • {new Date(quote.created_at).toLocaleDateString()}</p>

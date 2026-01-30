@@ -70,7 +70,26 @@ interface TenantContextType {
     status: TenantStatus;
 }
 
-const TenantContext = createContext<TenantContextType | undefined>(undefined);
+const TenantContext = createContext<TenantContextType>({
+    tenantName: '',
+    tenantConfig: null,
+    userName: '',
+    memberships: [],
+    setTenantType: () => { },
+    setTenantName: () => { },
+    setTenantConfig: () => { },
+    setUserName: () => { },
+    setTenantId: () => { },
+    setUserRole: () => { },
+    setActiveRole: () => { },
+    setReferralCode: () => { },
+    setMemberships: () => { },
+    switchRole: () => { },
+    isSidebarExpanded: false,
+    setIsSidebarExpanded: () => { },
+    isReadOnly: false,
+    status: 'ACTIVE',
+});
 
 export const TenantProvider = ({ children }: { children: ReactNode }) => {
     const pathname = usePathname();
@@ -215,9 +234,5 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 };
 
 export const useTenant = () => {
-    const context = useContext(TenantContext);
-    if (context === undefined) {
-        throw new Error('useTenant must be used within a TenantProvider');
-    }
-    return context;
+    return useContext(TenantContext);
 };

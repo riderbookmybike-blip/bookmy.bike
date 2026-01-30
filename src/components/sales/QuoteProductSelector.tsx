@@ -9,9 +9,10 @@ import { toast } from 'sonner';
 
 interface QuoteProductSelectorProps {
     onSelect: (variant: ProductVariant, price: number) => void;
+    district?: string;
 }
 
-export default function QuoteProductSelector({ onSelect }: QuoteProductSelectorProps) {
+export default function QuoteProductSelector({ onSelect, district }: QuoteProductSelectorProps) {
     const [search, setSearch] = useState('');
     const [products, setProducts] = useState<ProductVariant[]>([]);
     const [loading, setLoading] = useState(true);
@@ -71,12 +72,22 @@ export default function QuoteProductSelector({ onSelect }: QuoteProductSelectorP
                 ) : (
                     <div className="divide-y divide-gray-100 dark:divide-white/10">
                         {filtered.map(p => {
-                            const pricing = calculateDealerPrice(p.id);
+                            // Find the best price based on district
+                            let sellingPrice = p.price.exShowroom;
+                            let source = 'STANDARD';
+
+                            if (district) {
+                                const distMatch = p.districtPrices?.find(dp => dp.district === district);
+                                if (distMatch) {
+                                    sellingPrice = distMatch.exShowroom;
+                                    source = 'DISTRICT_MATCH';
+                                }
+                            }
 
                             return (
                                 <button
                                     key={p.id}
-                                    onClick={() => onSelect(p, pricing.sellingPrice)}
+                                    onClick={() => onSelect(p, sellingPrice)}
                                     className="w-full text-left p-3 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors flex items-center justify-between group"
                                 >
                                     <div>
@@ -97,11 +108,10 @@ export default function QuoteProductSelector({ onSelect }: QuoteProductSelectorP
 
                                     <div className="text-right">
                                         <div className="text-sm font-bold text-gray-900 dark:text-white font-mono">
-                                            ₹{pricing.sellingPrice.toLocaleString()}
+                                            ₹{sellingPrice.toLocaleString()}
                                         </div>
                                         <span className="text-[10px] text-green-600 dark:text-green-400">
-                                            {pricing.source === 'BRAND_RULE' ? 'Brand Price' :
-                                                pricing.source === 'VARIANT_OVERRIDE' ? 'Special Price' : 'Standard'}
+                                            {source === 'DISTRICT_MATCH' ? 'Dealership Price' : 'Standard'}
                                         </span>
                                     </div>
                                 </button>

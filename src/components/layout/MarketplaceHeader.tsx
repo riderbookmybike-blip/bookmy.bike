@@ -113,8 +113,8 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const mobileMenuButtonClass = !isHeaderTransparent
         ? 'text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/5'
         : isLight
-          ? 'text-slate-900 hover:bg-slate-900/5'
-          : 'text-white hover:bg-white/10';
+            ? 'text-slate-900 hover:bg-slate-900/5'
+            : 'text-white hover:bg-white/10';
 
     const handleSignOut = async () => {
         const supabase = createClient();
@@ -284,6 +284,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                                 )}
                             </AnimatePresence>
                         </div>
+                        <ThemeToggle className="w-10 h-10 rounded-full border border-white/20 text-white hover:bg-white hover:text-black hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] transition-all duration-300" />
                         <ProfileDropdown onLoginClick={onLoginClick} scrolled={!isHeaderTransparent} theme={theme} />
                     </div>
 
@@ -293,112 +294,114 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                     >
                         {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
                     </button>
-                </div>
+                </div >
             }
         >
             {/* Mobile Menu Overlay */}
-            {isMobileMenuOpen && (
-                <div className="md:hidden bg-white dark:bg-[#0f1115] border-t border-slate-200 dark:border-white/5 p-6 space-y-8 animate-in slide-in-from-top-4 duration-300 shadow-2xl h-screen fixed inset-0 top-[var(--header-h)] z-40 overflow-y-auto">
-                    <nav className="flex flex-col gap-6">
-                        <Link
-                            href="/"
-                            onClick={() => setIsMobileMenuOpen(false)}
-                            className="text-xl font-black uppercase tracking-tighter text-slate-900 dark:text-white"
-                        >
-                            Home
-                        </Link>
-                        <div className="flex flex-col gap-4">
+            {
+                isMobileMenuOpen && (
+                    <div className="md:hidden bg-white dark:bg-[#0f1115] border-t border-slate-200 dark:border-white/5 p-6 space-y-8 animate-in slide-in-from-top-4 duration-300 shadow-2xl h-screen fixed inset-0 top-[var(--header-h)] z-40 overflow-y-auto">
+                        <nav className="flex flex-col gap-6">
                             <Link
-                                href="/store/catalog"
+                                href="/"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className="text-xl font-black uppercase tracking-tighter text-slate-900 dark:text-white"
+                            >
+                                Home
+                            </Link>
+                            <div className="flex flex-col gap-4">
+                                <Link
+                                    href="/store/catalog"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className="text-xl font-black uppercase tracking-tighter text-slate-500 dark:text-slate-400"
+                                >
+                                    Catalog
+                                </Link>
+                                <Link
+                                    href="/wishlist"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className="text-xl font-black uppercase tracking-tighter text-rose-500 flex items-center justify-between"
+                                >
+                                    <span>Wishlist</span>
+                                    {favorites.length > 0 && (
+                                        <span className="bg-rose-500 text-white px-3 py-1 rounded-full text-[10px] font-bold">
+                                            {favorites.length}
+                                        </span>
+                                    )}
+                                </Link>
+                            </div>
+                            <Link
+                                href="/store/compare"
                                 onClick={() => setIsMobileMenuOpen(false)}
                                 className="text-xl font-black uppercase tracking-tighter text-slate-500 dark:text-slate-400"
                             >
-                                Catalog
+                                Compare
                             </Link>
                             <Link
-                                href="/wishlist"
+                                href="/zero"
                                 onClick={() => setIsMobileMenuOpen(false)}
-                                className="text-xl font-black uppercase tracking-tighter text-rose-500 flex items-center justify-between"
+                                className="text-xl font-black uppercase tracking-tighter text-slate-500 dark:text-slate-400"
                             >
-                                <span>Wishlist</span>
-                                {favorites.length > 0 && (
-                                    <span className="bg-rose-500 text-white px-3 py-1 rounded-full text-[10px] font-bold">
-                                        {favorites.length}
-                                    </span>
-                                )}
+                                Zero
                             </Link>
-                        </div>
-                        <Link
-                            href="/store/compare"
-                            onClick={() => setIsMobileMenuOpen(false)}
-                            className="text-xl font-black uppercase tracking-tighter text-slate-500 dark:text-slate-400"
-                        >
-                            Compare
-                        </Link>
-                        <Link
-                            href="/zero"
-                            onClick={() => setIsMobileMenuOpen(false)}
-                            className="text-xl font-black uppercase tracking-tighter text-slate-500 dark:text-slate-400"
-                        >
-                            Zero
-                        </Link>
-                        <Link
-                            href="#elite-circle"
-                            onClick={e => {
-                                e.preventDefault();
-                                setIsMobileMenuOpen(false);
-                                document.getElementById('elite-circle')?.scrollIntoView({ behavior: 'smooth' });
-                            }}
-                            className="text-xl font-black uppercase tracking-tighter text-[#F4B000]"
-                        >
-                            Elite Circle
-                        </Link>
+                            <Link
+                                href="#o-circle"
+                                onClick={e => {
+                                    e.preventDefault();
+                                    setIsMobileMenuOpen(false);
+                                    document.getElementById('o-circle')?.scrollIntoView({ behavior: 'smooth' });
+                                }}
+                                className="text-xl font-black uppercase tracking-tighter text-[#F4B000]"
+                            >
+                                O' Circle
+                            </Link>
 
-                        {/* User Info in Mobile Menu */}
-                        <div className="pt-6 mt-6 border-t border-slate-200 dark:border-white/10">
-                            {userName ? (
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-12 h-12 rounded-full bg-brand-primary flex items-center justify-center text-black font-bold">
-                                                {(userName?.[0] || 'U').toUpperCase()}
+                            {/* User Info in Mobile Menu */}
+                            <div className="pt-6 mt-6 border-t border-slate-200 dark:border-white/10">
+                                {userName ? (
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-12 h-12 rounded-full bg-brand-primary flex items-center justify-center text-black font-bold">
+                                                    {(userName?.[0] || 'U').toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-slate-900 dark:text-white">{userName}</p>
+                                                    <p className="text-xs text-slate-500">Member</p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p className="font-bold text-slate-900 dark:text-white">{userName}</p>
-                                                <p className="text-xs text-slate-500">Member</p>
-                                            </div>
+                                            {/* Mobile Menu Theme Toggle */}
+                                            <ThemeToggle className="w-10 h-10" />
                                         </div>
-                                        {/* Mobile Menu Theme Toggle */}
-                                        <ThemeToggle className="w-10 h-10" />
+                                        <button
+                                            onClick={handleSignOut}
+                                            className="w-full py-3 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 rounded-xl text-sm font-bold uppercase tracking-wide"
+                                        >
+                                            Sign Out
+                                        </button>
                                     </div>
-                                    <button
-                                        onClick={handleSignOut}
-                                        className="w-full py-3 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 rounded-xl text-sm font-bold uppercase tracking-wide"
-                                    >
-                                        Sign Out
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium text-slate-500">Appearance</span>
-                                        <ThemeToggle className="w-10 h-10" />
+                                ) : (
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm font-medium text-slate-500">Appearance</span>
+                                            <ThemeToggle className="w-10 h-10" />
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                setIsMobileMenuOpen(false);
+                                                onLoginClick();
+                                            }}
+                                            className="w-full py-4 bg-brand-primary text-black rounded-xl text-sm font-black uppercase tracking-widest hover:bg-[#F4B000] transition-colors flex items-center justify-center"
+                                        >
+                                            Login / Sign Up
+                                        </button>
                                     </div>
-                                    <button
-                                        onClick={() => {
-                                            setIsMobileMenuOpen(false);
-                                            onLoginClick();
-                                        }}
-                                        className="w-full py-4 bg-brand-primary text-black rounded-xl text-sm font-black uppercase tracking-widest hover:bg-[#F4B000] transition-colors flex items-center justify-center"
-                                    >
-                                        Login / Sign Up
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    </nav>
-                </div>
-            )}
-        </AppHeaderShell>
+                                )}
+                            </div>
+                        </nav>
+                    </div>
+                )
+            }
+        </AppHeaderShell >
     );
 };

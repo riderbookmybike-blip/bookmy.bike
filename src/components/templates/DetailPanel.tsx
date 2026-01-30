@@ -18,8 +18,9 @@ interface DetailPanelProps {
     tabs?: string[];
     isLoading?: boolean;
     hideHeader?: boolean;
-    onEdit?: () => void; // New prop
-    onAction?: () => void; // New prop
+    showTabs?: boolean;
+    onEdit?: () => void;
+    onAction?: () => void;
 }
 
 export default function DetailPanel({
@@ -33,6 +34,7 @@ export default function DetailPanel({
     tabs = TABS as unknown as string[],
     isLoading = false,
     hideHeader = false,
+    showTabs = true,
     onEdit,
     onAction,
 }: DetailPanelProps) {
@@ -106,7 +108,7 @@ export default function DetailPanel({
             )}
 
             {/* Tabs Navigation - Premium Segmented Control */}
-            {effectiveTabs.length > 0 && (
+            {showTabs && effectiveTabs.length > 0 && (
                 <div className="px-6 lg:px-8 py-3 border-b border-slate-100 dark:border-white/5 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md shrink-0 flex items-center justify-between">
                     <div className="flex bg-slate-100/50 dark:bg-white/5 p-1 rounded-2xl border border-slate-200/50 dark:border-white/5">
                         <nav className="flex space-x-1 overflow-x-auto scrollbar-none">

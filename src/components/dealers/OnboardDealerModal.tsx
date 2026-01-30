@@ -4,6 +4,13 @@ import React, { useState } from 'react';
 import { X, Building2, MapPin, User, Phone, Loader2, Rocket } from 'lucide-react';
 import { onboardDealer } from '@/app/dashboard/dealers/actions';
 
+const formatStudioId = (value: string) => {
+    const upper = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const digits = upper.replace(/[^0-9]/g, '').slice(0, 2);
+    const letter = upper.replace(/[^A-Z]/g, '').slice(0, 1);
+    return `${digits}${letter}`;
+};
+
 interface OnboardDealerModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -15,6 +22,7 @@ export default function OnboardDealerModal({ isOpen, onClose, onSuccess }: Onboa
     const [error, setError] = useState<string | null>(null);
     const [formData, setFormData] = useState({
         dealerName: '',
+        studioId: '',
         pincode: '',
         adminName: '',
         adminPhone: ''
@@ -77,6 +85,19 @@ export default function OnboardDealerModal({ isOpen, onClose, onSuccess }: Onboa
                                     className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-bold placeholder:text-slate-400 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
                                     value={formData.dealerName}
                                     onChange={(e) => setFormData({ ...formData, dealerName: e.target.value })}
+                                />
+                            </div>
+                            <div className="relative group">
+                                <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={18} />
+                                <input
+                                    type="text"
+                                    placeholder="Studio ID (Optional)"
+                                    className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-bold placeholder:text-slate-400 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
+                                    value={formData.studioId}
+                                    onChange={(e) => setFormData({
+                                        ...formData,
+                                        studioId: formatStudioId(e.target.value)
+                                    })}
                                 />
                             </div>
                             <div className="relative group">

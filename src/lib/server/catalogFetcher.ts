@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { mapCatalogItems } from '@/utils/catalogMapper';
 import { ProductVariant } from '@/types/productMaster';
 
-export async function fetchCatalogServerSide(): Promise<ProductVariant[]> {
+export async function fetchCatalogServerSide(leadId?: string): Promise<ProductVariant[]> {
     const supabase = await createClient();
     const cookieStore = await cookies();
 
@@ -14,6 +14,7 @@ export async function fetchCatalogServerSide(): Promise<ProductVariant[]> {
     let userLat: number | null = null;
     let userLng: number | null = null;
     let userDistrict: string | null = null;
+    let dealerId: string | null = null;
 
     if (locationCookie) {
         try {
@@ -47,6 +48,39 @@ export async function fetchCatalogServerSide(): Promise<ProductVariant[]> {
         }
     }
 
+    // 1.5 Resolve Dealer Context from Lead (if quoting)
+    if (leadId) {
+        const { data: lead } = await supabase
+            .from('crm_leads')
+            .select('owner_tenant_id, customer_pincode')
+            .eq('id', leadId)
+            .single();
+
+        if (lead) {
+            // NEW LOGIC: Prefer Market Best price in the lead's district over the owner dealer's price
+            if (lead.customer_pincode) {
+                // We need to resolve district from pincode to get market best offers
+                const { data: pincodeData } = await supabase
+                    .from('loc_pincodes')
+                    .select('district, state_code')
+                    .eq('pincode', lead.customer_pincode)
+                    .single();
+
+                if (pincodeData) {
+                    userDistrict = pincodeData.district;
+                    stateCode = pincodeData.state_code;
+                    // Intentionally NOT setting dealerId here to force 'get_market_best_offers' 
+                    // in section 4 below.
+                } else {
+                    // Fallback to owner dealer if pincode unknown
+                    dealerId = lead.owner_tenant_id;
+                }
+            } else {
+                dealerId = lead.owner_tenant_id;
+            }
+        }
+    }
+
     // 2. Fetch Catalog Data (Identical Query to useCatalog)
     const { data, error } = await supabase
         .from('cat_items')
@@ -76,8 +110,8 @@ export async function fetchCatalogServerSide(): Promise<ProductVariant[]> {
                     offset_x,
                     offset_y,
                     specs,
-                    assets:cat_assets(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
-                    prices:cat_prices(ex_showroom_price, state_code, district, latitude, longitude)
+                    assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
+                    prices:cat_prices!vehicle_color_id(ex_showroom_price, state_code, district, latitude, longitude)
                 )
             )
         `)
@@ -87,7 +121,12 @@ export async function fetchCatalogServerSide(): Promise<ProductVariant[]> {
         .eq('template.category', 'VEHICLE');
 
     if (error) {
-        console.error('Server Catalog Fetch Error:', error);
+        console.error('Server Catalog Fetch Error:', {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint
+        });
         return [];
     }
 
@@ -107,11 +146,21 @@ export async function fetchCatalogServerSide(): Promise<ProductVariant[]> {
         .order('state_code', { ascending: false })
         .limit(1);
 
-    // 4. Fetch Market Best Offers
-    const { data: offerData } = await supabase.rpc('get_market_best_offers', {
-        p_district_name: userDistrict || '',
-        p_state_code: stateCode
-    });
+    // 4. Fetch Offers (Market Best or Specific Dealer)
+    let offerData;
+    if (dealerId) {
+        const { data: dealerOffers } = await supabase.rpc('get_dealer_offers', {
+            p_tenant_id: dealerId,
+            p_state_code: stateCode
+        });
+        offerData = dealerOffers;
+    } else {
+        const { data } = await supabase.rpc('get_market_best_offers', {
+            p_district_name: userDistrict || '',
+            p_state_code: stateCode
+        });
+        offerData = data;
+    }
 
     // 5. Map Items
     if (data) {

@@ -4,6 +4,14 @@ import React, { useState } from 'react';
 import { Camera, Save, Building2, MapPin, Phone, Mail, Globe } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import Image from 'next/image';
+import { checkServiceability } from '@/actions/serviceArea';
+
+const formatStudioId = (value: string) => {
+    const upper = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const digits = upper.replace(/[^0-9]/g, '').slice(0, 2);
+    const letter = upper.replace(/[^A-Z]/g, '').slice(0, 1);
+    return `${digits}${letter}`;
+};
 
 interface IdentitySettingsProps {
     dealer: any;
@@ -13,13 +21,23 @@ interface IdentitySettingsProps {
 export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsProps) {
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [pincodeLookupLoading, setPincodeLookupLoading] = useState(false);
+    const [pincodeLookup, setPincodeLookup] = useState<{
+        district?: string;
+        taluka?: string;
+        area?: string;
+        state?: string;
+        stateCode?: string;
+    } | null>(null);
+    const [locationTouched, setLocationTouched] = useState(false);
+    const [didInitLookup, setDidInitLookup] = useState(false);
     const [formData, setFormData] = useState({
         name: dealer.name || '',
+        display_id: dealer.display_id || '',
         location: dealer.location || '',
         pincode: dealer.pincode || '',
         phone: dealer.phone || '',
-        email: dealer.email || '',
-        website: dealer.website || '' // Assuming we might add website later, or use map_link
+        email: dealer.email || ''
     });
 
     const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,28 +77,80 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
         }
     };
 
+    const handlePincodeChange = async (value: string) => {
+        const cleaned = value.replace(/\D/g, '');
+        setFormData(prev => ({ ...prev, pincode: cleaned }));
+        setPincodeLookup(null);
+
+        if (cleaned.length === 6) {
+            setPincodeLookupLoading(true);
+            try {
+                const result = await checkServiceability(cleaned);
+                if (result && !result.error) {
+                    setPincodeLookup({
+                        district: result.district || '',
+                        taluka: (result as any).taluka || '',
+                        area: (result as any).area || '',
+                        state: result.state || '',
+                        stateCode: result.stateCode || ''
+                    });
+                    if (!locationTouched && result.district) {
+                        setFormData(prev => ({ ...prev, location: result.district || prev.location }));
+                    }
+                }
+            } catch (error) {
+                console.error('Pincode lookup failed:', error);
+            } finally {
+                setPincodeLookupLoading(false);
+            }
+        }
+    };
+
+    React.useEffect(() => {
+        if (!didInitLookup && formData.pincode && formData.pincode.length === 6) {
+            setDidInitLookup(true);
+            handlePincodeChange(formData.pincode);
+        }
+    }, [didInitLookup, formData.pincode]);
+
     const handleSave = async () => {
         setLoading(true);
         try {
             const supabase = createClient();
+            const payload = {
+                ...formData,
+                display_id: formData.display_id.trim() || null
+            };
             const { error } = await supabase
                 .from('id_tenants')
-                .update(formData)
+                .update(payload)
                 .eq('id', dealer.id);
 
             if (error) throw error;
+
+            if (pincodeLookup?.district) {
+                await supabase
+                    .from('id_dealer_service_areas')
+                    .upsert({
+                        tenant_id: dealer.id,
+                        district: pincodeLookup.district,
+                        state_code: pincodeLookup.stateCode || 'MH',
+                        is_active: true
+                    }, { onConflict: 'tenant_id, district' });
+            }
+
             onUpdate();
             alert('Details updated successfully');
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error updating details:', error);
-            alert('Failed to update details');
+            alert(error?.message || 'Failed to update details');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8" >
             <div className="flex flex-col md:flex-row gap-8 items-start">
 
                 {/* Logo Section */}
@@ -159,13 +229,33 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
                         </div>
 
                         <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Studio ID</label>
+                            <div className="relative">
+                                <Building2 className="absolute left-4 top-3.5 text-slate-400" size={16} />
+                                <input
+                                    type="text"
+                                    value={formData.display_id}
+                                    onChange={e => setFormData({
+                                        ...formData,
+                                        display_id: formatStudioId(e.target.value)
+                                    })}
+                                    placeholder="e.g. 48J"
+                                    className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
                             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Location / City</label>
                             <div className="relative">
                                 <MapPin className="absolute left-4 top-3.5 text-slate-400" size={16} />
                                 <input
                                     type="text"
                                     value={formData.location}
-                                    onChange={e => setFormData({ ...formData, location: e.target.value })}
+                                    onChange={e => {
+                                        setLocationTouched(true);
+                                        setFormData({ ...formData, location: e.target.value });
+                                    }}
                                     className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                                 />
                             </div>
@@ -178,9 +268,20 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
                                 <input
                                     type="text"
                                     value={formData.pincode}
-                                    onChange={e => setFormData({ ...formData, pincode: e.target.value })}
+                                    onChange={e => handlePincodeChange(e.target.value)}
                                     className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                                 />
+                                {pincodeLookupLoading && (
+                                    <p className="text-[10px] text-slate-400 mt-2 uppercase tracking-widest">Resolving pincode…</p>
+                                )}
+                                {!pincodeLookupLoading && pincodeLookup && (
+                                    <div className="mt-2 text-[10px] text-slate-500 uppercase tracking-widest space-y-1">
+                                        {pincodeLookup.state && <div>State: <span className="text-slate-700 dark:text-slate-200">{pincodeLookup.state}</span></div>}
+                                        {pincodeLookup.district && <div>District: <span className="text-slate-700 dark:text-slate-200">{pincodeLookup.district}</span></div>}
+                                        {pincodeLookup.taluka && <div>Taluka: <span className="text-slate-700 dark:text-slate-200">{pincodeLookup.taluka}</span></div>}
+                                        {pincodeLookup.area && <div>Area: <span className="text-slate-700 dark:text-slate-200">{pincodeLookup.area}</span></div>}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -212,6 +313,6 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
