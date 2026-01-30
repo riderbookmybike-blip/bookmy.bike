@@ -50,7 +50,7 @@ export function EliteCircle() {
 
     return (
         <section
-            id="elite-circle"
+            id="o-circle"
             className="relative h-screen ebook-section bg-[#0b0d10] flex flex-col items-center justify-center overflow-hidden"
         >
             {/* VIBRANT ATMOSPHERIC BACKGROUND */}
@@ -61,7 +61,7 @@ export function EliteCircle() {
                 <div className="absolute inset-0 opacity-50 mix-blend-screen">
                     <Image
                         src="/images/auth/bmb_luxury_desk.png"
-                        alt="The Elite Circle Environment"
+                        alt="The O' Circle Environment"
                         layout="fill"
                         objectFit="cover"
                         priority
@@ -91,7 +91,7 @@ export function EliteCircle() {
                                 </h2>
                             </div>
                             <h1 className="text-7xl xl:text-8xl font-black italic uppercase tracking-tighter leading-[0.85] text-white">
-                                THE ELITE
+                                THE O'
                                 <br />
                                 <span className="text-[#F4B000]">CIRCLE.</span>
                             </h1>

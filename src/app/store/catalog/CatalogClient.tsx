@@ -5,6 +5,7 @@ import { MasterCatalog } from '@/components/store/MasterCatalog';
 import { useCatalog } from '@/hooks/useCatalog';
 import { useCatalogFilters } from '@/hooks/useCatalogFilters';
 import { ProductVariant } from '@/types/productMaster';
+import { useSearchParams } from 'next/navigation';
 
 interface CatalogClientProps {
     initialItems: ProductVariant[];
@@ -18,9 +19,10 @@ export default function CatalogClient({ initialItems }: CatalogClientProps) {
     // AND useCatalogFilters needs items to filter.
     // If we use 'initialItems' to initialize filters, we get immediate results.
 
-    const { items: clientItems, isLoading } = useCatalog();
+    const searchParams = useSearchParams();
+    const leadId = searchParams.get('leadId');
 
-    // Use client items if available, otherwise server items
+    const { items: clientItems } = useCatalog();
     const currentItems = clientItems.length > 0 ? clientItems : initialItems;
 
     const filters = useCatalogFilters(currentItems);
@@ -29,6 +31,7 @@ export default function CatalogClient({ initialItems }: CatalogClientProps) {
         <MasterCatalog
             filters={filters}
             initialItems={initialItems}
+            leadId={leadId || undefined}
         />
     );
 }

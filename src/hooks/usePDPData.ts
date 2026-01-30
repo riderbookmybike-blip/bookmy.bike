@@ -6,11 +6,13 @@ import { slugify } from '@/utils/slugs';
 
 export interface LocalColorConfig {
     id: string;
+    skuId?: string;
     name: string;
     hex: string;
     class: string;
     image?: string;
     video?: string;
+    dealerOffer?: number;
     pricingOverride?: {
         exShowroom?: number;
         dealerOffer?: number;
@@ -18,52 +20,28 @@ export interface LocalColorConfig {
     };
 }
 
-const productColors: LocalColorConfig[] = [
-    { id: 'obsidian-black', name: 'Obsidian Black', hex: '#000000', class: 'bg-black', pricingOverride: { exShowroom: 78000 } },
-    { id: 'stellar-silver', name: 'Stellar Silver', hex: '#cbd5e1', class: 'bg-slate-300', pricingOverride: { exShowroom: 78000 } },
-    { id: 'racing-red', name: 'Racing Red', hex: '#dc2626', class: 'bg-red-600', pricingOverride: { exShowroom: 79500, dealerOffer: 1500 } },
-    { id: 'electric-blue', name: 'Electric Blue', hex: '#2563eb', class: 'bg-blue-600', pricingOverride: { exShowroom: 79500 } },
-];
-
-// ... (omitted)
-
-
-const mandatoryAccessories = [
-    { id: 'acc-lock', name: 'Smart Lock Security', price: 1200, description: 'GPS-enabled anti-theft locking system with mobile alerts.', discountPrice: 0, maxQty: 1 },
-    { id: 'acc-numberplate', name: 'HSRP Number Plate', price: 850, description: 'Government mandated high security registration plate.', discountPrice: 0, maxQty: 1 },
-];
-
-const optionalAccessories = [
-    { id: 'acc-guard', name: 'Chrome Crash Guard', price: 2400, description: 'Heavy-duty stainless steel protection for engine and body.', discountPrice: 2100, maxQty: 1 },
-    { id: 'acc-cover', name: 'All-Weather Cover', price: 950, description: 'Waterproof styling cover with UV protection coating.', discountPrice: 0, maxQty: 2 },
-    { id: 'acc-grips', name: 'Comfort Palm Grips', price: 450, description: 'Ergonomic rubber grips for reduced vibration fatigue.', discountPrice: 0, maxQty: 2 },
-    { id: 'acc-seat', name: 'Touring Seat Overlay', price: 1500, description: 'Gel-padded seat cover for long distance comfort.', discountPrice: 1250, maxQty: 1 },
-];
-
-const mandatoryInsurance = [
-    { id: 'ins-comp', name: 'Comprehensive Policy', price: 3200, description: 'Basic own-damage coverage mandated by law.', discountPrice: 0, isMandatory: true },
-    { id: 'ins-liability', name: 'Third-Party Liability', price: 2300, description: 'Coverage for damages to third-party property/persons.', discountPrice: 0, isMandatory: true },
-];
-
-const insuranceAddons = [
-    { id: 'ins-zerodep', name: 'Zero Depreciation', price: 1800, description: 'Full claim coverage without depreciation deduction on parts.', discountPrice: 0 },
-    { id: 'ins-rsa', name: 'Roadside Assistance', price: 800, description: '24/7 breakdown support, towing, and fuel delivery.', discountPrice: 0 },
-    { id: 'ins-engine', name: 'Engine Protection', price: 1200, description: 'Coverage for engine damage due to water ingression or leakage.', discountPrice: 999 },
-];
-
-const serviceOptions = [
-    { id: 'srv-amc', name: 'Annual Maintenance Contract', price: 2500, description: 'Pre-paid service package for 1 year including consumables.', discountPrice: 2000, maxQty: 3 },
-    { id: 'srv-teflon', name: '3M Teflon Coating', price: 1200, description: 'Paint protection treatment for long-lasting shine.', discountPrice: 0, maxQty: 1 },
-];
-
-const offerOptions = [
-    { id: 'off-exchange', name: 'Exchange Bonus', price: 0, description: 'Additional value on exchanging your old two-wheeler.', discountPrice: 5000 },
-    { id: 'off-corporate', name: 'Corporate Discount', price: 0, description: 'Special pricing for employees of partner companies.', discountPrice: 3000 },
-    { id: 'off-bank', name: 'HDFC Bank Offer', price: 0, description: 'Instant cashback on credit card EMI transactions.', discountPrice: 2000 },
-];
+// Global type augmentation for debugging
+declare global {
+    interface Window {
+        __BMB_DEBUG__?: {
+            pricingSource?: string;
+            district?: string;
+            schemeId?: string;
+            schemeName?: string;
+            bankName?: string;
+            financeLogic?: string;
+            leadId?: string;
+            dealerId?: string;
+            tenantId?: string;
+            pageId?: string;
+            userId?: string;
+        };
+    }
+}
 
 import { InsuranceRule } from '@/types/insurance';
 import { Accessory, ServiceOption } from '@/types/store';
+import { BankScheme, BankPartner } from '@/types/bankPartner';
 
 import { calculateRTO } from '@/lib/utils/pricingUtility';
 import { MOCK_REGISTRATION_RULES } from '@/lib/mock/catalogMocks';
@@ -78,7 +56,8 @@ export function usePDPData({
     registrationRule,
     initialAccessories = [],
     initialServices = [],
-    product
+    product,
+    initialFinance
 }: {
     initialPrice: any;
     colors: any[];
@@ -87,6 +66,11 @@ export function usePDPData({
     initialAccessories?: Accessory[];
     initialServices?: ServiceOption[];
     product?: any;
+    initialFinance?: {
+        bank: Partial<BankPartner>;
+        scheme: BankScheme;
+        logic?: string;
+    };
 }) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -101,9 +85,12 @@ export function usePDPData({
     const activeAccessories = initialAccessories.length > 0 ? initialAccessories : [];
     const activeServices = initialServices.length > 0 ? initialServices : [];
 
-    const defaultSelectedAccessoryIds = activeAccessories.filter(a => a.isMandatory).map(a => a.id);
+    const defaultSelectedAccessoryIds = activeAccessories.filter(a => a.isMandatory || a.inclusionType === 'BUNDLE').map(a => a.id);
     const [selectedAccessories, setSelectedAccessories] = useState<string[]>(defaultSelectedAccessoryIds);
-    const [selectedInsuranceAddons, setSelectedInsuranceAddons] = useState<string[]>([]);
+    const defaultInsuranceAddonIds = (insuranceRule?.addons || [])
+        .filter((a: any) => (a?.inclusion_type || a?.inclusionType) === 'MANDATORY' || (a?.inclusion_type || a?.inclusionType) === 'BUNDLE')
+        .map((a: any) => a.id);
+    const [selectedInsuranceAddons, setSelectedInsuranceAddons] = useState<string[]>(defaultInsuranceAddonIds);
     const [selectedServices, setSelectedServices] = useState<string[]>([]);
     const [selectedOffers, setSelectedOffers] = useState<string[]>([]);
     const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -111,6 +98,26 @@ export function usePDPData({
     const [emiTenure, setEmiTenure] = useState(36);
     const [configTab, setConfigTab] = useState<'PRICE_BREAKUP' | 'FINANCE' | 'ACCESSORIES' | 'INSURANCE' | 'REGISTRATION' | 'SERVICES' | 'OFFERS' | 'WARRANTY' | 'TECH_SPECS'>('PRICE_BREAKUP');
     const [userDownPayment, setUserDownPayment] = useState<number | null>(null);
+
+    // Runtime Debug Persistence
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            window.__BMB_DEBUG__ = {
+                ...window.__BMB_DEBUG__,
+                pricingSource: registrationRule?.state_code ? 'MARKET_RULES' : 'FALLBACK',
+                district: registrationRule?.state_code || 'GLOBAL',
+                schemeId: initialFinance?.scheme?.id || 'NONE',
+                schemeName: initialFinance?.scheme?.name || undefined,
+                bankName: initialFinance?.bank?.name || undefined,
+                financeLogic: initialFinance?.logic || (initialFinance ? 'RESOLVED_DEFAULT' : 'NOT_RESOLVED'),
+                leadId: searchParams.get('leadId') || undefined,
+                dealerId: searchParams.get('dealerId') || undefined,
+                tenantId: product?.dealership_id || product?.make || 'NOT_SET',
+                pageId: `${product?.make}/${product?.model}/${product?.variant}`,
+                userId: typeof window !== 'undefined' ? localStorage.getItem('userId') || 'GUEST' : 'GUEST'
+            };
+        }
+    }, [registrationRule, initialFinance, searchParams]);
 
     // Color Config & Price Override
     const activeColorConfig = colors.find(c => c.id === selectedColor) || colors[0] || {} as any;
@@ -132,19 +139,81 @@ export function usePDPData({
 
     const rtoEstimates = regType === 'BH' ? pricingData.rtoBharat.total : pricingData.rtoState.total;
     const rtoBreakdown = regType === 'BH' ? pricingData.rtoBharat.items : pricingData.rtoState.items;
-    const baseInsurance = pricingData.insuranceComp.total;
-    const insuranceBreakdown = pricingData.insuranceComp.items;
+    const insuranceComp = pricingData.insuranceComp || {} as any;
+    const insuranceGstRate = Number(
+        insuranceComp.gstRate
+        ?? insuranceRule?.gstPercentage
+        ?? 18
+    );
+    const applyInsuranceGst = (amount: number) => Math.round(amount + (amount * insuranceGstRate / 100));
+
+    const odBase = Number(insuranceComp.odTotal || 0);
+    const tpBase = Number(insuranceComp.tpTotal || 0);
+    const odWithGst = Number(insuranceComp.odTotalWithGst || applyInsuranceGst(odBase));
+    const tpWithGst = Number(insuranceComp.tpTotalWithGst || applyInsuranceGst(tpBase));
+
+    const baseInsurance = Number(insuranceComp.baseTotal || applyInsuranceGst(odBase + tpBase));
+    const insuranceBreakdown = [
+        { label: 'Liability Only', amount: tpWithGst, detail: `${insuranceComp.tpTenure || 5}Y Cover` },
+        { label: 'Comprehensive', amount: odWithGst, detail: `${insuranceComp.odTenure || 1}Y Cover` }
+    ];
     const otherCharges = 0; // Defaulting to 0 since it's not in the engine yet
 
-    // Mapping Insurance Rule Addons to UI Format
-    const availableInsuranceAddons = insuranceRule?.addons?.map(a => ({
-        id: a.id,
-        name: a.label,
-        price: a.type === 'FIXED' ? (a.amount || 0) : Math.round((a.percentage || 0) * (a.basis === 'EX_SHOWROOM' ? baseExShowroom : 100000) / 100),
-        description: a.type === 'PERCENTAGE' ? `${a.percentage}% of ${a.basis}` : 'Fixed Coverage',
-        discountPrice: 0,
-        isMandatory: false
-    })) || [];
+    const addonAmountMap = new Map<string, number>(
+        (insuranceComp.addonItems || [])
+            .map((i: any) => [i.componentId || i.label, Number(i.amount || 0)])
+    );
+
+    // Mapping Insurance Rule Addons to UI Format (GST inclusive)
+    const availableInsuranceAddons = insuranceRule?.addons?.map(a => {
+        const inclusionType = (a as any).inclusion_type || (a as any).inclusionType || 'OPTIONAL';
+        const baseAmount = addonAmountMap.get(a.id) ?? addonAmountMap.get(a.label) ?? (
+            a.type === 'FIXED'
+                ? (a.amount || 0)
+                : Math.round((a.percentage || 0) * (a.basis === 'EX_SHOWROOM' ? baseExShowroom : 100000) / 100)
+        );
+        const priceWithGst = applyInsuranceGst(baseAmount);
+        const gstAmount = Math.max(0, priceWithGst - baseAmount);
+
+        return {
+            id: a.id,
+            name: a.label,
+            price: priceWithGst,
+            description: a.type === 'PERCENTAGE' ? `${a.percentage}% of ${a.basis}` : 'Fixed Coverage',
+            discountPrice: 0,
+            isMandatory: inclusionType === 'MANDATORY',
+            inclusionType: inclusionType,
+            breakdown: [
+                { label: 'Base Premium', amount: baseAmount },
+                { label: `GST (${insuranceGstRate}%)`, amount: gstAmount }
+            ]
+        };
+    }) || [];
+
+    const insuranceRequiredItems = [
+        {
+            id: 'insurance-tp',
+            name: `Liability Only (${insuranceComp.tpTenure || 5} Years Cover)`,
+            price: tpWithGst,
+            description: 'Mandatory',
+            isMandatory: true,
+            breakdown: [
+                { label: 'Base Premium', amount: tpBase },
+                { label: `GST (${insuranceGstRate}%)`, amount: Math.max(0, tpWithGst - tpBase) }
+            ]
+        },
+        {
+            id: 'insurance-od',
+            name: `Comprehensive (${insuranceComp.odTenure || 1} Year${(insuranceComp.odTenure || 1) > 1 ? 's' : ''} Cover)`,
+            price: odWithGst,
+            description: 'Mandatory',
+            isMandatory: true,
+            breakdown: [
+                { label: 'Base Premium', amount: odBase },
+                { label: `GST (${insuranceGstRate}%)`, amount: Math.max(0, odWithGst - odBase) }
+            ]
+        }
+    ];
 
     const insuranceAddonsPrice = availableInsuranceAddons
         .filter(a => selectedInsuranceAddons.includes(a.id))
@@ -153,9 +222,42 @@ export function usePDPData({
     const accessoriesPrice = activeAccessories
         .filter(acc => selectedAccessories.includes(acc.id))
         .reduce((sum, acc) => {
+            // Priority 1: Zero price if BUNDLE logic applies (assuming the backend sends isFree or inclusionType)
+            // The previous check "inclusionType === 'BUNDLE'" returns sum (adding 0).
+            // However, we need to ensure that if it has a price but is 'free' due to bundle, it enters as 0.
+
+            // If the item is marked as bundled, it's free.
+
             const qty = quantities[acc.id] || 1;
-            const price = (acc.discountPrice || 0) > 0 ? (acc.discountPrice || 0) : (acc.price || 0);
-            return sum + (price * qty);
+            // Priority 2: Discount Price (Effective Price)
+            // If discountPrice is present (and >= 0), use it. otherwise use price.
+            // Note: Some legacy data might have discountPrice: 0 meaning NO discount. 
+            // We should check if discountPrice is arguably set. 
+            // Better logic: `isActiveOffer ? discountPrice : price` but here we assume pre-calculated.
+
+            // FIX: The user saw "-₹0" and "Line Total ₹2500" for an item that should be free?
+            // If "Activa Silver" (bundled) was shown, it probably had inclusionType='BUNDLE'.
+            // In that case, this reducer adds 0. So the TOTAL on road is correct (it didn't add 2500).
+            // BUT the UI "Line Total" in MasterPDP might be calculating it differently?
+            // MasterPDP says: `Math.max(billedAmount, finalPrice)` where billedAmount = finalPrice * qty.
+
+            // Let's ensure consistency.
+            const effectivePrice = (acc.discountPrice !== undefined && acc.discountPrice < acc.price)
+                ? acc.discountPrice
+                : acc.price;
+
+            return sum + (effectivePrice * qty);
+        }, 0);
+
+    const accessoriesDiscount = activeAccessories
+        .filter(acc => selectedAccessories.includes(acc.id))
+        .reduce((sum, acc) => {
+            const qty = quantities[acc.id] || 1;
+            const effectivePrice = (acc.discountPrice !== undefined && acc.discountPrice < acc.price)
+                ? acc.discountPrice
+                : acc.price;
+            const discount = Math.max(0, (acc.price || 0) - (effectivePrice || 0));
+            return sum + (discount * qty);
         }, 0);
 
     const servicesPrice = activeServices
@@ -166,28 +268,106 @@ export function usePDPData({
             return sum + (price * qty);
         }, 0);
 
+    const servicesDiscount = activeServices
+        .filter(s => selectedServices.includes(s.id))
+        .reduce((sum, s) => {
+            const qty = quantities[s.id] || 1;
+            const base = s.price || 0;
+            const effective = (s.discountPrice || 0) > 0 ? (s.discountPrice || 0) : base;
+            const discount = Math.max(0, base - effective);
+            return sum + (discount * qty);
+        }, 0);
+
+    const insuranceAddonsDiscount = availableInsuranceAddons
+        .filter(a => selectedInsuranceAddons.includes(a.id))
+        .reduce((sum, a) => {
+            const base = a.price || 0;
+            const effective = (a.discountPrice || 0) > 0 ? (a.discountPrice || 0) : base;
+            const discount = Math.max(0, base - effective);
+            return sum + discount;
+        }, 0);
+
     const colorDiscount = activeColorConfig.dealerOffer || activeColorConfig.pricingOverride?.dealerOffer || 0;
-    const offersDiscount = selectedOffers
-        .map(id => offerOptions.find(o => o.id === id))
-        .filter(Boolean)
+
+    // Offers are now provided via initialServices/initialAccessories, removing legacy mock lookup
+    const activeOffers = selectedOffers
+        .map(id => initialServices?.find((s: ServiceOption) => s.id === id))
+        .filter(Boolean) as ServiceOption[];
+
+    const offersDiscount = activeOffers
         .reduce((sum, o) => sum + (o?.discountPrice || 0), 0);
 
     const totalOnRoad = baseExShowroom + rtoEstimates + baseInsurance + insuranceAddonsPrice + accessoriesPrice + servicesPrice + otherCharges - colorDiscount - offersDiscount;
+    const totalSavings = colorDiscount + offersDiscount + accessoriesDiscount + servicesDiscount + insuranceAddonsDiscount;
 
-    // EMI
-    const minDownPayment = Math.round(totalOnRoad * 0.1);
-    const maxDownPayment = Math.round(totalOnRoad * 0.9);
-    const defaultDownPayment = Math.round(totalOnRoad * 0.2);
+    // Dynamic Finance Logic
+    const financeScheme = initialFinance?.scheme;
+
+    // Calculate Max Allowed Loan based on Scheme Criteria (Lower of LTV or Amount)
+    const ltvMaxLoan = (totalOnRoad * (financeScheme?.maxLTV ?? 100)) / 100;
+    const capMaxLoan = financeScheme?.maxLoanAmount || 300000;
+    const maxAllowedLoan = Math.min(ltvMaxLoan, capMaxLoan);
+
+    // EMI & Down Payment Constraints
+    // Min Down Payment is the gap between On-Road and Max Allowed Loan
+    const minDownPayment = Math.max(0, Math.round(totalOnRoad - maxAllowedLoan));
+    const maxDownPayment = Math.round(totalOnRoad * 0.95);
+    // REQUIREMENT: Default to Zero unless user overrides
+    const defaultDownPayment = 0;
+
     const downPayment = userDownPayment !== null
         ? Math.min(Math.max(userDownPayment, minDownPayment), maxDownPayment)
         : defaultDownPayment;
 
     const loanAmount = totalOnRoad - downPayment;
-    const annualInterest = 0.095;
+    const annualInterest = financeScheme ? (financeScheme.interestRate / 100) : 0.095;
     const monthlyRate = annualInterest / 12;
-    const emi = loanAmount > 0
-        ? Math.round((loanAmount * monthlyRate * Math.pow(1 + monthlyRate, emiTenure)) / (Math.pow(1 + monthlyRate, emiTenure) - 1))
-        : 0;
+
+    // EMI Calculation (handle FLAT vs REDUCING)
+    let emi = 0;
+    if (loanAmount > 0) {
+        if (financeScheme?.interestType === 'FLAT') {
+            const totalInterest = (loanAmount * (financeScheme.interestRate / 100) * (emiTenure / 12));
+            emi = Math.round((loanAmount + totalInterest) / emiTenure);
+        } else {
+            emi = Math.round((loanAmount * monthlyRate * Math.pow(1 + monthlyRate, emiTenure)) / (Math.pow(1 + monthlyRate, emiTenure) - 1));
+        }
+    }
+
+    // Dynamic Charges Calculation - Consolidate all into "Processing Charges"
+    const allCharges = (financeScheme?.charges || []);
+    let totalChargeAmount = 0;
+    const chargeBreakup: string[] = [];
+
+    allCharges.forEach(charge => {
+        let amount = 0;
+        if (charge.calculationBasis === 'FIXED') {
+            amount = charge.value;
+        } else if (charge.type === 'PERCENTAGE') {
+            const basisAmount = charge.calculationBasis === 'LOAN_AMOUNT' ? loanAmount : totalOnRoad;
+            amount = Math.round(basisAmount * (charge.value / 100));
+        } else {
+            amount = charge.value;
+        }
+
+        totalChargeAmount += amount;
+
+        const taxInfo = charge.taxStatus === 'INCLUSIVE'
+            ? ` (incl. ${charge.taxRate}% GST)`
+            : charge.taxStatus === 'EXCLUSIVE'
+                ? ` + ${charge.taxRate}% GST`
+                : '';
+
+        chargeBreakup.push(`${charge.name}: ₹${Math.round(amount).toLocaleString()}${taxInfo}`);
+    });
+
+    const financeCharges = allCharges.length > 0 ? [{
+        id: 'processing_charges',
+        label: 'Processing Charges',
+        value: Math.round(totalChargeAmount),
+        isDeduction: false,
+        helpText: chargeBreakup.join(' • ')
+    }] : [];
 
     const [isReferralActive, setIsReferralActive] = useState(false);
 
@@ -219,16 +399,23 @@ export function usePDPData({
             servicesPrice,
             offersDiscount,
             colorDiscount,
+            accessoriesDiscount,
+            servicesDiscount,
+            insuranceAddonsDiscount,
+            totalSavings,
             totalOnRoad,
             downPayment,
             minDownPayment,
             maxDownPayment,
             emi,
             annualInterest,
+            interestType: financeScheme?.interestType,
             loanAmount,
+            financeCharges, // Newly exposed
             activeAccessories,
             activeServices,
             availableInsuranceAddons,
+            insuranceRequiredItems,
             warrantyItems: product?.specs?.warranty || [],
             regType,
             emiTenure,
@@ -239,7 +426,9 @@ export function usePDPData({
             selectedOffers,
             quantities,
             userDownPayment,
-            isReferralActive
+            isReferralActive,
+            initialFinance,
+            pricingSource: registrationRule?.state_code ? 'MARKET_RULES' : 'ESTIMATE'
         },
         actions: {
             setSelectedColor: handleColorChange,

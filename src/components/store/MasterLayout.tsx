@@ -18,6 +18,9 @@ interface StoreDesktopProps {
     variant?: 'default' | 'tv';
 }
 
+const ROTATION_SPEED = 0.0045;
+const ROTATION_REFRESH_INTERVAL = 80;
+
 export function MasterLayout() {
     const { items, skuCount } = useCatalog();
     const { brands } = useBrands();
@@ -31,28 +34,42 @@ export function MasterLayout() {
     // Brands Section Visual Hooks
     const [hoveredBrand, setHoveredBrand] = useState<string | null>(null);
     const [drumRotation, setDrumRotation] = useState(0);
+    const rotationRef = React.useRef(0);
+    const commitRotation = React.useCallback(
+        (value: number) => {
+            rotationRef.current = value;
+            setDrumRotation(value);
+        },
+        [setDrumRotation]
+    );
     const [isSnapping, setIsSnapping] = useState(false);
 
     // Brands Drum Animation Loop (State-driven)
     React.useEffect(() => {
         let rafId: number;
-        let lastTime = Date.now();
+        let lastTime = performance.now();
+        let lastRender = performance.now();
 
         const animate = () => {
-            const now = Date.now();
+            const now = performance.now();
             const delta = now - lastTime;
             lastTime = now;
 
             if (!hoveredBrand && !isSnapping) {
-                // Slower, consistent rotation when not hovered (approx 80s per revolution)
-                setDrumRotation(prev => prev - delta * 0.0045);
+                const nextRotation = rotationRef.current - delta * ROTATION_SPEED;
+                rotationRef.current = nextRotation;
+                if (now - lastRender >= ROTATION_REFRESH_INTERVAL) {
+                    lastRender = now;
+                    commitRotation(nextRotation);
+                }
             }
+
             rafId = requestAnimationFrame(animate);
         };
 
         rafId = requestAnimationFrame(animate);
         return () => cancelAnimationFrame(rafId);
-    }, [hoveredBrand]);
+    }, [hoveredBrand, isSnapping, commitRotation]);
 
     // Protocol Section Visual Hooks
     const [activeStep, setActiveStep] = useState<number | null>(0); // Default to 0, but user can clear it
@@ -623,7 +640,7 @@ export function MasterLayout() {
                                                     if (!isAtFront) {
                                                         // If side card clicked, bring it to front
                                                         setIsSnapping(true);
-                                                        setDrumRotation(-angle);
+                                                        commitRotation(-angle);
                                                         // Release snapping lock after transition completes
                                                         setTimeout(() => setIsSnapping(false), 1000);
                                                     } else {

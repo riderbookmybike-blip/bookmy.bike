@@ -15,6 +15,7 @@ import {
     MapPin,
     Bluetooth,
     ArrowRight,
+    Sparkles, // Added Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { checkServiceability } from '@/actions/serviceArea';
@@ -39,6 +40,7 @@ interface CatalogDesktopProps {
     filters: CatalogFilters;
     variant?: 'default' | 'tv';
     initialItems?: ProductVariant[]; // Added for SSR Hydration
+    leadId?: string;
 }
 
 const StarRating = ({ rating = 4.5, size = 10 }: { rating?: number; size?: number }) => {
@@ -64,6 +66,7 @@ export const ProductCard = ({
     onLocationClick,
     isTv = false,
     bestOffer,
+    leadId,
 }: {
     v: ProductVariant;
     viewMode: 'grid' | 'list';
@@ -72,7 +75,8 @@ export const ProductCard = ({
     serviceability?: { status: 'loading' | 'serviceable' | 'unserviceable' | 'unset'; location?: string; distance?: number };
     onLocationClick?: () => void;
     isTv?: boolean;
-    bestOffer?: { price: number; dealer: string; isServiceable: boolean };
+    bestOffer?: { price: number; dealer: string; dealerId?: string; isServiceable: boolean; bundleValue?: number; bundlePrice?: number };
+    leadId?: string;
 }) => {
     const { isFavorite, toggleFavorite } = useFavorites();
     const isSaved = isFavorite(v.id);
@@ -88,13 +92,28 @@ export const ProductCard = ({
         return randomFactor * 100;
     });
 
-    const marketAdjustedPrice = bestOffer ? (v.price?.onRoad || 0) + bestOffer.price : (v.price?.offerPrice || v.price?.onRoad || v.price?.exShowroom || 0);
+    const marketAdjustedPrice = bestOffer
+        ? (v.price?.onRoad || 0) + bestOffer.price + (bestOffer.bundlePrice || 0)
+        : (v.price?.offerPrice || v.price?.onRoad || v.price?.exShowroom || 0);
     const basePrice = marketAdjustedPrice;
-
+    const pricingLabel = serviceability?.location || v.price?.pricingSource || 'India';
+    const locationLabel = pricingLabel.toUpperCase();
+    const cleanedLocation = pricingLabel.replace(/^Best:\s*/i, '').trim();
+    const districtLabel = cleanedLocation.split(',')[0]?.trim();
+    const dealerLabel = bestOffer?.dealer?.trim();
+    const dealerLabelDisplay = dealerLabel ? `STUDIO ${dealerLabel}` : 'UNASSIGNED';
+    const districtLabelDisplay = districtLabel || 'UNKNOWN';
     // Savings calculation
     const onRoad = v.price?.onRoad || 0;
     const offerPrice = v.price?.offerPrice || basePrice;
-    const savings = onRoad - offerPrice;
+
+    // Calculate savings based on source (Live Best Offer vs Server/Mapped Data)
+    const bundleSavings = bestOffer
+        ? Math.max(0, (bestOffer.bundleValue || 0) - (bestOffer.bundlePrice || 0))
+        : (v.price?.bundleSavings || 0);
+    const savings = bestOffer
+        ? Math.abs(bestOffer.price) + bundleSavings
+        : (v.price?.totalSavings || (onRoad - offerPrice));
 
     // Continuous EMI Flip Logic
     const TENURE_OPTIONS = [12, 24, 36, 48, 60];
@@ -231,7 +250,7 @@ export const ProductCard = ({
                                                     Lowest in {v.price?.pricingSource || serviceability?.location?.split(',')[0]}
                                                 </span>
                                                 <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                                                    by {bestOffer.dealer}
+                                                    by {bestOffer.dealer.startsWith('STUDIO') ? bestOffer.dealer : `STUDIO ${bestOffer.dealer}`}
                                                 </span>
                                             </div>
                                         ) : (
@@ -240,9 +259,9 @@ export const ProductCard = ({
                                                     <span className="text-[10px] font-bold text-slate-400 line-through">
                                                         ₹{v.price.onRoad.toLocaleString('en-IN')}
                                                     </span>
-                                                    {v.price.pricingSource && (
+                                                    {(serviceability?.location || v.price.pricingSource) && (
                                                         <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-0.5">
-                                                            Price for {v.price.pricingSource}
+                                                            Price for {pricingLabel}
                                                         </span>
                                                     )}
                                                 </div>
@@ -266,6 +285,30 @@ export const ProductCard = ({
                                     </div>
                                 </div>
                             </div>
+                            <div className="mt-2">
+                                <div className="relative group/location inline-flex">
+                                    <span
+                                        className="inline-flex items-center gap-1 rounded-full border border-brand-primary/30 bg-brand-primary/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.35em] text-brand-primary max-w-full truncate"
+                                        title={locationLabel}
+                                    >
+                                        <MapPin size={14} />
+                                        {locationLabel}
+                                    </span>
+                                    {(dealerLabel || districtLabel) && (
+                                        <div className="absolute bottom-full left-0 mb-2 w-52 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-[10px] text-slate-700 dark:text-slate-200 shadow-xl opacity-0 invisible group-hover/location:opacity-100 group-hover/location:visible transition-all duration-200 pointer-events-none">
+                                            <div className="px-3 py-2 space-y-1">
+                                                <p className="font-bold uppercase tracking-widest text-slate-500">
+                                                    Studio ID: <span className="text-slate-900 dark:text-white">{dealerLabelDisplay}</span>
+                                                </p>
+                                                <p className="font-bold uppercase tracking-widest text-slate-500">
+                                                    District: <span className="text-slate-900 dark:text-white">{districtLabelDisplay}</span>
+                                                </p>
+                                            </div>
+                                            <div className="absolute bottom-0 left-6 translate-y-1/2 rotate-45 w-2.5 h-2.5 bg-white dark:bg-slate-900 border-b border-r border-slate-200 dark:border-white/10" />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                         <div className="flex items-center gap-6">
                             {isUnserviceable ? (
@@ -280,7 +323,9 @@ export const ProductCard = ({
                                     href={buildProductUrl({
                                         make: v.make,
                                         model: v.model,
-                                        variant: v.variant
+                                        variant: v.variant,
+                                        pincode: serviceability?.status === 'serviceable' ? serviceability.location : undefined,
+                                        leadId: leadId
                                     }).url}
                                     className="px-10 py-4 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(244,176,0,0.3)] hover:shadow-[0_0_30px_rgba(244,176,0,0.5)] hover:-translate-y-1 transition-all"
                                 >
@@ -305,13 +350,13 @@ export const ProductCard = ({
             className={`group bg-white dark:bg-[#0f1115] border border-black/[0.04] dark:border-white/10 rounded-[2rem] overflow-hidden flex flex-col shadow-[0_1px_2px_rgba(0,0,0,0.02),0_4px_12px_rgba(0,0,0,0.03),0_12px_24px_-4px_rgba(0,0,0,0.08)] dark:shadow-none hover:shadow-[0_20px_40px_-12px_rgba(244,176,0,0.15)] hover:border-brand-primary/30 transition-all duration-700 hover:-translate-y-2 ${isTv ? 'min-h-[640px]' : 'min-h-[520px] md:min-h-[660px]'}`}
         >
             <div
-                className={`h-[240px] md:h-[344px] lg:h-[384px] bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center relative p-4 border-b border-black/[0.04] dark:border-white/5 overflow-hidden group/card`}
+                className="h-[240px] md:h-[344px] lg:h-[384px] bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center relative p-4 border-b border-black/[0.04] dark:border-white/5 overflow-hidden group/card"
             >
                 <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-white/10 dark:to-black/30 z-0" />
 
                 <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
-                    {/* Savings Badge - Now using direct discount field for reliability */}
-                    {((v.price?.discount || 0) > 0) && (
+                    {/* Primary Discount Pill (from catalog data) */}
+                    {((v.price?.discount || 0) > 0) && !bestOffer && (
                         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 dark:bg-emerald-600 text-white rounded-xl shadow-[0_4px_12px_rgba(16,185,129,0.3)] border border-emerald-400/30 transition-all hover:scale-105">
                             <Zap size={10} className="fill-white text-white" />
                             <span className="text-[10px] font-black uppercase tracking-wider">
@@ -347,6 +392,41 @@ export const ProductCard = ({
                         </motion.div>
                     </button>
                 </div>
+
+                {bestOffer && bestOffer.price !== 0 && (
+                    <motion.div
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ duration: 0.3 }}
+                        className={`absolute top-4 left-4 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border shadow-lg ${bestOffer.price < 0
+                            ? 'bg-emerald-500 dark:bg-emerald-600 text-white border-emerald-400/30'
+                            : 'bg-rose-500 dark:bg-rose-600 text-white border-rose-400/30'
+                            }`}
+                    >
+                        <motion.div
+                            animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.2, 1] }}
+                            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                            className="flex items-center justify-center"
+                        >
+                            {bestOffer.price < 0 ? (
+                                <Sparkles size={12} className="fill-white text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+                            ) : (
+                                <Zap size={12} className="fill-white text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+                            )}
+                        </motion.div>
+                        <span className="text-[10px] font-black uppercase tracking-wider relative z-10">
+                            {bestOffer.price < 0 ? 'SAVE' : 'SURGE'} ₹{Math.abs(bestOffer.price).toLocaleString('en-IN')}
+                        </span>
+                        {/* Shimmer Effect */}
+                        <div className="absolute inset-0 w-full h-full overflow-hidden rounded-xl pointer-events-none">
+                            <motion.div
+                                animate={{ x: ['-150%', '300%'] }}
+                                transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
+                                className="w-1/3 h-full bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12"
+                            />
+                        </div>
+                    </motion.div>
+                )}
 
                 <motion.img
                     initial={{ scale: 1.05, opacity: 0 }}
@@ -414,10 +494,19 @@ export const ProductCard = ({
                         )}
                     </div>
 
-                    <div className="flex items-center mt-1">
+                    <div className="flex flex-col mt-1">
                         <p className="text-[12px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate max-w-full text-left">
                             {v.variant}
                         </p>
+                        {v.suitableFor && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                                {v.suitableFor.split(',').filter(Boolean).map((tag) => (
+                                    <span key={tag} className="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-md text-[8px] font-black uppercase tracking-wider border border-indigo-100 dark:border-indigo-800/50 italic">
+                                        {tag.trim()}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -431,12 +520,25 @@ export const ProductCard = ({
                                 ₹{basePrice.toLocaleString('en-IN')}
                             </span>
                         </div>
-                        {v.price?.pricingSource && (
-                            <div className="flex items-center gap-1.5 mt-2 bg-slate-100 dark:bg-white/5 px-2 py-1 rounded-lg w-fit border border-slate-200/50 dark:border-white/5">
+                        {(serviceability?.location || v.price?.pricingSource) && (
+                            <div className="relative group/location flex items-center gap-1.5 mt-2 bg-slate-100 dark:bg-white/5 px-2 py-1 rounded-lg w-fit border border-slate-200/50 dark:border-white/5">
                                 <MapPin size={12} className="text-brand-primary animate-bounce-subtle" />
                                 <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest italic">
-                                    {v.price.pricingSource}
+                                    {pricingLabel}
                                 </p>
+                                {(dealerLabel || districtLabel) && (
+                                    <div className="absolute bottom-full left-0 mb-2 w-52 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-[10px] text-slate-700 dark:text-slate-200 shadow-xl opacity-0 invisible group-hover/location:opacity-100 group-hover/location:visible transition-all duration-200 pointer-events-none z-50">
+                                        <div className="px-3 py-2 space-y-1">
+                                            <p className="font-bold uppercase tracking-widest text-slate-500">
+                                                Studio ID: <span className="text-slate-900 dark:text-white">{dealerLabelDisplay}</span>
+                                            </p>
+                                            <p className="font-bold uppercase tracking-widest text-slate-500">
+                                                District: <span className="text-slate-900 dark:text-white">{districtLabelDisplay}</span>
+                                            </p>
+                                        </div>
+                                        <div className="absolute bottom-0 left-6 translate-y-1/2 rotate-45 w-2.5 h-2.5 bg-white dark:bg-slate-900 border-b border-r border-slate-200 dark:border-white/10" />
+                                    </div>
+                                )}
                             </div>
                         )}
                         {v.price?.isEstimate && (
@@ -486,7 +588,9 @@ export const ProductCard = ({
                             href={buildProductUrl({
                                 make: v.make,
                                 model: v.model,
-                                variant: v.variant
+                                variant: v.variant,
+                                pincode: serviceability?.status === 'serviceable' ? serviceability.location : undefined,
+                                leadId: leadId
                             }).url}
                             className="group/btn relative w-full h-10 md:h-11 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 transition-all"
                         >
@@ -509,7 +613,7 @@ export const ProductCard = ({
 // ... ProductCard ends above ...
 
 
-export const MasterCatalog = ({ filters, variant: _variant = 'default', initialItems = [] }: CatalogDesktopProps) => {
+export const MasterCatalog = ({ filters, variant: _variant = 'default', initialItems = [], leadId }: CatalogDesktopProps) => {
     // 1. Initialize with SSR Data (Instant Render)
     const { items: clientItems, isLoading: isClientLoading } = useCatalog();
 
@@ -570,7 +674,7 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [marketOffers, setMarketOffers] = useState<Record<string, { price: number; dealer: string; dealerId?: string; isServiceable: boolean }>>({});
+    const [marketOffers, setMarketOffers] = useState<Record<string, { price: number; dealer: string; dealerId?: string; isServiceable: boolean; bundleValue?: number; bundlePrice?: number }>>({});
     const AUMS_DEALER_ID = 'f3e6e266-3ca5-4c67-91ce-b7cc98e30ee5';
 
     // Fetch Market Offers when Serviceability Updates
@@ -587,13 +691,15 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                 });
 
                 if (!error && data) {
-                    const offerMap: Record<string, { price: number; dealer: string; dealerId?: string; isServiceable: boolean }> = {};
+                    const offerMap: Record<string, { price: number; dealer: string; dealerId?: string; isServiceable: boolean; bundleValue?: number; bundlePrice?: number }> = {};
                     data.forEach((item: any) => {
                         offerMap[item.vehicle_color_id] = {
                             price: Number(item.best_offer), // Ensure number
                             dealer: item.dealer_name,
                             dealerId: item.dealer_id,
-                            isServiceable: item.is_serviceable
+                            isServiceable: item.is_serviceable,
+                            bundleValue: Number(item.bundle_value || 0),
+                            bundlePrice: Number(item.bundle_price ?? item.bundle_value ?? 0)
                         };
                     });
                     setMarketOffers(offerMap);
@@ -849,75 +955,79 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-[#0b0d10] transition-colors duration-500 font-sans">
-            <main className="flex-1 mx-auto w-full max-w-[1440px] px-6 pt-12 md:pt-16 pb-10 md:pb-16">
-                <header className="sticky top-[var(--header-h)] z-40 -mx-6 px-6 py-5 backdrop-blur-xl bg-slate-50/80 dark:bg-[#0b0d10]/80 border-b border-slate-200 dark:border-white/5 mb-12 transition-all duration-300">
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                        {/* Left: Category Chips */}
-                        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar mask-gradient-right">
-                            <button
-                                onClick={() => setSelectedBodyTypes([])}
-                                className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeCategory === 'ALL'
-                                    ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-md'
-                                    : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10'
-                                    }`}
-                            >
-                                All Types
-                            </button>
-                            {(['MOTORCYCLE', 'SCOOTER', 'MOPED'] as const).map(option => (
-                                <button
-                                    key={option}
-                                    onClick={() =>
-                                        setSelectedBodyTypes(activeCategory === option ? [] : [option])
-                                    }
-                                    className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeCategory === option
-                                        ? 'bg-[#F4B000] text-black shadow-lg shadow-[#F4B000]/20 scale-105'
-                                        : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10'
-                                        }`}
-                                >
-                                    {option}
-                                </button>
-                            ))}
-                        </div>
+            <main className="flex-1 mx-auto w-full max-w-[1440px] px-6 pt-12 md:pt-32 pb-10 md:pb-16">
+                <header className="sticky top-[var(--header-h)] z-40 mb-12 transition-all duration-300">
+                    <div className="w-full">
+                        <div className="rounded-[2rem] bg-slate-50/80 dark:bg-[#0b0d10]/80 backdrop-blur-xl border border-slate-200 dark:border-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.08)] px-6 py-4">
+                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                {/* Left: Category Chips */}
+                                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar mask-gradient-right">
+                                    <button
+                                        onClick={() => setSelectedBodyTypes([])}
+                                        className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeCategory === 'ALL'
+                                            ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-md'
+                                            : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10'
+                                            }`}
+                                    >
+                                        All Types
+                                    </button>
+                                    {(['MOTORCYCLE', 'SCOOTER', 'MOPED'] as const).map(option => (
+                                        <button
+                                            key={option}
+                                            onClick={() =>
+                                                setSelectedBodyTypes(activeCategory === option ? [] : [option])
+                                            }
+                                            className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeCategory === option
+                                                ? 'bg-[#F4B000] text-black shadow-lg shadow-[#F4B000]/20 scale-105'
+                                                : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10'
+                                                }`}
+                                        >
+                                            {option}
+                                        </button>
+                                    ))}
+                                </div>
 
-                        {/* Right: Sort + Filters + Count */}
-                        <div className="flex items-center gap-4 flex-shrink-0">
-                            {/* Sort Dropdown */}
-                            <div className="hidden md:flex items-center bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full px-3 py-2">
-                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mr-2">Sort:</span>
-                                <select
-                                    value={sortBy}
-                                    onChange={(e) => setSortBy(e.target.value as any)}
-                                    className="bg-transparent text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white focus:outline-none cursor-pointer"
-                                >
-                                    <option value="popular">Popularity</option>
-                                    <option value="price">Price: Low to High</option>
-                                    <option value="emi">EMI: Low to High</option>
-                                </select>
+                                {/* Right: Sort + Filters + Count */}
+                                <div className="flex items-center gap-4 flex-shrink-0">
+                                    {/* Sort Dropdown */}
+                                    <div className="hidden md:flex items-center bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full px-3 py-2">
+                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mr-2">Sort:</span>
+                                        <select
+                                            value={sortBy}
+                                            onChange={(e) => setSortBy(e.target.value as any)}
+                                            className="bg-transparent text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white focus:outline-none cursor-pointer"
+                                        >
+                                            <option value="popular">Popularity</option>
+                                            <option value="price">Price: Low to High</option>
+                                            <option value="emi">EMI: Low to High</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="h-6 w-px bg-slate-200 dark:bg-white/10 hidden md:block" />
+
+                                    <button
+                                        onClick={() => setIsFilterOpen(true)}
+                                        className={`relative flex items-center gap-2 px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all ${activeFilterCount > 0
+                                            ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-md'
+                                            : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/10 hover:text-slate-900 dark:hover:text-white'
+                                            }`}
+                                    >
+                                        <SlidersHorizontal size={12} strokeWidth={2.5} />
+                                        <span className="hidden sm:inline">Filters</span>
+                                        {activeFilterCount > 0 && (
+                                            <span className="flex items-center justify-center bg-[#F4B000] text-black w-4 h-4 rounded-full text-[8px]">
+                                                {activeFilterCount}
+                                            </span>
+                                        )}
+                                        {/* Results Count Badge - Only show when filters applied */}
+                                        {activeFilterCount > 0 && (
+                                            <span className="absolute -top-2 -right-2 flex items-center justify-center bg-rose-500 text-white min-w-5 h-5 px-1.5 rounded-full text-[9px] font-black shadow-lg">
+                                                {results.length}
+                                            </span>
+                                        )}
+                                    </button>
+                                </div>
                             </div>
-
-                            <div className="h-6 w-px bg-slate-200 dark:bg-white/10 hidden md:block" />
-
-                            <button
-                                onClick={() => setIsFilterOpen(true)}
-                                className={`relative flex items-center gap-2 px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all ${activeFilterCount > 0
-                                    ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-md'
-                                    : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/10 hover:text-slate-900 dark:hover:text-white'
-                                    }`}
-                            >
-                                <SlidersHorizontal size={12} strokeWidth={2.5} />
-                                <span className="hidden sm:inline">Filters</span>
-                                {activeFilterCount > 0 && (
-                                    <span className="flex items-center justify-center bg-[#F4B000] text-black w-4 h-4 rounded-full text-[8px]">
-                                        {activeFilterCount}
-                                    </span>
-                                )}
-                                {/* Results Count Badge - Only show when filters applied */}
-                                {activeFilterCount > 0 && (
-                                    <span className="absolute -top-2 -right-2 flex items-center justify-center bg-rose-500 text-white min-w-5 h-5 px-1.5 rounded-full text-[9px] font-black shadow-lg">
-                                        {results.length}
-                                    </span>
-                                )}
-                            </button>
                         </div>
                     </div>
                 </header>
@@ -1282,7 +1392,10 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                                     if (offer.dealerId === AUMS_DEALER_ID || offer.dealer?.toUpperCase() === 'AUMS') {
                                         return best;
                                     }
-                                    if (!best || offer.price < best.price) return offer;
+                                    const offerDelta = offer.price + (offer.bundlePrice || 0);
+                                    const bestDelta = best ? (best.price + (best.bundlePrice || 0)) : null;
+                                    if (!best || (bestDelta !== null && offerDelta < bestDelta)) return offer;
+                                    if (!best && offerDelta !== null) return offer;
                                     return best;
                                 }, null);
 
@@ -1297,6 +1410,7 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                                         onLocationClick={() => setIsLocationPickerOpen(true)}
                                         isTv={isTv}
                                         bestOffer={bestVariantOffer || undefined}
+                                        leadId={leadId}
                                     />
                                 );
                             })}
