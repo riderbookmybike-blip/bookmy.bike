@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createQuoteAction } from '@/actions/crm';
 import { toast } from 'sonner';
+import { MobilePDPEnhanced } from '@/components/mobile/pdp/MobilePDPEnhanced';
 
 import { InsuranceRule } from '@/types/insurance';
 
@@ -46,6 +47,16 @@ export default function ProductClient({
     const router = useRouter();
     const leadIdFromUrl = searchParams.get('leadId');
     const [leadContext, setLeadContext] = useState<{ id: string, name: string } | null>(null);
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     useEffect(() => {
         if (leadIdFromUrl) {
@@ -323,7 +334,11 @@ export default function ProductClient({
 
     return (
         <>
-            <MasterPDP {...commonProps} />
+            {isMobile ? (
+                <MobilePDPEnhanced {...commonProps} />
+            ) : (
+                <MasterPDP {...commonProps} />
+            )}
 
             <LeadCaptureModal
                 isOpen={showQuoteSuccess}

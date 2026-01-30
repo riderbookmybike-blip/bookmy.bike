@@ -29,7 +29,7 @@ interface MobilePDPEnhancedProps {
         updateQuantity: (id: string, delta: number, max?: number) => void;
         setRegType: (type: 'STATE' | 'BH' | 'COMPANY') => void;
         setEmiTenure: (months: number) => void;
-        setConfigTab: (tab: string) => void;
+        setConfigTab: any;
         setUserDownPayment: (amount: number) => void;
     };
 }
