@@ -37,6 +37,22 @@ const FinanceTab = dynamic(() => import('./Personalize/Tabs/FinanceTab'), {
     )
 });
 
+const InsuranceTab = dynamic(() => import('./Personalize/Tabs/InsuranceTab'), {
+    loading: () => <div className="h-64 bg-slate-100 dark:bg-white/5 rounded-3xl animate-pulse" />
+});
+
+const RegistrationTab = dynamic(() => import('./Personalize/Tabs/RegistrationTab'), {
+    loading: () => <div className="h-64 bg-slate-100 dark:bg-white/5 rounded-3xl animate-pulse" />
+});
+
+const ServicesTab = dynamic(() => import('./Personalize/Tabs/ServicesTab'), {
+    loading: () => <div className="h-64 bg-slate-100 dark:bg-white/5 rounded-3xl animate-pulse" />
+});
+
+const WarrantyTab = dynamic(() => import('./Personalize/Tabs/WarrantyTab'), {
+    loading: () => <div className="h-64 bg-slate-100 dark:bg-white/5 rounded-3xl animate-pulse" />
+});
+
 interface MasterPDPProps {
     product: any;
     makeParam: string;
@@ -450,169 +466,37 @@ export function MasterPDP({ product, makeParam, modelParam, variantParam, data, 
                     </div>
                 );
             case 'REGISTRATION':
-                // Use rtoOptions if available (Calculated), else fallback to old hardcoded (should not happen if hook is updated)
-                const regItems = (data.rtoOptions && data.rtoOptions.length > 0) ? data.rtoOptions : [
-                    {
-                        id: 'STATE',
-                        name: 'State Registration',
-                        price: Math.round(baseExShowroom * 0.12),
-                        description: 'Standard RTO charges for your state.',
-                    },
-                    {
-                        id: 'BH',
-                        name: 'Bharat Series (BH)',
-                        price: Math.round(baseExShowroom * 0.08),
-                        description: 'For frequent interstate travel.',
-                    },
-                    {
-                        id: 'COMPANY',
-                        name: 'Company Registration',
-                        price: Math.round(baseExShowroom * 0.2),
-                        description: 'Corporate entity registration.',
-                    },
-                ];
-
                 return (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-                        <TabHeader icon={ClipboardList} title="Registration" subtext="Get road-ready" />
-
-                        <div className="space-y-4 mb-10">
-                            <SectionLabel text="Most Popular" />
-                            <ConfigItemRow
-                                item={regItems[0]}
-                                isSelected={regType === 'STATE'}
-                                onToggle={() => setRegType('STATE')}
-                                isRadio
-                                breakdown={regItems[0].breakdown}
-                            />
-                        </div>
-
-                        <div className="space-y-4">
-                            <SectionLabel text="Other Options" />
-                            {regItems.slice(1).map((item: any) => (
-                                <ConfigItemRow
-                                    key={item.id}
-                                    item={item}
-                                    isSelected={regType === item.id}
-                                    onToggle={() => setRegType(item.id as any)}
-                                    isRadio
-                                    breakdown={item.breakdown}
-                                />
-                            ))}
-                        </div>
-                    </div>
+                    <RegistrationTab
+                        regType={regType}
+                        setRegType={setRegType}
+                        baseExShowroom={baseExShowroom}
+                        rtoOptions={data.rtoOptions}
+                        ConfigItemRow={ConfigItemRow}
+                    />
                 );
             case 'INSURANCE':
-                const requiredInsuranceItems = insuranceRequiredItems || [];
-
                 return (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-                        <TabHeader icon={ShieldIcon} title="Insurance" subtext="Secure your journey" />
-
-                        <div className="space-y-4 mb-10">
-                            <SectionLabel text="Required Insurance" />
-                            <div className="space-y-3">
-                                {requiredInsuranceItems.map((item: any) => (
-                                    <ConfigItemRow
-                                        key={item.id}
-                                        item={item}
-                                        isSelected={true}
-                                        onToggle={() => { }}
-                                        isMandatory={true}
-                                        breakdown={item.breakdown}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-
-                        {availableInsuranceAddons.length > 0 && (
-                            <div className="space-y-4">
-                                <SectionLabel text="Extra Coverage (Add-ons)" />
-                                {availableInsuranceAddons.map((i: any) => (
-                                    <ConfigItemRow
-                                        key={i.id}
-                                        item={i}
-                                        isSelected={selectedInsuranceAddons.includes(i.id)}
-                                        onToggle={() => toggleInsuranceAddon(i.id)}
-                                        isMandatory={i.isMandatory}
-                                        breakdown={i.breakdown}
-                                    />
-                                ))}
-                            </div>
-                        )}
-                    </div>
+                    <InsuranceTab
+                        insuranceRequiredItems={insuranceRequiredItems || []}
+                        availableInsuranceAddons={availableInsuranceAddons}
+                        selectedInsuranceAddons={selectedInsuranceAddons}
+                        toggleInsuranceAddon={toggleInsuranceAddon}
+                        ConfigItemRow={ConfigItemRow}
+                    />
                 );
             case 'SERVICES':
-                const freeServiceSchedule = activeServices.filter((s: any) => s.isMandatory || s.price === 0);
-                const paidServices = activeServices.filter((s: any) => !s.isMandatory && s.price > 0);
-
                 return (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-                        <TabHeader icon={Wrench} title="Services" subtext="Maintenance & Protection" />
-
-                        <div className="space-y-4 mb-10">
-                            <SectionLabel text="Standard Care (Free)" />
-                            {freeServiceSchedule.map((srv: any) => (
-                                <ConfigItemRow
-                                    key={srv.id}
-                                    item={srv}
-                                    isSelected={true}
-                                    onToggle={() => { }}
-                                    isMandatory={true}
-                                />
-                            ))}
-                        </div>
-
-                        <div className="space-y-4">
-                            <SectionLabel text="AMC Plans & Protection" />
-                            {paidServices.map((srv: ServiceOption) => (
-                                <ConfigItemRow
-                                    key={srv.id}
-                                    item={srv}
-                                    isSelected={selectedServices.includes(srv.id)}
-                                    onToggle={() => toggleService(srv.id)}
-                                />
-                            ))}
-                        </div>
-                    </div>
+                    <ServicesTab
+                        activeServices={activeServices}
+                        selectedServices={selectedServices}
+                        toggleService={toggleService}
+                        ConfigItemRow={ConfigItemRow}
+                    />
                 );
             case 'OFFERS':
             case 'WARRANTY':
-                return (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-                        <TabHeader icon={Gift} title="Warranty" subtext="Peace of mind guaranteed" />
-
-                        <div className="space-y-4 mb-10">
-                            <SectionLabel text="Manufacturer Warranty Details" />
-                            {warrantyItems.length > 0 ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {warrantyItems.map((w: any, idx: number) => (
-                                        <div key={idx} className="bg-white/[0.03] border border-white/5 p-6 rounded-[2rem] flex flex-col gap-2">
-                                            <div className="w-10 h-10 rounded-xl bg-brand-primary/10 flex items-center justify-center text-brand-primary mb-2">
-                                                <ShieldCheck size={20} />
-                                            </div>
-                                            <p className="text-sm font-black uppercase italic tracking-tighter text-white">{w.label}</p>
-                                            <div className="flex gap-4 mt-2">
-                                                <div className="flex flex-col">
-                                                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Coverage</span>
-                                                    <span className="text-sm font-black font-mono text-brand-primary">{w.days} Days</span>
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Usage Limit</span>
-                                                    <span className="text-sm font-black font-mono text-brand-primary">{w.km} KM</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="p-8 text-center bg-white/[0.03] rounded-[2rem] border border-white/5">
-                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Standard manufacturer warranty applies</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                );
+                return <WarrantyTab warrantyItems={warrantyItems} />;
             default:
                 return null;
         }
