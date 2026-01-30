@@ -264,25 +264,109 @@ const DetailsSection = ({ product }: { product: any }) => (
 
 // Section 3: Pricing
 const PricingSection = ({ product }: { product: any }) => {
+    const [expandedItem, setExpandedItem] = useState<string | null>(null);
     const price = product.price || { onRoad: 85000, exShowroom: 70000, rto: 8000, insurance: 5000, other: 2000 };
+    const colors = product.availableColors || [{ name: 'Black', hexCode: '#000000' }];
+    const [selectedColorIndex, setSelectedColorIndex] = useState(0);
+
+    const breakdownItems = [
+        { id: 'exShowroom', label: 'Ex-Showroom Price', value: price.exShowroom, icon: '🏪' },
+        { id: 'rto', label: 'Registration (RTO)', value: price.rto, icon: '📋' },
+        { id: 'insurance', label: 'Insurance', value: price.insurance, icon: '🛡️' },
+        { id: 'other', label: 'Other Charges', value: price.other, icon: '📦' },
+    ];
 
     return (
-        <div className="w-full h-full bg-zinc-50 overflow-y-auto p-6 pt-20">
-            <h2 className="text-2xl font-black text-zinc-900 mb-6">Pricing</h2>
-
-            {/* On-Road Price */}
-            <div className="bg-white rounded-2xl p-6 mb-4">
-                <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">On-Road Price</p>
-                <p className="text-4xl font-black text-zinc-900">₹{(price.onRoad / 100000).toFixed(2)}L</p>
+        <div className="w-full h-full bg-white overflow-y-auto">
+            {/* Header with gradient */}
+            <div className="bg-gradient-to-br from-zinc-900 to-zinc-800 p-6 pt-20 pb-8">
+                <h2 className="text-2xl font-black text-white mb-2">Pricing Details</h2>
+                <p className="text-sm text-zinc-400">Complete price breakdown</p>
             </div>
 
-            {/* Breakdown */}
-            <div className="bg-white rounded-2xl p-6 space-y-3">
-                <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Breakdown</p>
-                <PriceRow label="Ex-Showroom" value={price.exShowroom} />
-                <PriceRow label="RTO" value={price.rto} />
-                <PriceRow label="Insurance" value={price.insurance} />
-                <PriceRow label="Other Charges" value={price.other} />
+            <div className="p-6 space-y-6">
+                {/* On-Road Price Card */}
+                <div className="bg-gradient-to-br from-zinc-900 to-zinc-800 rounded-2xl p-6 text-white">
+                    <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">On-Road Price</p>
+                    <p className="text-5xl font-black mb-4">₹{(price.onRoad / 100000).toFixed(2)}L</p>
+                    <div className="flex items-center gap-2 text-xs text-emerald-400">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                        <span>Inclusive of all charges</span>
+                    </div>
+                </div>
+
+                {/* Color Selector */}
+                {colors.length > 1 && (
+                    <div>
+                        <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3">Available Colors</p>
+                        <div className="flex gap-3 overflow-x-auto pb-2">
+                            {colors.map((color: any, idx: number) => (
+                                <button
+                                    key={idx}
+                                    onClick={() => setSelectedColorIndex(idx)}
+                                    className={`shrink-0 flex flex-col items-center gap-2 ${selectedColorIndex === idx ? 'opacity-100' : 'opacity-40'
+                                        }`}
+                                >
+                                    <div
+                                        className={`w-12 h-12 rounded-full border-2 ${selectedColorIndex === idx ? 'border-zinc-900 scale-110' : 'border-zinc-300'
+                                            }`}
+                                        style={{ backgroundColor: color.hexCode }}
+                                    />
+                                    <span className="text-xs font-medium text-zinc-600">{color.name}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Breakdown */}
+                <div>
+                    <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3">Price Breakdown</p>
+                    <div className="space-y-2">
+                        {breakdownItems.map((item) => (
+                            <div key={item.id} className="bg-zinc-50 rounded-xl overflow-hidden">
+                                <button
+                                    onClick={() => setExpandedItem(expandedItem === item.id ? null : item.id)}
+                                    className="w-full p-4 flex items-center justify-between"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-2xl">{item.icon}</span>
+                                        <div className="text-left">
+                                            <p className="text-sm font-bold text-zinc-900">{item.label}</p>
+                                            <p className="text-xs text-zinc-500">Tap for details</p>
+                                        </div>
+                                    </div>
+                                    <p className="text-lg font-black text-zinc-900">₹{item.value.toLocaleString()}</p>
+                                </button>
+
+                                {expandedItem === item.id && (
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        className="px-4 pb-4 text-xs text-zinc-600"
+                                    >
+                                        <div className="bg-white rounded-lg p-3 space-y-1">
+                                            <div className="flex justify-between">
+                                                <span>Base Amount:</span>
+                                                <span className="font-bold">₹{item.value.toLocaleString()}</span>
+                                            </div>
+                                            <p className="text-zinc-400 mt-2">Standard charges applicable</p>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Total Summary */}
+                <div className="bg-zinc-100 rounded-2xl p-4">
+                    <div className="flex justify-between items-center">
+                        <span className="text-sm font-bold text-zinc-600">Total On-Road</span>
+                        <span className="text-2xl font-black text-zinc-900">₹{price.onRoad.toLocaleString()}</span>
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -357,8 +441,8 @@ const EMISection = ({ product }: { product: any }) => {
                             key={t}
                             onClick={() => setTenure(t)}
                             className={`w-full p-4 rounded-2xl border-2 transition-all ${isSelected
-                                    ? 'bg-zinc-900 border-zinc-900'
-                                    : 'bg-white border-zinc-200'
+                                ? 'bg-zinc-900 border-zinc-900'
+                                : 'bg-white border-zinc-200'
                                 }`}
                         >
                             <div className="flex justify-between items-center">
@@ -399,20 +483,357 @@ const EMISection = ({ product }: { product: any }) => {
     );
 };
 
-const AccessoriesSection = ({ product }: { product: any }) => (
-    <div className="w-full h-full flex items-center justify-center bg-zinc-50">
-        <p className="text-zinc-900 text-2xl font-bold">Accessories Section</p>
-    </div>
-);
+const AccessoriesSection = ({ product }: { product: any }) => {
+    const [selectedAccessories, setSelectedAccessories] = useState<string[]>([]);
 
-const InsuranceSection = ({ product }: { product: any }) => (
-    <div className="w-full h-full flex items-center justify-center bg-white">
-        <p className="text-zinc-900 text-2xl font-bold">Insurance Section</p>
-    </div>
-);
+    // Mock accessories data (would come from API)
+    const accessories = product.accessories || [
+        { id: '1', name: 'Crash Guard', brand: 'OEM', price: 2500, image: null, mandatory: false },
+        { id: '2', name: 'Mobile Holder', brand: 'Aftermarket', price: 500, image: null, mandatory: false },
+        { id: '3', name: 'Seat Cover', brand: 'Premium', price: 1200, image: null, mandatory: false },
+        { id: '4', name: 'Helmet', brand: 'STUDDS', price: 1800, image: null, mandatory: true },
+        { id: '5', name: 'Tank Pad', brand: 'OEM', price: 800, image: null, mandatory: false },
+        { id: '6', name: 'LED Fog Lamps', brand: 'Aftermarket', price: 3500, image: null, mandatory: false },
+    ];
 
-const RegistrationSection = ({ product }: { product: any }) => (
-    <div className="w-full h-full flex items-center justify-center bg-zinc-50">
-        <p className="text-zinc-900 text-2xl font-bold">Registration Section</p>
-    </div>
-);
+    const toggleAccessory = (id: string) => {
+        const accessory = accessories.find((a: any) => a.id === id);
+        if (accessory?.mandatory) return; // Can't toggle mandatory items
+
+        setSelectedAccessories(prev =>
+            prev.includes(id) ? prev.filter(aid => aid !== id) : [...prev, id]
+        );
+    };
+
+    // Calculate selected accessories price
+    const selectedPrice = accessories
+        .filter((a: any) => selectedAccessories.includes(a.id) || a.mandatory)
+        .reduce((sum: number, a: any) => sum + a.price, 0);
+
+    // Sort: selected first, then mandatory
+    const sortedAccessories = [...accessories].sort((a: any, b: any) => {
+        const aSelected = selectedAccessories.includes(a.id) || a.mandatory;
+        const bSelected = selectedAccessories.includes(b.id) || b.mandatory;
+        if (aSelected && !bSelected) return -1;
+        if (!aSelected && bSelected) return 1;
+        if (a.mandatory && !b.mandatory) return -1;
+        if (!a.mandatory && b.mandatory) return 1;
+        return 0;
+    });
+
+    return (
+        <div className="w-full h-full bg-white overflow-y-auto pb-24">
+            {/* Header */}
+            <div className="bg-gradient-to-br from-amber-500 to-orange-500 p-6 pt-20 pb-8">
+                <h2 className="text-2xl font-black text-white mb-2">Accessories</h2>
+                <p className="text-sm text-white/80">Customize your ride</p>
+            </div>
+
+            <div className="p-6">
+                {/* Grid */}
+                <div className="grid grid-cols-2 gap-3">
+                    {sortedAccessories.map((item: any) => {
+                        const isSelected = selectedAccessories.includes(item.id) || item.mandatory;
+                        const isMandatory = item.mandatory;
+
+                        return (
+                            <button
+                                key={item.id}
+                                onClick={() => toggleAccessory(item.id)}
+                                disabled={isMandatory}
+                                className={`relative p-4 rounded-2xl border-2 transition-all text-left ${isSelected
+                                    ? 'bg-amber-50 border-amber-500'
+                                    : 'bg-zinc-50 border-zinc-200'
+                                    } ${isMandatory ? 'opacity-60' : ''}`}
+                            >
+                                {/* Checkmark */}
+                                <div className={`absolute top-2 right-2 w-6 h-6 rounded-full border-2 flex items-center justify-center ${isSelected
+                                    ? 'bg-amber-500 border-amber-500'
+                                    : 'border-zinc-300'
+                                    }`}>
+                                    {isSelected && (
+                                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    )}
+                                </div>
+
+                                {/* Image placeholder */}
+                                <div className="w-full aspect-square bg-zinc-200 rounded-xl mb-3 flex items-center justify-center">
+                                    <span className="text-4xl">🛠️</span>
+                                </div>
+
+                                {/* Name */}
+                                <h3 className="text-sm font-black text-zinc-900 mb-1 pr-6">{item.name}</h3>
+
+                                {/* Brand tag */}
+                                {item.brand && (
+                                    <span className="inline-block text-[9px] px-2 py-0.5 rounded bg-zinc-200 text-zinc-600 font-bold uppercase mb-2">
+                                        {item.brand}
+                                    </span>
+                                )}
+
+                                {/* Mandatory badge */}
+                                {isMandatory && (
+                                    <span className="block text-[8px] px-2 py-0.5 rounded bg-zinc-800 text-white font-bold uppercase mb-2 w-fit">
+                                        REQUIRED
+                                    </span>
+                                )}
+
+                                {/* Price */}
+                                <p className={`text-lg font-black ${isSelected ? 'text-amber-600' : 'text-zinc-900'}`}>
+                                    ₹{item.price.toLocaleString()}
+                                </p>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* Sticky Bottom Summary */}
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 p-6">
+                <div className="flex justify-between items-center mb-3">
+                    <div>
+                        <p className="text-xs text-zinc-500 uppercase tracking-widest">Total Accessories</p>
+                        <p className="text-2xl font-black text-zinc-900">₹{selectedPrice.toLocaleString()}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-xs text-zinc-500">{selectedAccessories.filter(id =>
+                            !accessories.find((a: any) => a.id === id)?.mandatory
+                        ).length + accessories.filter((a: any) => a.mandatory).length} items</p>
+                        <p className="text-sm text-amber-600 font-bold">Selected</p>
+                    </div>
+                </div>
+                <button className="w-full h-12 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-black text-sm uppercase tracking-wider">
+                    Continue
+                </button>
+            </div>
+        </div>
+    );
+};
+
+const InsuranceSection = ({ product }: { product: any }) => {
+    const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+
+    // Mock insurance data
+    const requiredInsurance = {
+        name: 'Comprehensive Insurance',
+        price: 5000,
+        description: 'Third-party + Own damage cover'
+    };
+
+    const addons = [
+        { id: '1', name: 'Zero Depreciation', price: 1500, description: 'No depreciation on claims' },
+        { id: '2', name: 'Roadside Assistance', price: 800, description: '24/7 breakdown support' },
+        { id: '3', name: 'Engine Protection', price: 2000, description: 'Engine & gearbox cover' },
+        { id: '4', name: 'Return to Invoice', price: 1200, description: 'Full invoice value on total loss' },
+    ];
+
+    const toggleAddon = (id: string) => {
+        setSelectedAddons(prev =>
+            prev.includes(id) ? prev.filter(aid => aid !== id) : [...prev, id]
+        );
+    };
+
+    const totalPrice = requiredInsurance.price + addons
+        .filter(a => selectedAddons.includes(a.id))
+        .reduce((sum, a) => sum + a.price, 0);
+
+    return (
+        <div className="w-full h-full bg-white overflow-y-auto pb-24">
+            {/* Header */}
+            <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-6 pt-20 pb-8">
+                <h2 className="text-2xl font-black text-white mb-2">Insurance</h2>
+                <p className="text-sm text-white/80">Secure your journey</p>
+            </div>
+
+            <div className="p-6 space-y-6">
+                {/* Required Insurance */}
+                <div>
+                    <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3">Required Coverage</p>
+                    <div className="bg-zinc-50 rounded-2xl p-4 border-2 border-zinc-200">
+                        <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mt-1">
+                                <span className="text-xl">🛡️</span>
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-sm font-black text-zinc-900 mb-1">{requiredInsurance.name}</h3>
+                                <p className="text-xs text-zinc-500 mb-2">{requiredInsurance.description}</p>
+                                <span className="inline-block px-2 py-0.5 bg-zinc-800 text-white text-[8px] font-bold uppercase rounded">
+                                    MANDATORY
+                                </span>
+                            </div>
+                            <p className="text-lg font-black text-zinc-900">₹{requiredInsurance.price.toLocaleString()}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Add-ons */}
+                <div>
+                    <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3">Extra Coverage (Optional)</p>
+                    <div className="space-y-3">
+                        {addons.map(addon => {
+                            const isSelected = selectedAddons.includes(addon.id);
+
+                            return (
+                                <button
+                                    key={addon.id}
+                                    onClick={() => toggleAddon(addon.id)}
+                                    className={`w-full p-4 rounded-2xl border-2 transition-all text-left ${isSelected
+                                            ? 'bg-blue-50 border-blue-500'
+                                            : 'bg-zinc-50 border-zinc-200'
+                                        }`}
+                                >
+                                    <div className="flex items-start gap-3">
+                                        {/* Toggle */}
+                                        <div className={`w-12 h-6 rounded-full relative shrink-0 mt-1 transition-colors ${isSelected ? 'bg-blue-500' : 'bg-zinc-300'
+                                            }`}>
+                                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${isSelected ? 'translate-x-6' : 'translate-x-1'
+                                                }`} />
+                                        </div>
+
+                                        <div className="flex-1">
+                                            <h3 className="text-sm font-black text-zinc-900 mb-1">{addon.name}</h3>
+                                            <p className="text-xs text-zinc-500">{addon.description}</p>
+                                        </div>
+
+                                        <p className={`text-lg font-black ${isSelected ? 'text-blue-600' : 'text-zinc-900'
+                                            }`}>₹{addon.price.toLocaleString()}</p>
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+
+            {/* Sticky Bottom */}
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 p-6">
+                <div className="flex justify-between items-center mb-3">
+                    <div>
+                        <p className="text-xs text-zinc-500 uppercase tracking-widest">Total Insurance</p>
+                        <p className="text-2xl font-black text-zinc-900">₹{totalPrice.toLocaleString()}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-xs text-zinc-500">Premium</p>
+                        <p className="text-sm text-blue-600 font-bold">{selectedAddons.length} add-ons</p>
+                    </div>
+                </div>
+                <button className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-black text-sm uppercase tracking-wider">
+                    Continue
+                </button>
+            </div>
+        </div>
+    );
+};
+
+const RegistrationSection = ({ product }: { product: any }) => {
+    const [selectedType, setSelectedType] = useState<'STATE' | 'BH' | 'COMPANY'>('STATE');
+
+    const basePrice = product.price?.exShowroom || 70000;
+
+    const options = [
+        {
+            id: 'STATE' as const,
+            name: 'State Registration',
+            price: Math.round(basePrice * 0.12),
+            description: 'Standard RTO charges for your state',
+            badge: 'POPULAR',
+            badgeColor: 'bg-emerald-500'
+        },
+        {
+            id: 'BH' as const,
+            name: 'Bharat Series (BH)',
+            price: Math.round(basePrice * 0.08),
+            description: 'For frequent interstate travel',
+            badge: null,
+            badgeColor: ''
+        },
+        {
+            id: 'COMPANY' as const,
+            name: 'Company Registration',
+            price: Math.round(basePrice * 0.2),
+            description: 'Corporate entity registration',
+            badge: null,
+            badgeColor: ''
+        },
+    ];
+
+    return (
+        <div className="w-full h-full bg-white overflow-y-auto pb-24">
+            {/* Header */}
+            <div className="bg-gradient-to-br from-green-600 to-emerald-600 p-6 pt-20 pb-8">
+                <h2 className="text-2xl font-black text-white mb-2">Registration</h2>
+                <p className="text-sm text-white/80">Choose your RTO type</p>
+            </div>
+
+            <div className="p-6 space-y-4">
+                {options.map(option => {
+                    const isSelected = selectedType === option.id;
+
+                    return (
+                        <button
+                            key={option.id}
+                            onClick={() => setSelectedType(option.id)}
+                            className={`relative w-full p-5 rounded-2xl border-2 transition-all text-left ${isSelected
+                                    ? 'bg-green-50 border-green-500'
+                                    : 'bg-zinc-50 border-zinc-200'
+                                }`}
+                        >
+                            {/* Badge */}
+                            {option.badge && (
+                                <div className={`absolute -top-2 left-4 ${option.badgeColor} text-white text-[8px] font-black uppercase px-2 py-1 rounded`}>
+                                    {option.badge}
+                                </div>
+                            )}
+
+                            <div className="flex items-start gap-4">
+                                {/* Radio */}
+                                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 mt-1 ${isSelected
+                                        ? 'border-green-500 bg-green-500'
+                                        : 'border-zinc-300'
+                                    }`}>
+                                    {isSelected && (
+                                        <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                                    )}
+                                </div>
+
+                                <div className="flex-1">
+                                    <h3 className="text-lg font-black text-zinc-900 mb-1">{option.name}</h3>
+                                    <p className="text-xs text-zinc-500">{option.description}</p>
+                                </div>
+
+                                <p className={`text-xl font-black ${isSelected ? 'text-green-600' : 'text-zinc-900'
+                                    }`}>₹{option.price.toLocaleString()}</p>
+                            </div>
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Info Card */}
+            <div className="mx-6 mb-24 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                <p className="text-xs text-amber-800">
+                    <span className="font-black">ℹ️ Note:</span> Registration charges may vary based on your location and vehicle specifications.
+                </p>
+            </div>
+
+            {/* Sticky Bottom */}
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 p-6">
+                <div className="flex justify-between items-center mb-3">
+                    <div>
+                        <p className="text-xs text-zinc-500 uppercase tracking-widest">RTO Charges</p>
+                        <p className="text-2xl font-black text-zinc-900">₹{options.find(o => o.id === selectedType)?.price.toLocaleString()}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-xs text-zinc-500">Type</p>
+                        <p className="text-sm text-green-600 font-bold">{selectedType}</p>
+                    </div>
+                </div>
+                <button className="w-full h-12 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-black text-sm uppercase tracking-wider">
+                    Continue
+                </button>
+            </div>
+        </div>
+    );
+};
