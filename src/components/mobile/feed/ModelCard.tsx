@@ -51,18 +51,6 @@ export const ModelCard = ({ variants, isActive }: ModelCardProps) => {
             onTouchMove={onTouchMove}
             onTouchEnd={onTouchEnd}
         >
-            {/* Variant Indicator */}
-            {variants.length > 1 && (
-                <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-black/60 backdrop-blur-lg px-4 py-2 rounded-full">
-                    <span className="text-[9px] font-bold text-white uppercase tracking-widest">
-                        {currentVariant.variant}
-                    </span>
-                    <span className="text-[8px] text-zinc-400">
-                        {activeVariantIdx + 1}/{variants.length}
-                    </span>
-                </div>
-            )}
-
             {/* Current Variant Display */}
             <FullPageDeal
                 product={currentVariant}
