@@ -458,20 +458,22 @@ export default function PricingLedgerTable({
                                         </th>
                                     )}
 
-                                    {!isAums && (
+                                    {/* On-Road Offer - Dealer enters final offer price */}
+                                    <th className="px-6 py-3 text-[9px] font-black text-emerald-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 text-right align-top">
+                                        {activeCategory === 'vehicles' ? (isAums ? 'On-Road' : 'On-Road Offer') : 'Final Price'}
+                                    </th>
+
+                                    {/* Discount - Auto-calculated */}
+                                    {!isAums && activeCategory === 'vehicles' && (
                                         <th className="px-4 py-3 text-[9px] font-black text-purple-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 text-right align-top">
                                             <div className="flex items-center justify-end gap-1 cursor-help group/header">
-                                                Offer <Info size={10} />
+                                                Discount <Info size={10} />
                                                 <div className="absolute top-full right-0 mt-2 w-48 p-2 bg-slate-900 border border-white/10 rounded-xl hidden group-hover/header:block z-50 shadow-xl pointer-events-none normal-case font-normal text-slate-300">
-                                                    Positive (+) for Surge/Premium. Negative (-) for Discount.
+                                                    Auto-calculated: On-Road Base - On-Road Offer
                                                 </div>
                                             </div>
                                         </th>
                                     )}
-
-                                    <th className="px-6 py-3 text-[9px] font-black text-emerald-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 text-right align-top">
-                                        {activeCategory === 'vehicles' ? `On-Road ${isAums ? '' : '(Final)'}` : 'Final Price'}
-                                    </th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
@@ -707,28 +709,50 @@ export default function PricingLedgerTable({
                                                 </td>
                                             )}
 
-                                            {/* Offer Input Cell */}
-                                            {!isAums && (
-                                                <td className="px-4 py-2 text-right">
+                                            {/* On-Road Offer - Editable Final Price */}
+                                            <td className="px-6 py-2 text-right">
+                                                {isAums ? (
+                                                    <span className="font-black text-xs text-emerald-600 dark:text-emerald-400 italic tracking-tight">
+                                                        ₹{activeCategory === 'vehicles'
+                                                            ? (stdCalcs?.onRoadTotal.toLocaleString() || '--')
+                                                            : sku.exShowroom.toLocaleString()}
+                                                    </span>
+                                                ) : activeCategory === 'vehicles' ? (
                                                     <input
                                                         type="number"
-                                                        value={sku.offerAmount || 0}
-                                                        onChange={(e) => onUpdateOffer(sku.id, Number(e.target.value))}
+                                                        value={finalCalcs?.onRoadTotal || 0}
+                                                        onChange={(e) => {
+                                                            // offerAmount = entered value - base on-road
+                                                            const enteredOffer = Number(e.target.value);
+                                                            const baseOnRoad = stdCalcs?.onRoadTotal || 0;
+                                                            const newOfferAmount = enteredOffer - baseOnRoad;
+                                                            onUpdateOffer(sku.id, newOfferAmount);
+                                                        }}
                                                         onFocus={(e) => e.target.select()}
-                                                        className={`w-20 bg-transparent border-b border-dashed border-slate-300 dark:border-white/20 px-1 py-1 text-xs font-bold outline-none focus:border-purple-500 text-right
-                                                        ${(sku.offerAmount || 0) < 0 ? 'text-emerald-500' : (sku.offerAmount || 0) > 0 ? 'text-rose-500' : 'text-slate-400'}
-                                                    `}
-                                                        placeholder="0"
+                                                        className="w-24 bg-emerald-500/5 border border-emerald-500/30 rounded-lg px-2 py-1.5 text-xs font-black text-emerald-600 dark:text-emerald-400 outline-none focus:ring-2 focus:ring-emerald-500/20 text-right"
                                                     />
+                                                ) : (
+                                                    <span className="font-black text-xs text-emerald-600 dark:text-emerald-400 italic tracking-tight">
+                                                        ₹{(sku.exShowroom + (sku.offerAmount || 0)).toLocaleString()}
+                                                    </span>
+                                                )}
+                                            </td>
+
+                                            {/* Discount - Auto-calculated */}
+                                            {!isAums && activeCategory === 'vehicles' && (
+                                                <td className="px-4 py-2 text-right">
+                                                    {(() => {
+                                                        const baseOnRoad = stdCalcs?.onRoadTotal || 0;
+                                                        const offerOnRoad = finalCalcs?.onRoadTotal || 0;
+                                                        const discount = baseOnRoad - offerOnRoad;
+                                                        return (
+                                                            <span className={`font-bold text-xs ${discount > 0 ? 'text-emerald-500' : discount < 0 ? 'text-rose-500' : 'text-slate-400'}`}>
+                                                                {discount !== 0 ? (discount > 0 ? `-${discount.toLocaleString()}` : `+${Math.abs(discount).toLocaleString()}`) : '0'}
+                                                            </span>
+                                                        );
+                                                    })()}
                                                 </td>
                                             )}
-                                            <td className="px-6 py-2 text-right">
-                                                <span className="font-black text-xs text-emerald-600 dark:text-emerald-400 italic tracking-tight">
-                                                    ₹{activeCategory === 'vehicles'
-                                                        ? (finalCalcs?.onRoadTotal.toLocaleString() || '--')
-                                                        : (sku.exShowroom + (sku.offerAmount || 0)).toLocaleString()}
-                                                </span>
-                                            </td>
                                         </tr>
                                     );
                                 })}
@@ -748,6 +772,6 @@ export default function PricingLedgerTable({
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
