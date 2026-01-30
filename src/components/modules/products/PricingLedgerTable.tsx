@@ -277,44 +277,53 @@ export default function PricingLedgerTable({
 
     return (
         <div className="w-full h-full flex flex-col animate-in fade-in duration-700">
-            {/* Modernized Unified Toolbar */}
-            <div className="px-6 pt-6 sticky top-0 z-30 bg-gradient-to-b from-slate-50 via-slate-50/95 to-transparent dark:from-slate-950/50 dark:via-slate-950/40 dark:to-transparent backdrop-blur-sm -mx-6">
-                <div className="flex items-center justify-between px-8 py-4 bg-gradient-to-r from-white via-slate-50/50 to-white dark:from-slate-900/90 dark:via-slate-800/80 dark:to-slate-900/90 border border-slate-200/60 dark:border-white/5 rounded-2xl shadow-xl shadow-slate-900/5 backdrop-blur-xl mb-6">
-                    <div className="flex items-center gap-8">
-                        {/* Compact Filters - Moved to first position */}
-                        <div className="flex items-center gap-3">
-                            <div className="relative">
-                                <Landmark size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            {/* Luxury Premium Toolbar */}
+            <div className="px-6 pt-6 sticky top-0 z-30 bg-gradient-to-b from-[#0a1628] via-[#0a1628]/95 to-transparent backdrop-blur-sm -mx-6">
+                <div className="relative flex items-center justify-between px-8 py-5 bg-gradient-to-br from-[#1a2942] via-[#0f1d33] to-[#1a2942] border-2 border-[#d4af37]/30 rounded-xl shadow-2xl shadow-black/50 mb-6 overflow-hidden">
+                    {/* Leather texture overlay */}
+                    <div className="absolute inset-0 opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0ibGVhdGhlciIgeD0iMCIgeT0iMCIgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIHBhdHRlcm5Vbml0cz0idXNlclNwYWNlT25Vc2UiPjxjaXJjbGUgY3g9IjI1IiBjeT0iMjUiIHI9IjIiIGZpbGw9IiNmZmYiIG9wYWNpdHk9IjAuMyIvPjxjaXJjbGUgY3g9Ijc1IiBjeT0iNzUiIHI9IjEuNSIgZmlsbD0iI2ZmZiIgb3BhY2l0eT0iMC4yIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2xlYXRoZXIpIi8+PC9zdmc+')] pointer-events-none" />
+
+                    <div className="flex items-center gap-8 relative z-10">
+                        {/* Premium Filters */}
+                        <div className="flex items-center gap-4">
+                            <div className="relative group">
+                                <Landmark size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#d4af37] group-hover:text-[#f4e4c1] transition-colors" />
                                 <select
                                     value={selectedStateId}
                                     onChange={(e) => onStateChange(e.target.value)}
-                                    className="pl-8 pr-8 py-1.5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tight focus:ring-2 focus:ring-blue-500/20 outline-none appearance-none cursor-pointer"
+                                    className="pl-11 pr-10 py-2.5 bg-gradient-to-br from-[#0a1628] to-[#1a2942] border-2 border-[#d4af37]/40 hover:border-[#d4af37] rounded-lg text-xs font-bold text-[#f4e4c1] uppercase tracking-wide focus:ring-4 focus:ring-[#d4af37]/20 outline-none appearance-none cursor-pointer transition-all duration-300 shadow-lg shadow-black/30"
                                 >
                                     {states.map((s: RegistrationRule) => (
                                         <option key={s.id} value={s.id}>{s.ruleName}</option>
                                     ))}
                                 </select>
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                    <div className="w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-[#d4af37]" />
+                                </div>
                             </div>
 
                             {/* Status Filter */}
-                            <div className="relative">
-                                <Power size={12} className={`absolute left-3 top-1/2 -translate-y-1/2 ${statusFilter === 'ACTIVE' ? 'text-emerald-500' : 'text-slate-400'}`} />
+                            <div className="relative group">
+                                <Power size={14} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${statusFilter === 'ACTIVE' ? 'text-emerald-400' : 'text-[#d4af37]'}`} />
                                 <select
                                     value={statusFilter}
                                     onChange={(e) => setStatusFilter(e.target.value as any)}
-                                    className="pl-8 pr-8 py-1.5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tight focus:ring-2 focus:ring-blue-500/20 outline-none appearance-none cursor-pointer"
+                                    className="pl-11 pr-10 py-2.5 bg-gradient-to-br from-[#0a1628] to-[#1a2942] border-2 border-[#d4af37]/40 hover:border-[#d4af37] rounded-lg text-xs font-bold text-[#f4e4c1] uppercase tracking-wide focus:ring-4 focus:ring-[#d4af37]/20 outline-none appearance-none cursor-pointer transition-all duration-300 shadow-lg shadow-black/30"
                                 >
                                     <option value="ACTIVE">Active</option>
                                     <option value="INACTIVE">New Launches</option>
                                     <option value="ALL">All Status</option>
                                 </select>
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                    <div className="w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-[#d4af37]" />
+                                </div>
                             </div>
                         </div>
 
-                        <div className="h-6 w-px bg-slate-200 dark:bg-white/10" />
+                        <div className="h-8 w-px bg-gradient-to-b from-transparent via-[#d4af37]/50 to-transparent" />
 
-                        {/* Enhanced Category Tabs */}
-                        <div className="relative flex bg-gradient-to-br from-slate-100 to-slate-50 dark:from-white/5 dark:to-white/10 p-1.5 rounded-2xl shadow-inner">
+                        {/* Classic Category Tabs */}
+                        <div className="flex gap-2">
                             {[
                                 { id: 'vehicles', label: 'Vehicles', icon: Car },
                                 { id: 'accessories', label: 'Accessories', icon: Package },
@@ -323,29 +332,29 @@ export default function PricingLedgerTable({
                                 <button
                                     key={cat.id}
                                     onClick={() => setActiveCategory(cat.id as any)}
-                                    className={`relative flex items-center gap-2.5 px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-300 ${activeCategory === cat.id
-                                        ? 'bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-700 text-indigo-600 dark:text-indigo-400 shadow-lg shadow-indigo-500/10 scale-105'
-                                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:scale-102'
+                                    className={`relative flex items-center gap-2.5 px-6 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 ${activeCategory === cat.id
+                                        ? 'bg-gradient-to-br from-[#d4af37] to-[#b8941f] text-[#0a1628] shadow-xl shadow-[#d4af37]/30 border-2 border-[#f4e4c1]/50'
+                                        : 'bg-gradient-to-br from-[#1a2942]/50 to-[#0a1628]/50 text-[#d4af37]/70 hover:text-[#d4af37] border-2 border-[#d4af37]/20 hover:border-[#d4af37]/40'
                                         }`}
                                 >
-                                    <cat.icon size={14} className={activeCategory === cat.id ? 'drop-shadow-sm' : ''} />
+                                    <cat.icon size={16} strokeWidth={2.5} />
                                     {cat.label}
                                 </button>
                             ))}
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-6 relative z-10">
                         {hasUnsavedChanges && (
                             <div className="flex items-center gap-3">
                                 <button
                                     onClick={handleSave}
                                     disabled={isSaving || isParentSaving}
-                                    className="group relative bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 disabled:from-slate-200 disabled:to-slate-300 dark:disabled:from-slate-800/20 dark:disabled:to-slate-700/20 disabled:text-slate-400 dark:disabled:text-white/20 text-white px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-300 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 active:scale-95 flex items-center gap-2.5 border border-indigo-500/20 disabled:border-transparent disabled:shadow-none overflow-hidden"
+                                    className="group relative bg-gradient-to-br from-[#d4af37] via-[#c9a832] to-[#b8941f] hover:from-[#f4e4c1] hover:via-[#d4af37] hover:to-[#c9a832] disabled:from-slate-700 disabled:to-slate-800 disabled:text-slate-500 text-[#0a1628] px-7 py-3 rounded-lg text-xs font-black uppercase tracking-[0.15em] transition-all duration-300 shadow-2xl shadow-[#d4af37]/40 hover:shadow-[#d4af37]/60 active:scale-95 flex items-center gap-3 border-2 border-[#f4e4c1]/30 disabled:border-transparent disabled:shadow-none overflow-hidden"
                                 >
-                                    <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-                                    {(isSaving || isParentSaving) ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                                    <span>Save Changes</span>
+                                    <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                                    {(isSaving || isParentSaving) ? <Loader2 size={18} className="animate-spin" strokeWidth={2.5} /> : <Save size={18} strokeWidth={2.5} />}
+                                    <span className="relative font-serif" style={{ fontFamily: 'Playfair Display, serif' }}>Save Changes</span>
                                 </button>
                             </div>
                         )}
@@ -353,29 +362,31 @@ export default function PricingLedgerTable({
                 </div>
             </div>
 
-            {/* Enhanced Ledger Table Card */}
+            {/* Luxury Premium Table Card */}
             <div className="flex-1 px-6 pb-6">
-                <div className="h-full bg-gradient-to-br from-white via-slate-50/30 to-white dark:from-slate-900/60 dark:via-slate-800/40 dark:to-slate-900/60 backdrop-blur-md rounded-3xl border border-slate-200/60 dark:border-white/10 shadow-2xl shadow-slate-900/10 relative overflow-hidden flex flex-col">
+                <div className="h-full bg-gradient-to-br from-[#1a2942] via-[#0f1d33] to-[#1a2942] backdrop-blur-md rounded-2xl border-2 border-[#d4af37]/30 shadow-2xl shadow-black/50 relative overflow-hidden flex flex-col">
+                    {/* Subtle pinstripe pattern */}
+                    <div className="absolute inset-0 opacity-5 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNCIgaGVpZ2h0PSI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxIiBoZWlnaHQ9IjQiIGZpbGw9IiNkNGFmMzciLz48L3N2Zz4=')] pointer-events-none" />
                     <div className="overflow-auto scrollbar-thin flex-1">
                         <table className="w-full text-left border-collapse min-w-[1200px]">
-                            <thead className="sticky top-0 z-10 bg-slate-100/80 dark:bg-slate-900/90 backdrop-blur-md">
+                            <thead className="sticky top-0 z-10 bg-gradient-to-r from-[#1a2942] via-[#0f1d33] to-[#1a2942] backdrop-blur-md border-b-2 border-[#d4af37]/40">
                                 <tr>
                                     {/* ... (Checkbox and other headers remain same) ... */}
-                                    <th className="px-4 py-3 w-10 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-200 dark:border-white/10 pl-6">
+                                    <th className="px-4 py-4 w-10 text-[10px] font-black text-[#d4af37] uppercase tracking-[0.2em] border-b-2 border-[#d4af37]/30 pl-6">
                                         <input
                                             type="checkbox"
                                             checked={processedSkus.length > 0 && processedSkus.every(s => selectedSkuIds.has(s.id))}
                                             onChange={toggleAll}
-                                            className="rounded border-slate-300 text-blue-600 focus:ring-0 cursor-pointer w-3 h-3"
+                                            className="rounded border-[#d4af37] text-[#d4af37] focus:ring-2 focus:ring-[#d4af37]/30 cursor-pointer w-3.5 h-3.5"
                                         />
                                     </th>
-                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 text-center w-[80px]">
+                                    <th className="px-4 py-4 text-[10px] font-black text-[#d4af37] uppercase tracking-widest border-b-2 border-[#d4af37]/30 text-center w-[80px]">
                                         Avail.
                                     </th>
                                     {['brand', 'category', 'subCategory', 'model', 'variant', 'color'].map((key) => {
                                         const label = key === 'subCategory' ? 'Sub Category' : key;
                                         return (
-                                            <th key={key} className={`px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 align-top relative ${key === 'subCategory' || key === 'color' ? 'min-w-[140px]' : ''}`}>
+                                            <th key={key} className={`px-4 py-4 text-[10px] font-black text-[#d4af37] uppercase tracking-widest border-b-2 border-[#d4af37]/30 align-top relative ${key === 'subCategory' || key === 'color' ? 'min-w-[140px]' : ''}`}>
                                                 <div className="flex items-center justify-between gap-2 group cursor-pointer">
                                                     <div onClick={() => handleSort(key as keyof SKUPriceRow)} className="flex items-center gap-1 hover:text-blue-500 transition-colors uppercase text-left">
                                                         {label}
