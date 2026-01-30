@@ -8,22 +8,26 @@ export default function EditColorModal({
     onClose,
     onSave,
     initialName,
+    initialStatus,
     existingNames,
     l2Label
 }: {
     isOpen: boolean,
     onClose: () => void,
-    onSave: (newName: string) => void,
+    onSave: (newName: string, newStatus: string) => void,
     initialName: string,
+    initialStatus?: string,
     existingNames: string[],
     l2Label: string
 }) {
     const [name, setName] = useState(initialName);
+    const [status, setStatus] = useState(initialStatus || 'INACTIVE');
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         setName(initialName);
-    }, [initialName]);
+        setStatus(initialStatus || 'INACTIVE');
+    }, [initialName, initialStatus]);
 
     if (!isOpen) return null;
 
@@ -43,7 +47,7 @@ export default function EditColorModal({
             return;
         }
 
-        onSave(trimmedName);
+        onSave(trimmedName, status);
         setError(null);
         onClose();
     };
@@ -72,6 +76,26 @@ export default function EditColorModal({
                             className="w-full px-6 py-4 bg-slate-50 dark:bg-black/20 border-2 border-slate-100 dark:border-white/10 rounded-2xl font-bold text-xl outline-none focus:border-indigo-500 transition-all placeholder:font-normal placeholder:text-slate-300 dark:placeholder:text-slate-600"
                         />
                         {error && <p className="text-red-500 text-[10px] font-black uppercase flex items-center gap-1.5"><AlertCircle size={12} /> {error}</p>}
+                    </div>
+
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">SKU Status</label>
+                        <select
+                            value={status}
+                            onChange={(e) => setStatus(e.target.value)}
+                            className="w-full px-6 py-4 bg-slate-50 dark:bg-black/20 border-2 border-slate-100 dark:border-white/10 rounded-2xl font-bold text-sm outline-none focus:border-indigo-500 transition-all"
+                        >
+                            <option value="INACTIVE">🔒 Inactive (Hidden from Dealers)</option>
+                            <option value="ACTIVE">✅ Active (Visible to Dealers)</option>
+                            <option value="NEW_LAUNCHED">🚀 New Launch (Badge on Marketplace)</option>
+                            <option value="DISCONTINUED">⛔ Discontinued (Historical)</option>
+                        </select>
+                        <p className="text-[9px] text-slate-400 font-medium">
+                            {status === 'INACTIVE' && 'Not visible in dealer pricelists'}
+                            {status === 'ACTIVE' && 'Dealers can set pricing and activate for marketplace'}
+                            {status === 'NEW_LAUNCHED' && 'Shows "NEW" badge on marketplace'}
+                            {status === 'DISCONTINUED' && 'Archived for historical reference only'}
+                        </p>
                     </div>
 
                     <div className="flex gap-4">

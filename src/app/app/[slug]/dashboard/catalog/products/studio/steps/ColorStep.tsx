@@ -60,7 +60,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
         };
     }, []);
 
-    const handleEditColor = async (id: string, newName: string) => {
+    const handleEditColor = async (id: string, newName: string, newStatus: string) => {
         const normalizedName = newName.trim().toUpperCase();
         if (!normalizedName) {
             toast.error(`${l2Label} name is required`);
@@ -77,7 +77,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
         try {
             const supabase = createClient();
             const updatedList = existingColors.map((c: any) =>
-                c.id === id ? { ...c, name: normalizedName, specs: { ...c.specs, [l2Label]: normalizedName } } : c
+                c.id === id ? { ...c, name: normalizedName, status: newStatus, specs: { ...c.specs, [l2Label]: normalizedName } } : c
             );
             onUpdate(updatedList);
 
@@ -85,6 +85,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
             const { error } = await supabase.from('cat_items').update({
                 name: normalizedName,
                 slug: newSlug,
+                status: newStatus,
                 specs: { ...existingColors.find((c: any) => c.id === id).specs, [l2Label]: normalizedName }
             }).eq('id', id);
 
@@ -120,7 +121,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                 name: normalizedName,
                 specs: { [l2Label]: normalizedName, gallery: [], video_urls: [], primary_image: null, hex_primary: '#000000', hex_secondary: null },
                 type: 'COLOR_DEF',
-                status: 'ACTIVE',
+                status: 'INACTIVE',  // NEW: Default to INACTIVE - admin must explicitly activate
                 brand_id: family.brand_id,
                 template_id: family.template_id,
                 parent_id: family.id,
@@ -431,7 +432,21 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                                     </div>
                                     <div>
                                         <h4 className="font-black text-xl text-slate-900 dark:text-white uppercase italic leading-none cursor-help" title={`Name: ${color.name}\nSlug: ${color.slug}`}>{color.name}</h4>
-                                        <div className="flex items-center gap-2 mt-2">
+                                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                            {/* Status Badge */}
+                                            <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${
+                                                color.status === 'ACTIVE' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                                color.status === 'NEW_LAUNCHED' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                                color.status === 'DISCONTINUED' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                                                'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                                            }`}>
+                                                {color.status === 'ACTIVE' && '✅ Active'}
+                                                {color.status === 'NEW_LAUNCHED' && '🚀 New'}
+                                                {color.status === 'DISCONTINUED' && '⛔ Discontinued'}
+                                                {color.status === 'INACTIVE' && '🔒 Inactive'}
+                                                {!color.status && '🔒 Inactive'}
+                                            </span>
+                                            
                                             <input
                                                 type="number"
                                                 value={color.position}
@@ -766,8 +781,9 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                 <EditColorModal
                     isOpen={editModalOpen}
                     onClose={() => { setEditModalOpen(false); setEditingColor(null); }}
-                    onSave={(newName) => handleEditColor(editingColor.id, newName)}
+                    onSave={(newName, newStatus) => handleEditColor(editingColor.id, newName, newStatus)}
                     initialName={editingColor.name}
+                    initialStatus={editingColor.status}
                     existingNames={existingColors.filter((c: any) => c.id !== editingColor.id).map((c: any) => c.name)}
                     l2Label={l2Label}
                 />
