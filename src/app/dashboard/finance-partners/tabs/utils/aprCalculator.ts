@@ -17,6 +17,7 @@ export interface APRCalculation {
     downpayment: number;
     emi: number;
     totalCost: number;
+    totalCostPercentage: number;
     irr: number;
     apr: number;
     isActive: boolean;
@@ -360,7 +361,9 @@ export function calculateAPR(
         netMargin: Math.round(netMargin),
         downpayment: Math.round(downpayment),
         emi: Math.round(emi),
+        emi: Math.round(emi),
         totalCost: Math.round(totalCost),
+        totalCostPercentage: Math.round((totalCost / assetValue) * 10000) / 100, // xx.xx%
         irr: Math.round(irr * 100) / 100,
         apr: Math.round(apr * 100) / 100,
         isActive: scheme.isActive,

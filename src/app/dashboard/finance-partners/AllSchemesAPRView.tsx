@@ -341,8 +341,8 @@ export default function AllSchemesAPRView({ banks }: { banks: any[] }) {
                                     onSort={handleSort}
                                 />
                                 <SortableHeader
-                                    label="Total Cost"
-                                    field="totalCost"
+                                    label="TCC %"
+                                    field="totalCostPercentage"
                                     currentField={sortField}
                                     direction={sortDirection}
                                     onSort={handleSort}
@@ -436,10 +436,10 @@ export default function AllSchemesAPRView({ banks }: { banks: any[] }) {
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="text-lg font-black text-rose-600 dark:text-rose-400">
-                                                ₹{item.totalCost.toLocaleString()}
+                                                {item.totalCostPercentage}%
                                             </div>
-                                            <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
-                                                extra paid
+                                            <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                                                ₹{item.totalCost.toLocaleString()} extra
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
