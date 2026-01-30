@@ -111,7 +111,7 @@ export default function VisualsRow({
                             <button
                                 key={color.id}
                                 onClick={() => onColorSelect(color.id)}
-                                className={`relative w-9 h-9 rounded-xl transition-all duration-500 group/color ${isSelected ? 'scale-110' : 'hover:scale-110'}`}
+                                className={`relative w-12 h-12 rounded-xl transition-all duration-500 group/color ${isSelected ? 'scale-110' : 'hover:scale-110'}`}
                             >
                                 <div
                                     className={`absolute inset-0 rounded-xl border-2 transition-all ${isSelected ? 'border-[#F4B000] scale-125' : 'border-transparent'}`}

@@ -23,7 +23,7 @@ export default function TabNavigation({ tabs, activeTab, onTabChange, className 
                         key={tab.id}
                         onClick={() => onTabChange(tab.id)}
                         className={`
-                            flex-1 w-full text-center px-2 md:px-4 py-2.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all duration-300
+                            flex-1 w-full text-center px-3 md:px-4 py-3 min-h-[48px] rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all duration-300
                             border flex items-center justify-center gap-2
                             ${isActive
                                 ? 'bg-brand-primary border-brand-primary text-black shadow-lg shadow-brand-primary/25 scale-105 z-10'

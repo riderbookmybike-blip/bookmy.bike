@@ -138,7 +138,7 @@ export default function SidebarHUD({
     }
 
     return (
-        <div className="w-[440px] sticky top-[var(--header-h)] glass-panel dark:bg-black/60 rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col animate-in fade-in slide-in-from-right-8 duration-700 h-fit">
+        <div className="hidden lg:block lg:w-[440px] lg:sticky lg:top-[var(--header-h)] glass-panel dark:bg-black/60 rounded-[2.5rem] overflow-hidden shadow-2xl flex-col animate-in fade-in slide-in-from-right-8 duration-700 h-fit lg:flex">
             {/* 1. Global Actions */}
             <div className="p-8 pb-4">
                 <div className="flex items-center justify-end gap-1">
