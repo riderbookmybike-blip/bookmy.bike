@@ -209,7 +209,7 @@ export default function MatrixStep({ family, template, variants, colors, existin
                         hex_secondary: color.specs?.hex_secondary
                     },
                     type: 'SKU',
-                    status: 'ACTIVE',
+                    status: 'INACTIVE',
                     brand_id: family.brand_id,
                     template_id: family.template_id,
                     parent_id: variant.id,
