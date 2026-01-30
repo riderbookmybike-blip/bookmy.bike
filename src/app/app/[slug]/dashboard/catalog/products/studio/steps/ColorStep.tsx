@@ -90,9 +90,10 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
 
             if (error) throw error;
             toast.success('Color updated successfully');
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Update failed:', error);
-            toast.error('Failed to update color: ' + error.message);
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            toast.error('Failed to update color: ' + message);
         } finally {
             setIsSaving(false);
         }
@@ -142,10 +143,11 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                 onUpdate(existingColors.map((c: any) => c.slug === data.slug ? data : c).sort((a: any, b: any) => a.position - b.position));
             }
             toast.success('Color added successfully');
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Add failed:', error);
-            setError(error.message);
-            toast.error('Failed to add color: ' + error.message);
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            setError(message);
+            toast.error('Failed to add color: ' + message);
         } finally {
             setIsSaving(false);
         }
@@ -248,9 +250,10 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
             if (error) throw error;
             toast.success('Color hex updated');
             setPickerOpen(false);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Hex update failed:', error);
-            toast.error('Failed to update hex: ' + error.message);
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            toast.error('Failed to update hex: ' + message);
         }
     };
 
@@ -352,9 +355,10 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                 }
             }
             toast.success('Media saved successfully');
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Media save failed:', error);
-            toast.error('Failed to save media: ' + error.message);
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            toast.error('Failed to save media: ' + message);
         }
     };
 
@@ -469,7 +473,14 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                                         title="Smart Color Picker"
                                         aria-label={`Pick ${l2Label.toLowerCase()} colors for ${color.name}`}
                                     >
-                                        <div className="w-8 h-8 rounded-full shadow-lg border-2 border-white dark:border-white/10" style={{ backgroundColor: color.specs.hex_primary || '#000000' }} />
+                                        <div
+                                            className="w-8 h-8 rounded-full shadow-lg border-2 border-white dark:border-white/10"
+                                            style={{
+                                                background: color.specs.hex_secondary
+                                                    ? `linear-gradient(135deg, ${color.specs.hex_primary || '#000000'} 50%, ${color.specs.hex_secondary} 50%)`
+                                                    : color.specs.hex_primary || '#000000'
+                                            }}
+                                        />
                                     </button>
 
                                     {/* Media Manager (75%) */}
@@ -737,6 +748,9 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                     initialPdfs={activeColor.specs.pdf_urls?.length > 0 ? activeColor.specs.pdf_urls : (family.specs?.pdf_urls ?? [])}
                     initialPrimary={activeColor.specs.primary_image}
                     initialZoomFactor={activeColor.zoom_factor || 1.1}
+                    initialIsFlipped={activeColor.is_flipped || false}
+                    initialOffsetX={activeColor.offset_x || 0}
+                    initialOffsetY={activeColor.offset_y || 0}
 
                     // Inheritance Source
                     inheritedVideos={family.specs?.video_urls || []}

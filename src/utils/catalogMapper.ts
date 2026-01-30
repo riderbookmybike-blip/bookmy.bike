@@ -215,10 +215,31 @@ export function mapCatalogItems(
                         }
                     }
 
-                    // 3. Calculate Final Prices
+                    // 3. Calculate Final Prices with improved fallback
                     const engineCc = family.specs?.engine_cc || 110;
 
-                    const baseExShowroom = activePriceObj?.ex_showroom_price || (variantItem as any).price_base || family.price_base || 0;
+                    // IMPROVED FALLBACK CHAIN:
+                    // Try: cat_prices.ex_showroom_price -> SKU.price_base -> Variant.price_base -> Family.price_base -> 0
+                    let baseExShowroom = 0;
+                    if (activePriceObj?.ex_showroom_price) {
+                        // Best case: location-specific price from cat_prices
+                        baseExShowroom = activePriceObj.ex_showroom_price;
+                    } else {
+                        // Fallback: Use price_base from SKU/Variant/Family hierarchy
+                        // Try first SKU if available
+                        const firstSku = allSkus.length > 0 ? allSkus[0] : null;
+                        baseExShowroom = firstSku?.price_base
+                            || (variantItem as any).price_base
+                            || family.price_base
+                            || 0;
+
+                        // Mark as estimate since we're using base price instead of location-specific
+                        if (baseExShowroom > 0 && !pricingSource) {
+                            const stateName = STATE_NAMES[stateCode] || stateCode;
+                            pricingSource = `Base: ${stateName}`;
+                            isEstimate = true;
+                        }
+                    }
 
                     const standardBreakdown = calculateOnRoad(Number(baseExShowroom), engineCc, effectiveRule, insuranceRule);
                     const onRoadTotal = standardBreakdown.onRoadTotal;
