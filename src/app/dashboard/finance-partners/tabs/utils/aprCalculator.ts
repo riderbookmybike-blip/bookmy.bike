@@ -4,6 +4,7 @@ export interface APRCalculation {
     schemeId: string;
     schemeName: string;
     roi: number;
+    interestType: 'REDUCING' | 'FLAT';
     upfrontCharges: number;
     fundedCharges: number;
     dealerPayout: {
@@ -13,6 +14,7 @@ export interface APRCalculation {
     };
     downpayment: number;
     emi: number;
+    irr: number;
     apr: number;
     isActive: boolean;
     tenure: number;
@@ -254,6 +256,7 @@ export function calculateAPR(
         schemeId: scheme.id,
         schemeName: scheme.name,
         roi: scheme.interestRate,
+        interestType: scheme.interestType,
         upfrontCharges: Math.round(upfrontCharges),
         fundedCharges: Math.round(fundedCharges),
         dealerPayout: {
@@ -265,7 +268,8 @@ export function calculateAPR(
         },
         downpayment: Math.round(downpayment),
         emi: Math.round(emi),
-        apr: Math.round(irr * 100) / 100,
+        irr: Math.round(irr * 100) / 100,
+        apr: Math.round(irr * 100) / 100, // APR is same as IRR for now
         isActive: scheme.isActive,
         tenure,
         assetValue
