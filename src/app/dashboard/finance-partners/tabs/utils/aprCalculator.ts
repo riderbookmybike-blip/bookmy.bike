@@ -15,6 +15,7 @@ export interface APRCalculation {
     };
     netMargin?: number;
     downpayment: number;
+    grossLoanAmount: number;
     emi: number;
     totalCost: number;
     totalCostPercentage: number;
