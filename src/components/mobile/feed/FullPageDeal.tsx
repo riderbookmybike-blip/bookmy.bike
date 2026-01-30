@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Zap, ChevronRight, Info, CheckCircle2, Heart, MapPin, Star, StarHalf, X } from 'lucide-react';
 import Image from 'next/image';
@@ -17,15 +17,30 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
     const { setActiveColorHex } = useActiveColor();
 
     // Adapt database structure to component needs
-    const colors = product.availableColors || [];
+    const rawColors = product.availableColors || [];
 
-    // Find primary color index (matching desktop behavior)
-    const primaryColorIndex = colors.findIndex((c: any) => {
-        // Check if this color has a primary asset
-        return c.imageUrl && c.imageUrl.includes('is_primary');
-    });
+    // Sort colors to put primary color first (the one used in catalogMapper with is_primary asset)
+    // Primary color will have imageUrl from primaryAsset, others from firstImageAsset
+    const colors = useMemo(() => {
+        if (!rawColors.length) return rawColors;
 
-    const [activeColorIdx, setActiveColorIdx] = useState(primaryColorIndex >= 0 ? primaryColorIndex : 0);
+        // Try to find which color is primary by checking various indicators
+        const sorted = [...rawColors];
+
+        // Sort: colors with more complete data (imageUrl, proper name) come first
+        sorted.sort((a: any, b: any) => {
+            // If one has imageUrl and other doesn't, prioritize the one with imageUrl
+            if (a.imageUrl && !b.imageUrl) return -1;
+            if (!a.imageUrl && b.imageUrl) return 1;
+
+            // Both have or both don't have imageUrl, keep original order
+            return 0;
+        });
+
+        return sorted;
+    }, [rawColors]);
+
+    const [activeColorIdx, setActiveColorIdx] = useState(0); // Now 0 is always primary after sorting
     const [isColorSelectorOpen, setIsColorSelectorOpen] = useState(false);
     const [isInfoOpen, setIsInfoOpen] = useState(false);
     const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -392,10 +407,10 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
 
                 <button
                     onClick={() => router.push(`/m/store/${product.make}/${product.model}/${product.variant}`)}
-                    className="w-full h-14 bg-white/10 backdrop-blur-sm border-2 border-white/30 rounded-xl font-black text-white text-xs uppercase tracking-[0.2em] active:scale-[0.98] transition-all mb-4 relative overflow-hidden group hover:bg-white/20"
+                    className="w-full h-14 bg-black border-2 border-black rounded-xl font-black text-white text-xs uppercase tracking-[0.2em] active:scale-[0.98] transition-all mb-4 relative overflow-hidden group hover:bg-zinc-900"
                 >
                     <span className="relative z-10">KNOW MORE</span>
-                    <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                    <div className="absolute inset-0 bg-zinc-800 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
                 </button>
 
                 <div className="flex flex-col items-center gap-3">
