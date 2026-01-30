@@ -308,7 +308,13 @@ export default function SKUMediaManager({
                             <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4">Current Selection</h4>
                             <div className="flex items-center gap-4">
                                 <div className="w-16 h-16 rounded-2xl bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 overflow-hidden">
-                                    <img src={primaryImage || ''} className="w-full h-full object-contain" />
+                                    {primaryImage ? (
+                                        <img src={primaryImage} alt={skuName} className="w-full h-full object-contain" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-slate-400">
+                                            <span className="text-2xl">📦</span>
+                                        </div>
+                                    )}
                                 </div>
                                 <div>
                                     <p className="text-sm font-black text-slate-900 dark:text-white truncate max-w-[150px]">{skuName}</p>
