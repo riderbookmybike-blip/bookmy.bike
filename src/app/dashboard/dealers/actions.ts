@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 
 export async function onboardDealer(formData: {
     dealerName: string;
+    studioId?: string;
     pincode: string;
     adminName: string;
     adminPhone: string;
@@ -41,6 +42,7 @@ export async function onboardDealer(formData: {
                 pincode: formData.pincode,
                 type: 'DEALER',
                 status: 'ACTIVE',
+                display_id: formData.studioId?.trim() || null,
                 config: {},
                 location: `Pincode: ${formData.pincode}`
             })
