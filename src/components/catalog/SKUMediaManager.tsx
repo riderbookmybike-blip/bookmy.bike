@@ -319,10 +319,10 @@ export default function SKUMediaManager({
                                 <div className="w-2 h-2 rounded-full bg-indigo-500" />
                                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Mobile View</span>
                             </div>
-                            <div className="scale-[0.65] origin-top-left transform" style={{ width: '230px' }}>
-                                <div className="bg-white dark:bg-[#0f1115] border border-black/[0.04] dark:border-white/10 rounded-3xl overflow-hidden shadow-lg">
+                            <div className="scale-[0.7] origin-top-left" style={{ width: '300px', height: '450px' }}>
+                                <div className="bg-white dark:bg-[#0f1115] border border-black/[0.04] dark:border-white/10 rounded-[2rem] overflow-hidden flex flex-col shadow-[0_1px_2px_rgba(0,0,0,0.02),0_4px_12px_rgba(0,0,0,0.03),0_12px_24px_-4px_rgba(0,0,0,0.08)] min-h-[520px]">
                                     {/* Image Section */}
-                                    <div className="h-52 bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center relative overflow-hidden">
+                                    <div className="h-[344px] bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center relative p-4 border-b border-black/[0.04] dark:border-white/5 overflow-hidden">
                                         <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-white/10 dark:to-black/30 z-0" />
                                         <motion.img
                                             animate={{
@@ -336,32 +336,35 @@ export default function SKUMediaManager({
                                             alt={skuName}
                                             className="absolute bottom-2 left-1/2 -translate-x-1/2 w-[92%] h-[92%] object-contain z-10"
                                         />
-                                        <span className="absolute font-black text-4xl uppercase tracking-[0.2em] opacity-[0.06] italic text-slate-900 dark:text-white select-none z-0">MOCK</span>
+                                        <span className="absolute font-black text-[70px] uppercase tracking-[0.2em] opacity-[0.06] italic text-slate-900 dark:text-white select-none z-0">MOCK</span>
                                     </div>
 
                                     {/* Content Section */}
-                                    <div className="p-4 space-y-3">
-                                        <div className="flex items-center justify-between">
-                                            <h3 className="text-base font-black uppercase tracking-tighter italic text-slate-900 dark:text-white">{skuName}</h3>
-                                            <div className="flex -space-x-1">
-                                                <div className="w-4 h-4 rounded-full border border-white dark:border-slate-900 bg-red-500" />
-                                                <div className="w-4 h-4 rounded-full border border-white dark:border-slate-900 bg-black" />
+                                    <div className="p-6 flex-1 flex flex-col justify-between bg-[#FAFAFA] dark:bg-[#0f1115]">
+                                        <div>
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white leading-none">{skuName}</h3>
+                                                <div className="flex -space-x-2">
+                                                    <div className="w-5 h-5 rounded-full border border-white dark:border-slate-900 bg-red-500" />
+                                                    <div className="w-5 h-5 rounded-full border border-white dark:border-slate-900 bg-black" />
+                                                </div>
                                             </div>
+                                            <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest mt-1">STANDARD</p>
                                         </div>
-                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">STANDARD • VARIANT</p>
 
-                                        <div className="pt-2 border-t border-slate-100 dark:border-white/5 grid grid-cols-2 gap-3">
+                                        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/5 grid grid-cols-2 gap-4">
                                             <div>
-                                                <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">On-Road</p>
-                                                <span className="text-lg font-black italic text-slate-900 dark:text-white">₹1,50,000</span>
+                                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-0.5 italic">On-Road</p>
+                                                <span className="text-2xl font-black italic text-slate-900 dark:text-white">₹1,50,000</span>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-[8px] font-black text-green-600 uppercase tracking-widest mb-0.5">Lowest EMI</p>
-                                                <span className="text-lg font-black text-green-600">₹5,250</span>
+                                                <p className="text-[10px] font-black text-green-600 uppercase tracking-widest mb-0.5 italic">Lowest EMI</p>
+                                                <span className="text-2xl font-black text-green-600">₹5,250</span>
+                                                <span className="text-[10px] text-slate-400 font-bold uppercase">/mo</span>
                                             </div>
                                         </div>
 
-                                        <button className="w-full h-8 bg-[#F4B000] text-black rounded-lg text-[9px] font-black uppercase tracking-wider shadow-lg">
+                                        <button className="w-full h-11 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-[0_4px_14px_rgba(244,176,0,0.3)] mt-2">
                                             Know More
                                         </button>
                                     </div>
@@ -375,7 +378,7 @@ export default function SKUMediaManager({
                                 <div className="w-2 h-2 rounded-full bg-amber-500" />
                                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Desktop View</span>
                             </div>
-                            <div className="scale-[0.45] origin-top-left transform" style={{ width: '650px' }}>
+                            <div className="scale-[0.5] origin-top-left" style={{ width: '900px', height: '350px' }}>
                                 <div className="bg-white dark:bg-[#0f1115] border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden flex shadow-sm min-h-[22rem]">
                                     {/* Image Section */}
                                     <div className="w-[38%] bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center relative p-8 border-r border-slate-100 dark:border-white/5 overflow-hidden">
@@ -392,31 +395,38 @@ export default function SKUMediaManager({
                                             alt={skuName}
                                             className="w-[85%] h-[85%] object-contain z-10"
                                         />
-                                        <span className="absolute font-black text-7xl uppercase tracking-[0.2em] opacity-[0.06] italic text-slate-900 dark:text-white select-none z-0">MOCK</span>
+                                        <span className="absolute font-black text-[120px] uppercase tracking-[0.2em] opacity-[0.06] italic text-slate-900 dark:text-white select-none z-0">MOCK</span>
                                     </div>
 
                                     {/* Content Section */}
-                                    <div className="flex-1 p-6 flex flex-col justify-between">
-                                        <div className="space-y-4">
-                                            <div className="flex items-center justify-between">
-                                                <div className="space-y-1">
-                                                    <h3 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white">{skuName}</h3>
-                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">STANDARD VARIANT • MOCK COLOR</p>
-                                                </div>
+                                    <div className="flex-1 p-10 flex flex-col justify-between">
+                                        <div>
+                                            <div className="flex items-center gap-4">
+                                                <h3 className="text-3xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white leading-none">{skuName}</h3>
                                             </div>
-
-                                            <div className="grid grid-cols-2 gap-4 py-4 border-y border-slate-100 dark:border-white/10">
-                                                <div><p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Engine</p><p className="text-xs font-black text-slate-900 dark:text-white">125CC</p></div>
-                                                <div><p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Weight</p><p className="text-xs font-black text-slate-900 dark:text-white">115KG</p></div>
-                                            </div>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">STANDARD • MOCK COLOR</p>
                                         </div>
 
-                                        <div className="flex items-center justify-between pt-4">
-                                            <div className="flex gap-8">
-                                                <div><p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">On-Road</p><span className="text-2xl font-black text-slate-900 dark:text-white">₹1,50,000</span></div>
-                                                <div><p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">EMI</p><span className="text-2xl font-black text-brand-primary">₹5,250</span></div>
+                                        <div className="grid grid-cols-2 gap-y-4 gap-x-12 py-6 border-y border-slate-100 dark:border-white/10 bg-slate-50/30 dark:bg-white/[0.02] -mx-10 px-10 mt-4">
+                                            <div><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Engine</p><p className="text-sm font-black text-slate-900 dark:text-white">125CC</p></div>
+                                            <div><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Seat Height</p><p className="text-sm font-black text-slate-900 dark:text-white">780mm</p></div>
+                                            <div><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Weight</p><p className="text-sm font-black text-slate-900 dark:text-white italic">115kg</p></div>
+                                            <div><p className="text-[8px] font-black text-emerald-500/80 uppercase tracking-widest">Total Savings</p><p className="text-sm font-black text-emerald-600 dark:text-emerald-400">₹15,000</p></div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between pt-6">
+                                            <div className="flex gap-16">
+                                                <div>
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">On-Road price</p>
+                                                    <span className="text-3xl font-black text-slate-900 dark:text-white leading-none tracking-tight">₹1,50,000</span>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">EMI</p>
+                                                    <p className="text-3xl font-black text-brand-primary leading-none">₹5,250</p>
+                                                    <p className="text-sm font-black text-slate-500 dark:text-slate-300 uppercase mt-2">x36</p>
+                                                </div>
                                             </div>
-                                            <button className="px-8 py-3 bg-[#F4B000] text-black rounded-2xl text-[9px] font-black uppercase tracking-wider shadow-lg">Know More</button>
+                                            <button className="px-10 py-4 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(244,176,0,0.3)]">Know More</button>
                                         </div>
                                     </div>
                                 </div>
