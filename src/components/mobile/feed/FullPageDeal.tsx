@@ -303,7 +303,7 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                     </div>
                 </div>
 
-                <div className="flex justify-between items-end mb-5 translate-y-1">
+                <div className="flex justify-between items-end mb-3 translate-y-1">
                     <div className="flex flex-col items-start gap-1">
                         <button
                             onClick={(e) => { e.stopPropagation(); setIsInfoOpen(true); }}
