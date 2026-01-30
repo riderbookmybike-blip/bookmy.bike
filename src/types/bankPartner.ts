@@ -47,7 +47,7 @@ export interface BankTeamMember {
 
 export type InterestType = 'REDUCING' | 'FLAT';
 export type ChargeType = 'FIXED' | 'PERCENTAGE' | 'TABLE';
-export type ChargeCalculationBasis = 'LOAN_AMOUNT' | 'GROSS_LOAN_AMOUNT' | 'VEHICLE_PRICE' | 'FIXED';
+export type ChargeCalculationBasis = 'LOAN_AMOUNT' | 'GROSS_LOAN_AMOUNT' | 'VEHICLE_PRICE' | 'DISBURSAL_AMOUNT' | 'FIXED';
 export type ChargeImpact = 'UPFRONT' | 'FUNDED';
 
 export interface SchemeTableEntry {
@@ -94,8 +94,9 @@ export interface BankScheme {
     // Rates & Earnings
     interestRate: number;
     interestType: InterestType;
-    payout: number; // Dealer Payout/Commission (% or Fixed? Assuming % of Loan for now as per industry std, or let's use fixed text for now)
-    payoutType: ChargeType; // 'PERCENTAGE' of Loan OR 'FIXED' amount
+    payout: number; // Dealer Payout/Commission
+    payoutType: ChargeType; // 'PERCENTAGE' or 'FIXED'
+    payoutBasis?: ChargeCalculationBasis; // Basis for percentage calculation (LOAN_AMOUNT, GROSS_LOAN_AMOUNT, DISBURSAL_AMOUNT, FIXED)
 
     // Dynamic Charges (PF, Doc, Stamp, etc.)
     charges: SchemeCharge[];

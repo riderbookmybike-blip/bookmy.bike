@@ -548,24 +548,74 @@ export default function SchemeEditor({ initialScheme, onSave, onCancel, chargesM
                             </div>
                             <p className="text-[9px] text-slate-400 mt-2 italic">Type months and press Enter/Space. Multiple values allowed.</p>
                         </div>
-                        <div>
-                            <label className="text-[10px] uppercase font-black text-slate-500 tracking-widest mb-2 block">Dealer Payout</label>
-                            <div className="flex gap-2">
-                                <input
-                                    type="number"
-                                    value={scheme.payout}
-                                    onChange={e => setScheme({ ...scheme, payout: Number(e.target.value) })}
-                                    className="flex-1 bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-[14px] px-4 py-3 text-slate-900 dark:text-white font-mono font-bold outline-none focus:border-blue-500/50 transition-all"
-                                />
-                                <select
-                                    value={scheme.payoutType}
-                                    onChange={e => setScheme({ ...scheme, payoutType: e.target.value as any })}
-                                    className="bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-[14px] px-3 font-bold text-xs text-slate-500 dark:text-slate-400 outline-none appearance-none"
-                                >
-                                    <option value="PERCENTAGE">%</option>
-                                    <option value="FIXED">₹</option>
-                                </select>
+                        <div className="bg-gradient-to-br from-slate-50 to-white dark:from-black/20 dark:to-slate-900/50 rounded-2xl p-6 border border-slate-200 dark:border-white/5">
+                            <label className="text-[10px] uppercase font-black text-slate-500 tracking-widest mb-4 flex items-center gap-2 block">
+                                Dealer Payout
+                                <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 text-[8px]">Commission</span>
+                            </label>
+
+                            <div className="grid grid-cols-12 gap-3">
+                                {/* Payout Value */}
+                                <div className="col-span-3">
+                                    <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Value</label>
+                                    <input
+                                        type="number"
+                                        value={scheme.payout}
+                                        onChange={e => setScheme({ ...scheme, payout: Number(e.target.value) })}
+                                        className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white font-mono font-bold text-lg outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                                        placeholder="2"
+                                    />
+                                </div>
+
+                                {/* Payout Type (% or ₹) */}
+                                <div className="col-span-2">
+                                    <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Type</label>
+                                    <select
+                                        value={scheme.payoutType}
+                                        onChange={e => setScheme({ ...scheme, payoutType: e.target.value as any })}
+                                        className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-3 font-black text-sm text-slate-600 dark:text-slate-300 outline-none appearance-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                                    >
+                                        <option value="PERCENTAGE">% Perc.</option>
+                                        <option value="FIXED">₹ Fixed</option>
+                                    </select>
+                                </div>
+
+                                {/* Calculation Basis */}
+                                <div className="col-span-7">
+                                    <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Calculation Basis</label>
+                                    <select
+                                        value={scheme.payoutBasis || 'LOAN_AMOUNT'}
+                                        onChange={e => setScheme({ ...scheme, payoutBasis: e.target.value as any })}
+                                        className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 font-bold text-xs text-slate-600 dark:text-slate-400 outline-none appearance-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                                        disabled={scheme.payoutType === 'FIXED'}
+                                    >
+                                        <option value="LOAN_AMOUNT">Loan Amount (After Downpayment)</option>
+                                        <option value="GROSS_LOAN_AMOUNT">Gross Loan Amount (With Charges)</option>
+                                        <option value="DISBURSAL_AMOUNT">Disbursal Amount (Actual Payout)</option>
+                                        <option value="FIXED">Fixed Per Case</option>
+                                    </select>
+                                </div>
                             </div>
+
+                            {/* Example Display */}
+                            {scheme.payout > 0 && (
+                                <div className="mt-4 px-4 py-3 bg-blue-50 dark:bg-blue-500/5 rounded-xl border border-blue-200 dark:border-blue-500/20">
+                                    <p className="text-[9px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-1">
+                                        Example: {scheme.payoutType === 'PERCENTAGE' ? `${scheme.payout}%` : `₹${scheme.payout}`}
+                                        {scheme.payoutType === 'PERCENTAGE' && ` of ${scheme.payoutBasis === 'LOAN_AMOUNT' ? 'Loan Amount' :
+                                                scheme.payoutBasis === 'GROSS_LOAN_AMOUNT' ? 'Gross Loan' :
+                                                    scheme.payoutBasis === 'DISBURSAL_AMOUNT' ? 'Disbursal' :
+                                                        'Fixed Per Case'
+                                            }`}
+                                    </p>
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                                        {scheme.payoutType === 'PERCENTAGE'
+                                            ? `On ₹1,00,000 ${scheme.payoutBasis?.replace(/_/g, ' ').toLowerCase() || 'loan'}: ₹${(100000 * scheme.payout / 100).toLocaleString()}`
+                                            : `Every case pays ₹${scheme.payout.toLocaleString()} commission`
+                                        }
+                                    </p>
+                                </div>
+                            )}
                         </div>
                         <div>
                             <label className="text-[10px] uppercase font-black text-emerald-500 tracking-widest mb-2 block flex items-center gap-2">
@@ -713,8 +763,8 @@ export default function SchemeEditor({ initialScheme, onSave, onCancel, chargesM
 
                                             {/* Impact Badge */}
                                             <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${charge.impact === 'UPFRONT'
-                                                    ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/20'
-                                                    : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20'
+                                                ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/20'
+                                                : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20'
                                                 }`}>
                                                 {charge.impact === 'UPFRONT' ? 'Upfront' : 'Funded'}
                                             </span>
