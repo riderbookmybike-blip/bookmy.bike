@@ -204,6 +204,7 @@ export default function ChargesTab({ partner, onSaveSuccess }: { partner: BankPa
                                     >
                                         <option value="FIXED">Fixed Amount (₹)</option>
                                         <option value="PERCENTAGE">Percentage (%)</option>
+                                        <option value="TABLE">Matrix (Premium Table)</option>
                                     </select>
                                 </div>
                                 <div className="space-y-2">
@@ -233,6 +234,39 @@ export default function ChargesTab({ partner, onSaveSuccess }: { partner: BankPa
                                     >
                                         Funded in Loan
                                     </button>
+                                </div>
+                            </div>
+
+                            {/* GST Configuration */}
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">GST Settings</label>
+                                <div className="flex items-center gap-3">
+                                    <select
+                                        value={newCharge.taxStatus || 'NOT_APPLICABLE'}
+                                        onChange={(e) => setNewCharge({
+                                            ...newCharge,
+                                            taxStatus: e.target.value as any,
+                                            taxRate: e.target.value === 'EXCLUSIVE' ? (newCharge.taxRate || 18) : newCharge.taxRate
+                                        })}
+                                        className="flex-1 bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-2xl px-6 py-4 text-xs font-black uppercase outline-none focus:border-blue-500 transition-all appearance-none"
+                                    >
+                                        <option value="NOT_APPLICABLE">Not Applicable</option>
+                                        <option value="INCLUSIVE">GST Inclusive</option>
+                                        <option value="EXCLUSIVE">GST Exclusive</option>
+                                    </select>
+
+                                    {newCharge.taxStatus && newCharge.taxStatus !== 'NOT_APPLICABLE' && (
+                                        <div className="flex items-center gap-2 bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-2xl px-4 py-4">
+                                            <input
+                                                type="number"
+                                                value={newCharge.taxRate || 0}
+                                                onChange={(e) => setNewCharge({ ...newCharge, taxRate: Number(e.target.value) })}
+                                                className="w-16 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/5 rounded-lg px-3 py-2 text-xs font-mono font-black text-slate-900 dark:text-white outline-none"
+                                                placeholder="18"
+                                            />
+                                            <span className="text-xs font-black text-slate-500">%</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
