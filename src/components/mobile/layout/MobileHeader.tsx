@@ -40,7 +40,7 @@ export const MobileHeader = () => {
 
     return (
         <>
-            <header className="fixed top-0 left-0 right-0 z-[120] flex items-center justify-between px-5 py-4 bg-gradient-to-b from-black/70 via-black/50 to-transparent backdrop-blur-md">
+            <header className="fixed top-0 left-0 right-0 z-[120] flex items-center justify-between px-5 py-4 bg-black/70 backdrop-blur-md">
                 {/* Full Logo on the Left */}
                 <div className="flex-shrink-0">
                     <Logo className="h-6 w-auto" mode={logoMode} />

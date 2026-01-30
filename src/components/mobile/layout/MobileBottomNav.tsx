@@ -18,7 +18,7 @@ export const MobileBottomNav = () => {
     const pathname = usePathname();
 
     return (
-        <nav className="fixed bottom-0 left-0 right-0 z-[110] safe-area-bottom h-[72px] bg-gradient-to-t from-black/80 via-black/60 to-transparent backdrop-blur-lg">
+        <nav className="fixed bottom-0 left-0 right-0 z-[110] safe-area-bottom h-[72px] bg-black/80 backdrop-blur-lg">
             <div className="flex items-center justify-between h-full px-2">
                 {NAV_ITEMS.map((item) => {
                     const Icon = item.icon;

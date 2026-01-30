@@ -210,7 +210,7 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
             </div>
 
             {/* 4. Radical Detail Panel - Compressed Layout */}
-            <div className="relative z-30 px-6 pt-4 pb-12 mt-auto">
+            <div className="relative z-30 px-6 pt-4 pb-24 mt-auto">
                 {/* Brand Logo & Model Info */}
                 <div className="mb-4">
                     {/* Offer Pill (Moved Here - Compressed Margin) */}
