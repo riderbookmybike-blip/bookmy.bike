@@ -3,7 +3,9 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, useEffect, useRef, useState, useMemo } from 'react';
+import dynamic from 'next/dynamic';
+import '@/styles/slider-enhanced.css';
 import Link from 'next/link';
 import {
     ShieldCheck,
@@ -16,6 +18,7 @@ import {
     Gift,
 } from 'lucide-react';
 import DynamicHeader from './Personalize/DynamicHeader';
+import { formatDisplayIdForUI } from '@/lib/displayId';
 import VisualsRow from './Personalize/VisualsRow';
 import TabNavigation from './Personalize/Tabs/TabNavigation';
 import AccessoriesTab from './Personalize/Tabs/AccessoriesTab';
@@ -29,6 +32,7 @@ interface MasterPDPProps {
     modelParam: string;
     variantParam: string;
     data: any;
+    leadContext?: { id: string, name: string };
     handlers: {
         handleColorChange: (id: string) => void;
         handleShareQuote: () => void;
@@ -46,7 +50,10 @@ interface MasterPDPProps {
     };
 }
 
-export function MasterPDP({ product, makeParam, modelParam, variantParam, data, handlers }: MasterPDPProps) {
+export function MasterPDP({ product, makeParam, modelParam, variantParam, data, handlers, leadContext }: MasterPDPProps) {
+    // Configuration Constants
+    const REFERRAL_BONUS = 5000; // Member referral discount amount
+
     const {
         colors,
         selectedColor,
@@ -71,17 +78,25 @@ export function MasterPDP({ product, makeParam, modelParam, variantParam, data, 
         servicesPrice,
         offersDiscount,
         colorDiscount,
+        accessoriesDiscount,
+        servicesDiscount,
+        insuranceAddonsDiscount,
         totalOnRoad,
+        totalSavings: computedTotalSavings,
         downPayment,
         minDownPayment,
         maxDownPayment,
         emi,
         annualInterest,
+        interestType,
         loanAmount,
+        financeCharges,
         activeAccessories,
         activeServices,
         availableInsuranceAddons,
-        warrantyItems
+        insuranceRequiredItems,
+        warrantyItems,
+        initialFinance
     } = data;
 
     const {
@@ -110,14 +125,23 @@ export function MasterPDP({ product, makeParam, modelParam, variantParam, data, 
     const activeColorConfig = colors.find((c: any) => c.id === selectedColor) || colors[0];
 
     const totalMRP =
-        (product.mrp || baseExShowroom + 5000) +
+        (product.mrp || Math.round(baseExShowroom * 1.06)) + // 6% markup if no MRP set
         rtoEstimates +
         baseInsurance +
         accessoriesPrice +
         servicesPrice +
         otherCharges;
 
-    const totalSavings = offersDiscount + colorDiscount + (isReferralActive ? 5000 : 0);
+    const totalSavings = computedTotalSavings ?? (offersDiscount + colorDiscount + (isReferralActive ? REFERRAL_BONUS : 0));
+    const savingsHelpLines = [
+        colorDiscount > 0 ? `Vehicle Offer: ₹${colorDiscount.toLocaleString('en-IN')}` : null,
+        offersDiscount > 0 ? `Offers/Plans: ₹${offersDiscount.toLocaleString('en-IN')}` : null,
+        accessoriesDiscount > 0 ? `Accessories: ₹${accessoriesDiscount.toLocaleString('en-IN')}` : null,
+        servicesDiscount > 0 ? `Services: ₹${servicesDiscount.toLocaleString('en-IN')}` : null,
+        insuranceAddonsDiscount > 0 ? `Insurance Add-ons: ₹${insuranceAddonsDiscount.toLocaleString('en-IN')}` : null,
+        isReferralActive ? `Member Invite: ₹${REFERRAL_BONUS.toLocaleString('en-IN')}` : null,
+        `Total: ₹${totalSavings.toLocaleString('en-IN')}`
+    ].filter(Boolean) as string[];
 
     const priceBreakupData = [
         { label: 'Showroom Price', value: baseExShowroom },
@@ -128,9 +152,7 @@ export function MasterPDP({ product, makeParam, modelParam, variantParam, data, 
         { label: 'Services / AMC', value: servicesPrice },
         ...(otherCharges > 0 ? [{ label: 'Other Charges', value: otherCharges }] : []),
         { label: 'Delivery TAT', value: '7 DAYS', isInfo: true },
-        { label: 'Savings Applied', value: offersDiscount, isDeduction: true },
-        ...(colorDiscount > 0 ? [{ label: 'Color Offer', value: colorDiscount, isDeduction: true }] : []),
-        ...(isReferralActive ? [{ label: 'Member Invite', value: 5000, isDeduction: true }] : []),
+        { label: 'Savings Applied', value: totalSavings, isDeduction: true, helpText: savingsHelpLines },
     ];
 
     const getProductImage = () => {
@@ -198,7 +220,7 @@ export function MasterPDP({ product, makeParam, modelParam, variantParam, data, 
                             <p
                                 className={`text-xs md:text-sm font-black uppercase italic tracking-wider transition-colors ${isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}
                             >
-                                {item.name}
+                                {item.displayName || item.name}
                             </p>
                             {item.description && (
                                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 line-clamp-1">
@@ -298,10 +320,15 @@ export function MasterPDP({ product, makeParam, modelParam, variantParam, data, 
             case 'FINANCE':
                 return (
                     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                        <TabHeader icon={Zap} title="EMI Plan" subtext="Pick what works for you" />
+                        <TabHeader
+                            icon={Zap}
+                            title="FINANCE"
+                            subtext="Pick your EMI plan"
+                        />
 
-                        {/* Slider Row */}
-                        {/* Premium Gold Slider */}
+
+
+                        {/* Premium Down Payment Slider */}
                         <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-[2.5rem] p-8 space-y-6">
                             <div className="flex justify-between items-end">
                                 <div>
@@ -315,87 +342,191 @@ export function MasterPDP({ product, makeParam, modelParam, variantParam, data, 
                                 </div>
                             </div>
 
-                            <div className="relative h-6 flex items-center">
-                                <input
-                                    type="range"
-                                    min={minDownPayment}
-                                    max={maxDownPayment}
-                                    step={1000}
-                                    value={downPayment}
-                                    onChange={e => setUserDownPayment(parseInt(e.target.value))}
-                                    className="w-full h-2 rounded-full appearance-none cursor-pointer relative z-20 bg-transparent focus:outline-none"
-                                    style={{
-                                        WebkitAppearance: 'none',
-                                    }}
-                                />
-                                {/* Custom Track */}
-                                <div className="absolute inset-x-0 h-2 rounded-full overflow-hidden pointer-events-none z-10 bg-slate-200 dark:bg-slate-800">
+                            {/* Slider Container */}
+                            <div className="relative pt-4 pb-2">
+                                {/* Scale Marks */}
+                                <div className="absolute inset-x-0 -top-2 flex justify-between px-1">
+                                    {(() => {
+                                        const marks = [];
+                                        const step = 5000;
+                                        for (let value = minDownPayment; value <= maxDownPayment; value += step) {
+                                            const percent = ((value - minDownPayment) / (maxDownPayment - minDownPayment)) * 100;
+                                            const is10k = value % 10000 === 0;
+                                            marks.push(
+                                                <div
+                                                    key={value}
+                                                    className="absolute flex flex-col items-center"
+                                                    style={{ left: `${percent}%`, transform: 'translateX(-50%)' }}
+                                                >
+                                                    {is10k && (
+                                                        <span className="text-[7px] font-bold text-slate-400 mb-1">
+                                                            {(value / 1000).toFixed(0)}k
+                                                        </span>
+                                                    )}
+                                                    <div
+                                                        className={`w-[1px] ${is10k ? 'h-3 bg-slate-400' : 'h-1.5 bg-slate-300 dark:bg-slate-600'}`}
+                                                    />
+                                                </div>
+                                            );
+                                        }
+                                        return marks;
+                                    })()}
+                                </div>
+
+                                {/* Slider Track - Split Style */}
+                                <div className="relative h-8 flex items-center mt-6">
+                                    {/* Background Track (ahead of thumb - thin) */}
+                                    <div className="absolute inset-x-0 h-1 rounded-full bg-slate-200 dark:bg-slate-800" />
+
+                                    {/* Filled Track (behind thumb - bold) */}
                                     <div
-                                        className="h-full bg-gradient-to-r from-[#F4B000] to-[#FFD700] shadow-[0_0_15px_#F4B000]"
+                                        className="absolute h-2 rounded-full transition-all duration-200"
                                         style={{
                                             width: `${((downPayment - minDownPayment) / (maxDownPayment - minDownPayment)) * 100}%`,
+                                            background: (() => {
+                                                const dpPercent = (downPayment / totalOnRoad) * 100;
+                                                if (dpPercent < 10) return 'linear-gradient(90deg, #ef4444, #f87171)'; // Red
+                                                if (dpPercent < 20) return 'linear-gradient(90deg, #f97316, #fb923c)'; // Orange
+                                                return 'linear-gradient(90deg, #10b981, #34d399)'; // Green
+                                            })(),
+                                            boxShadow: (() => {
+                                                const dpPercent = (downPayment / totalOnRoad) * 100;
+                                                if (dpPercent < 10) return '0 0 15px rgba(239, 68, 68, 0.5)';
+                                                if (dpPercent < 20) return '0 0 15px rgba(249, 115, 22, 0.5)';
+                                                return '0 0 15px rgba(16, 185, 129, 0.5)';
+                                            })()
+                                        }}
+                                    />
+
+                                    {/* Slider Input */}
+                                    <input
+                                        type="range"
+                                        min={minDownPayment}
+                                        max={maxDownPayment}
+                                        step={1000}
+                                        value={downPayment}
+                                        onChange={e => setUserDownPayment(parseInt(e.target.value))}
+                                        className="w-full h-full appearance-none cursor-pointer relative z-20 bg-transparent focus:outline-none slider-enhanced"
+                                        style={{
+                                            WebkitAppearance: 'none',
                                         }}
                                     />
                                 </div>
-                                {/* Thumb Styles injected via style tag for strict control if needed, 
-                                    but standard tailwind accent-color doesn't support complex shadows. 
-                                    Reliance on updated global css or Webkit styles is usually needed for custom thumbs.
-                                    For now, using standard input with refined track. */}
                             </div>
+
                             <div className="flex justify-between text-[9px] font-bold text-slate-400 uppercase tracking-wider">
                                 <span>Min: ₹{minDownPayment.toLocaleString()}</span>
+                                <span className={`font-black ${(downPayment / totalOnRoad) * 100 < 10 ? 'text-red-500' :
+                                    (downPayment / totalOnRoad) * 100 < 20 ? 'text-orange-500' :
+                                        'text-emerald-500'
+                                    }`}>
+                                    {((downPayment / totalOnRoad) * 100).toFixed(1)}% Down
+                                </span>
                                 <span>Max: ₹{maxDownPayment.toLocaleString()}</span>
                             </div>
                         </div>
 
-                        {/* Tenure Grid */}
-                        <div className="grid grid-cols-2 gap-4">
-                            {[24, 36, 48, 60].map(tenure => {
+                        {/* Vertical Tenure Pills */}
+                        <div className="space-y-3">
+                            {(initialFinance?.scheme?.allowedTenures || [24, 36, 48, 60]).map((tenure: number) => {
                                 const emiValue = Math.round(
                                     (loanAmount * (annualInterest / 12) * Math.pow(1 + annualInterest / 12, tenure)) /
                                     (Math.pow(1 + annualInterest / 12, tenure) - 1)
                                 );
+                                const totalPayable = emiValue * tenure;
+                                const totalInterest = totalPayable - loanAmount;
                                 const isSelected = emiTenure === tenure;
 
+                                // Popular tenure badges
+                                let badge = null;
+                                if (tenure === 24) {
+                                    badge = { label: 'POPULAR', color: 'bg-emerald-500', glow: 'shadow-[0_0_15px_rgba(16,185,129,0.4)]' };
+                                } else if (tenure === 30) {
+                                    badge = { label: 'USER CHOICE', color: 'bg-blue-500', glow: 'shadow-[0_0_15px_rgba(59,130,246,0.4)]' };
+                                } else if (tenure === 36) {
+                                    badge = { label: 'BEST VALUE', color: 'bg-purple-500', glow: 'shadow-[0_0_15px_rgba(168,85,247,0.4)]' };
+                                }
+
                                 return (
-                                    <button
+                                    <div
                                         key={tenure}
                                         onClick={() => setEmiTenure(tenure)}
-                                        className={`relative group p-6 rounded-[2rem] border transition-all duration-300 text-left overflow-hidden
+                                        className={`group relative p-4 rounded-[2.5rem] border transition-all duration-300 flex items-center justify-between gap-4 cursor-pointer overflow-visible
                                             ${isSelected
-                                                ? 'bg-brand-primary border-brand-primary shadow-[0_0_20px_rgba(244,176,0,0.2)]'
-                                                : 'bg-white/[0.03] border-slate-200 dark:border-white/5 hover:border-brand-primary/50'
+                                                ? 'bg-brand-primary/5 border-brand-primary/30'
+                                                : 'bg-white/[0.03] border-slate-200 dark:border-white/5 hover:bg-white/[0.05] hover:border-slate-300 dark:hover:border-white/10'
                                             }
                                         `}
                                     >
-                                        <div className="relative z-10 flex flex-col justify-between h-full space-y-4">
-                                            <div className="flex justify-between items-start">
-                                                <span
-                                                    className={`text-4xl font-black italic tracking-tighter ${isSelected ? 'text-black' : 'text-slate-300 dark:text-slate-700'}`}
-                                                >
-                                                    {tenure}
-                                                </span>
+                                        {/* Badge */}
+                                        {badge && (
+                                            <div className={`absolute -top-2 left-16 ${badge.color} ${badge.glow} text-white text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full z-10 animate-pulse`}>
+                                                {badge.label}
+                                            </div>
+                                        )}
+
+                                        <div className="flex-1 flex items-center justify-between gap-6">
+                                            <div className="flex items-center gap-4 min-w-[120px]">
                                                 <div
-                                                    className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${isSelected ? 'border-black bg-black text-brand-primary' : 'border-slate-200 dark:border-white/10'}`}
+                                                    className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all shrink-0
+                                                    ${isSelected
+                                                            ? 'bg-brand-primary border-brand-primary text-black shadow-[0_0_15px_rgba(255,215,0,0.25)]'
+                                                            : 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-400'
+                                                        }`}
                                                 >
-                                                    {isSelected && <Zap size={14} fill="currentColor" />}
+                                                    <Zap size={20} />
+                                                </div>
+                                                <div>
+                                                    <p className={`text-xs md:text-sm font-black uppercase italic tracking-wider transition-colors ${isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>
+                                                        {tenure} Months
+                                                    </p>
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                                                        EMI Loan Tenure
+                                                    </p>
                                                 </div>
                                             </div>
 
-                                            <div>
-                                                <p
-                                                    className={`text-[9px] font-bold uppercase tracking-widest mb-0.5 ${isSelected ? 'text-black/60' : 'text-slate-500'}`}
+                                            <div className="flex-1 flex items-center justify-end gap-6 pr-2">
+                                                <div className="text-center min-w-[90px]">
+                                                    <span className="block text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5 opacity-50">
+                                                        Interest
+                                                    </span>
+                                                    <span className="text-[10px] font-bold font-mono text-slate-400">
+                                                        ₹{totalInterest.toLocaleString()}
+                                                    </span>
+                                                </div>
+                                                <div className="text-center min-w-[90px]">
+                                                    <span className="block text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5 opacity-50">
+                                                        Total Cost
+                                                    </span>
+                                                    <span className="text-[10px] font-bold font-mono text-slate-400">
+                                                        ₹{totalPayable.toLocaleString()}
+                                                    </span>
+                                                </div>
+                                                <div className="text-center min-w-[90px]">
+                                                    <span className="block text-[7px] font-black text-brand-primary uppercase tracking-widest mb-0.5 opacity-50">
+                                                        Monthly EMI
+                                                    </span>
+                                                    <span className={`text-sm font-black italic font-mono ${isSelected ? 'text-brand-primary' : 'text-slate-400 opacity-20'}`}>
+                                                        ₹{emiValue.toLocaleString()}
+                                                    </span>
+                                                </div>
+
+                                                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300
+                                                    ${isSelected
+                                                        ? 'border-brand-primary bg-brand-primary scale-110'
+                                                        : 'border-slate-300 dark:border-white/20'
+                                                    }`}
                                                 >
-                                                    Monthly EMI
-                                                </p>
-                                                <p
-                                                    className={`text-xl font-black font-mono ${isSelected ? 'text-black' : 'text-white'}`}
-                                                >
-                                                    ₹{emiValue.toLocaleString()}
-                                                </p>
+                                                    {isSelected && (
+                                                        <svg className="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                    </button>
+                                    </div>
                                 );
                             })}
                         </div>
@@ -405,6 +536,15 @@ export function MasterPDP({ product, makeParam, modelParam, variantParam, data, 
                 // Group accessories by category
                 const helmets = activeAccessories.filter((a: any) => a.category === 'HELMET');
                 const others = activeAccessories.filter((a: any) => a.category !== 'HELMET');
+                const optionalAccessories = others.filter((a: any) => !a.isMandatory);
+                const sortedOptionalAccessories = [...optionalAccessories].sort((a: any, b: any) => {
+                    const aSelected = selectedAccessories.includes(a.id);
+                    const bSelected = selectedAccessories.includes(b.id);
+
+                    if (aSelected !== bSelected) return aSelected ? -1 : 1;
+
+                    return 0;
+                });
 
                 // Find currently selected helmet ID
                 const selectedHelmetId = helmets.find((h: any) => selectedAccessories.includes(h.id))?.id;
@@ -487,7 +627,7 @@ export function MasterPDP({ product, makeParam, modelParam, variantParam, data, 
                         {/* 3. Standard Optional Items (Non-Helmet) */}
                         <div className="space-y-4">
                             <SectionLabel text="Optional Upgrades" />
-                            {others.filter((a: any) => !a.isMandatory).map((acc: any) => (
+                            {sortedOptionalAccessories.map((acc: any) => (
                                 <ConfigItemRow
                                     key={acc.id}
                                     item={{ ...acc, maxQty: acc.maxQty || 1 }}
@@ -552,28 +692,24 @@ export function MasterPDP({ product, makeParam, modelParam, variantParam, data, 
                     </div>
                 );
             case 'INSURANCE':
-                const insuranceItems = insuranceBreakdown || [];
+                const requiredInsuranceItems = insuranceRequiredItems || [];
 
                 return (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
                         <TabHeader icon={ShieldIcon} title="Insurance" subtext="Secure your journey" />
 
                         <div className="space-y-4 mb-10">
-                            <SectionLabel text="Required Insurance (TP + OD)" />
-                            <div className="space-y-3 px-2">
-                                {insuranceItems.map((b: any, idx: number) => (
-                                    <div key={idx} className="flex justify-between items-center py-3 border-b border-white/5 last:border-0">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                                                <ShieldCheck size={16} />
-                                            </div>
-                                            <div>
-                                                <p className="text-xs font-black uppercase italic tracking-wider text-white">{b.label}</p>
-                                                {b.detail && <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{b.detail}</p>}
-                                            </div>
-                                        </div>
-                                        <p className="text-sm font-black font-mono text-white">₹{b.amount.toLocaleString()}</p>
-                                    </div>
+                            <SectionLabel text="Required Insurance" />
+                            <div className="space-y-3">
+                                {requiredInsuranceItems.map((item: any) => (
+                                    <ConfigItemRow
+                                        key={item.id}
+                                        item={item}
+                                        isSelected={true}
+                                        onToggle={() => { }}
+                                        isMandatory={true}
+                                        breakdown={item.breakdown}
+                                    />
                                 ))}
                             </div>
                         </div>
@@ -587,6 +723,8 @@ export function MasterPDP({ product, makeParam, modelParam, variantParam, data, 
                                         item={i}
                                         isSelected={selectedInsuranceAddons.includes(i.id)}
                                         onToggle={() => toggleInsuranceAddon(i.id)}
+                                        isMandatory={i.isMandatory}
+                                        breakdown={i.breakdown}
                                     />
                                 ))}
                             </div>
@@ -682,7 +820,7 @@ export function MasterPDP({ product, makeParam, modelParam, variantParam, data, 
                 }}
             />
 
-            <div className="max-w-[1600px] mx-auto px-6 md:px-12 lg:px-24 pt-4 md:pt-6 lg:pt-8 pb-10 space-y-8 relative z-10">
+            <div className="max-w-[1600px] mx-auto px-6 md:px-12 lg:px-24 pt-24 md:pt-28 pb-10 space-y-12 relative z-10">
                 {/* 1. Context Navigation Row (Minimal) */}
                 <DynamicHeader
                     breadcrumb={
@@ -756,7 +894,7 @@ export function MasterPDP({ product, makeParam, modelParam, variantParam, data, 
                     <SidebarHUD
                         product={product}
                         variantName={variantParam}
-                        activeColor={activeColorConfig}
+                        activeColor={{ name: activeColorConfig.name, hex: activeColorConfig.hex }}
                         totalOnRoad={totalOnRoad}
                         totalMRP={totalMRP}
                         emi={emi}
@@ -767,11 +905,15 @@ export function MasterPDP({ product, makeParam, modelParam, variantParam, data, 
                         onShare={handleShareQuote}
                         onSave={handleSaveQuote}
                         onDownload={() => { }}
-                        onShowVideo={activeColorConfig?.video ? () => setIsVideoOpen(true) : undefined}
+                        onShowVideo={() => setIsVideoOpen(true)}
                         productImage={getProductImage()}
                         downPayment={userDownPayment}
                         pricingSource={data.pricingSource}
-                        isEstimate={data.isEstimate}
+                        schemeId={initialFinance?.scheme?.id}
+                        leadName={leadContext?.name}
+                        financeCharges={financeCharges}
+                        annualInterest={annualInterest}
+                        interestType={interestType}
                     />
                 </div>
             </div>
