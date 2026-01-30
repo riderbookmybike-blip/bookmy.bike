@@ -278,8 +278,8 @@ export default function PricingLedgerTable({
     return (
         <div className="w-full h-full flex flex-col animate-in fade-in duration-700">
             {/* Luxury Premium Toolbar */}
-            <div className="px-6 pt-6 sticky top-0 z-30 bg-gradient-to-b from-[#0a1628] via-[#0a1628]/95 to-transparent backdrop-blur-sm -mx-6">
-                <div className="relative flex items-center justify-between px-8 py-5 bg-gradient-to-br from-[#1a2942] via-[#0f1d33] to-[#1a2942] border-2 border-[#d4af37]/30 rounded-xl shadow-2xl shadow-black/50 mb-6 overflow-hidden">
+            <div className="px-6 pt-4 sticky top-0 z-30 bg-gradient-to-b from-[#0a1628] via-[#0a1628]/95 to-transparent backdrop-blur-sm -mx-6">
+                <div className="relative flex items-center justify-between px-6 py-3 bg-gradient-to-br from-[#1a2942] via-[#0f1d33] to-[#1a2942] border border-[#d4af37]/30 rounded-lg shadow-xl shadow-black/50 mb-4 overflow-hidden">
                     {/* Leather texture overlay */}
                     <div className="absolute inset-0 opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0ibGVhdGhlciIgeD0iMCIgeT0iMCIgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIHBhdHRlcm5Vbml0cz0idXNlclNwYWNlT25Vc2UiPjxjaXJjbGUgY3g9IjI1IiBjeT0iMjUiIHI9IjIiIGZpbGw9IiNmZmYiIG9wYWNpdHk9IjAuMyIvPjxjaXJjbGUgY3g9Ijc1IiBjeT0iNzUiIHI9IjEuNSIgZmlsbD0iI2ZmZiIgb3BhY2l0eT0iMC4yIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2xlYXRoZXIpIi8+PC9zdmc+')] pointer-events-none" />
 
@@ -369,10 +369,10 @@ export default function PricingLedgerTable({
                     <div className="absolute inset-0 opacity-5 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNCIgaGVpZ2h0PSI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxIiBoZWlnaHQ9IjQiIGZpbGw9IiNkNGFmMzciLz48L3N2Zz4=')] pointer-events-none" />
                     <div className="overflow-auto scrollbar-thin flex-1">
                         <table className="w-full text-left border-collapse min-w-[1200px]">
-                            <thead className="sticky top-0 z-10 bg-gradient-to-r from-[#1a2942] via-[#0f1d33] to-[#1a2942] backdrop-blur-md border-b-2 border-[#d4af37]/40">
+                            <thead className="sticky top-0 z-10 bg-gradient-to-r from-[#1a2942] via-[#0f1d33] to-[#1a2942] backdrop-blur-md border-b border-[#d4af37]/40">
                                 <tr>
                                     {/* ... (Checkbox and other headers remain same) ... */}
-                                    <th className="px-6 py-5 w-10 text-[10px] font-black text-[#d4af37] uppercase tracking-[0.2em] border-b-2 border-[#d4af37]/30 pl-8">
+                                    <th className="px-4 py-3 w-10 text-[9px] font-black text-[#d4af37] uppercase tracking-[0.2em] border-b border-[#d4af37]/30 pl-6">
                                         <input
                                             type="checkbox"
                                             checked={processedSkus.length > 0 && processedSkus.every(s => selectedSkuIds.has(s.id))}
@@ -380,13 +380,13 @@ export default function PricingLedgerTable({
                                             className="rounded border-[#d4af37] text-[#d4af37] focus:ring-2 focus:ring-[#d4af37]/30 cursor-pointer w-3.5 h-3.5"
                                         />
                                     </th>
-                                    <th className="px-6 py-5 text-[10px] font-black text-[#d4af37] uppercase tracking-widest border-b-2 border-[#d4af37]/30 text-center w-[80px]">
+                                    <th className="px-4 py-3 text-[9px] font-black text-[#d4af37] uppercase tracking-widest border-b border-[#d4af37]/30 text-center w-[70px]">
                                         Avail.
                                     </th>
                                     {['brand', 'category', 'subCategory', 'model', 'variant', 'color'].map((key) => {
                                         const label = key === 'subCategory' ? 'Sub Category' : key;
                                         return (
-                                            <th key={key} className={`px-6 py-5 text-[10px] font-black text-[#d4af37] uppercase tracking-widest border-b-2 border-[#d4af37]/30 align-top relative ${key === 'subCategory' || key === 'color' ? 'min-w-[140px]' : ''}`}>
+                                            <th key={key} className={`px-4 py-3 text-[9px] font-black text-[#d4af37] uppercase tracking-widest border-b border-[#d4af37]/30 align-top relative ${key === 'subCategory' || key === 'color' ? 'min-w-[120px]' : ''}`}>
                                                 <div className="flex items-center justify-between gap-2 group cursor-pointer">
                                                     <div onClick={() => handleSort(key as keyof SKUPriceRow)} className="flex items-center gap-1 hover:text-blue-500 transition-colors uppercase text-left">
                                                         {label}
@@ -512,7 +512,7 @@ export default function PricingLedgerTable({
                                             key={sku.id}
                                             className={`group transition-all duration-300 ${isSelected ? 'bg-blue-50/50 dark:bg-blue-900/10' : 'hover:bg-blue-600/5'}`}
                                         >
-                                            <td className="px-6 py-5 pl-8 border-l-4 border-transparent group-hover:border-[#d4af37]/30 transition-all">
+                                            <td className="px-4 py-2.5 pl-6 border-l-4 border-transparent group-hover:border-[#d4af37]/30 transition-all">
                                                 <input
                                                     type="checkbox"
                                                     checked={isSelected}
@@ -582,26 +582,26 @@ export default function PricingLedgerTable({
                                                     </div>
                                                 )}
                                             </td>
-                                            <td className="px-6 py-5">
+                                            <td className="px-4 py-2.5">
                                                 <div className="flex items-center gap-3">
                                                     <div className="flex items-center gap-3">
                                                         <span className="text-xs font-bold text-[#f4e4c1] uppercase tracking-tight leading-none">{sku.brand}</span>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-5">
+                                            <td className="px-4 py-2.5">
                                                 <span className="text-[10px] font-bold text-[#d4af37]/70 uppercase tracking-wider">{sku.category}</span>
                                             </td>
-                                            <td className="px-6 py-5 max-w-[150px]">
+                                            <td className="px-4 py-2.5 max-w-[150px]">
                                                 <span className="text-[11px] font-semibold text-[#f4e4c1]/80 uppercase leading-relaxed whitespace-normal">{sku.subCategory}</span>
                                             </td>
-                                            <td className="px-6 py-5">
+                                            <td className="px-4 py-2.5">
                                                 <span className="text-xs font-bold text-white uppercase tracking-tight">{sku.model}</span>
                                             </td>
-                                            <td className="px-6 py-5">
+                                            <td className="px-4 py-2.5">
                                                 <span className="text-xs font-semibold text-[#f4e4c1]/90 uppercase">{sku.variant}</span>
                                             </td>
-                                            <td className="px-6 py-5 max-w-[150px]">
+                                            <td className="px-4 py-2.5 max-w-[150px]">
                                                 <span className="text-[10px] font-medium text-[#d4af37]/60 uppercase leading-relaxed whitespace-normal">{sku.color}</span>
                                             </td>
                                             <td className="px-4 py-2 text-right">

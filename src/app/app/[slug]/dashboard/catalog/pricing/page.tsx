@@ -404,74 +404,72 @@ export default function PricingPage() {
         const activeState = states.find(s => s.id === selectedStateId)?.stateCode || '--';
 
         return (
-            <div className="relative flex justify-between items-center px-10 py-8 border-b-2 border-[#d4af37]/30 bg-gradient-to-br from-[#0a1628] via-[#1a2942] to-[#0a1628] sticky top-0 z-20 shadow-2xl">
+            <div className="relative flex justify-between items-center px-8 py-4 border-b-2 border-[#d4af37]/30 bg-gradient-to-br from-[#0a1628] via-[#1a2942] to-[#0a1628] sticky top-0 z-20 shadow-2xl">
                 {/* Marble texture overlay */}
-                <div className="absolute inset-0 opacity-5 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0ibWFyYmxlIiB4PSIwIiB5PSIwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTTAgMEwyMDAgMjAwTTIwMCAwTDAgMjAwIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMC41IiBvcGFjaXR5PSIwLjEiLz48L2xpbmtlPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjbWFyYmxlKSIvPjwvc3ZnPg==')] pointer-events-none" />
+                <div className="absolute inset-0 opacity-5 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0ibWFyYmxlIiB4PSIwIiB5PSIwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTTAgMEwyMDAgMjAwTTIwMCAwTDAgMjAwIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMC41IiBvcGFjaXR5PSIwLjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjbWFyYmxlKSIvPjwvc3ZnPg==')] pointer-events-none" />
 
-                <div className="flex items-center gap-10 relative z-10">
-                    <div className="flex items-center gap-6">
-                        <div className="relative p-4 rounded-xl bg-gradient-to-br from-[#d4af37] to-[#b8941f] shadow-xl shadow-[#d4af37]/30">
-                            <Landmark size={28} strokeWidth={2.5} className="text-[#0a1628] drop-shadow-lg" />
-                            <div className="absolute inset-0 rounded-xl bg-gradient-to-t from-black/20 to-transparent" />
+                <div className="flex items-center gap-8 relative z-10">
+                    <div className="flex items-center gap-4">
+                        <div className="relative p-2.5 rounded-lg bg-gradient-to-br from-[#d4af37] to-[#b8941f] shadow-lg shadow-[#d4af37]/20">
+                            <Landmark size={22} strokeWidth={2.5} className="text-[#0a1628] drop-shadow-md" />
+                            <div className="absolute inset-0 rounded-lg bg-gradient-to-t from-black/10 to-transparent" />
                         </div>
                         <div>
-                            <h2 className="text-3xl font-serif font-bold text-white tracking-tight leading-none mb-1" style={{ fontFamily: 'Playfair Display, serif' }}>
+                            <h2 className="text-2xl font-serif font-bold text-white tracking-tight leading-none mb-1" style={{ fontFamily: 'Playfair Display, serif' }}>
                                 On-Road Pricing
                             </h2>
-                            <p className="text-xs font-semibold text-[#d4af37] uppercase tracking-[0.2em] flex items-center gap-2">
-                                <span className="w-8 h-px bg-[#d4af37]" />
+                            <p className="text-[10px] font-semibold text-[#d4af37] uppercase tracking-[0.15em] flex items-center gap-2 opacity-80">
+                                <span className="w-6 h-px bg-[#d4af37]" />
                                 Regulatory Ledger
-                                <span className="w-8 h-px bg-[#d4af37]" />
+                                <span className="w-6 h-px bg-[#d4af37]" />
                             </p>
                         </div>
                     </div>
 
-                    <div className="h-12 w-px bg-gradient-to-b from-transparent via-[#d4af37]/50 to-transparent hidden lg:block" />
+                    <div className="h-10 w-px bg-gradient-to-b from-transparent via-[#d4af37]/30 to-transparent hidden lg:block" />
 
-                    {/* Premium KPI Cards */}
-                    <div className="hidden xl:flex items-center gap-5">
+                    {/* Premium KPI Cards - COMPACT */}
+                    <div className="hidden xl:flex items-center gap-3">
                         {/* Tracked SKUs */}
-                        <div className="group relative px-5 py-4 rounded-lg bg-gradient-to-br from-[#1a2942]/80 to-[#0a1628]/80 border-2 border-[#d4af37]/40 hover:border-[#d4af37] transition-all duration-300 backdrop-blur-sm">
-                            <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-[#d4af37]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                            <div className="flex items-center gap-3 relative z-10">
-                                <Package size={20} className="text-[#d4af37]" />
+                        <div className="group relative px-4 py-2.5 rounded-lg bg-gradient-to-br from-[#1a2942]/60 to-[#0a1628]/60 border border-[#d4af37]/30 hover:border-[#d4af37]/60 transition-all duration-300 backdrop-blur-sm">
+                            <div className="flex items-center gap-2.5 relative z-10">
+                                <Package size={16} className="text-[#d4af37]/80" />
                                 <div>
-                                    <div className="text-[10px] font-bold text-[#f4e4c1] uppercase tracking-wider">SKUs</div>
-                                    <div className="text-xl font-bold text-white tabular-nums font-serif" style={{ fontFamily: 'Playfair Display, serif' }}>{skus.length}</div>
+                                    <div className="text-[9px] font-bold text-[#f4e4c1]/70 uppercase tracking-tight">SKUs</div>
+                                    <div className="text-lg font-bold text-white tabular-nums font-serif" style={{ fontFamily: 'Playfair Display, serif' }}>{skus.length}</div>
                                 </div>
                             </div>
                         </div>
 
                         {/* Pending Saves */}
-                        <div className={`group relative px-5 py-4 rounded-lg transition-all duration-300 backdrop-blur-sm ${pendingSaves > 0 ? 'bg-gradient-to-br from-[#d4af37]/20 to-[#b8941f]/10 border-2 border-[#d4af37] shadow-lg shadow-[#d4af37]/20' : 'bg-gradient-to-br from-[#1a2942]/80 to-[#0a1628]/80 border-2 border-[#d4af37]/20'}`}>
-                            <div className="flex items-center gap-3 relative z-10">
-                                <Save size={20} className={pendingSaves > 0 ? 'text-[#d4af37]' : 'text-[#d4af37]/50'} />
+                        <div className={`group relative px-4 py-2.5 rounded-lg transition-all duration-300 backdrop-blur-sm ${pendingSaves > 0 ? 'bg-gradient-to-br from-[#d4af37]/15 to-[#b8941f]/05 border border-[#d4af37] shadow-lg shadow-[#d4af37]/10' : 'bg-gradient-to-br from-[#1a2942]/60 to-[#0a1628]/60 border border-[#d4af37]/20'}`}>
+                            <div className="flex items-center gap-2.5 relative z-10">
+                                <Save size={16} className={pendingSaves > 0 ? 'text-[#d4af37]' : 'text-[#d4af37]/40'} />
                                 <div>
-                                    <div className="text-[10px] font-bold text-[#f4e4c1] uppercase tracking-wider">Pending</div>
-                                    <div className={`text-xl font-bold tabular-nums font-serif ${pendingSaves > 0 ? 'text-[#d4af37]' : 'text-white/50'}`} style={{ fontFamily: 'Playfair Display, serif' }}>{pendingSaves}</div>
+                                    <div className="text-[9px] font-bold text-[#f4e4c1]/70 uppercase tracking-tight">Pending</div>
+                                    <div className={`text-lg font-bold tabular-nums font-serif ${pendingSaves > 0 ? 'text-[#d4af37]' : 'text-white/40'}`} style={{ fontFamily: 'Playfair Display, serif' }}>{pendingSaves}</div>
                                 </div>
                             </div>
                         </div>
 
                         {/* Missing Prices */}
-                        <div className={`group relative px-5 py-4 rounded-lg transition-all duration-300 backdrop-blur-sm ${missingPrices > 0 ? 'bg-gradient-to-br from-red-900/30 to-red-950/20 border-2 border-red-500/50' : 'bg-gradient-to-br from-emerald-900/30 to-emerald-950/20 border-2 border-emerald-500/50'}`}>
-                            <div className="flex items-center gap-3 relative z-10">
-                                <Target size={20} className={missingPrices > 0 ? 'text-red-400' : 'text-emerald-400'} />
+                        <div className={`group relative px-4 py-2.5 rounded-lg transition-all duration-300 backdrop-blur-sm ${missingPrices > 0 ? 'bg-gradient-to-br from-red-900/20 to-red-950/10 border border-red-500/40' : 'bg-gradient-to-br from-emerald-900/20 to-emerald-950/10 border border-emerald-500/40'}`}>
+                            <div className="flex items-center gap-2.5 relative z-10">
+                                <Target size={16} className={missingPrices > 0 ? 'text-red-400/80' : 'text-emerald-400/80'} />
                                 <div>
-                                    <div className="text-[10px] font-bold text-[#f4e4c1] uppercase tracking-wider">Missing</div>
-                                    <div className={`text-xl font-bold tabular-nums font-serif ${missingPrices > 0 ? 'text-red-400' : 'text-emerald-400'}`} style={{ fontFamily: 'Playfair Display, serif' }}>{missingPrices}</div>
+                                    <div className="text-[9px] font-bold text-[#f4e4c1]/70 uppercase tracking-tight">Missing</div>
+                                    <div className={`text-lg font-bold tabular-nums font-serif ${missingPrices > 0 ? 'text-red-400/80' : 'text-emerald-400/80'}`} style={{ fontFamily: 'Playfair Display, serif' }}>{missingPrices}</div>
                                 </div>
                             </div>
                         </div>
 
                         {/* Active Region */}
-                        <div className="group relative px-5 py-4 rounded-lg bg-gradient-to-br from-[#1a2942]/80 to-[#0a1628]/80 border-2 border-[#d4af37]/40 hover:border-[#d4af37] transition-all duration-300 backdrop-blur-sm">
-                            <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-[#d4af37]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                            <div className="flex items-center gap-3 relative z-10">
-                                <Activity size={20} className="text-[#d4af37]" />
+                        <div className="group relative px-4 py-2.5 rounded-lg bg-gradient-to-br from-[#1a2942]/60 to-[#0a1628]/60 border border-[#d4af37]/30 hover:border-[#d4af37]/60 transition-all duration-300 backdrop-blur-sm">
+                            <div className="flex items-center gap-2.5 relative z-10">
+                                <Activity size={16} className="text-[#d4af37]/80" />
                                 <div>
-                                    <div className="text-[10px] font-bold text-[#f4e4c1] uppercase tracking-wider">Region</div>
-                                    <div className="text-xl font-bold text-white tabular-nums font-serif" style={{ fontFamily: 'Playfair Display, serif' }}>{activeState}</div>
+                                    <div className="text-[9px] font-bold text-[#f4e4c1]/70 uppercase tracking-tight">Region</div>
+                                    <div className="text-lg font-bold text-white tabular-nums font-serif" style={{ fontFamily: 'Playfair Display, serif' }}>{activeState}</div>
                                 </div>
                             </div>
                         </div>
@@ -480,9 +478,9 @@ export default function PricingPage() {
 
                 <div className="flex items-center gap-4 relative z-10">
                     {/* Premium Unsaved Changes Indicator */}
-                    <div className={`flex items-center gap-3 text-xs font-bold px-5 py-2.5 rounded-lg transition-all duration-300 border-2 ${hasUnsavedChanges ? 'bg-gradient-to-r from-[#d4af37]/20 to-[#b8941f]/10 text-[#d4af37] border-[#d4af37] shadow-lg shadow-[#d4af37]/30 scale-100' : 'opacity-0 scale-95 border-transparent'}`}>
-                        <div className="w-2 h-2 rounded-full bg-[#d4af37] animate-pulse shadow-lg shadow-[#d4af37]/50" />
-                        <span className="uppercase tracking-wider font-semibold">Unsaved Changes</span>
+                    <div className={`flex items-center gap-2 text-[10px] font-bold px-4 py-2 rounded-lg transition-all duration-300 border ${hasUnsavedChanges ? 'bg-gradient-to-r from-[#d4af37]/15 to-[#b8941f]/05 text-[#d4af37] border-[#d4af37]/60 shadow-lg shadow-[#d4af37]/20 scale-100' : 'opacity-0 scale-95 border-transparent'}`}>
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#d4af37] animate-pulse" />
+                        <span className="uppercase tracking-[0.1em] font-semibold">Unsaved Changes</span>
                     </div>
                 </div>
             </div>
