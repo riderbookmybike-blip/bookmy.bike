@@ -29,6 +29,79 @@ export default function MatrixStep({ family, template, variants, colors, existin
     // Edit SKU Specs State
     const [editingSku, setEditingSku] = useState<any>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [allVehicles, setAllVehicles] = useState<any[]>([]);
+
+    // Cascading Selection State
+    const [brands, setBrands] = useState<any[]>([]);
+    const [models, setModels] = useState<any[]>([]);
+    const [variantsList, setVariantsList] = useState<any[]>([]);
+
+    const [selectedBrandId, setSelectedBrandId] = useState<string>('');
+    const [selectedModelId, setSelectedModelId] = useState<string>('');
+    const [selectedVariantId, setSelectedVariantId] = useState<string>('');
+
+    // Fetch Brands on Mount
+    React.useEffect(() => {
+        const fetchBrands = async () => {
+            const supabase = createClient();
+            const { data } = await supabase.from('cat_brands').select('id, name').eq('is_active', true).order('name');
+            if (data) setBrands(data);
+        };
+        fetchBrands();
+    }, []);
+
+    // Fetch Models when Brand Changes
+    React.useEffect(() => {
+        if (!selectedBrandId) {
+            setModels([]);
+            return;
+        }
+        const fetchModels = async () => {
+            const supabase = createClient();
+            const { data } = await supabase
+                .from('cat_items')
+                .select('id, name')
+                .eq('brand_id', selectedBrandId)
+                .eq('type', 'FAMILY')
+                .eq('status', 'ACTIVE') // Ensure we only get active models
+                .order('name');
+            if (data) setModels(data);
+        };
+        fetchModels();
+    }, [selectedBrandId]);
+
+    // Fetch Variants when Model Changes
+    React.useEffect(() => {
+        if (!selectedModelId) {
+            setVariantsList([]);
+            return;
+        }
+        const fetchVariants = async () => {
+            const supabase = createClient();
+            const { data } = await supabase
+                .from('cat_items')
+                .select('id, name')
+                .eq('parent_id', selectedModelId)
+                .eq('type', 'VARIANT')
+                .eq('status', 'ACTIVE')
+                .order('name');
+            if (data) setVariantsList(data);
+        };
+        fetchVariants();
+    }, [selectedModelId]);
+
+    const addCompatibilityTag = (tag: string) => {
+        const current = (editingSku.specs?.suitable_for || '').split(',').filter(Boolean);
+        if (!current.includes(tag)) {
+            const next = [...current, tag];
+            setEditingSku({
+                ...editingSku,
+                specs: { ...editingSku.specs, suitable_for: next.join(',') }
+            });
+        }
+        // Reset local selection after adding
+        setSelectedVariantId('');
+    };
 
     const getInheritedAssets = (variantId: string, colorName: string) => {
         if (!colorName) return { videos: [], pdfs: [], primary: null, gallery: [] };
@@ -569,19 +642,106 @@ export default function MatrixStep({ family, template, variants, colors, existin
                             })}
                         </div>
 
-                        {/* NEW: Suitable For & Related Keywords for SKU */}
-                        <div className="col-span-1 md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 mt-6 border-t border-slate-100 dark:border-white/5">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Suitable For</label>
-                                <textarea
-                                    value={editingSku.specs?.suitable_for || ''}
-                                    onChange={(e) => setEditingSku({
-                                        ...editingSku,
-                                        specs: { ...editingSku.specs, suitable_for: e.target.value }
-                                    })}
-                                    className="bg-transparent font-bold text-sm outline-none w-full border-b border-gray-200 dark:border-gray-700 focus:border-indigo-500 min-h-[40px] resize-none"
-                                    placeholder="e.g. All Bikes, Scooters, heavy usage..."
-                                />
+                        <div className="col-span-1 md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 mt-6 border-t border-slate-100 dark:border-white/5">
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                                    <Box size={12} className="text-indigo-500" /> Suitable For
+                                </label>
+                                <div className="space-y-3">
+                                    <div className="flex flex-wrap gap-2 min-h-[40px] p-2 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/10">
+                                        {(editingSku.specs?.suitable_for || '').split(',').filter(Boolean).map((v: string) => (
+                                            <div key={v} className="flex items-center gap-1.5 px-2 py-1 bg-indigo-500 text-white rounded-lg text-[9px] font-black uppercase tracking-wider shadow-sm">
+                                                {v}
+                                                <button
+                                                    onClick={() => {
+                                                        const current = (editingSku.specs?.suitable_for || '').split(',').filter(Boolean);
+                                                        const next = current.filter((x: string) => x !== v);
+                                                        setEditingSku({
+                                                            ...editingSku,
+                                                            specs: { ...editingSku.specs, suitable_for: next.join(',') }
+                                                        });
+                                                    }}
+                                                    className="hover:scale-125 transition-transform"
+                                                >
+                                                    <X size={10} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {!(editingSku.specs?.suitable_for) && (
+                                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest px-2 py-1">No Compatibility Fixed</span>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-col gap-3">
+                                        {/* 1. Brand Selector */}
+                                        <select
+                                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-xs font-bold outline-none focus:border-indigo-500 shadow-sm"
+                                            value={selectedBrandId}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setSelectedBrandId(val);
+                                                setSelectedModelId('');
+                                                setSelectedVariantId('');
+                                                if (val === 'UNIVERSAL') addCompatibilityTag('UNIVERSAL / ALL MODELS');
+                                            }}
+                                        >
+                                            <option value="">Select Brand...</option>
+                                            <option value="UNIVERSAL">UNIVERSAL / ALL MODELS</option>
+                                            {brands.map(b => (
+                                                <option key={b.id} value={b.id}>{b.name}</option>
+                                            ))}
+                                        </select>
+
+                                        {/* 2. Model Selector */}
+                                        {selectedBrandId && selectedBrandId !== 'UNIVERSAL' && (
+                                            <select
+                                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-xs font-bold outline-none focus:border-indigo-500 shadow-sm"
+                                                value={selectedModelId}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    setSelectedModelId(val);
+                                                    setSelectedVariantId('');
+                                                    if (val === 'ALL_MODELS') {
+                                                        const brandName = brands.find(b => b.id === selectedBrandId)?.name;
+                                                        addCompatibilityTag(`${brandName} (All Models)`);
+                                                    }
+                                                }}
+                                            >
+                                                <option value="">Select Model...</option>
+                                                <option value="ALL_MODELS">All {brands.find(b => b.id === selectedBrandId)?.name} Models</option>
+                                                {models.map(m => (
+                                                    <option key={m.id} value={m.id}>{m.name}</option>
+                                                ))}
+                                            </select>
+                                        )}
+
+                                        {/* 3. Variant Selector */}
+                                        {selectedModelId && selectedModelId !== 'ALL_MODELS' && (
+                                            <select
+                                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-xs font-bold outline-none focus:border-indigo-500 shadow-sm"
+                                                value={selectedVariantId}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    setSelectedVariantId(val);
+                                                    const brandName = brands.find(b => b.id === selectedBrandId)?.name;
+                                                    const modelName = models.find(m => m.id === selectedModelId)?.name;
+
+                                                    if (val === 'ALL_VARIANTS') {
+                                                        addCompatibilityTag(`${brandName} ${modelName}`);
+                                                    } else {
+                                                        const variantName = variantsList.find(v => v.id === val)?.name;
+                                                        addCompatibilityTag(`${brandName} ${modelName} ${variantName}`);
+                                                    }
+                                                }}
+                                            >
+                                                <option value="">Select Variant...</option>
+                                                <option value="ALL_VARIANTS">All {models.find(m => m.id === selectedModelId)?.name} Variants</option>
+                                                {variantsList.map(v => (
+                                                    <option key={v.id} value={v.id}>{v.name}</option>
+                                                ))}
+                                            </select>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Related Keywords (Tags)</label>

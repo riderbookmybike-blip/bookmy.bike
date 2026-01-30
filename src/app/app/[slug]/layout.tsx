@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import ShellLayout from '@/components/layout/ShellLayout';
 import TenantHydrator from '@/components/tenant/TenantHydrator';
 import { createClient } from '@/lib/supabase/server';
+import DebugPortal from '@/components/debug/DebugPortal';
 import {
     TenantType,
     TenantProvider,
@@ -101,7 +102,7 @@ export default async function TenantDashboardLayout({
     if (!matched) redirect('/403');
 
     const { data: profile } = await supabase
-        .from('profiles')
+        .from('id_members')
         .select('full_name')
         .eq('id', user.id)
         .maybeSingle();
@@ -130,6 +131,7 @@ export default async function TenantDashboardLayout({
             <CelebrationProvider>
                 <ShellLayout>{children}</ShellLayout>
             </CelebrationProvider>
+            <DebugPortal />
         </TenantProvider>
     );
 }

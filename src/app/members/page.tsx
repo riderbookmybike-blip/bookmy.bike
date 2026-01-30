@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -11,12 +11,79 @@ import {
     Car,
     Headphones,
     Calendar,
-    Share2
+    Share2,
+    Sparkles,
+    RotateCw,
+    Loader2,
+    X
 } from 'lucide-react';
 import { MarketplaceHeader } from '@/components/layout/MarketplaceHeader';
 import { MarketplaceFooter } from '@/components/layout/MarketplaceFooter';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { createClient } from '@/lib/supabase/client';
+import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
+
+type WheelItem = {
+    id: string;
+    label: string;
+    weight: number;
+};
+
+const MOCK_SPIN_ENABLED = true;
+
+const WHEEL_ITEMS: WheelItem[] = [
+    { id: 'stud-helmet', label: 'Stud Helmet', weight: 14 },
+    { id: 'parking-cover', label: 'Parking Cover', weight: 14 },
+    { id: 'cashback-500', label: 'INR 500 Cashback', weight: 10 },
+    { id: 'service-coupon', label: 'Service Coupon', weight: 12 },
+    { id: 'voucher-200', label: 'INR 200 Voucher', weight: 12 },
+    { id: 'rider-gloves', label: 'Rider Gloves', weight: 10 },
+    { id: 'fuel-coupon', label: 'Fuel Coupon', weight: 14 },
+    { id: 'free-wash', label: 'Free Wash', weight: 14 }
+];
+
+const WHEEL_COLORS = [
+    '#2563eb',
+    '#ec4899',
+    '#10b981',
+    '#f59e0b',
+    '#8b5cf6',
+    '#f97316',
+    '#22d3ee',
+    '#84cc16'
+];
+
+const getWheelColor = (index: number) => WHEEL_COLORS[index % WHEEL_COLORS.length];
+
+const hexToRgba = (hex: string, alpha: number) => {
+    const value = hex.replace('#', '');
+    if (value.length !== 6) return `rgba(255,255,255,${alpha})`;
+    const r = parseInt(value.slice(0, 2), 16);
+    const g = parseInt(value.slice(2, 4), 16);
+    const b = parseInt(value.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+const pickReward = (items: WheelItem[]) => {
+    const total = items.reduce((sum, item) => sum + item.weight, 0);
+    const roll = Math.random() * total;
+    let cursor = 0;
+    for (const item of items) {
+        cursor += item.weight;
+        if (roll <= cursor) return item;
+    }
+    return items[items.length - 1];
+};
+
+const getRotationForItem = (rewardId: string, currentRotation: number, spins: number) => {
+    const segmentAngle = 360 / WHEEL_ITEMS.length;
+    const rewardIndex = WHEEL_ITEMS.findIndex(item => item.id === rewardId);
+    const index = rewardIndex >= 0 ? rewardIndex : 0;
+    const targetMod = (360 - (index * segmentAngle + segmentAngle / 2)) % 360;
+    const currentMod = ((currentRotation % 360) + 360) % 360;
+    const delta = (targetMod - currentMod + 360) % 360;
+    return currentRotation + spins * 360 + delta;
+};
 
 export default function MembersHome() {
     const { userName, tenantId } = useTenant();
@@ -26,6 +93,21 @@ export default function MembersHome() {
     const [memberId, setMemberId] = useState('...');
     const [copied, setCopied] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [mounted, setMounted] = useState(false);
+    const [wheelVisible, setWheelVisible] = useState(false);
+    const [wheelEligible, setWheelEligible] = useState(false);
+    const [wheelStatus, setWheelStatus] = useState<string | null>(null);
+    const [wheelRotation, setWheelRotation] = useState(0);
+    const [wheelResult, setWheelResult] = useState<WheelItem | null>(null);
+    const [showResult, setShowResult] = useState(false);
+    const [wheelExpanded, setWheelExpanded] = useState(false);
+    const [wheelLoading, setWheelLoading] = useState(true);
+    const [wheelError, setWheelError] = useState<string | null>(null);
+    const [wheelSpinning, setWheelSpinning] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     useEffect(() => {
         async function fetchProfile() {
@@ -51,6 +133,67 @@ export default function MembersHome() {
         fetchProfile();
     }, [supabase]);
 
+    useEffect(() => {
+        let active = true;
+
+        if (MOCK_SPIN_ENABLED) {
+            setWheelVisible(true);
+            setWheelEligible(true);
+            setWheelStatus('ELIGIBLE');
+            setWheelLoading(false);
+            setWheelError(null);
+            return () => {
+                active = false;
+            };
+        }
+
+        const fetchWheelStatus = async () => {
+            setWheelLoading(true);
+            try {
+                const response = await fetch('/api/me/wheel');
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        if (active) setWheelVisible(false);
+                        return;
+                    }
+                    throw new Error('Failed to load wheel status');
+                }
+
+                const data = await response.json();
+                if (!active) return;
+
+                setWheelVisible(!!data.visible);
+                setWheelEligible(!!data.eligible);
+                setWheelStatus(data.status ?? null);
+                setWheelError(null);
+                if (data.reward?.id) {
+                    setSlotWinner({
+                        id: data.reward.id,
+                        icons: ['sparkles', 'sparkles', 'sparkles'],
+                        reward: data.reward.label,
+                        weight: 1
+                    });
+                    setSlotReels(['sparkles', 'sparkles', 'sparkles']);
+                } else {
+                    setSlotWinner(null);
+                    setSlotReels(['coins', 'gem', 'gift']);
+                }
+            } catch (error) {
+                if (active) {
+                    setWheelError('Unable to load your reward status.');
+                }
+            } finally {
+                if (active) setWheelLoading(false);
+            }
+        };
+
+        fetchWheelStatus();
+
+        return () => {
+            active = false;
+        };
+    }, []);
+
     const copyToClipboard = () => {
         if (referralCode === 'FETCHING...') return;
         navigator.clipboard.writeText(referralCode);
@@ -64,9 +207,68 @@ export default function MembersHome() {
         window.location.href = '/';
     };
 
+    const handleWheelSpin = async () => {
+        if (!wheelEligible || wheelSpinning) return;
+        if (MOCK_SPIN_ENABLED) {
+            setWheelSpinning(true);
+            setSlotWinner(null);
+            const spinInterval = window.setInterval(() => {
+                setSlotReels([
+                    SLOT_ICONS[Math.floor(Math.random() * SLOT_ICONS.length)].id,
+                    SLOT_ICONS[Math.floor(Math.random() * SLOT_ICONS.length)].id,
+                    SLOT_ICONS[Math.floor(Math.random() * SLOT_ICONS.length)].id
+                ]);
+            }, 120);
+
+            window.setTimeout(() => {
+                window.clearInterval(spinInterval);
+                const combo = pickCombo(SLOT_COMBOS);
+                setSlotReels(combo.icons);
+                setSlotWinner(combo);
+                setWheelSpinning(false);
+            }, 2000);
+            return;
+        }
+        setWheelSpinning(true);
+        setWheelError(null);
+
+        try {
+            const response = await fetch('/api/me/wheel', { method: 'POST' });
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data?.error || 'Spin failed');
+            }
+
+            if (!data?.reward?.id) {
+                setWheelEligible(false);
+                setWheelStatus(data?.status ?? 'SPUN');
+                setWheelSpinning(false);
+                return;
+            }
+
+            setSlotReels(['sparkles', 'sparkles', 'sparkles']);
+            setSlotWinner({
+                id: data.reward.id,
+                icons: ['sparkles', 'sparkles', 'sparkles'],
+                reward: data.reward.label,
+                weight: 1
+            });
+            setWheelStatus('SPUN');
+            setWheelEligible(false);
+            setWheelSpinning(false);
+        } catch (error) {
+            setWheelError('Spin failed. Please try again.');
+            setWheelSpinning(false);
+        }
+    };
+
+    const displayName = mounted ? (userName || 'Member') : 'Member';
+
     return (
-        <div className="min-h-screen bg-black text-white selection:bg-rose-500/30 font-sans">
-            <MarketplaceHeader onLoginClick={() => { }} />
+        <FavoritesProvider>
+            <div className="min-h-screen bg-black text-white selection:bg-rose-500/30 font-sans">
+                <MarketplaceHeader onLoginClick={() => { }} />
 
             <main className="max-w-[1400px] mx-auto px-6 py-12 md:py-24 space-y-16">
                 {/* Dashboard Header */}
@@ -78,7 +280,7 @@ export default function MembersHome() {
                         </div>
                         <div className="space-y-2">
                             <h1 className="text-5xl md:text-7xl font-black tracking-tighter italic">
-                                Welcome Back, <span className="text-rose-600 truncate max-w-[400px] inline-block align-bottom">{userName || 'Member'}</span>
+                                Welcome Back, <span className="text-rose-600 truncate max-w-[400px] inline-block align-bottom">{displayName}</span>
                             </h1>
                             <div className="flex items-center gap-4">
                                 <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">ID: {memberId}</p>
@@ -97,6 +299,114 @@ export default function MembersHome() {
                 </div>
 
                 {/* Dashboard Grid */}
+                {wheelVisible && (
+                    <section className="relative w-full min-h-screen rounded-[3rem] border border-white/5 bg-gradient-to-b from-slate-950 via-slate-900 to-black p-8 md:p-14 overflow-hidden">
+                        <div className="absolute -top-32 right-0 h-72 w-72 bg-rose-600/20 blur-[120px]" />
+                        <div className="absolute -bottom-32 left-0 h-72 w-72 bg-blue-600/20 blur-[120px]" />
+                        <div className="relative z-10 flex flex-col items-center gap-10">
+                            <div className="text-center space-y-3">
+                                <p className="text-[10px] font-black uppercase tracking-[0.5em] text-rose-400">Reward Machine</p>
+                                <h2 className="text-4xl md:text-6xl font-black italic tracking-tight">Lucky Spin</h2>
+                                <p className="text-xs text-slate-400 uppercase tracking-widest">Match 3 icons to win big.</p>
+                            </div>
+
+                            <div
+                                className={`relative w-full max-w-4xl rounded-[2.5rem] border border-white/10 bg-slate-900/70 p-8 shadow-[0_40px_100px_rgba(0,0,0,0.6)] transition-transform duration-500 ${wheelSpinning ? 'scale-105' : 'scale-100'}`}
+                            >
+                                <div className="absolute -top-6 left-1/2 -translate-x-1/2 rounded-full bg-black/80 px-6 py-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 border border-white/10">
+                                    up to INR 1000
+                                </div>
+                                <div className="grid grid-cols-3 gap-4 bg-black/60 p-6 rounded-[1.75rem] border border-white/10">
+                                    {slotReels.map((iconId, index) => {
+                                        const icon = getSlotIcon(iconId);
+                                        const isWinner = !!slotWinner && slotWinner.icons[index] === iconId && !wheelSpinning;
+                                        const glow = hexToRgba(icon.color, isWinner ? 0.8 : 0.25);
+                                        return (
+                                            <div
+                                                key={`${iconId}-${index}`}
+                                                className={`flex flex-col items-center justify-center gap-2 rounded-2xl border border-white/10 bg-slate-950/70 py-6 transition-all duration-300 ${wheelSpinning ? 'animate-pulse' : ''}`}
+                                                style={{
+                                                    boxShadow: isWinner ? `0 0 24px ${glow}` : undefined,
+                                                    borderColor: isWinner ? glow : undefined
+                                                }}
+                                            >
+                                                <icon.Icon size={44} className="drop-shadow" style={{ color: icon.color }} />
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">{icon.label}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                <div className="mt-8 flex flex-col items-center gap-4">
+                                    <button
+                                        onClick={handleWheelSpin}
+                                        disabled={!wheelEligible || wheelSpinning || wheelLoading || wheelStatus === 'SPUN'}
+                                        className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.4em] transition-all shadow-xl disabled:opacity-50 disabled:cursor-not-allowed bg-rose-600/90 hover:bg-rose-500 text-white"
+                                    >
+                                        {wheelSpinning ? <Loader2 size={16} className="animate-spin" /> : <RotateCw size={16} />}
+                                        {wheelLoading ? 'Checking...' : wheelStatus === 'SPUN' ? 'Reward Claimed' : wheelEligible ? 'Spin Now' : 'Locked'}
+                                    </button>
+
+                                    {slotWinner && (
+                                        <div className="text-center space-y-2">
+                                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">You Won</p>
+                                            <p
+                                                className="text-xl md:text-2xl font-black"
+                                                style={{
+                                                    color: getSlotIcon(slotWinner.icons[0]).color,
+                                                    textShadow: `0 0 16px ${hexToRgba(getSlotIcon(slotWinner.icons[0]).color, 0.6)}`
+                                                }}
+                                            >
+                                                {slotWinner.reward}
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {!slotWinner && wheelEligible && !wheelSpinning && (
+                                        <p className="text-[9px] text-slate-400 uppercase tracking-widest">Tap spin to reveal your reward.</p>
+                                    )}
+
+                                    {wheelError && (
+                                        <p className="text-[9px] text-rose-400 uppercase tracking-widest">{wheelError}</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {SLOT_COMBOS.map(combo => {
+                                    const comboColor = getSlotIcon(combo.icons[0]).color;
+                                    const isWinner = slotWinner?.id === combo.id;
+                                    return (
+                                        <div
+                                            key={combo.id}
+                                            className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-black/40 px-4 py-3"
+                                            style={{
+                                                borderColor: isWinner ? hexToRgba(comboColor, 0.7) : undefined,
+                                                boxShadow: isWinner ? `0 0 20px ${hexToRgba(comboColor, 0.5)}` : undefined
+                                            }}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                {combo.icons.map((iconId, idx) => {
+                                                    const icon = getSlotIcon(iconId);
+                                                    return (
+                                                        <span
+                                                            key={`${combo.id}-${iconId}-${idx}`}
+                                                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900/60 border border-white/10"
+                                                        >
+                                                            <icon.Icon size={18} style={{ color: icon.color }} />
+                                                        </span>
+                                                    );
+                                                })}
+                                            </div>
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">{combo.reward}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </section>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {/* Invite Members - Large Card */}
                     <div className="md:col-span-2 lg:col-span-1 group relative bg-slate-900/40 border border-white/5 rounded-[3rem] p-10 overflow-hidden hover:border-blue-600/30 transition-all duration-700">
@@ -154,6 +464,8 @@ export default function MembersHome() {
                         </div>
                     </div>
 
+
+
                     {/* Concierge */}
                     <a
                         href="https://wa.me/91XXXXXXXXXX"
@@ -202,7 +514,7 @@ export default function MembersHome() {
                                     <h3 className="text-3xl font-black uppercase tracking-tighter italic leading-none">Upgrade Your <br /> Experience</h3>
                                     <p className="text-[10px] font-bold text-rose-100 uppercase tracking-widest italic">Get priority allocation on new drops.</p>
                                 </div>
-                                <button className="w-full py-4 bg-white dark:bg-white text-rose-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl">Elite Circle Pro</button>
+                                <button className="w-full py-4 bg-white dark:bg-white text-rose-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl">O' Circle Pro</button>
                             </div>
                         </div>
                         <div className="absolute -right-4 -bottom-4 w-48 h-48 bg-white/10 rounded-full blur-3xl group-hover:scale-125 transition-transform duration-1000" />
@@ -231,7 +543,8 @@ export default function MembersHome() {
                 </div>
             </main>
 
-            <MarketplaceFooter />
-        </div>
+                <MarketplaceFooter />
+            </div>
+        </FavoritesProvider>
     );
 }

@@ -22,6 +22,7 @@ import AddColorModal from '../components/AddColorModal';
 import EditColorModal from '../components/EditColorModal';
 import ImageColorPicker from '../components/ImageColorPicker';
 import SKUMediaManager from '@/components/catalog/SKUMediaManager';
+import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 
 export default function ColorStep({ family, template, existingColors, onUpdate }: any) {
     const [isSaving, setIsSaving] = useState(false);
@@ -33,6 +34,8 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
     const [addModalOpen, setAddModalOpen] = useState(false);
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [editingColor, setEditingColor] = useState<any>(null);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [colorToDelete, setColorToDelete] = useState<any>(null);
 
     // Live Preview States
     const [tempPrimary, setTempPrimary] = useState<string | null>(null);
@@ -437,18 +440,8 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                                         </button>
                                         <button
                                             onClick={() => {
-                                                // TODO: Add Delete Confirmation
-                                                if (confirm(`Are you sure you want to delete this ${l2Label.toLowerCase()}?`)) {
-                                                    const supabase = createClient();
-                                                    supabase.from('cat_items').delete().eq('id', color.id).then(({ error }) => {
-                                                        if (error) {
-                                                            toast.error('Failed to delete color');
-                                                        } else {
-                                                            onUpdate(existingColors.filter((c: any) => c.id !== color.id));
-                                                            toast.success('Color deleted');
-                                                        }
-                                                    });
-                                                }
+                                                setColorToDelete(color);
+                                                setDeleteModalOpen(true);
                                             }}
                                             className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all"
                                             title="Delete"
@@ -763,6 +756,25 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                     onAdd={handleAddColor}
                     existingNames={existingColors.map((c: any) => c.name)}
                     l2Label={l2Label}
+                />
+            )}
+            {deleteModalOpen && colorToDelete && (
+                <DeleteConfirmationModal
+                    isOpen={deleteModalOpen}
+                    onClose={() => { setDeleteModalOpen(false); setColorToDelete(null); }}
+                    onConfirm={async () => {
+                        const supabase = createClient();
+                        const { error } = await supabase.from('cat_items').delete().eq('id', colorToDelete.id);
+                        if (error) {
+                            toast.error('Failed to delete color');
+                        } else {
+                            onUpdate(existingColors.filter((c: any) => c.id !== colorToDelete.id));
+                            toast.success('Color deleted successfully');
+                        }
+                    }}
+                    title={`Delete ${l2Label}`}
+                    message={`Are you sure you want to permanently remove this color definition? This action cannot be undone.`}
+                    itemName={colorToDelete.name}
                 />
             )}
             {showDebug && (
