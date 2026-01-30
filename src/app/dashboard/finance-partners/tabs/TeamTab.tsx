@@ -4,6 +4,7 @@ import { User, Phone, Mail, Plus, Trash2, Calendar, MapPin, ChevronRight, AlertC
 import { normalizeIndianPhone, parseDateToISO } from '@/lib/utils/inputFormatters';
 
 const DESIGNATIONS: { value: BankDesignation; label: string; level: number }[] = [
+    { value: 'SYSTEM_ADMIN', label: 'System Admin', level: 7 },
     { value: 'NATIONAL_SALES_MANAGER', label: 'National Sales Manager', level: 6 },
     { value: 'ZONAL_MANAGER', label: 'Zonal Manager', level: 5 },
     { value: 'REGIONAL_SALES_MANAGER', label: 'Regional Sales Manager', level: 4 },
