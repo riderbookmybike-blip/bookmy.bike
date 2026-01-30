@@ -56,7 +56,7 @@ export const MobileContextFeed = () => {
             {/* 2. Vertical Snap Scroll Feed */}
             <div
                 className="w-full overflow-y-scroll snap-y snap-mandatory scroll-smooth no-scrollbar"
-                style={{ height: '100dvh' }}
+                style={{ height: '100dvh', touchAction: 'pan-y' }}
                 onScroll={handleScroll}
             >
                 {items.map((product, index) => (
