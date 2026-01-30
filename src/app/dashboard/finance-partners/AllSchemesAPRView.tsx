@@ -320,8 +320,8 @@ export default function AllSchemesAPRView({ banks }: { banks: any[] }) {
                                     onSort={handleSort}
                                 />
                                 <SortableHeader
-                                    label="Payout"
-                                    field="dealerPayout"
+                                    label="Dealer Earning"
+                                    field="netMargin"
                                     currentField={sortField}
                                     direction={sortDirection}
                                     onSort={handleSort}
@@ -394,8 +394,8 @@ export default function AllSchemesAPRView({ banks }: { banks: any[] }) {
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`text-xs font-black px-2 py-1 rounded-lg ${item.interestType === 'REDUCING'
-                                                    ? 'bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20'
-                                                    : 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20'
+                                                ? 'bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20'
+                                                : 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20'
                                                 }`}>
                                                 {item.interestType}
                                             </span>
@@ -406,10 +406,15 @@ export default function AllSchemesAPRView({ banks }: { banks: any[] }) {
                                         <td className="px-6 py-4 text-sm font-bold text-emerald-600 dark:text-emerald-400">
                                             ₹{item.fundedCharges.toLocaleString()}
                                         </td>
-                                        <td className="px-6 py-4 text-sm font-bold text-purple-600 dark:text-purple-400">
-                                            {item.dealerPayout.type === 'PERCENTAGE'
-                                                ? `${item.dealerPayout.value}%`
-                                                : `₹${item.dealerPayout.value.toLocaleString()}`}
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-black text-purple-600 dark:text-purple-400">
+                                                    ₹{(item.netMargin || item.dealerPayout.amount || 0).toLocaleString()}
+                                                </span>
+                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">
+                                                    {item.dealerPayout.type === 'PERCENTAGE' ? `${item.dealerPayout.value}% Yield` : 'Flat Yield'}
+                                                </span>
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4 text-sm font-bold text-slate-700 dark:text-slate-300">
                                             ₹{item.downpayment.toLocaleString()}
