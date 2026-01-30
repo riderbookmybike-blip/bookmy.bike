@@ -15,7 +15,7 @@ export interface BankLocation {
 }
 
 export type MemberStatus = 'ACTIVE' | 'ON_NOTICE' | 'RELEASED';
-export type BankDesignation = 'EXECUTIVE' | 'TEAM_LEADER' | 'AREA_SALES_MANAGER' | 'REGIONAL_SALES_MANAGER' | 'ZONAL_MANAGER' | 'NATIONAL_SALES_MANAGER';
+export type BankDesignation = 'SYSTEM_ADMIN' | 'EXECUTIVE' | 'TEAM_LEADER' | 'AREA_SALES_MANAGER' | 'REGIONAL_SALES_MANAGER' | 'ZONAL_MANAGER' | 'NATIONAL_SALES_MANAGER';
 
 export interface BankTeamMember {
     id: string;
