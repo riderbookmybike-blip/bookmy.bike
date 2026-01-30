@@ -82,6 +82,41 @@ function calculateFlatEMI(principal: number, annualRate: number, tenure: number)
 }
 
 /**
+ * Calculate APR using binary search (iterative solver)
+ * This matches the calculation from SchemeEditor.tsx
+ * 
+ * APR = effective annual rate on net disbursal that results in the given EMI
+ * netDisbursal = Gross Loan - Upfront Charges (what customer actually receives)
+ */
+function calculateAPRBinarySearch(netDisbursal: number, emi: number, tenure: number): number {
+    if (netDisbursal <= 0 || emi <= 0 || tenure <= 0) return 0;
+
+    let low = 0;
+    let high = 2.0; // 200% max annual rate
+
+    // Binary search for 20 iterations
+    for (let i = 0; i < 20; i++) {
+        let mid = (low + high) / 2;
+        let monthlyRate = mid / 12;
+
+        // Calculate present value of EMI stream at this rate
+        let pv = monthlyRate === 0
+            ? emi * tenure
+            : emi * (1 - Math.pow(1 + monthlyRate, -tenure)) / monthlyRate;
+
+        // Adjust search bounds
+        if (pv > netDisbursal) {
+            low = mid;  // Rate too low, PV too high
+        } else {
+            high = mid;  // Rate too high, PV too low
+        }
+    }
+
+    // Return APR as percentage
+    return ((low + high) / 2) * 100;
+}
+
+/**
  * Calculate IRR (Internal Rate of Return) for a loan using Newton-Raphson method
  * This calculates the true annual percentage rate (APR) for the loan.
  * 
