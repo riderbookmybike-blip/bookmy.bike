@@ -11,7 +11,9 @@ export interface APRCalculation {
         value: number;
         type: 'PERCENTAGE' | 'FIXED';
         basis?: string;
+        amount?: number;
     };
+    netMargin?: number;
     downpayment: number;
     emi: number;
     irr: number;
@@ -309,8 +311,10 @@ export function calculateAPR(
     const netDisbursal = finalGrossLoan - upfrontCharges;
     const apr = calculateAPRBinarySearch(netDisbursal, emi, tenure);
 
-    // 8. Calculate dealer payout
+    // 9. Calculate dealer payout
     let payoutValue: number;
+    let totalPayoutAmount = 0;
+
     if (scheme.payoutType === 'PERCENTAGE') {
         let payoutBasis = loanAmount;
         switch (scheme.payoutBasis) {
@@ -320,9 +324,19 @@ export function calculateAPR(
             default: payoutBasis = loanAmount;
         }
         payoutValue = scheme.payout;
+        totalPayoutAmount = (payoutBasis * scheme.payout) / 100;
     } else {
         payoutValue = scheme.payout;
+        totalPayoutAmount = scheme.payout;
     }
+
+    // 10. Calculate Net Margin (Dealer Earn - Dealer Subvention Cost)
+    const subventionVal = scheme.subvention || 0;
+    const totalSubvention = scheme.subventionType === 'PERCENTAGE'
+        ? (finalGrossLoan * subventionVal / 100)
+        : subventionVal;
+
+    const netMargin = totalPayoutAmount - totalSubvention;
 
     return {
         schemeId: scheme.id,
@@ -334,8 +348,10 @@ export function calculateAPR(
         dealerPayout: {
             value: scheme.payoutType === 'PERCENTAGE' ? scheme.payout : Math.round(payoutValue),
             type: scheme.payoutType,
-            basis: scheme.payoutBasis
+            basis: scheme.payoutBasis,
+            amount: Math.round(totalPayoutAmount)
         },
+        netMargin: Math.round(netMargin),
         downpayment: Math.round(downpayment),
         emi: Math.round(emi),
         irr: Math.round(irr * 100) / 100,
