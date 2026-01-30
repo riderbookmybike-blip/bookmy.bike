@@ -7,14 +7,16 @@ import { Search, Plus, Upload, Filter, Building2, Edit3, Trash2, ShieldCheck, Ba
 import ListPanel from '@/components/templates/ListPanel';
 import { createClient } from '@/lib/supabase/client';
 import OnboardBankModal from '@/components/finance/OnboardBankModal';
-import { LayoutGrid, List } from 'lucide-react';
+import { LayoutGrid, List, BarChart3 } from 'lucide-react';
 import FinanceTargetingTab from './tabs/FinanceTargetingTab';
+import { BankPartner } from '@/types/bankPartner';
+import AllSchemesAPRView from './AllSchemesAPRView';
 
 export default function BankList() {
     const router = useRouter();
     const params = useParams();
     const slug = params?.slug as string;
-    const [view, setView] = useState<'list' | 'routing'>('list');
+    const [view, setView] = useState<'list' | 'routing' | 'apr'>('list');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [banks, setBanks] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -119,6 +121,14 @@ export default function BankList() {
                 >
                     <LayoutGrid size={14} /> Routing Matrix
                 </button>
+                <button
+                    onClick={() => setView('apr')}
+                    className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${view === 'apr'
+                        ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm shadow-black/5'
+                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+                >
+                    <BarChart3 size={14} /> APR Comparison
+                </button>
             </div>
 
             {view === 'list' ? (
@@ -132,8 +142,10 @@ export default function BankList() {
                     actionLabel="Add New Partner"
                     onActionClick={() => setIsModalOpen(true)}
                 />
-            ) : (
+            ) : view === 'routing' ? (
                 <FinanceTargetingTab />
+            ) : (
+                <AllSchemesAPRView banks={banks} />
             )}
 
             <OnboardBankModal
