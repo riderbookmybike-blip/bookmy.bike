@@ -3,14 +3,14 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Search, FileText, Hexagon, SlidersHorizontal } from 'lucide-react';
+import { Home, Search, Heart, Hexagon, SlidersHorizontal } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const NAV_ITEMS = [
     { id: 'home', label: 'Home', icon: Home, href: '/m' },
     { id: 'search', label: 'Search', icon: Search, href: '/m/search' },
     { id: 'filter', label: 'Filter', icon: SlidersHorizontal, href: '/m?filter=true' },
-    { id: 'quotes', label: 'Quotes', icon: FileText, href: '/m/quotes' },
+    { id: 'favorites', label: 'Saved', icon: Heart, href: '/m/favorites' },
     { id: 'oclub', label: 'O-Club', icon: Hexagon, href: '/m/oclub' },
 ];
 
@@ -49,12 +49,6 @@ export const MobileBottomNav = () => {
                                         layoutId="nav-pill"
                                         className="absolute inset-x-0 -bottom-1 h-0.5 bg-[#F4B000] rounded-full blur-[1px]"
                                     />
-                                )}
-
-                                {item.id === 'quotes' && (
-                                    <div className="absolute -top-1 -right-1">
-                                        <div className="w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-black" />
-                                    </div>
                                 )}
                             </div>
 

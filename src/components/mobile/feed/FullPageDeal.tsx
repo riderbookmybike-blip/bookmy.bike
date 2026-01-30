@@ -6,6 +6,7 @@ import { Sparkles, Zap, ChevronRight, Info, CheckCircle2, Heart, MapPin, Star, S
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useActiveColor } from '@/contexts/ColorContext';
+import { useFavorites } from '@/contexts/FavoritesContext';
 
 interface DealProps {
     product: any;
@@ -15,6 +16,7 @@ interface DealProps {
 export const FullPageDeal = ({ product, isActive }: DealProps) => {
     const router = useRouter();
     const { setActiveColorHex } = useActiveColor();
+    const { isFavorite, toggleFavorite } = useFavorites();
 
     // Adapt database structure to component needs
     const rawColors = product.availableColors || [];
@@ -142,6 +144,39 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                         />
                     </motion.div>
                 </AnimatePresence>
+
+                {/* Favorite Heart Icon */}
+                <motion.button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavorite({
+                            id: product.id,
+                            model: product.model,
+                            make: product.make,
+                            variant: product.variant,
+                            imageUrl: activeColor.imageUrl || product.imageUrl,
+                            price: product.price?.onRoad || 0,
+                            slug: product.slug
+                        });
+                    }}
+                    whileTap={{ scale: 0.85 }}
+                    className="absolute top-4 right-4 z-50 w-10 h-10 rounded-full bg-black/40 backdrop-blur-lg flex items-center justify-center"
+                >
+                    <motion.div
+                        initial={false}
+                        animate={{
+                            scale: isFavorite(product.id) ? [1, 1.3, 1] : 1
+                        }}
+                        transition={{ duration: 0.3 }}
+                    >
+                        <Heart
+                            className={`size-5 transition-colors ${isFavorite(product.id)
+                                    ? 'fill-red-500 stroke-red-500'
+                                    : 'fill-none stroke-white'
+                                }`}
+                        />
+                    </motion.div>
+                </motion.button>
 
                 {/* Expanded Color Selector Modal */}
                 <AnimatePresence>

@@ -2,6 +2,7 @@ import React from 'react';
 import { MobileHeader } from './MobileHeader';
 import { MobileBottomNav } from './MobileBottomNav';
 import { ColorProvider } from '@/contexts/ColorContext';
+import { FavoritesProvider } from '@/contexts/FavoritesContext';
 
 interface MobileLayoutProps {
     children: React.ReactNode;
@@ -19,17 +20,19 @@ export const MobileLayout = ({
     className = "min-h-screen bg-black"
 }: MobileLayoutProps) => {
     return (
-        <ColorProvider>
-            <div className={className}>
-                {showHeader && <MobileHeader />}
+        <FavoritesProvider>
+            <ColorProvider>
+                <div className={className}>
+                    {showHeader && <MobileHeader />}
 
-                {/* Content with padding for fixed header/nav */}
-                <main className={`${showHeader ? 'pt-16' : ''} ${(showBottomNav && !navOverlay) ? 'pb-16' : ''} min-h-screen`}>
-                    {children}
-                </main>
+                    {/* Content with padding for fixed header/nav */}
+                    <main className={`${showHeader ? 'pt-16' : ''} ${(showBottomNav && !navOverlay) ? 'pb-16' : ''} min-h-screen`}>
+                        {children}
+                    </main>
 
-                {showBottomNav && <MobileBottomNav />}
-            </div>
-        </ColorProvider>
+                    {showBottomNav && <MobileBottomNav />}
+                </div>
+            </ColorProvider>
+        </FavoritesProvider>
     );
 };
