@@ -682,7 +682,14 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
     const [isFilterOpen, setIsFilterOpen] = useState(false);
 
     // Initial serviceability check (Client Side - keeps looking for updates)
-    const [serviceability, setServiceability] = useState<{ status: 'loading' | 'serviceable' | 'unserviceable' | 'unset'; location?: string; district?: string; stateCode?: string }>({ status: 'loading' });
+    const [serviceability, setServiceability] = useState<{
+        status: 'loading' | 'serviceable' | 'unserviceable' | 'unset';
+        location?: string;
+        district?: string;
+        stateCode?: string;
+        userDistrict?: string;      // User's actual district
+        fallbackDistrict?: string;  // Nearest serviceable district if user's is not serviceable
+    }>({ status: 'loading' });
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -832,12 +839,46 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                             console.log('[Location] Serviceability result:', result);
 
                             const displayLoc = result.district || nearest.district || nearest.taluka || pincode;
-                            setServiceability({
-                                status: result.isServiceable ? 'serviceable' : 'unserviceable',
-                                location: displayLoc,
-                                district: result.district || nearest.district,
-                                stateCode: result.stateCode || stateCode
-                            });
+                            const userDist = result.district || nearest.district;
+
+                            if (result.isServiceable) {
+                                // User is in serviceable district
+                                setServiceability({
+                                    status: 'serviceable',
+                                    location: displayLoc,
+                                    district: userDist,
+                                    stateCode: result.stateCode || stateCode,
+                                    userDistrict: userDist
+                                });
+                            } else {
+                                // User in non-serviceable district - find nearest serviceable
+                                console.log('[Location] District not serviceable, finding nearest...');
+                                const { data: nearestServiceable } = await supabaseClient
+                                    .rpc('get_nearest_serviceable_district', { p_lat: latitude, p_lon: longitude });
+
+                                if (nearestServiceable && nearestServiceable.length > 0) {
+                                    const fallback = nearestServiceable[0];
+                                    console.log('[Location] Fallback district:', fallback);
+                                    setServiceability({
+                                        status: 'unserviceable',
+                                        location: fallback.district,
+                                        district: fallback.district,
+                                        stateCode: fallback.state_code?.substring(0, 2) || 'MH',
+                                        userDistrict: userDist,
+                                        fallbackDistrict: fallback.district
+                                    });
+                                } else {
+                                    // No serviceable district found - use Maharashtra fallback
+                                    setServiceability({
+                                        status: 'unserviceable',
+                                        location: 'MAHARASHTRA',
+                                        district: 'ALL',
+                                        stateCode: 'MH',
+                                        userDistrict: userDist,
+                                        fallbackDistrict: 'Maharashtra'
+                                    });
+                                }
+                            }
                             localStorage.setItem('bkmb_user_pincode', JSON.stringify({
                                 pincode,
                                 taluka: result.taluka || nearest.taluka,
@@ -1146,6 +1187,26 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                         </div>
                     </div>
                 </header>
+
+                {/* Not Serviceable Banner */}
+                {serviceability.status === 'unserviceable' && serviceability.fallbackDistrict && (
+                    <div className="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20">
+                        <div className="flex items-start gap-3">
+                            <span className="text-2xl">📍</span>
+                            <div className="flex-1">
+                                <p className="font-bold text-amber-900 dark:text-amber-200">
+                                    Your area ({serviceability.userDistrict}) is not in our delivery zone yet.
+                                </p>
+                                <p className="mt-1 text-sm text-amber-800 dark:text-amber-300">
+                                    Showing prices for <span className="font-bold">{serviceability.fallbackDistrict}</span> • You can still browse & book
+                                </p>
+                                <p className="mt-1 text-sm text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                                    → Pickup from our <span className="font-bold">{serviceability.fallbackDistrict}</span> hub available!
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <div
                     className={`flex gap-6 xl:gap-16 transition-all duration-700 ${viewMode === 'grid' ? 'max-w-full' : ''}`}
