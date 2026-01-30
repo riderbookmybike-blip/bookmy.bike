@@ -10,7 +10,6 @@ import { FinanceRoutingTable } from '@/types/bankPartner';
 export async function onboardBank(formData: {
     bankName: string;
     website: string;
-    adminName: string;
     adminPhone: string;
     slug?: string;
 }) {
@@ -80,19 +79,8 @@ export async function onboardBank(formData: {
         let memberId = existingMember?.id;
 
         if (!memberId) {
-            console.log('[OnboardBank] No existing member found, creating new...');
-            const { data: newMember, error: createError } = await adminClient
-                .from('id_members')
-                .insert({
-                    full_name: formData.adminName,
-                    primary_phone: formattedPhone,
-                    member_status: 'ACTIVE',
-                })
-                .select()
-                .single();
-
-            if (createError) throw createError;
-            memberId = newMember.id;
+            console.log('[OnboardBank] User not found with this mobile number');
+            throw new Error('This mobile number is not registered. Please signup on BookMyBike first.');
         }
 
         console.log('[OnboardBank] Member ID resolved:', memberId);
