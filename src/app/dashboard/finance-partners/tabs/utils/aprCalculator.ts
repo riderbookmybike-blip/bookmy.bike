@@ -80,32 +80,29 @@ function calculateFlatEMI(principal: number, annualRate: number, tenure: number)
 }
 
 /**
- * Calculate IRR (Internal Rate of Return) using Newton-Raphson method
- * IRR is the annual discount rate that makes NPV of all cash flows equal to zero
- * More accurate than simple APR as it accounts for time value of money
+ * Calculate IRR (Internal Rate of Return) for a loan using Newton-Raphson method
+ * This calculates the true annual percentage rate (APR) for the loan.
  * 
- * Cash flows:
- * - Month 0: -downpayment (outflow)
- * - Months 1-N: -emi (outflows)
- * - Month N: +assetValue (inflow, representing the value received)
+ * Cash flow model (from borrower's perspective):
+ * - Month 0: +grossLoan (amount borrowed/received)
+ * - Months 1-N: -emi (monthly payments)
+ * 
+ * IRR makes NPV = 0:
+ * grossLoan = Σ(emi / (1+r)^n) for n=1 to N
  */
 function calculateIRR(
-    downpayment: number,
+    grossLoan: number,
     emi: number,
-    tenure: number,
-    assetValue: number
+    tenure: number
 ): number {
     // Helper function to calculate NPV at a given monthly rate
     const calculateNPV = (monthlyRate: number): number => {
-        let npv = -downpayment; // Initial outflow
+        let npv = grossLoan; // Amount borrowed (inflow/positive)
 
         // EMI payments (outflows)
         for (let month = 1; month <= tenure; month++) {
             npv -= emi / Math.pow(1 + monthlyRate, month);
         }
-
-        // Asset value received (inflow) at the end
-        npv += assetValue / Math.pow(1 + monthlyRate, tenure);
 
         return npv;
     };
@@ -118,9 +115,6 @@ function calculateIRR(
         for (let month = 1; month <= tenure; month++) {
             derivative += (month * emi) / Math.pow(1 + monthlyRate, month + 1);
         }
-
-        // Derivative of asset value
-        derivative -= (tenure * assetValue) / Math.pow(1 + monthlyRate, tenure + 1);
 
         return derivative;
     };
@@ -155,13 +149,13 @@ function calculateIRR(
     // Convert monthly rate to annual percentage
     const annualRate = monthlyRate * 12 * 100;
 
-    // Sanity check: IRR should be realistic (between 0% and 100%)
-    if (annualRate < 0 || annualRate > 100 || isNaN(annualRate)) {
+    // Sanity check: APR should be realistic (between 0% and 120%)
+    if (annualRate < 0 || annualRate > 120 || isNaN(annualRate)) {
         // Fallback to simple effective rate if IRR calculation fails
-        const totalPaid = downpayment + (emi * tenure);
-        const totalCost = totalPaid - assetValue;
+        const totalPaid = emi * tenure;
+        const totalInterest = totalPaid - grossLoan;
         const yearsInTenure = tenure / 12;
-        return (totalCost / assetValue / yearsInTenure) * 100;
+        return (totalInterest / grossLoan / yearsInTenure) * 100;
     }
 
     return annualRate;
@@ -228,9 +222,9 @@ export function calculateAPR(
     // 6. Calculate Total Amount Paid
     const totalPaid = downpayment + (emi * tenure);
 
-    // 7. Calculate IRR (Internal Rate of Return) - more accurate than simple APR
-    // IRR is the annual interest rate that makes the NPV of all cash flows equal to zero
-    const irr = calculateIRR(downpayment, emi, tenure, assetValue);
+    // 7. Calculate IRR (Internal Rate of Return) - true cost of the loan
+    // IRR is the monthly rate where: finalGrossLoan = Present Value of all EMI payments
+    const irr = calculateIRR(finalGrossLoan, emi, tenure);
 
     // 8. Calculate dealer payout
     let payoutValue: number;
