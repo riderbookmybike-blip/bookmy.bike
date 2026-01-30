@@ -120,6 +120,51 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
             {/* Texture Overlay (Noise) */}
             <div className="absolute inset-0 opacity-[0.15] pointer-events-none mix-blend-overlay bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
 
+            {/* Studio Spotlights - 3 from Left, 2 from Right */}
+            {/* Left Spotlights */}
+            <div
+                className="absolute top-0 left-[10%] w-[120px] h-[70vh] pointer-events-none z-[5]"
+                style={{
+                    background: 'linear-gradient(165deg, rgba(255, 255, 255, 0.25) 0%, transparent 60%)',
+                    filter: 'blur(30px)',
+                    transform: 'skewX(-15deg)',
+                }}
+            />
+            <div
+                className="absolute top-0 left-[25%] w-[100px] h-[60vh] pointer-events-none z-[5]"
+                style={{
+                    background: 'linear-gradient(170deg, rgba(244, 176, 0, 0.2) 0%, transparent 55%)',
+                    filter: 'blur(25px)',
+                    transform: 'skewX(-10deg)',
+                }}
+            />
+            <div
+                className="absolute top-0 left-[5%] w-[90px] h-[50vh] pointer-events-none z-[5]"
+                style={{
+                    background: 'linear-gradient(160deg, rgba(255, 255, 255, 0.15) 0%, transparent 50%)',
+                    filter: 'blur(35px)',
+                    transform: 'skewX(-20deg)',
+                }}
+            />
+
+            {/* Right Spotlights */}
+            <div
+                className="absolute top-0 right-[15%] w-[110px] h-[65vh] pointer-events-none z-[5]"
+                style={{
+                    background: 'linear-gradient(195deg, rgba(255, 255, 255, 0.22) 0%, transparent 58%)',
+                    filter: 'blur(28px)',
+                    transform: 'skewX(12deg)',
+                }}
+            />
+            <div
+                className="absolute top-0 right-[8%] w-[95px] h-[55vh] pointer-events-none z-[5]"
+                style={{
+                    background: 'linear-gradient(200deg, rgba(244, 176, 0, 0.18) 0%, transparent 52%)',
+                    filter: 'blur(32px)',
+                    transform: 'skewX(18deg)',
+                }}
+            />
+
             {/* 1. Immersive Gradient Overlay to keep bottom content readable but HIGHLY colored */}
             <div className="absolute inset-x-0 bottom-0 h-[55vh] bg-gradient-to-t from-white/40 via-white/20 to-transparent z-10" />
 
