@@ -105,8 +105,11 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
 
     return (
         <div
-            className="relative h-[100vh] w-full overflow-hidden snap-start shrink-0 flex flex-col transition-all duration-700"
+            className="relative w-full overflow-hidden snap-start shrink-0 flex flex-col transition-all duration-700"
             style={{
+                // Use dvh (dynamic viewport height) for proper mobile support
+                height: '100dvh',
+                maxHeight: '100dvh',
                 // Full flood of color
                 background: lightShade
             }}
