@@ -1,15 +1,20 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
 import { MobileHeader } from '@/components/mobile/layout/MobileHeader';
-import { FullPageDeal } from './FullPageDeal';
+import { ModelCard } from './ModelCard';
 import { MobileFilterModal } from '@/components/mobile/shared/MobileFilterModal';
 import { useCatalog } from '@/hooks/useCatalog';
+import { groupProductsByModel } from '@/utils/variantGrouping';
 
 export const MobileContextFeed = () => {
     const { items, isLoading } = useCatalog();
+
+    // Group products by model for variant navigation
+    const modelGroups = useMemo(() => groupProductsByModel(items), [items]);
+
     const [activeIndex, setActiveIndex] = useState(0);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
 
@@ -59,12 +64,17 @@ export const MobileContextFeed = () => {
                 style={{ height: '100dvh', touchAction: 'pan-y' }}
                 onScroll={handleScroll}
             >
-                {items.map((product, index) => (
-                    <FullPageDeal
-                        key={product.id}
-                        product={product}
-                        isActive={index === activeIndex}
-                    />
+                {modelGroups.map((modelGroup, index) => (
+                    <div
+                        key={`${modelGroup.make}-${modelGroup.model}`}
+                        className="snap-start shrink-0"
+                        style={{ height: '100dvh' }}
+                    >
+                        <ModelCard
+                            variants={modelGroup.variants}
+                            isActive={index === activeIndex}
+                        />
+                    </div>
                 ))}
 
                 {/* End of Feed Screen */}

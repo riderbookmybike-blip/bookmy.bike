@@ -43,8 +43,6 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
     const [activeColorIdx, setActiveColorIdx] = useState(0); // Now 0 is always primary after sorting
     const [isColorSelectorOpen, setIsColorSelectorOpen] = useState(false);
     const [isInfoOpen, setIsInfoOpen] = useState(false);
-    const [touchStart, setTouchStart] = useState<number | null>(null);
-    const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
     const activeColor = colors[activeColorIdx] || colors[0] || { hexCode: '#E8E8E8', imageUrl: product.imageUrl, name: 'Default' };
 
@@ -94,32 +92,7 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
 
     const lightShade = getLighterShade(activeColor.hexCode, 0.5); // More vibrant (50% mix)
 
-    // Swipe detection
-    const minSwipeDistance = 50;
-
-    const onTouchStart = (e: React.TouchEvent) => {
-        setTouchEnd(null);
-        setTouchStart(e.targetTouches[0].clientX);
-    };
-
-    const onTouchMove = (e: React.TouchEvent) => {
-        setTouchEnd(e.targetTouches[0].clientX);
-    };
-
-    const onTouchEnd = () => {
-        if (!touchStart || !touchEnd) return;
-
-        const distance = touchStart - touchEnd;
-        const isLeftSwipe = distance > minSwipeDistance;
-        const isRightSwipe = distance < -minSwipeDistance;
-
-        if (isLeftSwipe && activeColorIdx < colors.length - 1) {
-            setActiveColorIdx(prev => prev + 1);
-        }
-        if (isRightSwipe && activeColorIdx > 0) {
-            setActiveColorIdx(prev => prev - 1);
-        }
-    };
+    // Swipe handled by parent ModelCard component
 
     const handleColorSelect = (idx: number) => {
         setActiveColorIdx(idx);
@@ -136,9 +109,6 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                 // Full flood of color
                 background: lightShade
             }}
-            onTouchStart={onTouchStart}
-            onTouchMove={onTouchMove}
-            onTouchEnd={onTouchEnd}
         >
             {/* Texture Overlay (Noise) */}
             <div className="absolute inset-0 opacity-[0.15] pointer-events-none mix-blend-overlay bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
