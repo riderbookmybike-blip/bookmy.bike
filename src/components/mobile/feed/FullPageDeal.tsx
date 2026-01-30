@@ -410,7 +410,7 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                     </div>
                 </div>
 
-                {/* Ratings/Dots - Moved above button */}
+                {/* Ratings - Above button */}
                 <div className="flex flex-col items-center gap-3 mb-4">
                     <div className="flex items-center gap-2">
                         <div className="flex gap-0.5">
@@ -422,11 +422,16 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                         <span className="text-[10px] font-black text-zinc-900 uppercase tracking-widest leading-none">• 947K+ RATINGS</span>
                     </div>
 
-                    <div className="flex gap-1.5 opacity-40">
-                        <div className="w-1 h-1 rounded-full bg-[#FF9933]" />
-                        <div className="w-1 h-1 rounded-full bg-zinc-300" />
-                        <div className="w-1 h-1 rounded-full bg-[#138808]" />
-                    </div>
+                    {/* Clear Swipe Hint for Colors */}
+                    {colors.length > 1 && (
+                        <div className="flex items-center gap-2">
+                            <ChevronRight size={12} className="text-zinc-400 animate-pulse" />
+                            <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
+                                Swipe for {colors.length} colors
+                            </span>
+                            <ChevronRight size={12} className="text-zinc-400 animate-pulse" />
+                        </div>
+                    )}
                 </div>
 
                 <button
