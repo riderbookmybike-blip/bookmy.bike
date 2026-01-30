@@ -160,7 +160,7 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                         });
                     }}
                     whileTap={{ scale: 0.85 }}
-                    className="absolute top-4 right-4 z-50 w-10 h-10 rounded-full bg-black/40 backdrop-blur-lg flex items-center justify-center"
+                    className="absolute top-4 right-4 z-50 w-10 h-10 rounded-full bg-black/40 backdrop-blur-lg border border-white/20 flex items-center justify-center"
                 >
                     <motion.div
                         initial={false}
@@ -171,8 +171,8 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                     >
                         <Heart
                             className={`size-5 transition-colors ${isFavorite(product.id)
-                                    ? 'fill-red-500 stroke-red-500'
-                                    : 'fill-none stroke-white'
+                                ? 'fill-red-500 stroke-red-500'
+                                : 'fill-none stroke-white'
                                 }`}
                         />
                     </motion.div>
