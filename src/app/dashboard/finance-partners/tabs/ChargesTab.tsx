@@ -7,12 +7,14 @@ export default function ChargesTab({ partner, onSaveSuccess }: { partner: BankPa
     const [charges, setCharges] = useState<SchemeCharge[]>(partner.chargesMaster || []);
     const [isSaving, setIsSaving] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingChargeId, setEditingChargeId] = useState<string | null>(null);
     const [newCharge, setNewCharge] = useState<Partial<SchemeCharge>>({
         name: '',
         type: 'FIXED',
         calculationBasis: 'LOAN_AMOUNT',
         impact: 'UPFRONT',
-        value: 0
+        value: 0,
+        taxStatus: 'NOT_APPLICABLE'
     });
 
     useEffect(() => {
@@ -36,18 +38,35 @@ export default function ChargesTab({ partner, onSaveSuccess }: { partner: BankPa
     const handleAddCharge = () => {
         if (!newCharge.name || newCharge.value === undefined) return;
 
-        const charge: SchemeCharge = {
-            id: `c${Date.now()}`,
-            name: newCharge.name,
-            type: newCharge.type as any,
-            calculationBasis: newCharge.calculationBasis as any,
-            impact: newCharge.impact as any,
-            value: Number(newCharge.value),
-            taxStatus: 'NOT_APPLICABLE'
-        };
+        if (editingChargeId) {
+            // Update existing charge
+            setCharges(charges.map(c => c.id === editingChargeId ? {
+                ...c,
+                name: newCharge.name!,
+                type: newCharge.type as any,
+                calculationBasis: newCharge.calculationBasis as any,
+                impact: newCharge.impact as any,
+                value: Number(newCharge.value),
+                taxStatus: (newCharge.taxStatus || 'NOT_APPLICABLE') as any,
+                taxRate: newCharge.taxRate
+            } : c));
+        } else {
+            // Add new charge
+            const charge: SchemeCharge = {
+                id: `c${Date.now()}`,
+                name: newCharge.name,
+                type: newCharge.type as any,
+                calculationBasis: newCharge.calculationBasis as any,
+                impact: newCharge.impact as any,
+                value: Number(newCharge.value),
+                taxStatus: (newCharge.taxStatus || 'NOT_APPLICABLE') as any,
+                taxRate: newCharge.taxRate
+            };
+            setCharges([...charges, charge]);
+        }
 
-        setCharges([...charges, charge]);
         setIsModalOpen(false);
+        setEditingChargeId(null);
         setNewCharge({
             name: '',
             type: 'FIXED',
@@ -127,8 +146,28 @@ export default function ChargesTab({ partner, onSaveSuccess }: { partner: BankPa
                                     </div>
                                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button
+                                            onClick={() => {
+                                                setEditingChargeId(charge.id);
+                                                setNewCharge({
+                                                    name: charge.name,
+                                                    type: charge.type,
+                                                    calculationBasis: charge.calculationBasis,
+                                                    impact: charge.impact,
+                                                    value: charge.value,
+                                                    taxStatus: charge.taxStatus || 'NOT_APPLICABLE',
+                                                    taxRate: charge.taxRate
+                                                });
+                                                setIsModalOpen(true);
+                                            }}
+                                            className="p-3 bg-slate-100 dark:bg-white/5 rounded-xl hover:bg-blue-500 hover:text-white transition-all"
+                                            title="Edit charge"
+                                        >
+                                            <Edit3 size={16} />
+                                        </button>
+                                        <button
                                             onClick={() => setCharges(charges.filter(c => c.id !== charge.id))}
                                             className="p-3 bg-slate-100 dark:bg-white/5 rounded-xl hover:bg-red-500 hover:text-white transition-all"
+                                            title="Delete charge"
                                         >
                                             <Trash2 size={16} />
                                         </button>
@@ -174,10 +213,28 @@ export default function ChargesTab({ partner, onSaveSuccess }: { partner: BankPa
                     <div className="bg-white dark:bg-slate-900 w-full max-w-xl rounded-[40px] shadow-2xl overflow-hidden border border-white/10">
                         <div className="p-10 border-b border-slate-100 dark:border-white/5 flex items-center justify-between bg-slate-50 dark:bg-black/20">
                             <div>
-                                <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">Create Master Charge</h3>
-                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Definition of a standard fee template</p>
+                                <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
+                                    {editingChargeId ? 'Edit Master Charge' : 'Create Master Charge'}
+                                </h3>
+                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">
+                                    {editingChargeId ? 'Modify existing fee template' : 'Definition of a standard fee template'}
+                                </p>
                             </div>
-                            <button onClick={() => setIsModalOpen(false)} className="w-10 h-10 rounded-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all">
+                            <button
+                                onClick={() => {
+                                    setIsModalOpen(false);
+                                    setEditingChargeId(null);
+                                    setNewCharge({
+                                        name: '',
+                                        type: 'FIXED',
+                                        calculationBasis: 'LOAN_AMOUNT',
+                                        impact: 'UPFRONT',
+                                        value: 0,
+                                        taxStatus: 'NOT_APPLICABLE'
+                                    });
+                                }}
+                                className="w-10 h-10 rounded-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"
+                            >
                                 <X size={20} />
                             </button>
                         </div>
