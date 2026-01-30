@@ -54,6 +54,7 @@ export default function DocumentManager({ memberId, tenantId }: DocumentManagerP
     const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
     const [isSelectMode, setIsSelectMode] = useState(false);
     const [viewingDoc, setViewingDoc] = useState<Document | null>(null);
+    const [isRenameOpen, setIsRenameOpen] = useState(false);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
     const categories = [
@@ -600,48 +601,55 @@ export default function DocumentManager({ memberId, tenantId }: DocumentManagerP
                                     </Button>
                                 )}
 
-                                <div className="relative group/ren_modal">
-                                    <Button className="bg-white/10 hover:bg-indigo-600 text-white h-12 px-6 rounded-2xl flex items-center gap-3 transition-all">
+                                <div className="relative">
+                                    <Button
+                                        onClick={() => setIsRenameOpen(!isRenameOpen)}
+                                        className="bg-white/10 hover:bg-indigo-600 text-white h-12 px-6 rounded-2xl flex items-center gap-3 transition-all"
+                                    >
                                         <Type size={18} />
                                         <span className="text-[10px] font-black uppercase tracking-widest">Rename Asset</span>
                                     </Button>
-                                    <div className="absolute top-full mt-4 right-0 bg-slate-900 border border-white/10 rounded-2xl p-4 hidden group-hover/ren_modal:block shadow-2xl z-50 w-72">
-                                        <div className="space-y-4">
-                                            <input
-                                                autoFocus
-                                                type="text"
-                                                placeholder="Type custom name..."
-                                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs text-white outline-none focus:ring-2 focus:ring-indigo-500"
-                                                onKeyDownCapture={async (e) => {
-                                                    if (e.key === 'Enter') {
-                                                        const val = (e.currentTarget as HTMLInputElement).value;
-                                                        if (val) {
-                                                            await updateMemberDocumentAction(viewingDoc.id, { purpose: val });
-                                                            toast.success('Asset Recataloged');
-                                                            setViewingDoc({ ...viewingDoc, purpose: val });
-                                                            fetchDocuments();
+                                    {isRenameOpen && (
+                                        <div className="absolute top-full mt-4 right-0 bg-slate-900 border border-white/10 rounded-2xl p-4 shadow-2xl z-50 w-72">
+                                            <div className="space-y-4">
+                                                <input
+                                                    autoFocus
+                                                    type="text"
+                                                    placeholder="Type custom name..."
+                                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                                                    onKeyDownCapture={async (e) => {
+                                                        if (e.key === 'Enter') {
+                                                            const val = (e.currentTarget as HTMLInputElement).value;
+                                                            if (val) {
+                                                                await updateMemberDocumentAction(viewingDoc.id, { purpose: val });
+                                                                toast.success('Asset Recataloged');
+                                                                setViewingDoc({ ...viewingDoc, purpose: val });
+                                                                fetchDocuments();
+                                                                setIsRenameOpen(false);
+                                                            }
                                                         }
-                                                    }
-                                                }}
-                                            />
-                                            <div className="grid grid-cols-1 gap-1 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
-                                                {categories.map(cat => (
-                                                    <button
-                                                        key={cat}
-                                                        onClick={async () => {
-                                                            await updateMemberDocumentAction(viewingDoc.id, { purpose: cat });
-                                                            toast.success('Asset Recataloged');
-                                                            setViewingDoc({ ...viewingDoc, purpose: cat });
-                                                            fetchDocuments();
-                                                        }}
-                                                        className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:bg-white/5 rounded-xl text-left"
-                                                    >
-                                                        {cat}
-                                                    </button>
-                                                ))}
+                                                    }}
+                                                />
+                                                <div className="grid grid-cols-1 gap-1 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                                                    {categories.map(cat => (
+                                                        <button
+                                                            key={cat}
+                                                            onClick={async () => {
+                                                                await updateMemberDocumentAction(viewingDoc.id, { purpose: cat });
+                                                                toast.success('Asset Recataloged');
+                                                                setViewingDoc({ ...viewingDoc, purpose: cat });
+                                                                fetchDocuments();
+                                                                setIsRenameOpen(false);
+                                                            }}
+                                                            className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:bg-white/5 rounded-xl text-left"
+                                                        >
+                                                            {cat}
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
 
                                 <Button
