@@ -15,14 +15,22 @@ interface DealProps {
 export const FullPageDeal = ({ product, isActive }: DealProps) => {
     const router = useRouter();
     const { setActiveColorHex } = useActiveColor();
-    const [activeColorIdx, setActiveColorIdx] = useState(0);
+
+    // Adapt database structure to component needs
+    const colors = product.availableColors || [];
+
+    // Find primary color index (matching desktop behavior)
+    const primaryColorIndex = colors.findIndex((c: any) => {
+        // Check if this color has a primary asset
+        return c.imageUrl && c.imageUrl.includes('is_primary');
+    });
+
+    const [activeColorIdx, setActiveColorIdx] = useState(primaryColorIndex >= 0 ? primaryColorIndex : 0);
     const [isColorSelectorOpen, setIsColorSelectorOpen] = useState(false);
     const [isInfoOpen, setIsInfoOpen] = useState(false);
     const [touchStart, setTouchStart] = useState<number | null>(null);
     const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
-    // Adapt database structure to component needs
-    const colors = product.availableColors || [];
     const activeColor = colors[activeColorIdx] || colors[0] || { hexCode: '#E8E8E8', imageUrl: product.imageUrl, name: 'Default' };
 
     // Sync active color with context for header adaptation (on mount and color change)
