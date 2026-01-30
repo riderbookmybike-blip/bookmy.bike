@@ -301,51 +301,135 @@ export default function SKUMediaManager({
                         </div>
                     </div>
 
-                    {/* RIGHT: Assets & Config */}
-                    <div className="flex-1 p-8 overflow-y-auto space-y-8 bg-white dark:bg-slate-900">
-                        {/* Summary Info */}
-                        <div className="p-6 bg-slate-50 dark:bg-white/5 rounded-3xl border border-slate-100 dark:border-white/10">
-                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4">Current Selection</h4>
-                            <div className="flex items-center gap-4">
-                                <div className="w-16 h-16 rounded-2xl bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 overflow-hidden">
-                                    {primaryImage ? (
-                                        <img src={primaryImage} alt={skuName} className="w-full h-full object-contain" />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-slate-400">
-                                            <span className="text-2xl">📦</span>
+                    {/* RIGHT: Live Preview Simulator */}
+                    <div className="flex-1 p-8 overflow-y-auto space-y-6 bg-white dark:bg-slate-900">
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                                <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg">
+                                    <Maximize2 size={14} />
+                                </div>
+                                <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">Live Preview</h3>
+                            </div>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Real-time card simulation</p>
+                        </div>
+
+                        {/* Mobile Card Preview */}
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-indigo-500" />
+                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Mobile View</span>
+                            </div>
+                            <div className="scale-[0.65] origin-top-left transform" style={{ width: '230px' }}>
+                                <div className="bg-white dark:bg-[#0f1115] border border-black/[0.04] dark:border-white/10 rounded-3xl overflow-hidden shadow-lg">
+                                    {/* Image Section */}
+                                    <div className="h-52 bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center relative overflow-hidden">
+                                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-white/10 dark:to-black/30 z-0" />
+                                        <motion.img
+                                            animate={{
+                                                scale: zoomFactor,
+                                                scaleX: isFlipped ? -zoomFactor : zoomFactor,
+                                                x: offsetX,
+                                                y: offsetY
+                                            }}
+                                            transition={{ duration: 0.3 }}
+                                            src={primaryImage || '/images/categories/motorcycle_nobg.png'}
+                                            alt={skuName}
+                                            className="absolute bottom-2 left-1/2 -translate-x-1/2 w-[92%] h-[92%] object-contain z-10"
+                                        />
+                                        <span className="absolute font-black text-4xl uppercase tracking-[0.2em] opacity-[0.06] italic text-slate-900 dark:text-white select-none z-0">MOCK</span>
+                                    </div>
+
+                                    {/* Content Section */}
+                                    <div className="p-4 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <h3 className="text-base font-black uppercase tracking-tighter italic text-slate-900 dark:text-white">{skuName}</h3>
+                                            <div className="flex -space-x-1">
+                                                <div className="w-4 h-4 rounded-full border border-white dark:border-slate-900 bg-red-500" />
+                                                <div className="w-4 h-4 rounded-full border border-white dark:border-slate-900 bg-black" />
+                                            </div>
                                         </div>
-                                    )}
-                                </div>
-                                <div>
-                                    <p className="text-sm font-black text-slate-900 dark:text-white truncate max-w-[150px]">{skuName}</p>
-                                    <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">Refinement Active</p>
+                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">STANDARD • VARIANT</p>
+
+                                        <div className="pt-2 border-t border-slate-100 dark:border-white/5 grid grid-cols-2 gap-3">
+                                            <div>
+                                                <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">On-Road</p>
+                                                <span className="text-lg font-black italic text-slate-900 dark:text-white">₹1,50,000</span>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-[8px] font-black text-green-600 uppercase tracking-widest mb-0.5">Lowest EMI</p>
+                                                <span className="text-lg font-black text-green-600">₹5,250</span>
+                                            </div>
+                                        </div>
+
+                                        <button className="w-full h-8 bg-[#F4B000] text-black rounded-lg text-[9px] font-black uppercase tracking-wider shadow-lg">
+                                            Know More
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Gallery Quick Select */}
-                        <div className="space-y-4">
-                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Inventory Images</h4>
-                            <div className="grid grid-cols-4 gap-3">
-                                {[...images, ...inheritedImages].map((img, idx) => (
-                                    <button
-                                        key={idx}
-                                        onClick={() => setPrimaryImage(img)}
-                                        className={`aspect-square rounded-xl border-2 overflow-hidden transition-all ${primaryImage === img ? 'border-amber-400 scale-105 shadow-lg' : 'border-slate-100 dark:border-white/5 opacity-60 hover:opacity-100'}`}
-                                    >
-                                        <img src={img} className="w-full h-full object-cover" />
-                                    </button>
-                                ))}
+                        {/* Desktop Card Preview */}
+                        <div className="space-y-3 pt-6">
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-amber-500" />
+                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Desktop View</span>
+                            </div>
+                            <div className="scale-[0.45] origin-top-left transform" style={{ width: '650px' }}>
+                                <div className="bg-white dark:bg-[#0f1115] border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden flex shadow-sm min-h-[22rem]">
+                                    {/* Image Section */}
+                                    <div className="w-[38%] bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center relative p-8 border-r border-slate-100 dark:border-white/5 overflow-hidden">
+                                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-100/50 dark:to-black/30 z-0" />
+                                        <motion.img
+                                            animate={{
+                                                scale: zoomFactor,
+                                                scaleX: isFlipped ? -zoomFactor : zoomFactor,
+                                                x: offsetX,
+                                                y: offsetY
+                                            }}
+                                            transition={{ duration: 0.3 }}
+                                            src={primaryImage || '/images/categories/motorcycle_nobg.png'}
+                                            alt={skuName}
+                                            className="w-[85%] h-[85%] object-contain z-10"
+                                        />
+                                        <span className="absolute font-black text-7xl uppercase tracking-[0.2em] opacity-[0.06] italic text-slate-900 dark:text-white select-none z-0">MOCK</span>
+                                    </div>
+
+                                    {/* Content Section */}
+                                    <div className="flex-1 p-6 flex flex-col justify-between">
+                                        <div className="space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <div className="space-y-1">
+                                                    <h3 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white">{skuName}</h3>
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">STANDARD VARIANT • MOCK COLOR</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-4 py-4 border-y border-slate-100 dark:border-white/10">
+                                                <div><p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Engine</p><p className="text-xs font-black text-slate-900 dark:text-white">125CC</p></div>
+                                                <div><p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Weight</p><p className="text-xs font-black text-slate-900 dark:text-white">115KG</p></div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between pt-4">
+                                            <div className="flex gap-8">
+                                                <div><p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">On-Road</p><span className="text-2xl font-black text-slate-900 dark:text-white">₹1,50,000</span></div>
+                                                <div><p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">EMI</p><span className="text-2xl font-black text-brand-primary">₹5,250</span></div>
+                                            </div>
+                                            <button className="px-8 py-3 bg-[#F4B000] text-black rounded-2xl text-[9px] font-black uppercase tracking-wider shadow-lg">Know More</button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Additional Config */}
-                        <div className="space-y-4 pt-4">
+                        {/* Config Toggle */}
+                        <div className="pt-6 border-t border-slate-100 dark:border-white/5">
                             <label className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-black/20 rounded-2xl cursor-pointer group">
                                 <div className={`w-10 h-6 border-2 rounded-full relative transition-all ${applyVideosToAll ? 'bg-indigo-600 border-indigo-600' : 'border-slate-200 dark:border-white/10'}`}>
                                     <div className={`absolute top-1 w-3 h-3 rounded-full transition-all ${applyVideosToAll ? 'right-1 bg-white' : 'left-1 bg-slate-300'}`} />
                                 </div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Apply alignment to all variants</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Apply to all variants</span>
                                 <input type="checkbox" hidden checked={applyVideosToAll} onChange={e => setApplyVideosToAll(e.target.checked)} />
                             </label>
                         </div>
