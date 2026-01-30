@@ -37,6 +37,10 @@ interface SKUPriceRow {
     type?: 'vehicles' | 'accessories' | 'service';
     category: string;
     subCategory: string;
+    status: 'ACTIVE' | 'INACTIVE' | 'DRAFT'; // Added Status
+    originalStatus: 'ACTIVE' | 'INACTIVE' | 'DRAFT'; // For Diff
+    localIsActive: boolean; // Dealer Local Status
+    originalLocalIsActive: boolean; // For Diff
 }
 
 export default function PricingPage() {
@@ -129,7 +133,7 @@ export default function PricingPage() {
             const { data: skuData, error: skuError } = await supabase
                 .from('cat_items')
                 .select(`
-                    id, name, slug, specs, price_base, template_id, parent_id, inclusion_type,
+                    id, name, slug, specs, price_base, template_id, parent_id, inclusion_type, status,
                     template:cat_templates(category, name),
                     parent:parent_id (
                         id,
@@ -158,7 +162,7 @@ export default function PricingPage() {
                 // Fetch Dealer Specific Offers
                 tenantSlug !== 'aums' ? supabase
                     .from('id_dealer_pricing_rules')
-                    .select('vehicle_color_id, offer_amount, inclusion_type')
+                    .select('vehicle_color_id, offer_amount, inclusion_type, is_active')
                     .eq('state_code', activeStateCode)
                     .eq('tenant_id', tenantId) : Promise.resolve({ data: [] as any, error: null as any }),
                 // Temporarily disabling stock fetch as table seems to be missing
@@ -189,6 +193,12 @@ export default function PricingPage() {
                 offerMap.set(o.vehicle_color_id, o.offer_amount);
             });
 
+            // Map Dealer Status
+            const activeMap = new Map();
+            offerData?.forEach((o: any) => {
+                activeMap.set(o.vehicle_color_id, o.is_active);
+            });
+
             // 3. Fetch Brand Regional Deltas
             const { data: brandDeltas, error: deltaError } = await supabase
                 .from('cat_regional_configs')
@@ -217,6 +227,8 @@ export default function PricingPage() {
                 // Offer: Explicit Dealer Offer > 0
                 const stateOffer = pricingRule?.offer_amount || offerMap.get(sku.id) || 0;
                 const stateInclusion = pricingRule?.inclusion_type || sku.inclusion_type || 'OPTIONAL';
+                // Local Status: Default false (Opt-in) if not found
+                const localIsActive = activeMap.has(sku.id) ? activeMap.get(sku.id) : false;
 
                 const basePrice = (sku.price_base || family?.price_base || 0);
                 const brandDelta = brandDeltaMap.get(brand?.id) || 0;
@@ -260,7 +272,11 @@ export default function PricingPage() {
                     originalExShowroom: finalPrice,
                     originalOfferAmount: stateOffer,
                     originalInclusionType: finalInclusionType,
-                    stockCount: 0
+                    stockCount: 0,
+                    status: sku.status || 'INACTIVE', // Default to INACTIVE if null
+                    originalStatus: sku.status || 'INACTIVE',
+                    localIsActive: localIsActive,
+                    originalLocalIsActive: localIsActive
                 };
             });
 
@@ -296,6 +312,18 @@ export default function PricingPage() {
         setLastEditTime(Date.now());
     };
 
+    const handleUpdateStatus = (skuId: string, status: 'ACTIVE' | 'INACTIVE') => {
+        setSkus(prev => prev.map(s => s.id === skuId ? { ...s, status: status } : s));
+        setHasUnsavedChanges(true);
+        setLastEditTime(Date.now());
+    };
+
+    const handleUpdateLocalStatus = (skuId: string, isActive: boolean) => {
+        setSkus(prev => prev.map(s => s.id === skuId ? { ...s, localIsActive: isActive } : s));
+        setHasUnsavedChanges(true);
+        setLastEditTime(Date.now());
+    };
+
     const handleBulkUpdate = (ids: string[], price: number) => {
         setSkus(prev => prev.map(s => ids.includes(s.id) ? { ...s, exShowroom: price } : s));
         setHasUnsavedChanges(true);
@@ -307,29 +335,34 @@ export default function PricingPage() {
         if (!activeStateCode) return;
 
         // SEPARATE LOGIC:
-        // AUMS -> Saves Base Prices (vehicle_prices)
+        // AUMS -> Saves Base Prices (vehicle_prices) AND Status (cat_items)
         // DEALERS -> Saves Offers (id_dealer_pricing_rules)
 
         const isAums = tenantSlug === 'aums';
         const updates: Promise<any>[] = [];
 
         if (isAums) {
-            // Filter modified prices
-            // Note: We are saving ALL prices for now to ensure consistency, 
-            // but ideally should only save changed ones.
+            // 1. Save Prices
             const pricePayload = skus.map(s => ({
                 vehicle_color_id: s.id,
                 state_code: activeStateCode,
                 ex_showroom_price: s.exShowroom,
-                // We don't touch offer_amount in vehicle_prices for AUMS anymore, 
-                // or we kept it as legacy? Migration 20260205_add_offer added it.
-                // But now we are moving to id_dealer_pricing_rules.
-                // We will ignore offer_amount in vehicle_prices now.
                 updated_at: new Date().toISOString()
             }));
 
-            // Use the Bypass RPC for Base Prices
             updates.push(Promise.resolve(supabase.rpc('upsert_vehicle_prices_bypass', { prices: pricePayload })));
+
+            // 2. Save Status Changes (Only if changed)
+            const modifiedStatusSkus = skus.filter(s => s.status !== s.originalStatus);
+            if (modifiedStatusSkus.length > 0) {
+                const statusUpdates = modifiedStatusSkus.map(async (sku) => {
+                    return supabase.from('cat_items').update({ status: sku.status }).eq('id', sku.id);
+                });
+                updates.push(...statusUpdates);
+                // Future Notification Hook:
+                // const newlyActive = modifiedStatusSkus.filter(s => s.status === 'ACTIVE' && s.originalStatus !== 'ACTIVE');
+                // notifyDealers(newlyActive);
+            }
         } else {
             // Dealer Logic
             const offerPayload = skus.map(s => ({
@@ -337,7 +370,8 @@ export default function PricingPage() {
                 vehicle_color_id: s.id,
                 state_code: activeStateCode,
                 offer_amount: s.offerAmount,
-                inclusion_type: s.inclusionType
+                inclusion_type: s.inclusionType,
+                is_active: s.localIsActive // Persist Local Status
             }));
 
             // Use the New Dealer RPC
@@ -353,8 +387,9 @@ export default function PricingPage() {
             console.error('Save Errors:', results);
         } else {
             setHasUnsavedChanges(false);
-            // Refresh to confirm sync
-            // fetchSKUsAndPrices(); 
+            // Refresh to confirm sync and update originalStatus
+            // Ideally we should just update ref here to avoid re-fetch flickers
+            setSkus(prev => prev.map(s => ({ ...s, originalExShowroom: s.exShowroom, originalOfferAmount: s.offerAmount, originalStatus: s.status })));
         }
     };
 
@@ -365,7 +400,7 @@ export default function PricingPage() {
     const renderHeader = () => {
         // Calculate dynamic metrics
         const missingPrices = skus.filter(s => s.exShowroom === 0).length;
-        const pendingSaves = hasUnsavedChanges ? skus.filter(s => s.exShowroom !== s.originalExShowroom || s.offerAmount !== s.originalOfferAmount || s.inclusionType !== s.originalInclusionType).length : 0;
+        const pendingSaves = hasUnsavedChanges ? skus.filter(s => s.exShowroom !== s.originalExShowroom || s.offerAmount !== s.originalOfferAmount || s.inclusionType !== s.originalInclusionType || s.status !== s.originalStatus || s.localIsActive !== s.originalLocalIsActive).length : 0;
         const activeState = states.find(s => s.id === selectedStateId)?.stateCode || '--';
 
         return (
@@ -460,6 +495,8 @@ export default function PricingPage() {
                                 onUpdatePrice={handleUpdatePrice}
                                 onUpdateOffer={handleUpdateOffer}
                                 onUpdateInclusion={handleUpdateInclusion}
+                                onUpdateStatus={handleUpdateStatus}
+                                onUpdateLocalStatus={handleUpdateLocalStatus}
                                 onBulkUpdate={handleBulkUpdate}
                                 onSaveAll={handleSaveAll}
                                 states={states}

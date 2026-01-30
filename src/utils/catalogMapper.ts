@@ -120,6 +120,20 @@ export function mapCatalogItems(
                 allSkus.push(...familyChildren.flatMap(c => (c.type === 'SKU' ? [{ ...c, price_base: c.price_base ?? 0 }] : (c.skus || []))));
             }
 
+            // Extract dealer/studio info from best offer match
+            let studioName: string | undefined = undefined;
+            let dealerId: string | undefined = undefined;
+            if (offers && Array.isArray(offers)) {
+                const skuIds = allSkus.map((s: any) => s.id);
+                const dealerMatch = offers
+                    .filter((o: any) => skuIds.includes(o.vehicle_color_id))
+                    .sort((a: any, b: any) => Number(a.best_offer) - Number(b.best_offer))[0];
+                if (dealerMatch) {
+                    studioName = dealerMatch.dealer_name || undefined;
+                    dealerId = dealerMatch.dealer_id || undefined;
+                }
+            }
+
             return {
                 id: variantItem.id,
                 type: 'VEHICLE',
@@ -397,7 +411,9 @@ export function mapCatalogItems(
                     const firstSku = allSkus[0];
                     const targetSku = primarySku || firstSku;
                     return targetSku?.specs?.suitable_for || variantItem.specs?.suitable_for || family.specs?.suitable_for || undefined;
-                })()
+                })(),
+                studioName,
+                dealerId
             };
         });
     });

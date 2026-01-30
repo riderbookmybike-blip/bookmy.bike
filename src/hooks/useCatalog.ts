@@ -169,7 +169,7 @@ export function useCatalog(leadId?: string) {
                                     is_flipped,
                                     offset_x,
                                      assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
-                                     prices:cat_prices!vehicle_color_id(ex_showroom_price, state_code, district, latitude, longitude)
+                                     prices:vehicle_prices!vehicle_color_id(ex_showroom_price, state_code, offer_amount)
                                 )
                         )
                     `)
