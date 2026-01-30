@@ -1,7 +1,21 @@
 import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
 import StorePage from './store/page';
 import StoreLayout from './store/layout';
+import { MobileContextFeed } from '@/components/mobile/feed/MobileContextFeed';
+import { MobileBottomNav } from '@/components/mobile/layout/MobileBottomNav';
+import { FavoritesProvider } from '@/contexts/FavoritesContext';
+
+function MobileHome() {
+  return (
+    <FavoritesProvider>
+      <div className="bg-black min-h-screen">
+        <MobileContextFeed />
+        <MobileBottomNav />
+      </div>
+    </FavoritesProvider>
+  );
+}
 
 export default async function RootPage() {
   // Detect mobile devices via user-agent
@@ -10,9 +24,13 @@ export default async function RootPage() {
 
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
 
-  // Redirect mobile users to /m
+  // Render mobile version directly (no redirect for SEO)
   if (isMobile) {
-    redirect('/m');
+    return (
+      <Suspense fallback={<div className="min-h-screen bg-black" />}>
+        <MobileHome />
+      </Suspense>
+    );
   }
 
   // Desktop users see the store page
