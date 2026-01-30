@@ -339,6 +339,11 @@ export function calculateAPR(
 
     const netMargin = totalPayoutAmount - totalSubvention;
 
+    // 11. Calculate Total Cost (Extra amount paid over Asset Value)
+    // Total Paid (Downpayment + EMIs) - Asset Value
+    const totalPaid = downpayment + (emi * tenure);
+    const totalCost = totalPaid - assetValue;
+
     return {
         schemeId: scheme.id,
         schemeName: scheme.name,
@@ -346,43 +351,31 @@ export function calculateAPR(
         interestType: scheme.interestType,
         upfrontCharges: Math.round(upfrontCharges),
         fundedCharges: Math.round(fundedCharges),
-        // 11. Calculate Total Cost (Extra amount paid over Asset Value)
-        // Total Paid (Downpayment + EMIs) - Asset Value
-        const totalPaid = downpayment + (emi * tenure);
-        const totalCost = totalPaid - assetValue;
+        dealerPayout: {
+            value: scheme.payoutType === 'PERCENTAGE' ? scheme.payout : Math.round(payoutValue),
+            type: scheme.payoutType,
+            basis: scheme.payoutBasis,
+            amount: Math.round(totalPayoutAmount)
+        },
+        netMargin: Math.round(netMargin),
+        downpayment: Math.round(downpayment),
+        emi: Math.round(emi),
+        totalCost: Math.round(totalCost),
+        irr: Math.round(irr * 100) / 100,
+        apr: Math.round(apr * 100) / 100,
+        isActive: scheme.isActive,
+        tenure,
+        assetValue
+    };
+}
 
-        return {
-            schemeId: scheme.id,
-            schemeName: scheme.name,
-            roi: scheme.interestRate,
-            interestType: scheme.interestType,
-            upfrontCharges: Math.round(upfrontCharges),
-            fundedCharges: Math.round(fundedCharges),
-            dealerPayout: {
-                value: scheme.payoutType === 'PERCENTAGE' ? scheme.payout : Math.round(payoutValue),
-                type: scheme.payoutType,
-                basis: scheme.payoutBasis,
-                amount: Math.round(totalPayoutAmount)
-            },
-            netMargin: Math.round(netMargin),
-            downpayment: Math.round(downpayment),
-            emi: Math.round(emi),
-            totalCost: Math.round(totalCost),
-            irr: Math.round(irr * 100) / 100,
-            apr: Math.round(apr * 100) / 100,
-            isActive: scheme.isActive,
-            tenure,
-            assetValue
-        };
-    }
-
-    /**
-     * Calculate APR for all schemes
-     */
-    export function calculateAPRForAllSchemes(
-        schemes: BankScheme[],
-        assetValue: number = 100000,
-        tenure: number = 36
-    ): APRCalculation[] {
-        return schemes.map(scheme => calculateAPR(scheme, assetValue, tenure));
-    }
+/**
+ * Calculate APR for all schemes
+ */
+export function calculateAPRForAllSchemes(
+    schemes: BankScheme[],
+    assetValue: number = 100000,
+    tenure: number = 36
+): APRCalculation[] {
+    return schemes.map(scheme => calculateAPR(scheme, assetValue, tenure));
+}
