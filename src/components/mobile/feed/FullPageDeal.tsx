@@ -410,15 +410,8 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                     </div>
                 </div>
 
-                <button
-                    onClick={() => router.push(`/m/store/${product.make}/${product.model}/${product.variant}`)}
-                    className="w-full h-14 bg-black border-2 border-black rounded-xl font-black text-white text-xs uppercase tracking-[0.2em] active:scale-[0.98] transition-all mb-4 relative overflow-hidden group hover:bg-zinc-900"
-                >
-                    <span className="relative z-10">KNOW MORE</span>
-                    <div className="absolute inset-0 bg-zinc-800 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-                </button>
-
-                <div className="flex flex-col items-center gap-3">
+                {/* Ratings/Dots - Moved above button */}
+                <div className="flex flex-col items-center gap-3 mb-4">
                     <div className="flex items-center gap-2">
                         <div className="flex gap-0.5">
                             {[1, 2, 3, 4].map(s => (
@@ -435,6 +428,14 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                         <div className="w-1 h-1 rounded-full bg-[#138808]" />
                     </div>
                 </div>
+
+                <button
+                    onClick={() => router.push(`/m/store/${product.make}/${product.model}/${product.variant}`)}
+                    className="w-full h-14 bg-black border-2 border-black rounded-xl font-black text-white text-xs uppercase tracking-[0.2em] active:scale-[0.98] transition-all relative overflow-hidden group hover:bg-zinc-900"
+                >
+                    <span className="relative z-10">KNOW MORE</span>
+                    <div className="absolute inset-0 bg-zinc-800 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                </button>
             </div>
         </div>
     );
