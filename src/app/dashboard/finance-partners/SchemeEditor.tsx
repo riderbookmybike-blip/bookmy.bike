@@ -603,9 +603,9 @@ export default function SchemeEditor({ initialScheme, onSave, onCancel, chargesM
                                     <p className="text-[9px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-1">
                                         Example: {scheme.payoutType === 'PERCENTAGE' ? `${scheme.payout}%` : `₹${scheme.payout}`}
                                         {scheme.payoutType === 'PERCENTAGE' && ` of ${scheme.payoutBasis === 'LOAN_AMOUNT' ? 'Loan Amount' :
-                                                scheme.payoutBasis === 'GROSS_LOAN_AMOUNT' ? 'Gross Loan' :
-                                                    scheme.payoutBasis === 'DISBURSAL_AMOUNT' ? 'Disbursal' :
-                                                        'Fixed Per Case'
+                                            scheme.payoutBasis === 'GROSS_LOAN_AMOUNT' ? 'Gross Loan' :
+                                                scheme.payoutBasis === 'DISBURSAL_AMOUNT' ? 'Disbursal' :
+                                                    'Fixed Per Case'
                                             }`}
                                     </p>
                                     <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
@@ -615,9 +615,7 @@ export default function SchemeEditor({ initialScheme, onSave, onCancel, chargesM
                                         }
                                     </p>
                                 </div>
-                            )}
-                        </div>
-                        </div>
+                            )}\n                        </div>
 
                         {/* Row 2: EMI Waiver + Subvention */}
                         <div className="grid grid-cols-2 gap-4">
@@ -1076,206 +1074,206 @@ export default function SchemeEditor({ initialScheme, onSave, onCancel, chargesM
                     </div>
                 </section>
 
-                {/* Actions */ }
-    <div className="flex gap-4 pt-4">
-        <button onClick={() => onSave(scheme)} className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:shadow-lg hover:shadow-blue-500/30 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all">
-            <Save size={18} /> Save Scheme
-        </button>
-        <button onClick={onCancel} className="px-8 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
-            Cancel
-        </button>
-    </div>
+                {/* Actions */}
+                <div className="flex gap-4 pt-4">
+                    <button onClick={() => onSave(scheme)} className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:shadow-lg hover:shadow-blue-500/30 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all">
+                        <Save size={18} /> Save Scheme
+                    </button>
+                    <button onClick={onCancel} className="px-8 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                        Cancel
+                    </button>
+                </div>
             </div >
 
-        {/* RIGHT: LIVE CALCULATOR PREVIEW */ }
-        < div className = "xl:w-[450px] space-y-8 sticky top-8 h-fit self-start" >
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-[32px] p-8 shadow-sm dark:shadow-2xl shadow-black/40 flex flex-col">
-                <div className="mb-10">
-                    <div className="flex items-center justify-between mb-2">
-                        <h2 className="text-2xl font-black italic text-slate-900 dark:text-white flex items-center gap-3">
-                            <span className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border border-emerald-500/10 dark:border-emerald-500/20 shadow-lg shadow-emerald-500/5 dark:shadow-emerald-500/10">
-                                <Calculator size={24} />
-                            </span>
-                            SIMULATION
-                        </h2>
-                        <div className="px-3 py-1 bg-slate-100 dark:bg-white/5 rounded-full border border-slate-200 dark:border-white/10">
-                            <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Live Engine</span>
-                        </div>
-                    </div>
-                    <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-12">Real-time behavior analysis</p>
-                </div>
-
-                {/* Inputs */}
-                <div className="space-y-6 bg-slate-50 dark:bg-black/20 p-8 rounded-[24px] border border-slate-200 dark:border-white/5 mb-8">
-                    <div>
-                        <div className="flex justify-between mb-2 px-1">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Vehicle Price</label>
-                            <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-mono font-black text-emerald-600 dark:text-emerald-500">MAX LTV: {scheme.maxLTV}%</span>
-                                <div className="w-1 h-1 rounded-full bg-slate-300 dark:bg-white/10" />
-                                <span className="text-[10px] font-mono font-black text-purple-600 dark:text-purple-400">MAX LOAN: ₹{scheme.maxLoanAmount?.toLocaleString()}</span>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                            <ArrowRight size={10} className="text-slate-400" />
-                            <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tighter">
-                                Resolved Limit: <span className="text-blue-600 dark:text-blue-400">
-                                    ₹{Math.min((testPrice * scheme.maxLTV / 100), (scheme.maxLoanAmount || 0)).toLocaleString()}
+            {/* RIGHT: LIVE CALCULATOR PREVIEW */}
+            < div className="xl:w-[450px] space-y-8 sticky top-8 h-fit self-start" >
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-[32px] p-8 shadow-sm dark:shadow-2xl shadow-black/40 flex flex-col">
+                    <div className="mb-10">
+                        <div className="flex items-center justify-between mb-2">
+                            <h2 className="text-2xl font-black italic text-slate-900 dark:text-white flex items-center gap-3">
+                                <span className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border border-emerald-500/10 dark:border-emerald-500/20 shadow-lg shadow-emerald-500/5 dark:shadow-emerald-500/10">
+                                    <Calculator size={24} />
                                 </span>
-                            </span>
-                        </div>
-                        <div className="flex flex-col mt-4">
-                            <h2 className="text-4xl font-black italic text-slate-900 dark:text-white uppercase tracking-tighter">
-                                {scheme.name || 'Untitled Scheme'}
+                                SIMULATION
                             </h2>
-                            <div className="flex items-center gap-2 mt-1">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Scheme CID:</span>
-                                <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20">
-                                    {formatDisplayIdForUI(scheme.id)}
-                                </span>
+                            <div className="px-3 py-1 bg-slate-100 dark:bg-white/5 rounded-full border border-slate-200 dark:border-white/10">
+                                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Live Engine</span>
                             </div>
                         </div>
+                        <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-12">Real-time behavior analysis</p>
                     </div>
-                    <div className="relative group">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-bold">₹</span>
-                        <input
-                            type="number"
-                            value={testPrice}
-                            onChange={e => setTestPrice(Number(e.target.value))}
-                            className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-[16px] pl-8 pr-4 py-4 font-mono text-xl text-slate-900 dark:text-white outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 transition-all group-hover:border-slate-300 dark:group-hover:border-white/20"
-                        />
-                    </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 block mb-2 px-1">Requested Loan</label>
+                    {/* Inputs */}
+                    <div className="space-y-6 bg-slate-50 dark:bg-black/20 p-8 rounded-[24px] border border-slate-200 dark:border-white/5 mb-8">
+                        <div>
+                            <div className="flex justify-between mb-2 px-1">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Vehicle Price</label>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-mono font-black text-emerald-600 dark:text-emerald-500">MAX LTV: {scheme.maxLTV}%</span>
+                                    <div className="w-1 h-1 rounded-full bg-slate-300 dark:bg-white/10" />
+                                    <span className="text-[10px] font-mono font-black text-purple-600 dark:text-purple-400">MAX LOAN: ₹{scheme.maxLoanAmount?.toLocaleString()}</span>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                                <ArrowRight size={10} className="text-slate-400" />
+                                <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tighter">
+                                    Resolved Limit: <span className="text-blue-600 dark:text-blue-400">
+                                        ₹{Math.min((testPrice * scheme.maxLTV / 100), (scheme.maxLoanAmount || 0)).toLocaleString()}
+                                    </span>
+                                </span>
+                            </div>
+                            <div className="flex flex-col mt-4">
+                                <h2 className="text-4xl font-black italic text-slate-900 dark:text-white uppercase tracking-tighter">
+                                    {scheme.name || 'Untitled Scheme'}
+                                </h2>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Scheme CID:</span>
+                                    <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20">
+                                        {formatDisplayIdForUI(scheme.id)}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
                         <div className="relative group">
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-bold">₹</span>
                             <input
                                 type="number"
-                                value={testLoan}
-                                onChange={e => setTestLoan(Number(e.target.value))}
-                                className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-[16px] pl-8 pr-4 py-4 font-mono text-lg text-slate-900 dark:text-white outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 transition-all group-hover:border-slate-300 dark:group-hover:border-white/20"
+                                value={testPrice}
+                                onChange={e => setTestPrice(Number(e.target.value))}
+                                className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-[16px] pl-8 pr-4 py-4 font-mono text-xl text-slate-900 dark:text-white outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 transition-all group-hover:border-slate-300 dark:group-hover:border-white/20"
                             />
                         </div>
                     </div>
-                    <div>
-                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 block mb-2 px-1">Applicant Age</label>
-                        <input
-                            type="number"
-                            value={testAge}
-                            onChange={e => setTestAge(Number(e.target.value))}
-                            className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-[16px] px-4 py-4 font-mono text-lg text-slate-900 dark:text-white outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 transition-all group-hover:border-slate-300 dark:group-hover:border-white/20"
-                        />
-                    </div>
-                </div>
-            </div>
 
-    {/* Results Card */ }
-    {
-        debugResult && Array.isArray(debugResult) && debugResult.length > 0 && (
-            <div className="space-y-6">
-                {/* Summary using first result (or appropriate default) */}
-                <div className="bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-900 dark:to-purple-900 border border-indigo-100 dark:border-indigo-500/30 rounded-[28px] p-8 relative overflow-hidden shadow-sm dark:shadow-2xl shadow-indigo-500/20">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-3xl -z-0" />
-                    <div className="relative z-10">
-                        <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-300 uppercase tracking-[0.2em] block mb-2">Customer Pays</span>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter italic">₹{debugResult[0].downpayment.toLocaleString()}</span>
-                            <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest whitespace-nowrap">Upfront</span>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 block mb-2 px-1">Requested Loan</label>
+                            <div className="relative group">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-bold">₹</span>
+                                <input
+                                    type="number"
+                                    value={testLoan}
+                                    onChange={e => setTestLoan(Number(e.target.value))}
+                                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-[16px] pl-8 pr-4 py-4 font-mono text-lg text-slate-900 dark:text-white outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 transition-all group-hover:border-slate-300 dark:group-hover:border-white/20"
+                                />
+                            </div>
                         </div>
-                        <div className="mt-8 pt-6 border-t border-slate-200 dark:border-white/10 space-y-3">
-                            <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-indigo-200/50">
-                                <span>Margin Money</span>
-                                <span className="text-slate-900 dark:text-white font-mono">₹{(testPrice - Math.min(testLoan, Math.min((testPrice * scheme.maxLTV / 100), (scheme.maxLoanAmount || 0)))).toLocaleString()}</span>
-                            </div>
-                            <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-indigo-200/50">
-                                <span>Charges & Addons</span>
-                                <span className="text-slate-900 dark:text-white font-mono">+ ₹{debugResult[0].upfrontCharges.toLocaleString()}</span>
-                            </div>
+                        <div>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 block mb-2 px-1">Applicant Age</label>
+                            <input
+                                type="number"
+                                value={testAge}
+                                onChange={e => setTestAge(Number(e.target.value))}
+                                className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-[16px] px-4 py-4 font-mono text-lg text-slate-900 dark:text-white outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 transition-all group-hover:border-slate-300 dark:group-hover:border-white/20"
+                            />
                         </div>
                     </div>
                 </div>
 
-                {/* Tenure Matrix Results */}
-                <div className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-[28px] overflow-hidden">
-                    <div className="p-6 border-b border-slate-200 dark:border-white/5">
-                        <h4 className="text-[10px] uppercase font-black tracking-widest text-slate-400 dark:text-slate-500">EMI Scenarios by Tenure</h4>
-                    </div>
-                    <div className="divide-y divide-slate-200 dark:divide-white/5">
-                        {debugResult.map((res: any) => (
-                            <div key={res.tenure} className="flex flex-col p-6 hover:bg-white/[0.02] transition-colors border-b last:border-0 border-slate-200 dark:border-white/5">
-                                <div className="flex items-center justify-between mb-2">
+                {/* Results Card */}
+                {
+                    debugResult && Array.isArray(debugResult) && debugResult.length > 0 && (
+                        <div className="space-y-6">
+                            {/* Summary using first result (or appropriate default) */}
+                            <div className="bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-900 dark:to-purple-900 border border-indigo-100 dark:border-indigo-500/30 rounded-[28px] p-8 relative overflow-hidden shadow-sm dark:shadow-2xl shadow-indigo-500/20">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-3xl -z-0" />
+                                <div className="relative z-10">
+                                    <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-300 uppercase tracking-[0.2em] block mb-2">Customer Pays</span>
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter italic">₹{debugResult[0].downpayment.toLocaleString()}</span>
+                                        <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest whitespace-nowrap">Upfront</span>
+                                    </div>
+                                    <div className="mt-8 pt-6 border-t border-slate-200 dark:border-white/10 space-y-3">
+                                        <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-indigo-200/50">
+                                            <span>Margin Money</span>
+                                            <span className="text-slate-900 dark:text-white font-mono">₹{(testPrice - Math.min(testLoan, Math.min((testPrice * scheme.maxLTV / 100), (scheme.maxLoanAmount || 0)))).toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-indigo-200/50">
+                                            <span>Charges & Addons</span>
+                                            <span className="text-slate-900 dark:text-white font-mono">+ ₹{debugResult[0].upfrontCharges.toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Tenure Matrix Results */}
+                            <div className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-[28px] overflow-hidden">
+                                <div className="p-6 border-b border-slate-200 dark:border-white/5">
+                                    <h4 className="text-[10px] uppercase font-black tracking-widest text-slate-400 dark:text-slate-500">EMI Scenarios by Tenure</h4>
+                                </div>
+                                <div className="divide-y divide-slate-200 dark:divide-white/5">
+                                    {debugResult.map((res: any) => (
+                                        <div key={res.tenure} className="flex flex-col p-6 hover:bg-white/[0.02] transition-colors border-b last:border-0 border-slate-200 dark:border-white/5">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div>
+                                                    <div className="text-xs font-black text-slate-900 dark:text-white italic tracking-tight">{res.tenure} Months</div>
+                                                    <div className="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">₹{res.grossLoan.toLocaleString()} Loan</div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tighter">₹{res.emi.toLocaleString()}</div>
+                                                    <div className="text-[9px] text-slate-400 dark:text-slate-600 font-black uppercase tracking-widest">Calculated EMI</div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-white/5">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">Outflow & IRR</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-mono font-bold text-slate-600 dark:text-slate-300">₹{res.totalOutflow.toLocaleString()}</span>
+                                                        <span className="text-[10px] font-black text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded-md">{(res.irr ?? scheme.interestRate ?? 0).toFixed(2)}%</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-col text-right">
+                                                    <span className="text-[8px] font-black text-purple-500 uppercase tracking-[0.2em]">APR</span>
+                                                    <span className="text-xs font-black text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2 py-1 rounded-md">{(res.apr ?? 0).toFixed(2)}%</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-between pt-2">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[8px] font-black text-emerald-500 uppercase tracking-[0.2em]">Net Margin</span>
+                                                    <div className="flex items-center gap-2 justify-end">
+                                                        {res.waiverBenefit > 0 && (
+                                                            <span className="text-[9px] font-black text-emerald-400">-{res.waiverBenefit.toLocaleString()} Benefit</span>
+                                                        )}
+                                                        <span className={`text-xs font-mono font-bold ${res.netMargin >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>₹{Math.round(res.netMargin).toLocaleString()}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Payout & Yield Analysis */}
+                            <div className="space-y-4">
+                                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-[28px] p-6 flex items-center justify-between shadow-lg shadow-emerald-500/5">
                                     <div>
-                                        <div className="text-xs font-black text-slate-900 dark:text-white italic tracking-tight">{res.tenure} Months</div>
-                                        <div className="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">₹{res.grossLoan.toLocaleString()} Loan</div>
+                                        <span className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] block mb-1">Your Net Margin</span>
+                                        <p className="text-[9px] text-emerald-600/60 uppercase font-black tracking-widest">Payout - Subvention</p>
                                     </div>
                                     <div className="text-right">
-                                        <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tighter">₹{res.emi.toLocaleString()}</div>
-                                        <div className="text-[9px] text-slate-400 dark:text-slate-600 font-black uppercase tracking-widest">Calculated EMI</div>
+                                        <span className={`font-mono font-black text-lg ${debugResult[0].netMargin >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                            ₹{Math.round(debugResult[0].netMargin).toLocaleString()}
+                                        </span>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-white/5">
-                                    <div className="flex flex-col">
-                                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">Outflow & IRR</span>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xs font-mono font-bold text-slate-600 dark:text-slate-300">₹{res.totalOutflow.toLocaleString()}</span>
-                                            <span className="text-[10px] font-black text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded-md">{(res.irr ?? scheme.interestRate ?? 0).toFixed(2)}%</span>
-                                        </div>
+                                <div className="bg-blue-500/10 border border-blue-500/20 rounded-[28px] p-6 flex items-center justify-between shadow-lg shadow-blue-500/5">
+                                    <div>
+                                        <span className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] block mb-1">Customer IRR (APR)</span>
+                                        <p className="text-[9px] text-blue-600/60 uppercase font-black tracking-widest">Base Analysis ({debugResult[0].tenure}M)</p>
                                     </div>
-                                    <div className="flex flex-col text-right">
-                                        <span className="text-[8px] font-black text-purple-500 uppercase tracking-[0.2em]">APR</span>
-                                        <span className="text-xs font-black text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2 py-1 rounded-md">{(res.apr ?? 0).toFixed(2)}%</span>
-                                    </div>
-                                </div>
-                                <div className="flex items-center justify-between pt-2">
-                                    <div className="flex flex-col">
-                                        <span className="text-[8px] font-black text-emerald-500 uppercase tracking-[0.2em]">Net Margin</span>
-                                        <div className="flex items-center gap-2 justify-end">
-                                            {res.waiverBenefit > 0 && (
-                                                <span className="text-[9px] font-black text-emerald-400">-{res.waiverBenefit.toLocaleString()} Benefit</span>
-                                            )}
-                                            <span className={`text-xs font-mono font-bold ${res.netMargin >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>₹{Math.round(res.netMargin).toLocaleString()}</span>
-                                        </div>
+                                    <div className="text-right">
+                                        <span className="font-mono font-black text-blue-400 text-lg">
+                                            {debugResult[0].apr.toFixed(2)}%
+                                        </span>
                                     </div>
                                 </div>
                             </div>
-
-                        ))}
-                    </div>
-                </div>
-
-                {/* Payout & Yield Analysis */}
-                <div className="space-y-4">
-                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-[28px] p-6 flex items-center justify-between shadow-lg shadow-emerald-500/5">
-                        <div>
-                            <span className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] block mb-1">Your Net Margin</span>
-                            <p className="text-[9px] text-emerald-600/60 uppercase font-black tracking-widest">Payout - Subvention</p>
                         </div>
-                        <div className="text-right">
-                            <span className={`font-mono font-black text-lg ${debugResult[0].netMargin >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                ₹{Math.round(debugResult[0].netMargin).toLocaleString()}
-                            </span>
-                        </div>
-                    </div>
-
-                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-[28px] p-6 flex items-center justify-between shadow-lg shadow-blue-500/5">
-                        <div>
-                            <span className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] block mb-1">Customer IRR (APR)</span>
-                            <p className="text-[9px] text-blue-600/60 uppercase font-black tracking-widest">Base Analysis ({debugResult[0].tenure}M)</p>
-                        </div>
-                        <div className="text-right">
-                            <span className="font-mono font-black text-blue-400 text-lg">
-                                {debugResult[0].apr.toFixed(2)}%
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        )
-    }
+                    )
+                }
             </div >
         </div >
     );
