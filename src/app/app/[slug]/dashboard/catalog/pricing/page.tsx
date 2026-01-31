@@ -176,7 +176,7 @@ export default function PricingPage() {
             const brandDeltaMap = new Map();
             brandDeltas?.forEach(d => brandDeltaMap.set(d.brand_id, d.delta_percentage));
 
-            let formattedSkus: SKUPriceRow[] = (skuData || []).map((sku: any) => {
+            const formattedSkus: SKUPriceRow[] = (skuData || []).map((sku: any) => {
                 const skuTemplate = Array.isArray(sku.template) ? sku.template[0] : sku.template;
                 const variant = Array.isArray(sku.parent) ? sku.parent[0] : sku.parent;
                 const family = variant ? (Array.isArray(variant.parent) ? variant.parent[0] : variant.parent) : null;
