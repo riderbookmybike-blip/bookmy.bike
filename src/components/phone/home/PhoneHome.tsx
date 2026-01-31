@@ -7,9 +7,11 @@ import Link from 'next/link';
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import { useSystemBrandsLogic } from '@/hooks/SystemBrandsLogic';
 import { MARKET_METRICS } from '@/config/market';
-import { MobileHeader } from '@/components/mobile/layout/MobileHeader';
-import { Footer } from '@/components/store/Footer';
-import { MobileBottomNav } from '@/components/mobile/layout/MobileBottomNav';
+import { PhoneHeader } from '@/components/phone/layout/PhoneHeader';
+import { PhoneBottomNav } from '@/components/phone/layout/PhoneBottomNav';
+import { PhoneFooter } from '@/components/phone/layout/PhoneFooter';
+import { PhoneContextFeed } from '@/components/phone/catalog/PhoneContextFeed';
+import { PhoneSearch } from '@/components/phone/catalog/PhoneSearch';
 import { Logo } from '@/components/brand/Logo';
 import { EliteCircle } from '@/components/store/sections/EliteCircle';
 
@@ -40,7 +42,7 @@ export function PhoneHome() {
     return (
         <div className="flex flex-col bg-white dark:bg-black text-slate-900 dark:text-white overflow-x-hidden pb-20 md:pb-0 transition-colors duration-500">
             {/* Mobile Header (Hamburger & Logo) */}
-            <MobileHeader />
+            <PhoneHeader />
 
             {/* THE ACTUAL DESKTOP HERO - REFINED FOR MOBILE VIEWPORT */}
             <section
@@ -54,6 +56,7 @@ export function PhoneHome() {
                     document.documentElement.style.setProperty('--mouse-x-pct', `${xPct}%`);
                 }}
             >
+                <PhoneContextFeed />
                 {/* layer 0: immersive tunnel chassis */}
                 <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                     <motion.div
@@ -217,7 +220,7 @@ export function PhoneHome() {
                                     />
                                 </svg>
                                 <div className="relative z-10 flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white group-hover:text-brand-primary transition-colors font-[family-name:var(--font-bruno-ace)]">
-                                    <Search size={14} />
+                                    <PhoneSearch />
                                     Search Your Bike
                                 </div>
                             </Link>
@@ -461,10 +464,10 @@ export function PhoneHome() {
             <EliteCircle />
 
             {/* Desktop Footer (Rich experience preserved) */}
-            <Footer />
+            <PhoneFooter />
 
             {/* Bottom HUD Navigation */}
-            <MobileBottomNav />
+            <PhoneBottomNav />
         </div>
     );
 }

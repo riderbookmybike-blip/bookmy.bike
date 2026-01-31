@@ -6,8 +6,8 @@ import { MarketplaceFooter } from '@/components/layout/MarketplaceFooter';
 import LoginSidebar from '@/components/auth/LoginSidebar';
 import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
 import { usePathname } from 'next/navigation';
-import { MobileHeader } from '@/components/mobile/layout/MobileHeader';
-import { MobileBottomNav } from '@/components/mobile/layout/MobileBottomNav';
+import { PhoneHeader } from '@/components/phone/layout/PhoneHeader';
+import { PhoneBottomNav } from '@/components/phone/layout/PhoneBottomNav';
 
 export default function StoreLayout({ children }: { children: React.ReactNode }) {
     const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -31,7 +31,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
 
                 {/* Mobile Header */}
                 <div className="block md:hidden">
-                    <MobileHeader />
+                    <PhoneHeader />
                 </div>
 
                 <main className="flex-1 pt-0">{children}</main>
@@ -40,7 +40,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
 
                 {/* Mobile Bottom Nav */}
                 <div className="block md:hidden">
-                    <MobileBottomNav />
+                    <PhoneBottomNav />
                 </div>
 
                 {/* Global Login Sidebar */}

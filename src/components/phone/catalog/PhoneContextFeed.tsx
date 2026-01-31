@@ -3,13 +3,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
-import { MobileHeader } from '@/components/mobile/layout/MobileHeader';
+import { PhoneHeader } from '@/components/phone/layout/PhoneHeader';
 import { ModelCard } from './ModelCard';
-import { MobileFilterModal } from '@/components/mobile/shared/MobileFilterModal';
+import { PhoneFilterModal } from '@/components/phone/catalog/PhoneFilterModal';
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import { groupProductsByModel } from '@/utils/variantGrouping';
 
-export const MobileContextFeed = () => {
+export const PhoneContextFeed = () => {
     const { items, isLoading } = useSystemCatalogLogic();
 
     // Group products by model for variant navigation
@@ -56,7 +56,7 @@ export const MobileContextFeed = () => {
         <div className="w-full bg-black relative overscroll-none" style={{ height: '100dvh', maxHeight: '100dvh' }}>
 
             {/* 1. Global Floating Header (Hamburger & Logo) */}
-            <MobileHeader />
+            <PhoneHeader />
 
             {/* 2. Vertical Snap Scroll Feed */}
             <div
@@ -95,7 +95,7 @@ export const MobileContextFeed = () => {
             </div>
 
             {/* 3. Filter Modal */}
-            <MobileFilterModal isOpen={isFilterOpen} onClose={closeFilter} />
+            <PhoneFilterModal isOpen={isFilterOpen} onClose={closeFilter} />
 
         </div>
     );

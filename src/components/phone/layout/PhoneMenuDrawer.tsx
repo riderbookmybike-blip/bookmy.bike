@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '@/components/providers/ThemeProvider';
 
-interface MobileMenuDrawerProps {
+interface PhoneMenuDrawerProps {
     isOpen: boolean;
     onClose: () => void;
 }
@@ -35,7 +35,7 @@ const MENU_ITEMS = [
     { icon: Info, label: 'About', href: '/m2/about', color: 'text-zinc-400' },
 ];
 
-export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onClose }) => {
+export const PhoneMenuDrawer = ({ isOpen, onClose }: PhoneMenuDrawerProps) => {
     const router = useRouter();
     const { theme } = useTheme();
     const [mounted, setMounted] = React.useState(false);

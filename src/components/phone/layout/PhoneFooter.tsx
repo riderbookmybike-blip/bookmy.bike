@@ -6,7 +6,7 @@ import { Heart, ArrowRight } from 'lucide-react';
 import { useSystemBrandsLogic } from '@/hooks/SystemBrandsLogic';
 import { slugify } from '@/utils/slugs';
 
-export const SimpleMobileFooter = () => {
+export const PhoneFooter = () => {
     const { brands } = useSystemBrandsLogic();
 
     return (

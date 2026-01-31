@@ -1,4 +1,4 @@
-import { PhoneHome } from '@/components/mobile-v2/PhoneHome';
+import { PhoneHome } from '@/components/phone/home/PhoneHome';
 import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
 import { Suspense } from 'react';
 

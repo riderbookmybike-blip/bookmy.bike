@@ -2,7 +2,7 @@ import { headers } from 'next/headers';
 import { Suspense } from 'react';
 import StorePage from './store/page';
 import StoreLayout from './store/layout';
-import { PhoneHome } from '@/components/mobile-v2/PhoneHome';
+import { PhoneHome } from '@/components/phone/home/PhoneHome';
 import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
 
 function MobileHome() {
