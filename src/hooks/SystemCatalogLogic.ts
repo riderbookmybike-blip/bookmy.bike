@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/client';
 import { ProductVariant } from '@/types/productMaster';
 import { calculateOnRoad } from '@/lib/utils/pricingUtility';
 import { mapCatalogItems } from '@/utils/catalogMapper';
+import { BMBDebug } from '@/types/debug';
+import { Database } from '@/types/supabase';
 
 // State code to full name mapping
 const STATE_NAMES: Record<string, string> = {
@@ -68,7 +70,7 @@ interface CatalogItemDB {
     }[];
 }
 
-export function useCatalog(leadId?: string) {
+export function useSystemCatalogLogic(leadId?: string) {
     const [items, setItems] = useState<ProductVariant[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -118,6 +120,7 @@ export function useCatalog(leadId?: string) {
                             ...(window as any).__BMB_DEBUG__,
                             pricingSource: leadId ? 'DEALER_OFFERS_RPC' : 'MARKET_BEST_RPC',
                             district: data.district || 'MUMBAI_FALLBACK',
+                            stateCode: code,
                             leadId: leadId,
                             locSource: 'CACHE',
                             pincode: (data as any).pincode || 'UNKNOWN'
@@ -207,6 +210,7 @@ export function useCatalog(leadId?: string) {
                         .from('crm_leads')
                         .select('owner_tenant_id, customer_pincode')
                         .eq('id', leadId)
+                        .returns<{ owner_tenant_id: string | null; customer_pincode: string | null }[]>()
                         .single();
 
                     if (lead) {
@@ -216,22 +220,24 @@ export function useCatalog(leadId?: string) {
                                 .from('loc_pincodes')
                                 .select('district, state_code')
                                 .eq('pincode', lead.customer_pincode)
+                                .returns<{ district: string | null; state_code: string | null }[]>()
                                 .single();
 
                             if (pincodeData) {
                                 // Update local state for consistency
-                                setUserDistrict(pincodeData.district);
-                                setStateCode(pincodeData.state_code);
+                                setUserDistrict(pincodeData.district || '');
+                                setStateCode(pincodeData.state_code || '');
                                 // Force null resolvedDealerId to trigger market best logic
                                 resolvedDealerId = null;
 
                                 if (typeof window !== 'undefined') {
-                                    (window as any).__BMB_DEBUG__ = {
-                                        ...(window as any).__BMB_DEBUG__,
+                                    window.__BMB_DEBUG__ = {
+                                        ...window.__BMB_DEBUG__,
                                         pricingSource: 'MARKET_BEST (Lead District)',
-                                        district: pincodeData.district,
+                                        district: pincodeData.district || '',
+                                        stateCode: pincodeData.state_code || '',
                                         locSource: 'LEAD_PINCODE',
-                                        pincode: lead.customer_pincode
+                                        pincode: lead.customer_pincode || ''
                                     };
                                 }
                             } else {
@@ -244,14 +250,14 @@ export function useCatalog(leadId?: string) {
                 }
 
                 if (resolvedDealerId) {
-                    const { data: dealerOffers } = await supabase.rpc('get_dealer_offers', {
+                    const { data: dealerOffers } = await (supabase.rpc as any)('get_dealer_offers', {
                         p_tenant_id: resolvedDealerId,
                         p_state_code: stateCode
                     });
                     offerData = dealerOffers;
                 } else {
-                    const { data } = await supabase.rpc('get_market_best_offers', {
-                        p_district_name: userDistrict || '',
+                    const { data } = await (supabase.rpc as any)('get_market_best_offers', {
+                        p_district: userDistrict || '',
                         p_state_code: stateCode
                     });
                     offerData = data;
@@ -280,6 +286,13 @@ export function useCatalog(leadId?: string) {
                     );
 
                     setItems(mappedItems);
+
+                    if (typeof window !== 'undefined') {
+                        window.__BMB_DEBUG__ = {
+                            ...window.__BMB_DEBUG__,
+                            marketOffersCount: (offerData as any[])?.length || 0
+                        };
+                    }
 
                     const { count: skuTotal, error: skuError } = await supabase
                         .from('cat_items')

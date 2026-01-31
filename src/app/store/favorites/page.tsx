@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
-import { useCatalog } from '@/hooks/useCatalog';
+import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import { useCompare } from '@/hooks/useCompare';
 import { PageFrame } from '@/components/layout/PageFrame';
 import { Heart, Search, ArrowRight, X } from 'lucide-react';
@@ -11,7 +11,7 @@ import { slugify } from '@/utils/slugs';
 
 export default function FavoritesPage() {
     const { favorites, toggleFavorite } = useFavorites();
-    const { items: vehicles, isLoading } = useCatalog();
+    const { items: vehicles, isLoading } = useSystemCatalogLogic();
     const { addToCompare, isInCompare, removeFromCompare, compareList } = useCompare();
 
     // Filter vehicles that are in favorites

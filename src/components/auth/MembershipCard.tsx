@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef, useId } from 'react';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { ICON_PATHS } from '@/components/brand/paths';
 
@@ -20,6 +20,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
     compact = false,
 }) => {
     const cardRef = useRef<HTMLDivElement>(null);
+    const uniqueId = useId().replace(/:/g, '');
 
     // Mouse tracking for 3D tilt
     const x = useMotionValue(0);
@@ -100,7 +101,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
 
                 {/* CONTENT LAYER */}
                 <div
-                    className="relative h-full w-full p-8 md:p-12 flex flex-col justify-between"
+                    className="relative h-full w-full p-6 md:p-12 flex flex-col justify-between"
                     style={{ transform: 'translateZ(60px)' }}
                 >
                     {/* TOP SECTION: OFFICIAL LOGO & BRANDING */}
@@ -109,7 +110,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                         <div className="mt-2 flex flex-col gap-1">
                             <div className="flex items-center gap-1.5">
                                 <div className="w-1 h-1 rounded-full bg-[#F4B000]" />
-                                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-[#F4B000]">
+                                <span className="text-[7px] md:text-[9px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-[#F4B000]">
                                     The O' Circle
                                 </span>
                             </div>
@@ -117,7 +118,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                         </div>
 
                         {/* RIGHT: HIGH-DETAIL BMB LOGO */}
-                        <div className="w-20 h-20 transform -translate-y-4">
+                        <div className="w-14 h-14 md:w-20 md:h-20 transform -translate-y-2 md:-translate-y-4">
                             <svg
                                 viewBox="0 0 80 109"
                                 fill="none"
@@ -131,11 +132,11 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                     </div>
 
                     {/* QUANTUM CHIP - HIGH-FIDELITY VECTOR */}
-                    <div className="w-16 h-14 relative rounded-[4px] overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.3)]">
+                    <div className="w-12 h-10 md:w-16 md:h-14 relative rounded-[4px] overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.3)]">
                         <svg viewBox="0 0 56 44" fill="none" className="w-full h-full block">
                             <defs>
                                 <linearGradient
-                                    id="chip-base"
+                                    id={`chip-base-${uniqueId}`}
                                     x1="0"
                                     y1="0"
                                     x2="56"
@@ -148,7 +149,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                                     <stop offset="100%" stopColor="#B45309" />
                                 </linearGradient>
                                 <linearGradient
-                                    id="chip-highlight"
+                                    id={`chip-highlight-${uniqueId}`}
                                     x1="0"
                                     y1="0"
                                     x2="0"
@@ -160,7 +161,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                                 </linearGradient>
                             </defs>
                             {/* Base Fill */}
-                            <rect width="56" height="44" fill="url(#chip-base)" />
+                            <rect width="56" height="44" fill={`url(#chip-base-${uniqueId})`} />
                             {/* Grid Contacts */}
                             <rect
                                 x="4"
@@ -204,13 +205,13 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                                 strokeWidth="1"
                             />
                             {/* Sheen */}
-                            <rect width="56" height="44" fill="url(#chip-highlight)" />
+                            <rect width="56" height="44" fill={`url(#chip-highlight-${uniqueId})`} />
                         </svg>
                     </div>
 
                     <div className="space-y-4 border-t border-white/5 pt-6">
                         <div className="flex justify-between items-center">
-                            <div className="font-mono text-xl md:text-2xl tracking-[0.2em] font-medium text-white group-hover:text-[#F4B000] transition-colors duration-500 drop-shadow-lg">
+                            <div className="font-mono text-lg md:text-2xl tracking-[0.1em] md:tracking-[0.2em] font-medium text-white group-hover:text-[#F4B000] transition-colors duration-500 drop-shadow-lg whitespace-nowrap">
                                 {id}
                             </div>
                             <div className="flex items-center gap-3">
@@ -223,10 +224,10 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
 
                         {/* MEMBER NAME */}
                         <div className="flex justify-between items-end">
-                            <div className="text-lg font-bold tracking-[0.1em] text-white/90 uppercase italic">
+                            <div className="text-sm md:text-lg font-bold tracking-[0.1em] text-white/90 uppercase italic">
                                 {name}
                             </div>
-                            <div className="text-[10px] font-black uppercase tracking-tighter text-white/10 italic">
+                            <div className="text-[8px] md:text-[10px] font-black uppercase tracking-tighter text-white/20 md:text-white/10 italic">
                                 Official <span className="text-[#F4B000]/30">Privilege</span>
                             </div>
                         </div>

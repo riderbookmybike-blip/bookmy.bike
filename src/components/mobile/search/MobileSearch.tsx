@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, X, Mic, TrendingUp, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useCatalog } from '@/hooks/useCatalog';
+import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import Image from 'next/image';
 
 const RECENT_SEARCHES_KEY = 'bookmy_recent_searches';
@@ -12,7 +12,7 @@ const MAX_RECENT_SEARCHES = 5;
 
 export const MobileSearch = () => {
     const router = useRouter();
-    const { items, isLoading } = useCatalog();
+    const { items, isLoading } = useSystemCatalogLogic();
     const [query, setQuery] = useState('');
     const [recentSearches, setRecentSearches] = useState<string[]>([]);
     const [searchResults, setSearchResults] = useState<any[]>([]);

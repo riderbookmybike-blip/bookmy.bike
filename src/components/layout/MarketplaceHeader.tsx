@@ -141,7 +141,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
             left={
                 <Link href="/" className="flex items-center group h-full">
                     <div className="flex items-center justify-center transition-all duration-300">
-                        <Logo mode="dark" size={40} variant="full" />
+                        <Logo mode={isLight ? 'light' : 'dark'} size={40} variant="full" />
                     </div>
                 </Link>
             }

@@ -3,11 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Facebook, Twitter, Linkedin, Instagram, ArrowRight, Heart, Newspaper, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { Logo } from '@/components/brand/Logo';
-import { useBrands } from '@/hooks/useBrands';
+import { useSystemBrandsLogic } from '@/hooks/SystemBrandsLogic';
 import { slugify } from '@/utils/slugs';
 
 export const MobileFooter = () => {
-    const { brands } = useBrands();
+    const { brands } = useSystemBrandsLogic();
     const [activeSection, setActiveSection] = useState<number | null>(0);
 
     interface FooterLink {

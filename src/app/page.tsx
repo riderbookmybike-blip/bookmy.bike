@@ -2,13 +2,13 @@ import { headers } from 'next/headers';
 import { Suspense } from 'react';
 import StorePage from './store/page';
 import StoreLayout from './store/layout';
-import { MobileV2Home } from '@/components/mobile-v2/MobileV2Home';
+import { PhoneHome } from '@/components/mobile-v2/PhoneHome';
 import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
 
 function MobileHome() {
   return (
     <FavoritesProvider>
-      <MobileV2Home />
+      <PhoneHome />
     </FavoritesProvider>
   );
 }

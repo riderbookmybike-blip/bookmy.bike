@@ -1,6 +1,6 @@
 import React from 'react';
 import { fetchCatalogServerSide } from '@/lib/server/catalogFetcher';
-import CatalogClient from './CatalogClient';
+import SystemCatalogRouter from './SystemCatalogRouter';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -16,5 +16,5 @@ export default async function CatalogPage(props: { searchParams: Promise<{ leadI
     // If leadId is present, the fetcher will resolve dealer context.
     const initialItems = await fetchCatalogServerSide(leadId);
 
-    return <CatalogClient initialItems={initialItems} />;
+    return <SystemCatalogRouter initialItems={initialItems} />;
 }

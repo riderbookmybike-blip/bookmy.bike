@@ -5,7 +5,7 @@ import { calculateOnRoad } from '@/lib/utils/pricingUtility';
 import { createClient } from '@/lib/supabase/server';
 import { slugify } from '@/utils/slugs';
 // import ProductClient from './ProductClient';
-import M2ProductClient from './M2ProductClient'; // USE THE NEW FORCED-DESKTOP CLIENT
+import SystemPDPRouter from './SystemPDPRouter'; // USE THE NEW FORCED-DESKTOP CLIENT
 import { cookies } from 'next/headers';
 import { resolveFinanceScheme } from '@/utils/financeResolver';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -580,7 +580,7 @@ export default async function Page({ params, searchParams }: Props) {
     const resolvedFinance = await resolveFinanceScheme(product.make, product.model, leadId);
 
     return (
-        <M2ProductClient
+        <SystemPDPRouter
             product={product}
             makeParam={resolvedParams.make}
             modelParam={product.model}

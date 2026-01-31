@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { MasterLayout } from '@/components/store/MasterLayout';
+import { DesktopHome } from '@/components/store/DesktopHome';
 
 export default function StorePage() {
-    return <MasterLayout />;
+    return <DesktopHome />;
 }

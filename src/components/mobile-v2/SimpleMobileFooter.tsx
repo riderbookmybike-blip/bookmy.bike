@@ -3,11 +3,11 @@
 import React from 'react';
 import Link from 'next/link';
 import { Heart, ArrowRight } from 'lucide-react';
-import { useBrands } from '@/hooks/useBrands';
+import { useSystemBrandsLogic } from '@/hooks/SystemBrandsLogic';
 import { slugify } from '@/utils/slugs';
 
 export const SimpleMobileFooter = () => {
-    const { brands } = useBrands();
+    const { brands } = useSystemBrandsLogic();
 
     return (
         <footer className="bg-[#0b0d10] border-t border-white/5 py-12 px-6">

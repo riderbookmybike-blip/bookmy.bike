@@ -6,11 +6,11 @@ import { ChevronDown } from 'lucide-react';
 import { MobileHeader } from '@/components/mobile/layout/MobileHeader';
 import { ModelCard } from './ModelCard';
 import { MobileFilterModal } from '@/components/mobile/shared/MobileFilterModal';
-import { useCatalog } from '@/hooks/useCatalog';
+import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import { groupProductsByModel } from '@/utils/variantGrouping';
 
 export const MobileContextFeed = () => {
-    const { items, isLoading } = useCatalog();
+    const { items, isLoading } = useSystemCatalogLogic();
 
     // Group products by model for variant navigation
     const modelGroups = useMemo(() => groupProductsByModel(items), [items]);

@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { usePDPData } from '@/hooks/usePDPData';
-import { MasterPDP } from '@/components/store/MasterPDP';
+import { useSystemPDPLogic } from '@/hooks/SystemPDPLogic';
+import { DesktopPDP } from '@/components/store/DesktopPDP';
+import { PhonePDP } from '@/components/mobile/pdp/PhonePDP';
 import { LeadCaptureModal } from '@/components/leads/LeadCaptureModal';
 import { EmailUpdateModal } from '@/components/auth/EmailUpdateModal';
 import { createClient } from '@/lib/supabase/client';
@@ -26,7 +27,7 @@ interface ProductClientProps {
     initialFinance?: any;
 }
 
-export default function M2ProductClient({
+export default function SystemPDPRouter({
     product,
     makeParam,
     modelParam,
@@ -46,8 +47,14 @@ export default function M2ProductClient({
     const router = useRouter();
     const leadIdFromUrl = searchParams.get('leadId');
     const [leadContext, setLeadContext] = useState<{ id: string, name: string } | null>(null);
+    const [isMobile, setIsMobile] = useState(false);
 
-    // REMOVED: isMobile check. We FORCE standard MasterPDP.
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     useEffect(() => {
         if (leadIdFromUrl) {
@@ -66,7 +73,7 @@ export default function M2ProductClient({
         }
     }, [leadIdFromUrl]);
 
-    const { data, actions } = usePDPData({
+    const { data, actions } = useSystemPDPLogic({
         initialPrice,
         colors: clientColors, // Passing colors from product (client-aware)
         insuranceRule,
@@ -328,8 +335,16 @@ export default function M2ProductClient({
 
     return (
         <>
-            {/* FORCE DESKTOP MASTER PDP ON MOBILE V2 */}
-            <MasterPDP {...commonProps} basePath="/m2/store" />
+            {isMobile ? (
+                <PhonePDP
+                    product={product}
+                    data={data}
+                    handlers={handlers}
+                    initialLocation={initialLocation}
+                />
+            ) : (
+                <DesktopPDP {...commonProps} basePath="/m2/store" />
+            )}
 
             <LeadCaptureModal
                 isOpen={showQuoteSuccess}
