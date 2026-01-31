@@ -86,12 +86,12 @@ export default function DebugPortal() {
         return (
             <button
                 onClick={() => setIsOpen(true)}
-                className="fixed bottom-6 right-6 z-[9999] bg-slate-900 text-white p-4 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all group flex items-center gap-3 border border-white/10"
+                className="fixed bottom-6 right-6 z-[9999] bg-slate-900 text-white w-12 h-12 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all group flex items-center justify-center border border-white/10"
+                title="Antigravity Debug"
             >
                 <Terminal size={20} className="group-hover:rotate-12 transition-transform" />
-                <span className="text-[10px] font-black uppercase tracking-widest pr-2">Antigravity Debug</span>
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full animate-ping" />
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full" />
+                <div className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full animate-ping" />
+                <div className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full" />
             </button>
         );
     }

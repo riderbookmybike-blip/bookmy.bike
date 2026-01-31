@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useTenant } from '@/lib/tenant/tenantContext';
-import { Plus, Database, Search, Filter, Zap, ArrowUpDown, Copy, Check, Image as ImageIcon, FileText, Youtube } from 'lucide-react';
+import { Plus, Database, Search, Filter, Zap, ArrowUpDown, Copy, Check, Image as ImageIcon, FileText, Youtube, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CatalogItem } from '@/types/store';
 import { KPIItem } from '@/components/layout/KPIBar';
 
@@ -45,9 +45,10 @@ export default function UnifiedCatalogPage() {
     const { tenantSlug } = useTenant();
     const [items, setItems] = useState<CatalogItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [stats, setStats] = useState({ products: 0, families: 0, skus: 0, drafts: 0 });
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('ALL');
+    const [selectedBrand, setSelectedBrand] = useState('ALL');
+    const [selectedTemplate, setSelectedTemplate] = useState('ALL');
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
     useEffect(() => {
@@ -58,31 +59,16 @@ export default function UnifiedCatalogPage() {
         setIsLoading(true);
         const supabase = createClient();
 
-        // 1. Fetch All Catalog Items for stat calculation
-        const { data: allItems } = await supabase
-            .from('cat_items')
-            .select('type, status');
-
-        if (allItems) {
-            setStats({
-                products: allItems.filter(i => i.type === 'FAMILY').length,
-                families: allItems.filter(i => i.type === 'FAMILY' && i.status === 'ACTIVE').length,
-                skus: allItems.filter(i => i.type === 'SKU').length,
-                drafts: allItems.filter(i => i.status === 'DRAFT').length
-            });
-        }
-
-        // 2. Fetch Families with nested children for the list
-        // We ensure we fetch 'position' for variants and colors to respect user-defined sequence.
+        // 1. Fetch Families with nested children for the list
         const { data, error } = await supabase
             .from('cat_items')
             .select(`
                 *,
-                brand:cat_brands(name, logo_svg),
-                template:cat_templates(name, hierarchy_config, category),
-                colors:cat_items!parent_id(id, name, type, specs, position),
+                brand:cat_brands(id, name, logo_svg),
+                template:cat_templates(id, name, hierarchy_config, category),
+                colors:cat_items!parent_id(id, name, type, specs, position, status),
                 variants:cat_items!parent_id(
-                    id, name, type, position,
+                    id, name, type, position, status,
                     skus:cat_items!parent_id(id, name, type, specs, slug, status)
                 )
             `)
@@ -92,6 +78,91 @@ export default function UnifiedCatalogPage() {
         if (data) setItems(data as any);
         setIsLoading(false);
     };
+
+    // Filter Logic Calculation
+    const { uniqueBrands, filteredTemplates } = useMemo(() => {
+        if (!items) return { uniqueBrands: [], filteredTemplates: [] };
+
+        const brandsMap = new Map();
+        const templatesMap = new Map();
+
+        items.forEach((item: any) => {
+            if (item.brand) {
+                // Cascading: Only show brands that have products in the selected category
+                const matchesCategory = selectedCategory === 'ALL' || item.template?.category === selectedCategory;
+                if (matchesCategory) {
+                    brandsMap.set(item.brand.id, item.brand);
+                }
+            }
+            if (item.template) {
+                // Cascading Filters: Only show templates belonging to the selected Brand and Category
+                const matchesBrand = selectedBrand === 'ALL' || item.brand_id === selectedBrand;
+                const matchesCategory = selectedCategory === 'ALL' || item.template.category === selectedCategory;
+
+                if (matchesBrand && matchesCategory) {
+                    templatesMap.set(item.template.id, item.template);
+                }
+            }
+        });
+
+        // Info: Sort alphabetically
+        const sortedBrands = Array.from(brandsMap.values()).sort((a: any, b: any) => a.name.localeCompare(b.name));
+        const sortedTemplates = Array.from(templatesMap.values()).sort((a: any, b: any) => a.name.localeCompare(b.name));
+
+        return {
+            uniqueBrands: sortedBrands,
+            filteredTemplates: sortedTemplates
+        };
+    }, [items, selectedCategory, selectedBrand]);
+
+    // Dynamic Stats Logic
+    const stats = useMemo(() => {
+        if (!items) return { activeBrands: 0, activeModels: 0, activeVariants: 0, activeColors: 0, activeSkus: 0, inactiveSkus: 0 };
+
+        // 1. Filter Families strictly based on Brand + Category + Template selection
+        const filteredFamilies = items.filter((f: any) => {
+            const matchesBrand = selectedBrand === 'ALL' || f.brand_id === selectedBrand;
+            const matchesCategory = selectedCategory === 'ALL' || f.template?.category === selectedCategory;
+            const matchesTemplate = selectedTemplate === 'ALL' || f.template_id === selectedTemplate;
+            return matchesBrand && matchesCategory && matchesTemplate;
+        });
+
+        const activeBrands = new Set(filteredFamilies.map(f => f.brand_id).filter(Boolean)).size;
+        const activeModels = filteredFamilies.length;
+
+        // 2. Aggregate counts from filtered families
+        let activeVariantsTotal = 0;
+        let activeColorsTotal = 0;
+        let activeSkusTotal = 0;
+        let inactiveSkusTotal = 0;
+
+        filteredFamilies.forEach((f: any) => {
+            const variants = (f.variants || []).filter((v: any) => v.type === 'VARIANT');
+            const colors = (f.colors || []).filter((c: any) => c.type === 'COLOR_DEF');
+
+            activeVariantsTotal += variants.length;
+            activeColorsTotal += colors.length;
+
+            // Count SKUs from these filtered variants
+            variants.forEach((v: any) => {
+                const skus = v.skus || [];
+                activeSkusTotal += skus.filter((s: any) => s.status === 'ACTIVE').length;
+                inactiveSkusTotal += skus.filter((s: any) => s.status !== 'ACTIVE').length;
+            });
+        });
+
+        return {
+            activeBrands,
+            activeModels,
+            activeVariants: activeVariantsTotal,
+            activeColors: activeColorsTotal,
+            activeSkus: activeSkusTotal,
+            inactiveSkus: inactiveSkusTotal
+        };
+    }, [items, selectedBrand, selectedCategory, selectedTemplate]);
+
+    // Removed Auto-Selection Effects to allow "ALL" selection
+
 
     const handleSort = (key: string) => {
         setSortConfig(current => ({
@@ -201,6 +272,14 @@ export default function UnifiedCatalogPage() {
             skus = skus.filter(item => item.templateCategory === selectedCategory);
         }
 
+        if (selectedBrand !== 'ALL') {
+            skus = skus.filter(item => (item.family as any).brand?.id === selectedBrand);
+        }
+
+        if (selectedTemplate !== 'ALL') {
+            skus = skus.filter(item => (item.family as any).template?.id === selectedTemplate);
+        }
+
         // Apply Sorting
         skus.sort((a: any, b: any) => {
             if (sortConfig) {
@@ -253,8 +332,23 @@ export default function UnifiedCatalogPage() {
             });
         }
 
-        return skus;
-    }, [items, searchTerm, sortConfig, selectedCategory]);
+        return skus; // Return ALL sorted/filtered items
+    }, [items, searchTerm, sortConfig, selectedBrand, selectedCategory, selectedTemplate]);
+
+    // Pagination Logic
+    const ITEMS_PER_PAGE = 50;
+    const [currentPage, setCurrentPage] = useState(1);
+
+    // Reset to Page 1 when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, selectedBrand, selectedCategory, selectedTemplate]);
+
+    const totalPages = Math.ceil(processedSkus.length / ITEMS_PER_PAGE);
+    const paginatedSkus = useMemo(() => {
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        return processedSkus.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    }, [processedSkus, currentPage]);
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-8 lg:p-12">
@@ -271,232 +365,348 @@ export default function UnifiedCatalogPage() {
                         <h1 className="text-5xl font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
                             Product <span className="text-emerald-600">Catalog</span>
                         </h1>
-                        <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">
-                            Manage logical product families across all categories (Vehicles, Gear, Parts).
-                        </p>
+
                     </div>
 
-                    <button
-                        onClick={() => router.push(`/app/${tenantSlug}/dashboard/catalog/products/studio`)}
-                        className="group relative px-8 py-5 bg-slate-900 dark:bg-white text-white dark:text-black rounded-[2rem] hover:scale-105 transition-all shadow-2xl shadow-slate-900/20 flex items-center gap-4 overflow-hidden"
-                    >
-                        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-10 transition-opacity duration-300" />
-                        <Database size={20} className="text-emerald-400 dark:text-emerald-600" />
-                        <div className="text-left">
-                            <div className="text-[9px] font-bold uppercase tracking-widest opacity-60">Launch Engine</div>
-                            <div className="text-sm font-black uppercase tracking-wider">Open Studio</div>
-                        </div>
-                        <div className="w-10 h-10 bg-white/10 dark:bg-black/5 rounded-full flex items-center justify-center ml-2">
-                            <Plus size={18} />
-                        </div>
-                    </button>
+
                 </div>
 
-                {/* KPI Grid */}
-                <div className="flex flex-wrap items-center gap-4">
-                    <KPIItem
-                        label="Total Products"
-                        value={isLoading ? '--' : stats.products}
-                        icon={Database}
-                        description="Total unique product families in the unified database"
-                        color="emerald"
-                    />
-                    <KPIItem
-                        label="Active Families"
-                        value={isLoading ? '--' : stats.families}
-                        icon={Zap}
-                        description="Families currently published and active in the store"
-                        color="blue"
-                    />
-                    <KPIItem
-                        label="Total SKUs"
-                        value={isLoading ? '--' : stats.skus}
-                        icon={Plus}
-                        description="Total Stock Keeping Units (Color/Variant combos) generated"
-                        color="indigo"
-                    />
-                    <KPIItem
-                        label="Draft Items"
-                        value={isLoading ? '--' : stats.drafts}
-                        icon={Search}
-                        description="Items currently in creation studio or pending review"
-                        color="amber"
-                    />
+                {/* KPI Grid - Expanded & Large */}
+                <div className="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-4">
+                    <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Zap size={64} className="text-indigo-600" />
+                        </div>
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600">
+                                <Zap size={20} className="fill-current" />
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Brands</span>
+                        </div>
+                        <div>
+                            <div className="text-4xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
+                                {isLoading ? '-' : stats.activeBrands}
+                            </div>
+                            <div className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-1">Active Partners</div>
+                        </div>
+                    </div>
+
+                    <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Database size={64} className="text-blue-600" />
+                        </div>
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600">
+                                <Database size={20} className="fill-current" />
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Models</span>
+                        </div>
+                        <div>
+                            <div className="text-4xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
+                                {isLoading ? '-' : stats.activeModels}
+                            </div>
+                            <div className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-1">Active Families</div>
+                        </div>
+                    </div>
+
+                    <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <ArrowUpDown size={64} className="text-emerald-600" />
+                        </div>
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600">
+                                <ArrowUpDown size={20} />
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Variants</span>
+                        </div>
+                        <div>
+                            <div className="text-4xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
+                                {isLoading ? '-' : stats.activeVariants}
+                            </div>
+                            <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">Active Configs</div>
+                        </div>
+                    </div>
+
+                    <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <ImageIcon size={64} className="text-pink-600" />
+                        </div>
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="p-2 rounded-xl bg-pink-50 dark:bg-pink-900/20 text-pink-600">
+                                <ImageIcon size={20} />
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Colors</span>
+                        </div>
+                        <div>
+                            <div className="text-4xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
+                                {isLoading ? '-' : stats.activeColors}
+                            </div>
+                            <div className="text-[10px] font-bold text-pink-600 uppercase tracking-widest mt-1">Active Styles</div>
+                        </div>
+                    </div>
+
+                    <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Plus size={64} className="text-amber-600" />
+                        </div>
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600">
+                                <Plus size={20} />
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">SKUs</span>
+                        </div>
+                        <div>
+                            <div className="text-4xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
+                                {isLoading ? '-' : stats.activeSkus}
+                            </div>
+                            <div className="text-[10px] font-bold text-amber-600 uppercase tracking-widest mt-1">Total Active</div>
+                        </div>
+                    </div>
+
+                    <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <FileText size={64} className="text-slate-400" />
+                        </div>
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500">
+                                <FileText size={20} />
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total</span>
+                        </div>
+                        <div>
+                            <div className="text-4xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
+                                {isLoading ? '-' : stats.inactiveSkus}
+                            </div>
+                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Offline / Draft</div>
+                        </div>
+                    </div>
                 </div>
 
                 {/* List Panel */}
-                <div className="bg-white dark:bg-slate-900 rounded-[3rem] border border-slate-200 dark:border-white/5 shadow-xl shadow-slate-100/50 dark:shadow-none overflow-hidden min-h-[500px]">
+                <div className="bg-white dark:bg-slate-900 rounded-[3rem] border border-slate-200 dark:border-white/5 shadow-xl shadow-slate-100/50 dark:shadow-none min-h-[500px]">
                     {/* Toolbar */}
-                    <div className="p-8 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
-                        <div className="relative w-96">
+                    <div className="z-30 bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-md p-8 border-b border-slate-100 dark:border-white/5 flex flex-col xl:flex-row items-center justify-between gap-6 rounded-t-[3rem]">
+
+                        {/* Filters Panel (Left) */}
+                        <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto">
+                            {/* Brand Filter */}
+                            <select
+                                className="px-4 py-4 rounded-2xl bg-white dark:bg-black/20 font-bold text-xs uppercase tracking-wider text-slate-600 dark:text-slate-300 outline-none focus:ring-2 ring-emerald-500/20 min-w-[160px] border border-slate-100 dark:border-white/5"
+                                value={selectedBrand}
+                                onChange={(e) => setSelectedBrand(e.target.value)}
+                            >
+                                <option value="ALL">All Brands</option>
+                                {uniqueBrands.map((b: any) => (
+                                    <option key={b.id} value={b.id}>{b.name}</option>
+                                ))}
+                            </select>
+
+                            {/* Category Filter */}
+                            <select
+                                className="px-4 py-4 rounded-2xl bg-white dark:bg-black/20 font-bold text-xs uppercase tracking-wider text-slate-600 dark:text-slate-300 outline-none focus:ring-2 ring-emerald-500/20 min-w-[160px] border border-slate-100 dark:border-white/5"
+                                value={selectedCategory}
+                                onChange={(e) => {
+                                    setSelectedCategory(e.target.value);
+                                    setSelectedTemplate('ALL'); // Reset template on category change
+                                }}
+                            >
+                                <option value="ALL">All Categories</option>
+                                <option value="VEHICLE">Vehicles</option>
+                                <option value="ACCESSORY">Accessories</option>
+                                <option value="SERVICE">Services</option>
+                            </select>
+
+                            {/* Template Filter (Sub-Category) */}
+                            <select
+                                className="px-4 py-4 rounded-2xl bg-white dark:bg-black/20 font-bold text-xs uppercase tracking-wider text-slate-600 dark:text-slate-300 outline-none focus:ring-2 ring-emerald-500/20 min-w-[160px] border border-slate-100 dark:border-white/5"
+                                value={selectedTemplate}
+                                onChange={(e) => setSelectedTemplate(e.target.value)}
+                            >
+                                <option value="ALL">All Templates</option>
+                                {filteredTemplates.map((t: any) => (
+                                    <option key={t.id} value={t.id}>{t.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Search Bar (Center/Fill) */}
+                        <div className="relative w-full flex-1 min-w-[300px]">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                             <input
-                                className="w-full pl-12 pr-6 py-4 bg-slate-50 dark:bg-black/20 rounded-2xl font-bold text-sm outline-none focus:ring-2 ring-emerald-500/20"
+                                className="w-full pl-12 pr-6 py-4 bg-white dark:bg-black/40 rounded-2xl font-bold text-sm outline-none focus:ring-2 ring-emerald-500/20 border border-slate-100 dark:border-white/5"
                                 placeholder="Search by name, brand, or SKU..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-                        <div className="flex items-center gap-6">
-                            <div className="flex items-center p-1 bg-slate-100 dark:bg-white/5 rounded-2xl gap-1">
-                                {[
-                                    { id: 'ALL', label: 'All', icon: Database },
-                                    { id: 'VEHICLE', label: 'Vehicles', icon: Zap },
-                                    { id: 'ACCESSORY', label: 'Accessories', icon: Plus },
-                                    { id: 'SERVICE', label: 'Services', icon: Search }
-                                ].map((cat) => (
-                                    <button
-                                        key={cat.id}
-                                        onClick={() => setSelectedCategory(cat.id)}
-                                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${selectedCategory === cat.id
-                                            ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm'
-                                            : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
-                                            }`}
-                                    >
-                                        <cat.icon size={12} />
-                                        {cat.label}
-                                    </button>
-                                ))}
-                            </div>
 
-                            <div className="h-6 w-[1px] bg-slate-200 dark:bg-white/10" />
+                        {/* Actions (Right) */}
+                        <div className="flex items-center gap-4 shrink-0">
+                            <div className="h-10 w-[1px] bg-slate-200 dark:bg-white/10 hidden xl:block mx-2" />
 
-                            <button className="p-4 rounded-xl bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-emerald-600 transition-colors">
-                                <Filter size={20} />
+                            <button
+                                onClick={() => router.push(`/app/${tenantSlug}/dashboard/catalog/products/studio`)}
+                                className="w-12 h-12 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 transition-all flex items-center justify-center"
+                            >
+                                <Plus size={24} />
                             </button>
                         </div>
                     </div>
 
                     {/* Table */}
                     <div className="p-4">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="text-left">
-                                    <th className="p-6 pb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest pl-8">S.No.</th>
-                                    <th
-                                        className="p-6 pb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest cursor-pointer hover:text-emerald-500 transition-colors"
-                                        onClick={() => handleSort('brandName')}
-                                    >
-                                        <div className="flex items-center gap-1">Brand <ArrowUpDown size={10} /></div>
-                                    </th>
-                                    <th
-                                        className="p-6 pb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest cursor-pointer hover:text-emerald-500 transition-colors"
-                                        onClick={() => handleSort('templateName')}
-                                    >
-                                        <div className="flex items-center gap-1">Template <ArrowUpDown size={10} /></div>
-                                    </th>
-                                    <th
-                                        className="p-6 pb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest cursor-pointer hover:text-emerald-500 transition-colors"
-                                        onClick={() => handleSort('familyName')}
-                                    >
-                                        <div className="flex items-center gap-1">Model Family <ArrowUpDown size={10} /></div>
-                                    </th>
-                                    <th
-                                        className="p-6 pb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest cursor-pointer hover:text-emerald-500 transition-colors"
-                                        onClick={() => handleSort('variantName')}
-                                    >
-                                        <div className="flex items-center gap-1">Variant <ArrowUpDown size={10} /></div>
-                                    </th>
-                                    <th
-                                        className="p-6 pb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest cursor-pointer hover:text-emerald-500 transition-colors"
-                                        onClick={() => handleSort('colorName')}
-                                    >
-                                        <div className="flex items-center gap-1">Color / Style <ArrowUpDown size={10} /></div>
-                                    </th>
-                                    <th
-                                        className="p-6 pb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest cursor-pointer hover:text-emerald-500 transition-colors"
-                                        onClick={() => handleSort('skuSlug')} // Sort by SKU ID effectively
-                                    >
-                                        <div className="flex items-center gap-1">SKU <ArrowUpDown size={10} /></div>
-                                    </th>
-                                    <th className="p-6 pb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Assets</th>
-                                    <th className="p-6 pb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {isLoading ? (
-                                    <tr><td colSpan={8} className="p-12 text-center text-slate-400 font-bold uppercase tracking-widest animate-pulse">Loading SKUs...</td></tr>
-                                ) : (
-                                    processedSkus.length === 0 ? (
-                                        <tr><td colSpan={8} className="p-24 text-center text-slate-400 font-bold uppercase tracking-widest">No SKUs Found.</td></tr>
+                        <div className="rounded-[2rem] border border-slate-100 dark:border-white/5 overflow-hidden">
+                            <table className="w-full text-left border-collapse table-fixed relative">
+                                <thead>
+                                    <tr className="bg-emerald-50 dark:bg-emerald-950/20 border-b border-emerald-100 dark:border-white/5">
+                                        <th className="sticky top-0 z-20 bg-emerald-50 dark:bg-emerald-950/20 p-4 pl-8 text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-widest w-16 border-r border-emerald-100 dark:border-white/10">S.No.</th>
+
+                                        <th
+                                            className="sticky top-0 z-20 bg-emerald-50 dark:bg-emerald-950/20 p-4 text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-widest cursor-pointer hover:text-emerald-500 transition-colors border-r border-emerald-100 dark:border-white/10 w-[200px]"
+                                            onClick={() => handleSort('familyName')}
+                                        >
+                                            <div className="flex items-center gap-1">Model Family <ArrowUpDown size={10} /></div>
+                                        </th>
+                                        <th
+                                            className="sticky top-0 z-20 bg-emerald-50 dark:bg-emerald-950/20 p-4 text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-widest cursor-pointer hover:text-emerald-500 transition-colors border-r border-emerald-100 dark:border-white/10 w-[200px]"
+                                            onClick={() => handleSort('variantName')}
+                                        >
+                                            <div className="flex items-center gap-1">Variant <ArrowUpDown size={10} /></div>
+                                        </th>
+                                        <th
+                                            className="sticky top-0 z-20 bg-emerald-50 dark:bg-emerald-950/20 p-4 text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-widest cursor-pointer hover:text-emerald-500 transition-colors border-r border-emerald-100 dark:border-white/10 w-[400px]"
+                                            onClick={() => handleSort('colorName')}
+                                        >
+                                            <div className="flex items-center gap-1">Color / Style <ArrowUpDown size={10} /></div>
+                                        </th>
+                                        <th
+                                            className="sticky top-0 z-20 bg-emerald-50 dark:bg-emerald-950/20 p-4 text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-widest cursor-pointer hover:text-emerald-500 transition-colors w-44 border-r border-emerald-100 dark:border-white/10"
+                                            onClick={() => handleSort('skuSlug')}
+                                        >
+                                            <div className="flex items-center gap-1">SKU <ArrowUpDown size={10} /></div>
+                                        </th>
+                                        <th className="sticky top-0 z-20 bg-emerald-50 dark:bg-emerald-950/20 p-4 text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-widest w-32 border-r border-emerald-100 dark:border-white/10">Assets</th>
+                                        <th className="sticky top-0 z-20 bg-emerald-50 dark:bg-emerald-950/20 p-4 pr-8 text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-widest text-right w-40 border-r border-emerald-100 dark:border-white/10">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {isLoading ? (
+                                        <tr><td colSpan={8} className="p-12 text-center text-slate-400 font-bold uppercase tracking-widest animate-pulse">Loading SKUs...</td></tr>
                                     ) : (
-                                        processedSkus.map((item, index) => (
-                                            <tr
-                                                key={item.sku.id}
-                                                onClick={() => router.push(`/app/${tenantSlug}/dashboard/catalog/products/studio?familyId=${item.family.id}&brandId=${item.family.brand_id}&step=5`)}
-                                                className="group hover:bg-slate-50 dark:hover:bg-white/5 transition-colors border-b border-slate-50 dark:border-white/5 last:border-0 cursor-pointer"
-                                            >
-                                                <td className="p-6 pl-8">
-                                                    <span className="text-xs font-bold text-slate-300 group-hover:text-emerald-500 transition-colors">
-                                                        {(index + 1).toString().padStart(2, '0')}
-                                                    </span>
-                                                </td>
-                                                <td className="p-6">
-                                                    <span className="font-bold text-slate-900 dark:text-white uppercase text-xs">{item.brandName}</span>
-                                                </td>
-                                                <td className="p-6">
-                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{item.templateName}</span>
-                                                </td>
-                                                <td className="p-6">
-                                                    <span className="font-black text-slate-900 dark:text-white uppercase italic text-sm">{item.familyName}</span>
-                                                </td>
-                                                <td className="p-6">
-                                                    <span className="font-bold text-slate-600 dark:text-slate-300 uppercase text-xs">{item.variantName}</span>
-                                                </td>
-                                                <td className="p-6">
-                                                    <div className="flex items-center gap-2">
-                                                        {item.colorHex && <div className="w-4 h-4 rounded-full shadow-sm border border-white/20" style={{ backgroundColor: item.colorHex }} />}
-                                                        <span className="text-xs font-bold text-slate-500 uppercase">{item.colorName}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="p-6">
-                                                    <div className="flex flex-col items-start">
-                                                        <CopyableId id={item.id} />
-                                                    </div>
-                                                </td>
-                                                <td className="p-6">
-                                                    <div className="flex flex-col gap-1.5">
-                                                        {/* Video */}
-                                                        <div className={`flex items-center gap-2 text-[9px] font-bold uppercase tracking-wide ${item.videoCount > 0 ? 'opacity-100' : 'opacity-30'}`}>
-                                                            <div className={`p-1 rounded ${item.isVideoShared ? 'bg-slate-100 dark:bg-slate-800 text-slate-500' : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'}`}>
-                                                                <Youtube size={10} />
-                                                            </div>
-                                                            <span className="w-2">{item.videoCount}</span>
-                                                            <span className="opacity-60">{item.isVideoShared ? 'Share' : 'Sku'}</span>
+                                        processedSkus.length === 0 ? (
+                                            <tr><td colSpan={8} className="p-24 text-center text-slate-400 font-bold uppercase tracking-widest">No SKUs Found.</td></tr>
+                                        ) : (
+                                            paginatedSkus.map((item, index) => (
+                                                <tr
+                                                    key={item.sku.id}
+                                                    onClick={() => router.push(`/app/${tenantSlug}/dashboard/catalog/products/studio?familyId=${item.family.id}&brandId=${item.family.brand_id}&step=5`)}
+                                                    className="group hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10 even:bg-slate-50 dark:even:bg-white/5 transition-colors cursor-pointer"
+                                                >
+                                                    <td className="p-4 pl-8 align-middle border border-slate-100 dark:border-white/5">
+                                                        <span className="text-xs font-bold text-slate-300 group-hover:text-emerald-500 transition-colors">
+                                                            {(index + 1).toString().padStart(2, '0')}
+                                                        </span>
+                                                    </td>
+
+                                                    <td className="p-4 align-middle border border-slate-100 dark:border-white/5">
+                                                        <span className="font-black text-slate-700 dark:text-white uppercase italic text-sm block whitespace-normal break-words leading-tight">{item.familyName}</span>
+                                                    </td>
+                                                    <td className="p-4 align-middle border border-slate-100 dark:border-white/5">
+                                                        <span className="font-bold text-slate-400 dark:text-slate-500 uppercase text-[10px] block whitespace-normal break-words leading-tight">{item.variantName}</span>
+                                                    </td>
+                                                    <td className="p-4 align-middle border border-slate-100 dark:border-white/5">
+                                                        <div className="flex items-start gap-2">
+                                                            {item.colorHex && <div className="w-3 h-3 rounded-full shadow-sm border border-white/20 mt-0.5 shrink-0" style={{ backgroundColor: item.colorHex }} />}
+                                                            <span className="text-xs font-bold text-slate-500 uppercase block whitespace-normal break-words leading-tight">{item.colorName}</span>
                                                         </div>
-                                                        {/* Image */}
-                                                        <div className={`flex items-center gap-2 text-[9px] font-bold uppercase tracking-wide ${item.imageCount > 0 ? 'opacity-100' : 'opacity-30'}`}>
-                                                            <div className={`p-1 rounded ${item.isImageShared ? 'bg-slate-100 dark:bg-slate-800 text-slate-500' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'}`}>
-                                                                <ImageIcon size={10} />
-                                                            </div>
-                                                            <span className="w-2">{item.imageCount}</span>
-                                                            <span className="opacity-60">{item.isImageShared ? 'Share' : 'Sku'}</span>
+                                                    </td>
+                                                    <td className="p-4 align-middle border border-slate-100 dark:border-white/5">
+                                                        <div className="flex flex-col items-start w-full">
+                                                            <CopyableId id={item.id} />
                                                         </div>
-                                                        {/* PDF */}
-                                                        <div className={`flex items-center gap-2 text-[9px] font-bold uppercase tracking-wide ${item.pdfCount > 0 ? 'opacity-100' : 'opacity-30'}`}>
-                                                            <div className={`p-1 rounded ${item.isPdfShared ? 'bg-slate-100 dark:bg-slate-800 text-slate-500' : 'bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'}`}>
-                                                                <FileText size={10} />
+                                                    </td>
+                                                    <td className="p-4 align-middle border border-slate-100 dark:border-white/5">
+                                                        <div className="flex items-center gap-2 p-1.5 bg-slate-50 dark:bg-black/20 rounded-xl border border-slate-100 dark:border-white/5 w-fit">
+                                                            {/* Video */}
+                                                            <div className={`flex items-center gap-1 ${item.videoCount > 0 ? 'opacity-100' : 'opacity-20 grayscale'}`} title="Videos">
+                                                                <Youtube size={14} className={item.isVideoShared ? 'text-slate-400' : 'text-blue-500'} />
+                                                                {item.videoCount > 0 && <span className="text-[10px] font-black text-slate-500">{item.videoCount}</span>}
                                                             </div>
-                                                            <span className="w-2">{item.pdfCount}</span>
-                                                            <span className="opacity-60">{item.isPdfShared ? 'Share' : 'Sku'}</span>
+                                                            <div className="w-[1px] h-3 bg-slate-200 dark:bg-white/10" />
+                                                            {/* Image */}
+                                                            <div className={`flex items-center gap-1 ${item.imageCount > 0 ? 'opacity-100' : 'opacity-20 grayscale'}`} title="Images">
+                                                                <ImageIcon size={14} className={item.isImageShared ? 'text-slate-400' : 'text-amber-500'} />
+                                                                {item.imageCount > 0 && <span className="text-[10px] font-black text-slate-500">{item.imageCount}</span>}
+                                                            </div>
+                                                            <div className="w-[1px] h-3 bg-slate-200 dark:bg-white/10" />
+                                                            {/* PDF */}
+                                                            <div className={`flex items-center gap-1 ${item.pdfCount > 0 ? 'opacity-100' : 'opacity-20 grayscale'}`} title="PDFs">
+                                                                <FileText size={14} className={item.isPdfShared ? 'text-slate-400' : 'text-purple-500'} />
+                                                                {item.pdfCount > 0 && <span className="text-[10px] font-black text-slate-500">{item.pdfCount}</span>}
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                </td>
-                                                <td className="p-6 text-right">
-                                                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${item.status === 'ACTIVE'
-                                                        ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
-                                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                                                        }`}>
-                                                        {item.status}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )
-                                )}
-                            </tbody>
-                        </table>
+                                                    </td>
+                                                    <td className="p-4 pr-8 align-middle text-right border border-slate-100 dark:border-white/5">
+                                                        <div className="flex justify-end">
+                                                            {item.status === 'ACTIVE' && (
+                                                                <span className="px-3 py-1.5 bg-emerald-100/50 dark:bg-emerald-900/20 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest rounded-full flex items-center gap-2 border border-emerald-500/10 shadow-sm shadow-emerald-500/5">
+                                                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                                                    ACTIVE
+                                                                </span>
+                                                            )}
+                                                            {item.status === 'DRAFT' && (
+                                                                <span className="px-3 py-1.5 bg-amber-100/50 dark:bg-amber-900/20 text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest rounded-full flex items-center gap-2 border border-amber-500/10 shadow-sm shadow-amber-500/5">
+                                                                    <div className="w-2 h-2 rounded-full bg-amber-500" />
+                                                                    DRAFT
+                                                                </span>
+                                                            )}
+                                                            {item.status === 'INACTIVE' && (
+                                                                <span className="px-3 py-1.5 bg-red-100/50 dark:bg-red-900/20 text-[10px] font-black text-red-600 dark:text-red-400 uppercase tracking-widest rounded-full flex items-center gap-2 border border-red-500/10 shadow-sm shadow-red-500/5">
+                                                                    <div className="w-2 h-2 rounded-full bg-red-500" />
+                                                                    OFFLINE
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
+
+                    {/* Pagination Footer */}
+                    {processedSkus.length > 0 && (
+                        <div className="p-6 border-t border-slate-100 dark:border-white/5 flex items-center justify-between bg-slate-50/50 dark:bg-white/5">
+                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                Showing <span className="text-slate-900 dark:text-white">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span className="text-slate-900 dark:text-white">{Math.min(currentPage * ITEMS_PER_PAGE, processedSkus.length)}</span> of <span className="text-slate-900 dark:text-white">{processedSkus.length}</span>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                    className="p-2 rounded-xl hover:bg-white dark:hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent transition-colors text-slate-600 dark:text-slate-300"
+                                >
+                                    <ChevronLeft size={16} />
+                                </button>
+
+                                <span className="text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest px-2">
+                                    Page {currentPage} of {totalPages}
+                                </span>
+
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="p-2 rounded-xl hover:bg-white dark:hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent transition-colors text-slate-600 dark:text-slate-300"
+                                >
+                                    <ChevronRight size={16} />
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
