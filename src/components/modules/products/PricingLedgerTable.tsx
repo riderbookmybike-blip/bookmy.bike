@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Landmark, Sparkles, TrendingUp, Info, Save, CheckCircle2, Car, Copy, Edit2, ArrowRight, ArrowUpDown, Search, Filter, Package, ExternalLink, Activity, Loader2, Power, AlertCircle, Zap } from 'lucide-react';
+import { Landmark, Sparkles, TrendingUp, Info, Save, CheckCircle2, Car, Copy, Edit2, ArrowRight, ArrowUpDown, Search, Filter, Package, ExternalLink, Activity, Loader2, Power, AlertCircle, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
 import { calculateOnRoad } from '@/lib/utils/pricingUtility';
 import { useRouter } from 'next/navigation';
 import { useTenant } from '@/lib/tenant/tenantContext';
@@ -31,17 +31,18 @@ interface SKUPriceRow {
     category: string;
     subCategory: string;
     suitableFor?: string;
-    status?: 'ACTIVE' | 'INACTIVE' | 'DRAFT';
+    status?: 'ACTIVE' | 'INACTIVE' | 'DRAFT' | 'RELAUNCH';
     localIsActive?: boolean;
 }
 
 interface PricingLedgerTableProps {
     initialSkus: SKUPriceRow[];
+    processedSkus: SKUPriceRow[];
     activeRule: RegistrationRule | null;
     onUpdatePrice: (skuId: string, price: number) => void;
     onUpdateOffer: (skuId: string, offer: number) => void;
     onUpdateInclusion: (skuId: string, type: 'MANDATORY' | 'OPTIONAL' | 'BUNDLE') => void;
-    onUpdateStatus: (skuId: string, status: 'ACTIVE' | 'INACTIVE') => void;
+    onUpdateStatus: (skuId: string, status: 'ACTIVE' | 'INACTIVE' | 'DRAFT' | 'RELAUNCH') => void;
     onUpdateLocalStatus?: (skuId: string, isActive: boolean) => void;
     onSaveAll?: () => void;
     states: RegistrationRule[];
@@ -50,9 +51,16 @@ interface PricingLedgerTableProps {
     brands: string[];
     selectedBrand: string;
     onBrandChange: (brand: string) => void;
+    categories: string[];
+    selectedCategory: string;
+    onCategoryChange: (cat: string) => void;
+    subCategories: string[];
+    selectedSubCategory: string;
+    onSubCategoryChange: (sub: string) => void;
     onBulkUpdate?: (ids: string[], price: number) => void;
     hasUnsavedChanges?: boolean;
     isSaving?: boolean;
+    onSummaryChange?: (summary: { count: number, value: number }) => void;
 }
 
 const BrandAvatar = ({ name, logo }: { name: string, logo?: string }) => {
@@ -96,6 +104,7 @@ const BrandAvatar = ({ name, logo }: { name: string, logo?: string }) => {
 
 export default function PricingLedgerTable({
     initialSkus,
+    processedSkus,
     activeRule,
     onUpdatePrice,
     onUpdateOffer,
@@ -109,24 +118,52 @@ export default function PricingLedgerTable({
     brands,
     selectedBrand,
     onBrandChange,
+    categories,
+    selectedCategory,
+    onCategoryChange,
+    subCategories,
+    selectedSubCategory,
+    onSubCategoryChange,
     onBulkUpdate,
     hasUnsavedChanges,
-    isSaving: isParentSaving
+    isSaving: isParentSaving,
+    onSummaryChange // NEW
 }: PricingLedgerTableProps) {
     const router = useRouter();
     const { tenantSlug } = useTenant();
     const isAums = tenantSlug === 'aums';
     const [skus, setSkus] = useState<SKUPriceRow[]>(initialSkus);
     const [isSaving, setIsSaving] = useState(false);
-    const [showSuccess, setShowSuccess] = useState(false);
     const [selectedSkuIds, setSelectedSkuIds] = useState<Set<string>>(new Set());
-    const [bulkPriceInput, setBulkPriceInput] = useState<string>('');
+    type CategoryType = 'vehicles' | 'accessories' | 'service';
     const [activeFilterColumn, setActiveFilterColumn] = useState<string | null>(null);
-    const [activeCategory, setActiveCategory] = useState<'vehicles' | 'accessories' | 'service'>('vehicles');
+    const [activeCategory, setActiveCategory] = useState<CategoryType>('vehicles');
+    const ITEMS_PER_PAGE = 50;
+    const [currentPage, setCurrentPage] = useState(1);
+    const [filters, setFilters] = useState<Partial<Record<keyof SKUPriceRow, string>>>({ status: 'ACTIVE' });
+    const [sortConfig, setSortConfig] = useState<{ key: keyof SKUPriceRow; direction: 'asc' | 'desc' } | null>(null);
+    const [prevSelectedCategory, setPrevSelectedCategory] = useState(selectedCategory);
+    const [prevFilters, setPrevFilters] = useState({ filters, selectedBrand, selectedSubCategory, selectedStateId });
+
+    // Sync internal category with prop (Render phase adjustment)
+    if (selectedCategory !== prevSelectedCategory) {
+        setPrevSelectedCategory(selectedCategory);
+        setCurrentPage(1);
+        if (selectedCategory && selectedCategory !== 'ALL') {
+            const cat = selectedCategory.toLowerCase();
+            if (['vehicles', 'accessories', 'service'].includes(cat)) {
+                setActiveCategory(cat as CategoryType);
+            }
+        }
+    }
+
+    // Reset page 1 on internal filters (Render phase adjustment)
+    if (filters !== prevFilters.filters || selectedBrand !== prevFilters.selectedBrand || selectedSubCategory !== prevFilters.selectedSubCategory || selectedStateId !== prevFilters.selectedStateId) {
+        setPrevFilters({ filters, selectedBrand, selectedSubCategory, selectedStateId });
+        setCurrentPage(1);
+    }
 
     // Sort & Filter State
-    const [sortConfig, setSortConfig] = useState<{ key: keyof SKUPriceRow; direction: 'asc' | 'desc' } | null>(null);
-    const [filters, setFilters] = useState<Partial<Record<keyof SKUPriceRow, string>>>({});
 
     // Toggle Sort
     const handleSort = (key: keyof SKUPriceRow) => {
@@ -144,23 +181,17 @@ export default function PricingLedgerTable({
         setActiveFilterColumn(null); // Close dropdown on select
     };
 
-    const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ACTIVE');
 
     // Derived Logic: Filters -> Unique Values for Dropdown (Cascading)
     const getUniqueValues = (key: keyof SKUPriceRow) => {
         const values = new Set<string>();
 
-        // Start with initial dataset
-        let baseSet = [...initialSkus];
+        // Start with processed dataset (which reflects parent Filters like Brand/Category)
+        let baseSet = [...processedSkus];
 
         // 0. Filter by Active Category (Tab)
         if (activeCategory) {
             baseSet = baseSet.filter(sku => (sku.type || 'vehicles').toLowerCase() === activeCategory.toLowerCase());
-        }
-
-        // 0.1 Filter by Status (Global Filter)
-        if (statusFilter !== 'ALL') {
-            baseSet = baseSet.filter(sku => (sku.status || 'INACTIVE') === statusFilter);
         }
 
         // 1. Cross-Filter: For the current column's options, respect all OTHER active filters
@@ -184,18 +215,12 @@ export default function PricingLedgerTable({
     };
 
     // Derived Logic: Filter -> Sort
-    const processedSkus = useMemo(() => {
-        let result = [...initialSkus];
+    const { tableSkus, summary } = useMemo(() => {
+        let result = [...processedSkus];
 
         // 0. Filter by Active Category (Tab)
         if (activeCategory) {
             result = result.filter(sku => (sku.type || 'vehicles').toLowerCase() === activeCategory.toLowerCase());
-        }
-
-        // 0.1 Filter by Status
-        if (statusFilter !== 'ALL') {
-            // Treat null/undefined as INACTIVE
-            result = result.filter(sku => (sku.status || 'INACTIVE') === statusFilter);
         }
 
         // 1. Filter Dropdowns
@@ -218,7 +243,6 @@ export default function PricingLedgerTable({
                 if (aVal === null || aVal === undefined) return 1;
                 if (bVal === null || bVal === undefined) return -1;
 
-                // Handle numbers vs strings
                 if (typeof aVal === 'number' && typeof bVal === 'number') {
                     return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
                 }
@@ -231,8 +255,27 @@ export default function PricingLedgerTable({
             });
         }
 
-        return result;
-    }, [initialSkus, filters, sortConfig, activeCategory, statusFilter]);
+        const totalValue = result.reduce((sum, sku) => sum + (sku.exShowroom || 0), 0);
+
+        return {
+            tableSkus: result,
+            summary: { count: result.length, value: totalValue }
+        };
+    }, [processedSkus, filters, sortConfig, activeCategory]);
+
+    // Pagination Logic
+    const totalPages = Math.ceil(tableSkus.length / ITEMS_PER_PAGE);
+    const paginatedSkus = useMemo(() => {
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        return tableSkus.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    }, [tableSkus, currentPage]);
+
+    // Emit summary to parent
+    useEffect(() => {
+        if (onSummaryChange) {
+            onSummaryChange(summary);
+        }
+    }, [summary, onSummaryChange]);
 
     // Selection Logic
     const toggleSelection = (id: string) => {
@@ -258,173 +301,228 @@ export default function PricingLedgerTable({
         setSelectedSkuIds(newSet);
     };
 
-    const handleBulkApply = () => {
-        if (!onBulkUpdate || !bulkPriceInput) return;
-        const price = parseFloat(bulkPriceInput);
-        if (isNaN(price)) return;
-        onBulkUpdate(Array.from(selectedSkuIds), price);
-        setBulkPriceInput('');
-        setSelectedSkuIds(new Set()); // Auto-clear selection after apply
-    };
 
     const handleSave = async () => {
         setIsSaving(true);
         if (onSaveAll) await onSaveAll();
         setIsSaving(false);
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 2000);
     };
 
     return (
-        <div className="w-full h-full flex flex-col animate-in fade-in duration-700">
-            {/* Luxury Premium Toolbar */}
-            <div className="px-6 pt-4 sticky top-0 z-30 bg-gradient-to-b from-[#0a1628] via-[#0a1628]/95 to-transparent backdrop-blur-sm -mx-6">
-                <div className="relative flex items-center justify-between px-6 py-3 bg-gradient-to-br from-[#1a2942] via-[#0f1d33] to-[#1a2942] border border-[#d4af37]/30 rounded-lg shadow-xl shadow-black/50 mb-4 overflow-hidden">
-                    {/* Leather texture overlay */}
-                    <div className="absolute inset-0 opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0ibGVhdGhlciIgeD0iMCIgeT0iMCIgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIHBhdHRlcm5Vbml0cz0idXNlclNwYWNlT25Vc2UiPjxjaXJjbGUgY3g9IjI1IiBjeT0iMjUiIHI9IjIiIGZpbGw9IiNmZmYiIG9wYWNpdHk9IjAuMyIvPjxjaXJjbGUgY3g9Ijc1IiBjeT0iNzUiIHI9IjEuNSIgZmlsbD0iI2ZmZiIgb3BhY2l0eT0iMC4yIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2xlYXRoZXIpIi8+PC9zdmc+')] pointer-events-none" />
-
-                    <div className="flex items-center gap-8 relative z-10">
-                        {/* Premium Filters */}
-                        <div className="flex items-center gap-4">
-                            <div className="relative group">
-                                <Landmark size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#d4af37] group-hover:text-[#f4e4c1] transition-colors" />
-                                <select
-                                    value={selectedStateId}
-                                    onChange={(e) => onStateChange(e.target.value)}
-                                    className="pl-11 pr-10 py-2.5 bg-gradient-to-br from-[#0a1628] to-[#1a2942] border-2 border-[#d4af37]/40 hover:border-[#d4af37] rounded-lg text-xs font-bold text-[#f4e4c1] uppercase tracking-wide focus:ring-4 focus:ring-[#d4af37]/20 outline-none appearance-none cursor-pointer transition-all duration-300 shadow-lg shadow-black/30"
-                                >
-                                    {states.map((s: RegistrationRule) => (
-                                        <option key={s.id} value={s.id}>{s.ruleName}</option>
-                                    ))}
-                                </select>
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                                    <div className="w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-[#d4af37]" />
-                                </div>
-                            </div>
-
-                            {/* Status Filter */}
-                            <div className="relative group">
-                                <Power size={14} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${statusFilter === 'ACTIVE' ? 'text-emerald-400' : 'text-[#d4af37]'}`} />
-                                <select
-                                    value={statusFilter}
-                                    onChange={(e) => setStatusFilter(e.target.value as any)}
-                                    className="pl-11 pr-10 py-2.5 bg-gradient-to-br from-[#0a1628] to-[#1a2942] border-2 border-[#d4af37]/40 hover:border-[#d4af37] rounded-lg text-xs font-bold text-[#f4e4c1] uppercase tracking-wide focus:ring-4 focus:ring-[#d4af37]/20 outline-none appearance-none cursor-pointer transition-all duration-300 shadow-lg shadow-black/30"
-                                >
-                                    <option value="ACTIVE">Active</option>
-                                    <option value="INACTIVE">New Launches</option>
-                                    <option value="ALL">All Status</option>
-                                </select>
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                                    <div className="w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-[#d4af37]" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="h-8 w-px bg-gradient-to-b from-transparent via-[#d4af37]/50 to-transparent" />
-
-                        {/* Classic Category Tabs */}
-                        <div className="flex gap-2">
-                            {[
-                                { id: 'vehicles', label: 'Vehicles', icon: Car },
-                                { id: 'accessories', label: 'Accessories', icon: Package },
-                                { id: 'service', label: 'Service', icon: Sparkles }
-                            ].map((cat) => (
-                                <button
-                                    key={cat.id}
-                                    onClick={() => setActiveCategory(cat.id as any)}
-                                    className={`relative flex items-center gap-2.5 px-6 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 ${activeCategory === cat.id
-                                        ? 'bg-gradient-to-br from-[#d4af37] to-[#b8941f] text-[#0a1628] shadow-xl shadow-[#d4af37]/30 border-2 border-[#f4e4c1]/50'
-                                        : 'bg-gradient-to-br from-[#1a2942]/50 to-[#0a1628]/50 text-[#d4af37]/70 hover:text-[#d4af37] border-2 border-[#d4af37]/20 hover:border-[#d4af37]/40'
-                                        }`}
-                                >
-                                    <cat.icon size={16} strokeWidth={2.5} />
-                                    {cat.label}
-                                </button>
+        <div className="w-full h-full flex flex-col animate-in fade-in duration-700 bg-white">
+            {/* Soft Tricolor Toolbar */}
+            <div className="z-30 bg-slate-50/80 backdrop-blur-md p-8 border-b border-slate-100 flex flex-col xl:flex-row items-center justify-between gap-6">
+                <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto">
+                    {/* State Filter */}
+                    <div className="relative group min-w-[180px]">
+                        <Landmark size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
+                        <select
+                            value={selectedStateId}
+                            onChange={(e) => onStateChange(e.target.value)}
+                            className="w-full pl-11 pr-10 py-4 bg-white border border-slate-100 hover:border-emerald-300 rounded-2xl text-xs font-bold text-slate-700 uppercase tracking-wide focus:ring-4 focus:ring-emerald-500/10 outline-none appearance-none cursor-pointer transition-all duration-300 relative"
+                        >
+                            {states.map((s: RegistrationRule) => (
+                                <option key={s.id} value={s.id}>{s.ruleName}</option>
                             ))}
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 z-10">
+                            <div className="w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-slate-500" />
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-6 relative z-10">
-                        {hasUnsavedChanges && (
-                            <div className="flex items-center gap-3">
-                                <button
-                                    onClick={handleSave}
-                                    disabled={isSaving || isParentSaving}
-                                    className="group relative bg-gradient-to-br from-[#d4af37] via-[#c9a832] to-[#b8941f] hover:from-[#f4e4c1] hover:via-[#d4af37] hover:to-[#c9a832] disabled:from-slate-700 disabled:to-slate-800 disabled:text-slate-500 text-[#0a1628] px-7 py-3 rounded-lg text-xs font-black uppercase tracking-[0.15em] transition-all duration-300 shadow-2xl shadow-[#d4af37]/40 hover:shadow-[#d4af37]/60 active:scale-95 flex items-center gap-3 border-2 border-[#f4e4c1]/30 disabled:border-transparent disabled:shadow-none overflow-hidden"
-                                >
-                                    <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-                                    {(isSaving || isParentSaving) ? <Loader2 size={18} className="animate-spin" strokeWidth={2.5} /> : <Save size={18} strokeWidth={2.5} />}
-                                    <span className="relative font-serif" style={{ fontFamily: 'Playfair Display, serif' }}>Save Changes</span>
-                                </button>
-                            </div>
-                        )}
+                    {/* Brand Filter */}
+                    <div className="relative group min-w-[160px]">
+                        <Car size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
+                        <select
+                            value={selectedBrand}
+                            onChange={(e) => onBrandChange(e.target.value)}
+                            className="w-full pl-11 pr-10 py-4 bg-white border border-slate-100 hover:border-emerald-300 rounded-2xl text-xs font-bold text-slate-700 uppercase tracking-wide focus:ring-4 focus:ring-emerald-500/10 outline-none appearance-none cursor-pointer transition-all duration-300 relative"
+                        >
+                            <option value="ALL">All Brands</option>
+                            {brands.map((b) => (
+                                <option key={b} value={b}>{b}</option>
+                            ))}
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 z-10">
+                            <div className="w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-slate-500" />
+                        </div>
                     </div>
+
+                    {/* Category Filter */}
+                    <div className="relative group min-w-[160px]">
+                        <Activity size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
+                        <select
+                            value={selectedCategory}
+                            onChange={(e) => onCategoryChange(e.target.value)}
+                            className="w-full pl-11 pr-10 py-4 bg-white border border-slate-100 hover:border-emerald-300 rounded-2xl text-xs font-bold text-slate-700 uppercase tracking-wide focus:ring-4 focus:ring-emerald-500/10 outline-none appearance-none cursor-pointer transition-all duration-300 relative"
+                        >
+                            <option value="ALL">All Categories</option>
+                            {categories.map((c) => (
+                                <option key={c} value={c}>{c}</option>
+                            ))}
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 z-10">
+                            <div className="w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-slate-500" />
+                        </div>
+                    </div>
+
+                    {/* Sub Category Filter */}
+                    <div className="relative group min-w-[180px]">
+                        <Info size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
+                        <select
+                            value={selectedSubCategory}
+                            onChange={(e) => onSubCategoryChange(e.target.value)}
+                            className="w-full pl-11 pr-10 py-4 bg-white border border-slate-100 hover:border-emerald-300 rounded-2xl text-xs font-bold text-slate-700 uppercase tracking-wide focus:ring-4 focus:ring-emerald-500/10 outline-none appearance-none cursor-pointer transition-all duration-300 relative"
+                        >
+                            <option value="ALL">All Sub-Categories</option>
+                            {subCategories.map((sc) => (
+                                <option key={sc} value={sc}>{sc}</option>
+                            ))}
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 z-10">
+                            <div className="w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-slate-500" />
+                        </div>
+                    </div>
+
+
+                    {(Object.keys(filters).some(k => !!filters[k as keyof SKUPriceRow])) && (
+                        <button
+                            onClick={() => {
+                                setFilters({ status: 'ACTIVE' });
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-100/50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-slate-100 hover:border-rose-100"
+                        >
+                            <Power size={12} />
+                            Reset Filters
+                        </button>
+                    )}
+                </div>
+
+                <div className="flex items-center gap-4 shrink-0">
+                    <div className="h-10 w-[1px] bg-slate-200 hidden xl:block mx-2" />
+
+                    {/* Status Filter Dropdown */}
+                    <div className="relative group min-w-[140px]">
+                        <Zap size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
+                        <select
+                            value={filters.status || 'ALL'}
+                            onChange={(e) => handleFilter('status', e.target.value === 'ALL' ? '' : e.target.value)}
+                            className="w-full pl-11 pr-10 py-4 bg-white border border-slate-100 hover:border-emerald-300 rounded-2xl text-xs font-bold text-slate-700 uppercase tracking-wide focus:ring-4 focus:ring-emerald-500/10 outline-none appearance-none cursor-pointer transition-all duration-300 relative"
+                        >
+                            <option value="ALL">All Status</option>
+                            <option value="ACTIVE">Live</option>
+                            <option value="DRAFT">New</option>
+                            <option value="INACTIVE">Inactive</option>
+                            <option value="RELAUNCH">Relaunch</option>
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 z-10">
+                            <div className="w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-slate-500" />
+                        </div>
+                    </div>
+                    {hasUnsavedChanges && (
+                        <button
+                            onClick={handleSave}
+                            disabled={isSaving || isParentSaving}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-xl shadow-emerald-200/50 flex items-center gap-3 group active:scale-95 whitespace-nowrap"
+                        >
+                            {(isSaving || isParentSaving) ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                            Save Pricing Ledger
+                        </button>
+                    )}
                 </div>
             </div>
 
-            {/* Luxury Premium Table Card */}
+            {/* Soft Tricolor Table Card */}
             <div className="flex-1 px-6 pb-6">
-                <div className="h-full bg-gradient-to-br from-[#1a2942] via-[#0f1d33] to-[#1a2942] backdrop-blur-md rounded-2xl border-2 border-[#d4af37]/30 shadow-2xl shadow-black/50 relative overflow-hidden flex flex-col">
-                    {/* Subtle pinstripe pattern */}
-                    <div className="absolute inset-0 opacity-5 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNCIgaGVpZ2h0PSI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxIiBoZWlnaHQ9IjQiIGZpbGw9IiNkNGFmMzciLz48L3N2Zz4=')] pointer-events-none" />
+                <div className="h-full bg-white rounded-2xl border border-slate-200 shadow-xl shadow-slate-200/50 relative overflow-hidden flex flex-col">
                     <div className="overflow-auto scrollbar-thin flex-1">
                         <table className="w-full text-left border-collapse min-w-[1200px]">
-                            <thead className="sticky top-0 z-10 bg-gradient-to-r from-[#1a2942] via-[#0f1d33] to-[#1a2942] backdrop-blur-md border-b border-[#d4af37]/40">
+                            <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
                                 <tr>
-                                    {/* ... (Checkbox and other headers remain same) ... */}
-                                    <th className="px-4 py-3 w-10 text-[9px] font-black text-[#d4af37] uppercase tracking-[0.2em] border-b border-[#d4af37]/30 pl-6">
+                                    <th className="px-4 py-4 w-10 border-b border-slate-200 pl-6">
                                         <input
                                             type="checkbox"
-                                            checked={processedSkus.length > 0 && processedSkus.every(s => selectedSkuIds.has(s.id))}
+                                            checked={tableSkus.length > 0 && tableSkus.every(s => selectedSkuIds.has(s.id))}
                                             onChange={toggleAll}
-                                            className="rounded border-[#d4af37] text-[#d4af37] focus:ring-2 focus:ring-[#d4af37]/30 cursor-pointer w-3.5 h-3.5"
+                                            className="rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500/20 cursor-pointer w-4 h-4"
                                         />
                                     </th>
-                                    <th className="px-4 py-3 text-[9px] font-black text-[#d4af37] uppercase tracking-widest border-b border-[#d4af37]/30 text-center w-[70px]">
-                                        Avail.
-                                    </th>
-                                    {['brand', 'category', 'subCategory', 'model', 'variant', 'color'].map((key) => {
-                                        const label = key === 'subCategory' ? 'Sub Category' : key;
+                                    {['model', 'variant', 'color'].map((key) => {
+                                        const values = getUniqueValues(key as keyof SKUPriceRow);
+                                        const currentFilter = filters[key as keyof SKUPriceRow];
+                                        const isActive = activeFilterColumn === key;
+                                        const statusLabels: Record<string, string> = {
+                                            'ACTIVE': 'Live',
+                                            'DRAFT': 'New',
+                                            'INACTIVE': 'Inactive',
+                                            'RELAUNCH': 'Relaunch'
+                                        };
+
                                         return (
-                                            <th key={key} className={`px-4 py-3 text-[9px] font-black text-[#d4af37] uppercase tracking-widest border-b border-[#d4af37]/30 align-top relative ${key === 'subCategory' || key === 'color' ? 'min-w-[120px]' : ''}`}>
-                                                <div className="flex items-center justify-between gap-2 group cursor-pointer">
-                                                    <div onClick={() => handleSort(key as keyof SKUPriceRow)} className="flex items-center gap-1 hover:text-blue-500 transition-colors uppercase text-left">
-                                                        {label}
-                                                        <ArrowUpDown size={10} className={`opacity-50 ${sortConfig?.key === key ? 'text-blue-500 opacity-100' : ''}`} />
-                                                    </div>
+                                            <th key={key} className={`relative px-6 py-5 text-[10px] font-black uppercase tracking-widest border-b border-slate-100 bg-slate-50/30 group/header ${key === 'status' ? 'text-right' : 'text-slate-500'}`}>
+                                                <div className={`flex items-center gap-1 ${key === 'status' ? 'justify-end' : 'justify-between'}`}>
                                                     <div
-                                                        className={`p-1 rounded hover:bg-slate-100 dark:hover:bg-white/10 ${filters[key as keyof SKUPriceRow] ? 'text-blue-500' : 'text-slate-400'}`}
+                                                        onClick={() => handleSort(key as keyof SKUPriceRow)}
+                                                        className={`flex items-center gap-1 hover:text-emerald-600 transition-colors cursor-pointer ${key === 'status' ? 'text-slate-500' : ''}`}
+                                                    >
+                                                        {key} <ArrowUpDown size={12} className={`opacity-30 ${sortConfig?.key === key ? 'text-emerald-600 opacity-100' : ''}`} />
+                                                    </div>
+
+                                                    <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            setActiveFilterColumn(activeFilterColumn === key ? null : key);
+                                                            setActiveFilterColumn(isActive ? null : key);
                                                         }}
+                                                        className={`p-1 rounded-lg transition-all ${currentFilter && currentFilter !== 'ALL' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'text-slate-300 hover:bg-white hover:text-slate-600 hover:shadow-sm'}`}
                                                     >
-                                                        <Filter size={10} fill={filters[key as keyof SKUPriceRow] ? "currentColor" : "none"} />
-                                                    </div>
+                                                        <Filter size={12} className={currentFilter && currentFilter !== 'ALL' ? 'fill-current' : ''} />
+                                                    </button>
                                                 </div>
 
-                                                {/* Filter Dropdown */}
-                                                {activeFilterColumn === key && (
+                                                {/* Filter Dropdown Popover */}
+                                                {isActive && (
                                                     <>
-                                                        <div className="fixed inset-0 z-40" onClick={() => setActiveFilterColumn(null)} />
-                                                        <div className="absolute top-full left-0 mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl shadow-xl z-50 p-2 animate-in fade-in zoom-in-95">
-                                                            <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 px-2">Filter by {label}</div>
-                                                            <div className="max-h-48 overflow-y-auto scrollbar-thin">
-                                                                <div
-                                                                    className={`px-3 py-2 rounded-lg text-[10px] font-bold cursor-pointer hover:bg-blue-50 dark:hover:bg-white/5 transition-colors ${!filters[key as keyof SKUPriceRow] ? 'text-blue-500 bg-blue-50 dark:bg-white/5' : 'text-slate-600 dark:text-slate-300'}`}
-                                                                    onClick={() => handleFilter(key as keyof SKUPriceRow, '')}
-                                                                >
-                                                                    All
-                                                                </div>
-                                                                {getUniqueValues(key as keyof SKUPriceRow).map(val => (
-                                                                    <div
-                                                                        key={val}
-                                                                        className={`px-3 py-2 rounded-lg text-[10px] font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors ${filters[key as keyof SKUPriceRow] === val ? 'text-blue-500 bg-blue-50 dark:bg-white/5 font-bold' : 'text-slate-600 dark:text-slate-300'}`}
-                                                                        onClick={() => handleFilter(key as keyof SKUPriceRow, val)}
+                                                        <div
+                                                            className="fixed inset-0 z-40 bg-transparent"
+                                                            onClick={() => setActiveFilterColumn(null)}
+                                                        />
+                                                        <div className={`absolute top-[80%] mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 ${key === 'status' ? 'right-6' : 'left-6'}`}>
+                                                            <div className="p-3 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">
+                                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Filter {key}</span>
+                                                                {currentFilter && (
+                                                                    <button
+                                                                        onClick={() => handleFilter(key as keyof SKUPriceRow, '')}
+                                                                        className="text-[9px] font-black text-emerald-600 uppercase tracking-tighter hover:underline"
                                                                     >
-                                                                        {val}
+                                                                        Clear
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                            <div className="max-h-64 overflow-y-auto p-2 scrollbar-thin">
+                                                                <button
+                                                                    onClick={() => handleFilter(key as keyof SKUPriceRow, '')}
+                                                                    className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${!currentFilter || currentFilter === '' ? 'bg-emerald-50 text-emerald-600' : 'text-slate-500 hover:bg-slate-50'}`}
+                                                                >
+                                                                    All {key}s
+                                                                    {(!currentFilter || currentFilter === '') && <CheckCircle2 size={12} />}
+                                                                </button>
+                                                                <div className="h-px bg-slate-100 my-2 mx-2" />
+                                                                {values.length > 0 ? (
+                                                                    values.map(val => (
+                                                                        <button
+                                                                            key={val}
+                                                                            onClick={() => handleFilter(key as keyof SKUPriceRow, val)}
+                                                                            className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${currentFilter === val ? 'bg-emerald-50 text-emerald-600' : 'text-slate-500 hover:bg-slate-50'}`}
+                                                                        >
+                                                                            {key === 'status' ? (statusLabels[val] || val) : val}
+                                                                            {currentFilter === val && <CheckCircle2 size={12} />}
+                                                                        </button>
+                                                                    ))
+                                                                ) : (
+                                                                    <div className="px-4 py-8 text-center">
+                                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No options available</p>
                                                                     </div>
-                                                                ))}
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </>
@@ -434,288 +532,196 @@ export default function PricingLedgerTable({
                                     })}
 
 
-
-
-                                    <th className="px-4 py-3 text-[9px] font-black text-blue-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 bg-blue-500/5 text-right align-top">
-                                        <div className="flex flex-col gap-2 items-end">
-                                            <div
-                                                className="flex items-center gap-1 cursor-pointer hover:text-blue-600 transition-colors"
-                                                onClick={() => handleSort('exShowroom')}
-                                            >
-                                                {activeCategory === 'vehicles' ? 'Ex-Showroom' : 'MRP'} <ArrowUpDown size={10} />
-                                            </div>
+                                    <th className="px-6 py-5 text-[10px] font-black text-emerald-600 uppercase tracking-widest border-b border-emerald-100 bg-emerald-50/50 text-right">
+                                        <div
+                                            className="flex items-center gap-1 justify-end cursor-pointer hover:text-emerald-700 transition-colors"
+                                            onClick={() => handleSort('exShowroom')}
+                                        >
+                                            {activeCategory === 'vehicles' ? 'Ex-Showroom' : 'MRP'} <ArrowUpDown size={12} />
                                         </div>
                                     </th>
+
                                     {activeCategory === 'vehicles' ? (
                                         <>
-                                            <th className="px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 text-right align-top">RTO</th>
-                                            <th className="px-4 py-3 text-[9px] font-black text-amber-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 bg-amber-500/5 text-right align-top">Insurance</th>
+                                            <th className="px-6 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-100 bg-slate-50/30 text-right">RTO</th>
+                                            <th className="px-6 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-100 bg-slate-50/30 text-right">Insurance</th>
                                         </>
                                     ) : (
                                         <>
-                                            <th className="px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 text-right align-top">Base Price</th>
-                                            <th className="px-4 py-3 text-[9px] font-black text-purple-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 text-right align-top">GST (28%)</th>
+                                            <th className="px-6 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-100 bg-slate-50/30 text-right">Base Price</th>
+                                            <th className="px-6 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-100 bg-slate-50/30 text-right">GST (28%)</th>
                                         </>
                                     )}
 
                                     {activeCategory !== 'vehicles' && (
-                                        <th className="px-4 py-3 text-[9px] font-black text-blue-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 text-center align-top min-w-[120px]">
+                                        <th className="px-6 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-100 bg-slate-50/30 text-center min-w-[120px]">
                                             Inclusion
                                         </th>
                                     )}
 
                                     {!isAums && activeCategory === 'vehicles' && (
-                                        <th className="px-6 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 text-right align-top">
+                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 bg-slate-50/30 text-right">
                                             On-Road (Base)
                                         </th>
                                     )}
 
-                                    {/* On-Road Offer - Dealer enters final offer price */}
-                                    <th className="px-6 py-3 text-[9px] font-black text-emerald-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 text-right align-top">
+                                    <th className="px-8 py-5 text-[10px] font-black text-emerald-600 uppercase tracking-widest border-b border-emerald-100 text-right bg-emerald-50/80">
                                         {activeCategory === 'vehicles' ? (isAums ? 'On-Road' : 'On-Road Offer') : 'Final Price'}
                                     </th>
 
-                                    {/* Discount - Auto-calculated */}
                                     {!isAums && activeCategory === 'vehicles' && (
-                                        <th className="px-4 py-3 text-[9px] font-black text-purple-500 uppercase tracking-widest border-b border-slate-200 dark:border-white/10 text-right align-top">
-                                            <div className="flex items-center justify-end gap-1 cursor-help group/header">
-                                                Discount <Info size={10} />
-                                                <div className="absolute top-full right-0 mt-2 w-48 p-2 bg-slate-900 border border-white/10 rounded-xl hidden group-hover/header:block z-50 shadow-xl pointer-events-none normal-case font-normal text-slate-300">
-                                                    Auto-calculated: On-Road Base - On-Road Offer
-                                                </div>
-                                            </div>
+                                        <th className="px-6 py-5 text-[10px] font-black text-emerald-700 uppercase tracking-widest border-b border-emerald-100 text-right">
+                                            Benefit
                                         </th>
                                     )}
+
+                                    <th className="relative px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-100 bg-slate-50/30 text-right group/header w-[140px]">
+                                        <div className="flex items-center justify-end gap-1">
+                                            <div
+                                                onClick={() => handleSort('status')}
+                                                className="flex items-center gap-1 hover:text-emerald-600 transition-colors cursor-pointer"
+                                            >
+                                                Status <ArrowUpDown size={12} className={`opacity-30 ${sortConfig?.key === 'status' ? 'text-emerald-600 opacity-100' : ''}`} />
+                                            </div>
+
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setActiveFilterColumn(activeFilterColumn === 'status' ? null : 'status');
+                                                }}
+                                                className={`p-1 rounded-lg transition-all ${filters.status && filters.status !== 'ALL' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'text-slate-300 hover:bg-white hover:text-slate-600 hover:shadow-sm'}`}
+                                            >
+                                                <Filter size={12} className={filters.status && filters.status !== 'ALL' ? 'fill-current' : ''} />
+                                            </button>
+                                        </div>
+
+                                        {/* Status Filter Dropdown */}
+                                        {activeFilterColumn === 'status' && (
+                                            <>
+                                                <div
+                                                    className="fixed inset-0 z-40 bg-transparent"
+                                                    onClick={() => setActiveFilterColumn(null)}
+                                                />
+                                                <div className="absolute top-[80%] right-6 mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                                    <div className="p-3 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">
+                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Filter status</span>
+                                                        {filters.status && (
+                                                            <button
+                                                                onClick={() => handleFilter('status', '')}
+                                                                className="text-[9px] font-black text-emerald-600 uppercase tracking-tighter hover:underline"
+                                                            >
+                                                                Clear
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    <div className="max-h-64 overflow-y-auto p-2 scrollbar-thin">
+                                                        <button
+                                                            onClick={() => handleFilter('status', '')}
+                                                            className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${!filters.status || filters.status === '' ? 'bg-emerald-50 text-emerald-600' : 'text-slate-500 hover:bg-slate-50'}`}
+                                                        >
+                                                            All Statuses
+                                                            {(!filters.status || filters.status === '') && <CheckCircle2 size={12} />}
+                                                        </button>
+                                                        <div className="h-px bg-slate-100 my-2 mx-2" />
+                                                        {getUniqueValues('status').map(val => (
+                                                            <button
+                                                                key={val}
+                                                                onClick={() => handleFilter('status', val)}
+                                                                className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${filters.status === val ? 'bg-emerald-50 text-emerald-600' : 'text-slate-500 hover:bg-slate-50'}`}
+                                                            >
+                                                                {{ 'ACTIVE': 'Live', 'DRAFT': 'New', 'INACTIVE': 'Inactive', 'RELAUNCH': 'Relaunch' }[val] || val}
+                                                                {filters.status === val && <CheckCircle2 size={12} />}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
+                                    </th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                                {processedSkus.map((sku, skuIdx) => {
-                                    // 1. Calculate Standard On-Road (No Offer)
-                                    const stdCalcs = activeRule
-                                        ? calculateOnRoad(sku.exShowroom, Number(sku.engineCc), activeRule, undefined)
-                                        : null;
-
-                                    // 2. Calculate Final On-Road (With Offer)
-                                    const finalCalcs = activeRule
-                                        ? calculateOnRoad(sku.exShowroom, Number(sku.engineCc), activeRule, undefined, { offerAmount: sku.offerAmount })
-                                        : null;
-
+                            <tbody className="divide-y divide-slate-100">
+                                {paginatedSkus.map((sku) => {
+                                    const stdCalcs = activeRule ? calculateOnRoad(sku.exShowroom, Number(sku.engineCc), activeRule, undefined) : null;
+                                    const finalCalcs = activeRule ? calculateOnRoad(sku.exShowroom, Number(sku.engineCc), activeRule, undefined, { offerAmount: sku.offerAmount }) : null;
                                     const gstRate = sku.gstRate || 28;
                                     const basePrice = sku.exShowroom / (1 + gstRate / 100);
                                     const totalGst = sku.exShowroom - basePrice;
                                     const isDirty = sku.originalExShowroom !== undefined && sku.exShowroom !== sku.originalExShowroom;
                                     const isSelected = selectedSkuIds.has(sku.id);
-                                    const hasOffer = sku.offerAmount && sku.offerAmount !== 0;
 
                                     return (
                                         <tr
                                             key={sku.id}
-                                            className={`group transition-all duration-300 ${isSelected ? 'bg-blue-50/50 dark:bg-blue-900/10' : 'hover:bg-blue-600/5'}`}
+                                            className={`group transition-all duration-200 ${isSelected ? 'bg-emerald-50/30' : 'hover:bg-slate-50'}`}
                                         >
-                                            <td className="px-4 py-2.5 pl-6 border-l-4 border-transparent group-hover:border-[#d4af37]/30 transition-all">
+                                            <td className="px-6 py-5 pl-8">
                                                 <input
                                                     type="checkbox"
                                                     checked={isSelected}
                                                     onChange={() => toggleSelection(sku.id)}
-                                                    className="rounded border-[#d4af37]/50 text-[#d4af37] focus:ring-2 focus:ring-[#d4af37]/30 cursor-pointer w-3.5 h-3.5 opacity-40 group-hover:opacity-100 transition-opacity"
+                                                    className="rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500/20 cursor-pointer w-4 h-4"
                                                 />
                                             </td>
-                                            <td className="px-4 py-2 text-center relative group/status">
-                                                <button
-                                                    onClick={() => {
-                                                        if (isAums) {
-                                                            // SUPERADMIN: Global Activation
-                                                            const newStatus = sku.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-                                                            if (newStatus === 'ACTIVE' && (!sku.exShowroom || sku.exShowroom <= 0)) {
-                                                                alert('Cannot activate SKU without Ex-Showroom Price.');
-                                                                return;
-                                                            }
-                                                            if (onUpdateStatus) onUpdateStatus(sku.id, newStatus);
-                                                        } else {
-                                                            // DEALER: Local Inventory Toggle
-                                                            // Cannot enable if Global is INACTIVE
-                                                            if (sku.status !== 'ACTIVE') {
-                                                                return; // Silent fail (button disabled visually)
-                                                            }
-                                                            if (onUpdateLocalStatus) onUpdateLocalStatus(sku.id, !sku.localIsActive);
-                                                        }
-                                                    }}
-                                                    disabled={!isAums && sku.status !== 'ACTIVE'}
-                                                    className={`
-                                                        w-8 h-5 rounded-full flex items-center transition-all duration-300 relative
-                                                        ${isAums
-                                                            ? (sku.status === 'ACTIVE'
-                                                                ? 'bg-emerald-500 shadow-lg shadow-emerald-500/20'
-                                                                : (!sku.exShowroom || sku.exShowroom <= 0) ? 'bg-slate-100 dark:bg-slate-800 cursor-not-allowed opacity-50' : 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300')
-                                                            : (sku.status === 'ACTIVE'
-                                                                ? (sku.localIsActive ? 'bg-emerald-500 shadow-lg shadow-emerald-500/20' : 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300')
-                                                                : 'bg-slate-100 dark:bg-slate-800 cursor-not-allowed opacity-30')
-                                                        }
-                                                    `}
-                                                >
-                                                    <div className={`
-                                                        w-3 h-3 rounded-full bg-white shadow-sm absolute top-1 transition-all duration-300
-                                                        ${isAums
-                                                            ? (sku.status === 'ACTIVE' ? 'left-4' : 'left-1')
-                                                            : (sku.localIsActive && sku.status === 'ACTIVE' ? 'left-4' : 'left-1')
-                                                        }
-                                                    `} />
-                                                </button>
-
-                                                {/* Tooltip for Disabled State */}
-                                                {isAums && sku.status !== 'ACTIVE' && (!sku.exShowroom || sku.exShowroom <= 0) && (
-                                                    <div className="absolute left-10 top-1/2 -translate-y-1/2 w-32 p-2 bg-slate-900 border border-white/10 rounded-lg hidden group-hover/status:block z-50 pointer-events-none">
-                                                        <div className="flex items-center gap-2 text-[10px] text-rose-300 font-bold leading-tight">
-                                                            <AlertCircle size={12} className="shrink-0" />
-                                                            <span>Set Price to Activate</span>
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {/* Dealer Inactive Context */}
-                                                {!isAums && sku.status !== 'ACTIVE' && (
-                                                    <div className="absolute left-10 top-1/2 -translate-y-1/2 w-32 p-2 bg-slate-900 border border-white/10 rounded-lg hidden group-hover/status:block z-50 pointer-events-none">
-                                                        <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold leading-tight">
-                                                            <Info size={12} className="shrink-0" />
-                                                            <span>Global Launch Pending</span>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-2.5">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="text-xs font-bold text-[#f4e4c1] uppercase tracking-tight leading-none">{sku.brand}</span>
-                                                    </div>
+                                            <td className="px-6 py-5">
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-bold text-slate-900 uppercase tracking-tight">{sku.model}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-2.5">
-                                                <span className="text-[10px] font-bold text-[#d4af37]/70 uppercase tracking-wider">{sku.category}</span>
+                                            <td className="px-6 py-5">
+                                                <span className="text-xs font-semibold text-slate-700 uppercase">{sku.variant}</span>
                                             </td>
-                                            <td className="px-4 py-2.5 max-w-[150px]">
-                                                <span className="text-[11px] font-semibold text-[#f4e4c1]/80 uppercase leading-relaxed whitespace-normal">{sku.subCategory}</span>
+                                            <td className="px-6 py-5">
+                                                <span className="text-[10px] font-medium text-slate-500 uppercase leading-relaxed">{sku.color}</span>
                                             </td>
-                                            <td className="px-4 py-2.5">
-                                                <span className="text-xs font-bold text-white uppercase tracking-tight">{sku.model}</span>
-                                            </td>
-                                            <td className="px-4 py-2.5">
-                                                <span className="text-xs font-semibold text-[#f4e4c1]/90 uppercase">{sku.variant}</span>
-                                            </td>
-                                            <td className="px-4 py-2.5 max-w-[150px]">
-                                                <span className="text-[10px] font-medium text-[#d4af37]/60 uppercase leading-relaxed whitespace-normal">{sku.color}</span>
-                                            </td>
-                                            <td className="px-4 py-2 text-right">
-                                                <div className="relative group/input flex justify-end items-center gap-2">
+
+                                            <td className="px-6 py-5 text-right">
+                                                <div className="flex justify-end items-center gap-2">
                                                     <input
                                                         type="number"
                                                         value={sku.exShowroom}
-                                                        readOnly={!isAums} // Only AUMS can edit Base Price
+                                                        readOnly={!isAums}
                                                         onChange={(e) => isAums && onUpdatePrice(sku.id, Number(e.target.value))}
-                                                        onFocus={(e) => e.target.select()}
-                                                        onBlur={(e) => {
-                                                            if (!e.target.value || Number(e.target.value) <= 0) {
-                                                                onUpdatePrice(sku.id, sku.originalExShowroom || 0);
-                                                            }
-                                                        }}
-                                                        className={`w-28 bg-gradient-to-br rounded-xl px-3 py-2 text-sm font-black outline-none transition-all duration-300 text-right
-                                                        ${isDirty
-                                                                ? 'from-amber-50 to-amber-100/50 dark:from-amber-950/20 dark:to-amber-900/10 border-2 border-amber-400/50 dark:border-amber-500/40 text-amber-700 dark:text-amber-400 shadow-lg shadow-amber-500/20'
-                                                                : 'from-slate-50 to-slate-100/50 dark:from-black/20 dark:to-black/10 border-2 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white hover:border-indigo-300 dark:hover:border-indigo-500/30 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20'
-                                                            }
-                                                        ${!isAums ? 'opacity-75 cursor-not-allowed' : ''}
-                                                    `}
+                                                        className={`w-28 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm font-black text-right transition-all ${isDirty ? 'border-amber-400 bg-amber-50 text-amber-700' : 'text-slate-900 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10'} ${!isAums ? 'opacity-70 cursor-not-allowed bg-slate-50' : ''}`}
                                                     />
-                                                    {/* Dirty State Indicator */}
-                                                    {isDirty && (
-                                                        <div className="relative group/history">
-                                                            <div className="w-4 h-4 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center cursor-help">
-                                                                <Sparkles size={8} />
-                                                            </div>
-                                                            {/* Context History Tooltip */}
-                                                            <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 w-48 p-3 bg-slate-900 border border-white/10 rounded-xl text-[9px] text-white shadow-xl z-50 hidden group-hover/history:block animate-in fade-in zoom-in-95 pointer-events-none">
-                                                                <div className="flex items-center justify-between font-mono bg-white/5 p-1.5 rounded-lg mb-1">
-                                                                    <span className="text-slate-500 line-through">₹{sku.originalExShowroom?.toLocaleString()}</span>
-                                                                    <ArrowRight size={10} className="text-slate-500" />
-                                                                    <span className="text-amber-400">₹{sku.exShowroom.toLocaleString()}</span>
-                                                                </div>
-                                                            </div>
-
-                                                        </div>
-                                                    )}
                                                 </div>
                                             </td>
                                             {activeCategory === 'vehicles' ? (
                                                 <>
-                                                    <td className="px-4 py-2 text-right group/cell relative cursor-help">
-                                                        <span className="font-bold text-[10px] text-slate-600 dark:text-slate-400">₹{stdCalcs?.rtoState.total.toLocaleString() || '--'}</span>
-                                                        {stdCalcs && (
-                                                            <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-slate-900 border border-white/10 rounded-xl hidden group-hover/cell:block z-50 shadow-xl pointer-events-none">
-                                                                <div className="space-y-1">
-                                                                    {stdCalcs.rtoState.items.map((item: any, idx: number) => (
-                                                                        <div key={idx} className="flex justify-between text-[8px] text-slate-300">
-                                                                            <span>{item.label}</span>
-                                                                            <span className="font-mono">₹{item.amount}</span>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        )}
+                                                    <td className="px-6 py-5 text-right">
+                                                        <span className="font-bold text-[11px] text-slate-600">₹{stdCalcs?.rtoState.total.toLocaleString() || '--'}</span>
                                                     </td>
-                                                    <td className="px-4 py-2 text-right bg-amber-500/[0.02] group/cell relative cursor-help">
-                                                        <span className="font-bold text-[10px] text-amber-600 dark:text-amber-400">₹{stdCalcs?.insuranceComp.total.toLocaleString() || '--'}</span>
-                                                        {stdCalcs && (
-                                                            <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-slate-900 border border-white/10 rounded-xl hidden group-hover/cell:block z-50 shadow-xl pointer-events-none">
-                                                                <div className="space-y-1">
-                                                                    {stdCalcs.insuranceComp.items.map((item: any, idx: number) => (
-                                                                        <div key={idx} className="flex justify-between text-[8px] text-amber-200">
-                                                                            <span>{item.label}</span>
-                                                                            <span className="font-mono">₹{item.amount}</span>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        )}
+                                                    <td className="px-6 py-5 text-right">
+                                                        <span className="font-bold text-[11px] text-slate-600">₹{stdCalcs?.insuranceComp.total.toLocaleString() || '--'}</span>
                                                     </td>
                                                     {!isAums && (
-                                                        <td className="px-6 py-2 text-right">
-                                                            <span className="font-bold text-[10px] text-slate-400">₹{stdCalcs?.onRoadTotal.toLocaleString() || '--'}</span>
+                                                        <td className="px-8 py-5 text-right">
+                                                            <span className="font-bold text-[11px] text-slate-400">₹{stdCalcs?.onRoadTotal.toLocaleString() || '--'}</span>
                                                         </td>
                                                     )}
                                                 </>
                                             ) : (
                                                 <>
-                                                    <td className="px-4 py-2 text-right">
-                                                        <span className="font-bold text-[10px] text-slate-600 dark:text-slate-400">₹{basePrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                                                    <td className="px-6 py-5 text-right">
+                                                        <span className="font-bold text-[11px] text-slate-500">₹{basePrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                                                     </td>
-                                                    <td className="px-4 py-2 text-right">
-                                                        <span className="font-bold text-[10px] text-purple-600 dark:text-purple-400">₹{totalGst.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                                                    <td className="px-6 py-5 text-right">
+                                                        <span className="font-bold text-[11px] text-slate-500">₹{totalGst.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                                                     </td>
                                                 </>
                                             )}
 
                                             {activeCategory !== 'vehicles' && (
-                                                <td className="px-4 py-2 text-center">
+                                                <td className="px-6 py-5 text-center">
                                                     <select
                                                         value={sku.inclusionType || 'OPTIONAL'}
                                                         onChange={(e) => {
                                                             const type = e.target.value as 'MANDATORY' | 'OPTIONAL' | 'BUNDLE';
                                                             onUpdateInclusion(sku.id, type);
-                                                            // Automated Discount Logic for Mandatory/Bundle (Makes it free)
-                                                            if (type === 'MANDATORY' || type === 'BUNDLE') {
-                                                                onUpdateOffer(sku.id, -sku.exShowroom);
-                                                            } else {
-                                                                onUpdateOffer(sku.id, 0); // Reset if moving to Optional
-                                                            }
+                                                            if (type === 'MANDATORY' || type === 'BUNDLE') onUpdateOffer(sku.id, -sku.exShowroom);
+                                                            else onUpdateOffer(sku.id, 0);
                                                         }}
-                                                        className={`
-                                                        px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest outline-none border transition-all cursor-pointer
-                                                        ${sku.inclusionType === 'MANDATORY'
-                                                                ? 'bg-rose-500/10 text-rose-600 border-rose-200 dark:border-rose-900/50'
-                                                                : sku.inclusionType === 'BUNDLE'
-                                                                    ? 'bg-blue-500/10 text-blue-600 border-blue-200 dark:border-blue-900/50'
-                                                                    : 'bg-slate-100 dark:bg-white/5 text-slate-500 border-transparent hover:border-slate-300'
-                                                            }
-                                                    `}
+                                                        className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest outline-none border transition-all ${sku.inclusionType === 'MANDATORY' ? 'bg-rose-50 text-rose-600 border-rose-200' : sku.inclusionType === 'BUNDLE' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}
                                                     >
                                                         <option value="OPTIONAL">Optional</option>
                                                         <option value="MANDATORY">Mandatory</option>
@@ -724,90 +730,132 @@ export default function PricingLedgerTable({
                                                 </td>
                                             )}
 
-                                            {/* On-Road Offer - Editable Final Price */}
-                                            <td className="px-6 py-2 text-right">
+                                            <td className="px-8 py-5 text-right bg-emerald-50/20">
                                                 {isAums ? (
-                                                    <span className="font-black text-xs text-emerald-600 dark:text-emerald-400 italic tracking-tight">
-                                                        ₹{activeCategory === 'vehicles'
-                                                            ? (stdCalcs?.onRoadTotal.toLocaleString() || '--')
-                                                            : sku.exShowroom.toLocaleString()}
+                                                    <span className="font-black text-[13px] text-emerald-700 tracking-tight">
+                                                        ₹{activeCategory === 'vehicles' ? (stdCalcs?.onRoadTotal.toLocaleString() || '--') : sku.exShowroom.toLocaleString()}
                                                     </span>
                                                 ) : activeCategory === 'vehicles' ? (
-                                                    <div className="relative group/offer">
-                                                        <input
-                                                            type="number"
-                                                            value={finalCalcs?.onRoadTotal || 0}
-                                                            onChange={(e) => {
-                                                                // offerAmount = entered value - base on-road
-                                                                const enteredOffer = Number(e.target.value);
-                                                                const baseOnRoad = stdCalcs?.onRoadTotal || 0;
-                                                                const newOfferAmount = enteredOffer - baseOnRoad;
-                                                                onUpdateOffer(sku.id, newOfferAmount);
-                                                            }}
-                                                            onFocus={(e) => e.target.select()}
-                                                            className="w-28 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/20 dark:to-emerald-900/10 border-2 border-emerald-300/50 dark:border-emerald-500/30 rounded-xl px-3 py-2 text-sm font-black text-emerald-700 dark:text-emerald-400 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 dark:focus:ring-emerald-500/30 text-right transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/20 focus:shadow-xl focus:shadow-emerald-500/30 focus:scale-105"
-                                                        />
-                                                        {/* Glow effect on focus */}
-                                                        <div className="absolute inset-0 rounded-xl bg-emerald-500/0 group-focus-within/offer:bg-emerald-500/5 blur-xl transition-all duration-300 -z-10" />
-                                                    </div>
+                                                    <input
+                                                        type="number"
+                                                        value={finalCalcs?.onRoadTotal || 0}
+                                                        onChange={(e) => {
+                                                            const enteredOffer = Number(e.target.value);
+                                                            const baseOnRoad = stdCalcs?.onRoadTotal || 0;
+                                                            onUpdateOffer(sku.id, enteredOffer - baseOnRoad);
+                                                        }}
+                                                        className="w-28 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5 text-sm font-black text-emerald-700 text-right outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                                                    />
                                                 ) : (
-                                                    <span className="font-black text-xs text-emerald-600 dark:text-emerald-400 italic tracking-tight">
+                                                    <span className="font-black text-[13px] text-emerald-700 tracking-tight">
                                                         ₹{(sku.exShowroom + (sku.offerAmount || 0)).toLocaleString()}
                                                     </span>
                                                 )}
                                             </td>
 
-                                            {/* Discount - Auto-calculated with Enhanced Badges */}
                                             {!isAums && activeCategory === 'vehicles' && (
-                                                <td className="px-4 py-2 text-right">
+                                                <td className="px-6 py-5 text-right">
                                                     {(() => {
-                                                        const baseOnRoad = stdCalcs?.onRoadTotal || 0;
-                                                        const offerOnRoad = finalCalcs?.onRoadTotal || 0;
-                                                        const discount = baseOnRoad - offerOnRoad;
-
-                                                        if (discount === 0) {
-                                                            return <span className="text-xs font-bold text-slate-400">—</span>;
-                                                        }
-
-                                                        const isDiscount = discount > 0;
+                                                        const discount = (stdCalcs?.onRoadTotal || 0) - (finalCalcs?.onRoadTotal || 0);
+                                                        if (discount === 0) return <span className="text-xs font-bold text-slate-300">—</span>;
                                                         return (
-                                                            <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-300 ${isDiscount
-                                                                ? 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/20 border border-emerald-300/50 dark:border-emerald-500/30 shadow-sm shadow-emerald-500/10'
-                                                                : 'bg-gradient-to-br from-rose-50 to-rose-100/50 dark:from-rose-950/30 dark:to-rose-900/20 border border-rose-300/50 dark:border-rose-500/30 shadow-sm shadow-rose-500/10'
-                                                                }`}>
-                                                                {isDiscount ? (
-                                                                    <Sparkles size={12} className="text-emerald-600 dark:text-emerald-400 animate-pulse" />
-                                                                ) : (
-                                                                    <Zap size={12} className="text-rose-600 dark:text-rose-400" />
-                                                                )}
-                                                                <span className={`font-black text-xs tabular-nums ${isDiscount ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'
-                                                                    }`}>
-                                                                    {isDiscount ? `-₹${discount.toLocaleString()}` : `+₹${Math.abs(discount).toLocaleString()}`}
-                                                                </span>
+                                                            <div className={`inline-flex items-center gap-1 font-black text-xs ${discount > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                                {discount > 0 ? <Sparkles size={12} /> : <Zap size={12} />}
+                                                                {discount > 0 ? `-₹${discount.toLocaleString()}` : `+₹${Math.abs(discount).toLocaleString()}`}
                                                             </div>
                                                         );
                                                     })()}
                                                 </td>
                                             )}
+
+                                            <td className="px-8 py-5 text-right w-[140px]">
+                                                {isAums ? (
+                                                    <button
+                                                        onClick={() => {
+                                                            type StatusType = 'ACTIVE' | 'DRAFT' | 'INACTIVE' | 'RELAUNCH';
+                                                            const statuses: StatusType[] = ['ACTIVE', 'DRAFT', 'INACTIVE', 'RELAUNCH'];
+                                                            const currentStatus = (sku.status || 'INACTIVE') as StatusType;
+                                                            const currentIndex = statuses.indexOf(currentStatus);
+                                                            const nextStatus = statuses[(currentIndex + 1) % statuses.length];
+
+                                                            if (nextStatus === 'ACTIVE' && (!sku.exShowroom || sku.exShowroom <= 0)) {
+                                                                alert('Set Ex-Showroom Price first.');
+                                                                return;
+                                                            }
+                                                            if (onUpdateStatus) onUpdateStatus(sku.id, nextStatus);
+                                                        }}
+                                                        className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-sm border ${sku.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                                            sku.status === 'DRAFT' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' :
+                                                                sku.status === 'RELAUNCH' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                                                                    'bg-slate-50 text-slate-400 border-slate-100'
+                                                            }`}
+                                                    >
+                                                        {sku.status === 'ACTIVE' ? 'Live' : sku.status === 'DRAFT' ? 'New' : sku.status === 'INACTIVE' ? 'Inactive' : 'Relaunch'}
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => {
+                                                            if (sku.status !== 'ACTIVE') return;
+                                                            if (onUpdateLocalStatus) onUpdateLocalStatus(sku.id, !sku.localIsActive);
+                                                        }}
+                                                        disabled={sku.status !== 'ACTIVE'}
+                                                        className={`w-10 h-5 rounded-full flex items-center transition-all ml-auto ${sku.status === 'ACTIVE' ? (sku.localIsActive ? 'bg-emerald-500' : 'bg-slate-200') : 'bg-slate-100 opacity-50 cursor-not-allowed'}`}
+                                                    >
+                                                        <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-all mx-0.5 ${sku.localIsActive && sku.status === 'ACTIVE' ? 'translate-x-5' : 'translate-x-0'}`} />
+                                                    </button>
+                                                )}
+                                            </td>
                                         </tr>
                                     );
                                 })}
                             </tbody>
-
                         </table>
                     </div>
 
-                    {/* Footer Insight */}
-                    <div className="p-6 border-t border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-900/50 flex items-center justify-between">
-                        <div className="flex items-center gap-4 text-slate-400">
-                            <Info size={16} />
-                            <p className="text-[10px] font-black uppercase tracking-widest italic">
-                                All statutory charges are auto-calculated based on {activeRule?.ruleName || 'unclassified'} regulatory rules.
-                            </p>
+                    {/* Pagination Footer */}
+                    {tableSkus.length > 0 && (
+                        <div className="p-6 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                Showing <span className="text-slate-900">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span className="text-slate-900">{Math.min(currentPage * ITEMS_PER_PAGE, tableSkus.length)}</span> of <span className="text-slate-900">{tableSkus.length}</span>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                    className="p-2 rounded-xl hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent transition-colors text-slate-600"
+                                >
+                                    <ChevronLeft size={16} />
+                                </button>
+
+                                <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-2">
+                                    Page {currentPage} of {totalPages}
+                                </span>
+
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="p-2 rounded-xl hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent transition-colors text-slate-600"
+                                >
+                                    <ChevronRight size={16} />
+                                </button>
+                            </div>
                         </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Footer Insight */}
+            <div className="px-6 pb-6 mt-auto">
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                    <div className="flex items-center gap-3 text-slate-500">
+                        <Info size={16} className="text-emerald-600" />
+                        <p className="text-[10px] font-black uppercase tracking-widest italic">
+                            All statutory charges are auto-calculated based on {activeRule?.ruleName || 'unclassified'} regulatory rules.
+                        </p>
                     </div>
                 </div>
             </div>
-        </div >
+        </div>
     );
 }

@@ -377,7 +377,10 @@ export default function UnifiedStudioPage() {
                     {currentStep === 0 && (
                         <CategoryStep
                             selectedCategory={selectedCategory}
-                            onSelectCategory={(id: string) => setSelectedCategory(id)}
+                            onSelectCategory={(id: string) => {
+                                setSelectedCategory(id);
+                                setTimeout(() => handleNext(), 200);
+                            }}
                         />
                     )}
                     {currentStep === 1 && (
@@ -385,7 +388,10 @@ export default function UnifiedStudioPage() {
                             brands={brands}
                             stats={brandStats}
                             selectedBrand={brand?.id ?? null}
-                            onSelectBrand={(id: string) => setBrand(brands.find(b => b.id === id))}
+                            onSelectBrand={(id: string) => {
+                                setBrand(brands.find(b => b.id === id));
+                                setTimeout(() => handleNext(), 200);
+                            }}
                             onCreateBrand={() => {
                                 setEditingBrand(null);
                                 setIsBrandModalOpen(true);
@@ -401,7 +407,10 @@ export default function UnifiedStudioPage() {
                         <TemplateStep
                             templates={templates.filter(t => t.category === selectedCategory || !selectedCategory)}
                             selectedTemplate={template?.id ?? null}
-                            onSelectTemplate={(id: string) => setTemplate(templates.find(t => t.id === id) ?? null)}
+                            onSelectTemplate={(id: string) => {
+                                setTemplate(templates.find(t => t.id === id) ?? null);
+                                setTimeout(() => handleNext(), 200);
+                            }}
                         />
                     )}
                     {currentStep === 3 && brand && template && (

@@ -86,6 +86,72 @@ export default function SKUMediaManager({
     const [offsetY, setOffsetY] = useState(initialOffsetY);
     const [isEditorOpen, setIsEditorOpen] = useState(false);
 
+    // Delete/Replace Confirmation State
+    const [confirmation, setConfirmation] = useState<{
+        isOpen: boolean;
+        type: 'DELETE' | 'REPLACE';
+        file?: File;
+        title: string;
+        message: React.ReactNode;
+    }>({ isOpen: false, type: 'DELETE', title: '', message: '' });
+
+    const initiateDelete = () => {
+        if (!primaryImage) return;
+        setConfirmation({
+            isOpen: true,
+            type: 'DELETE',
+            title: 'Delete Image',
+            message: 'Are you sure you want to delete this image? This action cannot be undone.'
+        });
+    };
+
+    const initiateReplace = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setConfirmation({
+            isOpen: true,
+            type: 'REPLACE',
+            file,
+            title: 'Replace Image',
+            message: (
+                <span>
+                    Are you sure you want to replace the current image with <span className="font-bold text-indigo-600">{file.name}</span>?
+                </span>
+            )
+        });
+        // Reset input value
+        e.target.value = '';
+    };
+
+    const confirmAction = async () => {
+        if (confirmation.type === 'DELETE') {
+            const newImages = images.filter(img => img !== primaryImage);
+            setImages(newImages);
+            setPrimaryImage(newImages.length > 0 ? newImages[0] : null);
+        } else if (confirmation.type === 'REPLACE' && confirmation.file) {
+            setIsUploading(true);
+            const supabase = createClient();
+            try {
+                const file = confirmation.file;
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+                const filePath = `catalog/${fileName}`;
+                const { error } = await supabase.storage.from('vehicles').upload(filePath, file);
+                if (error) throw error;
+                const { data: { publicUrl } } = supabase.storage.from('vehicles').getPublicUrl(filePath);
+
+                const newImages = images.map(img => img === primaryImage ? publicUrl : img);
+                setImages(newImages);
+                setPrimaryImage(publicUrl);
+            } catch (err) {
+                setUploadError("Replacement failed. Try again.");
+            } finally {
+                setIsUploading(false);
+            }
+        }
+        setConfirmation({ ...confirmation, isOpen: false });
+    };
+
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'pdf') => {
         const files = e.target.files;
         if (!files || files.length === 0) return;
@@ -283,18 +349,33 @@ export default function SKUMediaManager({
                                 />
                             </div>
 
-                            <div className="flex gap-4">
+                            <div className="grid grid-cols-2 gap-4">
                                 <button
                                     onClick={() => setIsFlipped(!isFlipped)}
-                                    className={`flex-1 flex flex-col items-center justify-center p-6 rounded-3xl border-2 transition-all ${isFlipped ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-600/10 text-indigo-600' : 'border-slate-100 dark:border-white/5 bg-white dark:bg-white/5 text-slate-400 hover:border-slate-200'}`}
+                                    className={`flex flex-col items-center justify-center p-4 rounded-3xl border-2 transition-all ${isFlipped ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-600/10 text-indigo-600' : 'border-slate-100 dark:border-white/5 bg-white dark:bg-white/5 text-slate-400 hover:border-slate-200'}`}
                                 >
                                     <RefreshCw size={20} className={`mb-2 ${isFlipped ? 'animate-spin-slow' : ''}`} />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Mirror Image</span>
+                                    <span className="text-[9px] font-black uppercase tracking-widest">Mirror</span>
                                 </button>
 
-                                <label className="flex-1 flex flex-col items-center justify-center p-6 rounded-3xl border-2 border-dashed border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-400 hover:border-indigo-400 hover:text-indigo-600 transition-all cursor-pointer">
-                                    <Upload size={20} className="mb-2" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">New Image</span>
+                                <label className="flex flex-col items-center justify-center p-4 rounded-3xl border-2 border-slate-100 dark:border-white/5 bg-white dark:bg-white/5 text-slate-400 hover:border-indigo-400 hover:text-indigo-600 transition-all cursor-pointer">
+                                    <RefreshCw size={20} className="mb-2" />
+                                    <span className="text-[9px] font-black uppercase tracking-widest">Replace</span>
+                                    <input type="file" hidden accept="image/*" onChange={initiateReplace} disabled={!primaryImage} />
+                                </label>
+
+                                <button
+                                    onClick={initiateDelete}
+                                    disabled={!primaryImage}
+                                    className="flex flex-col items-center justify-center p-4 rounded-3xl border-2 border-slate-100 dark:border-white/5 bg-white dark:bg-white/5 text-slate-400 hover:border-red-400 hover:text-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <Trash2 size={20} className="mb-2" />
+                                    <span className="text-[9px] font-black uppercase tracking-widest">Delete</span>
+                                </button>
+
+                                <label className="flex flex-col items-center justify-center p-4 rounded-3xl border-2 border-dashed border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-400 hover:border-indigo-400 hover:text-indigo-600 transition-all cursor-pointer">
+                                    <Plus size={20} className="mb-2" />
+                                    <span className="text-[9px] font-black uppercase tracking-widest">Add New</span>
                                     <input type="file" hidden accept="image/*" onChange={(e) => handleFileUpload(e, 'image')} />
                                 </label>
                             </div>
