@@ -2,17 +2,13 @@ import { headers } from 'next/headers';
 import { Suspense } from 'react';
 import StorePage from './store/page';
 import StoreLayout from './store/layout';
-import { MobileContextFeed } from '@/components/mobile/feed/MobileContextFeed';
-import { MobileBottomNav } from '@/components/mobile/layout/MobileBottomNav';
-import { FavoritesProvider } from '@/contexts/FavoritesContext';
+import { MobileV2Home } from '@/components/mobile-v2/MobileV2Home';
+import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
 
 function MobileHome() {
   return (
     <FavoritesProvider>
-      <div className="bg-black min-h-screen">
-        <MobileContextFeed />
-        <MobileBottomNav />
-      </div>
+      <MobileV2Home />
     </FavoritesProvider>
   );
 }
