@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSystemPDPLogic } from '@/hooks/SystemPDPLogic';
 import { DesktopPDP } from '@/components/store/DesktopPDP';
-import { PhonePDP } from '@/components/mobile/pdp/PhonePDP';
+import { PhonePDP } from '@/components/phone/pdp/PhonePDP';
 import { LeadCaptureModal } from '@/components/leads/LeadCaptureModal';
 import { EmailUpdateModal } from '@/components/auth/EmailUpdateModal';
 import { createClient } from '@/lib/supabase/client';

@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { Logo } from '@/components/brand/Logo';
 import { X, Menu, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MobileMenuDrawer } from './MobileMenuDrawer';
+import { PhoneMenuDrawer } from './PhoneMenuDrawer';
 import { useActiveColor } from '@/contexts/ColorContext';
 import { useTheme } from '@/components/providers/ThemeProvider';
 
@@ -26,7 +26,7 @@ const getLuminance = (hex: string): number => {
     return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
 };
 
-export const MobileHeader = () => {
+export const PhoneHeader = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [mounted, setMounted] = React.useState(false);
     const { activeColorHex } = useActiveColor();
@@ -92,7 +92,7 @@ export const MobileHeader = () => {
             </header>
 
             {/* Menu Drawer */}
-            <MobileMenuDrawer isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
+            <PhoneMenuDrawer isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
         </>
     );
 };

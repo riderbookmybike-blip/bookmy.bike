@@ -5,7 +5,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, SlidersHorizontal, DollarSign, Zap, Gauge } from 'lucide-react';
 
-interface MobileFilterModalProps {
+interface PhoneFilterModalProps {
     isOpen: boolean;
     onClose: () => void;
 }
@@ -19,7 +19,7 @@ const PRICE_PRESETS = [
     { label: 'Above ₹2L', min: 200000, max: 500000 },
 ];
 
-export const MobileFilterModal: React.FC<MobileFilterModalProps> = ({ isOpen, onClose }) => {
+export const PhoneFilterModal: React.FC<PhoneFilterModalProps> = ({ isOpen, onClose }) => {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -160,8 +160,8 @@ export const MobileFilterModal: React.FC<MobileFilterModalProps> = ({ isOpen, on
                                             key={preset.label}
                                             onClick={() => applyPricePreset(preset)}
                                             className={`px-4 py-3 rounded-xl font-bold text-sm transition-all active:scale-95 ${priceMin === preset.min && priceMax === preset.max
-                                                    ? 'bg-[#F4B000] text-black'
-                                                    : 'bg-zinc-900 text-zinc-400 border border-zinc-800'
+                                                ? 'bg-[#F4B000] text-black'
+                                                : 'bg-zinc-900 text-zinc-400 border border-zinc-800'
                                                 }`}
                                         >
                                             {preset.label}
@@ -208,8 +208,8 @@ export const MobileFilterModal: React.FC<MobileFilterModalProps> = ({ isOpen, on
                                             key={fuel}
                                             onClick={() => toggleFuelType(fuel)}
                                             className={`px-5 py-3 rounded-full font-bold text-sm transition-all active:scale-95 ${selectedFuelTypes.includes(fuel)
-                                                    ? 'bg-[#138808] text-white'
-                                                    : 'bg-zinc-900 text-zinc-400 border border-zinc-800'
+                                                ? 'bg-[#138808] text-white'
+                                                : 'bg-zinc-900 text-zinc-400 border border-zinc-800'
                                                 }`}
                                         >
                                             {fuel}

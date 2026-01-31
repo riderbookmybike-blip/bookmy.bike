@@ -10,7 +10,7 @@ import Image from 'next/image';
 const RECENT_SEARCHES_KEY = 'bookmy_recent_searches';
 const MAX_RECENT_SEARCHES = 5;
 
-export const MobileSearch = () => {
+export const PhoneSearch = () => {
     const router = useRouter();
     const { items, isLoading } = useSystemCatalogLogic();
     const [query, setQuery] = useState('');

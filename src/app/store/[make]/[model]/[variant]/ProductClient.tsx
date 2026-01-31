@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSystemPDPLogic } from '@/hooks/SystemPDPLogic';
-import { MasterPDP } from '@/components/store/MasterPDP';
+import { DesktopPDP } from '@/components/store/DesktopPDP';
 import { LeadCaptureModal } from '@/components/leads/LeadCaptureModal';
 import { EmailUpdateModal } from '@/components/auth/EmailUpdateModal';
 import { createClient } from '@/lib/supabase/client';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createQuoteAction } from '@/actions/crm';
 import { toast } from 'sonner';
-import { MobilePDPEnhanced } from '@/components/mobile/pdp/MobilePDPEnhanced';
+import { PhonePDPEnhanced } from '@/components/phone/pdp/PhonePDPEnhanced';
 
 import { InsuranceRule } from '@/types/insurance';
 
@@ -329,15 +329,16 @@ export default function ProductClient({
         variantParam,
         data,
         handlers,
-        leadContext: leadContext || undefined
+        leadContext: leadContext || undefined,
+        initialLocation
     };
 
     return (
         <>
             {isMobile ? (
-                <MobilePDPEnhanced {...commonProps} />
+                <PhonePDPEnhanced {...commonProps} />
             ) : (
-                <MasterPDP {...commonProps} />
+                <DesktopPDP {...commonProps} basePath="/m2/store" />
             )}
 
             <LeadCaptureModal

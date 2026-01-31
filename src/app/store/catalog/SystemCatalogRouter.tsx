@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { DesktopCatalog } from '@/components/store/DesktopCatalog';
-import { PhoneCatalog } from '@/components/mobile/catalog/PhoneCatalog';
+import { PhoneCatalog } from '@/components/phone/catalog/PhoneCatalog';
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import { useCatalogFilters } from '@/hooks/useCatalogFilters';
 import { ProductVariant } from '@/types/productMaster';

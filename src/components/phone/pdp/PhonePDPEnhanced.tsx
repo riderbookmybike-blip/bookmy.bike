@@ -10,28 +10,15 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-interface MobilePDPEnhancedProps {
+interface PhonePDPEnhancedProps {
     product: any;
     makeParam: string;
     modelParam: string;
     variantParam: string;
     data: any;
-    leadContext?: { id: string, name: string };
-    handlers: {
-        handleColorChange: (id: string) => void;
-        handleShareQuote: () => void;
-        handleSaveQuote: () => void;
-        handleBookingRequest: () => void;
-        toggleAccessory: (id: string) => void;
-        toggleInsuranceAddon: (id: string) => void;
-        toggleService: (id: string) => void;
-        toggleOffer: (id: string) => void;
-        updateQuantity: (id: string, delta: number, max?: number) => void;
-        setRegType: (type: 'STATE' | 'BH' | 'COMPANY') => void;
-        setEmiTenure: (months: number) => void;
-        setConfigTab: any;
-        setUserDownPayment: (amount: number) => void;
-    };
+    handlers: any;
+    leadContext: any;
+    initialLocation: any;
 }
 
 // Mobile-optimized reusable components
@@ -54,15 +41,16 @@ const SpecRow = ({ label, value }: { label: string, value: string }) => (
     </div>
 );
 
-export const MobilePDPEnhanced = ({
+export const PhonePDPEnhanced = ({
     product,
     makeParam,
     modelParam,
     variantParam,
     data,
     handlers,
-    leadContext
-}: MobilePDPEnhancedProps) => {
+    leadContext,
+    initialLocation
+}: PhonePDPEnhancedProps) => {
     const router = useRouter();
     const [activeSection, setActiveSection] = useState<string>('finance');
     const [showPriceBreakup, setShowPriceBreakup] = useState(false);

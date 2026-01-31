@@ -8,7 +8,7 @@ import { motion } from 'framer-motion';
 
 
 
-export const MobileBottomNav = () => {
+export const PhoneBottomNav = () => {
     const pathname = usePathname();
 
     // Determine the route prefix (/m or /m2) to maintain context
