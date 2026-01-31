@@ -4,9 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { X, ChevronLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { ProductVariant } from '@/types/productMaster';
 
 interface PDPCarouselProps {
-    product: any;
+    product: ProductVariant;
 }
 
 const SECTIONS = [
@@ -195,7 +196,7 @@ export const MobilePDPCarousel = ({ product }: PDPCarouselProps) => {
 };
 
 // Section 1: Product Image
-const ImageSection = ({ product }: { product: any }) => {
+const ImageSection = ({ product }: { product: ProductVariant }) => {
     const activeColor = product.availableColors?.[0] || { imageUrl: product.imageUrl, hexCode: '#000000' };
     const lightShade = activeColor.hexCode;
 
@@ -243,37 +244,83 @@ const ImageSection = ({ product }: { product: any }) => {
 };
 
 // Section 2: Details
-const DetailsSection = ({ product }: { product: any }) => (
-    <div className="w-full h-full bg-white overflow-y-auto p-6 pt-20">
-        <h2 className="text-2xl font-black text-zinc-900 mb-6">Product Details</h2>
-        <div className="space-y-4">
-            <div>
-                <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Features</p>
-                <ul className="space-y-2">
-                    {(product.features || ['LED Headlamp', 'Digital Console', 'Disc Brakes']).map((feature: string, idx: number) => (
-                        <li key={idx} className="text-sm text-zinc-700 flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-zinc-900" />
-                            {feature}
-                        </li>
-                    ))}
-                </ul>
+const DetailsSection = ({ product }: { product: ProductVariant }) => {
+    const specs = product.specifications;
+
+    // Build specs list from actual data
+    const specItems = [
+        { label: 'Displacement', value: specs?.engine?.displacement },
+        { label: 'Max Power', value: specs?.engine?.maxPower },
+        { label: 'Max Torque', value: specs?.engine?.maxTorque },
+        { label: 'Transmission', value: specs?.transmission?.type },
+        { label: 'Gears', value: specs?.transmission?.gears },
+        { label: 'Seat Height', value: specs?.dimensions?.seatHeight },
+        { label: 'Kerb Weight', value: specs?.dimensions?.kerbWeight || specs?.dimensions?.curbWeight },
+        { label: 'Fuel Capacity', value: specs?.dimensions?.fuelCapacity },
+        { label: 'ABS', value: specs?.features?.abs },
+        { label: 'Bluetooth', value: specs?.features?.bluetooth ? 'Yes' : undefined },
+    ].filter(item => item.value);
+
+    // Fall back to defaults if no specs available
+    const displaySpecs = specItems.length > 0 ? specItems : [
+        { label: 'Engine', value: 'Petrol' },
+        { label: 'Features', value: 'LED Headlamp, Digital Console' }
+    ];
+
+    return (
+        <div className="w-full h-full bg-white overflow-y-auto p-6 pt-20">
+            <h2 className="text-2xl font-black text-zinc-900 mb-6">Product Details</h2>
+            <div className="space-y-6">
+                {/* Specifications */}
+                <div>
+                    <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3">Specifications</p>
+                    <div className="bg-zinc-50 rounded-xl p-4 space-y-3">
+                        {displaySpecs.map((spec, idx) => (
+                            <div key={idx} className="flex justify-between items-center py-2 border-b border-zinc-200 last:border-0">
+                                <span className="text-sm text-zinc-600">{spec.label}</span>
+                                <span className="text-sm font-bold text-zinc-900">{spec.value}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Body Type & Fuel */}
+                <div className="flex gap-3">
+                    <div className="flex-1 bg-zinc-50 rounded-xl p-4 text-center">
+                        <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Body Type</p>
+                        <p className="text-lg font-black text-zinc-900">{product.bodyType}</p>
+                    </div>
+                    <div className="flex-1 bg-zinc-50 rounded-xl p-4 text-center">
+                        <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Fuel Type</p>
+                        <p className="text-lg font-black text-zinc-900">{product.fuelType}</p>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-);
+    );
+};
 
 // Section 3: Pricing
-const PricingSection = ({ product }: { product: any }) => {
+const PricingSection = ({ product }: { product: ProductVariant }) => {
     const [expandedItem, setExpandedItem] = useState<string | null>(null);
-    const price = product.price || { onRoad: 85000, exShowroom: 70000, rto: 8000, insurance: 5000, other: 2000 };
+    const price = product.price || { onRoad: 85000, exShowroom: 70000 };
     const colors = product.availableColors || [{ name: 'Black', hexCode: '#000000' }];
     const [selectedColorIndex, setSelectedColorIndex] = useState(0);
 
+    // Calculate breakdown from on-road price
+    const exShowroom = price.exShowroom || 0;
+    const onRoad = price.onRoad || 0;
+    const difference = onRoad - exShowroom;
+    // Estimate breakdown (RTO ~50%, Insurance ~35%, Other ~15% of difference)
+    const estimatedRto = Math.round(difference * 0.5);
+    const estimatedInsurance = Math.round(difference * 0.35);
+    const estimatedOther = difference - estimatedRto - estimatedInsurance;
+
     const breakdownItems = [
-        { id: 'exShowroom', label: 'Ex-Showroom Price', value: price.exShowroom, icon: '🏪' },
-        { id: 'rto', label: 'Registration (RTO)', value: price.rto, icon: '📋' },
-        { id: 'insurance', label: 'Insurance', value: price.insurance, icon: '🛡️' },
-        { id: 'other', label: 'Other Charges', value: price.other, icon: '📦' },
+        { id: 'exShowroom', label: 'Ex-Showroom Price', value: exShowroom, icon: '🏪' },
+        { id: 'rto', label: 'Registration (RTO)', value: estimatedRto, icon: '📋' },
+        { id: 'insurance', label: 'Insurance', value: estimatedInsurance, icon: '🛡️' },
+        { id: 'other', label: 'Other Charges', value: estimatedOther, icon: '📦' },
     ];
 
     return (
@@ -380,7 +427,7 @@ const PriceRow = ({ label, value }: { label: string; value: number }) => (
 );
 
 // Section 4: EMI Calculator
-const EMISection = ({ product }: { product: any }) => {
+const EMISection = ({ product }: { product: ProductVariant }) => {
     const [downpayment, setDownpayment] = useState(20000);
     const [tenure, setTenure] = useState(36);
 
@@ -483,11 +530,11 @@ const EMISection = ({ product }: { product: any }) => {
     );
 };
 
-const AccessoriesSection = ({ product }: { product: any }) => {
+const AccessoriesSection = ({ product }: { product: ProductVariant }) => {
     const [selectedAccessories, setSelectedAccessories] = useState<string[]>([]);
 
-    // Mock accessories data (would come from API)
-    const accessories = product.accessories || [
+    // TODO: Fetch accessories from API - for now using mock data
+    const accessories = [
         { id: '1', name: 'Crash Guard', brand: 'OEM', price: 2500, image: null, mandatory: false },
         { id: '2', name: 'Mobile Holder', brand: 'Aftermarket', price: 500, image: null, mandatory: false },
         { id: '3', name: 'Seat Cover', brand: 'Premium', price: 1200, image: null, mandatory: false },
@@ -680,8 +727,8 @@ const InsuranceSection = ({ product }: { product: any }) => {
                                     key={addon.id}
                                     onClick={() => toggleAddon(addon.id)}
                                     className={`w-full p-4 rounded-2xl border-2 transition-all text-left ${isSelected
-                                            ? 'bg-blue-50 border-blue-500'
-                                            : 'bg-zinc-50 border-zinc-200'
+                                        ? 'bg-blue-50 border-blue-500'
+                                        : 'bg-zinc-50 border-zinc-200'
                                         }`}
                                 >
                                     <div className="flex items-start gap-3">
@@ -727,7 +774,7 @@ const InsuranceSection = ({ product }: { product: any }) => {
     );
 };
 
-const RegistrationSection = ({ product }: { product: any }) => {
+const RegistrationSection = ({ product }: { product: ProductVariant }) => {
     const [selectedType, setSelectedType] = useState<'STATE' | 'BH' | 'COMPANY'>('STATE');
 
     const basePrice = product.price?.exShowroom || 70000;
@@ -776,8 +823,8 @@ const RegistrationSection = ({ product }: { product: any }) => {
                             key={option.id}
                             onClick={() => setSelectedType(option.id)}
                             className={`relative w-full p-5 rounded-2xl border-2 transition-all text-left ${isSelected
-                                    ? 'bg-green-50 border-green-500'
-                                    : 'bg-zinc-50 border-zinc-200'
+                                ? 'bg-green-50 border-green-500'
+                                : 'bg-zinc-50 border-zinc-200'
                                 }`}
                         >
                             {/* Badge */}
@@ -790,8 +837,8 @@ const RegistrationSection = ({ product }: { product: any }) => {
                             <div className="flex items-start gap-4">
                                 {/* Radio */}
                                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 mt-1 ${isSelected
-                                        ? 'border-green-500 bg-green-500'
-                                        : 'border-zinc-300'
+                                    ? 'border-green-500 bg-green-500'
+                                    : 'border-zinc-300'
                                     }`}>
                                     {isSelected && (
                                         <div className="w-2.5 h-2.5 rounded-full bg-white" />

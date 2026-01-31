@@ -6,6 +6,8 @@ import { MarketplaceFooter } from '@/components/layout/MarketplaceFooter';
 import LoginSidebar from '@/components/auth/LoginSidebar';
 import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
 import { usePathname } from 'next/navigation';
+import { MobileHeader } from '@/components/mobile/layout/MobileHeader';
+import { MobileBottomNav } from '@/components/mobile/layout/MobileBottomNav';
 
 export default function StoreLayout({ children }: { children: React.ReactNode }) {
     const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -21,12 +23,25 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
 
     return (
         <FavoritesProvider>
-            <div className="marketplace min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-sans selection:bg-red-500/30 transition-colors duration-300">
-                <MarketplaceHeader onLoginClick={() => setIsLoginOpen(true)} />
+            <div className="marketplace min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-sans selection:bg-red-500/30 transition-colors duration-300 pb-20 md:pb-0">
+                {/* Desktop Header */}
+                <div className="hidden md:block">
+                    <MarketplaceHeader onLoginClick={() => setIsLoginOpen(true)} />
+                </div>
+
+                {/* Mobile Header */}
+                <div className="block md:hidden">
+                    <MobileHeader />
+                </div>
 
                 <main className="flex-1 pt-0">{children}</main>
 
                 {!isLandingPage && <MarketplaceFooter />}
+
+                {/* Mobile Bottom Nav */}
+                <div className="block md:hidden">
+                    <MobileBottomNav />
+                </div>
 
                 {/* Global Login Sidebar */}
                 <LoginSidebar isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} variant="RETAIL" />

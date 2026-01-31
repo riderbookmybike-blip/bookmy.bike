@@ -60,6 +60,7 @@ interface MasterPDPProps {
     variantParam: string;
     data: any;
     leadContext?: { id: string, name: string };
+    basePath?: string;
     handlers: {
         handleColorChange: (id: string) => void;
         handleShareQuote: () => void;
@@ -77,7 +78,7 @@ interface MasterPDPProps {
     };
 }
 
-export function MasterPDP({ product, makeParam, modelParam, variantParam, data, handlers, leadContext }: MasterPDPProps) {
+export function MasterPDP({ product, makeParam, modelParam, variantParam, data, handlers, leadContext, basePath = '/store' }: MasterPDPProps) {
     // Configuration Constants
     const REFERRAL_BONUS = 5000; // Member referral discount amount
 
@@ -532,13 +533,13 @@ export function MasterPDP({ product, makeParam, modelParam, variantParam, data, 
                 <DynamicHeader
                     breadcrumb={
                         <div className="flex items-center gap-4">
-                            <Link href="/store" className="text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white transition-all duration-500 hover:tracking-[0.35em]">
+                            <Link href={basePath} className="text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white transition-all duration-500 hover:tracking-[0.35em]">
                                 STORE
                             </Link>
 
                             <span className="text-brand-primary/30">•</span>
 
-                            <Link href={`/store/catalog?make=${makeParam}`} className="text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white transition-all duration-500 hover:tracking-[0.35em] uppercase">
+                            <Link href={`${basePath}/catalog?make=${makeParam}`} className="text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white transition-all duration-500 hover:tracking-[0.35em] uppercase">
                                 {makeParam}
                             </Link>
 

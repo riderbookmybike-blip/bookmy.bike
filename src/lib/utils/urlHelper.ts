@@ -12,6 +12,7 @@ interface BuildUrlOptions {
     region?: string;
     dealer?: string;
     leadId?: string;
+    basePath?: string;
 }
 
 interface UrlResult {
@@ -39,7 +40,7 @@ function slugify(text: string): string {
  * Pattern: /store/{make}/{model}/{variant}?color=...&pincode=...
  */
 export function buildProductUrl(options: BuildUrlOptions): UrlResult {
-    const { make, model, variant, color, pincode, region, dealer, leadId } = options;
+    const { make, model, variant, color, pincode, region, dealer, leadId, basePath = '/store' } = options;
 
     // 1. Identifiers (Path Segments)
     const makeSlug = slugify(make);
@@ -47,7 +48,7 @@ export function buildProductUrl(options: BuildUrlOptions): UrlResult {
     const variantSlug = slugify(variant);
 
     // 2. Base Path Hierachy: /store/make/model/variant
-    let path = `/store/${makeSlug}/${modelSlug}/${variantSlug}`;
+    let path = `${basePath}/${makeSlug}/${modelSlug}/${variantSlug}`;
 
     // 3. Dealer Context Prefix
     if (dealer) {

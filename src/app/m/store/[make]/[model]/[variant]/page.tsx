@@ -1,6 +1,8 @@
 import { MobilePDPCarousel } from '@/components/mobile/pdp/MobilePDPCarousel';
 import { FavoritesProvider } from '@/contexts/FavoritesContext';
 import { Suspense } from 'react';
+import { notFound } from 'next/navigation';
+import { getProductBySlug } from '@/actions/getProductBySlug';
 
 interface PageProps {
     params: Promise<{
@@ -13,14 +15,16 @@ interface PageProps {
 export default async function MobilePDPPage({ params }: PageProps) {
     const resolvedParams = await params;
 
-    // TODO: Fetch actual product data from Supabase
-    const product = {
-        id: `${resolvedParams.make}-${resolvedParams.model}-${resolvedParams.variant}`,
-        make: resolvedParams.make,
-        model: resolvedParams.model,
-        variant: resolvedParams.variant,
-        slug: `${resolvedParams.make}-${resolvedParams.model}-${resolvedParams.variant}`,
-    };
+    // Fetch actual product data from Supabase
+    const product = await getProductBySlug(
+        resolvedParams.make,
+        resolvedParams.model,
+        resolvedParams.variant
+    );
+
+    if (!product) {
+        notFound();
+    }
 
     return (
         <Suspense fallback={

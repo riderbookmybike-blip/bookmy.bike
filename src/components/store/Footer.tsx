@@ -80,67 +80,36 @@ export const Footer = () => {
 
             <div className="max-w-[1440px] mx-auto w-full px-6 relative z-10 flex-1 flex flex-col justify-center">
                 {/* SPLIT LAYOUT: Left Content (5) | Right Accordion (7) */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-16 items-stretch relative h-[60vh]">
-                    {/* LEFT COLUMN: Brand & Socials (5/12) */}
-                    <div className="lg:col-span-5 flex flex-col justify-between h-full relative z-20">
-                        <div className="space-y-12">
-                            <div className="space-y-8">
-                                <div className="flex items-center gap-4 mb-8">
-                                    <div className="h-px w-12 bg-[#F4B000]" />
-                                    <p className="text-sm font-black text-[#F4B000] uppercase tracking-[0.3em]">
-                                        The Final Chapter
-                                    </p>
-                                </div>
-                                <h3 className="text-6xl md:text-8xl font-black uppercase tracking-tighter text-white leading-[0.85] italic drop-shadow-2xl">
-                                    Redefining <br />{' '}
-                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-zinc-500">
-                                        How India Rides.
-                                    </span>
-                                </h3>
-                                <p className="text-lg text-zinc-400 leading-relaxed max-w-lg font-medium mt-[60px] border-l-2 border-white/5 pl-6">
-                                    India&apos;s premier marketplace for the next generation of riders. Engineering
-                                    excellence into every booking.
+                {/* SPLIT LAYOUT: Left Content (5) | Right Accordion (7) */}
+                {/* SPLIT LAYOUT: Re-architected for Responsive Ordering */}
+                {/* Mobile: Brand -> Accordion -> Socials */}
+                {/* Desktop: Brand (Left Top) + Socials (Left Bottom) | Accordion (Right Full Height) */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-y-12 lg:gap-16 items-start relative min-h-[60vh] lg:h-[60vh]">
+
+                    {/* 1. BRAND HEADER (Mobile: Top, Desktop: Top-Left) */}
+                    <div className="lg:col-span-5 relative z-20">
+                        <div className="space-y-8">
+                            <div className="flex items-center gap-4 mb-8">
+                                <div className="h-px w-12 bg-[#F4B000]" />
+                                <p className="text-sm font-black text-[#F4B000] uppercase tracking-[0.3em]">
+                                    The Final Chapter
                                 </p>
                             </div>
-                        </div>
-
-                        <div className="flex flex-col gap-6">
-                            <div className="flex gap-4">
-                                <SocialIcon icon={<Newspaper size={20} />} href="/blog" brandColor="#F4B000" />
-                                <SocialIcon
-                                    icon={<Instagram size={20} />}
-                                    href="https://instagram.com"
-                                    brandColor="#E4405F"
-                                />
-                                <SocialIcon
-                                    icon={<Twitter size={20} />}
-                                    href="https://twitter.com"
-                                    brandColor="#1DA1F2"
-                                />
-                                <SocialIcon
-                                    icon={<Linkedin size={20} />}
-                                    href="https://linkedin.com"
-                                    brandColor="#0077B5"
-                                />
-                                <SocialIcon
-                                    icon={<Facebook size={20} />}
-                                    href="https://facebook.com"
-                                    brandColor="#1877F2"
-                                />
-                            </div>
-
-                            {/* Minimized Metadata Block */}
-                            <div className="space-y-2">
-                                <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-[0.2em]">
-                                    © 2011-2026
-                                </p>
-                                <ViewportDebug />
-                            </div>
+                            <h3 className="text-6xl md:text-8xl font-black uppercase tracking-tighter text-white leading-[0.85] italic drop-shadow-2xl">
+                                Redefining <br />{' '}
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-zinc-500">
+                                    How India Rides.
+                                </span>
+                            </h3>
+                            <p className="text-lg text-zinc-400 leading-relaxed max-w-lg font-medium mt-[60px] border-l-2 border-white/5 pl-6">
+                                India&apos;s premier marketplace for the next generation of riders. Engineering
+                                excellence into every booking.
+                            </p>
                         </div>
                     </div>
 
-                    {/* RIGHT COLUMN: Interactive Accordion (7/12) */}
-                    <div className="lg:col-span-7 flex flex-col lg:flex-row gap-4 h-full">
+                    {/* 2. ACCORDION (Mobile: Middle, Desktop: Right Column Spanning 2 Rows) */}
+                    <div className="lg:col-span-7 lg:row-span-2 flex flex-row lg:flex-row gap-4 h-[500px] lg:h-full overflow-x-auto lg:overflow-visible snap-x snap-mandatory lg:snap-none -mx-6 px-6 lg:mx-0 lg:px-0 pb-4 lg:pb-0 hide-scrollbar order-2 lg:order-none">
                         {footerSections.map((section, idx) => {
                             const isActive = activeSection === idx;
                             return (
@@ -148,9 +117,10 @@ export const Footer = () => {
                                     key={idx}
                                     layout
                                     onMouseEnter={() => setActiveSection(idx)}
-                                    className={`relative rounded-[2rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between ${isActive
-                                        ? `flex-[3] bg-gradient-to-br ${section.gradient} text-white border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.5)]`
-                                        : 'flex-[1] bg-white/5 border-white/5 text-zinc-500 hover:bg-white/10'
+                                    onClick={() => setActiveSection(idx)}
+                                    className={`relative rounded-[2rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between flex-shrink-0 lg:flex-shrink snap-center ${isActive
+                                        ? `w-[300px] lg:w-auto lg:flex-[3] bg-gradient-to-br ${section.gradient} text-white border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.5)]`
+                                        : 'w-[80px] lg:w-auto lg:flex-[1] bg-white/5 border-white/5 text-zinc-500 hover:bg-white/10'
                                         }`}
                                 >
                                     <div className="absolute inset-0 p-8 flex flex-col justify-between">
@@ -207,6 +177,43 @@ export const Footer = () => {
                                 </motion.div>
                             );
                         })}
+                    </div>
+
+                    {/* 3. SOCIALS (Mobile: Bottom, Desktop: Bottom-Left) */}
+                    <div className="lg:col-span-5 flex flex-col justify-end h-full relative z-20 order-3 lg:order-none">
+                        <div className="flex flex-col gap-6">
+                            <div className="flex gap-4">
+                                <SocialIcon icon={<Newspaper size={20} />} href="/blog" brandColor="#F4B000" />
+                                <SocialIcon
+                                    icon={<Instagram size={20} />}
+                                    href="https://instagram.com"
+                                    brandColor="#E4405F"
+                                />
+                                <SocialIcon
+                                    icon={<Twitter size={20} />}
+                                    href="https://twitter.com"
+                                    brandColor="#1DA1F2"
+                                />
+                                <SocialIcon
+                                    icon={<Linkedin size={20} />}
+                                    href="https://linkedin.com"
+                                    brandColor="#0077B5"
+                                />
+                                <SocialIcon
+                                    icon={<Facebook size={20} />}
+                                    href="https://facebook.com"
+                                    brandColor="#1877F2"
+                                />
+                            </div>
+
+                            {/* Minimized Metadata Block */}
+                            <div className="space-y-2">
+                                <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-[0.2em]">
+                                    © 2011-2026
+                                </p>
+                                <ViewportDebug />
+                            </div>
+                        </div>
                     </div>
                 </div>
 

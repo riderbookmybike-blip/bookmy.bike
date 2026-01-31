@@ -21,6 +21,8 @@ import { toast } from 'sonner';
 import { checkServiceability } from '@/actions/serviceArea';
 import Link from 'next/link';
 import { buildProductUrl } from '@/lib/utils/urlHelper';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+
 
 import { BRANDS as defaultBrands } from '@/config/market';
 import { useCatalog } from '@/hooks/useCatalog';
@@ -41,6 +43,7 @@ interface CatalogDesktopProps {
     variant?: 'default' | 'tv';
     initialItems?: ProductVariant[]; // Added for SSR Hydration
     leadId?: string;
+    basePath?: string;
 }
 
 const StarRating = ({ rating = 4.5, size = 10 }: { rating?: number; size?: number }) => {
@@ -67,6 +70,7 @@ export const ProductCard = ({
     isTv = false,
     bestOffer,
     leadId,
+    basePath = '/store',
 }: {
     v: ProductVariant;
     viewMode: 'grid' | 'list';
@@ -76,7 +80,9 @@ export const ProductCard = ({
     onLocationClick?: () => void;
     isTv?: boolean;
     bestOffer?: { price: number; dealer: string; dealerId?: string; isServiceable: boolean; bundleValue?: number; bundlePrice?: number };
+
     leadId?: string;
+    basePath?: string;
 }) => {
     const { isFavorite, toggleFavorite } = useFavorites();
     const isSaved = isFavorite(v.id);
@@ -337,7 +343,8 @@ export const ProductCard = ({
                                         model: v.model,
                                         variant: v.variant,
                                         pincode: serviceability?.status === 'serviceable' ? serviceability.location : undefined,
-                                        leadId: leadId
+                                        leadId: leadId,
+                                        basePath
                                     }).url}
                                     className="px-10 py-4 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(244,176,0,0.3)] hover:shadow-[0_0_30px_rgba(244,176,0,0.5)] hover:-translate-y-1 transition-all"
                                 >
@@ -347,7 +354,7 @@ export const ProductCard = ({
                         </div>
                     </div>
                 </div>
-            </div>
+            </div >
         );
     }
 
@@ -602,7 +609,8 @@ export const ProductCard = ({
                                 model: v.model,
                                 variant: v.variant,
                                 pincode: serviceability?.status === 'serviceable' ? serviceability.location : undefined,
-                                leadId: leadId
+                                leadId: leadId,
+                                basePath
                             }).url}
                             className="group/btn relative w-full h-10 md:h-11 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 transition-all"
                         >
@@ -625,7 +633,7 @@ export const ProductCard = ({
 // ... ProductCard ends above ...
 
 
-export const MasterCatalog = ({ filters, variant: _variant = 'default', initialItems = [], leadId }: CatalogDesktopProps) => {
+export const MasterCatalog = ({ filters, variant: _variant = 'default', initialItems = [], leadId, basePath = '/store' }: CatalogDesktopProps) => {
     // 1. Initialize with SSR Data (Instant Render)
     const { items: clientItems, isLoading: isClientLoading } = useCatalog();
 
@@ -789,6 +797,16 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                     const data = JSON.parse(cached);
                     if (data.pincode) {
                         console.log('[Location] Using cached pincode:', data.pincode);
+
+                        // Optimistic Update: Unblock UI immediately using cached data
+                        setServiceability(prev => ({
+                            ...prev,
+                            status: 'serviceable',
+                            location: data.district || data.pincode,
+                            district: data.district,
+                            stateCode: data.stateCode || 'MH'
+                        }));
+
                         const result = await checkServiceability(data.pincode);
                         // Construct display location: District ONLY
                         const displayLoc = result.district || result.location || data.pincode;
@@ -1111,12 +1129,12 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-[#0b0d10] transition-colors duration-500 font-sans">
-            <main className="flex-1 mx-auto w-full max-w-[1440px] px-6 pt-12 md:pt-32 pb-10 md:pb-16">
-                <header className="sticky top-[var(--header-h)] z-40 mb-12 transition-all duration-300">
+            <main className="flex-1 mx-auto w-full max-w-[1440px] px-6 pt-24 md:pt-40 pb-10 md:pb-16">
+                <header className="hidden md:block sticky top-[var(--header-h)] z-40 mb-12 transition-all duration-300">
                     <div className="w-full">
-                        <div className="rounded-[2rem] bg-slate-50/80 dark:bg-[#0b0d10]/80 backdrop-blur-xl border border-slate-200 dark:border-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.08)] px-6 py-4">
-                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                                {/* Left: Category Chips */}
+                        <div className="rounded-3xl bg-slate-50/50 dark:bg-[#0b0d10]/50 backdrop-blur-xl border border-slate-200 dark:border-white/5 shadow-sm px-6 py-4">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                {/* Desktop Category Chips */}
                                 <div className="flex items-center gap-2 overflow-x-auto no-scrollbar mask-gradient-right">
                                     <button
                                         onClick={() => setSelectedBodyTypes([])}
