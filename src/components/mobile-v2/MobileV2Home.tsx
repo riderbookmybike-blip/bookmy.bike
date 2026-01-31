@@ -100,13 +100,13 @@ export function MobileV2Home() {
                 </div>
 
                 {/* CENTER CONTENT: ALIGNED & VIEWPORT SAFE */}
-                <div className={`relative z-50 w-full flex flex-col items-center ${SIDE_PADDING} pt-12`}>
+                <div className={`relative z-50 w-full flex flex-col items-center ${SIDE_PADDING} pt-6`}>
                     {/* circular telemetry badge */}
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9, y: -20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         transition={{ duration: 1.2, ease: 'circOut' }}
-                        className="mb-12 md:mb-16 relative flex items-center justify-center w-64 h-64 md:w-80 md:h-80"
+                        className="mb-8 md:mb-16 relative flex items-center justify-center w-56 h-56 md:w-80 md:h-80"
                     >
                         {/* Rotating text ring (Clockwise) */}
                         <motion.svg
@@ -129,7 +129,7 @@ export function MobileV2Home() {
                         </motion.svg>
 
                         {/* Central HUD Core */}
-                        <div className="relative z-10 w-28 h-28 md:w-36 md:h-36 rounded-full bg-transparent border border-white/20 backdrop-blur-3xl flex flex-col items-center justify-center group/tele shadow-[0_0_60px_rgba(0,0,0,0.8)] hover:border-brand-primary/50 transition-all overflow-hidden scale-110">
+                        <div className="relative z-10 w-24 h-24 md:w-36 md:h-36 rounded-full bg-transparent border border-white/20 backdrop-blur-3xl flex flex-col items-center justify-center group/tele shadow-[0_0_60px_rgba(0,0,0,0.8)] hover:border-brand-primary/50 transition-all overflow-hidden scale-110">
                             <motion.div
                                 animate={{ x: ['-100%', '200%'] }}
                                 transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
@@ -151,14 +151,14 @@ export function MobileV2Home() {
                         <div className="absolute inset-0 rounded-full border border-white/10 scale-[1.05] pointer-events-none" />
                     </motion.div>
 
-                    <div className="relative flex flex-col items-center mb-12 select-none w-full text-center">
+                    <div className="relative flex flex-col items-center mb-10 select-none w-full text-center">
                         <motion.div
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ duration: 1.2, ease: 'circOut' }}
                             className="flex flex-col items-center text-center"
                         >
                             <span className="text-[10px] font-black uppercase tracking-[0.6em] text-white/30 leading-none mb-2">THE</span>
-                            <span className="text-sm font-black uppercase tracking-[0.4em] text-white/80 leading-none mb-2">HIGHEST_FIDELITY</span>
+                            <span className="text-sm font-black uppercase tracking-[0.4em] text-white/80 leading-none mb-2">HIGHEST FIDELITY</span>
                             <span className="text-2xl font-black italic uppercase tracking-[0.2em] text-brand-primary leading-none">MARKETPLACE</span>
                         </motion.div>
 
@@ -189,7 +189,7 @@ export function MobileV2Home() {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 1, duration: 0.8 }}
-                            className="mt-8 flex flex-col items-center gap-6 w-full px-4"
+                            className="mt-6 flex flex-col items-center gap-6 w-full px-4"
                         >
                             <Link
                                 href="/m2/store/catalog"
@@ -214,7 +214,7 @@ export function MobileV2Home() {
                                 </svg>
                                 <div className="relative z-10 flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.3em] text-white group-hover:text-brand-primary transition-colors font-[family-name:var(--font-bruno-ace)]">
                                     <Search size={14} />
-                                    Initialize_Marketplace
+                                    Search Your Bike
                                 </div>
                             </Link>
 
@@ -232,7 +232,7 @@ export function MobileV2Home() {
                 </div>
 
                 {/* BOTTOM CONTENT: COMPACT METRICS ROW */}
-                <div className={`absolute bottom-8 md:bottom-20 left-0 right-0 z-50 flex flex-col items-center gap-8 ${SIDE_PADDING}`}>
+                <div className={`absolute bottom-6 md:bottom-20 left-0 right-0 z-50 flex flex-col items-center gap-8 ${SIDE_PADDING}`}>
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -243,7 +243,7 @@ export function MobileV2Home() {
                         <div className="flex flex-col items-center gap-2 min-w-[90px]">
                             <div className="flex items-center gap-1.5 opacity-60">
                                 <span className="text-[7px] md:text-[9px] font-black text-white tracking-[0.25em] uppercase whitespace-nowrap">
-                                    SKU_LIVE
+                                    LIVE MODELS
                                 </span>
                                 <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
                             </div>
@@ -263,7 +263,7 @@ export function MobileV2Home() {
                         <div className="flex flex-col items-center gap-2 min-w-[110px]">
                             <div className="flex items-center gap-1.5 opacity-60">
                                 <span className="text-[7px] md:text-[9px] font-black text-white tracking-[0.25em] uppercase whitespace-nowrap">
-                                    INVENTORY_SYNC
+                                    REAL-TIME STOCK
                                 </span>
                                 <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" />
                             </div>
@@ -283,7 +283,7 @@ export function MobileV2Home() {
                         <div className="flex flex-col items-center gap-2 min-w-[90px]">
                             <div className="flex items-center gap-1.5 opacity-60">
                                 <span className="text-[7px] md:text-[9px] font-black text-white tracking-[0.25em] uppercase whitespace-nowrap">
-                                    SAVINGS_CALC
+                                    AVG. SAVINGS
                                 </span>
                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                             </div>
@@ -449,10 +449,10 @@ export function MobileV2Home() {
             {/* Elite Circle */}
             <section className={`bg-black py-16 relative overflow-hidden ${SIDE_PADDING}`}>
                 <div className="absolute inset-0 opacity-20 pointer-events-none">
-                    <img src="/images/auth/bmb_luxury_desk.png" className="w-full h-full object-cover" />
+                    <img src="/images/auth/bmb_luxury_desk.png" alt="Luxury Background" className="w-full h-full object-cover" />
                 </div>
                 <div className="relative z-10 mb-12">
-                    <h2 className="text-5xl font-black italic uppercase text-white leading-none mb-4">THE O'<br /><span className="text-brand-primary">CIRCLE.</span></h2>
+                    <h2 className="text-5xl font-black italic uppercase text-white leading-none mb-4">THE O&apos;<br /><span className="text-brand-primary">CIRCLE.</span></h2>
                     <p className="text-xs font-black text-zinc-500 uppercase tracking-widest">Ownership, accelerated.</p>
                 </div>
                 <div className="space-y-4 relative z-10">
