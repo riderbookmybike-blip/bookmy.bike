@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { Heart, ArrowRight, Plus, Search, SlidersHorizontal, X, ChevronDown } from 'lucide-react';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
-import { useCatalog } from '@/hooks/useCatalog';
+import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import { ProductCard } from '@/components/store/MasterCatalog';
 
 // Filter Group Component (Extracted)
@@ -66,7 +66,7 @@ const FilterGroup = ({ title, options, selectedValues, onToggle, onReset, showRe
 
 export const WishlistClient = () => {
     const { favorites, clearFavorites } = useFavorites();
-    const { items: catalogItems, isLoading } = useCatalog();
+    const { items: catalogItems, isLoading } = useSystemCatalogLogic();
 
     // UI Local State for Cards
     const [downpayment] = useState(25000);

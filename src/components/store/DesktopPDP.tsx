@@ -53,7 +53,7 @@ const WarrantyTab = dynamic(() => import('./Personalize/Tabs/WarrantyTab'), {
     loading: () => <div className="h-64 bg-slate-100 dark:bg-white/5 rounded-3xl animate-pulse" />
 });
 
-interface MasterPDPProps {
+interface DesktopPDPProps {
     product: any;
     makeParam: string;
     modelParam: string;
@@ -78,7 +78,7 @@ interface MasterPDPProps {
     };
 }
 
-export function MasterPDP({ product, makeParam, modelParam, variantParam, data, handlers, leadContext, basePath = '/store' }: MasterPDPProps) {
+export function DesktopPDP({ product, makeParam, modelParam, variantParam, data, handlers, leadContext, basePath = '/store' }: DesktopPDPProps) {
     // Configuration Constants
     const REFERRAL_BONUS = 5000; // Member referral discount amount
 

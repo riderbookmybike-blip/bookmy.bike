@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { usePDPData } from '@/hooks/usePDPData';
+import { useSystemPDPLogic } from '@/hooks/SystemPDPLogic';
 import { MasterPDP } from '@/components/store/MasterPDP';
 import { LeadCaptureModal } from '@/components/leads/LeadCaptureModal';
 import { EmailUpdateModal } from '@/components/auth/EmailUpdateModal';
@@ -75,7 +75,7 @@ export default function ProductClient({
         }
     }, [leadIdFromUrl]);
 
-    const { data, actions } = usePDPData({
+    const { data, actions } = useSystemPDPLogic({
         initialPrice,
         colors: clientColors, // Passing colors from product (client-aware)
         insuranceRule,

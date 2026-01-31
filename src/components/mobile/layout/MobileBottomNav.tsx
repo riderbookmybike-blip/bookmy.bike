@@ -23,7 +23,7 @@ export const MobileBottomNav = () => {
     ];
 
     return (
-        <nav className="fixed bottom-0 left-0 right-0 z-[110] safe-area-bottom h-[72px] bg-black/80 backdrop-blur-lg">
+        <nav className="fixed bottom-0 left-0 right-0 z-[110] safe-area-bottom h-[72px] bg-white/90 dark:bg-black/80 backdrop-blur-lg border-t border-slate-100 dark:border-white/5 transition-colors duration-500">
             <div className="flex items-center justify-between h-full px-2">
                 {NAV_ITEMS.map((item) => {
                     const Icon = item.icon;
@@ -42,7 +42,7 @@ export const MobileBottomNav = () => {
                                     <Icon
                                         size={22}
                                         strokeWidth={isActive ? 2.5 : 2}
-                                        className={`transition-colors duration-300 ${isActive ? 'text-[#F4B000] drop-shadow-[0_0_10px_rgba(244,176,0,0.5)]' : 'text-white'}`}
+                                        className={`transition-colors duration-300 ${isActive ? 'text-[#F4B000] drop-shadow-[0_0_10px_rgba(244,176,0,0.5)]' : 'text-slate-400 dark:text-white'}`}
                                     />
                                 )}
 
@@ -54,7 +54,7 @@ export const MobileBottomNav = () => {
                                 )}
                             </div>
 
-                            <span className={`text-[10px] font-bold uppercase tracking-wider transition-colors duration-300 ${isActive ? 'text-white' : 'text-white/80'}`}>
+                            <span className={`text-[10px] font-bold uppercase tracking-wider transition-colors duration-300 ${isActive ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-white/60'}`}>
                                 {item.label}
                             </span>
                         </Link>

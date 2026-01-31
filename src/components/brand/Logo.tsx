@@ -66,7 +66,11 @@ export const Logo: React.FC<LogoProps> = ({
     const activeMode = useMemo(() => {
         if (!mounted) return mode === 'auto' ? 'light' : mode;
         if (mode !== 'auto') return mode;
-        return theme === 'dark' || theme === 'system' ? 'dark' : 'light';
+        if (theme === 'dark') return 'dark';
+        if (theme === 'system') {
+            return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        return 'light';
     }, [mode, theme, mounted]);
 
     // Color Logic based on Variants and Monochrome overrides

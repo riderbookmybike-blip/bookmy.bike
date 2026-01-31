@@ -8,8 +8,8 @@ import Image from 'next/image';
 import { ArrowRight, Search, Zap, MapPin } from 'lucide-react';
 import { CATEGORIES, MARKET_METRICS } from '@/config/market';
 import { useState } from 'react';
-import { useCatalog } from '@/hooks/useCatalog';
-import { useBrands } from '@/hooks/useBrands';
+import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
+import { useSystemBrandsLogic } from '@/hooks/SystemBrandsLogic';
 import { RiderPulse } from '@/components/store/RiderPulse';
 import { EliteCircle } from './sections/EliteCircle';
 import { Footer } from './Footer';
@@ -21,9 +21,9 @@ interface StoreDesktopProps {
 const ROTATION_SPEED = 0.0045;
 const ROTATION_REFRESH_INTERVAL = 80;
 
-export function MasterLayout() {
-    const { items, skuCount } = useCatalog();
-    const { brands } = useBrands();
+export function DesktopHome() {
+    const { items, skuCount } = useSystemCatalogLogic();
+    const { brands } = useSystemBrandsLogic();
 
     // Hero Template: Night City (Chosen by User)
     const heroImage = '/images/templates/t3_night.png';
@@ -140,10 +140,10 @@ export function MasterLayout() {
     }, []);
 
     return (
-        <div className="flex flex-col pb-0 transition-colors duration-300">
+        <div className="flex flex-col pb-0 transition-colors duration-500 bg-white dark:bg-black text-slate-900 dark:text-white">
             {/* the hyper-aperture: kinetic chassis extraordinaria */}
             <section
-                className="relative h-screen ebook-section overflow-hidden bg-gradient-to-br from-rose-900/60 via-[#0b0d10] to-[#0b0d10] isolate flex flex-col items-center justify-center p-0"
+                className="relative h-screen ebook-section overflow-hidden bg-gradient-to-br from-rose-900/60 via-[#0b0d10] to-[#0b0d10] dark:from-rose-950/80 dark:via-black dark:to-black isolate flex flex-col items-center justify-center p-0"
                 onMouseMove={e => {
                     const xPct = (e.clientX / window.innerWidth) * 100;
                     const x = (e.clientX / window.innerWidth - 0.5) * 30;
@@ -315,7 +315,7 @@ export function MasterLayout() {
                             animate={{ opacity: 1, x: 0 }}
                             whileHover={{ scale: 1.02, filter: 'brightness(1.2)' }}
                             transition={{ layout: { duration: 0.6, ease: [0.23, 1, 0.32, 1] } }}
-                            className={`${bentoHover === 'inventory' ? 'md:col-span-2' : 'md:col-span-1'} relative p-8 bg-zinc-900/80 border ${bentoHover === 'inventory' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-3xl overflow-hidden group/bento h-[220px] flex flex-col justify-center cursor-pointer shadow-2xl transition-all duration-500`}
+                            className={`${bentoHover === 'inventory' ? 'md:col-span-2' : 'md:col-span-1'} relative p-8 bg-white/80 dark:bg-zinc-900/80 border ${bentoHover === 'inventory' ? 'border-brand-primary' : 'border-slate-200 dark:border-white/10'} rounded-3xl backdrop-blur-3xl overflow-hidden group/bento h-[220px] flex flex-col justify-center cursor-pointer shadow-xl dark:shadow-2xl transition-all duration-500`}
                         >
                             <div className="absolute top-0 right-0 p-6 opacity-20 group-hover/bento:opacity-100 transition-opacity">
                                 <Zap size={24} className="text-brand-primary" />
@@ -332,7 +332,7 @@ export function MasterLayout() {
                                         />
                                     </div>
                                     <div className="flex items-baseline gap-4 whitespace-nowrap">
-                                        <span className="text-4xl font-black text-white italic tracking-tighter leading-none">
+                                        <span className="text-4xl font-black text-slate-900 dark:text-white italic tracking-tighter leading-none">
                                             380+
                                         </span>
                                     </div>
@@ -377,7 +377,7 @@ export function MasterLayout() {
                             animate={{ opacity: 1, x: 0 }}
                             whileHover={{ scale: 1.02, filter: 'brightness(1.2)' }}
                             transition={{ layout: { duration: 0.6, ease: [0.23, 1, 0.32, 1] } }}
-                            className={`${bentoHover === 'dispatch' ? 'md:col-span-2' : 'md:col-span-1'} p-8 bg-zinc-900/80 border ${bentoHover === 'dispatch' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-3xl group/dispatch h-[220px] flex flex-col justify-center cursor-pointer shadow-2xl transition-all duration-500`}
+                            className={`${bentoHover === 'dispatch' ? 'md:col-span-2' : 'md:col-span-1'} p-8 bg-white/80 dark:bg-zinc-900/80 border ${bentoHover === 'dispatch' ? 'border-brand-primary' : 'border-slate-200 dark:border-white/10'} rounded-3xl backdrop-blur-3xl group/dispatch h-[220px] flex flex-col justify-center cursor-pointer shadow-xl dark:shadow-2xl transition-all duration-500`}
                         >
                             <div className="flex items-center gap-8 relative z-10 w-full h-full">
                                 {/* Left Column: Core Stats (Locked Width) */}
@@ -391,7 +391,7 @@ export function MasterLayout() {
                                         />
                                     </div>
                                     <div className="flex items-baseline gap-4 whitespace-nowrap">
-                                        <p className="text-4xl font-black text-white italic tracking-tighter leading-none">
+                                        <p className="text-4xl font-black text-slate-900 dark:text-white italic tracking-tighter leading-none">
                                             {MARKET_METRICS.deliveryTime}
                                         </p>
                                     </div>
@@ -436,7 +436,7 @@ export function MasterLayout() {
                             animate={{ opacity: 1, y: 0 }}
                             whileHover={{ scale: 1.02, filter: 'brightness(1.2)' }}
                             transition={{ layout: { duration: 0.6, ease: [0.23, 1, 0.32, 1] } }}
-                            className={`${bentoHover === 'savings' || bentoHover === null ? 'md:col-span-2' : 'md:col-span-1'} p-8 bg-zinc-900/80 border ${bentoHover === 'savings' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-3xl group/savings h-[220px] flex flex-col justify-center cursor-pointer shadow-2xl transition-all duration-500`}
+                            className={`${bentoHover === 'savings' || bentoHover === null ? 'md:col-span-2' : 'md:col-span-1'} p-8 bg-white/80 dark:bg-zinc-900/80 border ${bentoHover === 'savings' ? 'border-brand-primary' : 'border-slate-200 dark:border-white/10'} rounded-3xl backdrop-blur-3xl group/savings h-[220px] flex flex-col justify-center cursor-pointer shadow-xl dark:shadow-2xl transition-all duration-500`}
                         >
                             <div className="flex items-center gap-8 relative z-10 w-full h-full">
                                 {/* Left Column: Core Stats (Locked Width) */}
@@ -450,7 +450,7 @@ export function MasterLayout() {
                                         />
                                     </div>
                                     <div className="flex items-baseline gap-4 whitespace-nowrap">
-                                        <p className="text-4xl font-black text-white italic tracking-tighter leading-none">
+                                        <p className="text-4xl font-black text-slate-900 dark:text-white italic tracking-tighter leading-none">
                                             {MARKET_METRICS.avgSavings}
                                         </p>
                                     </div>
@@ -554,7 +554,7 @@ export function MasterLayout() {
                 <div className="absolute bottom-0 inset-x-0 h-40 bg-gradient-to-t from-black to-transparent z-40" />
             </section>
 
-            <section className="min-h-screen ebook-section relative overflow-hidden bg-gradient-to-bl from-orange-800/60 via-[#0b0d10] to-[#0b0d10] flex flex-col items-center justify-center">
+            <section className="min-h-screen ebook-section relative overflow-hidden bg-gradient-to-bl from-orange-800/60 via-[#0b0d10] to-[#0b0d10] dark:from-orange-950/80 dark:via-black dark:to-black transition-colors duration-500 flex flex-col items-center justify-center">
                 <div className="max-w-[1440px] mx-auto px-6 relative z-10 w-full">
                     <div className="grid grid-cols-12 gap-8 lg:gap-16 items-center">
                         {/* Left Column: Context (4/12) */}
@@ -653,8 +653,8 @@ export function MasterLayout() {
 
                                             <div
                                                 className={`absolute inset-0 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] rounded-3xl pointer-events-none ${isHovered && isAtFront
-                                                        ? 'shadow-[0_0_120px_rgba(255,255,255,0.25)] border border-white/20'
-                                                        : 'backdrop-blur-md text-zinc-400 border-y border-white/5'
+                                                    ? 'shadow-[0_0_120px_rgba(255,255,255,0.25)] border border-white/20'
+                                                    : 'backdrop-blur-md text-zinc-400 border-y border-white/5'
                                                     }`}
                                                 style={{
                                                     transform:
@@ -747,8 +747,8 @@ export function MasterLayout() {
                                                 {/* Brand Letter Watermark */}
                                                 <div
                                                     className={`absolute -right-4 top-1/2 -translate-y-1/2 text-[12rem] font-black italic uppercase select-none pointer-events-none transition-all duration-1000 ${isHovered && isAtFront
-                                                            ? 'text-white/[0.1] scale-100 opacity-100'
-                                                            : 'text-white/[0.02] scale-110 opacity-0'
+                                                        ? 'text-white/[0.1] scale-100 opacity-100'
+                                                        : 'text-white/[0.02] scale-110 opacity-0'
                                                         }`}
                                                 >
                                                     {brand.name[0]}
@@ -769,7 +769,7 @@ export function MasterLayout() {
             {/* How it Works */}
             {/* How it Works Section */}
             {/* How it Works Section */}
-            <section className="h-screen ebook-section relative overflow-hidden bg-gradient-to-tr from-amber-700/60 via-[#0b0d10] to-[#0b0d10] text-white pt-[var(--header-h)] flex flex-col justify-start">
+            <section className="h-screen ebook-section relative overflow-hidden bg-gradient-to-tr from-amber-700/60 via-[#0b0d10] to-[#0b0d10] dark:from-amber-950/80 dark:via-black dark:to-black text-slate-900 dark:text-white pt-[var(--header-h)] flex flex-col justify-start transition-colors duration-500">
                 <div className="absolute inset-0 opacity-10 pointer-events-none">
                     <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_120%,#FFD700,transparent_70%)]" />
                 </div>
@@ -797,8 +797,8 @@ export function MasterLayout() {
                                             key={i}
                                             onMouseEnter={() => setActiveStep(i)}
                                             className={`transition-all duration-500 ease-out origin-left ${activeStep === i
-                                                    ? 'text-white translate-x-4 scale-105'
-                                                    : 'text-white/20 hover:text-white/60 hover:translate-x-2'
+                                                ? 'text-white translate-x-4 scale-105'
+                                                : 'text-white/20 hover:text-white/60 hover:translate-x-2'
                                                 }`}
                                         >
                                             {text}
@@ -848,8 +848,8 @@ export function MasterLayout() {
                                     layout
                                     onMouseEnter={() => setActiveStep(i)}
                                     className={`relative rounded-[2rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${activeStep === i
-                                            ? 'flex-[3] bg-white text-black border-white shadow-[0_0_50px_rgba(255,255,255,0.2)]'
-                                            : 'flex-[1] bg-zinc-900/60 border-white/5 text-zinc-500 hover:bg-zinc-800'
+                                        ? 'flex-[3] bg-white text-black border-white shadow-[0_0_50px_rgba(255,255,255,0.2)]'
+                                        : 'flex-[1] bg-zinc-900/60 border-white/5 text-zinc-500 hover:bg-zinc-800'
                                         }`}
                                 >
                                     {/* Inner Content Layout */}
@@ -965,8 +965,8 @@ export function MasterLayout() {
                                     href={cat.link}
                                     onMouseEnter={() => setActiveVibe(i)}
                                     className={`group relative overflow-hidden rounded-[2rem] border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between ${activeVibe === i
-                                            ? 'flex-[3] bg-white/10 border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-md'
-                                            : 'flex-[1] bg-white/5 border-white/5 opacity-60 hover:opacity-100 hover:bg-white/10'
+                                        ? 'flex-[3] bg-white/10 border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-md'
+                                        : 'flex-[1] bg-white/5 border-white/5 opacity-60 hover:opacity-100 hover:bg-white/10'
                                         }`}
                                 >
                                     {/* Background Mesh Gradient (Subtle) */}

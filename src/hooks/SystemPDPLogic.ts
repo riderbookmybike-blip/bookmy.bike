@@ -20,24 +20,7 @@ export interface LocalColorConfig {
     };
 }
 
-// Global type augmentation for debugging
-declare global {
-    interface Window {
-        __BMB_DEBUG__?: {
-            pricingSource?: string;
-            district?: string;
-            schemeId?: string;
-            schemeName?: string;
-            bankName?: string;
-            financeLogic?: string;
-            leadId?: string;
-            dealerId?: string;
-            tenantId?: string;
-            pageId?: string;
-            userId?: string;
-        };
-    }
-}
+import { BMBDebug } from '@/types/debug';
 
 import { InsuranceRule } from '@/types/insurance';
 import { Accessory, ServiceOption } from '@/types/store';
@@ -49,7 +32,7 @@ import { MOCK_REGISTRATION_RULES } from '@/lib/mock/catalogMocks';
 import { useMemo } from 'react';
 import { calculateOnRoad } from '@/lib/utils/pricingUtility';
 
-export function usePDPData({
+export function useSystemPDPLogic({
     initialPrice,
     colors = [],
     insuranceRule,
@@ -59,10 +42,10 @@ export function usePDPData({
     product,
     initialFinance
 }: {
-    initialPrice: any;
-    colors: any[];
+    initialPrice: { exShowroom: number };
+    colors: LocalColorConfig[];
     insuranceRule?: InsuranceRule;
-    registrationRule?: any;
+    registrationRule?: any; // Still using any if type not fully defined, but better than before
     initialAccessories?: Accessory[];
     initialServices?: ServiceOption[];
     product?: any;
@@ -105,7 +88,8 @@ export function usePDPData({
             window.__BMB_DEBUG__ = {
                 ...window.__BMB_DEBUG__,
                 pricingSource: registrationRule?.state_code ? 'MARKET_RULES' : 'FALLBACK',
-                district: registrationRule?.state_code || 'GLOBAL',
+                district: registrationRule?.district || 'GLOBAL',
+                stateCode: registrationRule?.state_code || 'NOT_SET',
                 schemeId: initialFinance?.scheme?.id || 'NONE',
                 schemeName: initialFinance?.scheme?.name || undefined,
                 bankName: initialFinance?.bank?.name || undefined,
@@ -121,7 +105,7 @@ export function usePDPData({
 
     // Color Config & Price Override
     const activeColorConfig = colors.find(c => c.id === selectedColor) || colors[0] || {} as any;
-    const baseExShowroom = activeColorConfig.priceOverride || activeColorConfig.pricingOverride?.exShowroom || initialPrice.exShowroom;
+    const baseExShowroom = activeColorConfig.pricingOverride?.exShowroom || initialPrice.exShowroom;
 
     // Real-time Calculation Engine Integration
     const pricingData = useMemo(() => {
@@ -287,7 +271,7 @@ export function usePDPData({
             return sum + discount;
         }, 0);
 
-    const colorDiscount = activeColorConfig.dealerOffer || activeColorConfig.pricingOverride?.dealerOffer || 0;
+    const colorDiscount = activeColorConfig?.dealerOffer || activeColorConfig?.pricingOverride?.dealerOffer || 0;
 
     // Offers are now provided via initialServices/initialAccessories, removing legacy mock lookup
     const activeOffers = selectedOffers

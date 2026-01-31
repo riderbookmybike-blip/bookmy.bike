@@ -8,6 +8,11 @@ import { Zap, Shield, Target } from 'lucide-react';
 
 export function EliteCircle() {
     const [activeStep, setActiveStep] = useState(0);
+    const [hasMounted, setHasMounted] = useState(false);
+
+    React.useEffect(() => {
+        setHasMounted(true);
+    }, []);
 
     const benefits = [
         {
@@ -51,32 +56,23 @@ export function EliteCircle() {
     return (
         <section
             id="o-circle"
-            className="relative h-screen ebook-section bg-[#0b0d10] flex flex-col items-center justify-center overflow-hidden"
+            className="relative min-h-screen lg:h-screen ebook-section bg-slate-50 dark:bg-[#0b0d10] flex flex-col items-center justify-center overflow-hidden transition-colors duration-1000"
         >
             {/* VIBRANT ATMOSPHERIC BACKGROUND */}
-            <div className="absolute inset-0 z-0 pointer-events-none">
-                <div className="absolute inset-0 bg-gradient-to-tr from-indigo-900/60 via-[#0b0d10] to-black" />
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-[70%] bg-[radial-gradient(circle_at_50%_100%,rgba(99,90,255,0.25),transparent_70%)]" />
+            <div className="absolute inset-0 z-0 pointer-events-none transition-colors duration-1000">
+                <div className="absolute inset-0 bg-gradient-to-tr from-slate-200 via-slate-50 to-white dark:from-indigo-900/60 dark:via-[#0b0d10] dark:to-black transition-colors duration-1000" />
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-[70%] bg-[radial-gradient(circle_at_50%_100%,rgba(99,90,255,0.1),transparent_70%)] dark:bg-[radial-gradient(circle_at_50%_100%,rgba(99,90,255,0.25),transparent_70%)] transition-all duration-1000" />
                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.05] mix-blend-overlay" />
-                <div className="absolute inset-0 opacity-50 mix-blend-screen">
-                    <Image
-                        src="/images/auth/bmb_luxury_desk.png"
-                        alt="The O' Circle Environment"
-                        layout="fill"
-                        objectFit="cover"
-                        priority
-                    />
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0b0d10] via-transparent to-black/60" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-50 via-transparent to-black/5 dark:from-[#0b0d10] dark:to-black/60 transition-colors duration-1000" />
             </div>
 
             <div
-                className="relative z-10 w-full max-w-[1440px] px-6 mx-auto flex flex-col justify-center items-center"
-                style={{ minHeight: 'calc(100vh - var(--header-h))' }}
+                className="relative z-10 w-full max-w-[1440px] px-6 mx-auto flex flex-col justify-center items-center py-20 lg:py-0"
+                style={{ minHeight: 'calc(100vh - var(--header-h, 0px))' }}
             >
-                <div className="grid grid-cols-12 gap-8 lg:gap-16 items-center">
+                <div className="grid grid-cols-12 gap-8 lg:gap-16 items-center w-full">
                     {/* Left Column: Vertical Identity */}
-                    <div className="col-span-12 lg:col-span-4 space-y-8 relative z-30">
+                    <div className="col-span-12 lg:col-span-4 space-y-8 relative z-30 mb-12 lg:mb-0 text-center lg:text-left">
                         <motion.div
                             initial={{ opacity: 0, x: -50 }}
                             whileInView={{ opacity: 1, x: 0 }}
@@ -84,23 +80,23 @@ export function EliteCircle() {
                             transition={{ duration: 0.8 }}
                             className="space-y-6"
                         >
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-4 justify-center lg:justify-start">
                                 <div className="h-px w-10 bg-[#F4B000]/40" />
                                 <h2 className="text-[#F4B000]/80 font-black uppercase tracking-[0.5em] text-[10px]">
                                     The Privilege Tier
                                 </h2>
                             </div>
-                            <h1 className="text-7xl xl:text-8xl font-black italic uppercase tracking-tighter leading-[0.85] text-white">
+                            <h1 className="text-5xl md:text-7xl xl:text-8xl font-black italic uppercase tracking-tighter leading-[0.85] text-slate-900 dark:text-white transition-colors">
                                 THE O'
                                 <br />
                                 <span className="text-[#F4B000]">CIRCLE.</span>
                             </h1>
-                            <div className="space-y-4">
-                                <p className="text-xl text-zinc-400 font-medium leading-relaxed max-w-xs">
+                            <div className="space-y-4 max-w-sm mx-auto lg:mx-0">
+                                <p className="text-lg md:text-xl text-slate-500 dark:text-zinc-400 font-medium leading-relaxed transition-colors">
                                     Exclusive financial engineering for the modern rider.
                                 </p>
-                                <div className="h-px w-24 bg-white/10" />
-                                <p className="text-sm font-bold text-white tracking-widest uppercase italic">
+                                <div className="h-px w-24 bg-slate-200 dark:bg-white/10 transition-colors mx-auto lg:mx-0" />
+                                <p className="text-sm font-bold text-slate-900 dark:text-white tracking-widest uppercase italic transition-colors">
                                     Ownership, accelerated.
                                 </p>
                             </div>
@@ -108,20 +104,24 @@ export function EliteCircle() {
                     </div>
 
                     {/* Right Column: Monolith Tiers */}
-                    <div className="col-span-12 lg:col-span-8 h-[75vh] flex gap-5 w-full">
-                        {benefits.map((item, i) => (
+                    <div className="col-span-12 lg:col-span-8 lg:h-[75vh] flex flex-col lg:flex-row gap-5 w-full min-h-[700px] lg:min-h-0">
+                        {hasMounted && benefits.map((item, i) => (
                             <motion.div
                                 key={i}
                                 layout
-                                onMouseEnter={() => setActiveStep(i)}
-                                className={`relative rounded-[3rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
-                                    activeStep === i
-                                        ? 'flex-[5] bg-white shadow-[0_40px_100px_rgba(0,0,0,0.5),0_0_80px_rgba(255,255,255,0.1)] border-white'
-                                        : 'flex-[1] bg-black/40 border-white/5 text-zinc-500 hover:bg-black/60'
-                                }`}
+                                onMouseEnter={() => {
+                                    if (typeof window !== 'undefined' && window.innerWidth > 1024) {
+                                        setActiveStep(i);
+                                    }
+                                }}
+                                onClick={() => setActiveStep(i)}
+                                className={`relative rounded-[2.5rem] lg:rounded-[3rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${activeStep === i
+                                    ? 'flex-[12] lg:flex-[5] bg-white shadow-[0_40px_100px_rgba(0,0,0,0.5),0_0_80px_rgba(255,255,255,0.1)] border-white ring-1 ring-black/5'
+                                    : 'flex-[2] lg:flex-[1] bg-slate-100 dark:bg-black/40 border-slate-200 dark:border-white/5 text-zinc-500 hover:bg-black/60'
+                                    }`}
                             >
                                 {/* INTERNAL CONTENT */}
-                                <div className="absolute inset-0 p-10 flex flex-col overflow-hidden">
+                                <div className="absolute inset-0 p-6 lg:p-10 flex flex-col overflow-hidden">
                                     {/* Header Info */}
                                     <div
                                         className={`flex items-start w-full transition-all duration-500 ${activeStep === i ? 'justify-between' : 'justify-center opacity-40'}`}
@@ -139,8 +139,8 @@ export function EliteCircle() {
                                     {/* Vertical Placeholder for Inactive */}
                                     {activeStep !== i && (
                                         <div className="flex-1 relative">
-                                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 whitespace-nowrap">
-                                                <span className="text-4xl font-black uppercase italic tracking-tighter text-white/20">
+                                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 lg:-rotate-90 whitespace-nowrap">
+                                                <span className="text-2xl lg:text-4xl font-black uppercase italic tracking-tighter text-white/20">
                                                     {item.title}
                                                 </span>
                                             </div>
@@ -155,7 +155,7 @@ export function EliteCircle() {
                                                 initial={{ opacity: 0, scale: 0.9, y: 10 }}
                                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                                 transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-                                                className="flex-1 flex items-center justify-center -mt-8"
+                                                className="flex-1 flex items-center justify-center -mt-4 lg:-mt-8"
                                             >
                                                 <div className="w-full max-w-[475px] drop-shadow-[0_40px_80px_rgba(0,0,0,0.7)] group">
                                                     <MembershipCard
@@ -178,7 +178,7 @@ export function EliteCircle() {
                                                     <p className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-400">
                                                         {item.subtitle}
                                                     </p>
-                                                    <h3 className="text-5xl md:text-6xl font-black uppercase italic tracking-tighter leading-none text-black">
+                                                    <h3 className="text-3xl md:text-6xl font-black uppercase italic tracking-tighter leading-none text-black">
                                                         {item.title}
                                                     </h3>
                                                 </div>

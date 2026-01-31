@@ -6,7 +6,8 @@ import { createClient } from '@/lib/supabase/client';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { Plus, Database, Search, Filter, Zap, ArrowUpDown, Copy, Check, Image as ImageIcon, FileText, Youtube, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CatalogItem } from '@/types/store';
-import { KPIItem } from '@/components/layout/KPIBar';
+import { KPIBar } from '@/components/layout/KPIBar';
+import { Database as SupabaseDatabase } from '@/types/supabase';
 
 function CopyableId({ id }: { id: string }) {
     const [copied, setCopied] = useState(false);
@@ -371,116 +372,17 @@ export default function UnifiedCatalogPage() {
 
                 </div>
 
-                {/* KPI Grid - Expanded & Large */}
-                <div className="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-4">
-                    <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <Zap size={64} className="text-indigo-600" />
-                        </div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600">
-                                <Zap size={20} className="fill-current" />
-                            </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Brands</span>
-                        </div>
-                        <div>
-                            <div className="text-4xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
-                                {isLoading ? '-' : stats.activeBrands}
-                            </div>
-                            <div className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-1">Active Partners</div>
-                        </div>
-                    </div>
-
-                    <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <Database size={64} className="text-blue-600" />
-                        </div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600">
-                                <Database size={20} className="fill-current" />
-                            </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Models</span>
-                        </div>
-                        <div>
-                            <div className="text-4xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
-                                {isLoading ? '-' : stats.activeModels}
-                            </div>
-                            <div className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-1">Active Families</div>
-                        </div>
-                    </div>
-
-                    <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <ArrowUpDown size={64} className="text-emerald-600" />
-                        </div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600">
-                                <ArrowUpDown size={20} />
-                            </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Variants</span>
-                        </div>
-                        <div>
-                            <div className="text-4xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
-                                {isLoading ? '-' : stats.activeVariants}
-                            </div>
-                            <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">Active Configs</div>
-                        </div>
-                    </div>
-
-                    <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <ImageIcon size={64} className="text-pink-600" />
-                        </div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="p-2 rounded-xl bg-pink-50 dark:bg-pink-900/20 text-pink-600">
-                                <ImageIcon size={20} />
-                            </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Colors</span>
-                        </div>
-                        <div>
-                            <div className="text-4xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
-                                {isLoading ? '-' : stats.activeColors}
-                            </div>
-                            <div className="text-[10px] font-bold text-pink-600 uppercase tracking-widest mt-1">Active Styles</div>
-                        </div>
-                    </div>
-
-                    <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <Plus size={64} className="text-amber-600" />
-                        </div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600">
-                                <Plus size={20} />
-                            </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">SKUs</span>
-                        </div>
-                        <div>
-                            <div className="text-4xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
-                                {isLoading ? '-' : stats.activeSkus}
-                            </div>
-                            <div className="text-[10px] font-bold text-amber-600 uppercase tracking-widest mt-1">Total Active</div>
-                        </div>
-                    </div>
-
-                    <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <FileText size={64} className="text-slate-400" />
-                        </div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500">
-                                <FileText size={20} />
-                            </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total</span>
-                        </div>
-                        <div>
-                            <div className="text-4xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
-                                {isLoading ? '-' : stats.inactiveSkus}
-                            </div>
-                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Offline / Draft</div>
-                        </div>
-                    </div>
-                </div>
+                {/* KPI Bar */}
+                <KPIBar
+                    items={[
+                        { label: 'Brands', value: stats.activeBrands, description: 'Active Partners', icon: <Zap size={16} />, color: 'indigo' },
+                        { label: 'Models', value: stats.activeModels, description: 'Active Families', icon: <Database size={16} />, color: 'blue' },
+                        { label: 'Variants', value: stats.activeVariants, description: 'Active Configs', icon: <ArrowUpDown size={16} />, color: 'emerald' },
+                        { label: 'Colors', value: stats.activeColors, description: 'Active Styles', icon: <ImageIcon size={16} />, color: 'pink' },
+                        { label: 'Active SKUs', value: stats.activeSkus, description: 'Market Ready', icon: <Plus size={16} />, color: 'amber' },
+                        { label: 'Inactive', value: stats.inactiveSkus, description: 'Pending/Draft', icon: <Filter size={16} />, color: 'slate' }
+                    ]}
+                />
 
                 {/* List Panel */}
                 <div className="bg-white dark:bg-slate-900 rounded-[3rem] border border-slate-200 dark:border-white/5 shadow-xl shadow-slate-100/50 dark:shadow-none min-h-[500px]">

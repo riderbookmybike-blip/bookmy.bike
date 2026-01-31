@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr';
+import { Database } from '@/types/supabase';
 import { cookies, headers } from 'next/headers';
 
 export async function createClient() {
@@ -9,7 +10,7 @@ export async function createClient() {
     const isLocalhost = host.includes('localhost') || host.startsWith('127.') || host.startsWith('0.0.0.0');
     const cookieDomain = !isLocalhost ? `.${rootDomain}` : undefined;
 
-    return createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    return createServerClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
         cookies: {
             getAll() {
                 return cookieStore.getAll();

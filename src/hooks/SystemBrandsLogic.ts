@@ -14,7 +14,7 @@ export interface Brand {
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
-export function useBrands() {
+export function useSystemBrandsLogic() {
     const [brands, setBrands] = useState<Brand[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);

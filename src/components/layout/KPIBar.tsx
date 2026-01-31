@@ -18,10 +18,10 @@ import {
 import { TenantType } from '@/lib/tenant/tenantContext';
 import { UserRole } from '@/config/permissions';
 
-interface KPIItemProps {
+export interface KPIItemProps {
     label: string;
     value: string | number;
-    icon: React.ElementType;
+    icon: React.ElementType | React.ReactNode;
     description: string;
     trend?: {
         value: string;
@@ -55,7 +55,7 @@ export const KPIItem = ({ label, value, icon: Icon, description, trend, color = 
                     animate={{ rotate: isHovered ? [0, -10, 10, 0] : 0, scale: isHovered ? 1.1 : 1 }}
                     transition={{ duration: 0.5, ease: "easeInOut" }}
                 >
-                    <Icon size={16} strokeWidth={2.5} className="drop-shadow-[0_0_8px_rgba(0,0,0,0.1)] dark:drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]" />
+                    {typeof Icon === 'function' ? <Icon size={16} strokeWidth={2.5} className="drop-shadow-[0_0_8px_rgba(0,0,0,0.1)] dark:drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]" /> : Icon}
                 </motion.div>
 
                 <div className="flex flex-col">
@@ -98,11 +98,12 @@ export const KPIItem = ({ label, value, icon: Icon, description, trend, color = 
 };
 
 interface KPIBarProps {
-    tenantType: TenantType | 'AUMS';
-    activeRole: UserRole;
+    tenantType?: TenantType | 'AUMS';
+    activeRole?: UserRole;
+    items?: KPIItemProps[];
 }
 
-export const KPIBar = ({ tenantType, activeRole }: KPIBarProps) => {
+export const KPIBar = ({ tenantType, activeRole, items }: KPIBarProps) => {
     // Role-based Config
     const isSuperAdmin = activeRole === 'SUPER_ADMIN' || tenantType === 'AUMS';
 
@@ -125,10 +126,10 @@ export const KPIBar = ({ tenantType, activeRole }: KPIBarProps) => {
         ]
     };
 
-    const currentKPIs = kpisByRole[activeRole] || (isSuperAdmin ? kpisByRole['SUPER_ADMIN'] : kpisByRole['DEFAULT']);
+    const currentKPIs = items || kpisByRole[activeRole as string] || (isSuperAdmin ? kpisByRole['SUPER_ADMIN'] : kpisByRole['DEFAULT']);
 
     return (
-        <div className="hidden lg:flex items-center gap-3 animate-in fade-in slide-in-from-left-4 duration-500">
+        <div className="flex items-center gap-3 animate-in fade-in slide-in-from-left-4 duration-500 overflow-x-auto pb-2 lg:pb-0">
             {currentKPIs.map((kpi, idx) => (
                 <KPIItem key={idx} {...kpi} />
             ))}

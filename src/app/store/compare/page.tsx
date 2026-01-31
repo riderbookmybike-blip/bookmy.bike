@@ -4,13 +4,13 @@ import React from 'react';
 import Link from 'next/link';
 import { ChevronLeft, X, Plus, Zap, Star, ArrowRight } from 'lucide-react';
 import { useCompare } from '@/hooks/useCompare';
-import { useCatalog } from '@/hooks/useCatalog';
+import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import { slugify } from '@/utils/slugs';
 import { PageFrame } from '@/components/layout/PageFrame';
 
 export default function ComparePage() {
     const { compareList, removeFromCompare, clearCompare, addToCompare } = useCompare();
-    const { items: allVehicles } = useCatalog();
+    const { items: allVehicles } = useSystemCatalogLogic();
     const [isAddingMode, setIsAddingMode] = React.useState(false);
 
     // Grouping specs for presentation

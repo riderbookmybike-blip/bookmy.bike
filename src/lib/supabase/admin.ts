@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { Database } from '@/types/supabase';
 
 // SERVER-ONLY: Never import this into Client Components
 // Note: We use process.env directly to ensure this doesn't accidentally leak to client bundles via NEXT_PUBLIC_
@@ -12,7 +13,7 @@ if (!supabaseUrl || !serviceRoleKey) {
     }
 }
 
-export const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+export const adminClient = createClient<Database>(supabaseUrl, serviceRoleKey, {
     auth: {
         autoRefreshToken: false,
         persistSession: false,

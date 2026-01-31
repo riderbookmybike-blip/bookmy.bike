@@ -3,12 +3,12 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Facebook, Twitter, Linkedin, Instagram, Heart, Newspaper, ArrowRight } from 'lucide-react';
-import { useBrands } from '@/hooks/useBrands';
+import { useSystemBrandsLogic } from '@/hooks/SystemBrandsLogic';
 import { slugify } from '@/utils/slugs';
 import { motion } from 'framer-motion';
 
 export const Footer = () => {
-    const { brands } = useBrands();
+    const { brands } = useSystemBrandsLogic();
     const [activeSection, setActiveSection] = useState(0);
 
     interface FooterLink {
@@ -69,11 +69,11 @@ export const Footer = () => {
     ];
 
     return (
-        <footer className="snap-start min-h-screen flex flex-col bg-[#0b0d10] border-t border-white/5 pt-[var(--header-h)] pb-12 overflow-hidden relative text-white">
+        <footer className="snap-start min-h-screen flex flex-col bg-white dark:bg-[#0b0d10] border-t border-slate-200 dark:border-white/5 pt-[var(--header-h)] pb-12 overflow-hidden relative text-slate-900 dark:text-white transition-colors duration-500">
             {/* Ambient Background Glows - SIGNATURE CARBON GOLD THEME */}
             <div className="absolute inset-0 z-0 pointer-events-none">
-                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-zinc-800/20 blur-[150px] rounded-full" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#F4B000]/5 blur-[150px] rounded-full" />
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-zinc-200/50 dark:bg-zinc-800/20 blur-[150px] rounded-full" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#F4B000]/10 dark:bg-[#F4B000]/5 blur-[150px] rounded-full" />
             </div>
 
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-white/5 to-transparent" />
@@ -95,9 +95,9 @@ export const Footer = () => {
                                     The Final Chapter
                                 </p>
                             </div>
-                            <h3 className="text-6xl md:text-8xl font-black uppercase tracking-tighter text-white leading-[0.85] italic drop-shadow-2xl">
+                            <h3 className="text-6xl md:text-8xl font-black uppercase tracking-tighter text-slate-900 dark:text-white leading-[0.85] italic transition-colors">
                                 Redefining <br />{' '}
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-zinc-500">
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-500 dark:from-white dark:to-zinc-500">
                                     How India Rides.
                                 </span>
                             </h3>
@@ -119,19 +119,19 @@ export const Footer = () => {
                                     onMouseEnter={() => setActiveSection(idx)}
                                     onClick={() => setActiveSection(idx)}
                                     className={`relative rounded-[2rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between flex-shrink-0 lg:flex-shrink snap-center ${isActive
-                                        ? `w-[300px] lg:w-auto lg:flex-[3] bg-gradient-to-br ${section.gradient} text-white border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.5)]`
-                                        : 'w-[80px] lg:w-auto lg:flex-[1] bg-white/5 border-white/5 text-zinc-500 hover:bg-white/10'
+                                        ? `w-[300px] lg:w-auto lg:flex-[3] bg-white dark:bg-zinc-900 text-slate-900 dark:text-white border-slate-200 dark:border-white/10 shadow-2xl dark:shadow-[0_0_80px_rgba(0,0,0,0.5)]`
+                                        : 'w-[80px] lg:w-auto lg:flex-[1] bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/5 text-zinc-400 dark:text-zinc-500 hover:bg-slate-100 dark:hover:bg-white/10'
                                         }`}
                                 >
                                     <div className="absolute inset-0 p-8 flex flex-col justify-between">
                                         {/* Header / Vertical Title */}
                                         <div className="flex justify-between items-start">
                                             <span
-                                                className={`text-xs font-black uppercase tracking-[0.2em] transition-colors ${isActive ? 'text-white/80' : 'text-zinc-500'}`}
+                                                className={`text-xs font-black uppercase tracking-[0.2em] transition-colors ${isActive ? 'text-slate-900/60 dark:text-white/80' : 'text-slate-400 dark:text-zinc-500'}`}
                                             >
                                                 {`0${idx + 1}`}
                                             </span>
-                                            {isActive && <ArrowRight className="text-white -rotate-45" />}
+                                            {isActive && <ArrowRight className="text-slate-900 dark:text-white -rotate-45" />}
                                         </div>
 
                                         {/* Content Area */}
@@ -140,7 +140,7 @@ export const Footer = () => {
                                             <div
                                                 className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 pointer-events-none transition-all duration-500 ${!isActive ? 'opacity-100' : 'opacity-0'}`}
                                             >
-                                                <span className="text-4xl font-black uppercase tracking-widest text-white/20 whitespace-nowrap">
+                                                <span className="text-4xl font-black uppercase tracking-widest text-slate-200 dark:text-white/20 whitespace-nowrap">
                                                     {section.title}
                                                 </span>
                                             </div>
@@ -158,8 +158,8 @@ export const Footer = () => {
                                                             <Link
                                                                 href={link.href}
                                                                 className={`text-lg font-medium transition-colors flex items-center gap-2 group/link ${link.highlight
-                                                                    ? 'text-white hover:text-white/80 underline decoration-white/30'
-                                                                    : 'text-zinc-400 hover:text-white'
+                                                                    ? 'text-slate-900 dark:text-white hover:text-slate-700 dark:hover:text-white/80 underline decoration-slate-300 dark:decoration-white/30'
+                                                                    : 'text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
                                                                     }`}
                                                             >
                                                                 {link.label}

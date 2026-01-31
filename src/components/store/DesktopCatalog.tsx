@@ -24,7 +24,7 @@ import { buildProductUrl } from '@/lib/utils/urlHelper';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 
 import { BRANDS as defaultBrands } from '@/config/market';
-import { useCatalog } from '@/hooks/useCatalog';
+import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import type { useCatalogFilters } from '@/hooks/useCatalogFilters';
 import { getStableReviewCount } from '@/utils/vehicleUtils';
 import type { ProductVariant } from '@/types/productMaster';
@@ -37,7 +37,7 @@ import { removeLocationCookie } from '@/actions/locationCookie';
 
 type CatalogFilters = ReturnType<typeof useCatalogFilters>;
 
-interface CatalogDesktopProps {
+interface DesktopCatalogProps {
     filters: CatalogFilters;
     variant?: 'default' | 'tv';
     initialItems?: ProductVariant[]; // Added for SSR Hydration
@@ -473,11 +473,10 @@ export const ProductCard = ({
                         initial={{ scale: 0.9, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         transition={{ duration: 0.3 }}
-                        className={`absolute top-4 left-4 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border shadow-lg ${
-                            bestOffer.price < 0
+                        className={`absolute top-4 left-4 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border shadow-lg ${bestOffer.price < 0
                                 ? 'bg-emerald-500 dark:bg-emerald-600 text-white border-emerald-400/30'
                                 : 'bg-rose-500 dark:bg-rose-600 text-white border-rose-400/30'
-                        }`}
+                            }`}
                     >
                         <motion.div
                             animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.2, 1] }}
@@ -726,15 +725,15 @@ export const ProductCard = ({
 
 // ... ProductCard ends above ...
 
-export const MasterCatalog = ({
+export const DesktopCatalog = ({
     filters,
     variant: _variant = 'default',
     initialItems = [],
     leadId,
     basePath = '/store',
-}: CatalogDesktopProps) => {
+}: DesktopCatalogProps) => {
     // 1. Initialize with SSR Data (Instant Render)
-    const { items: clientItems, isLoading: isClientLoading } = useCatalog();
+    const { items: clientItems, isLoading: isClientLoading } = useSystemCatalogLogic();
 
     // Prefer client items once loaded, otherwise show server items
     const displayItems = clientItems.length > 0 ? clientItems : initialItems;
@@ -1179,11 +1178,10 @@ export const MasterCatalog = ({
                                 <button
                                     key={opt}
                                     onClick={() => onToggle(opt)}
-                                    className={`group relative flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${
-                                        selectedValues.includes(opt)
+                                    className={`group relative flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${selectedValues.includes(opt)
                                             ? 'bg-brand-primary/10 border-brand-primary/50 shadow-sm'
                                             : 'bg-white dark:bg-white/[0.02] border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/20'
-                                    }`}
+                                        }`}
                                 >
                                     <span
                                         className={`text-[10px] font-black uppercase tracking-widest italic transition-colors ${selectedValues.includes(opt) ? 'text-slate-900 dark:text-brand-primary' : 'text-slate-500 dark:text-slate-300 group-hover:text-slate-800 dark:hover:text-slate-100'}`}
@@ -1290,11 +1288,10 @@ export const MasterCatalog = ({
                                 <div className="flex items-center gap-2 overflow-x-auto no-scrollbar mask-gradient-right">
                                     <button
                                         onClick={() => setSelectedBodyTypes([])}
-                                        className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
-                                            activeCategory === 'ALL'
+                                        className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeCategory === 'ALL'
                                                 ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-md'
                                                 : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10'
-                                        }`}
+                                            }`}
                                     >
                                         All Types
                                     </button>
@@ -1304,11 +1301,10 @@ export const MasterCatalog = ({
                                             onClick={() =>
                                                 setSelectedBodyTypes(activeCategory === option ? [] : [option])
                                             }
-                                            className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
-                                                activeCategory === option
+                                            className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeCategory === option
                                                     ? 'bg-[#F4B000] text-black shadow-lg shadow-[#F4B000]/20 scale-105'
                                                     : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10'
-                                            }`}
+                                                }`}
                                         >
                                             {option}
                                         </button>
@@ -1337,11 +1333,10 @@ export const MasterCatalog = ({
 
                                     <button
                                         onClick={() => setIsFilterOpen(true)}
-                                        className={`relative flex items-center gap-2 px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all ${
-                                            activeFilterCount > 0
+                                        className={`relative flex items-center gap-2 px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all ${activeFilterCount > 0
                                                 ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-md'
                                                 : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/10 hover:text-slate-900 dark:hover:text-white'
-                                        }`}
+                                            }`}
                                     >
                                         <SlidersHorizontal size={12} strokeWidth={2.5} />
                                         <span className="hidden sm:inline">Filters</span>
@@ -1489,11 +1484,10 @@ export const MasterCatalog = ({
                                                             <button
                                                                 key={t}
                                                                 onClick={() => setTenure(t)}
-                                                                className={`py-3 rounded-2xl text-[10px] font-black transition-all duration-300 ${
-                                                                    tenure === t
+                                                                className={`py-3 rounded-2xl text-[10px] font-black transition-all duration-300 ${tenure === t
                                                                         ? 'bg-slate-900 dark:bg-brand-primary text-white dark:text-black shadow-lg scale-105 ring-2 ring-brand-primary/20'
                                                                         : 'bg-white/50 dark:bg-slate-800/30 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-white dark:hover:bg-slate-800 shadow-sm'
-                                                                }`}
+                                                                    }`}
                                                             >
                                                                 {t.toString().padStart(2, '0')}
                                                             </button>
@@ -1623,121 +1617,120 @@ export const MasterCatalog = ({
                             selectedWheels.length > 0 ||
                             selectedFinishes.length > 0 ||
                             selectedSeatHeight.length > 0) && (
-                            <div className="flex flex-wrap items-center gap-2">
-                                {searchQuery && (
-                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full">
-                                        <span className="text-[9px] font-black uppercase text-slate-400">Search</span>
-                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                            {searchQuery}
-                                        </span>
-                                        <button
-                                            onClick={() => setSearchQuery('')}
-                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                <div className="flex flex-wrap items-center gap-2">
+                                    {searchQuery && (
+                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full">
+                                            <span className="text-[9px] font-black uppercase text-slate-400">Search</span>
+                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                                {searchQuery}
+                                            </span>
+                                            <button
+                                                onClick={() => setSearchQuery('')}
+                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                            >
+                                                <X size={10} />
+                                            </button>
+                                        </div>
+                                    )}
+                                    {selectedCC.map((cc: string) => (
+                                        <div
+                                            key={cc}
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
                                         >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                )}
-                                {selectedCC.map((cc: string) => (
-                                    <div
-                                        key={cc}
-                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
+                                            <span className="text-[9px] font-black uppercase text-slate-400">CC</span>
+                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                                {cc}
+                                            </span>
+                                            <button
+                                                onClick={() => toggleFilter(setSelectedCC, cc)}
+                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                            >
+                                                <X size={10} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {selectedFinishes.map((finish: string) => (
+                                        <div
+                                            key={finish}
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
+                                        >
+                                            <span className="text-[9px] font-black uppercase text-slate-400">Finish</span>
+                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                                {finish}
+                                            </span>
+                                            <button
+                                                onClick={() => toggleFilter(setSelectedFinishes, finish)}
+                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                            >
+                                                <X size={10} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {selectedSeatHeight.map((sh: string) => (
+                                        <div
+                                            key={sh}
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
+                                        >
+                                            <span className="text-[9px] font-black uppercase text-slate-400">Seat</span>
+                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                                {sh}
+                                            </span>
+                                            <button
+                                                onClick={() => toggleFilter(setSelectedSeatHeight, sh)}
+                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                            >
+                                                <X size={10} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {selectedBrakes.map((brake: string) => (
+                                        <div
+                                            key={brake}
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
+                                        >
+                                            <span className="text-[9px] font-black uppercase text-slate-400">Brakes</span>
+                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                                {brake}
+                                            </span>
+                                            <button
+                                                onClick={() => toggleFilter(setSelectedBrakes, brake)}
+                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                            >
+                                                <X size={10} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {selectedWheels.map((wheel: string) => (
+                                        <div
+                                            key={wheel}
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
+                                        >
+                                            <span className="text-[9px] font-black uppercase text-slate-400">Wheels</span>
+                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                                {wheel}
+                                            </span>
+                                            <button
+                                                onClick={() => toggleFilter(setSelectedWheels, wheel)}
+                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                            >
+                                                <X size={10} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    <button
+                                        onClick={clearAll}
+                                        className="text-[9px] font-black uppercase tracking-widest text-brand-primary hover:text-slate-900 dark:hover:text-white transition-colors px-3 ml-2"
                                     >
-                                        <span className="text-[9px] font-black uppercase text-slate-400">CC</span>
-                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                            {cc}
-                                        </span>
-                                        <button
-                                            onClick={() => toggleFilter(setSelectedCC, cc)}
-                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                ))}
-                                {selectedFinishes.map((finish: string) => (
-                                    <div
-                                        key={finish}
-                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
-                                    >
-                                        <span className="text-[9px] font-black uppercase text-slate-400">Finish</span>
-                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                            {finish}
-                                        </span>
-                                        <button
-                                            onClick={() => toggleFilter(setSelectedFinishes, finish)}
-                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                ))}
-                                {selectedSeatHeight.map((sh: string) => (
-                                    <div
-                                        key={sh}
-                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
-                                    >
-                                        <span className="text-[9px] font-black uppercase text-slate-400">Seat</span>
-                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                            {sh}
-                                        </span>
-                                        <button
-                                            onClick={() => toggleFilter(setSelectedSeatHeight, sh)}
-                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                ))}
-                                {selectedBrakes.map((brake: string) => (
-                                    <div
-                                        key={brake}
-                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
-                                    >
-                                        <span className="text-[9px] font-black uppercase text-slate-400">Brakes</span>
-                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                            {brake}
-                                        </span>
-                                        <button
-                                            onClick={() => toggleFilter(setSelectedBrakes, brake)}
-                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                ))}
-                                {selectedWheels.map((wheel: string) => (
-                                    <div
-                                        key={wheel}
-                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
-                                    >
-                                        <span className="text-[9px] font-black uppercase text-slate-400">Wheels</span>
-                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                            {wheel}
-                                        </span>
-                                        <button
-                                            onClick={() => toggleFilter(setSelectedWheels, wheel)}
-                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                ))}
-                                <button
-                                    onClick={clearAll}
-                                    className="text-[9px] font-black uppercase tracking-widest text-brand-primary hover:text-slate-900 dark:hover:text-white transition-colors px-3 ml-2"
-                                >
-                                    Clear all filters
-                                </button>
-                            </div>
-                        )}
+                                        Clear all filters
+                                    </button>
+                                </div>
+                            )}
 
                         <div
-                            className={`grid ${
-                                viewMode === 'list'
+                            className={`grid ${viewMode === 'list'
                                     ? 'grid-cols-1 w-full gap-6'
                                     : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full'
-                            }`}
+                                }`}
                         >
                             {/* Results Grid */}
                             {results.map(v => {

@@ -248,7 +248,7 @@ export default function SidebarHUD({
                                         {item.helpText && (
                                             <span className="relative group/help cursor-help">
                                                 <HelpCircle size={12} className="text-slate-400 group-hover/help:text-slate-600" />
-                                                <div className="absolute right-0 bottom-full mb-2 w-max max-w-[220px] rounded-xl bg-neutral-900 text-white text-[9px] font-black uppercase tracking-widest px-3 py-2 opacity-0 group-hover/help:opacity-100 transition-opacity pointer-events-none shadow-2xl z-50">
+                                                <div className="absolute right-0 bottom-full mb-2 w-max max-w-[220px] rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[9px] font-black uppercase tracking-widest px-3 py-2 opacity-0 group-hover/help:opacity-100 transition-opacity pointer-events-none shadow-2xl z-50">
                                                     {Array.isArray(item.helpText)
                                                         ? (
                                                             <div className="space-y-1">
@@ -384,7 +384,7 @@ export default function SidebarHUD({
                                     {item.helpText && (
                                         <div className="relative group/help cursor-help">
                                             <HelpCircle size={10} className="text-slate-400 group-hover/help:text-slate-600" />
-                                            <div className="absolute right-0 bottom-full mb-2 w-max max-w-[200px] rounded-lg bg-neutral-900 text-white text-[9px] font-bold uppercase tracking-wide px-2 py-1 opacity-0 group-hover/help:opacity-100 transition-opacity pointer-events-none shadow-xl z-50">
+                                            <div className="absolute right-0 bottom-full mb-2 w-max max-w-[200px] rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[9px] font-bold uppercase tracking-wide px-2 py-1 opacity-0 group-hover/help:opacity-100 transition-opacity pointer-events-none shadow-xl z-50">
                                                 {item.helpText}
                                             </div>
                                         </div>
