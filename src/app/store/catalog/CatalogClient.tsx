@@ -9,9 +9,10 @@ import { useSearchParams } from 'next/navigation';
 
 interface CatalogClientProps {
     initialItems: ProductVariant[];
+    basePath?: string;
 }
 
-export default function CatalogClient({ initialItems }: CatalogClientProps) {
+export default function CatalogClient({ initialItems, basePath = '/store' }: CatalogClientProps) {
     // We pass initialItems to useCatalog so it can use them as initial data
     // actually useCatalog refactor didn't explicitly take initialData yet, 
     // but MasterCatalog takes 'initialItems' prop.
@@ -32,6 +33,7 @@ export default function CatalogClient({ initialItems }: CatalogClientProps) {
             filters={filters}
             initialItems={initialItems}
             leadId={leadId || undefined}
+            basePath={basePath}
         />
     );
 }
