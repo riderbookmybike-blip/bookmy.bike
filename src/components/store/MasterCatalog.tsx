@@ -23,7 +23,6 @@ import Link from 'next/link';
 import { buildProductUrl } from '@/lib/utils/urlHelper';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 
-
 import { BRANDS as defaultBrands } from '@/config/market';
 import { useCatalog } from '@/hooks/useCatalog';
 import type { useCatalogFilters } from '@/hooks/useCatalogFilters';
@@ -76,10 +75,21 @@ export const ProductCard = ({
     viewMode: 'grid' | 'list';
     downpayment: number;
     tenure: number;
-    serviceability?: { status: 'loading' | 'serviceable' | 'unserviceable' | 'unset'; location?: string; distance?: number };
+    serviceability?: {
+        status: 'loading' | 'serviceable' | 'unserviceable' | 'unset';
+        location?: string;
+        distance?: number;
+    };
     onLocationClick?: () => void;
     isTv?: boolean;
-    bestOffer?: { price: number; dealer: string; dealerId?: string; isServiceable: boolean; bundleValue?: number; bundlePrice?: number };
+    bestOffer?: {
+        price: number;
+        dealer: string;
+        dealerId?: string;
+        isServiceable: boolean;
+        bundleValue?: number;
+        bundlePrice?: number;
+    };
 
     leadId?: string;
     basePath?: string;
@@ -91,7 +101,11 @@ export const ProductCard = ({
     const [selectedColorFlip, setSelectedColorFlip] = useState<boolean>(v.isFlipped || false);
     const [selectedColorOffsetX, setSelectedColorOffsetX] = useState<number>(v.offsetX || 0);
     const [selectedColorOffsetY, setSelectedColorOffsetY] = useState<number>(v.offsetY || 0);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [selectedHex, setSelectedHex] = useState<string | null>(() => {
+        const match = v.availableColors?.find(c => c.imageUrl === v.imageUrl) || v.availableColors?.[0];
+        return match?.hexCode || null;
+    });
+
     const [ratingCount, setRatingCount] = useState(() => {
         // Initialize with random count between 500-999 * 100
         const randomFactor = Math.floor(Math.random() * (999 - 500 + 1) + 500);
@@ -100,7 +114,7 @@ export const ProductCard = ({
 
     const marketAdjustedPrice = bestOffer
         ? (v.price?.onRoad || 0) + bestOffer.price + (bestOffer.bundlePrice || 0)
-        : (v.price?.offerPrice || v.price?.onRoad || v.price?.exShowroom || 0);
+        : v.price?.offerPrice || v.price?.onRoad || v.price?.exShowroom || 0;
     const basePrice = marketAdjustedPrice;
     const pricingLabel = serviceability?.location || v.price?.pricingSource || 'India';
     const locationLabel = pricingLabel.toUpperCase();
@@ -119,10 +133,10 @@ export const ProductCard = ({
     // Calculate savings based on source (Live Best Offer vs Server/Mapped Data)
     const bundleSavings = bestOffer
         ? Math.max(0, (bestOffer.bundleValue || 0) - (bestOffer.bundlePrice || 0))
-        : (v.price?.bundleSavings || 0);
+        : v.price?.bundleSavings || 0;
     const savings = bestOffer
         ? Math.abs(bestOffer.price) + bundleSavings
-        : (v.price?.totalSavings || (onRoad - offerPrice));
+        : v.price?.totalSavings || onRoad - offerPrice;
 
     // Continuous EMI Flip Logic
     const TENURE_OPTIONS = [12, 24, 36, 48, 60];
@@ -138,7 +152,7 @@ export const ProductCard = ({
         if (isUnserviceable) {
             e.preventDefault();
             toast.error(`Your area ${safeServiceability.location || ''} is not serviceable`, {
-                description: "We will update you once we are live in your area.",
+                description: 'We will update you once we are live in your area.',
                 duration: 5000,
             });
         }
@@ -151,7 +165,10 @@ export const ProductCard = ({
                 className="group bg-white dark:bg-[#0f1115] dark:backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden flex shadow-sm hover:shadow-2xl dark:hover:shadow-brand-primary/5 transition-all duration-500 min-h-[22rem] dark:hover:border-white/20"
             >
                 {/* Image Section - Wider */}
-                <div className="w-[38%] bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center relative p-8 shrink-0 border-r border-slate-100 dark:border-white/5 overflow-hidden group/card">
+                <div
+                    className="w-[38%] bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center relative p-8 shrink-0 border-r border-slate-100 dark:border-white/5 overflow-hidden group/card"
+                    style={{ backgroundColor: selectedHex ? `${selectedHex}4D` : undefined }}
+                >
                     {/* Vignette for depth */}
                     <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-100/50 dark:to-black/30 z-0" />
 
@@ -167,13 +184,16 @@ export const ProductCard = ({
                     />
 
                     {v.specifications?.features?.bluetooth === 'Yes' && (
-                        <div className="absolute top-4 right-4 z-20 w-8 h-8 bg-blue-500/10 dark:bg-blue-400/10 backdrop-blur-md border border-blue-200/50 dark:border-blue-500/30 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(59,130,246,0.2)]" title="Bluetooth Enabled">
+                        <div
+                            className="absolute top-4 right-4 z-20 w-8 h-8 bg-blue-500/10 dark:bg-blue-400/10 backdrop-blur-md border border-blue-200/50 dark:border-blue-500/30 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(59,130,246,0.2)]"
+                            title="Bluetooth Enabled"
+                        >
                             <Bluetooth size={16} className="text-blue-500 dark:text-blue-400 animate-pulse" />
                         </div>
                     )}
 
                     {/* Background Brand Text */}
-                    <span className="absolute font-black text-[120px] uppercase tracking-[0.2em] opacity-[0.03] dark:opacity-[0.05] italic text-slate-900 dark:text-white select-none whitespace-nowrap z-0 left-6 top-1/2 -translate-y-1/2 pointer-events-none group-hover/card:translate-x-4 transition-transform duration-1000">
+                    <span className="absolute font-black text-[120px] uppercase tracking-[0.2em] opacity-[0.1] dark:opacity-[0.15] italic text-slate-900 dark:text-white select-none whitespace-nowrap z-0 left-6 top-1/2 -translate-y-1/2 pointer-events-none group-hover/card:translate-x-4 transition-transform duration-1000">
                         {v.make}
                     </span>
                 </div>
@@ -205,13 +225,15 @@ export const ProductCard = ({
                             </p>
                         </div>
                         <button
-                            onClick={() => toggleFavorite({
-                                id: v.id,
-                                model: v.model,
-                                variant: v.variant,
-                                slug: v.slug,
-                                imageUrl: v.imageUrl
-                            })}
+                            onClick={() =>
+                                toggleFavorite({
+                                    id: v.id,
+                                    model: v.model,
+                                    variant: v.variant,
+                                    slug: v.slug,
+                                    imageUrl: v.imageUrl,
+                                })
+                            }
                             className={`w-12 h-12 border border-slate-200 dark:border-white/20 rounded-full flex items-center justify-center transition-all shadow-sm ${isSaved ? 'bg-rose-50 dark:bg-rose-500/20 border-rose-200 dark:border-rose-500/40 text-rose-500' : 'text-slate-400 hover:text-rose-500 bg-white dark:bg-white/10 dark:hover:bg-white/20'}`}
                             title={isSaved ? 'Saved to Wishlist' : 'Save to Wishlist'}
                         >
@@ -221,22 +243,41 @@ export const ProductCard = ({
 
                     <div className="grid grid-cols-2 gap-y-4 gap-x-12 py-6 border-y border-slate-100 dark:border-white/10 relative z-10 mt-4 bg-slate-50/30 dark:bg-white/[0.02] -mx-10 px-10">
                         <div className="space-y-1">
-                            <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Engine</p>
-                            <p className="text-sm font-black text-slate-900 dark:text-white">{Math.round(v.displacement || 0)}{v.powerUnit || 'CC'}</p>
+                            <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                Engine
+                            </p>
+                            <p className="text-sm font-black text-slate-900 dark:text-white">
+                                {Math.round(v.displacement || 0)}
+                                {v.powerUnit || 'CC'}
+                            </p>
                         </div>
                         <div className="space-y-1">
-                            <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Seat Height</p>
-                            <p className="text-sm font-black text-slate-900 dark:text-white truncate">{v.specifications?.dimensions?.seatHeight || '-'}</p>
+                            <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                Seat Height
+                            </p>
+                            <p className="text-sm font-black text-slate-900 dark:text-white truncate">
+                                {v.specifications?.dimensions?.seatHeight || '-'}
+                            </p>
                         </div>
                         <div className="space-y-1">
-                            <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Weight</p>
-                            <p className="text-sm font-black text-slate-900 dark:text-white italic">{v.specifications?.dimensions?.kerbWeight || v.specifications?.dimensions?.curbWeight || '-'}</p>
+                            <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                Weight
+                            </p>
+                            <p className="text-sm font-black text-slate-900 dark:text-white italic">
+                                {v.specifications?.dimensions?.kerbWeight ||
+                                    v.specifications?.dimensions?.curbWeight ||
+                                    '-'}
+                            </p>
                         </div>
                         <div className="space-y-1">
-                            <p className={`text-[8px] font-black uppercase tracking-widest ${savings >= 0 ? 'text-emerald-500/80' : 'text-rose-500/80'}`}>
+                            <p
+                                className={`text-[8px] font-black uppercase tracking-widest ${savings >= 0 ? 'text-emerald-500/80' : 'text-rose-500/80'}`}
+                            >
                                 {savings >= 0 ? 'Total Savings' : 'Price Surge'}
                             </p>
-                            <p className={`text-sm font-black ${savings >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                            <p
+                                className={`text-sm font-black ${savings >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}
+                            >
                                 {savings !== 0 ? `₹${Math.abs(savings).toLocaleString('en-IN')}` : 'No Change'}
                             </p>
                         </div>
@@ -256,7 +297,8 @@ export const ProductCard = ({
                                         {bestOffer ? (
                                             <div className="flex flex-col items-start leading-none">
                                                 <span className="text-[10px] font-bold text-green-600 dark:text-green-500 uppercase tracking-widest">
-                                                    Lowest in {v.price?.pricingSource || serviceability?.location?.split(',')[0]}
+                                                    Lowest in{' '}
+                                                    {v.price?.pricingSource || serviceability?.location?.split(',')[0]}
                                                 </span>
                                                 <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                                                     by {bestOffer.dealer}
@@ -265,14 +307,16 @@ export const ProductCard = ({
                                         ) : v.studioName ? (
                                             <div className="flex flex-col items-start leading-none">
                                                 <span className="text-[10px] font-bold text-green-600 dark:text-green-500 uppercase tracking-widest">
-                                                    Price for {v.price?.pricingSource || serviceability?.location?.split(',')[0]}
+                                                    Price for{' '}
+                                                    {v.price?.pricingSource || serviceability?.location?.split(',')[0]}
                                                 </span>
                                                 <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                                                     by {v.studioName}
                                                 </span>
                                             </div>
                                         ) : (
-                                            v.price?.offerPrice && v.price?.onRoad && (
+                                            v.price?.offerPrice &&
+                                            v.price?.onRoad && (
                                                 <div className="flex flex-col">
                                                     <span className="text-[10px] font-bold text-slate-400 line-through">
                                                         ₹{v.price.onRoad.toLocaleString('en-IN')}
@@ -316,10 +360,16 @@ export const ProductCard = ({
                                         <div className="absolute bottom-full left-0 mb-2 w-52 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-[10px] text-slate-700 dark:text-slate-200 shadow-xl opacity-0 invisible group-hover/location:opacity-100 group-hover/location:visible transition-all duration-200 pointer-events-none">
                                             <div className="px-3 py-2 space-y-1">
                                                 <p className="font-bold uppercase tracking-widest text-slate-500">
-                                                    Studio ID: <span className="text-slate-900 dark:text-white">{dealerLabelDisplay}</span>
+                                                    Studio ID:{' '}
+                                                    <span className="text-slate-900 dark:text-white">
+                                                        {dealerLabelDisplay}
+                                                    </span>
                                                 </p>
                                                 <p className="font-bold uppercase tracking-widest text-slate-500">
-                                                    District: <span className="text-slate-900 dark:text-white">{districtLabelDisplay}</span>
+                                                    District:{' '}
+                                                    <span className="text-slate-900 dark:text-white">
+                                                        {districtLabelDisplay}
+                                                    </span>
                                                 </p>
                                             </div>
                                             <div className="absolute bottom-0 left-6 translate-y-1/2 rotate-45 w-2.5 h-2.5 bg-white dark:bg-slate-900 border-b border-r border-slate-200 dark:border-white/10" />
@@ -338,14 +388,19 @@ export const ProductCard = ({
                                 </button>
                             ) : (
                                 <Link
-                                    href={buildProductUrl({
-                                        make: v.make,
-                                        model: v.model,
-                                        variant: v.variant,
-                                        pincode: serviceability?.status === 'serviceable' ? serviceability.location : undefined,
-                                        leadId: leadId,
-                                        basePath
-                                    }).url}
+                                    href={
+                                        buildProductUrl({
+                                            make: v.make,
+                                            model: v.model,
+                                            variant: v.variant,
+                                            pincode:
+                                                serviceability?.status === 'serviceable'
+                                                    ? serviceability.location
+                                                    : undefined,
+                                            leadId: leadId,
+                                            basePath,
+                                        }).url
+                                    }
                                     className="px-10 py-4 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(244,176,0,0.3)] hover:shadow-[0_0_30px_rgba(244,176,0,0.5)] hover:-translate-y-1 transition-all"
                                 >
                                     Know More
@@ -354,7 +409,7 @@ export const ProductCard = ({
                         </div>
                     </div>
                 </div>
-            </div >
+            </div>
         );
     }
 
@@ -366,16 +421,17 @@ export const ProductCard = ({
         <div
             key={v.id}
             onClick={handleCardClick}
-            className={`group bg-white dark:bg-[#0f1115] border border-black/[0.04] dark:border-white/10 rounded-[2rem] overflow-hidden flex flex-col shadow-[0_1px_2px_rgba(0,0,0,0.02),0_4px_12px_rgba(0,0,0,0.03),0_12px_24px_-4px_rgba(0,0,0,0.08)] dark:shadow-none hover:shadow-[0_20px_40px_-12px_rgba(244,176,0,0.15)] hover:border-brand-primary/30 transition-all duration-700 hover:-translate-y-2 ${isTv ? 'min-h-[640px]' : 'min-h-[520px] md:min-h-[660px]'}`}
+            className={`group bg-white dark:bg-[#0f1115] border border-black/[0.04] dark:border-white/10 rounded-[2rem] overflow-hidden flex flex-col shadow-[0_1px_2px_rgba(0,0,0,0.02),0_4px_12px_rgba(0,0,0,0.03),0_12px_24px_-4px_rgba(0,0,0,0.08)] dark:shadow-none hover:shadow-[0_20px_40px_-12px_rgba(244,176,0,0.15)] hover:border-brand-primary/30 transition-all duration-700 hover:-translate-y-2 ${isTv ? 'min-h-[640px]' : 'min-h-[580px] md:min-h-[660px]'}`}
         >
             <div
-                className="h-[240px] md:h-[344px] lg:h-[384px] bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center relative p-4 border-b border-black/[0.04] dark:border-white/5 overflow-hidden group/card"
+                className="h-[340px] md:h-[344px] lg:h-[384px] bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center relative p-4 border-b border-black/[0.04] dark:border-white/5 overflow-hidden group/card"
+                style={{ backgroundColor: selectedHex ? `${selectedHex}4D` : undefined }}
             >
                 <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-white/10 dark:to-black/30 z-0" />
 
                 <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
                     {/* Primary Discount Pill (from catalog data) */}
-                    {((v.price?.discount || 0) > 0) && !bestOffer && (
+                    {(v.price?.discount || 0) > 0 && !bestOffer && (
                         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 dark:bg-emerald-600 text-white rounded-xl shadow-[0_4px_12px_rgba(16,185,129,0.3)] border border-emerald-400/30 transition-all hover:scale-105">
                             <Zap size={10} className="fill-white text-white" />
                             <span className="text-[10px] font-black uppercase tracking-wider">
@@ -387,14 +443,14 @@ export const ProductCard = ({
 
                 <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
                     <button
-                        onClick={(e) => {
+                        onClick={e => {
                             e.stopPropagation();
                             toggleFavorite({
                                 id: v.id,
                                 model: v.model,
                                 variant: v.variant,
                                 slug: v.slug,
-                                imageUrl: v.imageUrl
+                                imageUrl: v.imageUrl,
                             });
                             toast.success(isSaved ? 'Removed from Wishlist' : 'Added to Wishlist');
                         }}
@@ -405,7 +461,7 @@ export const ProductCard = ({
                             key={isSaved ? 'saved' : 'unsaved'}
                             initial={{ scale: 0.8 }}
                             animate={{ scale: isSaved ? [1, 1.4, 1] : 1 }}
-                            transition={{ duration: 0.3, ease: "backOut" }}
+                            transition={{ duration: 0.3, ease: 'backOut' }}
                         >
                             <Heart size={14} className={isSaved ? 'fill-current' : ''} />
                         </motion.div>
@@ -417,30 +473,38 @@ export const ProductCard = ({
                         initial={{ scale: 0.9, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         transition={{ duration: 0.3 }}
-                        className={`absolute top-4 left-4 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border shadow-lg ${bestOffer.price < 0
-                            ? 'bg-emerald-500 dark:bg-emerald-600 text-white border-emerald-400/30'
-                            : 'bg-rose-500 dark:bg-rose-600 text-white border-rose-400/30'
-                            }`}
+                        className={`absolute top-4 left-4 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border shadow-lg ${
+                            bestOffer.price < 0
+                                ? 'bg-emerald-500 dark:bg-emerald-600 text-white border-emerald-400/30'
+                                : 'bg-rose-500 dark:bg-rose-600 text-white border-rose-400/30'
+                        }`}
                     >
                         <motion.div
                             animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.2, 1] }}
-                            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                            transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
                             className="flex items-center justify-center"
                         >
                             {bestOffer.price < 0 ? (
-                                <Sparkles size={12} className="fill-white text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+                                <Sparkles
+                                    size={12}
+                                    className="fill-white text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]"
+                                />
                             ) : (
-                                <Zap size={12} className="fill-white text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+                                <Zap
+                                    size={12}
+                                    className="fill-white text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]"
+                                />
                             )}
                         </motion.div>
                         <span className="text-[10px] font-black uppercase tracking-wider relative z-10">
-                            {bestOffer.price < 0 ? 'SAVE' : 'SURGE'} ₹{Math.abs(bestOffer.price).toLocaleString('en-IN')}
+                            {bestOffer.price < 0 ? 'SAVE' : 'SURGE'} ₹
+                            {Math.abs(bestOffer.price).toLocaleString('en-IN')}
                         </span>
                         {/* Shimmer Effect */}
                         <div className="absolute inset-0 w-full h-full overflow-hidden rounded-xl pointer-events-none">
                             <motion.div
                                 animate={{ x: ['-150%', '300%'] }}
-                                transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
+                                transition={{ duration: 2.5, repeat: Infinity, ease: 'linear' }}
                                 className="w-1/3 h-full bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12"
                             />
                         </div>
@@ -448,16 +512,16 @@ export const ProductCard = ({
                 )}
 
                 <motion.img
-                    initial={{ scale: 1.05, opacity: 0 }}
+                    initial={{ scale: 1.15, opacity: 0 }}
                     animate={{
-                        scale: selectedColorZoom !== null ? selectedColorZoom : (v.zoomFactor || 1.0),
+                        scale: selectedColorZoom !== null ? selectedColorZoom : v.zoomFactor || 1.15,
                         scaleX: (selectedColorFlip !== undefined ? selectedColorFlip : v.isFlipped) ? -1 : 1,
-                        x: selectedColorOffsetX !== undefined ? selectedColorOffsetX : (v.offsetX || 0),
-                        y: selectedColorOffsetY !== undefined ? selectedColorOffsetY : (v.offsetY || 0),
-                        opacity: 1
+                        x: selectedColorOffsetX !== undefined ? selectedColorOffsetX : v.offsetX || 0,
+                        y: selectedColorOffsetY !== undefined ? selectedColorOffsetY : v.offsetY || 0,
+                        opacity: 1,
                     }}
-                    whileHover={{ scale: (selectedColorZoom || v.zoomFactor || 1.0) + 0.05 }}
-                    transition={{ duration: 0.5, ease: "easeOut" }}
+                    whileHover={{ scale: (selectedColorZoom || v.zoomFactor || 1.15) + 0.05 }}
+                    transition={{ duration: 0.5, ease: 'easeOut' }}
                     src={
                         selectedColorImage ||
                         v.imageUrl ||
@@ -466,16 +530,18 @@ export const ProductCard = ({
                             : '/images/categories/motorcycle_nobg.png')
                     }
                     alt={v.model}
-                    className="absolute bottom-2 left-1/2 -translate-x-1/2 w-[92%] h-[92%] object-contain z-10"
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full object-contain z-10"
                 />
 
                 {/* Very Light Brand Watermark */}
-                <span className="absolute font-black text-[70px] uppercase tracking-[0.2em] opacity-[0.03] dark:opacity-[0.05] italic text-slate-900 dark:text-white select-none whitespace-nowrap z-0 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+                <span className="absolute font-black text-[70px] uppercase tracking-[0.2em] opacity-[0.1] dark:opacity-[0.15] italic text-slate-900 dark:text-white select-none whitespace-nowrap z-0 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
                     {v.make}
                 </span>
             </div>
 
-            <div className={`${isTv ? 'p-5' : 'p-3 md:p-6'} flex-1 flex flex-col justify-between relative overflow-hidden bg-[#FAFAFA] dark:bg-[#0f1115]`}>
+            <div
+                className={`${isTv ? 'p-5' : 'p-3 md:p-6'} flex-1 flex flex-col justify-between relative overflow-hidden bg-[#FAFAFA] dark:bg-[#0f1115]`}
+            >
                 <div className="relative z-10">
                     <div className="flex items-center justify-between">
                         <h3
@@ -489,7 +555,7 @@ export const ProductCard = ({
                                 {v.availableColors.slice(0, 3).map((c, i) => (
                                     <div
                                         key={i}
-                                        onClick={(e) => {
+                                        onClick={e => {
                                             e.stopPropagation();
                                             if (c.imageUrl) {
                                                 setSelectedColorImage(c.imageUrl);
@@ -497,6 +563,9 @@ export const ProductCard = ({
                                                 setSelectedColorFlip(c.isFlipped || false);
                                                 setSelectedColorOffsetX(c.offsetX || 0);
                                                 setSelectedColorOffsetY(c.offsetY || 0);
+                                            }
+                                            if (c.hexCode) {
+                                                setSelectedHex(c.hexCode);
                                             }
                                         }}
                                         className="w-5 h-5 rounded-full border border-white dark:border-slate-900 shadow-sm relative cursor-pointer hover:scale-125 transition-transform"
@@ -519,11 +588,17 @@ export const ProductCard = ({
                         </p>
                         {v.suitableFor && (
                             <div className="flex flex-wrap gap-1 mt-2">
-                                {v.suitableFor.split(',').filter(Boolean).map((tag) => (
-                                    <span key={tag} className="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-md text-[8px] font-black uppercase tracking-wider border border-indigo-100 dark:border-indigo-800/50 italic">
-                                        {tag.trim()}
-                                    </span>
-                                ))}
+                                {v.suitableFor
+                                    .split(',')
+                                    .filter(Boolean)
+                                    .map(tag => (
+                                        <span
+                                            key={tag}
+                                            className="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-md text-[8px] font-black uppercase tracking-wider border border-indigo-100 dark:border-indigo-800/50 italic"
+                                        >
+                                            {tag.trim()}
+                                        </span>
+                                    ))}
                             </div>
                         )}
                     </div>
@@ -549,10 +624,16 @@ export const ProductCard = ({
                                     <div className="absolute bottom-full left-0 mb-2 w-52 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-[10px] text-slate-700 dark:text-slate-200 shadow-xl opacity-0 invisible group-hover/location:opacity-100 group-hover/location:visible transition-all duration-200 pointer-events-none z-50">
                                         <div className="px-3 py-2 space-y-1">
                                             <p className="font-bold uppercase tracking-widest text-slate-500">
-                                                Studio ID: <span className="text-slate-900 dark:text-white">{dealerLabelDisplay}</span>
+                                                Studio ID:{' '}
+                                                <span className="text-slate-900 dark:text-white">
+                                                    {dealerLabelDisplay}
+                                                </span>
                                             </p>
                                             <p className="font-bold uppercase tracking-widest text-slate-500">
-                                                District: <span className="text-slate-900 dark:text-white">{districtLabelDisplay}</span>
+                                                District:{' '}
+                                                <span className="text-slate-900 dark:text-white">
+                                                    {districtLabelDisplay}
+                                                </span>
                                             </p>
                                         </div>
                                         <div className="absolute bottom-0 left-6 translate-y-1/2 rotate-45 w-2.5 h-2.5 bg-white dark:bg-slate-900 border-b border-r border-slate-200 dark:border-white/10" />
@@ -568,20 +649,30 @@ export const ProductCard = ({
                     </div>
                     <div className="flex flex-col items-end group/emi relative">
                         <div className="flex items-center gap-1 mb-0.5">
-                            <p className="text-[10px] font-black text-green-600 dark:text-green-500 uppercase tracking-widest italic">Lowest EMI</p>
-                            <CircleHelp size={12} className="text-slate-400 group-hover/emi:text-green-500 transition-colors cursor-help" />
+                            <p className="text-[10px] font-black text-green-600 dark:text-green-500 uppercase tracking-widest italic">
+                                Lowest EMI
+                            </p>
+                            <CircleHelp
+                                size={12}
+                                className="text-slate-400 group-hover/emi:text-green-500 transition-colors cursor-help"
+                            />
                         </div>
                         <div className="flex items-baseline gap-1">
-                            <span className="text-xl md:text-2xl font-black text-green-600 dark:text-green-500 italic">₹{emiValue.toLocaleString('en-IN')}</span>
+                            <span className="text-xl md:text-2xl font-black text-green-600 dark:text-green-500 italic">
+                                ₹{emiValue.toLocaleString('en-IN')}
+                            </span>
                             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">/mo</span>
                         </div>
                         {/* EMI Tooltip */}
                         <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-slate-900 dark:bg-slate-800 text-white text-[10px] rounded-xl shadow-xl opacity-0 invisible group-hover/emi:opacity-100 group-hover/emi:visible transition-all duration-200 z-50 pointer-events-none">
                             <p className="leading-relaxed">
-                                This EMI is calculated on <span className="font-bold text-green-400">₹{downpayment.toLocaleString('en-IN')}</span> downpayment at <span className="font-bold text-green-400">{tenure} months</span>.
+                                This EMI is calculated on{' '}
+                                <span className="font-bold text-green-400">₹{downpayment.toLocaleString('en-IN')}</span>{' '}
+                                downpayment at <span className="font-bold text-green-400">{tenure} months</span>.
                             </p>
                             <p className="mt-1.5 text-slate-300">
-                                Adjust your downpayment & tenure or set your budget from the <span className="font-bold text-brand-primary">Filters</span> above.
+                                Adjust your downpayment & tenure or set your budget from the{' '}
+                                <span className="font-bold text-brand-primary">Filters</span> above.
                             </p>
                             <div className="absolute bottom-0 right-4 translate-y-1/2 rotate-45 w-2 h-2 bg-slate-900 dark:bg-slate-800"></div>
                         </div>
@@ -589,9 +680,6 @@ export const ProductCard = ({
                 </div>
 
                 {/* Optional Mileage Line (Subtle) */}
-
-
-
 
                 <div className="mt-1.5 md:mt-4 space-y-1.5 md:space-y-2">
                     {isUnserviceable ? (
@@ -604,18 +692,24 @@ export const ProductCard = ({
                         </button>
                     ) : (
                         <Link
-                            href={buildProductUrl({
-                                make: v.make,
-                                model: v.model,
-                                variant: v.variant,
-                                pincode: serviceability?.status === 'serviceable' ? serviceability.location : undefined,
-                                leadId: leadId,
-                                basePath
-                            }).url}
+                            href={
+                                buildProductUrl({
+                                    make: v.make,
+                                    model: v.model,
+                                    variant: v.variant,
+                                    pincode:
+                                        serviceability?.status === 'serviceable' ? serviceability.location : undefined,
+                                    leadId: leadId,
+                                    basePath,
+                                }).url
+                            }
                             className="group/btn relative w-full h-10 md:h-11 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 transition-all"
                         >
                             Know More
-                            <ArrowRight size={12} className="opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all" />
+                            <ArrowRight
+                                size={12}
+                                className="opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all"
+                            />
                         </Link>
                     )}
                     <div className="flex items-center justify-center gap-2 opacity-80 pt-1">
@@ -632,14 +726,19 @@ export const ProductCard = ({
 
 // ... ProductCard ends above ...
 
-
-export const MasterCatalog = ({ filters, variant: _variant = 'default', initialItems = [], leadId, basePath = '/store' }: CatalogDesktopProps) => {
+export const MasterCatalog = ({
+    filters,
+    variant: _variant = 'default',
+    initialItems = [],
+    leadId,
+    basePath = '/store',
+}: CatalogDesktopProps) => {
     // 1. Initialize with SSR Data (Instant Render)
     const { items: clientItems, isLoading: isClientLoading } = useCatalog();
 
     // Prefer client items once loaded, otherwise show server items
     const displayItems = clientItems.length > 0 ? clientItems : initialItems;
-    // const isLoading = displayItems.length === 0 && isClientLoading; 
+    // const isLoading = displayItems.length === 0 && isClientLoading;
 
     // Destructure filters from props
     const {
@@ -674,7 +773,7 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
     } = filters;
 
     // Derived State
-    const makeOptions = (availableMakes && availableMakes.length > 0) ? availableMakes : defaultBrands;
+    const makeOptions = availableMakes && availableMakes.length > 0 ? availableMakes : defaultBrands;
     const activeCategory = selectedBodyTypes.length === 1 ? selectedBodyTypes[0] : 'ALL';
 
     // Fallback for filteredVehicles if untyped or missing
@@ -695,13 +794,25 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
         location?: string;
         district?: string;
         stateCode?: string;
-        userDistrict?: string;      // User's actual district
-        fallbackDistrict?: string;  // Nearest serviceable district if user's is not serviceable
+        userDistrict?: string; // User's actual district
+        fallbackDistrict?: string; // Nearest serviceable district if user's is not serviceable
     }>({ status: 'loading' });
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [marketOffers, setMarketOffers] = useState<Record<string, { price: number; dealer: string; dealerId?: string; isServiceable: boolean; bundleValue?: number; bundlePrice?: number }>>({});
+
+    const [marketOffers, setMarketOffers] = useState<
+        Record<
+            string,
+            {
+                price: number;
+                dealer: string;
+                dealerId?: string;
+                isServiceable: boolean;
+                bundleValue?: number;
+                bundlePrice?: number;
+            }
+        >
+    >({});
     const AUMS_DEALER_ID = 'f3e6e266-3ca5-4c67-91ce-b7cc98e30ee5';
 
     // Fetch Market Offers when Serviceability Updates
@@ -716,11 +827,22 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
 
             const { data, error } = await supabase.rpc('get_market_best_offers', {
                 p_state_code: stateCode,
-                p_district: serviceability.district || null  // Pass district if available
+                p_district: serviceability.district || null, // Pass district if available
             });
 
             if (!error && data) {
-                const offerMap: Record<string, { price: number; dealer: string; dealerId?: string; isServiceable: boolean; bundleValue?: number; bundlePrice?: number }> = {};
+                const offerMap: Record<
+                    string,
+                    {
+                        price: number;
+                        dealer: string;
+                        dealerId?: string;
+                        isServiceable: boolean;
+                        bundleValue?: number;
+                        bundlePrice?: number;
+                    }
+                > = {};
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 data.forEach((item: any) => {
                     offerMap[item.vehicle_color_id] = {
                         price: Number(item.best_offer), // Ensure number
@@ -728,7 +850,7 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                         dealerId: item.dealer_id,
                         isServiceable: item.is_serviceable,
                         bundleValue: Number(item.bundle_value || 0),
-                        bundlePrice: Number(item.bundle_price ?? item.bundle_value ?? 0)
+                        bundlePrice: Number(item.bundle_price ?? item.bundle_value ?? 0),
                     };
                 });
                 setMarketOffers(offerMap);
@@ -742,11 +864,13 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                         sampleDealerId: sampleOffer?.dealerId,
                         location: serviceability.location,
                         stateCode: serviceability.stateCode,
-                        status: serviceability.status
+                        status: serviceability.status,
                     });
 
                     // Update debug panel
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     (window as any).__BMB_DEBUG__ = {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         ...(window as any).__BMB_DEBUG__,
                         district: serviceability.location,
                         stateCode: serviceability.stateCode,
@@ -754,7 +878,7 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                         locSource: 'AUTO',
                         dealerId: sampleOffer?.dealerId,
                         studioName: sampleOffer?.dealer,
-                        marketOffersCount: Object.keys(offerMap).length
+                        marketOffersCount: Object.keys(offerMap).length,
                     };
                 }
             }
@@ -768,7 +892,9 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
             const supabase = createClient();
 
             // Tier 1: Profile Pincode (Authenticated)
-            const { data: { user } } = await supabase.auth.getUser();
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
             if (user) {
                 const { data: profile } = await supabase
                     .from('profiles')
@@ -781,7 +907,7 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                     setServiceability({
                         status: result.isServiceable ? 'serviceable' : 'unserviceable',
                         location: result.location || profile.aadhaar_pincode,
-                        stateCode: result.stateCode
+                        stateCode: result.stateCode,
                     });
                     return;
                 }
@@ -804,7 +930,7 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                             status: 'serviceable',
                             location: data.district || data.pincode,
                             district: data.district,
-                            stateCode: data.stateCode || 'MH'
+                            stateCode: data.stateCode || 'MH',
                         }));
 
                         const result = await checkServiceability(data.pincode);
@@ -814,17 +940,20 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                             status: result.isServiceable ? 'serviceable' : 'unserviceable',
                             location: displayLoc,
                             district: result.district,
-                            stateCode: result.stateCode
+                            stateCode: result.stateCode,
                         });
                         // Allow silent update of details (District/State)
-                        localStorage.setItem('bkmb_user_pincode', JSON.stringify({
-                            pincode: data.pincode,
-                            taluka: result.location || data.taluka || data.city,
-                            district: result.district,
-                            state: result.state,
-                            stateCode: result.stateCode,
-                            manuallySet: false
-                        }));
+                        localStorage.setItem(
+                            'bkmb_user_pincode',
+                            JSON.stringify({
+                                pincode: data.pincode,
+                                taluka: result.location || data.taluka || data.city,
+                                district: result.district,
+                                state: result.state,
+                                stateCode: result.stateCode,
+                                manuallySet: false,
+                            })
+                        );
                         window.dispatchEvent(new Event('locationChanged'));
                         return; // STOP HERE - don't ask for geolocation
                     }
@@ -835,100 +964,111 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
             // Tier 3: Browser Geolocation
             if (navigator.geolocation) {
                 console.log('[Location] Requesting geolocation...');
-                navigator.geolocation.getCurrentPosition(async (position) => {
-                    const { latitude, longitude } = position.coords;
-                    console.log('[Location] Geolocation success:', { latitude, longitude });
+                navigator.geolocation.getCurrentPosition(
+                    async position => {
+                        const { latitude, longitude } = position.coords;
+                        console.log('[Location] Geolocation success:', { latitude, longitude });
 
-                    try {
-                        // Use our own database to find nearest pincode - no external APIs!
-                        const supabaseClient = createClient();
-                        const { data: nearestData, error: nearestError } = await supabaseClient
-                            .rpc('get_nearest_pincode', { p_lat: latitude, p_lon: longitude });
+                        try {
+                            // Use our own database to find nearest pincode - no external APIs!
+                            const supabaseClient = createClient();
+                            const { data: nearestData, error: nearestError } = await supabaseClient.rpc(
+                                'get_nearest_pincode',
+                                { p_lat: latitude, p_lon: longitude }
+                            );
 
-                        console.log('[Location] Nearest pincode from DB:', nearestData, nearestError);
+                            console.log('[Location] Nearest pincode from DB:', nearestData, nearestError);
 
-                        if (nearestData && nearestData.length > 0) {
-                            const nearest = nearestData[0];
-                            const pincode = nearest.pincode;
-                            const stateCode = nearest.rto_code?.substring(0, 2) || 'MH';
+                            if (nearestData && nearestData.length > 0) {
+                                const nearest = nearestData[0];
+                                const pincode = nearest.pincode;
+                                const stateCode = nearest.rto_code?.substring(0, 2) || 'MH';
 
-                            // Use checkServiceability to verify and get full details
-                            const result = await checkServiceability(pincode);
-                            console.log('[Location] Serviceability result:', result);
+                                // Use checkServiceability to verify and get full details
+                                const result = await checkServiceability(pincode);
+                                console.log('[Location] Serviceability result:', result);
 
-                            const displayLoc = result.district || nearest.district || nearest.taluka || pincode;
-                            const userDist = result.district || nearest.district;
+                                const displayLoc = result.district || nearest.district || nearest.taluka || pincode;
+                                const userDist = result.district || nearest.district;
 
-                            if (result.isServiceable) {
-                                // User is in serviceable district
-                                setServiceability({
-                                    status: 'serviceable',
-                                    location: displayLoc,
-                                    district: userDist,
-                                    stateCode: result.stateCode || stateCode,
-                                    userDistrict: userDist
-                                });
-                            } else {
-                                // User in non-serviceable district - find nearest serviceable
-                                console.log('[Location] District not serviceable, finding nearest...');
-                                const { data: nearestServiceable } = await supabaseClient
-                                    .rpc('get_nearest_serviceable_district', { p_lat: latitude, p_lon: longitude });
-
-                                if (nearestServiceable && nearestServiceable.length > 0) {
-                                    const fallback = nearestServiceable[0];
-                                    console.log('[Location] Fallback district:', fallback);
+                                if (result.isServiceable) {
+                                    // User is in serviceable district
                                     setServiceability({
-                                        status: 'unserviceable',
-                                        location: fallback.district,
-                                        district: fallback.district,
-                                        stateCode: fallback.state_code?.substring(0, 2) || 'MH',
+                                        status: 'serviceable',
+                                        location: displayLoc,
+                                        district: userDist,
+                                        stateCode: result.stateCode || stateCode,
                                         userDistrict: userDist,
-                                        fallbackDistrict: fallback.district
                                     });
                                 } else {
-                                    // No serviceable district found - use Maharashtra fallback
-                                    setServiceability({
-                                        status: 'unserviceable',
-                                        location: 'MAHARASHTRA',
-                                        district: 'ALL',
-                                        stateCode: 'MH',
-                                        userDistrict: userDist,
-                                        fallbackDistrict: 'Maharashtra'
-                                    });
-                                }
-                            }
-                            localStorage.setItem('bkmb_user_pincode', JSON.stringify({
-                                pincode,
-                                taluka: result.taluka || nearest.taluka,
-                                district: result.district || nearest.district,
-                                state: result.state || nearest.state,
-                                stateCode: result.stateCode || stateCode,
-                                manuallySet: false
-                            }));
-                            return;
-                        }
+                                    // User in non-serviceable district - find nearest serviceable
+                                    console.log('[Location] District not serviceable, finding nearest...');
+                                    const { data: nearestServiceable } = await supabaseClient.rpc(
+                                        'get_nearest_serviceable_district',
+                                        { p_lat: latitude, p_lon: longitude }
+                                    );
 
-                        // Fallback if RPC fails - use state-level
-                        console.log('[Location] RPC failed, using Maharashtra fallback');
-                        setServiceability({
-                            status: 'serviceable',
-                            location: 'MAHARASHTRA',
-                            district: 'ALL',
-                            stateCode: 'MH'
-                        });
-                    } catch (err) {
-                        console.error('[Location] DB lookup error:', err);
+                                    if (nearestServiceable && nearestServiceable.length > 0) {
+                                        const fallback = nearestServiceable[0];
+                                        console.log('[Location] Fallback district:', fallback);
+                                        setServiceability({
+                                            status: 'unserviceable',
+                                            location: fallback.district,
+                                            district: fallback.district,
+                                            stateCode: fallback.state_code?.substring(0, 2) || 'MH',
+                                            userDistrict: userDist,
+                                            fallbackDistrict: fallback.district,
+                                        });
+                                    } else {
+                                        // No serviceable district found - use Maharashtra fallback
+                                        setServiceability({
+                                            status: 'unserviceable',
+                                            location: 'MAHARASHTRA',
+                                            district: 'ALL',
+                                            stateCode: 'MH',
+                                            userDistrict: userDist,
+                                            fallbackDistrict: 'Maharashtra',
+                                        });
+                                    }
+                                }
+                                localStorage.setItem(
+                                    'bkmb_user_pincode',
+                                    JSON.stringify({
+                                        pincode,
+                                        taluka: result.taluka || nearest.taluka,
+                                        district: result.district || nearest.district,
+                                        state: result.state || nearest.state,
+                                        stateCode: result.stateCode || stateCode,
+                                        manuallySet: false,
+                                    })
+                                );
+                                return;
+                            }
+
+                            // Fallback if RPC fails - use state-level
+                            console.log('[Location] RPC failed, using Maharashtra fallback');
+                            setServiceability({
+                                status: 'serviceable',
+                                location: 'MAHARASHTRA',
+                                district: 'ALL',
+                                stateCode: 'MH',
+                            });
+                        } catch (err) {
+                            console.error('[Location] DB lookup error:', err);
+                            setServiceability({ status: 'unset' });
+                        }
+                    },
+                    err => {
+                        console.error('[Location] Geolocation error:', err.code, err.message);
+                        // Set unset so user sees the prompt with button
                         setServiceability({ status: 'unset' });
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000, // 10 seconds timeout
+                        maximumAge: 300000, // Use cached location if less than 5 min old
                     }
-                }, (err) => {
-                    console.error('[Location] Geolocation error:', err.code, err.message);
-                    // Set unset so user sees the prompt with button
-                    setServiceability({ status: 'unset' });
-                }, {
-                    enableHighAccuracy: true,
-                    timeout: 10000, // 10 seconds timeout
-                    maximumAge: 300000 // Use cached location if less than 5 min old
-                });
+                );
             } else {
                 console.log('[Location] Geolocation not available, defaulting to MH');
                 setServiceability({ status: 'serviceable', location: 'MAHARASHTRA', district: 'ALL', stateCode: 'MH' });
@@ -941,8 +1081,8 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
     const activeFilterCount = useMemo(() => {
         let count = 0;
         const selectedMakeSet = new Set(selectedMakes.map(m => m.toUpperCase()));
-        const isAllMakesSelected = makeOptions.length === 0
-            || makeOptions.every(m => selectedMakeSet.has(m.toUpperCase()));
+        const isAllMakesSelected =
+            makeOptions.length === 0 || makeOptions.every(m => selectedMakeSet.has(m.toUpperCase()));
         if (!isAllMakesSelected) count++;
         if (selectedCC.length > 0) count++;
         if (selectedBrakes.length > 0) count++;
@@ -961,9 +1101,8 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
         selectedFinishes.length,
         selectedSeatHeight.length,
         maxPrice,
-        maxEMI
+        maxEMI,
     ]);
-
 
     // Keyboard handlers
     React.useEffect(() => {
@@ -1040,10 +1179,11 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                                 <button
                                     key={opt}
                                     onClick={() => onToggle(opt)}
-                                    className={`group relative flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${selectedValues.includes(opt)
-                                        ? 'bg-brand-primary/10 border-brand-primary/50 shadow-sm'
-                                        : 'bg-white dark:bg-white/[0.02] border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/20'
-                                        }`}
+                                    className={`group relative flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${
+                                        selectedValues.includes(opt)
+                                            ? 'bg-brand-primary/10 border-brand-primary/50 shadow-sm'
+                                            : 'bg-white dark:bg-white/[0.02] border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/20'
+                                    }`}
                                 >
                                     <span
                                         className={`text-[10px] font-black uppercase tracking-widest italic transition-colors ${selectedValues.includes(opt) ? 'text-slate-900 dark:text-brand-primary' : 'text-slate-500 dark:text-slate-300 group-hover:text-slate-800 dark:hover:text-slate-100'}`}
@@ -1093,12 +1233,10 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                     <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-brand-primary to-orange-500 flex items-center justify-center">
                         <MapPin size={40} className="text-white" />
                     </div>
-                    <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-3">
-                        Enable Location
-                    </h2>
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-3">Enable Location</h2>
                     <p className="text-slate-500 dark:text-slate-400 mb-6 text-sm leading-relaxed">
-                        We need your location to show accurate prices from dealers in your area.
-                        Please allow location access when prompted.
+                        We need your location to show accurate prices from dealers in your area. Please allow location
+                        access when prompted.
                     </p>
                     {serviceability.status === 'loading' && (
                         <>
@@ -1107,7 +1245,14 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                                 <span className="text-sm font-bold">Detecting location...</span>
                             </div>
                             <button
-                                onClick={() => setServiceability({ status: 'serviceable', location: 'MAHARASHTRA', district: 'ALL', stateCode: 'MH' })}
+                                onClick={() =>
+                                    setServiceability({
+                                        status: 'serviceable',
+                                        location: 'MAHARASHTRA',
+                                        district: 'ALL',
+                                        stateCode: 'MH',
+                                    })
+                                }
                                 className="mt-4 px-4 py-2 text-sm text-slate-500 hover:text-slate-900 dark:hover:text-white underline"
                             >
                                 Skip → Use Maharashtra
@@ -1116,7 +1261,14 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                     )}
                     {serviceability.status === 'unset' && (
                         <button
-                            onClick={() => setServiceability({ status: 'serviceable', location: 'MAHARASHTRA', district: 'ALL', stateCode: 'MH' })}
+                            onClick={() =>
+                                setServiceability({
+                                    status: 'serviceable',
+                                    location: 'MAHARASHTRA',
+                                    district: 'ALL',
+                                    stateCode: 'MH',
+                                })
+                            }
                             className="px-6 py-3 bg-brand-primary text-white font-bold rounded-full hover:bg-brand-primary/90 transition-colors"
                         >
                             Continue with Maharashtra
@@ -1129,7 +1281,7 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-[#0b0d10] transition-colors duration-500 font-sans">
-            <main className="flex-1 mx-auto w-full max-w-[1440px] px-6 pt-24 md:pt-40 pb-10 md:pb-16">
+            <main className="flex-1 mx-auto w-full max-w-[1440px] px-6 pt-8 md:pt-40 pb-10 md:pb-16">
                 <header className="hidden md:block sticky top-[var(--header-h)] z-40 mb-12 transition-all duration-300">
                     <div className="w-full">
                         <div className="rounded-3xl bg-slate-50/50 dark:bg-[#0b0d10]/50 backdrop-blur-xl border border-slate-200 dark:border-white/5 shadow-sm px-6 py-4">
@@ -1138,10 +1290,11 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                                 <div className="flex items-center gap-2 overflow-x-auto no-scrollbar mask-gradient-right">
                                     <button
                                         onClick={() => setSelectedBodyTypes([])}
-                                        className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeCategory === 'ALL'
-                                            ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-md'
-                                            : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10'
-                                            }`}
+                                        className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                                            activeCategory === 'ALL'
+                                                ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-md'
+                                                : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10'
+                                        }`}
                                     >
                                         All Types
                                     </button>
@@ -1151,10 +1304,11 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                                             onClick={() =>
                                                 setSelectedBodyTypes(activeCategory === option ? [] : [option])
                                             }
-                                            className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeCategory === option
-                                                ? 'bg-[#F4B000] text-black shadow-lg shadow-[#F4B000]/20 scale-105'
-                                                : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10'
-                                                }`}
+                                            className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                                                activeCategory === option
+                                                    ? 'bg-[#F4B000] text-black shadow-lg shadow-[#F4B000]/20 scale-105'
+                                                    : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10'
+                                            }`}
                                         >
                                             {option}
                                         </button>
@@ -1165,10 +1319,12 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                                 <div className="flex items-center gap-4 flex-shrink-0">
                                     {/* Sort Dropdown */}
                                     <div className="hidden md:flex items-center bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full px-3 py-2">
-                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mr-2">Sort:</span>
+                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mr-2">
+                                            Sort:
+                                        </span>
                                         <select
                                             value={sortBy}
-                                            onChange={(e) => setSortBy(e.target.value as any)}
+                                            onChange={e => setSortBy(e.target.value as 'popular' | 'price' | 'emi')}
                                             className="bg-transparent text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white focus:outline-none cursor-pointer"
                                         >
                                             <option value="popular">Popularity</option>
@@ -1181,10 +1337,11 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
 
                                     <button
                                         onClick={() => setIsFilterOpen(true)}
-                                        className={`relative flex items-center gap-2 px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all ${activeFilterCount > 0
-                                            ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-md'
-                                            : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/10 hover:text-slate-900 dark:hover:text-white'
-                                            }`}
+                                        className={`relative flex items-center gap-2 px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all ${
+                                            activeFilterCount > 0
+                                                ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-md'
+                                                : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/10 hover:text-slate-900 dark:hover:text-white'
+                                        }`}
                                     >
                                         <SlidersHorizontal size={12} strokeWidth={2.5} />
                                         <span className="hidden sm:inline">Filters</span>
@@ -1216,10 +1373,13 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                                     Your area ({serviceability.userDistrict}) is not in our delivery zone yet.
                                 </p>
                                 <p className="mt-1 text-sm text-amber-800 dark:text-amber-300">
-                                    Showing prices for <span className="font-bold">{serviceability.fallbackDistrict}</span> • You can still browse & book
+                                    Showing prices for{' '}
+                                    <span className="font-bold">{serviceability.fallbackDistrict}</span> • You can still
+                                    browse & book
                                 </p>
                                 <p className="mt-1 text-sm text-amber-700 dark:text-amber-400 flex items-center gap-1">
-                                    → Pickup from our <span className="font-bold">{serviceability.fallbackDistrict}</span> hub available!
+                                    → Pickup from our{' '}
+                                    <span className="font-bold">{serviceability.fallbackDistrict}</span> hub available!
                                 </p>
                             </div>
                         </div>
@@ -1329,10 +1489,11 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                                                             <button
                                                                 key={t}
                                                                 onClick={() => setTenure(t)}
-                                                                className={`py-3 rounded-2xl text-[10px] font-black transition-all duration-300 ${tenure === t
-                                                                    ? 'bg-slate-900 dark:bg-brand-primary text-white dark:text-black shadow-lg scale-105 ring-2 ring-brand-primary/20'
-                                                                    : 'bg-white/50 dark:bg-slate-800/30 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-white dark:hover:bg-slate-800 shadow-sm'
-                                                                    }`}
+                                                                className={`py-3 rounded-2xl text-[10px] font-black transition-all duration-300 ${
+                                                                    tenure === t
+                                                                        ? 'bg-slate-900 dark:bg-brand-primary text-white dark:text-black shadow-lg scale-105 ring-2 ring-brand-primary/20'
+                                                                        : 'bg-white/50 dark:bg-slate-800/30 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-white dark:hover:bg-slate-800 shadow-sm'
+                                                                }`}
                                                             >
                                                                 {t.toString().padStart(2, '0')}
                                                             </button>
@@ -1462,124 +1623,126 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                             selectedWheels.length > 0 ||
                             selectedFinishes.length > 0 ||
                             selectedSeatHeight.length > 0) && (
-                                <div className="flex flex-wrap items-center gap-2">
-                                    {searchQuery && (
-                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full">
-                                            <span className="text-[9px] font-black uppercase text-slate-400">Search</span>
-                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                                {searchQuery}
-                                            </span>
-                                            <button
-                                                onClick={() => setSearchQuery('')}
-                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                            >
-                                                <X size={10} />
-                                            </button>
-                                        </div>
-                                    )}
-                                    {selectedCC.map((cc: string) => (
-                                        <div
-                                            key={cc}
-                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
+                            <div className="flex flex-wrap items-center gap-2">
+                                {searchQuery && (
+                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full">
+                                        <span className="text-[9px] font-black uppercase text-slate-400">Search</span>
+                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                            {searchQuery}
+                                        </span>
+                                        <button
+                                            onClick={() => setSearchQuery('')}
+                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
                                         >
-                                            <span className="text-[9px] font-black uppercase text-slate-400">CC</span>
-                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                                {cc}
-                                            </span>
-                                            <button
-                                                onClick={() => toggleFilter(setSelectedCC, cc)}
-                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                            >
-                                                <X size={10} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                    {selectedFinishes.map((finish: string) => (
-                                        <div
-                                            key={finish}
-                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
-                                        >
-                                            <span className="text-[9px] font-black uppercase text-slate-400">Finish</span>
-                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                                {finish}
-                                            </span>
-                                            <button
-                                                onClick={() => toggleFilter(setSelectedFinishes, finish)}
-                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                            >
-                                                <X size={10} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                    {selectedSeatHeight.map((sh: string) => (
-                                        <div
-                                            key={sh}
-                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
-                                        >
-                                            <span className="text-[9px] font-black uppercase text-slate-400">Seat</span>
-                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                                {sh}
-                                            </span>
-                                            <button
-                                                onClick={() => toggleFilter(setSelectedSeatHeight, sh)}
-                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                            >
-                                                <X size={10} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                    {selectedBrakes.map((brake: string) => (
-                                        <div
-                                            key={brake}
-                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
-                                        >
-                                            <span className="text-[9px] font-black uppercase text-slate-400">Brakes</span>
-                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                                {brake}
-                                            </span>
-                                            <button
-                                                onClick={() => toggleFilter(setSelectedBrakes, brake)}
-                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                            >
-                                                <X size={10} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                    {selectedWheels.map((wheel: string) => (
-                                        <div
-                                            key={wheel}
-                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
-                                        >
-                                            <span className="text-[9px] font-black uppercase text-slate-400">Wheels</span>
-                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                                {wheel}
-                                            </span>
-                                            <button
-                                                onClick={() => toggleFilter(setSelectedWheels, wheel)}
-                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                            >
-                                                <X size={10} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                    <button
-                                        onClick={clearAll}
-                                        className="text-[9px] font-black uppercase tracking-widest text-brand-primary hover:text-slate-900 dark:hover:text-white transition-colors px-3 ml-2"
+                                            <X size={10} />
+                                        </button>
+                                    </div>
+                                )}
+                                {selectedCC.map((cc: string) => (
+                                    <div
+                                        key={cc}
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
                                     >
-                                        Clear all filters
-                                    </button>
-                                </div>
-                            )}
+                                        <span className="text-[9px] font-black uppercase text-slate-400">CC</span>
+                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                            {cc}
+                                        </span>
+                                        <button
+                                            onClick={() => toggleFilter(setSelectedCC, cc)}
+                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                        >
+                                            <X size={10} />
+                                        </button>
+                                    </div>
+                                ))}
+                                {selectedFinishes.map((finish: string) => (
+                                    <div
+                                        key={finish}
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
+                                    >
+                                        <span className="text-[9px] font-black uppercase text-slate-400">Finish</span>
+                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                            {finish}
+                                        </span>
+                                        <button
+                                            onClick={() => toggleFilter(setSelectedFinishes, finish)}
+                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                        >
+                                            <X size={10} />
+                                        </button>
+                                    </div>
+                                ))}
+                                {selectedSeatHeight.map((sh: string) => (
+                                    <div
+                                        key={sh}
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
+                                    >
+                                        <span className="text-[9px] font-black uppercase text-slate-400">Seat</span>
+                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                            {sh}
+                                        </span>
+                                        <button
+                                            onClick={() => toggleFilter(setSelectedSeatHeight, sh)}
+                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                        >
+                                            <X size={10} />
+                                        </button>
+                                    </div>
+                                ))}
+                                {selectedBrakes.map((brake: string) => (
+                                    <div
+                                        key={brake}
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
+                                    >
+                                        <span className="text-[9px] font-black uppercase text-slate-400">Brakes</span>
+                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                            {brake}
+                                        </span>
+                                        <button
+                                            onClick={() => toggleFilter(setSelectedBrakes, brake)}
+                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                        >
+                                            <X size={10} />
+                                        </button>
+                                    </div>
+                                ))}
+                                {selectedWheels.map((wheel: string) => (
+                                    <div
+                                        key={wheel}
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
+                                    >
+                                        <span className="text-[9px] font-black uppercase text-slate-400">Wheels</span>
+                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                            {wheel}
+                                        </span>
+                                        <button
+                                            onClick={() => toggleFilter(setSelectedWheels, wheel)}
+                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                        >
+                                            <X size={10} />
+                                        </button>
+                                    </div>
+                                ))}
+                                <button
+                                    onClick={clearAll}
+                                    className="text-[9px] font-black uppercase tracking-widest text-brand-primary hover:text-slate-900 dark:hover:text-white transition-colors px-3 ml-2"
+                                >
+                                    Clear all filters
+                                </button>
+                            </div>
+                        )}
 
                         <div
-                            className={`grid ${viewMode === 'list'
-                                ? 'grid-cols-1 w-full gap-6'
-                                : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full'
-                                }`}
+                            className={`grid ${
+                                viewMode === 'list'
+                                    ? 'grid-cols-1 w-full gap-6'
+                                    : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full'
+                            }`}
                         >
                             {/* Results Grid */}
-                            {results.map((v) => {
+                            {results.map(v => {
                                 // Aggregate best offer from all SKUs in this variant (exclude AUMS)
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 const bestVariantOffer = v.skuIds?.reduce((best: any, skuId: string) => {
                                     const offer = marketOffers[skuId];
                                     if (!offer) return best;
@@ -1587,7 +1750,7 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                                         return best;
                                     }
                                     const offerDelta = offer.price + (offer.bundlePrice || 0);
-                                    const bestDelta = best ? (best.price + (best.bundlePrice || 0)) : null;
+                                    const bestDelta = best ? best.price + (best.bundlePrice || 0) : null;
                                     if (!best || (bestDelta !== null && offerDelta < bestDelta)) return offer;
                                     if (!best && offerDelta !== null) return offer;
                                     return best;
@@ -1613,178 +1776,176 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                 </div>
 
                 {/* Mega Filter Overlay (Grid View Only) */}
-                {
-                    isFilterOpen && viewMode === 'grid' ? (
-                        <div className="fixed top-[76px] inset-x-0 bottom-0 z-[100] bg-white/95 dark:bg-[#0b0d10]/95 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 flex flex-col animate-in fade-in duration-300">
-                            <div className="max-w-[1440px] mx-auto w-full px-20 flex flex-col h-full">
-                                {/* Overlay Header */}
-                                <div className="flex-shrink-0 py-8 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
-                                    <div>
-                                        <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-widest italic uppercase">
-                                            Customize
-                                        </h3>
-                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-2">
-                                            Refine by brand, engine & fuel
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center gap-4">
-                                        <button
-                                            onClick={clearAll}
-                                            className="flex items-center gap-2 px-6 py-3 rounded-full border border-slate-200 dark:border-white/10 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-rose-500 hover:border-rose-500/30 transition-all"
-                                        >
-                                            Reset
-                                        </button>
-                                        <button
-                                            onClick={() => setIsFilterOpen(false)}
-                                            className="p-3 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-all"
-                                        >
-                                            <X size={22} className="text-slate-900 dark:text-white" />
-                                        </button>
-                                    </div>
+                {isFilterOpen && viewMode === 'grid' ? (
+                    <div className="fixed top-[76px] inset-x-0 bottom-0 z-[100] bg-white/95 dark:bg-[#0b0d10]/95 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 flex flex-col animate-in fade-in duration-300">
+                        <div className="max-w-[1440px] mx-auto w-full px-20 flex flex-col h-full">
+                            {/* Overlay Header */}
+                            <div className="flex-shrink-0 py-8 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-widest italic uppercase">
+                                        Customize
+                                    </h3>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-2">
+                                        Refine by brand, engine & fuel
+                                    </p>
                                 </div>
+                                <div className="flex items-center gap-4">
+                                    <button
+                                        onClick={clearAll}
+                                        className="flex items-center gap-2 px-6 py-3 rounded-full border border-slate-200 dark:border-white/10 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-rose-500 hover:border-rose-500/30 transition-all"
+                                    >
+                                        Reset
+                                    </button>
+                                    <button
+                                        onClick={() => setIsFilterOpen(false)}
+                                        className="p-3 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-all"
+                                    >
+                                        <X size={22} className="text-slate-900 dark:text-white" />
+                                    </button>
+                                </div>
+                            </div>
 
-                                {/* Overlay Content */}
-                                <div className="flex-1 overflow-y-auto py-10 custom-scrollbar">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                                        {/* Left Column: EMI & Search */}
-                                        <div className="space-y-12">
-                                            <div className="space-y-6">
-                                                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
-                                                    Finance Settings
-                                                </h4>
-                                                <div className="p-8 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 rounded-[2.5rem]">
-                                                    <div className="space-y-8">
-                                                        <div className="space-y-4">
-                                                            <div className="flex justify-between items-end">
-                                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                                                    Downpayment
-                                                                </span>
-                                                                <span className="text-xl font-black text-[#F4B000]">
-                                                                    ₹{downpayment.toLocaleString('en-IN')}
-                                                                </span>
-                                                            </div>
-                                                            <input
-                                                                type="range"
-                                                                min="5000"
-                                                                max="100000"
-                                                                step="5000"
-                                                                value={downpayment}
-                                                                onChange={e => setDownpayment(parseInt(e.target.value))}
-                                                                className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-[#F4B000]"
-                                                            />
-                                                        </div>
-                                                        <div className="space-y-4">
+                            {/* Overlay Content */}
+                            <div className="flex-1 overflow-y-auto py-10 custom-scrollbar">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                                    {/* Left Column: EMI & Search */}
+                                    <div className="space-y-12">
+                                        <div className="space-y-6">
+                                            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
+                                                Finance Settings
+                                            </h4>
+                                            <div className="p-8 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 rounded-[2.5rem]">
+                                                <div className="space-y-8">
+                                                    <div className="space-y-4">
+                                                        <div className="flex justify-between items-end">
                                                             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                                                Tenure (Months)
+                                                                Downpayment
                                                             </span>
-                                                            <div className="grid grid-cols-6 gap-2">
-                                                                {[12, 18, 24, 30, 36, 42, 48, 54, 60].map(t => (
-                                                                    <button
-                                                                        key={t}
-                                                                        onClick={() => setTenure(t)}
-                                                                        className={`py-3 rounded-xl text-[10px] font-black transition-all ${tenure === t ? 'bg-[#F4B000] text-black shadow-lg scale-110' : 'bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-500'}`}
-                                                                    >
-                                                                        {t}
-                                                                    </button>
-                                                                ))}
-                                                            </div>
+                                                            <span className="text-xl font-black text-[#F4B000]">
+                                                                ₹{downpayment.toLocaleString('en-IN')}
+                                                            </span>
+                                                        </div>
+                                                        <input
+                                                            type="range"
+                                                            min="5000"
+                                                            max="100000"
+                                                            step="5000"
+                                                            value={downpayment}
+                                                            onChange={e => setDownpayment(parseInt(e.target.value))}
+                                                            className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-[#F4B000]"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-4">
+                                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                            Tenure (Months)
+                                                        </span>
+                                                        <div className="grid grid-cols-6 gap-2">
+                                                            {[12, 18, 24, 30, 36, 42, 48, 54, 60].map(t => (
+                                                                <button
+                                                                    key={t}
+                                                                    onClick={() => setTenure(t)}
+                                                                    className={`py-3 rounded-xl text-[10px] font-black transition-all ${tenure === t ? 'bg-[#F4B000] text-black shadow-lg scale-110' : 'bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-500'}`}
+                                                                >
+                                                                    {t}
+                                                                </button>
+                                                            ))}
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
+                                        </div>
 
-                                            <div className="space-y-6">
-                                                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
-                                                    Search
-                                                </h4>
-                                                <div className="relative">
-                                                    <Search
-                                                        className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400"
-                                                        size={20}
-                                                    />
-                                                    <input
-                                                        type="text"
-                                                        placeholder="SEARCH FOR BIKES..."
-                                                        value={searchQuery}
-                                                        onChange={e => setSearchQuery(e.target.value)}
-                                                        className="w-full py-5 pl-16 pr-6 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 rounded-3xl text-[11px] font-black tracking-widest uppercase focus:ring-2 focus:ring-[#F4B000]/20"
-                                                    />
-                                                </div>
+                                        <div className="space-y-6">
+                                            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
+                                                Search
+                                            </h4>
+                                            <div className="relative">
+                                                <Search
+                                                    className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400"
+                                                    size={20}
+                                                />
+                                                <input
+                                                    type="text"
+                                                    placeholder="SEARCH FOR BIKES..."
+                                                    value={searchQuery}
+                                                    onChange={e => setSearchQuery(e.target.value)}
+                                                    className="w-full py-5 pl-16 pr-6 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 rounded-3xl text-[11px] font-black tracking-widest uppercase focus:ring-2 focus:ring-[#F4B000]/20"
+                                                />
                                             </div>
                                         </div>
+                                    </div>
 
-                                        {/* Right Column: Filters */}
-                                        <div className="space-y-12">
-                                            <FilterGroup
-                                                title="Brands"
-                                                options={makeOptions}
-                                                selectedValues={selectedMakes}
-                                                onToggle={(v: string) => toggleFilter(setSelectedMakes, v)}
-                                                onReset={() => setSelectedMakes(makeOptions)}
-                                                showReset={selectedMakes.length < makeOptions.length}
-                                            />
-                                            <FilterGroup
-                                                title="Engine Displacement"
-                                                options={['< 125cc', '125-250cc', '250-500cc', '> 500cc']}
-                                                selectedValues={selectedCC}
-                                                onToggle={(v: string) => toggleFilter(setSelectedCC, v)}
-                                                onReset={() => setSelectedCC([])}
-                                                showReset
-                                            />
-                                            <FilterGroup
-                                                title="Brake System"
-                                                options={[
-                                                    'Drum',
-                                                    'Disc (Front)',
-                                                    'Dual Disc',
-                                                    'Single Channel ABS',
-                                                    'Dual Channel ABS',
-                                                ]}
-                                                selectedValues={selectedBrakes}
-                                                onToggle={(v: string) => toggleFilter(setSelectedBrakes, v)}
-                                                onReset={() => setSelectedBrakes([])}
-                                                showReset
-                                            />
-                                            <FilterGroup
-                                                title="Finish"
-                                                options={['MATT', 'GLOSSY', 'METALLIC', 'SATIN']}
-                                                selectedValues={selectedFinishes}
-                                                onToggle={(v: string) => toggleFilter(setSelectedFinishes, v)}
-                                                onReset={() => setSelectedFinishes([])}
-                                                showReset
-                                            />
-                                            <FilterGroup
-                                                title="Seat Height"
-                                                options={['< 780mm', '780-810mm', '> 810mm']}
-                                                selectedValues={selectedSeatHeight}
-                                                onToggle={(v: string) => toggleFilter(setSelectedSeatHeight, v)}
-                                                onReset={() => setSelectedSeatHeight([])}
-                                                showReset
-                                            />
-                                        </div>
+                                    {/* Right Column: Filters */}
+                                    <div className="space-y-12">
+                                        <FilterGroup
+                                            title="Brands"
+                                            options={makeOptions}
+                                            selectedValues={selectedMakes}
+                                            onToggle={(v: string) => toggleFilter(setSelectedMakes, v)}
+                                            onReset={() => setSelectedMakes(makeOptions)}
+                                            showReset={selectedMakes.length < makeOptions.length}
+                                        />
+                                        <FilterGroup
+                                            title="Engine Displacement"
+                                            options={['< 125cc', '125-250cc', '250-500cc', '> 500cc']}
+                                            selectedValues={selectedCC}
+                                            onToggle={(v: string) => toggleFilter(setSelectedCC, v)}
+                                            onReset={() => setSelectedCC([])}
+                                            showReset
+                                        />
+                                        <FilterGroup
+                                            title="Brake System"
+                                            options={[
+                                                'Drum',
+                                                'Disc (Front)',
+                                                'Dual Disc',
+                                                'Single Channel ABS',
+                                                'Dual Channel ABS',
+                                            ]}
+                                            selectedValues={selectedBrakes}
+                                            onToggle={(v: string) => toggleFilter(setSelectedBrakes, v)}
+                                            onReset={() => setSelectedBrakes([])}
+                                            showReset
+                                        />
+                                        <FilterGroup
+                                            title="Finish"
+                                            options={['MATT', 'GLOSSY', 'METALLIC', 'SATIN']}
+                                            selectedValues={selectedFinishes}
+                                            onToggle={(v: string) => toggleFilter(setSelectedFinishes, v)}
+                                            onReset={() => setSelectedFinishes([])}
+                                            showReset
+                                        />
+                                        <FilterGroup
+                                            title="Seat Height"
+                                            options={['< 780mm', '780-810mm', '> 810mm']}
+                                            selectedValues={selectedSeatHeight}
+                                            onToggle={(v: string) => toggleFilter(setSelectedSeatHeight, v)}
+                                            onReset={() => setSelectedSeatHeight([])}
+                                            showReset
+                                        />
                                     </div>
                                 </div>
+                            </div>
 
-                                {/* Overlay Footer */}
-                                <div className="p-8 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02] flex items-center justify-between">
-                                    <button
-                                        onClick={clearAll}
-                                        className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
-                                    >
-                                        Clear all filters
-                                    </button>
-                                    <button
-                                        onClick={() => setIsFilterOpen(false)}
-                                        className="px-12 py-5 bg-[#F4B000] text-black rounded-2xl text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-[#F4B000]/20 hover:scale-105 transition-all"
-                                    >
-                                        Show {results.length} {results.length === 1 ? 'Result' : 'Results'}
-                                    </button>
-                                </div>
+                            {/* Overlay Footer */}
+                            <div className="p-8 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02] flex items-center justify-between">
+                                <button
+                                    onClick={clearAll}
+                                    className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+                                >
+                                    Clear all filters
+                                </button>
+                                <button
+                                    onClick={() => setIsFilterOpen(false)}
+                                    className="px-12 py-5 bg-[#F4B000] text-black rounded-2xl text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-[#F4B000]/20 hover:scale-105 transition-all"
+                                >
+                                    Show {results.length} {results.length === 1 ? 'Result' : 'Results'}
+                                </button>
                             </div>
                         </div>
-                    ) : null
-                }
-            </main >
+                    </div>
+                ) : null}
+            </main>
 
             <LocationPicker
                 isOpen={isLocationPickerOpen}
@@ -1805,20 +1966,25 @@ export const MasterCatalog = ({ filters, variant: _variant = 'default', initialI
                         status: isServiceable ? 'serviceable' : 'unserviceable',
                         location: result.district || result.location || taluka,
                         district: result.district,
-                        stateCode: result.stateCode
+                        stateCode: result.stateCode,
                     });
 
-                    localStorage.setItem('bkmb_user_pincode', JSON.stringify({
-                        pincode,
-                        taluka: result.location || taluka,
-                        lat,
-                        lng,
-                        manuallySet: true
-                    }));
+                    localStorage.setItem(
+                        'bkmb_user_pincode',
+                        JSON.stringify({
+                            pincode,
+                            taluka: result.location || taluka,
+                            lat,
+                            lng,
+                            manuallySet: true,
+                        })
+                    );
 
-                    toast.success(`Prices updated for ${result.location || taluka}${dist ? ` (${Math.round(dist)}km)` : ''}`);
+                    toast.success(
+                        `Prices updated for ${result.location || taluka}${dist ? ` (${Math.round(dist)}km)` : ''}`
+                    );
                 }}
             />
-        </div >
+        </div>
     );
-}
+};

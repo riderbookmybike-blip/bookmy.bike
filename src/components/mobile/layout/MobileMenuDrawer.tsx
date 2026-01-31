@@ -4,8 +4,18 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    X, Home, Search, FileText, Heart, Award, Settings,
-    HelpCircle, Info, LogOut, User, ChevronRight
+    X,
+    Home,
+    Search,
+    FileText,
+    Heart,
+    Award,
+    Settings,
+    HelpCircle,
+    Info,
+    LogOut,
+    User,
+    ChevronRight,
 } from 'lucide-react';
 
 interface MobileMenuDrawerProps {
@@ -14,14 +24,14 @@ interface MobileMenuDrawerProps {
 }
 
 const MENU_ITEMS = [
-    { icon: Home, label: 'Home', href: '/m', color: 'text-[#F4B000]' },
-    { icon: Search, label: 'Search', href: '/m/search', color: 'text-[#F4B000]' },
-    { icon: FileText, label: 'My Quotes', href: '/m/quotes', color: 'text-blue-400' },
-    { icon: Heart, label: 'Saved Bikes', href: '/m/saved', color: 'text-red-400' },
-    { icon: Award, label: 'O-Club', href: '/m/oclub', color: 'text-yellow-400' },
-    { icon: Settings, label: 'Settings', href: '/m/settings', color: 'text-zinc-400' },
-    { icon: HelpCircle, label: 'Help & Support', href: '/m/help', color: 'text-zinc-400' },
-    { icon: Info, label: 'About', href: '/m/about', color: 'text-zinc-400' },
+    { icon: Home, label: 'Home', href: '/m2', color: 'text-[#F4B000]' },
+    { icon: Search, label: 'Search', href: '/m2/search', color: 'text-[#F4B000]' },
+    { icon: FileText, label: 'My Quotes', href: '/m2/quotes', color: 'text-blue-400' },
+    { icon: Heart, label: 'Saved Bikes', href: '/m2/saved', color: 'text-red-400' },
+    { icon: Award, label: 'O-Club', href: '/m2/oclub', color: 'text-yellow-400' },
+    { icon: Settings, label: 'Settings', href: '/m2/settings', color: 'text-zinc-400' },
+    { icon: HelpCircle, label: 'Help & Support', href: '/m2/help', color: 'text-zinc-400' },
+    { icon: Info, label: 'About', href: '/m2/about', color: 'text-zinc-400' },
 ];
 
 export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onClose }) => {
@@ -48,7 +58,7 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                         className="absolute right-0 top-0 bottom-0 w-[85vw] max-w-sm bg-zinc-950 flex flex-col"
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={e => e.stopPropagation()}
                     >
                         {/* Header with Close Button */}
                         <div className="p-5 border-b border-zinc-800">
@@ -93,10 +103,11 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
                                     <div className="w-10 h-10 bg-zinc-800 group-hover:bg-zinc-700 rounded-full flex items-center justify-center transition-colors">
                                         <item.icon size={20} className={item.color} />
                                     </div>
-                                    <span className="flex-1 text-left text-sm font-bold text-white">
-                                        {item.label}
-                                    </span>
-                                    <ChevronRight size={18} className="text-zinc-600 group-hover:text-zinc-400 transition-colors" />
+                                    <span className="flex-1 text-left text-sm font-bold text-white">{item.label}</span>
+                                    <ChevronRight
+                                        size={18}
+                                        className="text-zinc-600 group-hover:text-zinc-400 transition-colors"
+                                    />
                                 </motion.button>
                             ))}
                         </div>
@@ -114,9 +125,7 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
                                 <LogOut size={20} />
                                 Logout
                             </button>
-                            <p className="text-center text-xs text-zinc-600 font-medium">
-                                BookMyBike v1.0.0
-                            </p>
+                            <p className="text-center text-xs text-zinc-600 font-medium">BookMyBike v1.0.0</p>
                         </div>
                     </motion.div>
                 </motion.div>
