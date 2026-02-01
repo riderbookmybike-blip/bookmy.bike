@@ -6,10 +6,12 @@ import { Facebook, Twitter, Linkedin, Instagram, Heart, Newspaper, ArrowRight } 
 import { useSystemBrandsLogic } from '@/hooks/SystemBrandsLogic';
 import { slugify } from '@/utils/slugs';
 import { motion } from 'framer-motion';
+import { useI18n } from '@/components/providers/I18nProvider';
 
 export const Footer = () => {
     const { brands } = useSystemBrandsLogic();
     const [activeSection, setActiveSection] = useState(0);
+    const { t } = useI18n();
 
     interface FooterLink {
         label: string;
@@ -26,44 +28,44 @@ export const Footer = () => {
     // Footer Data Structure for Accordion
     const footerSections: FooterSection[] = [
         {
-            title: 'Collection',
+            title: t('Collection'),
             gradient: 'from-zinc-900 to-black',
             links: [
-                { label: 'All Inventory', href: '/store/catalog' },
-                { label: 'Scooters', href: '/store/catalog?category=SCOOTER' },
-                { label: 'Motorcycles', href: '/store/catalog?category=MOTORCYCLE' },
-                { label: 'Price: Low to High', href: '/store/catalog?sort=price_asc' },
-                { label: 'Best Mileage', href: '/store/catalog?sort=mileage' },
+                { label: t('All Inventory'), href: '/store/catalog' },
+                { label: t('Scooters'), href: '/store/catalog?category=SCOOTER' },
+                { label: t('Motorcycles'), href: '/store/catalog?category=MOTORCYCLE' },
+                { label: t('Price: Low to High'), href: '/store/catalog?sort=price_asc' },
+                { label: t('Best Mileage'), href: '/store/catalog?sort=mileage' },
             ],
         },
         {
-            title: 'Brands',
+            title: t('Brands'),
             gradient: 'from-zinc-800 to-zinc-950',
             links: [
                 ...brands.slice(0, 4).map(b => ({ label: b.name, href: `/store/${b.slug || slugify(b.name)}` })),
-                { label: 'View All Brands', href: '/store/catalog', highlight: true },
+                { label: t('View All Brands'), href: '/store/catalog', highlight: true },
             ],
         },
         {
-            title: 'Ecosystem',
+            title: t('Ecosystem'),
             gradient: 'from-zinc-900 to-black',
             links: [
-                { label: 'About Us', href: '#' },
-                { label: 'Our Blog', href: '/blog' },
-                { label: 'Partner Login', href: '/login' },
-                { label: 'Media Kit', href: '/mediakit' },
-                { label: 'Contact', href: '#' },
+                { label: t('About Us'), href: '#' },
+                { label: t('Our Blog'), href: '/blog' },
+                { label: t('Partner Login'), href: '/login' },
+                { label: t('Media Kit'), href: '/mediakit' },
+                { label: t('Contact'), href: '#' },
             ],
         },
         {
-            title: 'Services',
+            title: t('Services'),
             gradient: 'from-zinc-800 to-black',
             links: [
-                { label: 'Help Center', href: '#' },
-                { label: 'Finance Options', href: '#' },
-                { label: 'Insurance Hub', href: '#' },
-                { label: 'RTO Rules', href: '#' },
-                { label: 'Privacy Policy', href: '#' },
+                { label: t('Help Center'), href: '#' },
+                { label: t('Finance Options'), href: '#' },
+                { label: t('Insurance Hub'), href: '#' },
+                { label: t('RTO Rules'), href: '#' },
+                { label: t('Privacy Policy'), href: '#' },
             ],
         },
     ];
@@ -92,18 +94,17 @@ export const Footer = () => {
                             <div className="flex items-center gap-4 mb-8">
                                 <div className="h-px w-12 bg-[#F4B000]" />
                                 <p className="text-sm font-black text-[#F4B000] uppercase tracking-[0.3em]">
-                                    The Final Chapter
+                                    {t('The Final Chapter')}
                                 </p>
                             </div>
                             <h3 className="text-6xl md:text-8xl font-black uppercase tracking-tighter text-slate-900 dark:text-white leading-[0.85] italic transition-colors">
-                                Redefining <br />{' '}
+                                {t('Redefining')} <br />{' '}
                                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-500 dark:from-white dark:to-zinc-500">
-                                    How India Rides.
+                                    {t('How India Rides.')}
                                 </span>
                             </h3>
                             <p className="text-lg text-zinc-400 leading-relaxed max-w-lg font-medium mt-[60px] border-l-2 border-white/5 pl-6">
-                                India&apos;s premier marketplace for the next generation of riders. Engineering
-                                excellence into every booking.
+                                {t("India's premier marketplace for the next generation of riders. Engineering excellence into every booking.")}
                             </p>
                         </div>
                     </div>

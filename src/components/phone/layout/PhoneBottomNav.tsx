@@ -3,13 +3,15 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Search, Heart, Hexagon, SlidersHorizontal } from 'lucide-react';
+import { Home, Search, Heart, Menu, SlidersHorizontal } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useI18n } from '@/components/providers/I18nProvider';
 
 
 
 export const PhoneBottomNav = () => {
     const pathname = usePathname();
+    const { t } = useI18n();
 
     // Strict Mobile V2 Routing
     const routePrefix = '/phone';
@@ -19,12 +21,12 @@ export const PhoneBottomNav = () => {
         { id: 'search', label: 'Search', icon: Search, href: `${routePrefix}/search` },
         { id: 'filter', label: 'Filter', icon: SlidersHorizontal, href: `${routePrefix}?filter=true` },
         { id: 'favorites', label: 'Saved', icon: Heart, href: `${routePrefix}/favorites` },
-        { id: 'oclub', label: 'O-Club', icon: Hexagon, href: `${routePrefix}/oclub` },
+        { id: 'menu', label: 'Menu', icon: Menu, href: `${routePrefix}/menu` },
     ];
 
     return (
-        <nav className="fixed bottom-0 left-0 right-0 z-[110] safe-area-bottom h-[72px] bg-white/90 dark:bg-black/80 backdrop-blur-lg border-t border-slate-100 dark:border-white/5 transition-colors duration-500">
-            <div className="flex items-center justify-between h-full px-2">
+        <nav className="fixed bottom-0 left-0 right-0 z-[110] safe-area-bottom h-[72px] bg-black/5 dark:bg-black/60 backdrop-blur-xl border-t border-slate-200/60 dark:border-white/10 transition-all duration-500">
+            <div className="flex items-center justify-between h-full px-5">
                 {NAV_ITEMS.map((item) => {
                     const Icon = item.icon;
                     // Active state logic: Precise match for query params or pathname
@@ -55,7 +57,7 @@ export const PhoneBottomNav = () => {
                             </div>
 
                             <span className={`text-[10px] font-bold uppercase tracking-wider transition-colors duration-300 ${isActive ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-white/60'}`}>
-                                {item.label}
+                                {t(item.label)}
                             </span>
                         </Link>
                     );

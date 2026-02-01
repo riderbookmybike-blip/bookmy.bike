@@ -4,11 +4,37 @@ import { MARKETPLACE_SOURCE_STRINGS } from '@/i18n/marketplaceSource';
 import { PROTECTED_TERMS, TRANSLATION_LANGUAGES } from '@/i18n/languages';
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/responses';
+const GOOGLE_TRANSLATE_API_URL = 'https://translation.googleapis.com/language/translate/v2';
 const DEFAULT_MODEL = process.env.OPENAI_TRANSLATION_MODEL || 'gpt-4o-mini';
 
 const BATCH_SIZE = 40;
 
 const toHash = (value: string) => createHash('sha256').update(value).digest('hex');
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const protectText = (text: string) => {
+    let output = text;
+    PROTECTED_TERMS.forEach((term, index) => {
+        const placeholder = `[[BMB_TERM_${index}]]`;
+        if (/[^\w]/.test(term)) {
+            output = output.split(term).join(placeholder);
+        } else {
+            const regex = new RegExp(`\\b${escapeRegExp(term)}\\b`, 'g');
+            output = output.replace(regex, placeholder);
+        }
+    });
+    return output;
+};
+
+const restoreText = (text: string) => {
+    let output = text;
+    PROTECTED_TERMS.forEach((term, index) => {
+        const placeholder = `[[BMB_TERM_${index}]]`;
+        output = output.split(placeholder).join(term);
+    });
+    return output;
+};
 
 const chunkArray = <T>(items: T[], size: number): T[][] => {
     const chunks: T[][] = [];
@@ -40,7 +66,7 @@ const buildPrompt = (languageName: string, languageCode: string, strings: string
     };
 };
 
-const translateBatch = async (languageName: string, languageCode: string, strings: string[]) => {
+const translateBatchOpenAI = async (languageName: string, languageCode: string, strings: string[]) => {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
         throw new Error('Missing OPENAI_API_KEY');
@@ -102,6 +128,65 @@ const translateBatch = async (languageName: string, languageCode: string, string
     return translations as string[];
 };
 
+const translateBatchGoogle = async (languageCode: string, strings: string[]) => {
+    const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
+    if (!apiKey) {
+        throw new Error('Missing GOOGLE_TRANSLATE_API_KEY');
+    }
+
+    const response = await fetch(`${GOOGLE_TRANSLATE_API_URL}?key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            q: strings,
+            source: 'en',
+            target: languageCode,
+            format: 'text',
+        }),
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Google translate failed: ${response.status} ${errorText}`);
+    }
+
+    const payload = await response.json();
+    const translations = payload?.data?.translations || [];
+    if (translations.length !== strings.length) {
+        throw new Error('Google translation count mismatch');
+    }
+
+    return translations.map((item: { translatedText: string }) => item.translatedText);
+};
+
+const getProvider = (languageProvider?: string) => {
+    const override = process.env.TRANSLATION_PROVIDER;
+    return (override || languageProvider || 'openai').toLowerCase();
+};
+
+const translateBatch = async ({
+    languageName,
+    languageCode,
+    provider,
+    strings,
+}: {
+    languageName: string;
+    languageCode: string;
+    provider: string;
+    strings: string[];
+}) => {
+    const protectedStrings = strings.map(protectText);
+
+    let translations: string[];
+    if (provider === 'google') {
+        translations = await translateBatchGoogle(languageCode, protectedStrings);
+    } else {
+        translations = await translateBatchOpenAI(languageName, languageCode, protectedStrings);
+    }
+
+    return translations.map(restoreText);
+};
+
 const ensureLanguages = async () => {
     const rows = TRANSLATION_LANGUAGES.map(lang => ({
         code: lang.code,
@@ -133,6 +218,8 @@ export const syncMarketplaceLanguage = async ({
     if (!language) {
         throw new Error(`Unsupported language: ${languageCode}`);
     }
+
+    const provider = getProvider(language.provider);
 
     const sourceRows = MARKETPLACE_SOURCE_STRINGS.map(text => ({
         text,
@@ -186,14 +273,19 @@ export const syncMarketplaceLanguage = async ({
     for (const batch of batches) {
         try {
             const batchStrings = batch.map(item => item.text);
-            const translations = await translateBatch(language.name, language.code, batchStrings);
+            const translations = await translateBatch({
+                languageName: language.name,
+                languageCode: language.code,
+                provider,
+                strings: batchStrings,
+            });
 
             const now = new Date().toISOString();
             const rows = translations.map((translatedText, index) => ({
                 source_hash: batch[index].hash,
                 language_code: languageCode,
                 translated_text: translatedText,
-                provider: language.provider,
+                provider,
                 source_text: batch[index].text,
                 updated_at: now,
             }));

@@ -18,6 +18,7 @@ import {
     ChevronRight,
 } from 'lucide-react';
 import { useTheme } from '@/components/providers/ThemeProvider';
+import { useI18n } from '@/components/providers/I18nProvider';
 
 interface PhoneMenuDrawerProps {
     isOpen: boolean;
@@ -38,6 +39,7 @@ const MENU_ITEMS = [
 export const PhoneMenuDrawer = ({ isOpen, onClose }: PhoneMenuDrawerProps) => {
     const router = useRouter();
     const { theme } = useTheme();
+    const { t } = useI18n();
     const [mounted, setMounted] = React.useState(false);
 
     React.useEffect(() => {
@@ -73,7 +75,7 @@ export const PhoneMenuDrawer = ({ isOpen, onClose }: PhoneMenuDrawerProps) => {
                         <div className="p-5 border-b border-slate-100 dark:border-zinc-800">
                             <div className="flex items-center justify-between mb-6">
                                 <h2 className="text-2xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white">
-                                    Menu
+                                    {t('Menu')}
                                 </h2>
                                 <button
                                     onClick={onClose}
@@ -89,13 +91,15 @@ export const PhoneMenuDrawer = ({ isOpen, onClose }: PhoneMenuDrawerProps) => {
                                     <User size={24} className="text-black" />
                                 </div>
                                 <div className="flex-1">
-                                    <p className="text-sm font-black text-slate-900 dark:text-white mb-1">Guest User</p>
+                                    <p className="text-sm font-black text-slate-900 dark:text-white mb-1">{t('Guest User')}</p>
                                     <button className="text-xs font-bold text-[#F4B000] hover:text-yellow-400 transition-colors">
-                                        Sign In
+                                        {t('Sign In')}
                                     </button>
                                 </div>
                                 <ChevronRight size={20} className="text-zinc-600" />
                             </div>
+
+                            {/* Language selector moved to header */}
                         </div>
 
                         {/* Navigation Links */}
@@ -112,7 +116,7 @@ export const PhoneMenuDrawer = ({ isOpen, onClose }: PhoneMenuDrawerProps) => {
                                     <div className="w-10 h-10 bg-white dark:bg-zinc-800 group-hover:bg-slate-200 dark:group-hover:bg-zinc-700 rounded-full flex items-center justify-center transition-colors shadow-sm dark:shadow-none">
                                         <item.icon size={20} className={item.color} />
                                     </div>
-                                    <span className="flex-1 text-left text-sm font-bold text-slate-900 dark:text-white">{item.label}</span>
+                                    <span className="flex-1 text-left text-sm font-bold text-slate-900 dark:text-white">{t(item.label)}</span>
                                     <ChevronRight
                                         size={18}
                                         className="text-zinc-600 group-hover:text-zinc-400 transition-colors"
@@ -132,9 +136,9 @@ export const PhoneMenuDrawer = ({ isOpen, onClose }: PhoneMenuDrawerProps) => {
                                 className="w-full flex items-center justify-center gap-3 h-14 bg-red-500/10 border border-red-500/30 rounded-xl text-red-500 font-black uppercase tracking-wider text-sm active:scale-95 transition-transform hover:bg-red-500/20"
                             >
                                 <LogOut size={20} />
-                                Logout
+                                {t('Logout')}
                             </button>
-                            <p className="text-center text-xs text-zinc-600 font-medium">BookMyBike v1.0.0</p>
+                            <p className="text-center text-xs text-zinc-600 font-medium">{t('BookMyBike v1.0.0')}</p>
                         </div>
                     </motion.div>
                 </motion.div>

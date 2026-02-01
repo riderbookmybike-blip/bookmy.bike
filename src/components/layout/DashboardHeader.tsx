@@ -20,7 +20,7 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
     const handleLoginClick = () => router.push('/login');
 
     return (
-        <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isSidebarExpanded ? 'md:left-[280px]' : 'md:left-[80px]'} backdrop-blur-2xl bg-white/80 dark:bg-slate-950/80 border-b border-slate-200 dark:border-white/5`}>
+        <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isSidebarExpanded ? 'md:left-[280px]' : 'md:left-[80px]'} bg-white/80 dark:bg-black/30 backdrop-blur-[20px] dark:backdrop-blur-[12px] border-b border-slate-200/50 dark:border-white/10`}>
             <div className="w-full px-6 h-16 flex items-center justify-between">
                 <div className="flex items-center flex-1 gap-4">
                     {onMenuClick && (

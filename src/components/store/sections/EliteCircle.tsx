@@ -5,10 +5,12 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { MembershipCard } from '@/components/auth/MembershipCard';
 import { Zap, Shield, Target } from 'lucide-react';
+import { useI18n } from '@/components/providers/I18nProvider';
 
 export function EliteCircle() {
     const [activeStep, setActiveStep] = useState(0);
     const [hasMounted, setHasMounted] = useState(false);
+    const { t } = useI18n();
 
     React.useEffect(() => {
         setHasMounted(true);
@@ -17,9 +19,9 @@ export function EliteCircle() {
     const benefits = [
         {
             step: '01',
-            title: 'Zero Downpayment',
-            subtitle: 'INSTANT OWNERSHIP',
-            desc: 'Acquire your machine with zero capital upfront. Leverage our institutional partnerships for 100% on-road financing.',
+            title: t('Zero Downpayment'),
+            subtitle: t('INSTANT OWNERSHIP'),
+            desc: t('Acquire your machine with zero capital upfront. Leverage our institutional partnerships for 100% on-road financing.'),
             icon: <Shield className="w-8 h-8 md:w-12 md:h-12" />,
             cardData: {
                 name: 'RAKESH KUMAR',
@@ -29,9 +31,9 @@ export function EliteCircle() {
         },
         {
             step: '02',
-            title: 'Zero Processing Fee',
-            subtitle: 'EFFICIENCY LAYER',
-            desc: 'Eliminate all administrative friction. No hidden processing fees, no management surcharges. Pure value transfer.',
+            title: t('Zero Processing Fee'),
+            subtitle: t('EFFICIENCY LAYER'),
+            desc: t('Eliminate all administrative friction. No hidden processing fees, no management surcharges. Pure value transfer.'),
             icon: <Target className="w-8 h-8 md:w-12 md:h-12" />,
             cardData: {
                 name: 'SARAH JANE',
@@ -41,9 +43,9 @@ export function EliteCircle() {
         },
         {
             step: '03',
-            title: 'Zero Documentation',
-            subtitle: 'DIGITAL ONBOARDING',
-            desc: 'Fully paperless execution via sovereign digital identity. Verified and authorized in under 60 seconds.',
+            title: t('Zero Documentation'),
+            subtitle: t('DIGITAL ONBOARDING'),
+            desc: t('Fully paperless execution via sovereign digital identity. Verified and authorized in under 60 seconds.'),
             icon: <Zap className="w-8 h-8 md:w-12 md:h-12" />,
             cardData: {
                 name: 'VIKRAM SETH',
@@ -83,21 +85,21 @@ export function EliteCircle() {
                             <div className="flex items-center gap-4 justify-center lg:justify-start">
                                 <div className="h-px w-10 bg-[#F4B000]/40" />
                                 <h2 className="text-[#F4B000]/80 font-black uppercase tracking-[0.5em] text-[10px]">
-                                    The Privilege Tier
+                                    {t('The Privilege Tier')}
                                 </h2>
                             </div>
                             <h1 className="text-5xl md:text-7xl xl:text-8xl font-black italic uppercase tracking-tighter leading-[0.85] text-slate-900 dark:text-white transition-colors">
-                                THE O'
+                                {t("THE O'")}
                                 <br />
-                                <span className="text-[#F4B000]">CIRCLE.</span>
+                                <span className="text-[#F4B000]">{t('CIRCLE.')}</span>
                             </h1>
                             <div className="space-y-4 max-w-sm mx-auto lg:mx-0">
                                 <p className="text-lg md:text-xl text-slate-500 dark:text-zinc-400 font-medium leading-relaxed transition-colors">
-                                    Exclusive financial engineering for the modern rider.
+                                    {t('Exclusive financial engineering for the modern rider.')}
                                 </p>
                                 <div className="h-px w-24 bg-slate-200 dark:bg-white/10 transition-colors mx-auto lg:mx-0" />
                                 <p className="text-sm font-bold text-slate-900 dark:text-white tracking-widest uppercase italic transition-colors">
-                                    Ownership, accelerated.
+                                    {t('Ownership, accelerated.')}
                                 </p>
                             </div>
                         </motion.div>
@@ -187,7 +189,7 @@ export function EliteCircle() {
                                                 </p>
                                                 <div className="pt-4 flex items-center justify-center gap-4 text-[#F4B000] font-black uppercase tracking-[0.3em] text-[8px]">
                                                     <div className="h-px flex-1 bg-zinc-200" />
-                                                    Verified Authentication Protocol
+                                                    {t('Verified Authentication Protocol')}
                                                     <div className="h-px flex-1 bg-zinc-200" />
                                                 </div>
                                             </motion.div>

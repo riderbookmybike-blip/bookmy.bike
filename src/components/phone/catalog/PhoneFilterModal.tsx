@@ -108,30 +108,30 @@ export const PhoneFilterModal: React.FC<PhoneFilterModalProps> = ({ isOpen, onCl
                         animate={{ y: 0 }}
                         exit={{ y: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="absolute inset-x-0 bottom-0 max-h-[90vh] bg-zinc-950 rounded-t-3xl flex flex-col"
+                        className="absolute inset-x-0 bottom-0 max-h-[90vh] bg-white dark:bg-zinc-950 rounded-t-3xl flex flex-col"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Header */}
-                        <div className="sticky top-0 z-10 bg-zinc-950 border-b border-zinc-800 px-5 py-4 rounded-t-3xl">
+                        <div className="sticky top-0 z-10 bg-white dark:bg-zinc-950 border-b border-slate-100 dark:border-zinc-800 px-5 py-4 rounded-t-3xl">
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 bg-[#F4B000]/10 rounded-full flex items-center justify-center">
                                         <SlidersHorizontal size={20} className="text-[#F4B000]" />
                                     </div>
-                                    <h2 className="text-2xl font-black uppercase italic tracking-tighter text-white">
+                                    <h2 className="text-2xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white">
                                         Filters
                                     </h2>
                                 </div>
                                 <button
                                     onClick={onClose}
-                                    className="w-10 h-10 bg-zinc-900 rounded-full flex items-center justify-center active:scale-95 transition-transform"
+                                    className="w-10 h-10 bg-slate-100 dark:bg-zinc-900 rounded-full flex items-center justify-center active:scale-95 transition-transform"
                                 >
-                                    <X size={20} className="text-zinc-400" />
+                                    <X size={20} className="text-slate-400 dark:text-zinc-400" />
                                 </button>
                             </div>
                             {activeFilterCount > 0 && (
                                 <div className="flex items-center justify-between">
-                                    <p className="text-sm text-zinc-500 font-medium">
+                                    <p className="text-sm text-slate-500 dark:text-zinc-500 font-medium">
                                         {activeFilterCount} filter{activeFilterCount !== 1 ? 's' : ''} applied
                                     </p>
                                     <button
@@ -150,7 +150,7 @@ export const PhoneFilterModal: React.FC<PhoneFilterModalProps> = ({ isOpen, onCl
                             <div>
                                 <div className="flex items-center gap-2 mb-4">
                                     <DollarSign size={18} className="text-[#F4B000]" />
-                                    <h3 className="text-base font-black uppercase tracking-wide text-white">
+                                    <h3 className="text-base font-black uppercase tracking-wide text-slate-900 dark:text-white">
                                         Price Range
                                     </h3>
                                 </div>
@@ -161,7 +161,7 @@ export const PhoneFilterModal: React.FC<PhoneFilterModalProps> = ({ isOpen, onCl
                                             onClick={() => applyPricePreset(preset)}
                                             className={`px-4 py-3 rounded-xl font-bold text-sm transition-all active:scale-95 ${priceMin === preset.min && priceMax === preset.max
                                                 ? 'bg-[#F4B000] text-black'
-                                                : 'bg-zinc-900 text-zinc-400 border border-zinc-800'
+                                                : 'bg-slate-100 dark:bg-zinc-900 text-slate-500 dark:text-zinc-400 border border-slate-200 dark:border-zinc-800'
                                                 }`}
                                         >
                                             {preset.label}
@@ -170,14 +170,14 @@ export const PhoneFilterModal: React.FC<PhoneFilterModalProps> = ({ isOpen, onCl
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="text-xs font-bold uppercase tracking-wider text-zinc-600 mb-2 block">
+                                        <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-600 mb-2 block">
                                             Min Price
                                         </label>
                                         <input
                                             type="number"
                                             value={priceMin}
                                             onChange={(e) => setPriceMin(parseInt(e.target.value) || 0)}
-                                            className="w-full h-12 px-4 bg-zinc-900 border border-zinc-800 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#F4B000]"
+                                            className="w-full h-12 px-4 bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#F4B000]"
                                         />
                                     </div>
                                     <div>
@@ -281,7 +281,8 @@ export const PhoneFilterModal: React.FC<PhoneFilterModalProps> = ({ isOpen, onCl
                         </div>
                     </motion.div>
                 </motion.div>
-            )}
-        </AnimatePresence>
+            )
+            }
+        </AnimatePresence >
     );
 };

@@ -335,16 +335,8 @@ export default function SystemPDPRouter({
 
     return (
         <>
-            {isMobile ? (
-                <PhonePDP
-                    product={product}
-                    data={data}
-                    handlers={handlers}
-                    initialLocation={initialLocation}
-                />
-            ) : (
-                <DesktopPDP {...commonProps} basePath="/phone/store" />
-            )}
+            {/* FORCED DESKTOP: Always show DesktopPDP as per user request */}
+            <DesktopPDP {...commonProps} basePath="/phone/store" />
 
             <LeadCaptureModal
                 isOpen={showQuoteSuccess}

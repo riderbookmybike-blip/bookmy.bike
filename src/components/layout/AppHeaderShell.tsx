@@ -40,8 +40,10 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
             return 'bg-white dark:bg-[#0B0D10] border-b border-slate-200/60 dark:border-white/5 shadow-sm dark:shadow-none transition-all duration-300';
         }
 
-        // Marketplace: Premium Glass - Responsive to theme
-        return 'bg-white/70 dark:bg-black/40 backdrop-blur-xl backdrop-saturate-[1.8] border-b border-slate-200/60 dark:border-white/5 shadow-lg dark:shadow-2xl transition-all duration-500';
+        // Marketplace: Premium Dark Glass (both modes)
+        // Light: black @ 40% for darker look with white icons visible
+        // Dark: black @ 30%
+        return 'bg-black/40 dark:bg-black/30 backdrop-blur-[24px] dark:backdrop-blur-[12px] backdrop-saturate-150 border-b border-white/10 dark:border-white/10 shadow-lg dark:shadow-2xl transition-all duration-500';
     };
 
     const bgClass = getBgClass();

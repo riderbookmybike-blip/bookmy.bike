@@ -6,16 +6,21 @@ import { ChevronDown } from 'lucide-react';
 import { PhoneHeader } from '@/components/phone/layout/PhoneHeader';
 import { ModelCard } from './ModelCard';
 import { PhoneFilterModal } from '@/components/phone/catalog/PhoneFilterModal';
+import { PhoneBottomNav } from '@/components/phone/layout/PhoneBottomNav';
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import { groupProductsByModel } from '@/utils/variantGrouping';
+import { useI18n } from '@/components/providers/I18nProvider';
 
 export const PhoneContextFeed = () => {
     const { items, isLoading } = useSystemCatalogLogic();
+    const { t } = useI18n();
 
     // Group products by model for variant navigation
     const modelGroups = useMemo(() => groupProductsByModel(items), [items]);
 
     const [activeIndex, setActiveIndex] = useState(0);
+
+    // TEMPORARY DEBUG GRID
     const [isFilterOpen, setIsFilterOpen] = useState(false);
 
     // Global Filter State Integration
@@ -67,57 +72,44 @@ export const PhoneContextFeed = () => {
     if (isLoading) {
         return (
             <div className="h-screen w-full bg-black flex items-center justify-center">
-                <div className="text-white text-sm font-bold uppercase tracking-widest">Loading...</div>
+                <div className="text-white text-sm font-bold uppercase tracking-widest">{t('Loading...')}</div>
             </div>
         );
     }
 
     return (
-        <div className="w-full bg-black relative overscroll-none" style={{ height: '100dvh', maxHeight: '100dvh' }}>
+        <div className="w-full bg-slate-50 dark:bg-black relative overscroll-none" style={{ height: '100dvh', maxHeight: '100dvh' }}>
 
             {/* 1. Global Floating Header (Hamburger & Logo) */}
             <PhoneHeader />
 
-            {/* 2. Vertical Snap Scroll Feed */}
+            {/* 2. Vertical Scroll Feed */}
             <div
-                className="w-full overflow-y-scroll snap-y snap-mandatory scroll-smooth no-scrollbar"
-                style={{ height: '100dvh', touchAction: 'pan-y' }}
+                className="w-full h-[100dvh] overflow-y-auto pb-4 overscroll-y-contain no-scrollbar scroll-smooth"
                 onScroll={handleScroll}
             >
-                {modelGroups.map((modelGroup, index) => (
-                    <div
-                        key={`${modelGroup.make}-${modelGroup.model}`}
-                        id={`model-${index}`}
-                        className="snap-start shrink-0"
-                        style={{ height: '100dvh' }}
-                    >
-                        <ModelCard
-                            variants={modelGroup.variants}
-                            isActive={index === activeIndex}
-                        />
-                    </div>
-                ))}
+                <div className="flex flex-col gap-6 pt-[58px] px-5">
+                    {modelGroups.map((modelGroup, index) => (
+                        <div
+                            key={`${modelGroup.make}-${modelGroup.model}`}
+                            id={`model-${index}`}
+                            className="w-full shrink-0"
+                        >
+                            <ModelCard
+                                variants={modelGroup.variants}
+                                isActive={index === activeIndex}
+                            />
+                        </div>
+                    ))}
 
-                {/* End of Feed Screen */}
-                <div className="bg-black flex flex-col items-center justify-center snap-start p-10 text-center" style={{ height: '100dvh' }}>
-                    <div className="w-20 h-20 bg-zinc-900 rounded-full flex items-center justify-center mb-6">
-                        <ChevronDown className="text-zinc-700 animate-bounce" size={32} />
-                    </div>
-                    <h2 className="text-2xl font-black text-white uppercase italic">Fresh Inventory Loading</h2>
-                    <p className="text-sm text-zinc-600 font-bold uppercase tracking-widest mt-2">Come back in 1 hour for new deals</p>
 
-                    <button
-                        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                        className="mt-10 px-8 py-4 bg-white/5 border border-white/10 rounded-2xl text-xs font-black uppercase text-white tracking-widest"
-                    >
-                        Back to Top
-                    </button>
                 </div>
             </div>
 
             {/* 3. Filter Modal */}
             <PhoneFilterModal isOpen={isFilterOpen} onClose={closeFilter} />
 
+            <PhoneBottomNav />
         </div>
     );
 };

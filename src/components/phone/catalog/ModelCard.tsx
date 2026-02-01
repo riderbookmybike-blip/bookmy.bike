@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FullPageDeal } from './FullPageDeal';
+import { ProductCard } from '@/components/store/desktop/ProductCard';
 import { ProductVariant } from '@/types/productMaster';
 
 interface ModelCardProps {
@@ -46,36 +46,33 @@ export const ModelCard = ({ variants, isActive }: ModelCardProps) => {
 
     return (
         <div
-            className="relative w-full h-full"
+            className="relative w-full flex items-center"
             onTouchStart={onTouchStart}
             onTouchMove={onTouchMove}
             onTouchEnd={onTouchEnd}
         >
-            {/* Current Variant Display */}
-            <FullPageDeal
-                product={currentVariant}
-                isActive={isActive}
-            />
+            <div className="w-full">
+                {/* Current Variant Display */}
+                <ProductCard
+                    v={currentVariant}
+                    viewMode="grid"
+                    downpayment={0} // Default for mobile if not available
+                    tenure={36}     // Default for mobile
+                    basePath="/phone/store"
+                />
 
-            {/* Swipe Arrows (subtle hint) */}
-            {variants.length > 1 && (
-                <>
-                    {activeVariantIdx > 0 && (
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 z-40 opacity-30 pointer-events-none">
-                            <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
-                                <span className="text-white text-xl">‹</span>
-                            </div>
-                        </div>
-                    )}
-                    {activeVariantIdx < variants.length - 1 && (
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 z-40 opacity-30 pointer-events-none">
-                            <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
-                                <span className="text-white text-xl">›</span>
-                            </div>
-                        </div>
-                    )}
-                </>
-            )}
+                {/* Swipe Arrows (subtle hint) - Adjusted for card view */}
+                {variants.length > 1 && (
+                    <div className="absolute bottom-20 left-0 right-0 flex justify-center gap-2 pointer-events-none">
+                        {variants.map((_, idx) => (
+                            <div
+                                key={idx}
+                                className={`w-1.5 h-1.5 rounded-full transition-all ${idx === activeVariantIdx ? 'bg-white w-4' : 'bg-white/20'}`}
+                            />
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

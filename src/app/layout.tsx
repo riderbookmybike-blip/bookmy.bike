@@ -39,6 +39,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
+import { I18nProvider } from '@/components/providers/I18nProvider';
 import { TenantProvider } from '@/lib/tenant/tenantContext';
 import MSG91Initializer from '@/components/auth/MSG91Initializer';
 // import { FaviconProvider } from '@/hooks/useFavicon';
@@ -61,16 +62,18 @@ export default function RootLayout({
             >
                 <AnalyticsScripts />
                 <ThemeProvider>
-                    <TenantProvider>
-                        <Suspense fallback={null}>
-                            <AnalyticsProvider>
-                                <MSG91Initializer />
-                                {/* <FaviconProvider /> */}
-                                {children}
-                                <Toaster position="top-center" richColors />
-                            </AnalyticsProvider>
-                        </Suspense>
-                    </TenantProvider>
+                    <I18nProvider>
+                        <TenantProvider>
+                            <Suspense fallback={null}>
+                                <AnalyticsProvider>
+                                    <MSG91Initializer />
+                                    {/* <FaviconProvider /> */}
+                                    {children}
+                                    <Toaster position="top-center" richColors />
+                                </AnalyticsProvider>
+                            </Suspense>
+                        </TenantProvider>
+                    </I18nProvider>
                 </ThemeProvider>
             </body>
         </html>

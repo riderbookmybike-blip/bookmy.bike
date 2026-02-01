@@ -1,27 +1,29 @@
 import React, { useState } from 'react';
 import { ChevronRight, Star, Quote } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useI18n } from '@/components/providers/I18nProvider';
 
 export const RiderPulse = () => {
     const [activeReview, setActiveReview] = useState(0);
+    const { t } = useI18n();
 
     const reviews = [
         {
             name: 'Arjun Kapoor',
             handle: 'TVS Jupiter',
-            quote: '"Booking my bike online should be as easy as ordering food. I want to see my on-road price, compare EMIs, and confirm the delivery date—without visiting five different showrooms or decoding hidden charges."',
+            quote: t('"Booking my bike online should be as easy as ordering food. I want to see my on-road price, compare EMIs, and confirm the delivery date—without visiting five different showrooms or decoding hidden charges."'),
             color: 'from-orange-500',
         },
         {
             name: 'Meera Reddy',
             handle: 'Honda Activa',
-            quote: '"The transparency is what I loved. No hidden costs, everything upfront. The delivery was right on time as promised. This is exactly what the two-wheeler market needed."',
+            quote: t('"The transparency is what I loved. No hidden costs, everything upfront. The delivery was right on time as promised. This is exactly what the two-wheeler market needed."'),
             color: 'from-blue-500',
         },
         {
             name: 'Karan Malhotra',
             handle: 'Suzuki V-Strom',
-            quote: '"Finally a platform that understands what riders need. The EMI comparison tool saved me so much time and money. Highly recommended for anyone looking to buy a bike."',
+            quote: t('"Finally a platform that understands what riders need. The EMI comparison tool saved me so much time and money. Highly recommended for anyone looking to buy a bike."'),
             color: 'from-amber-500',
         },
     ];
@@ -43,13 +45,13 @@ export const RiderPulse = () => {
                         >
                             <div className="flex items-center gap-4">
                                 <p className="text-sm font-black text-brand-primary uppercase tracking-[0.3em]">
-                                    The Community Pulse
+                                    {t('The Community Pulse')}
                                 </p>
                             </div>
                             <h2 className="text-7xl xl:text-9xl font-black uppercase tracking-tighter italic leading-[0.85] text-white drop-shadow-2xl">
-                                Rider <br />{' '}
+                                {t('Rider')} <br />{' '}
                                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-amber-200">
-                                    Pulse.
+                                    {t('Pulse.')}
                                 </span>
                             </h2>
                         </motion.div>
@@ -61,8 +63,9 @@ export const RiderPulse = () => {
                             transition={{ duration: 0.8, delay: 0.2 }}
                             className="text-xl text-zinc-400 font-medium leading-relaxed max-w-sm border-l-2 border-white/10 pl-6"
                         >
-                            Hear from the riders who defined their own path. <br />
-                            <span className="text-white italic">Real stories. Real roads.</span>
+                            {t('Hear from the riders who defined their own path.')}
+                            <br />
+                            <span className="text-white italic">{t('Real stories. Real roads.')}</span>
                         </motion.p>
 
                         {/* Navigation Controls (Moved to Left Column) */}

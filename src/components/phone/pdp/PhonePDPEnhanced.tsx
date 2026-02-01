@@ -9,6 +9,8 @@ import {
     Star, Package, ClipboardList, Wrench, Gift, Info, CheckCircle2, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useI18n } from '@/components/providers/I18nProvider';
+import { toDevanagariScript } from '@/lib/i18n/transliterate';
 
 interface PhonePDPEnhancedProps {
     product: any;
@@ -52,6 +54,7 @@ export const PhonePDPEnhanced = ({
     initialLocation
 }: PhonePDPEnhancedProps) => {
     const router = useRouter();
+    const { language } = useI18n();
     const [activeSection, setActiveSection] = useState<string>('finance');
     const [showPriceBreakup, setShowPriceBreakup] = useState(false);
     const [showAccessorySheet, setShowAccessorySheet] = useState(false);
@@ -109,6 +112,15 @@ export const PhonePDPEnhanced = ({
 
     const REFERRAL_BONUS = 5000;
     const activeColorConfig = colors.find((c: any) => c.id === selectedColor) || colors[0];
+
+    const shouldDevanagari = language === 'hi' || language === 'mr';
+    const scriptText = (value?: string) => {
+        if (!value) return '';
+        return shouldDevanagari ? toDevanagariScript(value) : value;
+    };
+    const displayMake = scriptText(product?.make || makeParam);
+    const displayModel = scriptText(product?.model || modelParam);
+    const displayVariant = scriptText(variantParam);
     const totalSavings = computedTotalSavings ?? (offersDiscount + colorDiscount + (isReferralActive ? REFERRAL_BONUS : 0));
 
     const getProductImage = () => {
@@ -181,10 +193,10 @@ export const PhonePDPEnhanced = ({
                 {/* Product Title */}
                 <div className="absolute bottom-4 left-4 right-4">
                     <div className="flex items-center gap-2 mb-2">
-                        <span className="px-2 py-0.5 bg-white text-black text-[10px] font-black uppercase rounded">{product.make}</span>
+                        <span className="px-2 py-0.5 bg-white text-black text-[10px] font-black uppercase rounded">{displayMake}</span>
                     </div>
-                    <h1 className="text-4xl font-black italic uppercase leading-tight">{product.model}</h1>
-                    <p className="text-sm text-zinc-400 uppercase tracking-wider mt-1">{variantParam}</p>
+                    <h1 className="text-4xl font-black italic uppercase leading-tight">{displayModel}</h1>
+                    <p className="text-sm text-zinc-400 uppercase tracking-wider mt-1">{displayVariant}</p>
 
                     {/* Color Selector */}
                     <div className="flex gap-2 mt-3">

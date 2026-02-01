@@ -13,6 +13,7 @@ import { useSystemBrandsLogic } from '@/hooks/SystemBrandsLogic';
 import { RiderPulse } from '@/components/store/RiderPulse';
 import { EliteCircle } from './sections/EliteCircle';
 import { Footer } from './Footer';
+import { useI18n } from '@/components/providers/I18nProvider';
 
 interface StoreDesktopProps {
     variant?: 'default' | 'tv';
@@ -24,9 +25,54 @@ const ROTATION_REFRESH_INTERVAL = 80;
 export function DesktopHome() {
     const { items, skuCount } = useSystemCatalogLogic();
     const { brands } = useSystemBrandsLogic();
+    const { t } = useI18n();
 
     // Hero Template: Night City (Chosen by User)
     const heroImage = '/images/templates/t3_night.png';
+
+    const processHeadings = [t('Select.'), t('Quote.'), t('Ride.')];
+
+    const processSteps = [
+        {
+            step: '01',
+            title: t('Selection'),
+            subtitle: t('LIVE INVENTORY FEED'),
+            desc: t('Direct access to regional hubs. 3.8k+ units ready for immediate allocation.'),
+            icon: <Search className="w-8 h-8 md:w-12 md:h-12" />,
+        },
+        {
+            step: '02',
+            title: t('Quotation'),
+            subtitle: t('ALGORITHMIC PRICING'),
+            desc: t('Zero opacity. Instant, distinct on-road valuation with no hidden dealer margins.'),
+            icon: <MapPin className="w-8 h-8 md:w-12 md:h-12" />,
+        },
+        {
+            step: '03',
+            title: t('Delivery'),
+            subtitle: t('RAPID DEPLOYMENT'),
+            desc: t('Digital documentation execution. Asset handover achieved in under 4 hours.'),
+            icon: <Zap className="w-8 h-8 md:w-12 md:h-12" />,
+        },
+    ];
+
+    const categoryCopy: Record<string, { title: string; desc: string; features: string[] }> = {
+        Scooters: {
+            title: t('Scooters'),
+            desc: t('Daily commuting made easy with comfort and great mileage. See transparent on-road prices and get instant quotes. Book your scooter in minutes.'),
+            features: [t('Most Popular')],
+        },
+        Motorcycles: {
+            title: t('Motorcycles'),
+            desc: t('Find the right bike—commuter, cruiser, or sport. Compare on-road prices from verified dealers instantly. Get a quote and book in minutes.'),
+            features: [t('Youth Love')],
+        },
+        Mopeds: {
+            title: t('Mopeds'),
+            desc: t('Work-ready utility rides built for heavy daily use. Low running cost with transparent on-road pricing. Get instant quotes and book fast.'),
+            features: [t('Utility Hero')],
+        },
+    };
 
     const containerRef = React.useRef<HTMLDivElement>(null);
     // Removed unused activeSection and isScrolling state
@@ -181,7 +227,7 @@ export function DesktopHome() {
                     />
 
                     {/* aperture layer 2: peripheral lens flare/vignette - Simplified for consistency */}
-                    <div className="absolute inset-0 bg-black/40 z-20" />
+                    <div className="absolute inset-0 bg-amber-500/10 dark:bg-black/40 z-20" />
 
                     {/* aperture layer 3: digital scanning grid */}
                     <div
@@ -241,7 +287,7 @@ export function DesktopHome() {
                                 <div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
                             </div>
                             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white group-hover/tele:text-brand-primary transition-colors font-[family-name:var(--font-bruno-ace)] z-10 relative">
-                                INDIA&apos;S LOWEST EMI GUARANTEE
+                                {t("INDIA'S LOWEST EMI GUARANTEE")}
                             </span>
                             <div className="flex gap-1.5 z-10">
                                 <div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
@@ -263,36 +309,36 @@ export function DesktopHome() {
                             transition={{ duration: 2, ease: [0.16, 1, 0.3, 1] }}
                             className="text-sm md:text-base font-black uppercase text-white mb-6 transition-all duration-300 drop-shadow-[0_0_20px_rgba(255,255,255,0.8)] font-[family-name:var(--font-bruno-ace)]"
                         >
-                            The Highest Fidelity Marketplace
+                            {t('The Highest Fidelity Marketplace')}
                         </motion.div>
 
-                        <div className="relative group/title">
-                            {/* reflective shadow layer */}
-                            <motion.h1
-                                initial={{ opacity: 0, y: 40 }}
-                                animate={{ opacity: 0.1, y: 0 }}
-                                transition={{ delay: 0.4, duration: 1.5 }}
-                                className="absolute -inset-2 text-7xl md:text-8xl lg:text-[clamp(4rem,12.5vw,10.5rem)] font-black uppercase text-white blur-3xl pointer-events-none opacity-20"
-                                style={{
-                                    backgroundPosition: 'calc(100% - var(--mouse-x-pct)) 50%',
-                                }}
-                            >
-                                MOTORCYCLES
-                            </motion.h1>
+                            <div className="relative group/title w-full max-w-[980px] mx-auto px-4 py-4">
+                                {/* reflective shadow layer */}
+                                <motion.h1
+                                    initial={{ opacity: 0, y: 40 }}
+                                    animate={{ opacity: 0.1, y: 0 }}
+                                    transition={{ delay: 0.4, duration: 1.5 }}
+                                    className="absolute -inset-2 w-full text-7xl md:text-8xl lg:text-[clamp(4rem,12.5vw,10.5rem)] font-black uppercase text-white blur-3xl pointer-events-none opacity-20"
+                                    style={{
+                                        backgroundPosition: 'calc(100% - var(--mouse-x-pct)) 50%',
+                                    }}
+                                >
+                                    {t('MOTORCYCLES')}
+                                </motion.h1>
 
                             {/* main liquid-metal text */}
                             <motion.h1
-                                initial={{ opacity: 0, scale: 0.95, y: 30 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
-                                className="relative text-7xl md:text-8xl lg:text-[clamp(4rem,12vw,9.5rem)] font-black italic uppercase tracking-[-0.03em] leading-none text-transparent bg-clip-text bg-[linear-gradient(110deg,#fff_0%,#fff_40%,#ff9d00_50%,#fff_60%,#fff_100%)] bg-[length:200%_100%] transition-all duration-1000 font-[family-name:var(--font-bruno-ace)]"
-                                style={{
-                                    textShadow: '0 20px 50px rgba(0,0,0,0.5)',
-                                    WebkitTextFillColor: 'transparent',
+                                    initial={{ opacity: 0, scale: 0.95, y: 30 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+                                    className="relative text-7xl md:text-8xl lg:text-[clamp(4rem,12vw,9.5rem)] font-black italic uppercase tracking-[-0.03em] leading-none text-transparent bg-clip-text bg-[linear-gradient(110deg,#fff_0%,#fff_40%,#ff9d00_50%,#fff_60%,#fff_100%)] bg-[length:200%_100%] transition-all duration-1000 font-[family-name:var(--font-bruno-ace)]"
+                                    style={{
+                                        textShadow: '0 20px 50px rgba(0,0,0,0.5)',
+                                        WebkitTextFillColor: 'transparent',
                                     backgroundPositionX: 'calc(100% - var(--mouse-x-pct))',
                                 }}
                             >
-                                MOTORCYCLES
+                                {t('MOTORCYCLES')}
                             </motion.h1>
 
                             {/* kinetic scan line across text */}
@@ -315,7 +361,7 @@ export function DesktopHome() {
                             animate={{ opacity: 1, x: 0 }}
                             whileHover={{ scale: 1.02, filter: 'brightness(1.2)' }}
                             transition={{ layout: { duration: 0.6, ease: [0.23, 1, 0.32, 1] } }}
-                            className={`${bentoHover === 'inventory' ? 'md:col-span-2' : 'md:col-span-1'} relative p-8 bg-white/80 dark:bg-zinc-900/80 border ${bentoHover === 'inventory' ? 'border-brand-primary' : 'border-slate-200 dark:border-white/10'} rounded-3xl backdrop-blur-3xl overflow-hidden group/bento h-[220px] flex flex-col justify-center cursor-pointer shadow-xl dark:shadow-2xl transition-all duration-500`}
+                            className={`${bentoHover === 'inventory' ? 'md:col-span-2' : 'md:col-span-1'} relative p-8 bg-zinc-900/60 border ${bentoHover === 'inventory' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-3xl overflow-hidden group/bento h-[220px] flex flex-col justify-center cursor-pointer shadow-xl transition-all duration-500`}
                         >
                             <div className="absolute top-0 right-0 p-6 opacity-20 group-hover/bento:opacity-100 transition-opacity">
                                 <Zap size={24} className="text-brand-primary" />
@@ -324,7 +370,7 @@ export function DesktopHome() {
                                 {/* Left Column: Core Stats (Locked Width) */}
                                 <div className="md:w-48 flex-none space-y-4">
                                     <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-white/70 font-[family-name:var(--font-bruno-ace)] group-hover/bento:text-brand-primary transition-colors">
-                                        <span>SKU_Live</span>
+                                        <span>{t('SKU_Live')}</span>
                                         <motion.div
                                             animate={{ opacity: [1, 0.1, 1] }}
                                             transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
@@ -332,13 +378,13 @@ export function DesktopHome() {
                                         />
                                     </div>
                                     <div className="flex items-baseline gap-4 whitespace-nowrap">
-                                        <span className="text-4xl font-black text-slate-900 dark:text-white italic tracking-tighter leading-none">
+                                        <span className="text-4xl font-black text-white italic tracking-tighter leading-none">
                                             380+
                                         </span>
                                     </div>
                                     <div className="flex flex-col gap-1">
                                         <span className="text-[10px] font-bold text-white tracking-widest px-2 py-1 rounded font-inter opacity-60">
-                                            active_sourcing
+                                            {t('active_sourcing')}
                                         </span>
                                     </div>
                                 </div>
@@ -355,12 +401,11 @@ export function DesktopHome() {
                                             <div className="flex items-center gap-2">
                                                 <div className="w-1 h-1 rounded-full bg-amber-500 animate-pulse" />
                                                 <span className="text-[9px] font-black text-amber-500/80 tracking-[0.2em] uppercase font-mono">
-                                                    Archive_01: Inventory_Core
+                                                    {t('Archive_01: Inventory_Core')}
                                                 </span>
                                             </div>
                                             <p className="text-[12px] text-zinc-300 font-medium leading-[1.6] max-w-[240px]">
-                                                Access India&apos;s largest curated collection of premium motorcycles,
-                                                updated real-time across regional hubs.
+                                                {t("Access India's largest curated collection of premium motorcycles, updated real-time across regional hubs.")}
                                             </p>
                                         </motion.div>
                                     </>
@@ -377,13 +422,13 @@ export function DesktopHome() {
                             animate={{ opacity: 1, x: 0 }}
                             whileHover={{ scale: 1.02, filter: 'brightness(1.2)' }}
                             transition={{ layout: { duration: 0.6, ease: [0.23, 1, 0.32, 1] } }}
-                            className={`${bentoHover === 'dispatch' ? 'md:col-span-2' : 'md:col-span-1'} p-8 bg-white/80 dark:bg-zinc-900/80 border ${bentoHover === 'dispatch' ? 'border-brand-primary' : 'border-slate-200 dark:border-white/10'} rounded-3xl backdrop-blur-3xl group/dispatch h-[220px] flex flex-col justify-center cursor-pointer shadow-xl dark:shadow-2xl transition-all duration-500`}
+                            className={`${bentoHover === 'dispatch' ? 'md:col-span-2' : 'md:col-span-1'} p-8 bg-zinc-900/60 border ${bentoHover === 'dispatch' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-3xl group/dispatch h-[220px] flex flex-col justify-center cursor-pointer shadow-xl transition-all duration-500`}
                         >
                             <div className="flex items-center gap-8 relative z-10 w-full h-full">
                                 {/* Left Column: Core Stats (Locked Width) */}
                                 <div className="md:w-48 flex-none space-y-4">
                                     <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-white/70 font-[family-name:var(--font-bruno-ace)]">
-                                        <span>Inventory_Sync</span>
+                                        <span>{t('Inventory_Sync')}</span>
                                         <motion.div
                                             animate={{ opacity: [1, 0.1, 1] }}
                                             transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
@@ -391,13 +436,13 @@ export function DesktopHome() {
                                         />
                                     </div>
                                     <div className="flex items-baseline gap-4 whitespace-nowrap">
-                                        <p className="text-4xl font-black text-slate-900 dark:text-white italic tracking-tighter leading-none">
+                                        <p className="text-4xl font-black text-white italic tracking-tighter leading-none">
                                             {MARKET_METRICS.deliveryTime}
                                         </p>
                                     </div>
                                     <div className="flex flex-col gap-1">
                                         <p className="text-[10px] font-bold text-white tracking-widest px-2 py-1 rounded font-inter opacity-60">
-                                            logistics_flow
+                                            {t('logistics_flow')}
                                         </p>
                                     </div>
                                 </div>
@@ -414,12 +459,11 @@ export function DesktopHome() {
                                             <div className="flex items-center gap-2">
                                                 <div className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
                                                 <span className="text-[9px] font-black text-red-500/80 tracking-[0.2em] uppercase font-mono">
-                                                    Archive_02: Logistics_Hub
+                                                    {t('Archive_02: Logistics_Hub')}
                                                 </span>
                                             </div>
                                             <p className="text-[12px] text-zinc-300 font-medium leading-[1.6] max-w-[240px]">
-                                                Hyper-local processing ensure your premium ride is dispatched and ready
-                                                in record time.
+                                                {t('Hyper-local processing ensure your premium ride is dispatched and ready in record time.')}
                                             </p>
                                         </motion.div>
                                     </>
@@ -436,13 +480,13 @@ export function DesktopHome() {
                             animate={{ opacity: 1, y: 0 }}
                             whileHover={{ scale: 1.02, filter: 'brightness(1.2)' }}
                             transition={{ layout: { duration: 0.6, ease: [0.23, 1, 0.32, 1] } }}
-                            className={`${bentoHover === 'savings' || bentoHover === null ? 'md:col-span-2' : 'md:col-span-1'} p-8 bg-white/80 dark:bg-zinc-900/80 border ${bentoHover === 'savings' ? 'border-brand-primary' : 'border-slate-200 dark:border-white/10'} rounded-3xl backdrop-blur-3xl group/savings h-[220px] flex flex-col justify-center cursor-pointer shadow-xl dark:shadow-2xl transition-all duration-500`}
+                            className={`${bentoHover === 'savings' || bentoHover === null ? 'md:col-span-2' : 'md:col-span-1'} p-8 bg-zinc-900/60 border ${bentoHover === 'savings' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-3xl group/savings h-[220px] flex flex-col justify-center cursor-pointer shadow-xl transition-all duration-500`}
                         >
                             <div className="flex items-center gap-8 relative z-10 w-full h-full">
                                 {/* Left Column: Core Stats (Locked Width) */}
                                 <div className="md:w-48 flex-none space-y-4">
                                     <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-white/70 font-[family-name:var(--font-bruno-ace)]">
-                                        <span>Savings_Calc</span>
+                                        <span>{t('Savings_Calc')}</span>
                                         <motion.div
                                             animate={{ opacity: [1, 0.1, 1] }}
                                             transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
@@ -450,13 +494,13 @@ export function DesktopHome() {
                                         />
                                     </div>
                                     <div className="flex items-baseline gap-4 whitespace-nowrap">
-                                        <p className="text-4xl font-black text-slate-900 dark:text-white italic tracking-tighter leading-none">
+                                        <p className="text-4xl font-black text-white italic tracking-tighter leading-none">
                                             {MARKET_METRICS.avgSavings}
                                         </p>
                                     </div>
                                     <div className="flex flex-col gap-1">
                                         <p className="text-[10px] font-bold text-white tracking-widest px-2 py-1 rounded opacity-60">
-                                            dealer_rebate
+                                            {t('dealer_rebate')}
                                         </p>
                                     </div>
                                 </div>
@@ -473,12 +517,11 @@ export function DesktopHome() {
                                             <div className="flex items-center gap-2">
                                                 <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse" />
                                                 <span className="text-[9px] font-black text-green-500/80 tracking-[0.2em] uppercase font-mono">
-                                                    Archive_03: Finance_Core
+                                                    {t('Archive_03: Finance_Core')}
                                                 </span>
                                             </div>
                                             <p className="text-[12px] text-zinc-300 font-medium leading-[1.6] max-w-[240px]">
-                                                Leverage our Lowest EMI Guarantee and exclusive dealer rebates to save
-                                                an average of ₹12,000 per booking.
+                                                {t('Leverage our Lowest EMI Guarantee and exclusive dealer rebates to save an average of ₹12,000 per booking.')}
                                             </p>
                                         </motion.div>
                                     </>
@@ -530,7 +573,7 @@ export function DesktopHome() {
 
                             <div className="relative z-10 flex items-center gap-4 text-xs font-black uppercase tracking-[0.4rem] text-white group-hover:text-brand-primary transition-colors font-[family-name:var(--font-bruno-ace)]">
                                 <Search size={18} />
-                                Initialize_Marketplace
+                                {t('Initialize_Marketplace')}
                             </div>
 
                             {/* magnetic hover pull (visual only via scale) */}
@@ -561,17 +604,17 @@ export function DesktopHome() {
                         <div className="col-span-12 lg:col-span-4 space-y-8 relative z-20">
                             <div>
                                 <h2 className="text-zinc-500 font-black uppercase tracking-[0.4em] text-xs mb-4">
-                                    THE SYNDICATE
+                                    {t('THE SYNDICATE')}
                                 </h2>
                                 <h1 className="text-8xl xl:text-9xl font-extrabold italic uppercase tracking-[-0.05em] leading-[0.85] text-white">
-                                    ELITE
+                                    {t('ELITE')}
                                     <br />
-                                    MAKERS<span className="text-brand-primary">.</span>
+                                    {t('MAKERS')}
+                                    <span className="text-brand-primary">.</span>
                                 </h1>
                             </div>
                             <p className="text-zinc-500 text-lg leading-relaxed max-w-sm">
-                                A curated roster of engineering giants setting global standards. Seamless, elite
-                                performance across every brand.
+                                {t('A curated roster of engineering giants setting global standards. Seamless, elite performance across every brand.')}
                             </p>
                         </div>
 
@@ -734,7 +777,7 @@ export function DesktopHome() {
                                                         </p>
                                                         <div className="flex justify-center">
                                                             <div className="flex items-center gap-3 bg-black/60 backdrop-blur-md text-white border border-white/20 px-8 py-4 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-brand-primary hover:text-black hover:border-brand-primary transition-all cursor-pointer group/active-btn">
-                                                                Enter Factory
+                                                                {t('Enter Factory')}
                                                                 <ArrowRight
                                                                     size={14}
                                                                     className="group-hover/active-btn:translate-x-1 transition-transform"
@@ -788,11 +831,11 @@ export function DesktopHome() {
                                 <div className="flex items-center gap-4">
                                     <div className="w-12 h-0.5 bg-brand-primary" />
                                     <p className="text-sm font-black text-brand-primary uppercase tracking-[0.3em]">
-                                        The Process
+                                        {t('The Process')}
                                     </p>
                                 </div>
                                 <h2 className="text-7xl xl:text-9xl font-extrabold uppercase tracking-[-0.05em] italic leading-[0.85] text-white cursor-pointer group/text">
-                                    {['Select.', 'Quote.', 'Ride.'].map((text, i) => (
+                                    {processHeadings.map((text, i) => (
                                         <div
                                             key={i}
                                             onMouseEnter={() => setActiveStep(i)}
@@ -813,36 +856,15 @@ export function DesktopHome() {
                                 transition={{ duration: 0.8, delay: 0.2 }}
                                 className="text-xl text-zinc-400 font-medium leading-relaxed max-w-sm"
                             >
-                                Experience the future of ownership. <br />
-                                <span className="text-white">Seamless. Digital. Instant.</span>
+                                {t('Experience the future of ownership.')}
+                                <br />
+                                <span className="text-white">{t('Seamless. Digital. Instant.')}</span>
                             </motion.p>
                         </div>
 
                         {/* Right Side: The Monolith Accordion */}
                         <div className="col-span-12 lg:col-span-7 h-[60vh] flex gap-4">
-                            {[
-                                {
-                                    step: '01',
-                                    title: 'Selection',
-                                    subtitle: 'LIVE INVENTORY FEED',
-                                    desc: `Direct access to regional hubs. 3.8k+ units ready for immediate allocation.`,
-                                    icon: <Search className="w-8 h-8 md:w-12 md:h-12" />,
-                                },
-                                {
-                                    step: '02',
-                                    title: 'Quotation',
-                                    subtitle: 'ALGORITHMIC PRICING',
-                                    desc: 'Zero opacity. Instant, distinct on-road valuation with no hidden dealer margins.',
-                                    icon: <MapPin className="w-8 h-8 md:w-12 md:h-12" />,
-                                },
-                                {
-                                    step: '03',
-                                    title: 'Delivery',
-                                    subtitle: 'RAPID DEPLOYMENT',
-                                    desc: `Digital documentation execution. Asset handover achieved in under 4 hours.`,
-                                    icon: <Zap className="w-8 h-8 md:w-12 md:h-12" />,
-                                },
-                            ].map((item, i) => (
+                            {processSteps.map((item, i) => (
                                 <motion.div
                                     key={i}
                                     layout
@@ -905,7 +927,7 @@ export function DesktopHome() {
 
                                                     {/* Action Button Indicator */}
                                                     <div className="pt-6 flex items-center gap-3 text-brand-primary font-black uppercase tracking-widest text-xs">
-                                                        Explore
+                                                        {t('Explore')}
                                                         <div className="h-px w-12 bg-brand-primary" />
                                                     </div>
                                                 </motion.div>
@@ -944,16 +966,17 @@ export function DesktopHome() {
                             >
                                 <div className="flex items-center gap-4">
                                     <p className="text-sm font-black text-white uppercase tracking-[0.3em]">
-                                        Curated Collections
+                                        {t('Curated Collections')}
                                     </p>
                                 </div>
                                 <h2 className="text-7xl xl:text-9xl font-extrabold uppercase tracking-[-0.05em] italic leading-[0.85] text-white">
-                                    Select <br /> Your <br /> Vibe
+                                    {t('Select')} <br /> {t('Your')} <br /> {t('Vibe')}
                                 </h2>
                             </motion.div>
                             <p className="text-xl text-zinc-400 font-medium leading-relaxed max-w-sm">
-                                Find your perfect ride. <br />
-                                <span className="text-white">Scooter. Motorcycle. Moped.</span>
+                                {t('Find your perfect ride.')}
+                                <br />
+                                <span className="text-white">{t('Scooter. Motorcycle. Moped.')}</span>
                             </p>
                         </div>
 
@@ -969,79 +992,88 @@ export function DesktopHome() {
                                         : 'flex-[1] bg-white/5 border-white/5 opacity-60 hover:opacity-100 hover:bg-white/10'
                                         }`}
                                 >
-                                    {/* Background Mesh Gradient (Subtle) */}
-                                    <div
-                                        className={`absolute inset-0 opacity-20 bg-gradient-to-br ${cat.color} to-transparent mix-blend-overlay`}
-                                    />
+                                    {(() => {
+                                        const copy = categoryCopy[cat.title];
+                                        const title = copy?.title || cat.title;
+                                        const desc = copy?.desc || cat.desc;
+                                        const features = copy?.features || cat.features;
+                                        return (
+                                            <>
+                                                {/* Background Mesh Gradient (Subtle) */}
+                                                {/* Background Mesh Gradient (Subtle) */}
+                                                <div className={`absolute inset-0 opacity-20 bg-gradient-to-br ${cat.color} to-transparent mix-blend-overlay`} />
 
-                                    {/* Interactive Layout Container: Nested vertical sandwich to fix overlap */}
-                                    <div className="absolute inset-0 p-8 md:p-10 flex flex-col justify-between z-20">
-                                        {/* Top Header: Title & Meta */}
-                                        <div className="flex justify-between items-start w-full">
-                                            <div
-                                                className={`space-y-3 transition-opacity duration-500 ${activeVibe === i ? 'opacity-100' : 'opacity-0 lg:opacity-0'}`}
-                                            >
-                                                <div className="flex gap-2">
-                                                    {cat.features.slice(0, 2).map((f, idx) => (
-                                                        <span
-                                                            key={idx}
-                                                            className="px-3 py-1 bg-black/40 backdrop-blur-md rounded-full text-[10px] font-bold uppercase tracking-widest text-white/80 border border-white/10"
+                                                {/* Interactive Layout Container: Nested vertical sandwich to fix overlap */}
+                                                <div className="absolute inset-0 p-8 md:p-10 flex flex-col justify-between z-20">
+                                                    {/* Top Header: Title & Meta */}
+                                                    <div className="flex justify-between items-start w-full">
+                                                        <div
+                                                            className={`space-y-3 transition-opacity duration-500 ${activeVibe === i ? 'opacity-100' : 'opacity-0 lg:opacity-0'}`}
                                                         >
-                                                            {f}
+                                                            <div className="flex gap-2">
+                                                                {features.slice(0, 2).map((f, idx) => (
+                                                                    <span
+                                                                        key={idx}
+                                                                        className="px-3 py-1 bg-black/40 backdrop-blur-md rounded-full text-[10px] font-bold uppercase tracking-widest text-white/80 border border-white/10"
+                                                                    >
+                                                                        {f}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                            <h3 className="text-4xl md:text-6xl font-black uppercase italic tracking-tighter text-white leading-[0.9]">
+                                                                {title}
+                                                            </h3>
+                                                        </div>
+
+                                                        {/* Icon Arrow */}
+                                                        <ArrowRight
+                                                            size={32}
+                                                            className={`text-white transition-all duration-500 ${activeVibe === i ? '-rotate-45 group-hover:rotate-0 opacity-100' : 'opacity-50'}`}
+                                                        />
+                                                    </div>
+
+                                                    {/* THE VEHICLE: Nested in flow between Title and Desc to fix overlap */}
+                                                    <div
+                                                        className={`flex-1 flex items-center justify-center transition-all duration-700 ease-out ${activeVibe === i ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}
+                                                    >
+                                                        <div className="relative w-[65%] h-[65%] pointer-events-none">
+                                                            <Image
+                                                                src={cat.img}
+                                                                alt={title}
+                                                                fill
+                                                                className="object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.5)]"
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Vertical Text for Inactive State (Desktop Only) */}
+                                                    <div
+                                                        className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 pointer-events-none transition-opacity duration-500 ${activeVibe !== i ? 'opacity-100 hidden lg:block' : 'opacity-0 hidden'}`}
+                                                    >
+                                                        <span className="text-6xl font-black uppercase italic tracking-tighter text-white/40 whitespace-nowrap">
+                                                            {title}
                                                         </span>
-                                                    ))}
+                                                    </div>
+
+                                                    {/* Content Bottom (Active Only) */}
+                                                    <div
+                                                        className={`relative z-20 transition-all duration-700 delay-100 ${activeVibe === i ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
+                                                    >
+                                                        <p className="text-sm md:text-base font-medium text-zinc-300 leading-relaxed max-w-md">
+                                                            {desc}
+                                                        </p>
+                                                        <div className="mt-8 inline-flex items-center gap-3 px-8 py-4 bg-white text-black rounded-full font-black uppercase tracking-widest text-xs hover:bg-brand-primary transition-colors cursor-pointer group/btn">
+                                                            {t('Explore')} {title}
+                                                            <ArrowRight
+                                                                size={16}
+                                                                className="transition-transform group-hover/btn:translate-x-1"
+                                                            />
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <h3 className="text-4xl md:text-6xl font-black uppercase italic tracking-tighter text-white leading-[0.9]">
-                                                    {cat.title}
-                                                </h3>
-                                            </div>
-
-                                            {/* Icon Arrow */}
-                                            <ArrowRight
-                                                size={32}
-                                                className={`text-white transition-all duration-500 ${activeVibe === i ? '-rotate-45 group-hover:rotate-0 opacity-100' : 'opacity-50'}`}
-                                            />
-                                        </div>
-
-                                        {/* THE VEHICLE: Nested in flow between Title and Desc to fix overlap */}
-                                        <div
-                                            className={`flex-1 flex items-center justify-center transition-all duration-700 ease-out ${activeVibe === i ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}
-                                        >
-                                            <div className="relative w-[65%] h-[65%] pointer-events-none">
-                                                <Image
-                                                    src={cat.img}
-                                                    alt={cat.title}
-                                                    fill
-                                                    className="object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.5)]"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Vertical Text for Inactive State (Desktop Only) */}
-                                        <div
-                                            className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 pointer-events-none transition-opacity duration-500 ${activeVibe !== i ? 'opacity-100 hidden lg:block' : 'opacity-0 hidden'}`}
-                                        >
-                                            <span className="text-6xl font-black uppercase italic tracking-tighter text-white/40 whitespace-nowrap">
-                                                {cat.title}
-                                            </span>
-                                        </div>
-
-                                        {/* Content Bottom (Active Only) */}
-                                        <div
-                                            className={`relative z-20 transition-all duration-700 delay-100 ${activeVibe === i ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
-                                        >
-                                            <p className="text-sm md:text-base font-medium text-zinc-300 leading-relaxed max-w-md">
-                                                {cat.desc}
-                                            </p>
-                                            <div className="mt-8 inline-flex items-center gap-3 px-8 py-4 bg-white text-black rounded-full font-black uppercase tracking-widest text-xs hover:bg-brand-primary transition-colors cursor-pointer group/btn">
-                                                Explore {cat.title}
-                                                <ArrowRight
-                                                    size={16}
-                                                    className="transition-transform group-hover/btn:translate-x-1"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
+                                            </>
+                                        );
+                                    })()}
                                 </Link>
                             ))}
                         </div>

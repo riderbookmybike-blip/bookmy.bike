@@ -16,6 +16,7 @@ import { Logo } from '@/components/brand/Logo';
 import { EliteCircle } from '@/components/store/sections/EliteCircle';
 
 import { useTheme } from '@/components/providers/ThemeProvider';
+import { useI18n } from '@/components/providers/I18nProvider';
 
 /**
  * Mobile V2 Home Page
@@ -26,6 +27,7 @@ export function PhoneHome() {
     const { items, skuCount } = useSystemCatalogLogic();
     const { brands } = useSystemBrandsLogic();
     const { theme } = useTheme();
+    const { t } = useI18n();
     const [hasMounted, setHasMounted] = useState(false);
 
     React.useEffect(() => {
@@ -37,7 +39,58 @@ export function PhoneHome() {
     const heroImage = '/images/templates/t3_night.png';
 
     // Standard horizontal padding matching header
-    const SIDE_PADDING = "px-6";
+    const SIDE_PADDING = "px-5";
+
+    // Gyroscope Parallax Effect for Mobile
+    const [permissionGranted, setPermissionGranted] = useState(false);
+
+    React.useEffect(() => {
+        const handleOrientation = (event: DeviceOrientationEvent) => {
+            if (!event.gamma || !event.beta) return;
+
+            // Clamp values
+            const x = Math.min(Math.max(event.gamma, -45), 45);
+            const y = Math.min(Math.max(event.beta, -45), 45) - 30;
+
+            // Map values
+            const xPct = ((x + 45) / 90) * 100;
+            const xPx = x * 1.5;
+            const yPx = y * 1.5;
+
+            requestAnimationFrame(() => {
+                document.documentElement.style.setProperty('--hyper-x', `${xPx}px`);
+                document.documentElement.style.setProperty('--hyper-y', `${yPx}px`);
+                document.documentElement.style.setProperty('--mouse-x-pct', `${xPct}%`);
+            });
+        };
+
+        if (permissionGranted) {
+            window.addEventListener('deviceorientation', handleOrientation);
+        } else if (typeof DeviceOrientationEvent !== 'undefined' && typeof (DeviceOrientationEvent as any).requestPermission !== 'function') {
+            // Non-iOS 13+ (Android)
+            window.addEventListener('deviceorientation', handleOrientation);
+            setPermissionGranted(true);
+        }
+
+        return () => {
+            window.removeEventListener('deviceorientation', handleOrientation);
+        };
+    }, [permissionGranted]);
+
+    const requestMotionPermission = async () => {
+        if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+            try {
+                const permissionState = await (DeviceOrientationEvent as any).requestPermission();
+                if (permissionState === 'granted') {
+                    setPermissionGranted(true);
+                }
+            } catch (e) {
+                console.error("Motion permission error:", e);
+            }
+        } else {
+            setPermissionGranted(true);
+        }
+    };
 
     return (
         <div className="flex flex-col bg-white dark:bg-black text-slate-900 dark:text-white overflow-x-hidden pb-20 md:pb-0 transition-colors duration-500">
@@ -46,7 +99,8 @@ export function PhoneHome() {
 
             {/* THE ACTUAL DESKTOP HERO - REFINED FOR MOBILE VIEWPORT */}
             <section
-                className="relative min-h-screen overflow-hidden bg-white dark:bg-gradient-to-br dark:from-rose-900/60 dark:via-[#0b0d10] dark:to-[#0b0d10] isolate flex flex-col items-center justify-center p-0 transition-colors duration-500"
+                className="relative min-h-screen overflow-hidden bg-gradient-to-br from-rose-900/60 via-[#0b0d10] to-[#0b0d10] dark:from-rose-950/80 dark:via-black dark:to-black isolate flex flex-col items-center justify-center p-0 transition-colors duration-500"
+                onClick={requestMotionPermission}
                 onMouseMove={e => {
                     const xPct = (e.clientX / window.innerWidth) * 100;
                     const x = (e.clientX / window.innerWidth - 0.5) * 30;
@@ -74,7 +128,7 @@ export function PhoneHome() {
                         />
                     </motion.div>
 
-                    <div className="absolute inset-0 bg-white/60 dark:bg-black/40 z-20 transition-colors" />
+                    <div className="absolute inset-0 bg-amber-500/10 dark:bg-black/40 z-20 transition-colors" />
 
                     <div
                         className="absolute inset-0 bg-[linear-gradient(to_right,#00000005_1px,transparent_1px),linear-gradient(to_bottom,#00000005_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:120px_120px] z-30 opacity-40 mix-blend-overlay transition-all"
@@ -125,36 +179,36 @@ export function PhoneHome() {
                                 <path id="circlePath" d="M 50, 50 m -42, 0 a 42,42 0 1,1 84,0 a 42,42 0 1,1 -84,0" />
                             </defs>
                             <text
-                                className="text-[8.5px] font-black uppercase tracking-[0.6em] fill-slate-900 dark:fill-white font-[family-name:var(--font-bruno-ace)] transition-colors"
+                                className="text-[8.5px] font-black uppercase tracking-[0.6em] fill-white font-[family-name:var(--font-bruno-ace)] transition-colors"
                                 style={{ opacity: 0.95 }}
                             >
                                 <textPath href="#circlePath" startOffset="0%" textLength="262" lengthAdjust="spacingAndGlyphs">
-                                    INDIA&apos;S LOWEST EMI GUARANTEE *&nbsp;
+                                    {t("INDIA'S LOWEST EMI GUARANTEE *")}&nbsp;
                                 </textPath>
                             </text>
                         </motion.svg>
 
                         {/* Central HUD Core */}
-                        <div className="relative z-10 w-24 h-24 md:w-36 md:h-36 rounded-full bg-white dark:bg-transparent border border-slate-200 dark:border-white/20 backdrop-blur-3xl flex flex-col items-center justify-center group/tele shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_0_60px_rgba(0,0,0,0.8)] hover:border-brand-primary/50 transition-all overflow-hidden scale-110">
+                        <div className="relative z-10 w-24 h-24 md:w-36 md:h-36 rounded-full bg-transparent border border-white/20 backdrop-blur-3xl flex flex-col items-center justify-center group/tele shadow-[0_0_60px_rgba(0,0,0,0.8)] hover:border-brand-primary/50 transition-all overflow-hidden scale-110">
                             <motion.div
                                 animate={{ x: ['-100%', '200%'] }}
                                 transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
-                                className="absolute inset-0 bg-gradient-to-r from-transparent via-slate-900/5 dark:via-white/20 to-transparent skew-x-[-30deg] pointer-events-none"
+                                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-30deg] pointer-events-none"
                             />
 
                             <div className="z-10 scale-90 md:scale-110 group-hover:scale-100 transition-transform duration-500 brightness-110">
-                                <Logo variant="icon" size={64} mode={(hasMounted && theme === 'dark') ? 'dark' : 'light'} />
+                                <Logo variant="icon" size={64} mode="dark" />
                             </div>
                         </div>
 
                         {/* Decorative Outer Rings (Counter-Rotating: Anti-clockwise) */}
-                        <div className="absolute inset-0 rounded-full border border-slate-200 dark:border-white/10 scale-[0.8] pointer-events-none" />
+                        <div className="absolute inset-0 rounded-full border border-white/10 scale-[0.8] pointer-events-none" />
                         <motion.div
                             animate={{ rotate: -360 }}
                             transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
-                            className="absolute inset-0 rounded-full border border-dashed border-slate-300 dark:border-white/20 scale-[0.9] pointer-events-none opacity-40"
+                            className="absolute inset-0 rounded-full border border-dashed border-white/20 scale-[0.9] pointer-events-none opacity-40"
                         />
-                        <div className="absolute inset-0 rounded-full border border-slate-200 dark:border-white/10 scale-[1.05] pointer-events-none" />
+                        <div className="absolute inset-0 rounded-full border border-white/10 scale-[1.05] pointer-events-none" />
                     </motion.div>
 
                     <div className="relative flex flex-col items-center mb-10 select-none w-full text-center">
@@ -163,24 +217,24 @@ export function PhoneHome() {
                             transition={{ duration: 1.2, ease: 'circOut' }}
                             className="flex flex-col items-center text-center"
                         >
-                            <span className="text-[10px] font-black uppercase tracking-[0.6em] text-slate-400 dark:text-white/30 leading-none mb-2">THE</span>
-                            <span className="text-sm font-black uppercase tracking-[0.4em] text-slate-600 dark:text-white/80 leading-none mb-2">HIGHEST FIDELITY</span>
-                            <span className="text-2xl font-black italic uppercase tracking-[0.2em] text-brand-primary leading-none">MARKETPLACE</span>
+                            <span className="text-[10px] font-black uppercase tracking-[0.6em] text-white/30 leading-none mb-2">{t('THE')}</span>
+                            <span className="text-sm font-black uppercase tracking-[0.4em] text-white/80 leading-none mb-2">{t('HIGHEST FIDELITY')}</span>
+                            <span className="text-2xl font-black italic uppercase tracking-[0.2em] text-brand-primary leading-none">{t('MARKETPLACE')}</span>
                         </motion.div>
 
-                        <div className="relative group/title w-full max-w-full px-4 text-center">
+                        <div className="relative group/title w-full max-w-[520px] md:max-w-[920px] mx-auto px-4 text-center">
                             <motion.h1
                                 initial={{ opacity: 0, scale: 0.95, y: 30 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
-                                className="relative text-[clamp(1.5rem,8.5vw,3.5rem)] md:text-8xl lg:text-[clamp(4rem,12vw,9.5rem)] font-black italic uppercase tracking-[-0.04em] leading-none text-transparent bg-clip-text bg-[linear-gradient(110deg,#1e293b_0%,#475569_40%,#ff9d00_50%,#475569_60%,#1e293b_100%)] dark:bg-[linear-gradient(110deg,#fff_0%,#fff_40%,#ff9d00_50%,#fff_60%,#fff_100%)] bg-[size:200%_100%] transition-all duration-1000 font-[family-name:var(--font-bruno-ace)]"
+                                className="relative text-[clamp(1.5rem,8.5vw,3.5rem)] md:text-8xl lg:text-[clamp(4rem,12vw,9.5rem)] font-black italic uppercase tracking-[-0.04em] leading-none text-transparent bg-clip-text bg-[linear-gradient(110deg,#fff_0%,#fff_40%,#ff9d00_50%,#fff_60%,#fff_100%)] bg-[size:200%_100%] transition-all duration-1000 font-[family-name:var(--font-bruno-ace)]"
                                 style={{
-                                    textShadow: theme === 'dark' ? '0 20px 50px rgba(0,0,0,0.5)' : 'none',
+                                    textShadow: '0 20px 50px rgba(0,0,0,0.5)',
                                     WebkitTextFillColor: 'transparent',
                                     backgroundPositionX: 'calc(100% - var(--mouse-x-pct))',
                                 }}
                             >
-                                MOTORCYCLES
+                                {t('MOTORCYCLES')}
                             </motion.h1>
 
                             <motion.div
@@ -206,7 +260,7 @@ export function PhoneHome() {
                                         x="0" y="0" width="100%" height="100%"
                                         fill="transparent" rx="8"
                                         stroke="currentColor" strokeWidth="1" strokeOpacity="0.1"
-                                        className="text-slate-900 dark:text-white group-hover:stroke-brand-primary/50 transition-colors"
+                                        className="text-white group-hover:stroke-brand-primary/50 transition-colors"
                                     />
                                     <motion.rect
                                         x="0" y="0" width="100%" height="100%"
@@ -218,13 +272,13 @@ export function PhoneHome() {
                                         transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
                                     />
                                 </svg>
-                                <div className="relative z-10 flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white group-hover:text-brand-primary transition-colors font-[family-name:var(--font-bruno-ace)]">
+                                <div className="relative z-10 flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.3em] text-white group-hover:text-brand-primary transition-colors font-[family-name:var(--font-bruno-ace)]">
                                     <Search size={18} className="text-[#ff9d00]" />
-                                    Search Your Bike
+                                    {t('Search Your Bike')}
                                 </div>
                             </Link>
 
-                            <div className="flex gap-6 opacity-30 text-[7px] font-mono tracking-widest whitespace-nowrap overflow-hidden text-slate-500 dark:text-white">
+                            <div className="flex gap-6 opacity-30 text-[7px] font-mono tracking-widest whitespace-nowrap overflow-hidden text-white">
                                 <span className="flex items-center gap-1.5">
                                     <div className="w-1 h-1 bg-current rounded-full" /> SECURE_LINK: ENABLED
                                 </span>
@@ -247,65 +301,65 @@ export function PhoneHome() {
                     >
                         {/* 01: SKU Live */}
                         <div className="flex flex-col items-center gap-2 min-w-[90px]">
-                            <div className="flex items-center gap-1.5 opacity-60">
-                                <span className="text-[7px] md:text-[9px] font-black text-slate-500 dark:text-white tracking-[0.25em] uppercase whitespace-nowrap">
-                                    LIVE MODELS
+                            <div className="flex items-center gap-1.5 opacity-80">
+                                <span className="text-[9px] md:text-[11px] font-black text-white tracking-[0.25em] uppercase whitespace-nowrap">
+                                    {t('LIVE MODELS')}
                                 </span>
                                 <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
                             </div>
                             <div className="flex flex-col items-center gap-0.5">
-                                <span className="text-2xl md:text-5xl font-black italic text-slate-900 dark:text-white tracking-tighter leading-none">
+                                <span className="text-3xl md:text-5xl font-black italic text-white tracking-tighter leading-none">
                                     {skuCount}+
                                 </span>
-                                <span className="text-[7px] md:text-[9px] font-bold text-slate-400 dark:text-white/30 tracking-widest lowercase border-t border-slate-100 dark:border-white/5 pt-1 w-full text-center">
-                                    active_sourcing
+                                <span className="text-[9px] md:text-[11px] font-bold text-white/50 tracking-widest lowercase border-t border-white/10 pt-1 w-full text-center">
+                                    {t('active_sourcing')}
                                 </span>
                             </div>
                         </div>
 
-                        <div className="h-12 md:h-20 w-px bg-slate-200 dark:bg-white/5 mt-4 opacity-50" />
+                        <div className="h-12 md:h-20 w-px bg-white/5 mt-4 opacity-50" />
 
                         {/* 02: Inventory Sync */}
                         <div className="flex flex-col items-center gap-2 min-w-[110px]">
-                            <div className="flex items-center gap-1.5 opacity-60">
-                                <span className="text-[7px] md:text-[9px] font-black text-slate-500 dark:text-white tracking-[0.25em] uppercase whitespace-nowrap">
-                                    REAL-TIME STOCK
+                            <div className="flex items-center gap-1.5 opacity-80">
+                                <span className="text-[9px] md:text-[11px] font-black text-white tracking-[0.25em] uppercase whitespace-nowrap">
+                                    {t('REAL-TIME STOCK')}
                                 </span>
                                 <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" />
                             </div>
                             <div className="flex flex-col items-center gap-0.5">
-                                <span className="text-2xl md:text-5xl font-black italic text-slate-900 dark:text-white tracking-tighter leading-none">
+                                <span className="text-3xl md:text-5xl font-black italic text-white tracking-tighter leading-none">
                                     {MARKET_METRICS.deliveryTime}
                                 </span>
-                                <span className="text-[7px] md:text-[9px] font-bold text-slate-400 dark:text-white/30 tracking-widest lowercase border-t border-slate-100 dark:border-white/5 pt-1 w-full text-center">
-                                    logistics_flow
+                                <span className="text-[9px] md:text-[11px] font-bold text-white/50 tracking-widest lowercase border-t border-white/10 pt-1 w-full text-center">
+                                    {t('logistics_flow')}
                                 </span>
                             </div>
                         </div>
 
-                        <div className="h-12 md:h-20 w-px bg-slate-200 dark:bg-white/5 mt-4 opacity-50" />
+                        <div className="h-12 md:h-20 w-px bg-white/5 mt-4 opacity-50" />
 
                         {/* 03: Savings Calc */}
                         <div className="flex flex-col items-center gap-2 min-w-[90px]">
-                            <div className="flex items-center gap-1.5 opacity-60">
-                                <span className="text-[7px] md:text-[9px] font-black text-slate-500 dark:text-white tracking-[0.25em] uppercase whitespace-nowrap">
-                                    AVG. SAVINGS
+                            <div className="flex items-center gap-1.5 opacity-80">
+                                <span className="text-[9px] md:text-[11px] font-black text-white tracking-[0.25em] uppercase whitespace-nowrap">
+                                    {t('AVG. SAVINGS')}
                                 </span>
                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                             </div>
                             <div className="flex flex-col items-center gap-0.5">
-                                <span className="text-2xl md:text-5xl font-black italic text-slate-900 dark:text-white tracking-tighter leading-none">
+                                <span className="text-3xl md:text-5xl font-black italic text-white tracking-tighter leading-none">
                                     {MARKET_METRICS.avgSavings}
                                 </span>
-                                <span className="text-[7px] md:text-[9px] font-bold text-slate-400 dark:text-white/30 tracking-widest lowercase border-t border-slate-100 dark:border-white/5 pt-1 w-full text-center">
-                                    dealer_rebate
+                                <span className="text-[9px] md:text-[11px] font-bold text-white/50 tracking-widest lowercase border-t border-white/10 pt-1 w-full text-center">
+                                    {t('dealer_rebate')}
                                 </span>
                             </div>
                         </div>
                     </motion.div>
 
                     <div className="flex flex-col items-center gap-4 opacity-40">
-                        <span className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.5em] text-slate-900 dark:text-white transition-colors">Scroll to Explore</span>
+                        <span className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.5em] text-white transition-colors">{t('Scroll to Explore')}</span>
                         <motion.div
                             animate={{ y: [0, 8, 0] }}
                             transition={{ duration: 2, repeat: Infinity }}
@@ -320,8 +374,8 @@ export function PhoneHome() {
             {/* Brands Section */}
             <section className={`bg-slate-50 dark:bg-gradient-to-bl dark:from-orange-800/20 dark:via-[#0b0d10] dark:to-[#0b0d10] py-16 ${SIDE_PADDING} transition-colors duration-500`}>
                 <div className="mb-12">
-                    <h2 className="text-slate-400 dark:text-zinc-500 font-black uppercase tracking-[0.3em] text-xs mb-4">THE SYNDICATE</h2>
-                    <h1 className="text-5xl font-extrabold italic uppercase tracking-tight leading-tight text-slate-900 dark:text-white transition-colors">ELITE<br />MAKERS<span className="text-brand-primary">.</span></h1>
+                    <h2 className="text-slate-400 dark:text-zinc-500 font-black uppercase tracking-[0.3em] text-xs mb-4">{t('THE SYNDICATE')}</h2>
+                    <h1 className="text-5xl font-extrabold italic uppercase tracking-tight leading-tight text-slate-900 dark:text-white transition-colors">{t('ELITE')}<br />{t('MAKERS')}<span className="text-brand-primary">.</span></h1>
                 </div>
 
                 <div className="relative -mx-6 px-6 overflow-hidden">
@@ -374,9 +428,9 @@ export function PhoneHome() {
                 <div className="mb-12">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="w-8 h-px bg-brand-primary" />
-                        <p className="text-xs font-black text-brand-primary uppercase tracking-[0.2em]">The Process</p>
+                        <p className="text-xs font-black text-brand-primary uppercase tracking-[0.2em]">{t('The Process')}</p>
                     </div>
-                    <h2 className="text-5xl font-extrabold uppercase tracking-tight italic leading-tight text-slate-900 dark:text-white transition-colors">Select.<br />Quote.<br />Ride.</h2>
+                    <h2 className="text-5xl font-extrabold uppercase tracking-tight italic leading-tight text-slate-900 dark:text-white transition-colors">{t('Select.')}<br />{t('Quote.')}<br />{t('Ride.')}</h2>
                 </div>
 
                 <div className="space-y-6">
@@ -393,8 +447,8 @@ export function PhoneHome() {
                                 {index < 2 && <div className="w-px flex-1 bg-slate-200 dark:bg-white/10 my-4" />}
                             </div>
                             <div className="flex-1 pb-8">
-                                <h3 className="text-2xl font-black italic uppercase text-slate-900 dark:text-white mb-2 transition-colors">{item.title}</h3>
-                                <p className="text-sm text-slate-500 dark:text-zinc-400 leading-relaxed transition-colors">{item.desc}</p>
+                                <h3 className="text-2xl font-black italic uppercase text-slate-900 dark:text-white mb-2 transition-colors">{t(item.title)}</h3>
+                                <p className="text-sm text-slate-500 dark:text-zinc-400 leading-relaxed transition-colors">{t(item.desc)}</p>
                             </div>
                         </motion.div>
                     ))}
@@ -404,8 +458,8 @@ export function PhoneHome() {
             {/* Categories Section */}
             <section className={`bg-slate-50 dark:bg-gradient-to-tr dark:from-emerald-800/20 dark:via-[#0b0d10] dark:to-black py-16 transition-colors duration-500 ${SIDE_PADDING}`}>
                 <div className="mb-12">
-                    <p className="text-xs font-black text-slate-400 dark:text-white uppercase tracking-[0.2em] mb-4">Curated Collections</p>
-                    <h2 className="text-5xl font-extrabold uppercase italic text-slate-900 dark:text-white mb-4 transition-colors">Select<br />Your<br />Vibe</h2>
+                    <p className="text-xs font-black text-slate-400 dark:text-white uppercase tracking-[0.2em] mb-4">{t('Curated Collections')}</p>
+                    <h2 className="text-5xl font-extrabold uppercase italic text-slate-900 dark:text-white mb-4 transition-colors">{t('Select')}<br />{t('Your')}<br />{t('Vibe')}</h2>
                 </div>
 
                 <div className="space-y-4">
@@ -417,8 +471,8 @@ export function PhoneHome() {
                         <Link key={cat.title} href={cat.link} className={`block relative p-8 rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 bg-gradient-to-br ${cat.bg} to-transparent overflow-hidden group shadow-sm dark:shadow-none transition-all`}>
                             <div className="flex justify-between items-center relative z-10">
                                 <div className="space-y-1">
-                                    <span className="text-[10px] font-black text-slate-400 dark:text-white/30 tracking-[0.3em] uppercase transition-colors">Most Popular</span>
-                                    <h3 className="text-3xl font-black italic uppercase text-slate-900 dark:text-white transition-colors">{cat.title}</h3>
+                                    <span className="text-[10px] font-black text-slate-400 dark:text-white/30 tracking-[0.3em] uppercase transition-colors">{t('Most Popular')}</span>
+                                    <h3 className="text-3xl font-black italic uppercase text-slate-900 dark:text-white transition-colors">{t(cat.title)}</h3>
                                 </div>
                                 <ArrowRight className="text-slate-200 dark:text-white/20 group-hover:text-brand-primary transition-all -rotate-45 group-hover:rotate-0" size={24} />
                             </div>
@@ -430,8 +484,8 @@ export function PhoneHome() {
             {/* Rider Pulse */}
             <section className={`bg-white dark:bg-gradient-to-br dark:from-blue-900/20 dark:via-[#0b0d10] dark:to-[#0b0d10] py-16 transition-colors duration-500 ${SIDE_PADDING}`}>
                 <div className="mb-12">
-                    <h2 className="text-5xl font-black uppercase italic text-slate-900 dark:text-white mb-4 transition-colors">Rider<br /><span className="text-brand-primary">Pulse.</span></h2>
-                    <p className="text-sm text-slate-400 dark:text-zinc-500 border-l border-slate-200 dark:border-white/10 pl-4 transition-colors">Real stories. Real roads.</p>
+                    <h2 className="text-5xl font-black uppercase italic text-slate-900 dark:text-white mb-4 transition-colors">{t('Rider')}<br /><span className="text-brand-primary">{t('Pulse.')}</span></h2>
+                    <p className="text-sm text-slate-400 dark:text-zinc-500 border-l border-slate-200 dark:border-white/10 pl-4 transition-colors">{t('Real stories. Real roads.')}</p>
                 </div>
                 <div className="relative -mx-6 px-6 overflow-hidden">
                     <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4">
@@ -442,7 +496,7 @@ export function PhoneHome() {
                         ].map((review) => (
                             <div key={review.name} className="flex-none w-72 snap-center p-8 bg-slate-50 dark:bg-zinc-900/80 border border-slate-200 dark:border-white/5 rounded-3xl transition-colors">
                                 <Quote className="text-brand-primary/20 mb-6" size={32} />
-                                <p className="text-base font-bold italic leading-tight mb-8 text-slate-900 dark:text-white transition-colors">"{review.quote}"</p>
+                                <p className="text-base font-bold italic leading-tight mb-8 text-slate-900 dark:text-white transition-colors">"{t(review.quote)}"</p>
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-full bg-brand-primary/20 flex items-center justify-center font-black text-brand-primary text-xs">
                                         <img

@@ -25,6 +25,8 @@ import AccessoriesTab from './Personalize/Tabs/AccessoriesTab';
 import SidebarHUD from './Personalize/SidebarHUD';
 import CascadingAccessorySelector from './Personalize/CascadingAccessorySelector';
 import { ServiceOption } from '@/types/store';
+import { useI18n } from '@/components/providers/I18nProvider';
+import { toDevanagariScript } from '@/lib/i18n/transliterate';
 
 // Lazy load tab components for code splitting
 const FinanceTab = dynamic(() => import('./Personalize/Tabs/FinanceTab'), {
@@ -79,6 +81,7 @@ interface DesktopPDPProps {
 }
 
 export function DesktopPDP({ product, makeParam, modelParam, variantParam, data, handlers, leadContext, basePath = '/store' }: DesktopPDPProps) {
+    const { language } = useI18n();
     // Configuration Constants
     const REFERRAL_BONUS = 5000; // Member referral discount amount
 
@@ -151,6 +154,16 @@ export function DesktopPDP({ product, makeParam, modelParam, variantParam, data,
     }, []);
 
     const activeColorConfig = colors.find((c: any) => c.id === selectedColor) || colors[0];
+
+    const shouldDevanagari = language === 'hi' || language === 'mr';
+    const scriptText = (value?: string) => {
+        if (!value) return '';
+        return shouldDevanagari ? toDevanagariScript(value) : value;
+    };
+    const displayMake = scriptText(makeParam);
+    const displayModel = scriptText(modelParam);
+    const displayVariant = scriptText(variantParam);
+    const displayColor = scriptText(activeColorConfig?.name);
 
     const totalMRP =
         (product.mrp || Math.round(baseExShowroom * 1.06)) + // 6% markup if no MRP set
@@ -540,13 +553,13 @@ export function DesktopPDP({ product, makeParam, modelParam, variantParam, data,
                             <span className="text-brand-primary/30">•</span>
 
                             <Link href={`${basePath}/catalog?make=${makeParam}`} className="text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white transition-all duration-500 hover:tracking-[0.35em] uppercase">
-                                {makeParam}
+                                {displayMake}
                             </Link>
 
                             <span className="text-brand-primary/30">•</span>
 
                             <span className="text-slate-900 dark:text-white font-black italic uppercase drop-shadow-[0_0_10px_rgba(255,255,255,0.1)]">
-                                {modelParam}
+                                {displayModel}
                             </span>
                         </div>
                     }
@@ -601,8 +614,8 @@ export function DesktopPDP({ product, makeParam, modelParam, variantParam, data,
                     {/* Right Column: Master Sidebar HUD (Single Source of Truth) */}
                     <SidebarHUD
                         product={product}
-                        variantName={variantParam}
-                        activeColor={{ name: activeColorConfig.name, hex: activeColorConfig.hex }}
+                        variantName={displayVariant}
+                        activeColor={{ name: displayColor || activeColorConfig.name, hex: activeColorConfig.hex }}
                         totalOnRoad={totalOnRoad}
                         totalMRP={totalMRP}
                         emi={emi}

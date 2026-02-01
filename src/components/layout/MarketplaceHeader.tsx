@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { Menu, X, Heart, Home as HomeIcon, ArrowRight } from 'lucide-react';
+import { Menu, X, Heart, Home as HomeIcon, ArrowRight, Languages } from 'lucide-react';
 import { MotorcycleIcon } from '@/components/icons/MotorcycleIcon';
 import { Logo } from '@/components/brand/Logo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useTheme } from '@/components/providers/ThemeProvider';
+import { useI18n } from '@/components/providers/I18nProvider';
 import { createClient } from '@/lib/supabase/client';
 import { usePathname } from 'next/navigation';
 
@@ -25,8 +26,11 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const [isVisible, setIsVisible] = useState(true);
     const [mounted, setMounted] = useState(false);
     const [showWishlistPreview, setShowWishlistPreview] = useState(false);
+    const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
+    const languageMenuRef = useRef<HTMLDivElement | null>(null);
     const [viewport, setViewport] = useState<{ width: number; height: number } | null>(null);
     const { theme } = useTheme();
+    const { language, setLanguage, languages, t } = useI18n();
     const pathname = usePathname();
 
     useEffect(() => {
@@ -77,6 +81,24 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
             authListener.subscription.unsubscribe();
         };
     }, []);
+
+    useEffect(() => {
+        if (!isLanguageMenuOpen) return;
+        const handleClickOutside = (event: MouseEvent) => {
+            if (!languageMenuRef.current?.contains(event.target as Node)) {
+                setIsLanguageMenuOpen(false);
+            }
+        };
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setIsLanguageMenuOpen(false);
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('keydown', handleEscape);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('keydown', handleEscape);
+        };
+    }, [isLanguageMenuOpen]);
 
     const isHome = pathname === '/' || pathname === '/store';
 
@@ -141,7 +163,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
             left={
                 <Link href="/" className="flex items-center group h-full">
                     <div className="flex items-center justify-center transition-all duration-300">
-                        <Logo mode={isLight ? 'light' : 'dark'} size={40} variant="full" />
+                        <Logo mode="dark" size={40} variant="full" />
                     </div>
                 </Link>
             }
@@ -279,6 +301,67 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                                                     className="opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all"
                                                 />
                                             </Link>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                        <div className="relative" ref={languageMenuRef}>
+                            <button
+                                onClick={() => setIsLanguageMenuOpen(prev => !prev)}
+                                aria-label={t('Language')}
+                                aria-haspopup="listbox"
+                                aria-expanded={isLanguageMenuOpen}
+                                className="w-10 h-10 rounded-full border transition-all duration-300 group flex items-center justify-center border-white/20 text-white hover:bg-white hover:text-black hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]"
+                                title={t('Language')}
+                            >
+                                <Languages size={18} />
+                            </button>
+                            <AnimatePresence>
+                                {isLanguageMenuOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                                        className="absolute right-0 mt-4 w-56 rounded-2xl bg-white dark:bg-[#0f1115] border border-slate-200 dark:border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] p-2 z-50"
+                                    >
+                                        <div className="px-2 pt-2 pb-3 border-b border-slate-100 dark:border-white/10">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                {t('Language')}
+                                            </p>
+                                            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-1">
+                                                {language.toUpperCase()}
+                                            </p>
+                                        </div>
+                                        <div className="py-2 space-y-1">
+                                            {languages.map(lang => {
+                                                const isActiveLang = language === lang.code;
+                                                const isDisabled = lang.status !== 'ACTIVE';
+                                                return (
+                                                    <button
+                                                        key={lang.code}
+                                                        type="button"
+                                                        disabled={isDisabled}
+                                                        onClick={() => {
+                                                            if (isDisabled) return;
+                                                            setLanguage(lang.code);
+                                                            setIsLanguageMenuOpen(false);
+                                                        }}
+                                                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition-all ${isActiveLang
+                                                            ? 'bg-brand-primary/15 text-slate-900 dark:text-white'
+                                                            : 'text-slate-700 dark:text-slate-200'
+                                                            } ${isDisabled
+                                                                ? 'opacity-40 cursor-not-allowed'
+                                                                : 'hover:bg-slate-100 dark:hover:bg-white/5'
+                                                            }`}
+                                                    >
+                                                        <span className="text-sm font-bold">{lang.nativeName}</span>
+                                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                            {lang.code.toUpperCase()}
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
                                     </motion.div>
                                 )}

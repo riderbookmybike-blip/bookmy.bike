@@ -428,6 +428,35 @@ export type Database = {
                     updated_at?: string
                 }
             }
+            i18n_term_overrides: {
+                Row: {
+                    id: string
+                    term_type: string
+                    source_text: string
+                    language_code: string
+                    translated_text: string
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    term_type: string
+                    source_text: string
+                    language_code: string
+                    translated_text: string
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    term_type?: string
+                    source_text?: string
+                    language_code?: string
+                    translated_text?: string
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
             i18n_sync_runs: {
                 Row: {
                     id: string
