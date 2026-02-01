@@ -294,7 +294,7 @@ export default async function Page({ params, searchParams }: Props) {
     if (firstSkuId) {
         const { data: pricingData, error: pricingError } = await supabase.rpc('get_variant_on_road_price_v1', {
             p_vehicle_color_id: firstSkuId,
-            p_district_name: location?.district || null,
+            p_district_name: location?.district || 'ALL',
             p_state_code: stateCode,
             p_registration_type: 'STATE'
         });

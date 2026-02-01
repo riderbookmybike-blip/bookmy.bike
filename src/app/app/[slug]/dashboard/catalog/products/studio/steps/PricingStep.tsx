@@ -22,7 +22,6 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { CatalogItem } from '@/types/store';
 import { MOCK_REGISTRATION_RULES } from '@/lib/mock/catalogMocks';
-import { calculateOnRoad } from '@/lib/utils/pricingUtility';
 
 interface PricingStepProps {
     family: CatalogItem | null;
@@ -88,22 +87,13 @@ export default function PricingStep({ family, skus, pricingState, onUpdate, onUp
             const overridePrice = overrides[key];
             const finalPrice = overridePrice !== undefined ? overridePrice : calculated;
 
-            // Registration Calculations
-            const destRule = MOCK_REGISTRATION_RULES.find(r => r.stateCode === activeDestination);
-            const refRule = MOCK_REGISTRATION_RULES.find(r => r.stateCode === referenceState);
-
-            const destCalcs = destRule ? calculateOnRoad(finalPrice, sku.specs?.engine_cc || 110, destRule) : null;
-            const refCalcs = refRule ? calculateOnRoad(skuRefPrice, sku.specs?.engine_cc || 110, refRule) : null;
-
             rows.push({
                 sku,
                 referencePrice: skuRefPrice,
                 calculatedPrice: calculated,
                 finalPrice,
                 isApproved,
-                hasOverride: overridePrice !== undefined,
-                onRoad: destCalcs?.onRoadTotal,
-                refOnRoad: refCalcs?.onRoadTotal
+                hasOverride: overridePrice !== undefined
             });
         });
 
@@ -285,7 +275,7 @@ export default function PricingStep({ family, skus, pricingState, onUpdate, onUp
                                         <th className="px-4">SKU Identity</th>
                                         <th className="px-4 text-center">{referenceState} (Ref)</th>
                                         <th className="px-4 text-center">{activeDestination} (New)</th>
-                                        <th className="px-4 text-center">On-Road Impact</th>
+                                        <th className="px-4 text-center">On-Road (Server RPC)</th>
                                         <th className="px-4 text-right">Approval</th>
                                     </tr>
                                 </thead>
@@ -329,12 +319,12 @@ export default function PricingStep({ family, skus, pricingState, onUpdate, onUp
                                                     <div className="flex items-center justify-center gap-2">
                                                         <div className="flex flex-col items-end">
                                                             <span className="text-[7px] font-bold text-slate-400 uppercase">{referenceState}</span>
-                                                            <span className="text-[9px] font-bold text-slate-600 dark:text-slate-400">₹{row.refOnRoad?.toLocaleString()}</span>
+                                                            <span className="text-[9px] font-bold text-slate-600 dark:text-slate-400">RPC</span>
                                                         </div>
                                                         <ArrowRight size={12} className="text-slate-300" />
                                                         <div className="flex flex-col items-start px-1.5 py-0.5 bg-emerald-500/10 rounded-md">
                                                             <span className="text-[7px] font-black text-emerald-600 uppercase">{activeDestination}</span>
-                                                            <span className="text-[9px] font-black text-emerald-600 italic">₹{row.onRoad?.toLocaleString()}</span>
+                                                            <span className="text-[9px] font-black text-emerald-600 italic">RPC</span>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -386,7 +376,7 @@ export default function PricingStep({ family, skus, pricingState, onUpdate, onUp
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-[10px] font-black text-indigo-200 uppercase tracking-widest">Regional Advantage</span>
-                                    <p className="text-[11px] font-medium leading-relaxed opacity-80 mt-1">{activeDestination} pricing is competitive. RTO + Ex-S will be ₹{(ledger[0]?.onRoad / 1000).toFixed(1)}k on average.</p>
+                                    <p className="text-[11px] font-medium leading-relaxed opacity-80 mt-1">{activeDestination} pricing is competitive. On-road totals will be computed by server RPC at publish time.</p>
                                 </div>
                             </div>
                         </div>

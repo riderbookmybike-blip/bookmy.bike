@@ -176,10 +176,11 @@ export function useSystemDealerContext({
                 };
 
                 const callPricingRpc = async (targetDistrict: string, targetState: string) => {
+                    const resolvedDistrict = targetDistrict || 'ALL';
                     // @ts-ignore - Types might be outdated
                     const { data: pricingData, error: pricingError } = await supabase.rpc('get_variant_on_road_price_v1', {
                         p_vehicle_color_id: activeSku,
-                        p_district_name: targetDistrict,
+                        p_district_name: resolvedDistrict,
                         p_state_code: targetState,
                         p_registration_type: 'STATE' // Default to STATE, can be toggled by UI later
                     }) as { data: any, error: any };
@@ -199,7 +200,7 @@ export function useSystemDealerContext({
                 };
 
                 if (activeSku) {
-                    const primaryAttempt = await callPricingRpc(district, stateCode || 'MH');
+                    const primaryAttempt = await callPricingRpc(district || 'ALL', stateCode || 'MH');
 
                     if (!primaryAttempt.ok && DEFAULT_PRICING_DEALER_TENANT_ID) {
                         const { data: fallbackDealer } = await supabase
@@ -208,19 +209,17 @@ export function useSystemDealerContext({
                             .eq('id', DEFAULT_PRICING_DEALER_TENANT_ID)
                             .single();
 
-                        const fallbackDistrict = fallbackDealer?.location || district;
+                        const fallbackDistrict = fallbackDealer?.location || district || 'ALL';
                         const fallbackState = stateCode || 'MH';
 
-                        if (fallbackDistrict) {
-                            await callPricingRpc(fallbackDistrict, fallbackState);
-                        }
+                        await callPricingRpc(fallbackDistrict, fallbackState);
                     }
                 }
 
                 // 3. Fetch Market Best Offers (Legacy - for accessories and bundle logic)
                 // @ts-ignore - Types might be outdated for this RPC
                 const { data: offers } = await supabase.rpc('get_market_best_offers', {
-                    p_district_name: district,
+                    p_district_name: district || 'ALL',
                     p_state_code: stateCode || 'MH'
                 }) as { data: any[], error: any };
 

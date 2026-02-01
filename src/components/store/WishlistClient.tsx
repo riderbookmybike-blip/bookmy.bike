@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Heart, ArrowRight, Plus, Search, SlidersHorizontal, X, ChevronDown } from 'lucide-react';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
-import { ProductCard } from '@/components/store/DesktopCatalog';
+import { ProductCard } from '@/components/store/desktop/ProductCard';
 
 // Filter Group Component (Extracted)
 const FilterGroup = ({ title, options, selectedValues, onToggle, onReset, showReset = false }: any) => {
