@@ -111,7 +111,7 @@ export async function fetchCatalogServerSide(leadId?: string): Promise<ProductVa
                     offset_y,
                     specs,
                     assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
-                    prices:vehicle_prices!vehicle_color_id(ex_showroom_price, state_code, offer_amount)
+                    prices:cat_prices!vehicle_color_id(ex_showroom_price, state_code, district, latitude, longitude, is_active)
                 )
             )
         `)

@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Landmark, Sparkles, TrendingUp, Info, Save, CheckCircle2, Car, Copy, Edit2, ArrowRight, ArrowUpDown, Search, Filter, Package, ExternalLink, Activity, Loader2, Power, AlertCircle, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
-import { calculateOnRoad } from '@/lib/utils/pricingUtility';
 import { useRouter } from 'next/navigation';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { RegistrationRule } from '@/types/registration';
@@ -33,6 +32,11 @@ interface SKUPriceRow {
     suitableFor?: string;
     status?: 'ACTIVE' | 'INACTIVE' | 'DRAFT' | 'RELAUNCH';
     localIsActive?: boolean;
+    rto?: number;
+    insurance?: number;
+    onRoad?: number;
+    originalStatus?: 'ACTIVE' | 'INACTIVE' | 'DRAFT' | 'RELAUNCH';
+    originalLocalIsActive?: boolean;
 }
 
 interface PricingLedgerTableProps {
@@ -105,7 +109,6 @@ const BrandAvatar = ({ name, logo }: { name: string, logo?: string }) => {
 export default function PricingLedgerTable({
     initialSkus,
     processedSkus,
-    activeRule,
     onUpdatePrice,
     onUpdateOffer,
     onUpdateInclusion,
@@ -574,12 +577,12 @@ export default function PricingLedgerTable({
 
                                     {!isAums && activeCategory === 'vehicles' && (
                                         <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 bg-slate-50/30 text-right">
-                                            On-Road (Base)
+                                            On-Road (Server)
                                         </th>
                                     )}
 
                                     <th className="px-8 py-5 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border-b border-emerald-100 dark:border-emerald-900/30 text-right bg-emerald-50/80 dark:bg-emerald-900/20">
-                                        {activeCategory === 'vehicles' ? (isAums ? 'On-Road' : 'On-Road Offer') : 'Final Price'}
+                                        {activeCategory === 'vehicles' ? (isAums ? 'On-Road (Server)' : 'Offer Delta (INR)') : 'Final Price'}
                                     </th>
 
                                     {!isAums && activeCategory === 'vehicles' && (
@@ -655,8 +658,7 @@ export default function PricingLedgerTable({
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                 {paginatedSkus.map((sku) => {
-                                    const stdCalcs = activeRule ? calculateOnRoad(sku.exShowroom, Number(sku.engineCc), activeRule, undefined) : null;
-                                    const finalCalcs = activeRule ? calculateOnRoad(sku.exShowroom, Number(sku.engineCc), activeRule, undefined, { offerAmount: sku.offerAmount }) : null;
+                                    const offerDelta = Number(sku.offerAmount || 0);
                                     const gstRate = sku.gstRate || 28;
                                     const basePrice = sku.exShowroom / (1 + gstRate / 100);
                                     const totalGst = sku.exShowroom - basePrice;
@@ -708,14 +710,20 @@ export default function PricingLedgerTable({
                                             {activeCategory === 'vehicles' ? (
                                                 <>
                                                     <td className="px-6 py-5 text-right">
-                                                        <span className="font-bold text-[11px] text-slate-600 dark:text-slate-400">₹{stdCalcs?.rtoState.total.toLocaleString() || '--'}</span>
+                                                        <span className="font-bold text-[11px] text-slate-600 dark:text-slate-400">
+                                                            {sku.rto ? `₹${sku.rto.toLocaleString()}` : '—'}
+                                                        </span>
                                                     </td>
                                                     <td className="px-6 py-5 text-right">
-                                                        <span className="font-bold text-[11px] text-slate-600 dark:text-slate-400">₹{stdCalcs?.insuranceComp.total.toLocaleString() || '--'}</span>
+                                                        <span className="font-bold text-[11px] text-slate-600 dark:text-slate-400">
+                                                            {sku.insurance ? `₹${sku.insurance.toLocaleString()}` : '—'}
+                                                        </span>
                                                     </td>
                                                     {!isAums && (
                                                         <td className="px-8 py-5 text-right">
-                                                            <span className="font-bold text-[11px] text-slate-400 dark:text-slate-500">₹{stdCalcs?.onRoadTotal.toLocaleString() || '--'}</span>
+                                                            <span className="font-bold text-[11px] text-slate-400 dark:text-slate-500">
+                                                                {sku.onRoad ? `₹${sku.onRoad.toLocaleString()}` : '—'}
+                                                            </span>
                                                         </td>
                                                     )}
                                                 </>
@@ -752,17 +760,16 @@ export default function PricingLedgerTable({
                                             <td className="px-8 py-5 text-right bg-emerald-50/20 dark:bg-emerald-900/10">
                                                 {isAums ? (
                                                     <span className="font-black text-[13px] text-emerald-700 dark:text-emerald-400 tracking-tight">
-                                                        ₹{activeCategory === 'vehicles' ? (stdCalcs?.onRoadTotal.toLocaleString() || '--') : sku.exShowroom.toLocaleString()}
+                                                        {activeCategory === 'vehicles' ? (sku.onRoad ? `₹${sku.onRoad.toLocaleString()}` : '—') : `₹${sku.exShowroom.toLocaleString()}`}
                                                     </span>
                                                 ) : activeCategory === 'vehicles' ? (
                                                     <input
                                                         type="number"
-                                                        value={finalCalcs?.onRoadTotal || 0}
+                                                        value={offerDelta}
                                                         readOnly={!isSelected || !isEditMode}
+                                                        title="Offer delta. Negative = discount, positive = premium."
                                                         onChange={(e) => {
-                                                            const enteredOffer = Number(e.target.value);
-                                                            const baseOnRoad = stdCalcs?.onRoadTotal || 0;
-                                                            onUpdateOffer(sku.id, enteredOffer - baseOnRoad);
+                                                            onUpdateOffer(sku.id, Number(e.target.value));
                                                         }}
                                                         className={`w-28 rounded-lg px-3 py-1.5 text-sm font-black text-right outline-none transition-all
                                                             ${(!isSelected || !isEditMode)
@@ -781,12 +788,12 @@ export default function PricingLedgerTable({
                                             {!isAums && activeCategory === 'vehicles' && (
                                                 <td className="px-6 py-5 text-right">
                                                     {(() => {
-                                                        const discount = (stdCalcs?.onRoadTotal || 0) - (finalCalcs?.onRoadTotal || 0);
-                                                        if (discount === 0) return <span className="text-xs font-bold text-slate-300">—</span>;
+                                                        if (offerDelta === 0) return <span className="text-xs font-bold text-slate-300">—</span>;
+                                                        const isDiscount = offerDelta < 0;
                                                         return (
-                                                            <div className={`inline-flex items-center gap-1 font-black text-xs ${discount > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                                                {discount > 0 ? <Sparkles size={12} /> : <Zap size={12} />}
-                                                                {discount > 0 ? `-₹${discount.toLocaleString()}` : `+₹${Math.abs(discount).toLocaleString()}`}
+                                                            <div className={`inline-flex items-center gap-1 font-black text-xs ${isDiscount ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                                {isDiscount ? <Sparkles size={12} /> : <Zap size={12} />}
+                                                                {isDiscount ? `-₹${Math.abs(offerDelta).toLocaleString()}` : `+₹${offerDelta.toLocaleString()}`}
                                                             </div>
                                                         );
                                                     })()}
@@ -876,7 +883,7 @@ export default function PricingLedgerTable({
                     <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
                         <Info size={16} className="text-emerald-600" />
                         <p className="text-[10px] font-black uppercase tracking-widest italic">
-                            All statutory charges are auto-calculated based on {activeRule?.ruleName || 'unclassified'} regulatory rules.
+                            On-road charges are computed by server RPC (SSPP). This ledger edits ex-showroom and offer deltas only.
                         </p>
                     </div>
                 </div>

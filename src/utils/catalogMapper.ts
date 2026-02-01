@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ProductVariant } from '@/types/productMaster';
-import { calculateOnRoad } from '@/lib/utils/pricingUtility';
 
 // State code to full name mapping
 export const STATE_NAMES: Record<string, string> = {
@@ -158,6 +157,7 @@ export function mapCatalogItems(
                     const skuPrices = allSkus.flatMap((sku: any) => sku.prices || []);
                     let activePriceObj = null;
                     let pricingSource = "";
+                    let dealerLocation: string | undefined = undefined;
                     let isEstimate = false;
 
                     // 1. Find Best Offer from RPC results
@@ -178,7 +178,12 @@ export function mapCatalogItems(
                             } else {
                                 bundlePriceAmount = bundleValueAmount;
                             }
+                            dealerLocation = match.dealer_location || undefined;
                         }
+                    }
+
+                    if (dealerLocation && !pricingSource) {
+                        pricingSource = dealerLocation;
                     }
 
                     // 2. Find Location/Distance match from cat_prices
@@ -217,7 +222,7 @@ export function mapCatalogItems(
                             isEstimate = true;
                         }
 
-                        if (activePriceObj) {
+                        if (activePriceObj && !pricingSource) {
                             const stateName = STATE_NAMES[activePriceObj.state_code] || activePriceObj.state_code;
                             let sourceParts = [];
                             if (activePriceObj.district) sourceParts.push(activePriceObj.district);
@@ -230,8 +235,6 @@ export function mapCatalogItems(
                     }
 
                     // 3. Calculate Final Prices with improved fallback
-                    const engineCc = family.specs?.engine_cc || 110;
-
                     // IMPROVED FALLBACK CHAIN:
                     // Try: cat_prices.ex_showroom_price -> SKU.price_base -> Variant.price_base -> Family.price_base -> 0
                     let baseExShowroom = 0;
@@ -255,10 +258,8 @@ export function mapCatalogItems(
                         }
                     }
 
-                    const standardBreakdown = calculateOnRoad(Number(baseExShowroom), engineCc, effectiveRule, insuranceRule);
-                    const onRoadTotal = standardBreakdown.onRoadTotal;
-
-                    const offerPrice = onRoadTotal + bestOfferAmount + bundlePriceAmount;
+                    const onRoadTotal = Number(baseExShowroom || 0);
+                    const offerPrice = onRoadTotal;
                     const bundleSavingsAmount = Math.max(0, Math.round(bundleValueAmount - bundlePriceAmount));
 
                     return {

@@ -24,12 +24,13 @@ export async function getDistrictFromPincode(pincode: string): Promise<string | 
 export async function getDealerPriceAction(itemId: string, stateCode?: string): Promise<number> {
     const supabase = await createClient();
 
-    // 1. Try to get price from vehicle_prices (single source of truth)
+    // 1. Try to get price from cat_prices (single source of truth)
     const { data: price, error } = await supabase
-        .from('vehicle_prices')
+        .from('cat_prices')
         .select('ex_showroom_price')
         .eq('vehicle_color_id', itemId)
         .eq('state_code', stateCode || 'MH')
+        .eq('is_active', true)
         .maybeSingle();
 
     if (price?.ex_showroom_price) {

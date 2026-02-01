@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
     Heart,
@@ -42,10 +42,14 @@ export const ProductCard = ({
     serviceability,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     onLocationClick,
+    onColorChange,
     isTv = false,
     bestOffer,
     leadId,
     basePath = '/store',
+    isParentCompact = false,
+    serverPricing, // SSPP v1: Server-calculated pricing
+    isPdp = false, // Hide "Know More" on PDP
 }: {
     v: ProductVariant;
     viewMode?: 'grid' | 'list';
@@ -63,11 +67,23 @@ export const ProductCard = ({
         dealer: string;
         dealerId?: string;
         isServiceable: boolean;
+        dealerLocation?: string;
         bundleValue?: number;
         bundlePrice?: number;
     };
+    onColorChange?: (colorId: string) => void;
     leadId?: string;
     basePath?: string;
+    isParentCompact?: boolean;
+    // SSPP v1: Server-calculated pricing for Single Source of Truth
+    serverPricing?: {
+        final_on_road: number;
+        ex_showroom: number;
+        rto?: { total: number };
+        insurance?: { total: number };
+        location?: { district?: string | null; state_code?: string | null };
+    } | null;
+    isPdp?: boolean;
 }) => {
     const { isFavorite, toggleFavorite } = useFavorites();
     const { language } = useI18n();
@@ -77,6 +93,14 @@ export const ProductCard = ({
     const [selectedColorFlip, setSelectedColorFlip] = useState<boolean>(v.isFlipped || false);
     const [selectedColorOffsetX, setSelectedColorOffsetX] = useState<number>(v.offsetX || 0);
     const [selectedColorOffsetY, setSelectedColorOffsetY] = useState<number>(v.offsetY || 0);
+    const [isSwatchesExpanded, setIsSwatchesExpanded] = useState(false);
+
+    // Reset swarm expansion when parent card collapses
+    useEffect(() => {
+        if (isParentCompact) {
+            setIsSwatchesExpanded(false);
+        }
+    }, [isParentCompact]);
     const [selectedHex, setSelectedHex] = useState<string | null>(() => {
         const match = v.availableColors?.find(c => c.imageUrl === v.imageUrl) || v.availableColors?.[0];
         return match?.hexCode || null;
@@ -92,15 +116,29 @@ export const ProductCard = ({
     const marketAdjustedPrice = bestOffer
         ? (v.price?.onRoad || 0) + bestOffer.price + (bestOffer.bundlePrice || 0)
         : v.price?.offerPrice || v.price?.onRoad || v.price?.exShowroom || 0;
-    const basePrice = marketAdjustedPrice;
-    const pricingLabel = serviceability?.location || v.price?.pricingSource || 'India';
-    const locationLabel = pricingLabel.toUpperCase();
-    // Clean up location: remove "Best:", "BASE:", etc.
-    // const cleanedLocation = pricingLabel.replace(/^(Best:|BASE:)\s*/i, '').trim();
-    const districtLabel = pricingLabel.split(',')[0]?.trim(); // simplified from original
+    const effectiveServerPricing = serverPricing || (v as any)?.serverPricing;
+    // SSPP v1: Use server-calculated price when available (Single Source of Truth)
+    const basePrice = effectiveServerPricing?.final_on_road ?? marketAdjustedPrice;
+    const priceSourceLocation = effectiveServerPricing?.location?.district
+        || bestOffer?.dealerLocation
+        || v.price?.pricingSource
+        || undefined;
+    const cleanedPriceSourceLocation = priceSourceLocation
+        ? priceSourceLocation.replace(/^(Best:|Base:)\s*/i, '').trim()
+        : undefined;
+    const priceSourceLabel = cleanedPriceSourceLocation
+        ? (effectiveServerPricing?.location?.state_code ? `${cleanedPriceSourceLocation}, ${effectiveServerPricing.location.state_code}` : cleanedPriceSourceLocation)
+        : undefined;
+    const districtLabel = (() => {
+        if (!cleanedPriceSourceLocation) return null;
+        const STATE_NAMES = ['MAHARASHTRA', 'KARNATAKA', 'GUJARAT', 'RAJASTHAN', 'DELHI', 'KERALA', 'GOA', 'PUNJAB', 'HARYANA', 'BIHAR', 'INDIA', 'ALL'];
+        if (STATE_NAMES.includes(cleanedPriceSourceLocation.toUpperCase())) return null;
+        return cleanedPriceSourceLocation.split(',')[0]?.trim();
+    })();
     const dealerLabel = bestOffer?.dealer?.trim();
     const dealerLabelDisplay = dealerLabel || 'UNASSIGNED';
-    const districtLabelDisplay = districtLabel || serviceability?.location || 'UNKNOWN';
+    const districtLabelDisplay = districtLabel || null; // Don't show fallback text, hide completely
+    const priceSourceDisplay = districtLabelDisplay || priceSourceLabel || '—';
     // If dealer offer exists, price is CONFIRMED not estimated
     const isConfirmedPrice = !!bestOffer;
     // Savings calculation
@@ -295,8 +333,7 @@ export const ProductCard = ({
                                         {bestOffer ? (
                                             <div className="flex flex-col items-start leading-none">
                                                 <span className="text-[10px] font-bold text-green-600 dark:text-green-500 uppercase tracking-widest">
-                                                    Lowest in{' '}
-                                                    {v.price?.pricingSource || serviceability?.location?.split(',')[0]}
+                                                    Lowest in {priceSourceDisplay}
                                                 </span>
                                                 <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                                                     by {bestOffer.dealer}
@@ -305,8 +342,7 @@ export const ProductCard = ({
                                         ) : v.studioName ? (
                                             <div className="flex flex-col items-start leading-none">
                                                 <span className="text-[10px] font-bold text-green-600 dark:text-green-500 uppercase tracking-widest">
-                                                    Price for{' '}
-                                                    {v.price?.pricingSource || serviceability?.location?.split(',')[0]}
+                                                    Price for {priceSourceDisplay}
                                                 </span>
                                                 <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                                                     by {v.studioName}
@@ -319,9 +355,9 @@ export const ProductCard = ({
                                                     <span className="text-[10px] font-bold text-slate-400 line-through">
                                                         ₹{v.price.onRoad.toLocaleString('en-IN')}
                                                     </span>
-                                                    {(serviceability?.location || v.price.pricingSource) && (
+                                                    {(priceSourceLabel || v.price.pricingSource) && (
                                                         <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-0.5">
-                                                            Price for {pricingLabel}
+                                                            Price for {priceSourceLabel || v.price.pricingSource}
                                                         </span>
                                                     )}
                                                 </div>
@@ -345,66 +381,70 @@ export const ProductCard = ({
                                     </div>
                                 </div>
                             </div>
-                            <div className="mt-2">
-                                <div className="relative group/location inline-flex">
-                                    <span
-                                        className="inline-flex items-center gap-1 rounded-full border border-brand-primary/30 bg-brand-primary/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.35em] text-brand-primary max-w-full truncate"
-                                        title={locationLabel}
-                                    >
-                                        <MapPin size={14} />
-                                        {locationLabel}
-                                    </span>
-                                    {(dealerLabel || districtLabel) && (
-                                        <div className="absolute bottom-full left-0 mb-2 w-52 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-[10px] text-slate-700 dark:text-slate-200 shadow-xl opacity-0 invisible group-hover/location:opacity-100 group-hover/location:visible transition-all duration-200 pointer-events-none">
-                                            <div className="px-3 py-2 space-y-1">
-                                                <p className="font-bold uppercase tracking-widest text-slate-500">
-                                                    Studio ID:{' '}
-                                                    <span className="text-slate-900 dark:text-white">
-                                                        {dealerLabelDisplay}
-                                                    </span>
-                                                </p>
-                                                <p className="font-bold uppercase tracking-widest text-slate-500">
-                                                    District:{' '}
-                                                    <span className="text-slate-900 dark:text-white">
-                                                        {districtLabelDisplay}
-                                                    </span>
-                                                </p>
+                            {districtLabelDisplay && (
+                                <div className="mt-2">
+                                    <div className="relative group/location inline-flex">
+                                        <span
+                                            className="inline-flex items-center gap-1 rounded-full border border-brand-primary/30 bg-brand-primary/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.35em] text-brand-primary max-w-full truncate"
+                                            title={districtLabelDisplay}
+                                        >
+                                            <MapPin size={14} />
+                                            {districtLabelDisplay}
+                                        </span>
+                                        {(dealerLabel || districtLabel) && (
+                                            <div className="absolute bottom-full left-0 mb-2 w-52 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-[10px] text-slate-700 dark:text-slate-200 shadow-xl opacity-0 invisible group-hover/location:opacity-100 group-hover/location:visible transition-all duration-200 pointer-events-none">
+                                                <div className="px-3 py-2 space-y-1">
+                                                    <p className="font-bold uppercase tracking-widest text-slate-500">
+                                                        Studio ID:{' '}
+                                                        <span className="text-slate-900 dark:text-white">
+                                                            {dealerLabelDisplay}
+                                                        </span>
+                                                    </p>
+                                                    <p className="font-bold uppercase tracking-widest text-slate-500">
+                                                        District:{' '}
+                                                        <span className="text-slate-900 dark:text-white">
+                                                            {districtLabelDisplay}
+                                                        </span>
+                                                    </p>
+                                                </div>
+                                                <div className="absolute bottom-0 left-6 translate-y-1/2 rotate-45 w-2.5 h-2.5 bg-white dark:bg-slate-900 border-b border-r border-slate-200 dark:border-white/10" />
                                             </div>
-                                            <div className="absolute bottom-0 left-6 translate-y-1/2 rotate-45 w-2.5 h-2.5 bg-white dark:bg-slate-900 border-b border-r border-slate-200 dark:border-white/10" />
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-6">
-                            {isUnserviceable ? (
-                                <button
-                                    onClick={handleGetQuoteClick}
-                                    className="px-10 py-4 bg-slate-200 dark:bg-slate-800 text-slate-400 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] cursor-not-allowed"
-                                >
-                                    Get Quote
-                                </button>
-                            ) : (
-                                <Link
-                                    href={
-                                        buildProductUrl({
-                                            make: v.make,
-                                            model: v.model,
-                                            variant: v.variant,
-                                            pincode:
-                                                serviceability?.status === 'serviceable'
-                                                    ? serviceability.location
-                                                    : undefined,
-                                            leadId: leadId,
-                                            basePath,
-                                        }).url
-                                    }
-                                    className="px-10 py-4 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(244,176,0,0.3)] hover:shadow-[0_0_30px_rgba(244,176,0,0.5)] hover:-translate-y-1 transition-all"
-                                >
-                                    Know More
-                                </Link>
                             )}
                         </div>
+                        {!isPdp && (
+                            <div className="flex items-center gap-6">
+                                {isUnserviceable ? (
+                                    <button
+                                        onClick={handleGetQuoteClick}
+                                        className="px-10 py-4 bg-slate-200 dark:bg-slate-800 text-slate-400 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] cursor-not-allowed"
+                                    >
+                                        Get Quote
+                                    </button>
+                                ) : (
+                                    <Link
+                                        href={
+                                            buildProductUrl({
+                                                make: v.make,
+                                                model: v.model,
+                                                variant: v.variant,
+                                                pincode:
+                                                    serviceability?.status === 'serviceable'
+                                                        ? serviceability.location
+                                                        : undefined,
+                                                leadId: leadId,
+                                                basePath,
+                                            }).url
+                                        }
+                                        className="px-10 py-4 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(244,176,0,0.3)] hover:shadow-[0_0_30px_rgba(244,176,0,0.5)] hover:-translate-y-1 transition-all"
+                                    >
+                                        Know More
+                                    </Link>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -542,35 +582,57 @@ export const ProductCard = ({
                         >
                             {displayModel}
                         </h3>
-                        {/* Swatches (Moved Here) */}
+                        {/* Swatches (Standardized) */}
                         {v.availableColors && v.availableColors.length > 0 && (
-                            <div className="flex items-center -space-x-2">
-                                {v.availableColors.slice(0, 3).map((c, i) => (
-                                    <div
-                                        key={i}
-                                        onClick={e => {
+                            <div className="flex items-center flex-wrap min-h-[1.25rem]">
+                                <div
+                                    onClick={(e) => {
+                                        if (!isSwatchesExpanded) {
                                             e.stopPropagation();
-                                            if (c.imageUrl) {
-                                                setSelectedColorImage(c.imageUrl);
-                                                setSelectedColorZoom(c.zoomFactor || null);
-                                                setSelectedColorFlip(c.isFlipped || false);
-                                                setSelectedColorOffsetX(c.offsetX || 0);
-                                                setSelectedColorOffsetY(c.offsetY || 0);
-                                            }
-                                            if (c.hexCode) {
-                                                setSelectedHex(c.hexCode);
-                                            }
-                                        }}
-                                        className="w-5 h-5 rounded-full border border-white dark:border-slate-900 shadow-sm relative cursor-pointer hover:scale-125 transition-transform"
-                                        style={{ background: c.hexCode }}
-                                        title={c.name}
-                                    />
-                                ))}
-                                {v.availableColors.length > 3 && (
-                                    <div className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 border border-white dark:border-slate-900 flex items-center justify-center relative z-10 text-[9px] font-bold text-slate-500">
-                                        +{v.availableColors.length - 3}
-                                    </div>
-                                )}
+                                            setIsSwatchesExpanded(true);
+                                        }
+                                    }}
+                                    className={`flex items-center transition-all duration-500 ${isSwatchesExpanded ? 'gap-2 px-1 cursor-default' : '-space-x-2 cursor-pointer'}`}
+                                >
+                                    {v.availableColors.slice(0, isSwatchesExpanded ? v.availableColors.length : 3).map((c, i) => (
+                                        <div
+                                            key={i}
+                                            onClick={e => {
+                                                e.stopPropagation();
+                                                // If collapsed, clicking a swatch should expand first
+                                                if (!isSwatchesExpanded) {
+                                                    setIsSwatchesExpanded(true);
+                                                    return;
+                                                }
+
+                                                if (c.imageUrl) {
+                                                    setSelectedColorImage(c.imageUrl);
+                                                    setSelectedColorZoom(c.zoomFactor || null);
+                                                    setSelectedColorFlip(c.isFlipped || false);
+                                                    setSelectedColorOffsetX(c.offsetX || 0);
+                                                    setSelectedColorOffsetY(c.offsetY || 0);
+                                                }
+                                                if (c.hexCode) {
+                                                    setSelectedHex(c.hexCode);
+                                                }
+                                                // Trigger callback if provided (e.g., in PDP)
+                                                if (onColorChange && c.id) {
+                                                    onColorChange(c.id);
+                                                }
+                                            }}
+                                            className={`rounded-full border border-white dark:border-slate-900 shadow-sm relative hover:scale-125 transition-all duration-300 ${isSwatchesExpanded ? 'w-6 h-6 cursor-pointer' : 'w-5 h-5 cursor-pointer'} ${selectedHex === c.hexCode ? 'z-20 scale-110 ring-2 ring-brand-primary border-transparent' : 'z-10'}`}
+                                            style={{ background: c.hexCode }}
+                                            title={c.name}
+                                        />
+                                    ))}
+                                    {v.availableColors.length > 3 && !isSwatchesExpanded && (
+                                        <div
+                                            className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 border border-white dark:border-slate-900 flex items-center justify-center relative z-10 text-[9px] font-bold text-slate-500 hover:bg-slate-200"
+                                        >
+                                            +{v.availableColors.length - 3}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>
@@ -600,18 +662,18 @@ export const ProductCard = ({
                 <div className="mt-1.5 md:mt-4 pt-1.5 md:pt-4 border-t border-slate-100 dark:border-white/5 grid grid-cols-2 gap-4">
                     <div className="flex flex-col items-start">
                         <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-0.5 italic">
-                            On-Road
+                            ON-ROAD
                         </p>
                         <div className="flex items-baseline gap-1.5">
                             <span className="text-xl md:text-2xl font-black italic text-slate-900 dark:text-white px-1 pb-1">
                                 ₹{basePrice.toLocaleString('en-IN')}
                             </span>
                         </div>
-                        {(serviceability?.location || v.price?.pricingSource) && (
+                        {districtLabelDisplay && (
                             <div className="relative group/location flex items-center gap-1.5 mt-2 bg-slate-100 dark:bg-white/5 px-2 py-1 rounded-lg w-fit border border-slate-200/50 dark:border-white/5">
                                 <MapPin size={12} className="text-brand-primary animate-bounce-subtle" />
                                 <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest italic">
-                                    {pricingLabel}
+                                    {districtLabelDisplay}
                                 </p>
                                 {(dealerLabel || districtLabel) && (
                                     <div className="absolute bottom-full left-0 mb-2 w-52 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-[10px] text-slate-700 dark:text-slate-200 shadow-xl opacity-0 invisible group-hover/location:opacity-100 group-hover/location:visible transition-all duration-200 pointer-events-none z-50">
@@ -643,7 +705,7 @@ export const ProductCard = ({
                     <div className="flex flex-col items-end group/emi relative">
                         <div className="flex items-center gap-1 mb-0.5">
                             <p className="text-[10px] font-black text-green-600 dark:text-green-500 uppercase tracking-widest italic">
-                                Lowest EMI
+                                LOWEST EMI
                             </p>
                             <CircleHelp
                                 size={12}
@@ -660,7 +722,7 @@ export const ProductCard = ({
                         <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-slate-900 dark:bg-slate-800 text-white text-[10px] rounded-xl shadow-xl opacity-0 invisible group-hover/emi:opacity-100 group-hover/emi:visible transition-all duration-200 z-50 pointer-events-none">
                             <p className="leading-relaxed">
                                 This EMI is calculated on{' '}
-                                <span className="font-bold text-green-400">₹{downpayment.toLocaleString('en-IN')}</span>{' '}
+                                <span className="font-bold text-green-400">₹{(downpayment || 0).toLocaleString('en-IN')}</span>{' '}
                                 downpayment at <span className="font-bold text-green-400">{tenure} months</span>.
                             </p>
                             <p className="mt-1.5 text-slate-300">
@@ -674,43 +736,45 @@ export const ProductCard = ({
 
                 {/* Optional Mileage Line (Subtle) */}
 
-                <div className="mt-1.5 md:mt-4 space-y-1.5 md:space-y-2">
-                    {isUnserviceable ? (
-                        <button
-                            onClick={handleGetQuoteClick}
-                            title={`We are not serviceable in ${safeServiceability.location || 'your area'} yet. We will notify you when we launch there.`}
-                            className="w-full h-11 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] cursor-not-allowed flex items-center justify-center"
-                        >
-                            Not Serviceable
-                        </button>
-                    ) : (
-                        <Link
-                            href={
-                                buildProductUrl({
-                                    make: v.make,
-                                    model: v.model,
-                                    variant: v.variant,
-                                    pincode:
-                                        serviceability?.status === 'serviceable' ? serviceability.location : undefined,
-                                    leadId: leadId,
-                                    basePath,
-                                }).url
-                            }
-                            className="group/btn relative w-full h-10 md:h-11 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 transition-all"
-                        >
-                            Know More
-                            <ArrowRight
-                                size={12}
-                                className="opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all"
-                            />
-                        </Link>
-                    )}
-                    <div className="flex items-center justify-center gap-2 opacity-80 pt-1">
-                        <StarRating rating={v.rating || 4.5} size={9} />
-                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-                            • {getStableReviewCount(v)} Ratings
-                        </span>
+                {!isPdp && (
+                    <div className="mt-1.5 md:mt-4 space-y-1.5 md:space-y-2">
+                        {isUnserviceable ? (
+                            <button
+                                onClick={handleGetQuoteClick}
+                                title={`We are not serviceable in ${safeServiceability.location || 'your area'} yet. We will notify you when we launch there.`}
+                                className="w-full h-11 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] cursor-not-allowed flex items-center justify-center"
+                            >
+                                Not Serviceable
+                            </button>
+                        ) : (
+                            <Link
+                                href={
+                                    buildProductUrl({
+                                        make: v.make,
+                                        model: v.model,
+                                        variant: v.variant,
+                                        pincode:
+                                            serviceability?.status === 'serviceable' ? serviceability.location : undefined,
+                                        leadId: leadId,
+                                        basePath,
+                                    }).url
+                                }
+                                className="group/btn relative w-full h-10 md:h-11 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 transition-all"
+                            >
+                                Know More
+                                <ArrowRight
+                                    size={12}
+                                    className="opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all"
+                                />
+                            </Link>
+                        )}
                     </div>
+                )}
+                <div className="flex items-center justify-center gap-2 opacity-80 pt-1">
+                    <StarRating rating={v.rating || 4.5} size={9} />
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                        • {getStableReviewCount(v)} Ratings
+                    </span>
                 </div>
             </div>
         </div>

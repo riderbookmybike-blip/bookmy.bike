@@ -41,6 +41,9 @@ interface SKUPriceRow {
     originalStatus: 'ACTIVE' | 'INACTIVE' | 'DRAFT' | 'RELAUNCH'; // For Diff
     localIsActive: boolean; // Dealer Local Status
     originalLocalIsActive: boolean; // For Diff
+    rto?: number; // RTO from RPC
+    insurance?: number; // Insurance from RPC
+    onRoad?: number; // On-Road from RPC
 }
 
 export default function PricingPage() {
@@ -133,9 +136,11 @@ export default function PricingPage() {
             const activeStateCode = states.find(s => s.id === selectedStateId)?.stateCode || 'MH';
             const [priceRes, offerRes, stockRes] = await Promise.all([
                 supabase
-                    .from('vehicle_prices')
-                    .select('vehicle_color_id, ex_showroom_price, updated_at')
-                    .eq('state_code', activeStateCode),
+                    .from('cat_prices')
+                    .select('vehicle_color_id, ex_showroom_price, updated_at, district')
+                    .eq('state_code', activeStateCode)
+                    .eq('is_active', true)
+                    .or('district.is.null,district.eq.ALL'),
                 tenantSlug !== 'aums' ? supabase
                     .from('id_dealer_pricing_rules')
                     .select('vehicle_color_id, offer_amount, inclusion_type, is_active')
@@ -153,9 +158,13 @@ export default function PricingPage() {
             const { data: stockData, error: stockError } = stockRes;
             if (stockError) console.error('Stock Fetch Error:', stockError);
 
-            const priceMap = new Map();
+            const priceMap = new Map<string, { price: number; district?: string | null }>();
             priceData?.forEach((p: any) => {
-                priceMap.set(p.vehicle_color_id, p.ex_showroom_price);
+                const district = (p.district || '').toString().toUpperCase();
+                const existing = priceMap.get(p.vehicle_color_id);
+                if (!existing || district === 'ALL' || (existing.district || '').toUpperCase() !== 'ALL') {
+                    priceMap.set(p.vehicle_color_id, { price: p.ex_showroom_price, district: p.district });
+                }
             });
 
             const offerMap = new Map();
@@ -182,7 +191,7 @@ export default function PricingPage() {
                 const family = variant ? (Array.isArray(variant.parent) ? variant.parent[0] : variant.parent) : null;
                 const brand = family ? (Array.isArray(family.brand) ? family.brand[0] : family.brand) : null;
 
-                const statePrice = priceMap.get(sku.id);
+                const statePrice = priceMap.get(sku.id)?.price;
                 const pricingRule = (offerData || []).find((o: any) => o.vehicle_color_id === sku.id);
                 const stateOffer = pricingRule?.offer_amount || offerMap.get(sku.id) || 0;
                 const stateInclusion = pricingRule?.inclusion_type || sku.inclusion_type || 'OPTIONAL';
@@ -235,6 +244,43 @@ export default function PricingPage() {
             });
 
             formattedSkus.sort((a, b) => a.brand.localeCompare(b.brand) || a.model.localeCompare(b.model));
+
+            // Fetch on-road pricing via RPC for vehicles only
+            const vehicleSkuIds = formattedSkus.filter(s => s.type === 'vehicles').map(s => s.id);
+            if (vehicleSkuIds.length > 0) {
+                try {
+                    const { data: pricingData, error: pricingError } = await supabase.rpc('get_catalog_prices_v1', {
+                        p_vehicle_color_ids: vehicleSkuIds,
+                        p_district_name: '',
+                        p_state_code: activeStateCode,
+                        p_registration_type: 'STATE'
+                    });
+
+                    if (pricingError) {
+                        console.error('RPC Pricing Error:', pricingError);
+                    } else if (pricingData) {
+                        const pricingMap = new Map<string, any>();
+                        pricingData.forEach((row: any) => {
+                            if (row?.vehicle_color_id && row?.pricing) {
+                                pricingMap.set(row.vehicle_color_id, row.pricing);
+                            }
+                        });
+
+                        // Merge pricing into SKUs
+                        formattedSkus.forEach(sku => {
+                            const pricing = pricingMap.get(sku.id);
+                            if (pricing) {
+                                sku.rto = pricing?.rto?.total ?? 0;
+                                sku.insurance = pricing?.insurance?.total ?? 0;
+                                sku.onRoad = pricing?.final_on_road ?? sku.exShowroom;
+                            }
+                        });
+                    }
+                } catch (rpcErr) {
+                    console.error('RPC call failed:', rpcErr);
+                }
+            }
+
             setSkus(formattedSkus);
         } catch (error: any) {
             console.error('Error fetching data:', error);
@@ -291,11 +337,13 @@ export default function PricingPage() {
             const pricePayload = skus.map(s => ({
                 vehicle_color_id: s.id,
                 state_code: activeStateCode,
+                district: 'ALL',
                 ex_showroom_price: s.exShowroom,
+                is_active: true,
                 updated_at: new Date().toISOString()
             }));
 
-            updates.push(Promise.resolve(supabase.rpc('upsert_vehicle_prices_bypass', { prices: pricePayload })));
+            updates.push(Promise.resolve(supabase.rpc('upsert_cat_prices_bypass', { prices: pricePayload })));
 
             const modifiedStatusSkus = skus.filter(s => s.status !== s.originalStatus);
             if (modifiedStatusSkus.length > 0) {

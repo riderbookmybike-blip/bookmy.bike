@@ -92,7 +92,7 @@ export function calculateInsurance(exShowroom: number, engineCc: number = 110, r
         fuelType: 'PETROL',
         isNewVehicle: true,
         odTenure: 1, // Default 1 Year OD (New 2W)
-        tpTenure: 5, // Default 5 Year TP (New 2W)
+        tpTenure: 5, // Default 5 Year TP (New 2W - legally required)
         ncbPercentage: 0
     };
 

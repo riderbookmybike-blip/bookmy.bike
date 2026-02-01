@@ -50,6 +50,14 @@ export interface ProductVariant {
     suitableFor?: string;
     studioName?: string; // Dealer/Studio name from best offer
     dealerId?: string;   // Dealer tenant ID
+    serverPricing?: {
+        final_on_road: number;
+        ex_showroom: number;
+        rto?: { total: number };
+        insurance?: { total: number };
+        dealer?: { offer?: number; name?: string; id?: string };
+        location?: { district?: string | null; state_code?: string | null };
+    };
 }
 
 export interface VehicleSpecifications {

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { ProductVariant } from '@/types/productMaster';
-import { calculateOnRoad } from '@/lib/utils/pricingUtility';
 import { mapCatalogItems } from '@/utils/catalogMapper';
 import { BMBDebug } from '@/types/debug';
 import { Database } from '@/types/supabase';
@@ -345,7 +344,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                                     is_flipped,
                                     offset_x,
                                      assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
-                                     prices:vehicle_prices!vehicle_color_id(ex_showroom_price, state_code, offer_amount)
+                                     prices:cat_prices!vehicle_color_id(ex_showroom_price, state_code, district, latitude, longitude, is_active)
                                 )
                         )
                     `)
@@ -436,6 +435,24 @@ export function useSystemCatalogLogic(leadId?: string) {
                     offerData = data;
                 }
 
+                if (offerData && Array.isArray(offerData) && offerData.length > 0) {
+                    const dealerIds = Array.from(new Set(offerData.map((o: any) => o?.dealer_id).filter(Boolean)));
+                    if (dealerIds.length > 0) {
+                        const { data: dealers } = await supabase
+                            .from('id_tenants')
+                            .select('id, location')
+                            .in('id', dealerIds);
+                        const dealerLocationMap = (dealers || []).reduce((acc: Record<string, string>, dealer: any) => {
+                            if (dealer?.id && dealer?.location) acc[dealer.id] = dealer.location;
+                            return acc;
+                        }, {});
+                        offerData = offerData.map((offer: any) => ({
+                            ...offer,
+                            dealer_location: dealerLocationMap[offer.dealer_id]
+                        }));
+                    }
+                }
+
                 if (data) {
                     // Get User Location from LocalStorage for Client Side Distance Calc
                     let userLat: number | null = null;
@@ -458,7 +475,59 @@ export function useSystemCatalogLogic(leadId?: string) {
                         { stateCode, userLat, userLng, userDistrict, offers: offerData || [] }
                     );
 
-                    setItems(mappedItems);
+                    let enrichedItems = mappedItems;
+
+                    try {
+                        const primarySkuIds = mappedItems
+                            .map((item: any) => item.availableColors?.[0]?.id || item.skuIds?.[0])
+                            .filter(Boolean) as string[];
+
+                        if (primarySkuIds.length > 0) {
+                            const { data: pricingRows } = await (supabase.rpc as any)('get_catalog_prices_v1', {
+                                p_vehicle_color_ids: primarySkuIds,
+                                p_district_name: userDistrict || '',
+                                p_state_code: stateCode || 'MH',
+                                p_registration_type: 'STATE'
+                            });
+
+                            const pricingMap = new Map<string, any>();
+                            (pricingRows || []).forEach((row: any) => {
+                                if (row?.vehicle_color_id && row?.pricing) {
+                                    pricingMap.set(row.vehicle_color_id, row.pricing);
+                                }
+                            });
+
+                            enrichedItems = mappedItems.map((item: any) => {
+                                const skuId = item.availableColors?.[0]?.id || item.skuIds?.[0];
+                                const pricing = skuId ? pricingMap.get(skuId) : null;
+                                if (!pricing) return item;
+
+                                const pricingSource = [pricing?.location?.district, pricing?.location?.state_code]
+                                    .filter(Boolean)
+                                    .join(', ');
+
+                                return {
+                                    ...item,
+                                    serverPricing: pricing,
+                                    price: {
+                                        ...item.price,
+                                        exShowroom: pricing?.ex_showroom ?? item.price?.exShowroom,
+                                        onRoad: pricing?.final_on_road ?? item.price?.onRoad,
+                                        offerPrice: pricing?.final_on_road ?? item.price?.offerPrice,
+                                        discount: pricing?.dealer?.offer ?? item.price?.discount,
+                                        pricingSource: pricingSource || item.price?.pricingSource,
+                                        isEstimate: false
+                                    },
+                                    studioName: pricing?.dealer?.name ?? item.studioName,
+                                    dealerId: pricing?.dealer?.id ?? item.dealerId
+                                };
+                            });
+                        }
+                    } catch (pricingErr) {
+                        console.error('Catalog pricing RPC failed:', pricingErr);
+                    }
+
+                    setItems(enrichedItems);
 
                     if (typeof window !== 'undefined') {
                         window.__BMB_DEBUG__ = {

@@ -1,7 +1,6 @@
 import React from 'react';
 import { Metadata } from 'next';
 import { resolveLocation } from '@/utils/locationResolver';
-import { calculateOnRoad } from '@/lib/utils/pricingUtility';
 import { createClient } from '@/lib/supabase/server';
 import { slugify } from '@/utils/slugs';
 // import ProductClient from './ProductClient';
@@ -138,6 +137,9 @@ const matchesAccessoryCompatibility = (
 };
 
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
     const { make, model, variant } = await params;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -233,15 +235,16 @@ export default async function Page({ params, searchParams }: Props) {
         .eq('parent_id', item.id)
         .eq('type', 'SKU');
 
-    // 2.6 Fetch Prices from vehicle_prices (Authoritative Source)
+    // 2.6 Fetch Prices from cat_prices (Authoritative Source)
     const skuIds = (skus || []).map((s: any) => s.id);
     let vehiclePrices: Record<string, number> = {};
     if (skuIds.length > 0) {
         const { data: priceRecords } = await supabase
-            .from('vehicle_prices')
-            .select('vehicle_color_id, ex_showroom_price, state_code, offer_amount')
+            .from('cat_prices')
+            .select('vehicle_color_id, ex_showroom_price, state_code, district')
             .in('vehicle_color_id', skuIds)
-            .eq('state_code', stateCode);
+            .eq('state_code', stateCode)
+            .eq('is_active', true);
 
         if (priceRecords) {
             priceRecords.forEach((p: any) => {
@@ -289,13 +292,40 @@ export default async function Page({ params, searchParams }: Props) {
 
     const insuranceRule: any = insuranceRuleData?.[0];
 
-    // 4. Calculate On-Road
-    // Use vehiclePrices from vehicle_prices table (authoritative), fallback to price_base only if none found
+    // 4. Resolve Server Pricing (SSPP)
+    // Use cat_prices as fallback for ex-showroom if RPC is unavailable
     const firstSkuId = skuIds[0];
     const baseExShowroom = vehiclePrices[firstSkuId] || item.price_base || 0;
-    const engineCc = item.specs?.engine_cc || 110;
+    let serverPricing: any = null;
 
-    const onRoadBreakdown = calculateOnRoad(Number(baseExShowroom), engineCc, effectiveRule, insuranceRule);
+    if (firstSkuId) {
+        const { data: pricingData, error: pricingError } = await supabase.rpc('get_variant_on_road_price_v1', {
+            p_vehicle_color_id: firstSkuId,
+            p_district_name: location?.district || null,
+            p_state_code: stateCode,
+            p_registration_type: 'STATE'
+        });
+
+        if (pricingError) {
+            console.error('SSPP RPC Error (PDP server):', pricingError);
+        }
+
+        serverPricing = pricingData && (pricingData.success === undefined || pricingData.success) ? pricingData : null;
+    }
+
+    const initialPricingSnapshot = serverPricing ? {
+        exShowroom: serverPricing.ex_showroom ?? baseExShowroom,
+        rto: serverPricing?.rto?.total ?? 0,
+        insurance: serverPricing?.insurance?.total ?? 0,
+        total: serverPricing?.final_on_road ?? baseExShowroom,
+        breakdown: serverPricing
+    } : {
+        exShowroom: baseExShowroom,
+        rto: 0,
+        insurance: 0,
+        total: baseExShowroom,
+        breakdown: null
+    };
 
     // 4.5 Fetch Market Offers (Dealer Pricing)
     // 4.5 Fetch Market Offers (Dealer Pricing)
@@ -481,7 +511,11 @@ export default async function Page({ params, searchParams }: Props) {
             hex: sku.specs?.hex_primary || sku.specs?.hex_code || '#000000',
             image: sku.specs?.primary_image || sku.specs?.gallery?.[0] || null,
             video: sku.video_url || sku.specs?.video_urls?.[0] || sku.specs?.video_url || null,
-            priceOverride: sku.price_base, // SKU might override price
+            // FIX: Pass priceOverride as OBJECT as expected by LocalColorConfig in useSystemPDPLogic
+            pricingOverride: {
+                exShowroom: sku.price_base || item.price_base // Fallback if SKU price is missing
+            },
+            priceOverride: sku.price_base, // Keep for backward compat if needed
             dealerOffer: dealerOfferValue // Inject Dealer Offer
         };
     });
@@ -586,13 +620,7 @@ export default async function Page({ params, searchParams }: Props) {
             modelParam={product.model}
             variantParam={product.variant}
             initialLocation={location}
-            initialPrice={{
-                exShowroom: onRoadBreakdown.exShowroom,
-                rto: onRoadBreakdown.rtoState.total,
-                insurance: onRoadBreakdown.insuranceComp.total,
-                total: onRoadBreakdown.onRoadTotal,
-                breakdown: onRoadBreakdown
-            }}
+            initialPrice={initialPricingSnapshot}
             insuranceRule={insuranceRule}
             registrationRule={effectiveRule} // Passing registration rule for client side calc
             initialAccessories={accessories}

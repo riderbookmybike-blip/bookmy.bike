@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createQuoteAction } from '@/actions/crm';
 import { toast } from 'sonner';
+import { useSystemDealerContext } from '@/hooks/useSystemDealerContext';
 import { PhonePDPEnhanced } from '@/components/phone/pdp/PhonePDPEnhanced';
 
 import { InsuranceRule } from '@/types/insurance';
@@ -43,6 +44,8 @@ export default function ProductClient({
     const [clientAccessories, setClientAccessories] = useState(initialAccessories);
     const [clientColors, setClientColors] = useState(product.colors);
     const [hasTouchedAccessories, setHasTouchedAccessories] = useState(false);
+    // SSPP v1: Local state to bridge serverPricing from useSystemDealerContext to useSystemPDPLogic
+    const [ssppServerPricing, setSsppServerPricing] = useState<any>(null);
     const searchParams = useSearchParams();
     const router = useRouter();
     const leadIdFromUrl = searchParams.get('leadId');
@@ -66,7 +69,8 @@ export default function ProductClient({
                     .from('crm_leads')
                     .select('id, full_name')
                     .eq('id', leadIdFromUrl)
-                    .single();
+                    .single() as { data: { id: string, full_name: string } | null, error: any };
+
                 if (lead) {
                     setLeadContext({ id: lead.id, name: lead.full_name });
                 }
@@ -83,7 +87,8 @@ export default function ProductClient({
         initialAccessories: clientAccessories,
         initialServices,
         product,
-        initialFinance
+        initialFinance,
+        serverPricing: ssppServerPricing // SSPP v1: Pass server-calculated pricing for Single Source of Truth
     });
 
     const {
@@ -116,94 +121,45 @@ export default function ProductClient({
     const [showEmailModal, setShowEmailModal] = useState(false);
     const [showReferralModal, setShowReferralModal] = useState(false);
 
+    // Unified Dealer Context Hook
+    const { dealerColors, dealerAccessories, bestOffer, resolvedLocation, serverPricing } = useSystemDealerContext({
+        product,
+        initialAccessories,
+        initialLocation,
+        selectedColor // This relies on the color state from useSystemPDPLogic, but wait... 
+        // Circular dependency risk: useSystemPDPLogic needs 'colors', but 'dealerColors' comes from hook.
+        // Solution: Pass 'dealerColors' to useSystemPDPLogic. 
+        // 'selectedColor' is state managed BY useSystemPDPLogic, so initially it might be undefined/default.
+    });
+
+    // Update client state when hook returns new data
     useEffect(() => {
-        const hydrateDealerContext = async () => {
-            if (typeof window === 'undefined') return;
-            try {
-                const cached = localStorage.getItem('bkmb_user_pincode');
-                if (!cached) return;
-                const parsed = JSON.parse(cached);
-                const district = parsed?.district || parsed?.taluka || parsed?.city;
-                const stateCode = parsed?.stateCode || (parsed?.state?.toUpperCase?.().includes('MAHARASHTRA') ? 'MH' : 'MH');
-                if (!district) return;
+        if (dealerColors && dealerColors.length > 0) {
+            setClientColors(dealerColors);
+        }
+    }, [dealerColors]);
 
-                const supabase = createClient();
-                const { data: offers } = await supabase.rpc('get_market_best_offers', {
-                    p_district_name: district,
-                    p_state_code: stateCode
-                });
-                if (!offers || offers.length === 0) return;
+    // SSPP v1: Sync serverPricing from useSystemDealerContext to local state
+    useEffect(() => {
+        if (serverPricing) {
+            setSsppServerPricing(serverPricing);
+        }
+    }, [serverPricing]);
 
-                const skuIds = (product.colors || []).map((c: any) => c.skuId).filter(Boolean);
-                const relevantOffers = offers.filter((o: any) => skuIds.includes(o.vehicle_color_id));
-                if (relevantOffers.length === 0) return;
+    useEffect(() => {
+        if (dealerAccessories && dealerAccessories.length > 0) {
+            setClientAccessories(dealerAccessories);
 
-                const winningDealerId = relevantOffers[0].dealer_id;
-                const bundleIds = new Set(relevantOffers[0].bundle_ids || []);
-
-                // Update color dealer offers
-                const offerMap = new Map<string, number>();
-                relevantOffers.forEach((o: any) => {
-                    if (o.dealer_id === winningDealerId) {
-                        offerMap.set(o.vehicle_color_id, Number(o.best_offer));
-                    }
-                });
-
-                const winningDealerName = relevantOffers[0].dealer_name;
-                const studioDisplayLabel = winningDealerName?.startsWith('STUDIO') ? winningDealerName : `STUDIO ${winningDealerName}`;
-
-                setClientColors((prev: any[]) =>
-                    prev.map((c: any) => {
-                        if (!c.skuId) return c;
-                        const raw = offerMap.get(c.skuId) || 0;
-                        const dealerOfferValue = raw < 0 ? Math.abs(raw) : 0;
-                        return { ...c, dealerOffer: dealerOfferValue };
-                    })
-                );
-
-                // Update accessories with dealer rules + bundle inclusion
-                const accessoryIds = (initialAccessories || []).map((a: any) => a.id);
-                if (accessoryIds.length > 0 && winningDealerId) {
-                    const { data: rules } = await supabase
-                        .from('id_dealer_pricing_rules')
-                        .select('vehicle_color_id, offer_amount, inclusion_type')
-                        .in('vehicle_color_id', accessoryIds)
-                        .eq('tenant_id', winningDealerId)
-                        .eq('state_code', stateCode);
-
-                    const ruleMap = new Map<string, any>();
-                    rules?.forEach((r: any) => ruleMap.set(r.vehicle_color_id, r));
-
-                    const updatedAccessories = (initialAccessories || []).map((a: any) => {
-                        const rule = ruleMap.get(a.id);
-                        const offer = rule ? Number(rule.offer_amount) : 0;
-                        const inclusionType = rule?.inclusion_type || (bundleIds.has(a.id) ? 'BUNDLE' : a.inclusionType || 'OPTIONAL');
-                        const discountPrice = Math.max(0, Number(a.price) + offer);
-
-                        return {
-                            ...a,
-                            inclusionType,
-                            isMandatory: inclusionType === 'MANDATORY',
-                            discountPrice
-                        };
-                    });
-
-                    setClientAccessories(updatedAccessories);
-
-                    if (!hasTouchedAccessories) {
-                        const defaults = updatedAccessories
-                            .filter((a: any) => a.isMandatory || a.inclusionType === 'BUNDLE')
-                            .map((a: any) => a.id);
-                        setSelectedAccessories(defaults);
-                    }
-                }
-            } catch (err) {
-                // Silent: PDP should still work with base pricing
+            // Only auto-select mandatory/bundled if user hasn't touched yet
+            if (!hasTouchedAccessories) {
+                const defaults = dealerAccessories
+                    .filter((a: any) => a.isMandatory || a.inclusionType === 'BUNDLE')
+                    .map((a: any) => a.id);
+                setSelectedAccessories(defaults);
             }
-        };
+        }
+    }, [dealerAccessories, hasTouchedAccessories, setSelectedAccessories]);
 
-        hydrateDealerContext();
-    }, [hasTouchedAccessories, initialAccessories, product.colors, setSelectedAccessories]);
 
     const handleShareQuote = () => {
         const url = new URL(window.location.href);
@@ -241,7 +197,7 @@ export default function ProductClient({
                 }
             };
 
-            const result = await createQuoteAction({
+            const result: any = await createQuoteAction({
                 tenant_id: product.tenant_id, // Ensure tenant_id is available
                 lead_id: leadContext.id,
                 variant_id: product.id,
@@ -249,7 +205,7 @@ export default function ProductClient({
                 commercials
             });
 
-            if (result.success) {
+            if (result?.success) {
                 toast.success(`Quote saved for ${leadContext.name}`);
                 router.back(); // Go back to leads
             } else {
@@ -330,7 +286,9 @@ export default function ProductClient({
         data,
         handlers,
         leadContext: leadContext || undefined,
-        initialLocation
+        initialLocation: resolvedLocation || initialLocation,
+        bestOffer, // Passing bestOffer to children
+        serverPricing // SSPP v1: Server-calculated pricing breakdown
     };
 
     return (

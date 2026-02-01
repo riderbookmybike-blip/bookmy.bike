@@ -2,11 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Search, Loader2, IndianRupee, Save, Filter, MapPin, Tag, AlertCircle, CheckCircle2, LayoutGrid } from 'lucide-react';
+import { Search, Loader2, Save, Filter, MapPin, Tag, AlertCircle, CheckCircle2, LayoutGrid } from 'lucide-react';
 import { toast } from 'sonner';
-import { calculateRTO, calculateInsurance } from '@/lib/utils/pricingUtility';
-import { RegistrationRule } from '@/types/registration';
-import { InsuranceRule } from '@/types/insurance';
 
 interface SKU {
     id: string;
@@ -25,6 +22,7 @@ interface SKU {
     hasRule: boolean;
     ruleId?: string;
     isDirty?: boolean; // For UI tracking
+    pricingReady?: boolean;
 }
 
 export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantId: string, defaultStateCode?: string }) => {
@@ -33,6 +31,7 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
     const [saving, setSaving] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [brandFilter, setBrandFilter] = useState('ALL');
+    const [pricingDistrict, setPricingDistrict] = useState('');
 
     const supabase = createClient();
 
@@ -68,30 +67,78 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
 
             if (rulesError) throw rulesError;
 
-            // 3. Fetch Base Prices
-            const { data: pricingData } = await supabase
-                .from('vehicle_prices')
-                .select('vehicle_color_id, ex_showroom_price')
-                .eq('state_code', defaultStateCode);
+            // 3. Resolve Dealer District (for pricing RPC + district-specific prices)
+            const { data: dealerData } = await supabase
+                .from('id_tenants')
+                .select('id, name, location, pincode')
+                .eq('id', tenantId)
+                .maybeSingle();
+            const dealerDistrict = dealerData?.location || '';
+            const displayDistrict = dealerDistrict || 'ALL';
+            setPricingDistrict(displayDistrict);
 
-            // Merge
+            const skuIds = (skuData || []).map((item: any) => item.id).filter(Boolean);
+
+            // 4. Fetch Base Prices (cat_prices)
+            const { data: pricingData } = skuIds.length > 0
+                ? await supabase
+                    .from('cat_prices')
+                    .select('vehicle_color_id, ex_showroom_price, district')
+                    .eq('state_code', defaultStateCode)
+                    .eq('is_active', true)
+                    .in('vehicle_color_id', skuIds)
+                : { data: [] as any[] };
+
             const ruleMap = new Map(rulesData?.map(r => [r.vehicle_color_id, r]));
-            const priceMap = new Map(pricingData?.map(p => [p.vehicle_color_id, p.ex_showroom_price]));
 
-            // 4. Fetch Regulatory Rules
-            const { data: regRules } = await supabase
-                .from('cat_reg_rules')
-                .select('*')
-                .eq('state_code', defaultStateCode)
-                .eq('status', 'ACTIVE')
-                .maybeSingle();
+            const normalizedDistrict = dealerDistrict?.toString().toUpperCase();
+            const districtPriority = (districtValue: string | null | undefined) => {
+                const normalized = (districtValue || '').toString().toUpperCase();
+                if (normalizedDistrict && normalized === normalizedDistrict) return 2;
+                if (normalized === 'ALL' || normalized === '') return 1;
+                return 0;
+            };
 
-            const { data: insRules } = await supabase
-                .from('insurance_rules')
-                .select('*')
-                .eq('status', 'ACTIVE') // Simplification: Get any active rule
-                .limit(1)
-                .maybeSingle();
+            const priceMap = new Map<string, { price: number; district?: string | null }>();
+            (pricingData || []).forEach((p: any) => {
+                const next = { price: Number(p.ex_showroom_price), district: p.district };
+                const existing = priceMap.get(p.vehicle_color_id);
+                if (!existing || districtPriority(next.district) > districtPriority(existing.district)) {
+                    priceMap.set(p.vehicle_color_id, next);
+                }
+            });
+
+            // 5. Fetch Server Pricing (SSPP RPC) in chunks
+            const pricingMap = new Map<string, any>();
+            const fetchPricingBatch = async (district: string | null) => {
+                if (skuIds.length === 0) return;
+                const chunkSize = 150;
+                for (let i = 0; i < skuIds.length; i += chunkSize) {
+                    const chunk = skuIds.slice(i, i + chunkSize);
+                    const { data: pricingRows, error: pricingError } = await supabase.rpc('get_catalog_prices_v1', {
+                        p_vehicle_color_ids: chunk,
+                        p_district_name: district,
+                        p_state_code: defaultStateCode,
+                        p_registration_type: 'STATE'
+                    });
+
+                    if (pricingError) {
+                        console.error('DealerPricelist pricing RPC error:', pricingError);
+                        continue;
+                    }
+
+                    (pricingRows || []).forEach((row: any) => {
+                        if (row?.vehicle_color_id && row?.pricing) {
+                            pricingMap.set(row.vehicle_color_id, row.pricing);
+                        }
+                    });
+                }
+            };
+
+            await fetchPricingBatch(dealerDistrict || null);
+            if (pricingMap.size === 0 && !dealerDistrict) {
+                await fetchPricingBatch('ALL');
+            }
 
             const formatted: SKU[] = (skuData || []).map((item: any) => {
                 const color = item.specs?.Color || item.name;
@@ -100,27 +147,14 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                 const brand = item.parent?.parent?.brand;
 
                 const rule = ruleMap.get(item.id);
-                const statePrice = priceMap.get(item.id) || item.price_base || 0;
-                const engineCc = parseInt(item.specs?.['Engine CC']?.replace(/[^\d]/g, '') || "110");
-
-                let rto = 0;
-                let insurance = 0;
-
-                if (regRules) {
-                    try {
-                        const rtoCalc = calculateRTO(statePrice, regRules as any, 'STATE', engineCc);
-                        rto = rtoCalc.total;
-                    } catch (e) { console.error('RTO Calc Error', e); }
-                }
-
-                if (insRules) {
-                    try {
-                        const insCalc = calculateInsurance(statePrice, engineCc, insRules as any);
-                        insurance = insCalc.total;
-                    } catch (e) { console.error('Ins Calc Error', e); }
-                }
-
-                const onRoadBase = statePrice + rto + insurance;
+                const pricing = pricingMap.get(item.id);
+                const pricingReady = Boolean(pricing?.ex_showroom || pricing?.final_on_road);
+                const statePrice = pricing?.ex_showroom ?? priceMap.get(item.id)?.price ?? item.price_base ?? 0;
+                const rto = pricingReady ? Number(pricing?.rto?.total || 0) : 0;
+                const insurance = pricingReady ? Number(pricing?.insurance?.total || 0) : 0;
+                const onRoadBase = pricingReady
+                    ? Number(pricing?.final_on_road ?? (statePrice + rto + insurance))
+                    : statePrice;
                 const currentOffer = rule ? (rule as any).offer_amount : 0;
 
                 return {
@@ -138,7 +172,8 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                     inputOffer: currentOffer !== 0 ? currentOffer.toString() : '',
                     hasRule: !!rule,
                     ruleId: rule?.id,
-                    isDirty: false
+                    isDirty: false,
+                    pricingReady
                 };
             });
 
@@ -257,7 +292,10 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                         </div>
                         <div>
                             <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">On-Road Pricing & Offers</h2>
-                            <p className="text-sm text-slate-500 font-medium">Regulatory Ledger • {defaultStateCode}</p>
+                            <p className="text-sm text-slate-500 font-medium">
+                                Regulatory Ledger • {defaultStateCode}
+                                {pricingDistrict ? ` • ${pricingDistrict}` : ''}
+                            </p>
                         </div>
                     </div>
 
@@ -351,7 +389,7 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                                 <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Ex-Showroom</th>
                                 <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">RTO</th>
                                 <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Insurance</th>
-                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">On-Road (Base)</th>
+                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">On-Road (Server)</th>
                                 <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center w-40">Offer</th>
                                 <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Final Price</th>
                             </tr>
@@ -403,17 +441,17 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                                         </td>
                                         <td className="p-4 text-right">
                                             <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                                                ₹{sku.rtoAmount.toLocaleString('en-IN')}
+                                                {sku.pricingReady ? `₹${sku.rtoAmount.toLocaleString('en-IN')}` : '—'}
                                             </span>
                                         </td>
                                         <td className="p-4 text-right">
                                             <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                                                ₹{sku.insuranceAmount.toLocaleString('en-IN')}
+                                                {sku.pricingReady ? `₹${sku.insuranceAmount.toLocaleString('en-IN')}` : '—'}
                                             </span>
                                         </td>
                                         <td className="p-4 text-right">
                                             <span className="text-sm font-bold text-slate-900 dark:text-white">
-                                                ₹{sku.onRoadBase.toLocaleString('en-IN')}
+                                                {sku.pricingReady ? `₹${sku.onRoadBase.toLocaleString('en-IN')}` : '—'}
                                             </span>
                                         </td>
                                         <td className="p-4">
@@ -452,9 +490,11 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                                                 <div className="flex items-center gap-1">
                                                     <span className={`text-sm font-black ${sku.offerAmount < 0 ? 'text-green-500' : 'text-slate-900 dark:text-white'
                                                         }`}>
-                                                        ₹{(sku.onRoadBase + sku.offerAmount).toLocaleString('en-IN')}
+                                                        {sku.pricingReady
+                                                            ? `₹${(sku.onRoadBase + sku.offerAmount).toLocaleString('en-IN')}`
+                                                            : '—'}
                                                     </span>
-                                                    <span className="text-[9px] text-slate-300 font-bold">*</span>
+                                                    {sku.pricingReady && <span className="text-[9px] text-slate-300 font-bold">*</span>}
                                                 </div>
 
                                                 {sku.offerAmount !== 0 ? (
@@ -477,7 +517,7 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                 <div className="p-4 border-t border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/[0.02] flex items-center justify-center gap-2">
                     <AlertCircle size={12} className="text-slate-400" />
                     <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">
-                        * Final On-Road Price includes RTO & Insurance calculated based on {defaultStateCode} rules.
+                        * Server RPC provides on-road pricing for {defaultStateCode}. Offer adjustments are previewed client-side and finalized on save.
                     </p>
                 </div>
             </div>

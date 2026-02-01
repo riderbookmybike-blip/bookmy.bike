@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { slugify } from '@/utils/slugs';
 
 export interface LocalColorConfig {
     id: string;
@@ -20,17 +19,9 @@ export interface LocalColorConfig {
     };
 }
 
-import { BMBDebug } from '@/types/debug';
-
 import { InsuranceRule } from '@/types/insurance';
 import { Accessory, ServiceOption } from '@/types/store';
 import { BankScheme, BankPartner } from '@/types/bankPartner';
-
-import { calculateRTO } from '@/lib/utils/pricingUtility';
-import { MOCK_REGISTRATION_RULES } from '@/lib/mock/catalogMocks';
-
-import { useMemo } from 'react';
-import { calculateOnRoad } from '@/lib/utils/pricingUtility';
 
 export function useSystemPDPLogic({
     initialPrice,
@@ -40,7 +31,8 @@ export function useSystemPDPLogic({
     initialAccessories = [],
     initialServices = [],
     product,
-    initialFinance
+    initialFinance,
+    serverPricing
 }: {
     initialPrice: { exShowroom: number };
     colors: LocalColorConfig[];
@@ -54,6 +46,15 @@ export function useSystemPDPLogic({
         scheme: BankScheme;
         logic?: string;
     };
+    // SSPP v1: Server-calculated pricing (Single Source of Truth)
+    serverPricing?: {
+        ex_showroom: number;
+        rto: { total: number; type: string; breakdown: any[] };
+        insurance: { total: number; od: number; tp: number; gst_rate: number; breakdown?: any[] };
+        dealer: { offer: number; name?: string; id?: string };
+        final_on_road: number;
+        location?: { district?: string | null; state_code?: string | null };
+    } | null;
 }) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -64,6 +65,11 @@ export function useSystemPDPLogic({
 
     const [selectedColor, setSelectedColor] = useState(initialColor);
     const [regType, setRegType] = useState<'STATE' | 'BH' | 'COMPANY'>('STATE');
+    const fallbackPricing =
+        serverPricing || (initialPrice?.breakdown && typeof initialPrice.breakdown === 'object' ? initialPrice.breakdown : null);
+    const pricingReady = Boolean(
+        fallbackPricing?.ex_showroom || fallbackPricing?.final_on_road || initialPrice?.exShowroom || initialPrice?.total
+    );
 
     const activeAccessories = initialAccessories.length > 0 ? initialAccessories : [];
     const activeServices = initialServices.length > 0 ? initialServices : [];
@@ -87,7 +93,7 @@ export function useSystemPDPLogic({
         if (typeof window !== 'undefined') {
             window.__BMB_DEBUG__ = {
                 ...window.__BMB_DEBUG__,
-                pricingSource: registrationRule?.state_code ? 'MARKET_RULES' : 'FALLBACK',
+                pricingSource: pricingReady ? 'SERVER_RPC' : 'MISSING_SERVER',
                 district: registrationRule?.district || 'GLOBAL',
                 stateCode: registrationRule?.state_code || 'NOT_SET',
                 schemeId: initialFinance?.scheme?.id || 'NONE',
@@ -101,50 +107,47 @@ export function useSystemPDPLogic({
                 userId: typeof window !== 'undefined' ? localStorage.getItem('userId') || 'GUEST' : 'GUEST'
             };
         }
-    }, [registrationRule, initialFinance, searchParams]);
+    }, [registrationRule, initialFinance, searchParams, pricingReady, product]);
+
+    useEffect(() => {
+        const nextType = fallbackPricing?.rto?.type;
+        if (nextType && nextType !== regType) {
+            setRegType(nextType as 'STATE' | 'BH' | 'COMPANY');
+        }
+    }, [fallbackPricing?.rto?.type, regType]);
 
     // Color Config & Price Override
     const activeColorConfig = colors.find(c => c.id === selectedColor) || colors[0] || {} as any;
-    const baseExShowroom = activeColorConfig.pricingOverride?.exShowroom || initialPrice.exShowroom;
+    const baseExShowroom = pricingReady
+        ? (fallbackPricing?.ex_showroom ?? activeColorConfig.pricingOverride?.exShowroom ?? initialPrice?.exShowroom ?? 0)
+        : 0;
+    const pricingLocationLabel = pricingReady
+        ? [fallbackPricing?.location?.district, fallbackPricing?.location?.state_code].filter(Boolean).join(', ')
+        : undefined;
+    const pricingSourceLabel = pricingLocationLabel
+        ? (fallbackPricing?.dealer?.name ? `${pricingLocationLabel} • ${fallbackPricing.dealer.name}` : pricingLocationLabel)
+        : (fallbackPricing?.dealer?.name || undefined);
 
-    // Real-time Calculation Engine Integration
-    const pricingData = useMemo(() => {
-        // Find engine CC for calculation (from specs)
-        const engineCcStr = product?.specs?.engine?.displacement || product?.specs?.performance?.displacement || "110";
-        const engineCc = parseInt(engineCcStr);
-
-        return calculateOnRoad(
-            baseExShowroom,
-            engineCc,
-            registrationRule,
-            insuranceRule
-        );
-    }, [baseExShowroom, registrationRule, insuranceRule, product]);
-
-    const rtoEstimates = regType === 'BH' ? pricingData.rtoBharat.total : pricingData.rtoState.total;
-    const rtoBreakdown = regType === 'BH' ? pricingData.rtoBharat.items : pricingData.rtoState.items;
-    const insuranceComp = pricingData.insuranceComp || {} as any;
-    const insuranceGstRate = Number(
-        insuranceComp.gstRate
-        ?? insuranceRule?.gstPercentage
-        ?? 18
-    );
+    // SSPP v1: Server pricing only (Single Source of Truth!)
+    const rtoEstimates = pricingReady ? (fallbackPricing?.rto?.total ?? initialPrice?.rto ?? 0) : 0;
+    const rtoBreakdown = pricingReady ? (fallbackPricing?.rto?.breakdown ?? []) : [];
+    const insuranceGstRate = Number(fallbackPricing?.insurance?.gst_rate ?? insuranceRule?.gstPercentage ?? 18);
     const applyInsuranceGst = (amount: number) => Math.round(amount + (amount * insuranceGstRate / 100));
 
-    const odBase = Number(insuranceComp.odTotal || 0);
-    const tpBase = Number(insuranceComp.tpTotal || 0);
-    const odWithGst = Number(insuranceComp.odTotalWithGst || applyInsuranceGst(odBase));
-    const tpWithGst = Number(insuranceComp.tpTotalWithGst || applyInsuranceGst(tpBase));
+    const odWithGst = pricingReady ? Number(fallbackPricing?.insurance?.od || 0) : 0;
+    const tpWithGst = pricingReady ? Number(fallbackPricing?.insurance?.tp || 0) : 0;
 
-    const baseInsurance = Number(insuranceComp.baseTotal || applyInsuranceGst(odBase + tpBase));
-    const insuranceBreakdown = [
-        { label: 'Liability Only', amount: tpWithGst, detail: `${insuranceComp.tpTenure || 5}Y Cover` },
-        { label: 'Comprehensive', amount: odWithGst, detail: `${insuranceComp.odTenure || 1}Y Cover` }
-    ];
+    const baseInsurance = pricingReady ? Number(fallbackPricing?.insurance?.total || initialPrice?.insurance || 0) : 0;
+    const insuranceBreakdown = pricingReady && fallbackPricing?.insurance?.breakdown?.length
+        ? fallbackPricing.insurance.breakdown
+        : [
+            { label: 'Liability Only', amount: tpWithGst, detail: '5Y Cover' },
+            { label: 'Comprehensive', amount: odWithGst, detail: '1Y Cover' }
+        ];
     const otherCharges = 0; // Defaulting to 0 since it's not in the engine yet
 
     const addonAmountMap = new Map<string, number>(
-        (insuranceComp.addonItems || [])
+        (fallbackPricing?.insurance?.breakdown || [])
             .map((i: any) => [i.componentId || i.label, Number(i.amount || 0)])
     );
 
@@ -177,24 +180,24 @@ export function useSystemPDPLogic({
     const insuranceRequiredItems = [
         {
             id: 'insurance-tp',
-            name: `Liability Only (${insuranceComp.tpTenure || 5} Years Cover)`,
+            name: 'Liability Only (5 Years Cover)',
             price: tpWithGst,
             description: 'Mandatory',
             isMandatory: true,
             breakdown: [
-                { label: 'Base Premium', amount: tpBase },
-                { label: `GST (${insuranceGstRate}%)`, amount: Math.max(0, tpWithGst - tpBase) }
+                { label: 'Base Premium', amount: Math.max(0, tpWithGst) },
+                { label: `GST (${insuranceGstRate}%)`, amount: 0 }
             ]
         },
         {
             id: 'insurance-od',
-            name: `Comprehensive (${insuranceComp.odTenure || 1} Year${(insuranceComp.odTenure || 1) > 1 ? 's' : ''} Cover)`,
+            name: 'Comprehensive (1 Year Cover)',
             price: odWithGst,
             description: 'Mandatory',
             isMandatory: true,
             breakdown: [
-                { label: 'Base Premium', amount: odBase },
-                { label: `GST (${insuranceGstRate}%)`, amount: Math.max(0, odWithGst - odBase) }
+                { label: 'Base Premium', amount: Math.max(0, odWithGst) },
+                { label: `GST (${insuranceGstRate}%)`, amount: 0 }
             ]
         }
     ];
@@ -271,7 +274,9 @@ export function useSystemPDPLogic({
             return sum + discount;
         }, 0);
 
-    const colorDiscount = activeColorConfig?.dealerOffer || activeColorConfig?.pricingOverride?.dealerOffer || 0;
+    const colorDiscount = pricingReady
+        ? Number(fallbackPricing?.dealer?.offer || activeColorConfig?.dealerOffer || activeColorConfig?.pricingOverride?.dealerOffer || 0)
+        : 0;
 
     // Offers are now provided via initialServices/initialAccessories, removing legacy mock lookup
     const activeOffers = selectedOffers
@@ -281,8 +286,10 @@ export function useSystemPDPLogic({
     const offersDiscount = activeOffers
         .reduce((sum, o) => sum + (o?.discountPrice || 0), 0);
 
-    const totalOnRoad = baseExShowroom + rtoEstimates + baseInsurance + insuranceAddonsPrice + accessoriesPrice + servicesPrice + otherCharges - colorDiscount - offersDiscount;
-    const totalSavings = colorDiscount + offersDiscount + accessoriesDiscount + servicesDiscount + insuranceAddonsDiscount;
+    const baseOnRoad = pricingReady ? Number(fallbackPricing?.final_on_road || initialPrice?.total || 0) : 0;
+    const totalOnRoadRaw = baseOnRoad + insuranceAddonsPrice + accessoriesPrice + servicesPrice + otherCharges - offersDiscount;
+    const totalOnRoad = pricingReady ? totalOnRoadRaw : 0;
+    const totalSavings = pricingReady ? (colorDiscount + offersDiscount + accessoriesDiscount + servicesDiscount + insuranceAddonsDiscount) : 0;
 
     // Dynamic Finance Logic
     const financeScheme = initialFinance?.scheme;
@@ -412,7 +419,7 @@ export function useSystemPDPLogic({
             userDownPayment,
             isReferralActive,
             initialFinance,
-            pricingSource: registrationRule?.state_code ? 'MARKET_RULES' : 'ESTIMATE'
+            pricingSource: pricingSourceLabel
         },
         actions: {
             setSelectedColor: handleColorChange,

@@ -146,6 +146,7 @@ export const DesktopCatalog = ({
                 dealer: string;
                 dealerId?: string;
                 isServiceable: boolean;
+                dealerLocation?: string;
                 bundleValue?: number;
                 bundlePrice?: number;
             }
@@ -169,6 +170,21 @@ export const DesktopCatalog = ({
             });
 
             if (!error && data) {
+                const dealerIds = Array.from(new Set((data as any[])
+                    .map((item: any) => item?.dealer_id)
+                    .filter(Boolean)));
+                let dealerLocationMap: Record<string, string> = {};
+                if (dealerIds.length > 0) {
+                    const { data: dealers } = await supabase
+                        .from('id_tenants')
+                        .select('id, location')
+                        .in('id', dealerIds);
+                    dealerLocationMap = (dealers || []).reduce((acc: Record<string, string>, dealer: any) => {
+                        if (dealer?.id && dealer?.location) acc[dealer.id] = dealer.location;
+                        return acc;
+                    }, {});
+                }
+
                 const offerMap: Record<
                     string,
                     {
@@ -176,6 +192,7 @@ export const DesktopCatalog = ({
                         dealer: string;
                         dealerId?: string;
                         isServiceable: boolean;
+                        dealerLocation?: string;
                         bundleValue?: number;
                         bundlePrice?: number;
                     }
@@ -187,6 +204,7 @@ export const DesktopCatalog = ({
                         dealer: item.dealer_name,
                         dealerId: item.dealer_id,
                         isServiceable: item.is_serviceable,
+                        dealerLocation: dealerLocationMap[item.dealer_id],
                         bundleValue: Number(item.bundle_value || 0),
                         bundlePrice: Number(item.bundle_price ?? item.bundle_value ?? 0),
                     };
