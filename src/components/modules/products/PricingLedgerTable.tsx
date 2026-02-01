@@ -559,24 +559,24 @@ export default function PricingLedgerTable({
 
                                     {activeCategory === 'vehicles' ? (
                                         <>
-                                            <th className="px-6 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-100 bg-slate-50/30 text-right">RTO</th>
-                                            <th className="px-6 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-100 bg-slate-50/30 text-right">Insurance</th>
+                                            <th className="px-6 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-right">RTO</th>
+                                            <th className="px-6 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-right">Insurance</th>
                                         </>
                                     ) : (
                                         <>
-                                            <th className="px-6 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-100 bg-slate-50/30 text-right">Base Price</th>
-                                            <th className="px-6 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-100 bg-slate-50/30 text-right">GST (28%)</th>
+                                            <th className="px-6 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-right">Base Price</th>
+                                            <th className="px-6 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-right">GST (28%)</th>
                                         </>
                                     )}
 
                                     {activeCategory !== 'vehicles' && (
-                                        <th className="px-6 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-100 bg-slate-50/30 text-center min-w-[120px]">
+                                        <th className="px-6 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-center min-w-[120px]">
                                             Inclusion
                                         </th>
                                     )}
 
                                     {!isAums && activeCategory === 'vehicles' && (
-                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 bg-slate-50/30 text-right">
+                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-right">
                                             On-Road (Server)
                                         </th>
                                     )}
@@ -586,7 +586,7 @@ export default function PricingLedgerTable({
                                     </th>
 
                                     {!isAums && activeCategory === 'vehicles' && (
-                                        <th className="px-6 py-5 text-[10px] font-black text-emerald-700 uppercase tracking-widest border-b border-emerald-100 text-right">
+                                        <th className="px-6 py-5 text-[10px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-widest border-b border-emerald-100 dark:border-emerald-900/30 bg-emerald-50/30 dark:bg-emerald-900/10 text-right">
                                             Benefit
                                         </th>
                                     )}
@@ -816,10 +816,10 @@ export default function PricingLedgerTable({
                                                             }
                                                             if (onUpdateStatus) onUpdateStatus(sku.id, nextStatus);
                                                         }}
-                                                        className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-sm border ${sku.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                                            sku.status === 'DRAFT' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' :
-                                                                sku.status === 'RELAUNCH' ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                                                                    'bg-slate-50 text-slate-400 border-slate-100'
+                                                        className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-sm border ${sku.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800' :
+                                                            sku.status === 'DRAFT' ? 'bg-indigo-50 text-indigo-600 border-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 dark:border-indigo-800' :
+                                                                sku.status === 'RELAUNCH' ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800' :
+                                                                    'bg-slate-50 text-slate-400 border-slate-100 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700'
                                                             }`}
                                                     >
                                                         {sku.status === 'ACTIVE' ? 'Live' : sku.status === 'DRAFT' ? 'New' : sku.status === 'INACTIVE' ? 'Inactive' : 'Relaunch'}
@@ -831,9 +831,9 @@ export default function PricingLedgerTable({
                                                             if (onUpdateLocalStatus) onUpdateLocalStatus(sku.id, !sku.localIsActive);
                                                         }}
                                                         disabled={sku.status !== 'ACTIVE'}
-                                                        className={`w-10 h-5 rounded-full flex items-center transition-all ml-auto ${sku.status === 'ACTIVE' ? (sku.localIsActive ? 'bg-emerald-500' : 'bg-slate-200') : 'bg-slate-100 opacity-50 cursor-not-allowed'}`}
+                                                        className={`w-10 h-5 rounded-full flex items-center transition-all ml-auto ${sku.status === 'ACTIVE' ? (sku.localIsActive ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700') : 'bg-slate-100 dark:bg-slate-800 opacity-50 cursor-not-allowed'}`}
                                                     >
-                                                        <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-all mx-0.5 ${sku.localIsActive && sku.status === 'ACTIVE' ? 'translate-x-5' : 'translate-x-0'}`} />
+                                                        <div className={`w-4 h-4 rounded-full bg-white dark:bg-slate-200 shadow-sm transition-all mx-0.5 ${sku.localIsActive && sku.status === 'ACTIVE' ? 'translate-x-5' : 'translate-x-0'}`} />
                                                     </button>
                                                 )}
                                             </td>

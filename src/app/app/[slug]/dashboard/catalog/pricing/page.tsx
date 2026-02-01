@@ -435,7 +435,7 @@ export default function PricingPage() {
                                 Regulatory Ledger
                             </span>
                         </div>
-                        <h1 className="text-5xl font-black text-slate-900 uppercase tracking-tighter italic">
+                        <h1 className="text-5xl font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
                             On-Road <span className="text-emerald-600">Pricing</span>
                         </h1>
                     </div>
@@ -451,7 +451,7 @@ export default function PricingPage() {
                 {/* KPI Grid - Expanded to 6 items to match Studio */}
                 <div className="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-4">
                     {/* Brands/SKUs (Indigo) */}
-                    <div className="p-6 rounded-[2rem] bg-white border border-slate-200 shadow-xl shadow-slate-100/50 flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left">
+                    <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left">
                         <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                             <Package size={64} className="text-indigo-600" />
                         </div>
@@ -462,7 +462,7 @@ export default function PricingPage() {
                             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Inventory</span>
                         </div>
                         <div className="text-left">
-                            <div className="text-4xl font-black text-slate-900 uppercase italic tracking-tighter">
+                            <div className="text-4xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
                                 {loading ? '-' : tableSummary.count}
                             </div>
                             <div className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-1">Filtered SKUs</div>
@@ -470,7 +470,7 @@ export default function PricingPage() {
                     </div>
 
                     {/* Live SKUs (Emerald) */}
-                    <div className="p-6 rounded-[2rem] bg-white border border-slate-200 shadow-xl shadow-slate-100/50 flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left">
+                    <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left">
                         <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                             <TrendingUp size={64} className="text-emerald-600" />
                         </div>
@@ -481,7 +481,7 @@ export default function PricingPage() {
                             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Market Ready</span>
                         </div>
                         <div className="text-left">
-                            <div className="text-4xl font-black text-slate-900 uppercase italic tracking-tighter">
+                            <div className="text-4xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
                                 {loading ? '-' : liveSkus}
                             </div>
                             <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">Active Status</div>
@@ -489,7 +489,7 @@ export default function PricingPage() {
                     </div>
 
                     {/* Draft/New (Amber) */}
-                    <div className="p-6 rounded-[2rem] bg-white border border-slate-200 shadow-xl shadow-slate-100/50 flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left">
+                    <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left">
                         <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                             <Zap size={64} className="text-amber-600" />
                         </div>
@@ -500,7 +500,7 @@ export default function PricingPage() {
                             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Pipeline</span>
                         </div>
                         <div className="text-left">
-                            <div className="text-4xl font-black text-slate-900 uppercase italic tracking-tighter">
+                            <div className="text-4xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
                                 {loading ? '-' : draftSkus}
                             </div>
                             <div className="text-[10px] font-bold text-amber-600 uppercase tracking-widest mt-1">Pending Sync</div>
@@ -508,7 +508,7 @@ export default function PricingPage() {
                     </div>
 
                     {/* Missing Price (Rose) */}
-                    <div className="p-6 rounded-[2rem] bg-white border border-slate-200 shadow-xl shadow-slate-100/50 flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left">
+                    <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left">
                         <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                             <Target size={64} className="text-rose-600" />
                         </div>
@@ -519,7 +519,7 @@ export default function PricingPage() {
                             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Critical Fix</span>
                         </div>
                         <div className="text-left">
-                            <div className={`text-4xl font-black uppercase italic tracking-tighter ${missingPrices > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+                            <div className={`text-4xl font-black uppercase italic tracking-tighter ${missingPrices > 0 ? 'text-rose-600' : 'text-slate-900 dark:text-white'}`}>
                                 {loading ? '-' : missingPrices}
                             </div>
                             <div className="text-[10px] font-bold text-rose-600 uppercase tracking-widest mt-1">Zero Price SKU</div>
@@ -527,7 +527,7 @@ export default function PricingPage() {
                     </div>
 
                     {/* Inventory Value (Blue) - REPLACED Unsaved Data */}
-                    <div className="p-6 rounded-[2rem] bg-white border border-slate-200 shadow-xl shadow-slate-100/50 flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left">
+                    <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left">
                         <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                             <Sparkles size={64} className="text-blue-600" />
                         </div>
@@ -538,7 +538,7 @@ export default function PricingPage() {
                             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Inventory Value</span>
                         </div>
                         <div className="text-left">
-                            <div className="text-3xl font-black text-slate-900 uppercase italic tracking-tighter overflow-hidden text-ellipsis whitespace-nowrap">
+                            <div className="text-3xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter overflow-hidden text-ellipsis whitespace-nowrap">
                                 {loading ? '-' : formattedValue}
                             </div>
                             <div className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-1">Sum Ex-Showroom</div>
@@ -546,7 +546,7 @@ export default function PricingPage() {
                     </div>
 
                     {/* Market (Slate) */}
-                    <div className="p-6 rounded-[2rem] bg-white border border-slate-200 shadow-xl shadow-slate-100/50 flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left">
+                    <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left">
                         <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                             <Landmark size={64} className="text-slate-400" />
                         </div>
@@ -557,7 +557,7 @@ export default function PricingPage() {
                             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Current Market</span>
                         </div>
                         <div className="text-left">
-                            <div className="text-4xl font-black text-slate-900 uppercase italic tracking-tighter">
+                            <div className="text-4xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
                                 {loading ? '-' : (activeRuleObj?.stateCode || '--')}
                             </div>
                             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 overflow-hidden text-ellipsis whitespace-nowrap">
@@ -571,11 +571,11 @@ export default function PricingPage() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 p-8 lg:p-12 overflow-auto transition-colors duration-500">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-8 lg:p-12 overflow-auto transition-colors duration-500">
             {renderHeader()}
 
             <div className="max-w-[1600px] mx-auto">
-                <div className="bg-white rounded-[3rem] border border-slate-200 shadow-2xl shadow-slate-100/50 overflow-hidden min-h-[600px] relative">
+                <div className="bg-white dark:bg-slate-900/50 rounded-[3rem] border border-slate-200 dark:border-white/5 shadow-2xl shadow-slate-100/50 dark:shadow-none overflow-hidden min-h-[600px] relative">
                     {loading ? (
                         <div className="flex h-[600px] items-center justify-center">
                             <div className="flex flex-col items-center gap-4 text-left">

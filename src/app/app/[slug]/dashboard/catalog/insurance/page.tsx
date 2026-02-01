@@ -52,7 +52,8 @@ export default function InsuranceMasterPage() {
                     insurerName: d.insurer_name,
                     stateCode: d.state_code,
                     vehicleType: d.vehicle_type,
-                    idvPercentage: d.idv_percentage + '%'
+                    idvPercentage: d.idv_percentage + '%',
+                    effectiveFrom: d.created_at ? d.created_at.split('T')[0] : ''
                 })));
                 setDataSource('LIVE');
             } else {

@@ -48,7 +48,6 @@ const mapFrontendToDb = (r: InsuranceRule) => ({
     state_code: r.stateCode,
     insurer_name: r.insurerName,
     vehicle_type: r.vehicleType,
-    effective_from: r.effectiveFrom,
     status: r.status,
     idv_percentage: r.idvPercentage,
     gst_percentage: r.gstPercentage,
