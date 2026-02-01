@@ -283,7 +283,7 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
             {/* 2. The Grid Control Consolidation */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl overflow-hidden shadow-sm flex flex-col min-h-[600px]">
                 {/* Integrated Toolbar */}
-                <div className="p-4 border-b border-slate-100 dark:border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/50 dark:bg-white/[0.02]">
+                <div className="p-4 border-b border-slate-100 dark:border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-950/50">
 
                     {/* Left: Filters & Search */}
                     <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto">
@@ -295,7 +295,7 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 placeholder="Search inventory..."
-                                className="bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white pl-9 pr-4 py-2 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none w-48 transition-all hover:border-indigo-300"
+                                className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white pl-9 pr-4 py-2 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none w-48 transition-all hover:border-indigo-300"
                             />
                         </div>
 
@@ -306,7 +306,7 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                             <select
                                 value={brandFilter}
                                 onChange={(e) => setBrandFilter(e.target.value)}
-                                className="appearance-none bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 pl-3 pr-8 py-2 rounded-xl text-xs font-bold uppercase tracking-wide focus:ring-2 focus:ring-indigo-500/20 outline-none cursor-pointer hover:border-indigo-300 transition-colors shadow-sm"
+                                className="appearance-none bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 pl-3 pr-8 py-2 rounded-xl text-xs font-bold uppercase tracking-wide focus:ring-2 focus:ring-indigo-500/20 outline-none cursor-pointer hover:border-indigo-300 transition-colors shadow-sm"
                             >
                                 <option value="ALL">All Brands</option>
                                 {brands.map(b => (
@@ -372,7 +372,7 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                                 </tr>
                             ) : (
                                 filteredSkus.map((sku, idx) => (
-                                    <tr key={sku.id} className="group hover:bg-slate-50/80 dark:hover:bg-indigo-500/[0.02] transition-colors">
+                                    <tr key={sku.id} className="group hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
                                         <td className="p-4 bg-white/50 dark:bg-transparent group-hover:bg-transparent transition-colors">
                                             <div className="w-10 h-10 rounded-xl bg-white dark:bg-white/5 border border-slate-100 dark:border-white/5 flex items-center justify-center p-1.5 shadow-sm">
                                                 {sku.brandLogo ? (

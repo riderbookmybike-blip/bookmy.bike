@@ -4,6 +4,7 @@ import React from 'react';
 import { ChevronDown } from 'lucide-react';
 
 interface VariantSpecificationEditorProps {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     brands: any[];
     onBrandChange: (brandId: string) => void;
     onModelChange: (modelId: string) => void;
@@ -11,8 +12,11 @@ interface VariantSpecificationEditorProps {
     selectedBrandId?: string;
     selectedModelId?: string;
     selectedVariantId?: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     models: any[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     variants: any[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     currentVariant?: any;
     onSpecUpdate: (category: string, field: string, value: string) => void;
 }
@@ -46,12 +50,12 @@ export const VariantSpecificationEditor = ({
         <div className="flex items-end gap-3 mb-4">
             {/* Brand Selector */}
             <div className="flex-1 space-y-1">
-                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider">Brand</label>
+                <label className="block text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Brand</label>
                 <div className="relative">
                     <select
                         value={selectedBrandId || ''}
                         onChange={(e) => onBrandChange(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-sm font-bold text-white focus:ring-2 focus:ring-blue-500 transition-all outline-none appearance-none cursor-pointer pr-10"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all outline-none appearance-none cursor-pointer pr-10"
                     >
                         <option value="">Select Brand</option>
                         {brands.map(brand => (
@@ -64,13 +68,13 @@ export const VariantSpecificationEditor = ({
 
             {/* Model Selector */}
             <div className="flex-1 space-y-1">
-                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider">Model</label>
+                <label className="block text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Model</label>
                 <div className="relative">
                     <select
                         value={selectedModelId || ''}
                         onChange={(e) => onModelChange(e.target.value)}
                         disabled={!selectedBrandId}
-                        className="w-full px-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-sm font-bold text-white focus:ring-2 focus:ring-blue-500 transition-all outline-none appearance-none cursor-pointer pr-10 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all outline-none appearance-none cursor-pointer pr-10 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <option value="">Select Model</option>
                         {models.map(model => (
@@ -83,13 +87,13 @@ export const VariantSpecificationEditor = ({
 
             {/* Variant Selector */}
             <div className="flex-1 space-y-1">
-                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider">Variant</label>
+                <label className="block text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Variant</label>
                 <div className="relative">
                     <select
                         value={selectedVariantId || ''}
                         onChange={(e) => onVariantChange(e.target.value)}
                         disabled={!selectedModelId}
-                        className="w-full px-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-sm font-bold text-white focus:ring-2 focus:ring-blue-500 transition-all outline-none appearance-none cursor-pointer pr-10 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all outline-none appearance-none cursor-pointer pr-10 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <option value="">Select Variant</option>
                         {variants.map(variant => (
@@ -119,7 +123,7 @@ export const VariantSpecificationEditor = ({
                     onClick={() => setActiveCategory(cat.id)}
                     className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeCategory === cat.id
                         ? 'bg-blue-600 text-white shadow-lg'
-                        : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                        : 'bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10'
                         }`}
                 >
                     <span className="mr-1.5">{cat.icon}</span>
@@ -183,25 +187,25 @@ export const VariantSpecificationEditor = ({
         const categoryData = specs[activeCategory] || {};
 
         return (
-            <div className="bg-slate-900 rounded-2xl border border-white/10 overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden shadow-sm">
                 <table className="w-full">
                     <thead>
-                        <tr className="bg-white/5 border-b border-white/10">
-                            <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Specification</th>
-                            <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Value</th>
+                        <tr className="bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10">
+                            <th className="px-6 py-4 text-left text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Specification</th>
+                            <th className="px-6 py-4 text-left text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Value</th>
                         </tr>
                     </thead>
                     <tbody>
                         {fields.map((field, idx) => (
-                            <tr key={field.key} className={`border-b border-white/5 hover:bg-white/5 transition-colors ${idx % 2 === 0 ? 'bg-white/[0.02]' : ''}`}>
-                                <td className="px-6 py-4 text-sm font-bold text-white">{field.label}</td>
+                            <tr key={field.key} className={`border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors ${idx % 2 === 0 ? 'bg-slate-50/50 dark:bg-white/[0.02]' : ''}`}>
+                                <td className="px-6 py-4 text-sm font-bold text-slate-900 dark:text-white">{field.label}</td>
                                 <td className="px-6 py-4">
                                     <input
                                         type="text"
                                         value={categoryData[field.key] || ''}
                                         onChange={(e) => onSpecUpdate(activeCategory, field.key, e.target.value)}
                                         placeholder={field.placeholder}
-                                        className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm font-medium text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 transition-all outline-none"
+                                        className="w-full px-4 py-2 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-medium text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-500 transition-all outline-none"
                                     />
                                 </td>
                             </tr>

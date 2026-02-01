@@ -1,5 +1,6 @@
 import { PhoneHome } from '@/components/phone/home/PhoneHome';
 import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
+import { ColorProvider } from '@/contexts/ColorContext';
 import { Suspense } from 'react';
 
 export default function MobileV2Page() {
@@ -12,7 +13,9 @@ export default function MobileV2Page() {
             }
         >
             <FavoritesProvider>
-                <PhoneHome />
+                <ColorProvider>
+                    <PhoneHome />
+                </ColorProvider>
             </FavoritesProvider>
         </Suspense>
     );

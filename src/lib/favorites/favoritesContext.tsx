@@ -5,9 +5,11 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 export interface FavoriteItem {
     id: string;
     model: string;
+    make?: string;
     variant: string;
     slug: string;
     imageUrl?: string;
+    price?: number;
 }
 
 interface FavoritesContextType {
@@ -26,6 +28,7 @@ export const FavoritesProvider = ({ children }: { children: React.ReactNode }) =
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setMounted(true);
         const stored = localStorage.getItem('bmb_favorites');
         if (stored) {

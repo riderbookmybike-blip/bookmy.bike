@@ -44,6 +44,26 @@ export const PhoneContextFeed = () => {
         }
     };
 
+    // Deep Linking Scroll Logic
+    useEffect(() => {
+        const modelSlug = searchParams.get('model');
+        if (modelSlug && modelGroups.length > 0) {
+            const index = modelGroups.findIndex(g =>
+                g.modelSlug?.toLowerCase() === modelSlug.toLowerCase() ||
+                g.model?.toLowerCase() === modelSlug.toLowerCase()
+            );
+
+            if (index !== -1) {
+                // Scroll to element
+                const element = document.getElementById(`model-${index}`);
+                if (element) {
+                    element.scrollIntoView({ behavior: 'auto' }); // Instant scroll on load
+                    setActiveIndex(index);
+                }
+            }
+        }
+    }, [searchParams, modelGroups]);
+
     if (isLoading) {
         return (
             <div className="h-screen w-full bg-black flex items-center justify-center">
@@ -67,6 +87,7 @@ export const PhoneContextFeed = () => {
                 {modelGroups.map((modelGroup, index) => (
                     <div
                         key={`${modelGroup.make}-${modelGroup.model}`}
+                        id={`model-${index}`}
                         className="snap-start shrink-0"
                         style={{ height: '100dvh' }}
                     >

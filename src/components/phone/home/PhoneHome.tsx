@@ -9,7 +9,7 @@ import { useSystemBrandsLogic } from '@/hooks/SystemBrandsLogic';
 import { MARKET_METRICS } from '@/config/market';
 import { PhoneHeader } from '@/components/phone/layout/PhoneHeader';
 import { PhoneBottomNav } from '@/components/phone/layout/PhoneBottomNav';
-import { PhoneFooter } from '@/components/phone/layout/PhoneFooter';
+import { Footer as PhoneFooter } from '@/components/store/Footer';
 import { PhoneContextFeed } from '@/components/phone/catalog/PhoneContextFeed';
 import { PhoneSearch } from '@/components/phone/catalog/PhoneSearch';
 import { Logo } from '@/components/brand/Logo';
@@ -56,7 +56,6 @@ export function PhoneHome() {
                     document.documentElement.style.setProperty('--mouse-x-pct', `${xPct}%`);
                 }}
             >
-                <PhoneContextFeed />
                 {/* layer 0: immersive tunnel chassis */}
                 <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                     <motion.div
@@ -199,7 +198,7 @@ export function PhoneHome() {
                             className="mt-6 flex flex-col items-center gap-6 w-full px-4"
                         >
                             <Link
-                                href="/m2/store/catalog"
+                                href="/phone/store/catalog"
                                 className="group relative h-14 w-full max-w-[320px] flex items-center justify-center bg-transparent overflow-visible"
                             >
                                 <svg className="absolute inset-0 w-full h-full overflow-visible">
@@ -220,7 +219,7 @@ export function PhoneHome() {
                                     />
                                 </svg>
                                 <div className="relative z-10 flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white group-hover:text-brand-primary transition-colors font-[family-name:var(--font-bruno-ace)]">
-                                    <PhoneSearch />
+                                    <Search size={18} className="text-[#ff9d00]" />
                                     Search Your Bike
                                 </div>
                             </Link>
@@ -232,7 +231,7 @@ export function PhoneHome() {
                                 <span className="flex items-center gap-1.5">
                                     <div className="w-1 h-1 bg-current rounded-full" /> HAPTIC: ACTIVE
                                 </span>
-                                <span className="underline">v2.6_OS_CORE</span>
+                                <span className="underline text-[8px]">v2.7_STABLE_DYNAMIC</span>
                             </div>
                         </motion.div>
                     </div>
@@ -344,7 +343,7 @@ export function PhoneHome() {
                             const dbBrand = brands?.find(b => b.name.toUpperCase() === brand.name.toUpperCase());
                             return (
                                 <motion.div key={brand.name} className="flex-none w-64 snap-center" whileTap={{ scale: 0.95 }}>
-                                    <Link href={`/m2/store/catalog?brand=${brand.name}`} className="block h-80 p-6 bg-white dark:bg-zinc-900/80 border border-slate-200 dark:border-white/10 rounded-3xl backdrop-blur-xl relative overflow-hidden group shadow-sm dark:shadow-none transition-all" style={{ background: hasMounted && theme === 'dark' ? `linear-gradient(135deg, ${brand.color}10 0%, #18181b 50%)` : undefined }}>
+                                    <Link href={`/phone/store/catalog?brand=${brand.name}`} className="block h-80 p-6 bg-white dark:bg-zinc-900/80 border border-slate-200 dark:border-white/10 rounded-3xl backdrop-blur-xl relative overflow-hidden group shadow-sm dark:shadow-none transition-all" style={{ background: hasMounted && theme === 'dark' ? `linear-gradient(135deg, ${brand.color}10 0%, #18181b 50%)` : undefined }}>
                                         <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: brand.color }} />
                                         <div className="relative h-full flex flex-col justify-between">
                                             <div className="flex justify-end">
@@ -411,9 +410,9 @@ export function PhoneHome() {
 
                 <div className="space-y-4">
                     {[
-                        { title: 'Scooters', icon: 'SC', link: '/m2/store/catalog?category=SCOOTER', bg: 'from-violet-500/10' },
-                        { title: 'Motorcycles', icon: 'MC', link: '/m2/store/catalog?category=MOTORCYCLE', bg: 'from-rose-500/10' },
-                        { title: 'Mopeds', icon: 'MP', link: '/m2/store/catalog?category=MOPED', bg: 'from-amber-500/10' },
+                        { title: 'Scooters', icon: 'SC', link: '/phone/store/catalog?category=SCOOTER', bg: 'from-violet-500/10' },
+                        { title: 'Motorcycles', icon: 'MC', link: '/phone/store/catalog?category=MOTORCYCLE', bg: 'from-rose-500/10' },
+                        { title: 'Mopeds', icon: 'MP', link: '/phone/store/catalog?category=MOPED', bg: 'from-amber-500/10' },
                     ].map((cat) => (
                         <Link key={cat.title} href={cat.link} className={`block relative p-8 rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 bg-gradient-to-br ${cat.bg} to-transparent overflow-hidden group shadow-sm dark:shadow-none transition-all`}>
                             <div className="flex justify-between items-center relative z-10">

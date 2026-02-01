@@ -338,7 +338,7 @@ export default function ProductClient({
             {isMobile ? (
                 <PhonePDPEnhanced {...commonProps} />
             ) : (
-                <DesktopPDP {...commonProps} basePath="/m2/store" />
+                <DesktopPDP {...commonProps} basePath="/phone/store" />
             )}
 
             <LeadCaptureModal
