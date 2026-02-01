@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSystemPDPLogic } from '@/hooks/SystemPDPLogic';
-import { DesktopPDP } from '@/components/store/DesktopPDP';
-import { PhonePDP } from '@/components/phone/pdp/PhonePDP';
+import { PhonePDPSimple } from '@/components/phone/pdp/PhonePDPSimple';
 import { LeadCaptureModal } from '@/components/leads/LeadCaptureModal';
 import { EmailUpdateModal } from '@/components/auth/EmailUpdateModal';
 import { createClient } from '@/lib/supabase/client';
@@ -335,8 +334,14 @@ export default function SystemPDPRouter({
 
     return (
         <>
-            {/* FORCED DESKTOP: Always show DesktopPDP as per user request */}
-            <DesktopPDP {...commonProps} basePath="/phone/store" />
+            {/* Phone PDP Simple: Finance-first layout with sticky bottom bar */}
+            <PhonePDPSimple
+                product={product}
+                modelParam={modelParam}
+                variantParam={variantParam}
+                data={data}
+                handlers={handlers}
+            />
 
             <LeadCaptureModal
                 isOpen={showQuoteSuccess}

@@ -179,11 +179,11 @@ export function PhoneHome() {
                                 <path id="circlePath" d="M 50, 50 m -42, 0 a 42,42 0 1,1 84,0 a 42,42 0 1,1 -84,0" />
                             </defs>
                             <text
-                                className="text-[8.5px] font-black uppercase tracking-[0.6em] fill-white font-[family-name:var(--font-bruno-ace)] transition-colors"
+                                className="text-[8.5px] font-black uppercase tracking-[0.6em] fill-slate-900 dark:fill-white font-[family-name:var(--font-bruno-ace)] transition-colors"
                                 style={{ opacity: 0.95 }}
                             >
                                 <textPath href="#circlePath" startOffset="0%" textLength="262" lengthAdjust="spacingAndGlyphs">
-                                    {t("INDIA'S LOWEST EMI GUARANTEE *")}&nbsp;
+                                    INDIA&apos;S LOWEST EMI GUARANTEE *&nbsp;
                                 </textPath>
                             </text>
                         </motion.svg>
@@ -217,24 +217,24 @@ export function PhoneHome() {
                             transition={{ duration: 1.2, ease: 'circOut' }}
                             className="flex flex-col items-center text-center"
                         >
-                            <span className="text-[10px] font-black uppercase tracking-[0.6em] text-white/30 leading-none mb-2">{t('THE')}</span>
-                            <span className="text-sm font-black uppercase tracking-[0.4em] text-white/80 leading-none mb-2">{t('HIGHEST FIDELITY')}</span>
-                            <span className="text-2xl font-black italic uppercase tracking-[0.2em] text-brand-primary leading-none">{t('MARKETPLACE')}</span>
+                            <span className="text-[10px] font-black uppercase tracking-[0.6em] text-slate-400 dark:text-white/30 leading-none mb-2">THE</span>
+                            <span className="text-sm font-black uppercase tracking-[0.4em] text-slate-600 dark:text-white/80 leading-none mb-2">HIGHEST FIDELITY</span>
+                            <span className="text-2xl font-black italic uppercase tracking-[0.2em] text-brand-primary leading-none">MARKETPLACE</span>
                         </motion.div>
 
-                        <div className="relative group/title w-full max-w-[520px] md:max-w-[920px] mx-auto px-4 text-center">
+                        <div className="relative group/title w-full max-w-full px-4 text-center">
                             <motion.h1
                                 initial={{ opacity: 0, scale: 0.95, y: 30 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
-                                className="relative text-[clamp(1.5rem,8.5vw,3.5rem)] md:text-8xl lg:text-[clamp(4rem,12vw,9.5rem)] font-black italic uppercase tracking-[-0.04em] leading-none text-transparent bg-clip-text bg-[linear-gradient(110deg,#fff_0%,#fff_40%,#ff9d00_50%,#fff_60%,#fff_100%)] bg-[size:200%_100%] transition-all duration-1000 font-[family-name:var(--font-bruno-ace)]"
+                                className="relative text-[clamp(1.5rem,8.5vw,3.5rem)] md:text-8xl lg:text-[clamp(4rem,12vw,9.5rem)] font-black italic uppercase tracking-[-0.04em] leading-none text-transparent bg-clip-text bg-[linear-gradient(110deg,#1e293b_0%,#475569_40%,#ff9d00_50%,#475569_60%,#1e293b_100%)] dark:bg-[linear-gradient(110deg,#fff_0%,#fff_40%,#ff9d00_50%,#fff_60%,#fff_100%)] bg-[size:200%_100%] transition-all duration-1000 font-[family-name:var(--font-bruno-ace)]"
                                 style={{
-                                    textShadow: '0 20px 50px rgba(0,0,0,0.5)',
+                                    textShadow: theme === 'dark' ? '0 20px 50px rgba(0,0,0,0.5)' : 'none',
                                     WebkitTextFillColor: 'transparent',
                                     backgroundPositionX: 'calc(100% - var(--mouse-x-pct))',
                                 }}
                             >
-                                {t('MOTORCYCLES')}
+                                MOTORCYCLES
                             </motion.h1>
 
                             <motion.div
@@ -260,7 +260,7 @@ export function PhoneHome() {
                                         x="0" y="0" width="100%" height="100%"
                                         fill="transparent" rx="8"
                                         stroke="currentColor" strokeWidth="1" strokeOpacity="0.1"
-                                        className="text-white group-hover:stroke-brand-primary/50 transition-colors"
+                                        className="text-slate-900 dark:text-white group-hover:stroke-brand-primary/50 transition-colors"
                                     />
                                     <motion.rect
                                         x="0" y="0" width="100%" height="100%"
@@ -272,13 +272,13 @@ export function PhoneHome() {
                                         transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
                                     />
                                 </svg>
-                                <div className="relative z-10 flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.3em] text-white group-hover:text-brand-primary transition-colors font-[family-name:var(--font-bruno-ace)]">
+                                <div className="relative z-10 flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white group-hover:text-brand-primary transition-colors font-[family-name:var(--font-bruno-ace)]">
                                     <Search size={18} className="text-[#ff9d00]" />
-                                    {t('Search Your Bike')}
+                                    Search Your Bike
                                 </div>
                             </Link>
 
-                            <div className="flex gap-6 opacity-30 text-[7px] font-mono tracking-widest whitespace-nowrap overflow-hidden text-white">
+                            <div className="flex gap-6 opacity-30 text-[7px] font-mono tracking-widest whitespace-nowrap overflow-hidden text-slate-500 dark:text-white">
                                 <span className="flex items-center gap-1.5">
                                     <div className="w-1 h-1 bg-current rounded-full" /> SECURE_LINK: ENABLED
                                 </span>

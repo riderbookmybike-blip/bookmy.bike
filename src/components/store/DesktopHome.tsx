@@ -287,7 +287,7 @@ export function DesktopHome() {
                                 <div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
                             </div>
                             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white group-hover/tele:text-brand-primary transition-colors font-[family-name:var(--font-bruno-ace)] z-10 relative">
-                                {t("INDIA'S LOWEST EMI GUARANTEE")}
+                                INDIA&apos;S LOWEST EMI GUARANTEE
                             </span>
                             <div className="flex gap-1.5 z-10">
                                 <div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
@@ -309,21 +309,21 @@ export function DesktopHome() {
                             transition={{ duration: 2, ease: [0.16, 1, 0.3, 1] }}
                             className="text-sm md:text-base font-black uppercase text-white mb-6 transition-all duration-300 drop-shadow-[0_0_20px_rgba(255,255,255,0.8)] font-[family-name:var(--font-bruno-ace)]"
                         >
-                            {t('The Highest Fidelity Marketplace')}
+                            The Highest Fidelity Marketplace
                         </motion.div>
 
-                            <div className="relative group/title w-full max-w-[980px] mx-auto px-4 py-4">
+                            <div className="relative group/title">
                                 {/* reflective shadow layer */}
                                 <motion.h1
                                     initial={{ opacity: 0, y: 40 }}
                                     animate={{ opacity: 0.1, y: 0 }}
                                     transition={{ delay: 0.4, duration: 1.5 }}
-                                    className="absolute -inset-2 w-full text-7xl md:text-8xl lg:text-[clamp(4rem,12.5vw,10.5rem)] font-black uppercase text-white blur-3xl pointer-events-none opacity-20"
+                                className="absolute -inset-2 text-7xl md:text-8xl lg:text-[clamp(4rem,12.5vw,10.5rem)] font-black uppercase text-white blur-3xl pointer-events-none opacity-20"
                                     style={{
                                         backgroundPosition: 'calc(100% - var(--mouse-x-pct)) 50%',
                                     }}
                                 >
-                                    {t('MOTORCYCLES')}
+                                    MOTORCYCLES
                                 </motion.h1>
 
                             {/* main liquid-metal text */}
@@ -331,14 +331,14 @@ export function DesktopHome() {
                                     initial={{ opacity: 0, scale: 0.95, y: 30 }}
                                     animate={{ opacity: 1, scale: 1, y: 0 }}
                                     transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
-                                    className="relative text-7xl md:text-8xl lg:text-[clamp(4rem,12vw,9.5rem)] font-black italic uppercase tracking-[-0.03em] leading-none text-transparent bg-clip-text bg-[linear-gradient(110deg,#fff_0%,#fff_40%,#ff9d00_50%,#fff_60%,#fff_100%)] bg-[length:200%_100%] transition-all duration-1000 font-[family-name:var(--font-bruno-ace)]"
+                                className="relative text-7xl md:text-8xl lg:text-[clamp(4rem,12vw,9.5rem)] font-black italic uppercase tracking-[-0.03em] leading-none text-transparent bg-clip-text bg-[linear-gradient(110deg,#fff_0%,#fff_40%,#ff9d00_50%,#fff_60%,#fff_100%)] bg-[length:200%_100%] transition-all duration-1000 font-[family-name:var(--font-bruno-ace)]"
                                     style={{
                                         textShadow: '0 20px 50px rgba(0,0,0,0.5)',
                                         WebkitTextFillColor: 'transparent',
                                     backgroundPositionX: 'calc(100% - var(--mouse-x-pct))',
                                 }}
                             >
-                                {t('MOTORCYCLES')}
+                                MOTORCYCLES
                             </motion.h1>
 
                             {/* kinetic scan line across text */}
