@@ -93,7 +93,7 @@ export default function VehicleSKUListView({ models, colors, brandName }: Vehicl
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Toolbar */}
-            <div className="flex items-center justify-between bg-white dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 p-4 rounded-[32px] shadow-sm">
+            <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 p-4 rounded-[32px] shadow-sm">
                 <div className="relative flex-1 max-w-md">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input
@@ -118,10 +118,10 @@ export default function VehicleSKUListView({ models, colors, brandName }: Vehicl
             </div>
 
             {/* Table Container */}
-            <div className="bg-white dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-[40px] overflow-hidden shadow-2xl shadow-slate-200/50 dark:shadow-none">
+            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-[40px] overflow-hidden shadow-2xl shadow-slate-200/50 dark:shadow-none">
                 <table className="w-full text-left border-collapse">
                     <thead>
-                        <tr className="bg-slate-50/50 dark:bg-white/[0.03]">
+                        <tr className="bg-slate-50/50 dark:bg-slate-950">
                             <th className="px-8 py-8 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">#</th>
                             <th className="px-8 py-8 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">SKU ID</th>
                             <th className="px-8 py-8 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">Model Name</th>
@@ -133,8 +133,8 @@ export default function VehicleSKUListView({ models, colors, brandName }: Vehicl
                     <tbody>
                         {filteredSkus.length > 0 ? (
                             filteredSkus.map((sku, idx) => (
-                                <tr key={sku.id} className="group hover:bg-blue-50/30 dark:hover:bg-blue-500/5 transition-colors cursor-pointer border-b border-slate-50 dark:border-white/[0.02] last:border-none">
-                                    <td className="px-8 py-8 text-xs font-black text-slate-300 dark:text-white/20 uppercase tracking-tighter">{(idx + 1).toString().padStart(2, '0')}</td>
+                                <tr key={sku.id} className="group hover:bg-blue-50/30 dark:hover:bg-blue-600/5 transition-colors cursor-pointer border-b border-slate-50 dark:border-white/[0.02] last:border-none">
+                                    <td className="px-8 py-8 text-xs font-black text-slate-300 dark:text-slate-600 uppercase tracking-tighter">{(idx + 1).toString().padStart(2, '0')}</td>
                                     <td className="px-8 py-8">
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center">
@@ -154,7 +154,7 @@ export default function VehicleSKUListView({ models, colors, brandName }: Vehicl
                                     <td className="px-8 py-8">
                                         <div className="flex items-center gap-4">
                                             <div
-                                                className="w-6 h-6 rounded-full border-2 border-white/20 shadow-xl"
+                                                className="w-6 h-6 rounded-full border-2 border-white/20 dark:border-slate-800 shadow-xl"
                                                 style={{ backgroundColor: sku.colorCode }}
                                             />
                                             <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">{sku.colorName}</span>

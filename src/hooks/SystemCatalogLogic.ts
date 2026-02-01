@@ -33,6 +33,20 @@ const STATE_NAMES: Record<string, string> = {
     'ALL': 'India',
 };
 
+// Interface for Materialized Summary
+interface MarketSummary {
+    id: string;
+    state_code: string;
+    family_id: string;
+    brand_id: string;
+    model_name: string;
+    slug: string;
+    lowest_price: number;
+    sku_count: number;
+    image_url: string | null;
+    updated_at: string;
+}
+
 // New Unified Schema Types
 interface CatalogItemDB {
     id: string;
@@ -142,6 +156,165 @@ export function useSystemCatalogLogic(leadId?: string) {
             try {
                 setIsLoading(true);
                 const supabase = createClient();
+
+                // ---------------------------------------------------------
+                // 🚀 PERFORMANCE LAYER: Materialized Summary (Read Model)
+                // ---------------------------------------------------------
+                // Attempt to fetch pre-calculated market data first
+                const { data: rawSummaryData, error: summaryError } = await supabase
+                    .from('mat_market_summary')
+                    .select('*')
+                    .eq('state_code', stateCode)
+                    .order('lowest_price', { ascending: true });
+
+                // Fetch brands for mapping (lightweight)
+                const { data: rawBrandsData } = await supabase
+                    .from('cat_brands')
+                    .select('id, name, logo_svg');
+
+                const brandsData = rawBrandsData as { id: string; name: string; logo_svg: string | null }[] | null;
+
+                const summaryData = rawSummaryData as unknown as MarketSummary[] | null;
+
+                // Check if summary hits
+                const hasSummary = summaryData && summaryData.length > 0;
+
+                // NOTE: Fast Path disabled because mat_market_summary has incomplete data (only 5 items for MH).
+                // Temporarily forcing full catalog load until the materialized view is fully populated.
+                const disableFastPath = true;
+
+                if (!disableFastPath && hasSummary && !leadId) {
+                    // FAST PATH: Use pre-calculated data
+                    // We need to map this simple structure to the ProductVariant type
+                    // Note: Summary lacks full specs, but has critical Model/Price/Image info
+                    // Ideally, we hydrate the full object, but for "Catalog View" this is often enough.
+
+                    // However, existing UI components expect 'ProductVariant' with nested 'brand', etc.
+                    // So we might need a lightweight mapping or just use this as a "Skeleton" and fetch details lazily?
+                    // OR: We rely on the unified schema.
+
+                    // STRATEGY: Hybrid.
+                    // 1. Show Summary immediately.
+                    // 2. Background fetch full data if needed? 
+                    // Actually, let's stick to the Plan: If summary exists, use it.
+
+                    // We need to match the type 'ProductVariant' approximately.
+                    const fastItems: any[] = summaryData!.map(s => {
+                        const brand = brandsData?.find(b => b.id === s.brand_id);
+                        const makeName = brand?.name || 'Unknown';
+
+                        return {
+                            id: s.family_id,
+                            type: 'FAMILY',
+                            make: makeName,
+                            model: s.model_name,
+                            variant: s.model_name, // Summary represents the Family-as-Variant
+                            displayName: `${makeName} ${s.model_name}`,
+                            label: `${makeName} / ${s.model_name}`,
+                            name: s.model_name,
+                            slug: s.slug,
+                            modelSlug: s.slug,
+                            sku: `SKU-${s.slug}`.toUpperCase(),
+                            status: 'ACTIVE',
+                            // Standard Defaults for Summary
+                            bodyType: 'MOTORCYCLE',
+                            fuelType: 'PETROL',
+                            price_base: s.lowest_price, // Pre-calculated lowest
+                            brand_id: s.brand_id,
+                            brand: { name: makeName, logo_svg: brand?.logo_svg },
+                            // Construct a minimal structure for UI
+                            specs: {},
+                            template: { category: 'VEHICLE' },
+                            children: [], // Details hidden in summary mode
+                            // Custom field to indicate this is a summary
+                            _isSummary: true,
+                            image_url: s.image_url,
+                            imageUrl: s.image_url,
+
+                            // Pricing Object (Simulated for ModelCard compatibility)
+                            price: {
+                                exShowroom: s.lowest_price,
+                                onRoad: Math.round(s.lowest_price * 1.12), // Rough estimate for UI feel before hydration
+                                offerPrice: Math.round(s.lowest_price * 1.12),
+                                discount: 0,
+                                pricingSource: 'Starting From'
+                            },
+                            availableColors: []
+                        };
+                    });
+
+                    // Fetch Brands to fill in the gaps (usually cached by SystemBrandsLogic anyway)
+                    // But let's just do a quick enrichment if possible or leave it.
+                    // Actually, let's execute the FULL FETCH for now to ensure we don't break UI,
+                    // but verify the concept.
+
+                    // WAIT. The prompt requirement is speed.
+                    // If I return fastItems, I need to make sure UI handles it.
+
+                    // Let's implement the FULL logic but use the Summary for *Optimization* if I can.
+                    // Setting this aside: The standard "Solution" is to fetch items but use prices from summary?
+                    // No, the goal is to avoid the heavy joins.
+
+                    // Let's stick to the RPC for "correctness" in this step if I can't map 1:1, 
+                    // OR execute the RPC but leverage the summary for sorting?
+
+                    // CORRECT IMPLEMENTATION:
+                    // The goal is to replace the main query.
+                    // But 'mat_market_summary' doesn't have specs or brand logos (only IDs).
+                    // So we still need `cat_items` for metadata.
+
+                    // OPTIMIZED QUERY:
+                    // 1. Get IDs from Summary (filtered/sorted).
+                    // 2. Fetch only those IDs from `cat_items` (much faster than scanning all).
+
+                    const familyIds = summaryData!.map(s => s.family_id);
+                    const { data: rawFullData } = await supabase
+                        .from('cat_items')
+                        .select(`
+                            id, type, name, slug, specs, price_base, brand_id,
+                            brand:cat_brands(name, logo_svg),
+                            template:cat_templates!inner(name, code, category)
+                        `)
+                        .in('id', familyIds);
+
+                    const fullData = rawFullData as any[];
+
+                    // Merge Summary Price into Full Data
+                    if (fullData) {
+                        const merged = fullData.map((item: any) => {
+                            const summary = summaryData!.find(s => s.family_id === item.id);
+                            return {
+                                ...item,
+                                children: [], // No need to fetch children! We have the price.
+                                price_base: summary?.lowest_price || item.price_base,
+                                _summary_image: summary?.image_url
+                            };
+                        });
+
+                        // Sort by Summary Order (Price ASC)
+                        merged.sort((a, b) => {
+                            const pa = summaryData!.find(s => s.family_id === a.id)?.lowest_price || 0;
+                            const pb = summaryData!.find(s => s.family_id === b.id)?.lowest_price || 0;
+                            return pa - pb;
+                        });
+
+                        setItems(merged as any[]);
+                        setIsLoading(false);
+
+                        if (typeof window !== 'undefined') {
+                            window.__BMB_DEBUG__ = {
+                                ...window.__BMB_DEBUG__,
+                                pricingSource: 'MAT_VIEW_FAST_LANE',
+                                marketOffersCount: summaryData!.length
+                            };
+                        }
+                        return; // EXIT EARLY - SUCCESS
+                    }
+                }
+
+                // ---------------------------------------------------------
+                // 🐢 SLOW PATH: Fallback to RPC/Deep Query
+                // ---------------------------------------------------------
 
                 // Fetch Families + Children (Variants) + Grandchildren (SKUs)
                 const { data, error: dbError } = await supabase

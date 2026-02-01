@@ -415,7 +415,7 @@ export default function AdvancedColorEditor({
                                                                                 onClick={() => setPreviewMedia({ color: { ...color, media: colorMediaWithFallback }, initialIdx: firstImgIdx })}
                                                                                 className={`relative ${firstVid ? 'w-14 h-14' : 'w-16 h-16'} rounded-2xl shadow-xl border-2 border-blue-500/30 cursor-pointer hover:scale-105 active:scale-95 overflow-hidden transition-all duration-500 group/hero`}
                                                                             >
-                                                                                <img src={firstImg.url} className="w-full h-full object-cover" />
+                                                                                <img src={firstImg.url} alt="Gallery Preview" className="w-full h-full object-cover" />
                                                                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/hero:opacity-100 flex items-center justify-center transition-opacity">
                                                                                     <Eye className="text-white" size={firstVid ? 16 : 24} />
                                                                                 </div>
@@ -731,7 +731,7 @@ export default function AdvancedColorEditor({
                                                                                             onClick={() => setPrimaryForVariant(v.id, color.id, !isPrimary)}
                                                                                             className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all ${isPrimary
                                                                                                 ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
-                                                                                                : 'text-slate-400 hover:text-orange-500 hover:bg-white'
+                                                                                                : 'text-slate-400 hover:text-orange-500 hover:bg-white dark:hover:bg-white/10'
                                                                                                 }`}
                                                                                             title={isPrimary ? 'Primary - This photo will represent this color in the Catalog' : 'Designate as Primary Photo'}
                                                                                         >
@@ -740,7 +740,7 @@ export default function AdvancedColorEditor({
                                                                                         </button>
                                                                                         <div className="w-[1px] h-3 bg-slate-200 dark:bg-white/10" />
                                                                                         <label
-                                                                                            className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-white rounded-lg cursor-pointer transition-all"
+                                                                                            className="p-1.5 text-slate-400 hover:text-blue-500 dark:hover:bg-white/10 rounded-lg cursor-pointer transition-all"
                                                                                             title="Upload Photo specific to this Variant"
                                                                                         >
                                                                                             <Plus size={12} />
@@ -769,7 +769,7 @@ export default function AdvancedColorEditor({
                                                                                                 const currentIds = color.variantIds || [];
                                                                                                 handleUpdateColorLocal(color.id, 'variantIds', currentIds.filter(id => id !== v.id));
                                                                                             }}
-                                                                                            className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-white rounded-lg transition-all"
+                                                                                            className="p-1.5 text-slate-400 hover:text-rose-500 dark:hover:bg-white/10 rounded-lg transition-all"
                                                                                             title="Detach Variant from this Color"
                                                                                         >
                                                                                             <X size={12} />

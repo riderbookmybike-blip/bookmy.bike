@@ -4,11 +4,14 @@ import StorePage from './store/page';
 import StoreLayout from './store/layout';
 import { PhoneHome } from '@/components/phone/home/PhoneHome';
 import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
+import { ColorProvider } from '@/contexts/ColorContext';
 
 function MobileHome() {
   return (
     <FavoritesProvider>
-      <PhoneHome />
+      <ColorProvider>
+        <PhoneHome />
+      </ColorProvider>
     </FavoritesProvider>
   );
 }

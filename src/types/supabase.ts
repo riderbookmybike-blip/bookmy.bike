@@ -341,6 +341,134 @@ export type Database = {
                 Insert: { id?: string; type: string; url: string; item_id: string; is_primary?: boolean }
                 Update: { id?: string; type?: string; url?: string; item_id?: string; is_primary?: boolean }
             }
+            i18n_languages: {
+                Row: {
+                    code: string
+                    name: string
+                    native_name: string
+                    status: string
+                    provider: string
+                    is_active: boolean
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    code: string
+                    name: string
+                    native_name: string
+                    status?: string
+                    provider?: string
+                    is_active?: boolean
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    code?: string
+                    name?: string
+                    native_name?: string
+                    status?: string
+                    provider?: string
+                    is_active?: boolean
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
+            i18n_source_strings: {
+                Row: {
+                    hash: string
+                    text: string
+                    context: string | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    hash: string
+                    text: string
+                    context?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    hash?: string
+                    text?: string
+                    context?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
+            i18n_translations: {
+                Row: {
+                    id: string
+                    source_hash: string
+                    language_code: string
+                    translated_text: string
+                    provider: string
+                    source_text: string | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    source_hash: string
+                    language_code: string
+                    translated_text: string
+                    provider?: string
+                    source_text?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    source_hash?: string
+                    language_code?: string
+                    translated_text?: string
+                    provider?: string
+                    source_text?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
+            i18n_sync_runs: {
+                Row: {
+                    id: string
+                    language_code: string
+                    scope: string
+                    status: string
+                    started_at: string
+                    completed_at: string | null
+                    total_strings: number
+                    new_strings: number
+                    translated_strings: number
+                    errors: number
+                    details: Json | null
+                }
+                Insert: {
+                    id?: string
+                    language_code: string
+                    scope?: string
+                    status?: string
+                    started_at?: string
+                    completed_at?: string | null
+                    total_strings?: number
+                    new_strings?: number
+                    translated_strings?: number
+                    errors?: number
+                    details?: Json | null
+                }
+                Update: {
+                    id?: string
+                    language_code?: string
+                    scope?: string
+                    status?: string
+                    started_at?: string
+                    completed_at?: string | null
+                    total_strings?: number
+                    new_strings?: number
+                    translated_strings?: number
+                    errors?: number
+                    details?: Json | null
+                }
+            }
             vehicle_prices: {
                 Row: { id: string; vehicle_color_id: string; state_code: string; ex_showroom_price: number; offer_amount: number | null }
                 Insert: { id?: string; vehicle_color_id: string; state_code: string; ex_showroom_price: number; offer_amount?: number | null }

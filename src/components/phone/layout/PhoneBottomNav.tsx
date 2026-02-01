@@ -11,8 +11,8 @@ import { motion } from 'framer-motion';
 export const PhoneBottomNav = () => {
     const pathname = usePathname();
 
-    // Determine the route prefix (/m or /m2) to maintain context
-    const routePrefix = pathname.startsWith('/m2') ? '/m2' : '/m';
+    // Strict Mobile V2 Routing
+    const routePrefix = '/phone';
 
     const NAV_ITEMS = [
         { id: 'home', label: 'Home', icon: Home, href: routePrefix },

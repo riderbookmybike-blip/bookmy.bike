@@ -40,7 +40,7 @@ export const ModelCreationModal = ({
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder="e.g. Activa 7G"
-                            className="w-full px-6 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-black dark:text-white focus:ring-2 focus:ring-blue-500 transition-all outline-none"
+                            className="w-full px-6 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all outline-none"
                         />
                     </div>
 
@@ -50,11 +50,11 @@ export const ModelCreationModal = ({
                             <select
                                 value={category}
                                 onChange={(e) => setCategory(e.target.value)}
-                                className="w-full px-6 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-black dark:text-white focus:ring-2 focus:ring-blue-500 transition-all outline-none appearance-none cursor-pointer"
+                                className="w-full px-6 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all outline-none appearance-none cursor-pointer"
                             >
-                                <option value="Scooter" className="bg-slate-900 text-white">Scooter</option>
-                                <option value="Motorcycle" className="bg-slate-900 text-white">Motorcycle</option>
-                                <option value="Moped" className="bg-slate-900 text-white">Moped</option>
+                                <option value="Scooter" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Scooter</option>
+                                <option value="Motorcycle" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Motorcycle</option>
+                                <option value="Moped" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Moped</option>
                             </select>
                         </div>
 
@@ -63,11 +63,11 @@ export const ModelCreationModal = ({
                             <select
                                 value={fuelType}
                                 onChange={(e) => setFuelType(e.target.value)}
-                                className="w-full px-6 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-black dark:text-white focus:ring-2 focus:ring-blue-500 transition-all outline-none appearance-none cursor-pointer"
+                                className="w-full px-6 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all outline-none appearance-none cursor-pointer"
                             >
-                                <option value="Petrol" className="bg-slate-900 text-white">Petrol</option>
-                                <option value="Electric" className="bg-slate-900 text-white">Electric</option>
-                                <option value="CNG" className="bg-slate-900 text-white">CNG</option>
+                                <option value="Petrol" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Petrol</option>
+                                <option value="Electric" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Electric</option>
+                                <option value="CNG" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">CNG</option>
                             </select>
                         </div>
                     </div>
@@ -80,7 +80,7 @@ export const ModelCreationModal = ({
                                 value={hsnCode}
                                 onChange={(e) => setHsnCode(e.target.value)}
                                 placeholder="e.g. 871120"
-                                className="w-full px-6 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-black dark:text-white focus:ring-2 focus:ring-blue-500 transition-all outline-none"
+                                className="w-full px-6 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all outline-none"
                             />
                         </div>
 
@@ -90,7 +90,7 @@ export const ModelCreationModal = ({
                                 type="number"
                                 value={gstRate}
                                 onChange={(e) => setGstRate(Number(e.target.value))}
-                                className="w-full px-6 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-black dark:text-white focus:ring-2 focus:ring-blue-500 transition-all outline-none"
+                                className="w-full px-6 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all outline-none"
                             />
                         </div>
                     </div>
@@ -98,7 +98,7 @@ export const ModelCreationModal = ({
                     <div className="flex gap-3 pt-4">
                         <button
                             onClick={onClose}
-                            className="flex-1 px-6 py-3 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all"
+                            className="flex-1 px-6 py-3 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-white/10 transition-all"
                         >
                             Cancel
                         </button>
@@ -173,7 +173,7 @@ export const ModelEditModal = ({
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder="e.g. Activa 7G"
-                            className="w-full px-6 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-black dark:text-white focus:ring-2 focus:ring-amber-500 transition-all outline-none"
+                            className="w-full px-6 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 transition-all outline-none"
                         />
                     </div>
 
@@ -183,11 +183,11 @@ export const ModelEditModal = ({
                             <select
                                 value={category}
                                 onChange={(e) => setCategory(e.target.value)}
-                                className="w-full px-6 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-black dark:text-white focus:ring-2 focus:ring-amber-500 transition-all outline-none appearance-none cursor-pointer"
+                                className="w-full px-6 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 transition-all outline-none appearance-none cursor-pointer"
                             >
-                                <option value="Scooter" className="bg-slate-900 text-white">Scooter</option>
-                                <option value="Motorcycle" className="bg-slate-900 text-white">Motorcycle</option>
-                                <option value="Moped" className="bg-slate-900 text-white">Moped</option>
+                                <option value="Scooter" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Scooter</option>
+                                <option value="Motorcycle" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Motorcycle</option>
+                                <option value="Moped" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Moped</option>
                             </select>
                         </div>
 
@@ -196,11 +196,11 @@ export const ModelEditModal = ({
                             <select
                                 value={fuelType}
                                 onChange={(e) => setFuelType(e.target.value)}
-                                className="w-full px-6 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-black dark:text-white focus:ring-2 focus:ring-amber-500 transition-all outline-none appearance-none cursor-pointer"
+                                className="w-full px-6 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 transition-all outline-none appearance-none cursor-pointer"
                             >
-                                <option value="Petrol" className="bg-slate-900 text-white">Petrol</option>
-                                <option value="Electric" className="bg-slate-900 text-white">Electric</option>
-                                <option value="CNG" className="bg-slate-900 text-white">CNG</option>
+                                <option value="Petrol" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Petrol</option>
+                                <option value="Electric" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Electric</option>
+                                <option value="CNG" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">CNG</option>
                             </select>
                         </div>
                     </div>
@@ -213,7 +213,7 @@ export const ModelEditModal = ({
                                 value={hsnCode}
                                 onChange={(e) => setHsnCode(e.target.value)}
                                 placeholder="e.g. 871120"
-                                className="w-full px-6 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-black dark:text-white focus:ring-2 focus:ring-amber-500 transition-all outline-none"
+                                className="w-full px-6 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 transition-all outline-none"
                             />
                         </div>
 
@@ -223,7 +223,7 @@ export const ModelEditModal = ({
                                 type="number"
                                 value={gstRate}
                                 onChange={(e) => setGstRate(Number(e.target.value))}
-                                className="w-full px-6 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-black dark:text-white focus:ring-2 focus:ring-amber-500 transition-all outline-none"
+                                className="w-full px-6 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 transition-all outline-none"
                             />
                         </div>
                     </div>
@@ -231,7 +231,7 @@ export const ModelEditModal = ({
                     <div className="flex gap-3 pt-4">
                         <button
                             onClick={onClose}
-                            className="flex-1 px-6 py-3 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all"
+                            className="flex-1 px-6 py-3 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-white/10 transition-all"
                         >
                             Cancel
                         </button>
@@ -284,14 +284,14 @@ export const VariantCreationModal = ({
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder="e.g. Deluxe"
-                            className="w-full px-6 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-black dark:text-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                            className="w-full px-6 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
                         />
                     </div>
 
                     <div className="flex gap-3 pt-4">
                         <button
                             onClick={onClose}
-                            className="flex-1 px-6 py-3 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all"
+                            className="flex-1 px-6 py-3 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-white/10 transition-all"
                         >
                             Cancel
                         </button>
@@ -344,22 +344,22 @@ export const ProductBrandOverview = ({ brand }: { brand: ProductBrand }) => {
 
                     <div className="grid grid-cols-4 gap-8">
                         <div className="p-8 bg-slate-50 dark:bg-white/5 rounded-[2.5rem] border border-slate-100 dark:border-white/5 hover:border-blue-500/50 dark:hover:border-white/20 transition-all text-center group backdrop-blur-sm">
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors">Digital SKU Count</p>
+                            <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors">Digital SKU Count</p>
                             <div className="text-4xl font-black text-slate-900 dark:text-white italic">{brand.skuCount}</div>
                         </div>
                         <div className="p-8 bg-slate-50 dark:bg-white/5 rounded-[2.5rem] border border-slate-100 dark:border-white/5 hover:border-green-500/50 dark:hover:border-white/20 transition-all text-center group backdrop-blur-sm">
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 group-hover:text-green-500 dark:group-hover:text-green-400 transition-colors">Active Reach</p>
+                            <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3 group-hover:text-green-500 dark:group-hover:text-green-400 transition-colors">Active Reach</p>
                             <div className="text-4xl font-black text-green-400 flex items-center justify-center gap-2">
                                 <div className="w-2.5 h-2.5 bg-green-400 rounded-full animate-ping" />
                                 100%
                             </div>
                         </div>
                         <div className="p-8 bg-slate-50 dark:bg-white/5 rounded-[2.5rem] border border-slate-100 dark:border-white/5 hover:border-amber-500/50 dark:hover:border-white/20 transition-all text-center group backdrop-blur-sm">
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 group-hover:text-amber-500 dark:group-hover:text-amber-400 transition-colors">Catalog Status</p>
+                            <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3 group-hover:text-amber-500 dark:group-hover:text-amber-400 transition-colors">Catalog Status</p>
                             <div className="text-4xl font-black text-slate-400 italic">SYNC</div>
                         </div>
                         <div className="p-8 bg-slate-50 dark:bg-white/5 rounded-[2.5rem] border border-slate-100 dark:border-white/5 hover:border-indigo-500/50 dark:hover:border-white/20 transition-all text-center group backdrop-blur-sm">
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">Health Index</p>
+                            <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">Health Index</p>
                             <div className="text-4xl font-black text-slate-900 dark:text-white italic">AA+</div>
                         </div>
                     </div>
@@ -430,7 +430,7 @@ export const ProductModelsTab = ({
                         key={model.id}
                         onClick={() => onSelectModel(model)}
                         className={`relative p-5 rounded-3xl border-2 transition-all text-left overflow-hidden group cursor-pointer ${selectedModelId === model.id
-                            ? 'bg-blue-600/5 border-blue-600 shadow-xl shadow-blue-500/10 scale-[1.02]'
+                            ? 'bg-blue-600/5 dark:bg-blue-600/10 border-blue-600 shadow-xl shadow-blue-500/10 scale-[1.02]'
                             : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-white/5 hover:border-blue-500/30'
                             }`}
                     >
@@ -536,14 +536,14 @@ export const VariantEditModal = ({
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder="e.g. Deluxe"
-                            className="w-full px-6 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-black dark:text-white focus:ring-2 focus:ring-amber-500 transition-all outline-none"
+                            className="w-full px-6 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 transition-all outline-none"
                         />
                     </div>
 
                     <div className="flex gap-3 pt-4">
                         <button
                             onClick={onClose}
-                            className="flex-1 px-6 py-3 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all"
+                            className="flex-1 px-6 py-3 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-white/10 transition-all"
                         >
                             Cancel
                         </button>
@@ -588,7 +588,7 @@ export const ProductVariantsTab = ({
             <div className="h-full flex items-center justify-center p-20 animate-in fade-in duration-700">
                 <div className="text-center space-y-6">
                     <div className="p-8 bg-slate-100 dark:bg-slate-800 rounded-full inline-block group">
-                        <Layers size={64} className="text-slate-300 group-hover:text-blue-500 transition-colors duration-500" />
+                        <Layers size={64} className="text-slate-300 dark:text-slate-600 group-hover:text-blue-500 transition-colors duration-500" />
                     </div>
                     <div>
                         <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic">No Model Selected</h3>
@@ -663,7 +663,7 @@ export const ProductVariantsTab = ({
                             )}
 
                             <div className="flex items-center gap-8 relative z-10">
-                                <div className={`p-5 rounded-[1.5rem] transition-all duration-500 ${selectedVariantId === variant.id ? 'bg-indigo-600 text-white shadow-xl' : 'bg-slate-50 dark:bg-white/5 text-slate-300 group-hover:text-indigo-500'}`}>
+                                <div className={`p-5 rounded-[1.5rem] transition-all duration-500 ${selectedVariantId === variant.id ? 'bg-indigo-600 text-white shadow-xl' : 'bg-slate-50 dark:bg-white/5 text-slate-300 dark:text-slate-500 group-hover:text-indigo-500'}`}>
                                     <ShieldCheck size={36} />
                                 </div>
                                 <div>
@@ -730,12 +730,12 @@ export const ProductVariantsTab = ({
                                         <button className="px-3 py-1 bg-blue-500/10 text-blue-500 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all">Edit Specs</button>
                                     </div>
                                     <div className="grid grid-cols-2 gap-8">
-                                        <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-white/5">
-                                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Max Power</p>
+                                        <div className="p-4 bg-white dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-white/5">
+                                            <p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Max Power</p>
                                             <p className="text-lg font-black dark:text-white tracking-tight">{variant.specifications?.engine?.maxPower || '--'}</p>
                                         </div>
-                                        <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-white/5">
-                                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Cooling System</p>
+                                        <div className="p-4 bg-white dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-white/5">
+                                            <p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Cooling System</p>
                                             <p className="text-lg font-black dark:text-white tracking-tight">{variant.specifications?.engine?.cooling || '--'}</p>
                                         </div>
                                     </div>
@@ -760,7 +760,7 @@ export const ProductColorsTab = ({
             <div className="h-full flex items-center justify-center p-20 animate-in fade-in duration-700">
                 <div className="text-center space-y-6">
                     <div className="p-8 bg-slate-100 dark:bg-slate-800 rounded-full inline-block group">
-                        <Tag size={64} className="text-slate-300 group-hover:text-amber-500 transition-colors duration-500" />
+                        <Tag size={64} className="text-slate-300 dark:text-slate-600 group-hover:text-amber-500 transition-colors duration-500" />
                     </div>
                     <div>
                         <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic">No Variant Selected</h3>
@@ -796,7 +796,7 @@ export const ProductColorsTab = ({
                                 <Trash2 size={18} />
                             </button>
                         </div>
-                        <div className="w-20 h-20 rounded-full border-[6px] border-slate-50 dark:border-white/10 shadow-2xl mb-8 group-hover:scale-110 transition-transform duration-500" style={{ backgroundColor: color.name.includes('Grey') ? '#4b5563' : color.name.includes('White') ? '#f8fafc' : color.name.includes('Blue') ? '#2563eb' : '#000' }} />
+                        <div className="w-20 h-20 rounded-full border-[6px] border-slate-50 dark:border-slate-800 shadow-2xl mb-8 group-hover:scale-110 transition-transform duration-500" style={{ backgroundColor: color.name.includes('Grey') ? '#4b5563' : color.name.includes('White') ? '#f8fafc' : color.name.includes('Blue') ? '#2563eb' : '#000' }} />
                         <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-1 tracking-tight uppercase italic">{color.name}</h3>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-8 leading-none">Catalog Verified</p>
 

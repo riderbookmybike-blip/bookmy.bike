@@ -6,7 +6,7 @@ import { Sparkles, Zap, ChevronRight, Info, CheckCircle2, Heart, MapPin, Star, S
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useActiveColor } from '@/contexts/ColorContext';
-import { useFavorites } from '@/contexts/FavoritesContext';
+import { useFavorites } from '@/lib/favorites/favoritesContext';
 
 interface DealProps {
     product: any;
@@ -429,7 +429,7 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                 </div>
 
                 <button
-                    onClick={() => router.push(`/m/store/${product.make}/${product.model}/${product.variant}`)}
+                    onClick={() => router.push(`/phone/store/${product.make}/${product.modelSlug || product.slug}`)}
                     className="w-full h-14 bg-black border-2 border-black rounded-xl font-black text-white text-xs uppercase tracking-[0.2em] active:scale-[0.98] transition-all relative overflow-hidden group hover:bg-zinc-900"
                 >
                     <span className="relative z-10">KNOW MORE</span>

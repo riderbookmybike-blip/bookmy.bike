@@ -31,7 +31,8 @@ import {
   Wallet,
   Lock,
   ArrowRightLeft,
-  Database
+  Database,
+  Languages
 } from 'lucide-react';
 import { TenantType } from '@/lib/tenant/tenantContext';
 
@@ -294,6 +295,14 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         href: '/app/aums/dashboard/admin/templates',
         icon: LayoutDashboard,
         color: 'text-indigo-600',
+        allowedTenants: ['AUMS'],
+        allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN']
+      },
+      {
+        title: 'Translations',
+        href: '/dashboard/admin/translations',
+        icon: Languages,
+        color: 'text-amber-600',
         allowedTenants: ['AUMS'],
         allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN']
       },

@@ -343,7 +343,7 @@ export default function SystemPDPRouter({
                     initialLocation={initialLocation}
                 />
             ) : (
-                <DesktopPDP {...commonProps} basePath="/m2/store" />
+                <DesktopPDP {...commonProps} basePath="/phone/store" />
             )}
 
             <LeadCaptureModal

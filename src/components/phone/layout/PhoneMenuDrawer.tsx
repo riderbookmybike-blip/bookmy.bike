@@ -25,14 +25,14 @@ interface PhoneMenuDrawerProps {
 }
 
 const MENU_ITEMS = [
-    { icon: Home, label: 'Home', href: '/m2', color: 'text-[#F4B000]' },
-    { icon: Search, label: 'Search', href: '/m2/search', color: 'text-[#F4B000]' },
-    { icon: FileText, label: 'My Quotes', href: '/m2/quotes', color: 'text-blue-400' },
-    { icon: Heart, label: 'Saved Bikes', href: '/m2/saved', color: 'text-red-400' },
-    { icon: Award, label: 'O-Club', href: '/m2/oclub', color: 'text-yellow-400' },
-    { icon: Settings, label: 'Settings', href: '/m2/settings', color: 'text-zinc-400' },
-    { icon: HelpCircle, label: 'Help & Support', href: '/m2/help', color: 'text-zinc-400' },
-    { icon: Info, label: 'About', href: '/m2/about', color: 'text-zinc-400' },
+    { icon: Home, label: 'Home', href: '/phone', color: 'text-[#F4B000]' },
+    { icon: Search, label: 'Search', href: '/phone/search', color: 'text-[#F4B000]' },
+    { icon: FileText, label: 'My Quotes', href: '/phone/quotes', color: 'text-blue-400' },
+    { icon: Heart, label: 'Saved Bikes', href: '/phone/saved', color: 'text-red-400' },
+    { icon: Award, label: 'O-Club', href: '/phone/oclub', color: 'text-yellow-400' },
+    { icon: Settings, label: 'Settings', href: '/settings', color: 'text-zinc-400' },
+    { icon: HelpCircle, label: 'Help & Support', href: '/help', color: 'text-zinc-400' },
+    { icon: Info, label: 'About', href: '/about', color: 'text-zinc-400' },
 ];
 
 export const PhoneMenuDrawer = ({ isOpen, onClose }: PhoneMenuDrawerProps) => {
