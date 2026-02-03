@@ -53,18 +53,13 @@ export type MemberContactInput = {
     isPrimary?: boolean;
 };
 
-const buildOrFilter = (filters: Array<string | null>) =>
-    filters.filter(Boolean).join(',');
+const buildOrFilter = (filters: Array<string | null>) => filters.filter(Boolean).join(',');
 
-export async function findMemberMatch(input: {
-    phone?: string;
-    panNumber?: string;
-    aadhaarNumber?: string;
-}) {
+export async function findMemberMatch(input: { phone?: string; panNumber?: string; aadhaarNumber?: string }) {
     const orFilter = buildOrFilter([
         input.phone ? `primary_phone.eq.${input.phone}` : null,
         input.panNumber ? `pan_number.eq.${input.panNumber}` : null,
-        input.aadhaarNumber ? `aadhaar_number.eq.${input.aadhaarNumber}` : null
+        input.aadhaarNumber ? `aadhaar_number.eq.${input.aadhaarNumber}` : null,
     ]);
 
     if (orFilter) {
@@ -112,8 +107,8 @@ async function ensureAuthUser(phone?: string, fullName?: string) {
         phone,
         phone_confirm: true,
         user_metadata: {
-            full_name: fullName ? toTitleCase(fullName) : undefined
-        }
+            full_name: fullName ? toTitleCase(fullName) : undefined,
+        },
     });
 
     if (error) {
@@ -132,7 +127,7 @@ export async function createOrLinkMember(input: MemberCreateInput) {
     const match = await findMemberMatch({
         phone: input.phone,
         panNumber: input.panNumber,
-        aadhaarNumber: input.aadhaarNumber
+        aadhaarNumber: input.aadhaarNumber,
     });
 
     let memberId = match?.id ?? null;
@@ -149,7 +144,7 @@ export async function createOrLinkMember(input: MemberCreateInput) {
                 pan_number: input.panNumber,
                 aadhaar_number: input.aadhaarNumber,
                 tenant_id: input.tenantId,
-                role: 'BMB_USER'
+                role: 'BMB_USER',
             })
             .select('id, display_id, full_name')
             .single();
@@ -163,7 +158,7 @@ export async function createOrLinkMember(input: MemberCreateInput) {
                 contact_type: 'PHONE',
                 label: 'Primary',
                 value: input.phone,
-                is_primary: true
+                is_primary: true,
             });
         }
 
@@ -173,7 +168,7 @@ export async function createOrLinkMember(input: MemberCreateInput) {
                 contact_type: 'EMAIL',
                 label: 'Primary',
                 value: input.email,
-                is_primary: true
+                is_primary: true,
             });
         }
     } else {
@@ -188,30 +183,35 @@ export async function createOrLinkMember(input: MemberCreateInput) {
         }
     }
 
-    await adminClient.from('id_member_tenants').upsert({
-        member_id: memberId,
-        tenant_id: input.tenantId,
-        status: 'ACTIVE'
-    }, { onConflict: 'member_id,tenant_id' });
+    await adminClient.from('id_member_tenants').upsert(
+        {
+            member_id: memberId,
+            tenant_id: input.tenantId,
+            status: 'ACTIVE',
+        },
+        { onConflict: 'member_id,tenant_id' }
+    );
 
     await adminClient.from('id_member_events').insert({
         member_id: memberId,
         tenant_id: input.tenantId,
         event_type: match ? 'MEMBER_LINKED' : 'MEMBER_CREATED',
         payload: {
-            source: 'members_module'
-        }
+            source: 'members_module',
+        },
     });
 
     const { data: member } = await adminClient
         .from('id_members')
-        .select('id, display_id, full_name, primary_phone, primary_email, pan_number, aadhaar_number, member_status, joined_at, last_visit_at')
+        .select(
+            'id, display_id, full_name, primary_phone, primary_email, pan_number, aadhaar_number, member_status, joined_at, last_visit_at'
+        )
         .eq('id', memberId)
         .single();
 
     return {
         member,
-        matchedExisting: !!match
+        matchedExisting: !!match,
     };
 }
 
@@ -221,7 +221,8 @@ export async function getMembersForTenant(tenantId: string, search?: string, pag
 
     let query = adminClient
         .from('id_members')
-        .select(`
+        .select(
+            `
             id, 
             display_id, 
             full_name, 
@@ -235,7 +236,9 @@ export async function getMembersForTenant(tenantId: string, search?: string, pag
             primary_phone,
             primary_email,
             id_member_tenants!inner(tenant_id, status)
-        `, { count: 'exact' })
+        `,
+            { count: 'exact' }
+        )
         .eq('id_member_tenants.tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .range(from, to);
@@ -244,7 +247,9 @@ export async function getMembersForTenant(tenantId: string, search?: string, pag
         query = query.or(`full_name.ilike.%${search}%,primary_phone.ilike.%${search}%,display_id.ilike.%${search}%`);
     }
 
-    let { data, error, count } = await query;
+    const { data: queryData, error, count: queryCount } = await query;
+    let data = queryData;
+    let count = queryCount;
     console.log('getMembersForTenant: query result', { count, dataLength: data?.length, tenantId });
     if (error) {
         console.error('getMembersForTenant: join query error', {
@@ -252,7 +257,7 @@ export async function getMembersForTenant(tenantId: string, search?: string, pag
             search,
             page,
             pageSize,
-            error
+            error,
         });
         throw error;
     }
@@ -262,7 +267,8 @@ export async function getMembersForTenant(tenantId: string, search?: string, pag
         console.warn('getMembersForTenant: join returned 0, trying fallback', { tenantId });
         let fallbackQuery = adminClient
             .from('id_members')
-            .select(`
+            .select(
+                `
                 id, 
                 display_id, 
                 full_name, 
@@ -276,24 +282,31 @@ export async function getMembersForTenant(tenantId: string, search?: string, pag
                 primary_phone,
                 primary_email,
                 id_member_tenants(tenant_id, status)
-            `, { count: 'exact' })
+            `,
+                { count: 'exact' }
+            )
             .eq('tenant_id', tenantId)
             .order('created_at', { ascending: false })
             .range(from, to);
 
         if (search) {
-            fallbackQuery = fallbackQuery.or(`full_name.ilike.%${search}%,primary_phone.ilike.%${search}%,display_id.ilike.%${search}%`);
+            fallbackQuery = fallbackQuery.or(
+                `full_name.ilike.%${search}%,primary_phone.ilike.%${search}%,display_id.ilike.%${search}%`
+            );
         }
 
         const fallback = await fallbackQuery;
-        console.log('getMembersForTenant: fallback result', { count: fallback.count, dataLength: fallback.data?.length });
+        console.log('getMembersForTenant: fallback result', {
+            count: fallback.count,
+            dataLength: fallback.data?.length,
+        });
         if (fallback.error) {
             console.error('getMembersForTenant: fallback query error', {
                 tenantId,
                 search,
                 page,
                 pageSize,
-                error: fallback.error
+                error: fallback.error,
             });
             throw fallback.error;
         }
@@ -304,7 +317,7 @@ export async function getMembersForTenant(tenantId: string, search?: string, pag
             search,
             page,
             pageSize,
-            count: count || 0
+            count: count || 0,
         });
     } else {
         console.info('getMembersForTenant: join used', {
@@ -312,7 +325,7 @@ export async function getMembersForTenant(tenantId: string, search?: string, pag
             search,
             page,
             pageSize,
-            count: count || 0
+            count: count || 0,
         });
     }
 
@@ -321,7 +334,7 @@ export async function getMembersForTenant(tenantId: string, search?: string, pag
         member_status: (m.id_member_tenants?.[0]?.status || m.member_status || 'ACTIVE').toUpperCase(),
         leads_count: m.leads_count || 0,
         bookings_count: m.bookings_count || 0,
-        quotes_count: m.quotes_count || 0
+        quotes_count: m.quotes_count || 0,
     }));
 
     return {
@@ -330,15 +343,16 @@ export async function getMembersForTenant(tenantId: string, search?: string, pag
             total: count || 0,
             page,
             pageSize,
-            totalPages: Math.ceil((count || 0) / pageSize)
-        }
+            totalPages: Math.ceil((count || 0) / pageSize),
+        },
     };
 }
 
 export async function getMemberSummaryForTenant(tenantId: string) {
-    let { data, error } = await adminClient
+    const { data: initialData, error } = await adminClient
         .from('id_members')
-        .select(`
+        .select(
+            `
             id, 
             leads_count, 
             quotes_count, 
@@ -351,9 +365,11 @@ export async function getMemberSummaryForTenant(tenantId: string) {
             rto, 
             district,
             id_member_tenants!inner(tenant_id, status)
-        `)
+        `
+        )
         .eq('id_member_tenants.tenant_id', tenantId);
 
+    let data = initialData;
     if (error) {
         console.error('getMemberSummaryForTenant: join query error', { tenantId, error });
         // Don't throw, try fallback
@@ -362,7 +378,8 @@ export async function getMemberSummaryForTenant(tenantId: string) {
     if (!data || data.length === 0) {
         const fallback = await adminClient
             .from('id_members')
-            .select(`
+            .select(
+                `
                 id, 
                 leads_count, 
                 quotes_count, 
@@ -376,7 +393,8 @@ export async function getMemberSummaryForTenant(tenantId: string) {
                 district,
                 taluka,
                 id_member_tenants!inner(tenant_id, status)
-            `)
+            `
+            )
             .eq('tenant_id', tenantId);
 
         if (fallback.error) {
@@ -397,11 +415,21 @@ export async function getMemberAnalytics(tenantId: string, timeframe: '7d' | '30
     let startDate = new Date();
 
     switch (timeframe) {
-        case '7d': startDate.setDate(now.getDate() - 7); break;
-        case '30d': startDate.setDate(now.getDate() - 30); break;
-        case '3m': startDate.setMonth(now.getMonth() - 3); break;
-        case '12m': startDate.setFullYear(now.getFullYear() - 1); break;
-        case 'all': startDate = new Date(0); break;
+        case '7d':
+            startDate.setDate(now.getDate() - 7);
+            break;
+        case '30d':
+            startDate.setDate(now.getDate() - 30);
+            break;
+        case '3m':
+            startDate.setMonth(now.getMonth() - 3);
+            break;
+        case '12m':
+            startDate.setFullYear(now.getFullYear() - 1);
+            break;
+        case 'all':
+            startDate = new Date(0);
+            break;
     }
 
     // Fetch creations and updates
@@ -416,7 +444,7 @@ export async function getMemberAnalytics(tenantId: string, timeframe: '7d' | '30
             .select('updated_at')
             .eq('tenant_id', tenantId)
             .gte('updated_at', startDate.toISOString())
-            .filter('updated_at', 'gt', 'created_at')
+            .filter('updated_at', 'gt', 'created_at'),
     ]);
 
     // Group by date
@@ -445,11 +473,7 @@ export async function getMemberAnalytics(tenantId: string, timeframe: '7d' | '30
 }
 
 export async function getMemberFullProfile(memberId: string) {
-    const { data: member, error } = await adminClient
-        .from('id_members')
-        .select('*')
-        .eq('id', memberId)
-        .single();
+    const { data: member, error } = await adminClient.from('id_members').select('*').eq('id', memberId).single();
 
     if (error) throw error;
 
@@ -460,21 +484,52 @@ export async function getMemberFullProfile(memberId: string) {
         { data: assets },
         { data: payments },
         { data: bookings },
-        { data: leads }
+        { data: leads },
     ] = await Promise.all([
-        adminClient.from('id_member_contacts').select('*').eq('member_id', memberId).order('created_at', { ascending: false }),
-        adminClient.from('id_member_addresses').select('*').eq('member_id', memberId).order('created_at', { ascending: false }),
-        adminClient.from('id_member_events').select('*').eq('member_id', memberId).order('created_at', { ascending: false }),
-        adminClient.from('id_member_assets').select('*').eq('entity_id', memberId).order('created_at', { ascending: false }),
-        adminClient.from('crm_payments').select('*').eq('member_id', memberId).order('created_at', { ascending: false }),
-        adminClient.from('crm_bookings').select('*, insurance:crm_insurance(*), allotment:crm_allotments(*), registration:crm_registration(*), pdi:crm_pdi(*)').eq('user_id', memberId).order('created_at', { ascending: false }),
-        adminClient.from('crm_leads').select('*').eq('customer_id', memberId).order('created_at', { ascending: false })
+        adminClient
+            .from('id_member_contacts')
+            .select('*')
+            .eq('member_id', memberId)
+            .order('created_at', { ascending: false }),
+        adminClient
+            .from('id_member_addresses')
+            .select('*')
+            .eq('member_id', memberId)
+            .order('created_at', { ascending: false }),
+        adminClient
+            .from('id_member_events')
+            .select('*')
+            .eq('member_id', memberId)
+            .order('created_at', { ascending: false }),
+        adminClient
+            .from('id_member_assets')
+            .select('*')
+            .eq('entity_id', memberId)
+            .order('created_at', { ascending: false }),
+        adminClient
+            .from('crm_payments')
+            .select('*')
+            .eq('member_id', memberId)
+            .order('created_at', { ascending: false }),
+        adminClient
+            .from('crm_bookings')
+            .select(
+                '*, insurance:crm_insurance(*), allotment:crm_allotments(*), registration:crm_registration(*), pdi:crm_pdi(*)'
+            )
+            .eq('user_id', memberId)
+            .order('created_at', { ascending: false }),
+        adminClient.from('crm_leads').select('*').eq('customer_id', memberId).order('created_at', { ascending: false }),
     ]);
 
     const leadIds = (leads || []).map(l => l.id);
-    const { data: quotes } = leadIds.length > 0
-        ? await adminClient.from('crm_quotes').select('*').in('lead_id', leadIds).order('created_at', { ascending: false })
-        : { data: [] };
+    const { data: quotes } =
+        leadIds.length > 0
+            ? await adminClient
+                  .from('crm_quotes')
+                  .select('*')
+                  .in('lead_id', leadIds)
+                  .order('created_at', { ascending: false })
+            : { data: [] };
 
     return {
         member,
@@ -485,7 +540,7 @@ export async function getMemberFullProfile(memberId: string) {
         payments: payments || [],
         bookings: bookings || [],
         leads: leads || [],
-        quotes: quotes || []
+        quotes: quotes || [],
     };
 }
 
@@ -497,7 +552,7 @@ export async function addMemberContact(input: MemberContactInput) {
             contact_type: input.contactType,
             label: input.label,
             value: input.value,
-            is_primary: input.isPrimary ?? false
+            is_primary: input.isPrimary ?? false,
         })
         .select()
         .single();
@@ -519,7 +574,7 @@ export async function addMemberAddress(input: MemberAddressInput) {
             state: input.state,
             country: input.country,
             pincode: input.pincode,
-            is_current: input.isCurrent ?? false
+            is_current: input.isCurrent ?? false,
         })
         .select()
         .single();
@@ -528,29 +583,30 @@ export async function addMemberAddress(input: MemberAddressInput) {
     return data;
 }
 
-export async function addMemberEvent(memberId: string, tenantId: string | null, eventType: string, payload?: Record<string, unknown>) {
-    const { error } = await adminClient
-        .from('id_member_events')
-        .insert({
-            member_id: memberId,
-            tenant_id: tenantId,
-            event_type: eventType,
-            payload: payload || {}
-        });
+export async function addMemberEvent(
+    memberId: string,
+    tenantId: string | null,
+    eventType: string,
+    payload?: Record<string, unknown>
+) {
+    const { error } = await adminClient.from('id_member_events').insert({
+        member_id: memberId,
+        tenant_id: tenantId,
+        event_type: eventType,
+        payload: payload || {},
+    });
 
     if (error) throw error;
 }
 
 export async function getSelfMemberProfile() {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return null;
 
-    const { data: member } = await supabase
-        .from('id_members')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
+    const { data: member } = await supabase.from('id_members').select('*').eq('id', user.id).maybeSingle();
 
     if (!member) return null;
 

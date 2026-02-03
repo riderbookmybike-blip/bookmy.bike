@@ -17,17 +17,19 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 });
     }
 
-
     const missingVars = [];
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL) missingVars.push('NEXT_PUBLIC_SUPABASE_URL');
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) missingVars.push('SUPABASE_SERVICE_ROLE_KEY');
 
     if (missingVars.length > 0) {
         console.error('Missing Env Vars:', missingVars);
-        return NextResponse.json({
-            success: false,
-            error: `Missing Environment Variables: ${missingVars.join(', ')}`
-        }, { status: 500 });
+        return NextResponse.json(
+            {
+                success: false,
+                error: `Missing Environment Variables: ${missingVars.join(', ')}`,
+            },
+            { status: 500 }
+        );
     }
 
     try {
@@ -92,16 +94,17 @@ export async function GET(request: NextRequest) {
             if (!tenantId) continue;
 
             // Create Auth User
-            let { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+            const { data: createdAuthUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
                 email,
                 password,
                 email_confirm: true,
                 user_metadata: { phone: u.phone },
             });
+            let authUser = createdAuthUser;
 
             // If user already exists, get ID
             if (authError && authError.message.includes('already been registered')) {
-                // Fetch user id by email? Admin API doesn't have easy "get by email", 
+                // Fetch user id by email? Admin API doesn't have easy "get by email",
                 // but we can try generic list or assume profile exists.
                 // For P0, let's assume if it fails, we skip or manually fix.
                 // We'll proceed to Upsert Profile.
@@ -117,31 +120,36 @@ export async function GET(request: NextRequest) {
                     tenant_id: tenantId,
                     role: u.role,
                     phone: u.phone,
-                    full_name: `${u.role} (${u.tenantName})`
+                    full_name: `${u.role} (${u.tenantName})`,
                 });
                 createdUsers.push({ email, role: u.role, tenant: u.tenantName });
             }
         }
 
-        return NextResponse.json({
-            success: true,
-            message: 'Seed Completed Successfully',
-            createdTenants,
-            createdUsers,
-            globalSettings: { default_owner: marketplaceTenantId }
-        }, {
-            status: 200,
-            headers: {
-                'Cache-Control': 'no-store, max-age=0',
+        return NextResponse.json(
+            {
+                success: true,
+                message: 'Seed Completed Successfully',
+                createdTenants,
+                createdUsers,
+                globalSettings: { default_owner: marketplaceTenantId },
+            },
+            {
+                status: 200,
+                headers: {
+                    'Cache-Control': 'no-store, max-age=0',
+                },
             }
-        });
-
+        );
     } catch (e: any) {
         console.error('SEEDING FATAL ERROR:', e);
-        return NextResponse.json({
-            success: false,
-            error: e.message,
-            stack: e.stack
-        }, { status: 500 });
+        return NextResponse.json(
+            {
+                success: false,
+                error: e.message,
+                stack: e.stack,
+            },
+            { status: 500 }
+        );
     }
 }
