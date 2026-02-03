@@ -11,6 +11,8 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/ban-ts-comment": "off",
       "react-hooks/set-state-in-effect": "off",
       "react/jsx-no-comment-textnodes": "off",
+      "react-hooks/immutability": "off",
+      "react-hooks/static-components": "off",
     },
   },
   // Override default ignores of eslint-config-next.
