@@ -3,29 +3,29 @@ import { ProductVariant } from '@/types/productMaster';
 
 // State code to full name mapping
 export const STATE_NAMES: Record<string, string> = {
-    'MH': 'Maharashtra',
-    'KA': 'Karnataka',
-    'TN': 'Tamil Nadu',
-    'DL': 'Delhi',
-    'UP': 'Uttar Pradesh',
-    'GJ': 'Gujarat',
-    'RJ': 'Rajasthan',
-    'WB': 'West Bengal',
-    'AP': 'Andhra Pradesh',
-    'TS': 'Telangana',
-    'KL': 'Kerala',
-    'PB': 'Punjab',
-    'HR': 'Haryana',
-    'MP': 'Madhya Pradesh',
-    'BR': 'Bihar',
-    'OR': 'Odisha',
-    'AS': 'Assam',
-    'JH': 'Jharkhand',
-    'UK': 'Uttarakhand',
-    'CG': 'Chhattisgarh',
-    'HP': 'Himachal Pradesh',
-    'GA': 'Goa',
-    'ALL': 'India',
+    MH: 'Maharashtra',
+    KA: 'Karnataka',
+    TN: 'Tamil Nadu',
+    DL: 'Delhi',
+    UP: 'Uttar Pradesh',
+    GJ: 'Gujarat',
+    RJ: 'Rajasthan',
+    WB: 'West Bengal',
+    AP: 'Andhra Pradesh',
+    TS: 'Telangana',
+    KL: 'Kerala',
+    PB: 'Punjab',
+    HR: 'Haryana',
+    MP: 'Madhya Pradesh',
+    BR: 'Bihar',
+    OR: 'Odisha',
+    AS: 'Assam',
+    JH: 'Jharkhand',
+    UK: 'Uttarakhand',
+    CG: 'Chhattisgarh',
+    HP: 'Himachal Pradesh',
+    GA: 'Goa',
+    ALL: 'India',
 };
 
 export interface CatalogItemDB {
@@ -84,7 +84,7 @@ export function mapCatalogItems(
     const effectiveRule: any = ruleData?.[0] || {
         id: 'default',
         stateCode,
-        components: [{ id: 'tax', type: 'PERCENTAGE', label: 'Road Tax', percentage: 10, isRoadTax: true }]
+        components: [{ id: 'tax', type: 'PERCENTAGE', label: 'Road Tax', percentage: 10, isRoadTax: true }],
     };
     const insuranceRule: any = insuranceRuleData?.[0];
 
@@ -96,27 +96,31 @@ export function mapCatalogItems(
 
         const familyChildren = family.children || [];
         const variantChildren = familyChildren.filter(c => c.type === 'VARIANT');
-        let displayVariants = variantChildren.length > 0
-            ? variantChildren
-            : (familyChildren.length > 0 ? familyChildren : [family]);
+        let displayVariants =
+            variantChildren.length > 0 ? variantChildren : familyChildren.length > 0 ? familyChildren : [family];
 
         displayVariants = displayVariants.sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
 
         return (displayVariants as any[]).map(variantItem => {
-            const makeName = family.brand?.name
-                || family.specs?.brand
-                || family.specs?.make
-                || family.specs?.brand_name
-                || 'Unknown';
+            const makeName =
+                family.brand?.name ||
+                family.specs?.brand ||
+                family.specs?.make ||
+                family.specs?.brand_name ||
+                'Unknown';
 
             const variantSkus = (variantItem as any).skus;
             const isSkuItem = (variantItem as any).type === 'SKU';
-            const allSkus = ((Array.isArray(variantSkus) && variantSkus.length > 0)
-                ? variantSkus
-                : (isSkuItem ? [variantItem] : [])) as any[];
+            const allSkus = (
+                Array.isArray(variantSkus) && variantSkus.length > 0 ? variantSkus : isSkuItem ? [variantItem] : []
+            ) as any[];
 
             if (allSkus.length === 0 && Array.isArray(familyChildren)) {
-                allSkus.push(...familyChildren.flatMap(c => (c.type === 'SKU' ? [{ ...c, price_base: c.price_base ?? 0 }] : (c.skus || []))));
+                allSkus.push(
+                    ...familyChildren.flatMap(c =>
+                        c.type === 'SKU' ? [{ ...c, price_base: c.price_base ?? 0 }] : c.skus || []
+                    )
+                );
             }
 
             // Extract dealer/studio info from best offer match
@@ -139,7 +143,8 @@ export function mapCatalogItems(
                 make: makeName,
                 model: family.name,
                 variant: variantItem.name || family.name,
-                displayName: `${makeName} ${family.name} ${variantItem.name !== family.name ? variantItem.name : ''}`.trim(),
+                displayName:
+                    `${makeName} ${family.name} ${variantItem.name !== family.name ? variantItem.name : ''}`.trim(),
                 price_base: variantItem.price_base ?? 0,
                 label: `${makeName} / ${family.name}`,
                 slug: variantItem.slug,
@@ -156,7 +161,7 @@ export function mapCatalogItems(
                 price: (() => {
                     const skuPrices = allSkus.flatMap((sku: any) => sku.prices || []);
                     let activePriceObj = null;
-                    let pricingSource = "";
+                    let pricingSource = '';
                     let dealerLocation: string | undefined = undefined;
                     let isEstimate = false;
 
@@ -193,8 +198,7 @@ export function mapCatalogItems(
                             const withDistance = skuPrices.map((p: any) => {
                                 if (!p.latitude || !p.longitude) return { ...p, distance: 999999 };
                                 const dist = Math.sqrt(
-                                    Math.pow(p.latitude - userLat, 2) +
-                                    Math.pow(p.longitude - userLng, 2)
+                                    Math.pow(p.latitude - userLat, 2) + Math.pow(p.longitude - userLng, 2)
                                 );
                                 return { ...p, distance: dist };
                             });
@@ -204,8 +208,8 @@ export function mapCatalogItems(
 
                         // A.5 District Name Match
                         if (!activePriceObj && userDistrict) {
-                            activePriceObj = skuPrices.find((p: any) =>
-                                p.district?.toLowerCase().trim() === userDistrict?.toLowerCase().trim()
+                            activePriceObj = skuPrices.find(
+                                (p: any) => p.district?.toLowerCase().trim() === userDistrict?.toLowerCase().trim()
                             );
                         }
 
@@ -217,14 +221,14 @@ export function mapCatalogItems(
                         // C. Lowest Price (Hard Fallback)
                         if (!activePriceObj) {
                             activePriceObj = skuPrices.reduce((min: any, curr: any) => {
-                                return (curr.ex_showroom_price < min.ex_showroom_price) ? curr : min;
+                                return curr.ex_showroom_price < min.ex_showroom_price ? curr : min;
                             }, skuPrices[0]);
                             isEstimate = true;
                         }
 
                         if (activePriceObj && !pricingSource) {
                             const stateName = STATE_NAMES[activePriceObj.state_code] || activePriceObj.state_code;
-                            let sourceParts = [];
+                            const sourceParts = [];
                             if (activePriceObj.district) sourceParts.push(activePriceObj.district);
                             sourceParts.push(stateName);
                             pricingSource = sourceParts.join(', ');
@@ -245,10 +249,8 @@ export function mapCatalogItems(
                         // Fallback: Use price_base from SKU/Variant/Family hierarchy
                         // Try first SKU if available
                         const firstSku = allSkus.length > 0 ? allSkus[0] : null;
-                        baseExShowroom = firstSku?.price_base
-                            || (variantItem as any).price_base
-                            || family.price_base
-                            || 0;
+                        baseExShowroom =
+                            firstSku?.price_base || (variantItem as any).price_base || family.price_base || 0;
 
                         // Mark as estimate since we're using base price instead of location-specific
                         if (baseExShowroom > 0 && !pricingSource) {
@@ -272,7 +274,7 @@ export function mapCatalogItems(
                         bundleSavings: bundleSavingsAmount,
                         totalSavings: Math.abs(bestOfferAmount) + bundleSavingsAmount,
                         pricingSource,
-                        isEstimate
+                        isEstimate,
                     };
                 })(),
 
@@ -294,15 +296,15 @@ export function mapCatalogItems(
                         engine: {
                             displacement: getSpec(['engine_cc', 'engine_capacity']),
                             maxPower: getSpec(['max_power']),
-                            maxTorque: getSpec(['max_torque'])
+                            maxTorque: getSpec(['max_torque']),
                         },
                         transmission: {
                             type: getSpec(['transmission_type']) || 'Manual',
-                            gears: getSpec(['gears'])
+                            gears: getSpec(['gears']),
                         },
                         battery: {
                             range: getSpec(['range_eco', 'range']),
-                            chargingTime: getSpec(['charging_time'])
+                            chargingTime: getSpec(['charging_time']),
                         },
                         dimensions: {
                             seatHeight: (() => {
@@ -318,14 +320,19 @@ export function mapCatalogItems(
                                 return val ? `${val} kg` : undefined;
                             })(),
                             fuelCapacity: (() => {
-                                const val = getSpec(['fuel_capacity', 'fuel_tank_capacity', 'tank_capacity', 'fuel_tank']);
+                                const val = getSpec([
+                                    'fuel_capacity',
+                                    'fuel_tank_capacity',
+                                    'tank_capacity',
+                                    'fuel_tank',
+                                ]);
                                 return val ? `${val} L` : undefined;
-                            })()
+                            })(),
                         },
                         features: {
-                            bluetooth: getSpec(['bluetooth', 'connectivity', 'smart_connectivity'])
+                            bluetooth: getSpec(['bluetooth', 'connectivity', 'smart_connectivity']),
                         },
-                        mileage: getSpec(['mileage', 'arai_mileage', 'arai'])
+                        mileage: getSpec(['mileage', 'arai_mileage', 'arai']),
                     };
                 })(),
 
@@ -338,14 +345,16 @@ export function mapCatalogItems(
                     const primaryAsset = assets.find(a => a.type === 'IMAGE' && a.is_primary);
                     const firstImageAsset = assets.find(a => a.type === 'IMAGE');
 
-                    return primaryAsset?.url ||
+                    return (
+                        primaryAsset?.url ||
                         firstImageAsset?.url ||
                         targetSku?.image_url ||
                         targetSku?.specs?.primary_image ||
                         targetSku?.specs?.gallery?.[0] ||
                         variantItem.specs?.image_url ||
                         family.specs?.image_url ||
-                        undefined;
+                        undefined
+                    );
                 })(),
 
                 availableColors: (() => {
@@ -361,11 +370,15 @@ export function mapCatalogItems(
                                 hexCode: hex,
                                 secondaryHexCode: sku.specs?.hex_secondary,
                                 name: sku.specs?.Color || sku.name,
-                                imageUrl: primaryAsset?.url || firstImageAsset?.url || sku.image_url || sku.specs?.primary_image,
+                                imageUrl:
+                                    primaryAsset?.url ||
+                                    firstImageAsset?.url ||
+                                    sku.image_url ||
+                                    sku.specs?.primary_image,
                                 zoomFactor: Number(primaryAsset?.zoom_factor || sku.zoom_factor || 1.0),
                                 isFlipped: Boolean(primaryAsset?.is_flipped || sku.is_flipped || false),
                                 offsetX: Number(primaryAsset?.offset_x || sku.offset_x || 0),
-                                offsetY: Number(primaryAsset?.offset_y || sku.offset_y || 0)
+                                offsetY: Number(primaryAsset?.offset_y || sku.offset_y || 0),
                             });
                         }
                     });
@@ -379,7 +392,8 @@ export function mapCatalogItems(
                     const targetSku = primarySku || firstSku;
 
                     const assets = (targetSku?.assets || []) as any[];
-                    const primaryAsset = assets.find(a => a.type === 'IMAGE' && a.is_primary) || assets.find(a => a.type === 'IMAGE');
+                    const primaryAsset =
+                        assets.find(a => a.type === 'IMAGE' && a.is_primary) || assets.find(a => a.type === 'IMAGE');
 
                     return Number(primaryAsset?.zoom_factor || targetSku?.zoom_factor || 1.0);
                 })(),
@@ -387,7 +401,8 @@ export function mapCatalogItems(
                     const allSkus = (variantItem as any).skus || [];
                     const targetSku = allSkus.find((s: any) => s.is_primary) || allSkus[0];
                     const assets = (targetSku?.assets || []) as any[];
-                    const primaryAsset = assets.find(a => a.type === 'IMAGE' && a.is_primary) || assets.find(a => a.type === 'IMAGE');
+                    const primaryAsset =
+                        assets.find(a => a.type === 'IMAGE' && a.is_primary) || assets.find(a => a.type === 'IMAGE');
 
                     return Boolean(primaryAsset?.is_flipped || targetSku?.is_flipped || false);
                 })(),
@@ -395,7 +410,8 @@ export function mapCatalogItems(
                     const allSkus = (variantItem as any).skus || [];
                     const targetSku = allSkus.find((s: any) => s.is_primary) || allSkus[0];
                     const assets = (targetSku?.assets || []) as any[];
-                    const primaryAsset = assets.find(a => a.type === 'IMAGE' && a.is_primary) || assets.find(a => a.type === 'IMAGE');
+                    const primaryAsset =
+                        assets.find(a => a.type === 'IMAGE' && a.is_primary) || assets.find(a => a.type === 'IMAGE');
 
                     return Number(primaryAsset?.offset_x || targetSku?.offset_x || 0);
                 })(),
@@ -403,7 +419,8 @@ export function mapCatalogItems(
                     const allSkus = (variantItem as any).skus || [];
                     const targetSku = allSkus.find((s: any) => s.is_primary) || allSkus[0];
                     const assets = (targetSku?.assets || []) as any[];
-                    const primaryAsset = assets.find(a => a.type === 'IMAGE' && a.is_primary) || assets.find(a => a.type === 'IMAGE');
+                    const primaryAsset =
+                        assets.find(a => a.type === 'IMAGE' && a.is_primary) || assets.find(a => a.type === 'IMAGE');
 
                     return Number(primaryAsset?.offset_y || targetSku?.offset_y || 0);
                 })(),
@@ -411,10 +428,15 @@ export function mapCatalogItems(
                     const primarySku = allSkus.find((s: any) => s.is_primary);
                     const firstSku = allSkus[0];
                     const targetSku = primarySku || firstSku;
-                    return targetSku?.specs?.suitable_for || variantItem.specs?.suitable_for || family.specs?.suitable_for || undefined;
+                    return (
+                        targetSku?.specs?.suitable_for ||
+                        variantItem.specs?.suitable_for ||
+                        family.specs?.suitable_for ||
+                        undefined
+                    );
                 })(),
                 studioName,
-                dealerId
+                dealerId,
             };
         });
     });

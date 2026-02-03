@@ -1,17 +1,17 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
-const nextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "aytdeqjxxjxbgiyslubx.supabase.co",
-      },
-    ],
-  },
+const nextConfig: NextConfig = {
+    typescript: {
+        ignoreBuildErrors: true,
+    },
+    images: {
+        remotePatterns: [
+            {
+                protocol: 'https',
+                hostname: 'aytdeqjxxjxbgiyslubx.supabase.co',
+            },
+        ],
+    },
 };
 
 export default nextConfig;
