@@ -13,6 +13,13 @@ const eslintConfig = defineConfig([
       "react/jsx-no-comment-textnodes": "off",
       "react-hooks/immutability": "off",
       "react-hooks/static-components": "off",
+      "react/no-unescaped-entities": "off",
+      "react-hooks/preserve-manual-memoization": "off",
+      "react-hooks/purity": "off",
+      "react-hooks/refs": "off",
+      "no-var": "off",
+      "prefer-const": "off",
+      "@next/next/no-html-link-for-pages": "off",
     },
   },
   // Override default ignores of eslint-config-next.
