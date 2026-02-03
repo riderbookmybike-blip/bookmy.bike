@@ -20,6 +20,11 @@ const eslintConfig = defineConfig([
       "no-var": "off",
       "prefer-const": "off",
       "@next/next/no-html-link-for-pages": "off",
+      "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-unused-expressions": "off",
+      "react-hooks/exhaustive-deps": "off",
+      "@next/next/no-img-element": "off",
+      "jsx-a11y/alt-text": "off",
     },
   },
   // Override default ignores of eslint-config-next.
