@@ -176,14 +176,55 @@ export default function SystemPDPRouter({
         if (!leadContext) return;
 
         try {
+            const resolvedColor =
+                data.colors?.find((c: any) => c.id === selectedColor || c.skuId === selectedColor || c.name === selectedColor) ||
+                clientColors?.find((c: any) => c.id === selectedColor || c.skuId === selectedColor || c.name === selectedColor);
+            const colorName = resolvedColor?.name || selectedColor;
+            const variantName = product.variant || variantParam;
+            const labelBase = [product.model, variantName].filter(Boolean).join(' ');
+            const displayLabel = `${labelBase}${colorName ? ` (${colorName})` : ''}`;
+
+            const selectedAccessoryItems = (data.activeAccessories || [])
+                .filter((a: any) => selectedAccessories.includes(a.id))
+                .map((a: any) => ({
+                    id: a.id,
+                    name: a.description || a.displayName || a.name,
+                    price: a.price,
+                    discountPrice: a.discountPrice,
+                    inclusionType: a.inclusionType
+                }));
+
+            const selectedServiceItems = (data.activeServices || [])
+                .filter((s: any) => selectedServices.includes(s.id))
+                .map((s: any) => ({
+                    id: s.id,
+                    name: s.name,
+                    price: s.price,
+                    discountPrice: s.discountPrice
+                }));
+
+            const selectedInsuranceAddonItems = (data.availableInsuranceAddons || [])
+                .filter((i: any) => selectedInsuranceAddons.includes(i.id))
+                .map((i: any) => ({
+                    id: i.id,
+                    name: i.name,
+                    price: i.price,
+                    discountPrice: i.discountPrice,
+                    inclusionType: i.inclusionType
+                }));
+
             const commercials = {
-                label: `${product.model} ${variantParam} (${selectedColor})`,
+                label: displayLabel,
+                color_name: colorName,
                 ex_showroom: baseExShowroom,
                 grand_total: totalOnRoad,
                 pricing_snapshot: {
                     accessories: selectedAccessories,
+                    accessory_items: selectedAccessoryItems,
                     services: selectedServices,
+                    service_items: selectedServiceItems,
                     insurance_addons: selectedInsuranceAddons,
+                    insurance_addon_items: selectedInsuranceAddonItems,
                     rto_type: data.regType,
                     emi_tenure: data.emiTenure,
                     down_payment: data.userDownPayment

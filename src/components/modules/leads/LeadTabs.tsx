@@ -288,15 +288,49 @@ export function LeadActivity({ lead }: { lead: Lead }) {
 export function LeadQuotes({ leadId }: { leadId: string }) {
     const [quotes, setQuotes] = React.useState<any[]>([]);
     const [loading, setLoading] = React.useState(true);
+    const [expandedQuoteId, setExpandedQuoteId] = React.useState<string | null>(null);
+    const [isUpdating, setIsUpdating] = React.useState<string | null>(null);
 
-    React.useEffect(() => {
+    const fetchQuotes = React.useCallback(() => {
         import('@/actions/crm').then(({ getQuotesForLead }) => {
-            getQuotesForLead(leadId).then(data => {
-                setQuotes(data);
-                setLoading(false);
-            });
+            getQuotesForLead(leadId)
+                .then(data => {
+                    setQuotes(data);
+                    setLoading(false);
+                })
+                .catch(err => {
+                    console.error('Failed to fetch quotes:', err);
+                    setLoading(false);
+                });
         });
     }, [leadId]);
+
+    React.useEffect(() => {
+        fetchQuotes();
+    }, [fetchQuotes]);
+
+    const handleAction = async (quoteId: string, actionType: 'ACCEPT' | 'CONFIRM' | 'LOCK') => {
+        setIsUpdating(quoteId);
+        try {
+            const { acceptQuoteAction, confirmQuoteAction, lockQuoteAction } = await import('@/actions/crm');
+            let result;
+            if (actionType === 'ACCEPT') result = await acceptQuoteAction(quoteId);
+            else if (actionType === 'CONFIRM') result = await confirmQuoteAction(quoteId);
+            else if (actionType === 'LOCK') result = await lockQuoteAction(quoteId);
+
+            if (result?.success) {
+                import('sonner').then(({ toast }) => toast.success(`Quote ${actionType.toLowerCase()}ed successfully`));
+                fetchQuotes();
+            } else {
+                console.error(`Quote ${actionType} Action Failure:`, result);
+                import('sonner').then(({ toast }) => toast.error('Action failed'));
+            }
+        } catch (error) {
+            import('sonner').then(({ toast }) => toast.error('Action failed'));
+        } finally {
+            setIsUpdating(null);
+        }
+    };
 
     if (loading) return (
         <div className="py-20 text-center opacity-40">
@@ -312,28 +346,321 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
         </div>
     );
 
+    const prettifyLabel = (value?: string) => {
+        if (!value) return '';
+        const withSpaces = value.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+        return withSpaces
+            .split(' ')
+            .map(word => word ? word[0].toUpperCase() + word.slice(1) : '')
+            .join(' ');
+    };
+
+    const formatDateTime = (iso?: string) => {
+        if (!iso) return 'Real-time';
+        return new Date(iso).toLocaleString([], {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
+    const getSnapshotItems = (snapshot: any, key: string, itemsKey: string) => {
+        if (!snapshot) return [];
+        if (Array.isArray(snapshot[itemsKey]) && snapshot[itemsKey].length > 0) {
+            return snapshot[itemsKey].map((item: any) => ({
+                id: item.id || item.name,
+                name: item.name || item.label || item.id
+            }));
+        }
+        if (Array.isArray(snapshot[key]) && snapshot[key].length > 0) {
+            return snapshot[key].map((id: string) => ({
+                id,
+                name: prettifyLabel(id)
+            }));
+        }
+        return [];
+    };
+
+    const groupQuotes = () => {
+        const grouped = new Map<string, any[]>();
+        quotes.forEach((quote) => {
+            const key = quote.color_id || quote.vehicle_sku_id || quote.variant_id || quote.id;
+            if (!grouped.has(key)) grouped.set(key, []);
+            grouped.get(key)?.push(quote);
+        });
+
+        return Array.from(grouped.values()).map((group) => {
+            const sorted = [...group].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            const latest = sorted.find((q) => q.is_latest) || sorted[0];
+            const history = sorted.filter((q) => q.id !== latest.id);
+            return { latest, history, all: sorted };
+        });
+    };
+
+    const groupedQuotes = groupQuotes();
+
     return (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
-            {quotes.map((quote) => (
-                <div key={quote.id} className="glass-card p-6 flex items-center justify-between group">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-indigo-600/10 flex items-center justify-center text-indigo-600">
-                            <FileText size={20} />
-                        </div>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h4 className="font-bold text-slate-900 dark:text-white">{quote.display_id || `QT-${quote.id.slice(0, 4).toUpperCase()}`}</h4>
-                                {quote.is_latest && <span className="text-[9px] font-black px-2 py-0.5 bg-green-500/10 text-green-500 rounded uppercase tracking-tighter">Latest</span>}
+            {groupedQuotes.map(({ latest, history, all }) => {
+                const quote = latest;
+                const isExpanded = expandedQuoteId === quote.id;
+                const pricing = quote.commercials?.pricing_snapshot || {};
+                const label = prettifyLabel(quote.commercials?.label || quote.variant?.name || quote.variant_name || quote.commercials?.product_name || '');
+                const accessoryItems = getSnapshotItems(pricing, 'accessories', 'accessory_items');
+                const serviceItems = getSnapshotItems(pricing, 'services', 'service_items');
+                const insuranceItems = getSnapshotItems(pricing, 'insurance_addons', 'insurance_addon_items');
+
+                const chronological = [...all].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+                const historyRows = chronological.map((current, idx) => {
+                    if (idx === 0) return { current, added: [], removed: [] };
+                    const prev = chronological[idx - 1];
+                    const currSnap = current.commercials?.pricing_snapshot || {};
+                    const prevSnap = prev.commercials?.pricing_snapshot || {};
+
+                    const currItems = [
+                        ...getSnapshotItems(currSnap, 'accessories', 'accessory_items'),
+                        ...getSnapshotItems(currSnap, 'services', 'service_items'),
+                        ...getSnapshotItems(currSnap, 'insurance_addons', 'insurance_addon_items')
+                    ];
+                    const prevItems = [
+                        ...getSnapshotItems(prevSnap, 'accessories', 'accessory_items'),
+                        ...getSnapshotItems(prevSnap, 'services', 'service_items'),
+                        ...getSnapshotItems(prevSnap, 'insurance_addons', 'insurance_addon_items')
+                    ];
+
+                    const currSet = new Set(currItems.map((i) => i.id));
+                    const prevSet = new Set(prevItems.map((i) => i.id));
+
+                    const added = currItems.filter((i) => !prevSet.has(i.id));
+                    const removed = prevItems.filter((i) => !currSet.has(i.id));
+
+                    return { current, added, removed };
+                });
+
+                return (
+                    <div
+                        key={quote.id}
+                        className={`bg-white dark:bg-slate-900/40 border transition-all duration-300 overflow-hidden ${isExpanded ? 'rounded-[2rem] border-indigo-500/30' : 'rounded-2xl border-slate-200 dark:border-white/5 hover:border-indigo-500/20'
+                            }`}
+                    >
+                        <div
+                            className="p-6 flex items-center justify-between group cursor-pointer"
+                            onClick={() => setExpandedQuoteId(isExpanded ? null : quote.id)}
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${isExpanded ? 'bg-indigo-600 text-white' : 'bg-indigo-600/10 text-indigo-600'}`}>
+                                    <FileText size={20} />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h4 className="font-bold text-slate-900 dark:text-white uppercase tracking-tight">
+                                            {quote.display_id || `QT-${quote.id.slice(0, 4).toUpperCase()}`}
+                                        </h4>
+                                        {quote.is_latest && <span className="text-[9px] font-black px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded uppercase tracking-tighter border border-emerald-500/20">Latest</span>}
+                                        <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter border ${quote.status === 'ACCEPTED' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                                            quote.status === 'CONFIRMED' ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' :
+                                                quote.status === 'LOCKED' ? 'bg-slate-900 text-white' :
+                                                    'bg-slate-500/10 text-slate-500 border-slate-500/20'
+                                            }`}>
+                                            {quote.status}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                        {label || 'Standard Quote'} • {formatDateTime(quote.created_at)}
+                                    </p>
+                                    {(accessoryItems.length > 0 || serviceItems.length > 0 || insuranceItems.length > 0) && (
+                                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 uppercase tracking-widest">
+                                            {accessoryItems.length > 0 && `Accessories: ${accessoryItems.map((i) => i.name).join(', ')}`}
+                                            {serviceItems.length > 0 && `${accessoryItems.length > 0 ? ' • ' : ''}Services: ${serviceItems.map((i) => i.name).join(', ')}`}
+                                            {insuranceItems.length > 0 && `${(accessoryItems.length > 0 || serviceItems.length > 0) ? ' • ' : ''}Insurance: ${insuranceItems.map((i) => i.name).join(', ')}`}
+                                        </p>
+                                    )}
+                                </div>
                             </div>
-                            <p className="text-xs text-slate-500 mt-1">{quote.commercials?.label || 'Standard Quote'} • {new Date(quote.created_at).toLocaleDateString()}</p>
+                            <div className="flex items-center gap-6">
+                                <div className="text-right">
+                                    <p className="text-xl font-black text-slate-900 dark:text-white italic tracking-tighter">
+                                        ₹{quote.commercials?.grand_total?.toLocaleString() || quote.on_road_price?.toLocaleString()}
+                                    </p>
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Grand Total</p>
+                                </div>
+                                <div className={`p-2 rounded-lg transition-transform duration-300 ${isExpanded ? 'rotate-90 bg-slate-100 dark:bg-white/5' : 'text-slate-300'}`}>
+                                    <ChevronRight size={18} />
+                                </div>
+                            </div>
                         </div>
+
+                        {/* Expanded Details */}
+                        {isExpanded && (
+                            <div className="px-6 pb-8 animate-in slide-in-from-top-4 duration-500 border-t border-slate-50 dark:border-white/5 pt-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                                    {/* Itemized Breakdown */}
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-2 text-indigo-500 mb-2">
+                                            <Zap size={14} />
+                                            <h5 className="text-[10px] font-black uppercase tracking-widest">Commercial Breakdown</h5>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between text-xs font-bold text-slate-600 dark:text-slate-400">
+                                                <span>{label || quote.variant?.name || 'Base Variant'}</span>
+                                                <span className="text-slate-900 dark:text-white">₹{quote.commercials?.ex_showroom?.toLocaleString() || quote.ex_showroom_price?.toLocaleString() || '0'}</span>
+                                            </div>
+                                            <div className="flex justify-between text-xs font-bold text-slate-500">
+                                                <span>Color: {quote.color?.name || quote.commercials?.color_name || 'Standard'}</span>
+                                                <span className="text-slate-500">Included</span>
+                                            </div>
+                                            <div className="flex justify-between text-xs font-bold text-slate-500">
+                                                <span>RTO & Registration ({pricing.rto_type || 'STATE'})</span>
+                                                <span className="text-slate-900 dark:text-white">₹{quote.rto_amount?.toLocaleString() || '0'}</span>
+                                            </div>
+                                            <div className="flex justify-between text-xs font-bold text-slate-500">
+                                                <span>Insurance Portfolio</span>
+                                                <span className="text-slate-900 dark:text-white">₹{quote.insurance_amount?.toLocaleString() || '0'}</span>
+                                            </div>
+                                            {quote.commercials?.accessories_total > 0 && (
+                                                <div className="flex justify-between text-xs font-bold text-slate-500 border-t border-slate-50 dark:border-white/5 pt-2">
+                                                    <span>Accessories Matrix</span>
+                                                    <span className="text-slate-900 dark:text-white">₹{quote.commercials.accessories_total.toLocaleString()}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        {(accessoryItems.length > 0 || serviceItems.length > 0 || insuranceItems.length > 0) && (
+                                            <div className="pt-4 border-t border-slate-100 dark:border-white/5 space-y-2">
+                                                {accessoryItems.length > 0 && (
+                                                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                                        <span className="font-black uppercase tracking-widest text-[10px]">Accessories</span>
+                                                        <div className="mt-1 text-slate-600 dark:text-slate-300 font-semibold">
+                                                            {accessoryItems.map((i) => i.name).join(', ')}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {serviceItems.length > 0 && (
+                                                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                                        <span className="font-black uppercase tracking-widest text-[10px]">Services</span>
+                                                        <div className="mt-1 text-slate-600 dark:text-slate-300 font-semibold">
+                                                            {serviceItems.map((i) => i.name).join(', ')}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {insuranceItems.length > 0 && (
+                                                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                                        <span className="font-black uppercase tracking-widest text-[10px]">Insurance Add-ons</span>
+                                                        <div className="mt-1 text-slate-600 dark:text-slate-300 font-semibold">
+                                                            {insuranceItems.map((i) => i.name).join(', ')}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Action Hub */}
+                                    <div className="bg-slate-50 dark:bg-white/5 rounded-3xl p-6 border border-slate-100 dark:border-white/5">
+                                        <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Workflow Actions</h5>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {quote.status === 'DRAFT' && (
+                                                <button
+                                                    onClick={() => handleAction(quote.id, 'ACCEPT')}
+                                                    disabled={!!isUpdating}
+                                                    className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50"
+                                                >
+                                                    {isUpdating === quote.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
+                                                    Accept
+                                                </button>
+                                            )}
+                                            {quote.status === 'ACCEPTED' && (
+                                                <button
+                                                    onClick={() => handleAction(quote.id, 'CONFIRM')}
+                                                    disabled={!!isUpdating}
+                                                    className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50"
+                                                >
+                                                    {isUpdating === quote.id ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
+                                                    Confirm
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={async () => {
+                                                    setIsUpdating(quote.id);
+                                                    try {
+                                                        const { getQuotePdpUrl } = await import('@/actions/crm');
+                                                        const result = await getQuotePdpUrl(quote.id);
+
+                                                        if (result.success && result.url) {
+                                                            window.open(result.url, '_blank');
+                                                        } else {
+                                                            console.error('PDP Redirect Failed:', result.error);
+                                                            const { toast } = await import('sonner');
+                                                            toast.error('Configuration unavailable at this moment.');
+                                                        }
+                                                    } catch (err) {
+                                                        console.error('PDP Redirect Error:', err);
+                                                        const { toast } = await import('sonner');
+                                                        toast.error('Failed to open configuration.');
+                                                    } finally {
+                                                        setIsUpdating(null);
+                                                    }
+                                                }}
+                                                disabled={!!isUpdating}
+                                                className="flex items-center justify-center gap-2 border border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-white/5 text-slate-600 dark:text-slate-400 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50"
+                                            >
+                                                {isUpdating === quote.id ? <Loader2 size={12} className="animate-spin" /> : <History size={12} />}
+                                                Edit Config
+                                            </button>
+                                            <button
+                                                className="flex items-center justify-center gap-2 border border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-white/5 text-slate-600 dark:text-slate-400 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95"
+                                            >
+                                                <Share2 size={12} />
+                                                Share
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2 text-indigo-500 mb-2">
+                                        <History size={14} />
+                                        <h5 className="text-[10px] font-black uppercase tracking-widest">Revision History</h5>
+                                    </div>
+                                    {historyRows.length <= 1 && (
+                                        <div className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl p-4">
+                                            No revisions yet for this vehicle. First quote generated on {formatDateTime(quote.created_at)}.
+                                        </div>
+                                    )}
+                                    {historyRows.length > 1 && (
+                                        <div className="space-y-3">
+                                            {historyRows.slice(1).reverse().map((row: any) => (
+                                                <div key={row.current.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4">
+                                                    <div>
+                                                        <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest">
+                                                            Version {row.current.version || '—'} • {formatDateTime(row.current.created_at)}
+                                                        </p>
+                                                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                                                            Saved by {row.current.created_by ? row.current.created_by.slice(0, 6).toUpperCase() : 'System'}
+                                                        </p>
+                                                    </div>
+                                                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                                        {row.added.length > 0 && (
+                                                            <div>Added: <span className="text-emerald-500 font-semibold">{row.added.map((i: any) => i.name).join(', ')}</span></div>
+                                                        )}
+                                                        {row.removed.length > 0 && (
+                                                            <div>Removed: <span className="text-rose-500 font-semibold">{row.removed.map((i: any) => i.name).join(', ')}</span></div>
+                                                        )}
+                                                        {row.added.length === 0 && row.removed.length === 0 && (
+                                                            <div>No item changes</div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
-                    <div className="text-right">
-                        <p className="text-lg font-black text-slate-900 dark:text-white italic">₹{quote.commercials?.grand_total?.toLocaleString()}</p>
-                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{quote.status}</p>
-                    </div>
-                </div>
-            ))}
+                );
+            })}
         </div>
     );
 }

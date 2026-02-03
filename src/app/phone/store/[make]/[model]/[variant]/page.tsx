@@ -1,5 +1,6 @@
 import React from 'react';
 import { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 import { resolveLocation } from '@/utils/locationResolver';
 import { createClient } from '@/lib/supabase/server';
 import { slugify } from '@/utils/slugs';
@@ -21,6 +22,7 @@ type Props = {
         pincode?: string;
         dealer?: string;
         leadId?: string;
+        quoteId?: string;
     }>;
 };
 
@@ -31,7 +33,7 @@ interface CatalogItem {
     slug: string;
     price_base: number;
     specs: any;
-    brand: { name: string };
+    brand: { name: string; slug?: string };
     parent: { name: string; slug: string }; // The Model
 }
 
@@ -100,16 +102,41 @@ const matchesAccessoryCompatibility = (
     model: string,
     variant: string
 ) => {
-    if (!suitableFor) return false;
+    // STRICT: Accessories MUST have explicit suitability tags.
+    const suitabilityRaw = Array.isArray(suitableFor) ? suitableFor.join(',') : suitableFor;
+    if (!suitabilityRaw || suitabilityRaw.trim() === '') return false;
 
-    const tags = suitableFor.split(',').map((t) => t.trim()).filter(Boolean);
+    const tags = suitabilityRaw.split(',').map((t) => t.trim()).filter(Boolean);
     if (tags.length === 0) return false;
 
     const brandNorm = normalizeSuitabilityTag(brand || '');
     const modelNorm = normalizeSuitabilityTag(model || '');
     const variantNorm = normalizeSuitabilityTag(variant || '');
-    const brandModel = `${brandNorm} ${modelNorm}`.trim();
-    const brandModelVariant = `${brandModel} ${variantNorm}`.trim();
+
+    const buildKey = (...parts: string[]) =>
+        parts.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+
+    const variantHasModel = Boolean(modelNorm && variantNorm.includes(modelNorm));
+    const variantHasBrand = Boolean(brandNorm && variantNorm.includes(brandNorm));
+
+    const brandModel = buildKey(brandNorm, modelNorm);
+    const brandVariant = buildKey(variantHasBrand ? '' : brandNorm, variantNorm);
+    const modelVariant = buildKey(variantHasModel ? '' : modelNorm, variantNorm);
+    const brandModelVariant = buildKey(
+        variantHasBrand ? '' : brandNorm,
+        variantHasModel ? '' : modelNorm,
+        variantNorm
+    );
+
+    const matchKeys = new Set([
+        brandNorm,
+        modelNorm,
+        variantNorm,
+        brandModel,
+        brandVariant,
+        modelVariant,
+        brandModelVariant
+    ].filter(Boolean));
 
     return tags.some((tag) => {
         const normalized = normalizeSuitabilityTag(tag);
@@ -127,10 +154,8 @@ const matchesAccessoryCompatibility = (
             return Boolean(brandNorm && modelNorm && normalized.includes(brandNorm) && normalized.includes(modelNorm));
         }
 
-        if (brandNorm && normalized === brandNorm) return true;
         if (brandNorm && normalized.startsWith(brandNorm) && normalized.includes('all models')) return true;
-        if (brandModel && normalized === brandModel) return true;
-        if (brandModelVariant && normalized === brandModelVariant) return true;
+        if (matchKeys.has(normalized)) return true;
 
         return false;
     });
@@ -193,7 +218,7 @@ export default async function Page({ params, searchParams }: Props) {
         .from('cat_items')
         .select(`
             id, name, slug, price_base, specs,
-            brand:cat_brands(name),
+            brand:cat_brands(name, slug),
             parent:cat_items!parent_id(name, slug)
         `)
         .in('slug', possibleSlugs)
@@ -226,6 +251,33 @@ export default async function Page({ params, searchParams }: Props) {
     }
 
     const item = variantItem as unknown as CatalogItem;
+
+    const makeSlug = (item.brand as any)?.slug || slugify(item.brand?.name || resolvedParams.make || '');
+    const modelSlug = item.parent?.slug || slugify(item.parent?.name || resolvedParams.model || '');
+    const rawVariantSlug = item.slug || slugify(item.name || resolvedParams.variant || '');
+    let cleanVariantSlug = rawVariantSlug;
+
+    if (rawVariantSlug?.startsWith(`${makeSlug}-${modelSlug}-`)) {
+        cleanVariantSlug = rawVariantSlug.replace(`${makeSlug}-${modelSlug}-`, '');
+    } else if (rawVariantSlug?.startsWith(`${modelSlug}-`)) {
+        cleanVariantSlug = rawVariantSlug.replace(`${modelSlug}-`, '');
+    } else if (rawVariantSlug?.startsWith(`${makeSlug}-`)) {
+        cleanVariantSlug = rawVariantSlug.replace(`${makeSlug}-`, '');
+    }
+
+    if (!cleanVariantSlug) cleanVariantSlug = rawVariantSlug;
+
+    const canonicalPath = `/store/${makeSlug}/${modelSlug}/${cleanVariantSlug}`;
+    const currentPath = `/store/${resolvedParams.make}/${resolvedParams.model}/${resolvedParams.variant}`;
+
+    if (canonicalPath.toLowerCase() !== currentPath.toLowerCase()) {
+        const query = new URLSearchParams();
+        Object.entries(resolvedSearchParams || {}).forEach(([key, value]) => {
+            if (value) query.set(key, String(value));
+        });
+        const queryString = query.toString();
+        redirect(queryString ? `${canonicalPath}?${queryString}` : canonicalPath);
+    }
 
     // 2.5 Fetch SKUs EARLY (Needed for Market Offer Filtering)
     // We need to know the SKU IDs of this variant to check if a dealer has an offer for THIS bike.

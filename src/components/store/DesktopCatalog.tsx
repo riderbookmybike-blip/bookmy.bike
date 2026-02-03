@@ -35,6 +35,7 @@ import { LocationPicker } from './LocationPicker';
 import { calculateDistance, HUB_LOCATION, MAX_SERVICEABLE_DISTANCE_KM } from '@/utils/geoUtils';
 import { removeLocationCookie } from '@/actions/locationCookie';
 import { ProductCard } from './desktop/ProductCard';
+import { CatalogGridSkeleton } from './CatalogSkeleton';
 
 type CatalogFilters = ReturnType<typeof useCatalogFilters>;
 
@@ -76,7 +77,7 @@ export const DesktopCatalog = ({
 
     // Prefer client items once loaded, otherwise show server items
     const displayItems = clientItems.length > 0 ? clientItems : initialItems;
-    // const isLoading = displayItems.length === 0 && isClientLoading;
+    const isLoading = displayItems.length === 0 && isClientLoading;
 
     // Destructure filters from props
     const {

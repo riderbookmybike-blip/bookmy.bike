@@ -68,7 +68,7 @@ export async function fetchCatalogServerSide(leadId?: string): Promise<ProductVa
 
                 if (pincodeData) {
                     userDistrict = pincodeData.district;
-                    stateCode = pincodeData.state_code;
+                    stateCode = pincodeData.state_code || 'MH';
                     // Intentionally NOT setting dealerId here to force 'get_market_best_offers' 
                     // in section 4 below.
                 } else {
@@ -125,7 +125,8 @@ export async function fetchCatalogServerSide(leadId?: string): Promise<ProductVa
             message: error.message,
             code: error.code,
             details: error.details,
-            hint: error.hint
+            hint: error.hint,
+            debug: { stateCode, userDistrict, dealerId }
         });
         return [];
     }

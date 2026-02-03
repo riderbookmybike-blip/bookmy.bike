@@ -1,0 +1,9 @@
+        })
+        .select()
+        .single();
+
+    if (error) throw error;
+    revalidatePath('/app/[slug]/quotes');
+    return quote;
+}
+

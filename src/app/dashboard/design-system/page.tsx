@@ -4,8 +4,12 @@ import React from 'react';
 import { Copy, Check, Palette, Moon, Sun, RefreshCw, Bike, Search, User, ChevronRight, ArrowRight, X, Menu, Shield, Zap, Star, Heart, Package, Tag, Clock, Activity, MoreHorizontal, Filter, Download, FileJson, FileType, FileText } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import tokens from '@/config/design-tokens';
-import { MarketplaceHeader } from '@/components/layout/MarketplaceHeader';
-import { Footer } from '@/components/store/Footer';
+import ProductCard from '@/components/registry/ProductCard';
+import LeadCard from '@/components/registry/LeadCard';
+import QuoteCard from '@/components/registry/QuoteCard';
+import BookingCard from '@/components/registry/BookingCard';
+import StatusBadge from '@/components/registry/StatusBadge';
+import TablePreview from '@/components/registry/TablePreview';
 
 /**
  * AUMS Brand Guidelines "Vault"
@@ -28,6 +32,132 @@ export default function BrandGuidelinesPage() {
     const [headerBlur, setHeaderBlur] = React.useState(12);
     const [headerBorderOpacity, setHeaderBorderOpacity] = React.useState(10);
     const [headerTextColor, setHeaderTextColor] = React.useState('#FFFFFF');
+    const [registryVariant, setRegistryVariant] = React.useState<'desktop' | 'mobile'>('desktop');
+
+    const registryCards = [
+        {
+            title: 'Component Registry',
+            desc: 'Single source of truth for reusable UI components, variants, and usage.',
+            items: ['ProductCard', 'LeadCard', 'QuoteCard', 'BookingCard', 'Header', 'Footer', 'Table', 'StatusBadge']
+        },
+        {
+            title: 'UI Contracts',
+            desc: 'Explicit data-field mapping for every component to avoid new ad-hoc UI.',
+            items: ['image → product.image_url', 'price → product.price', 'title → product.name', 'cta → /store/[make]/[model]/[variant]']
+        },
+        {
+            title: 'Layout Templates',
+            desc: 'Standard page structures to reuse across CRM + Marketplace.',
+            items: ['V1: Cards + Info', 'V2: List', 'V3: Grid', 'V4: Kanban', 'V5: List + Detail']
+        }
+    ];
+
+    const layoutTemplates = [
+        { id: 'V1', title: 'Cards + Info', desc: 'Top stats cards, below detail blocks.' },
+        { id: 'V2', title: 'List View', desc: 'Search + list + filters.' },
+        { id: 'V3', title: 'Grid View', desc: 'Cards grid with quick actions.' },
+        { id: 'V4', title: 'Kanban', desc: 'Stage-based pipeline board.' },
+        { id: 'V5', title: 'List + Detail', desc: 'Left list, right detail panel.' },
+    ];
+
+    const contractRows = [
+        { component: 'ProductCard', field: 'image', source: 'product.image_url', format: 'cover' },
+        { component: 'ProductCard', field: 'price', source: 'product.price', format: '₹ 1,23,000' },
+        { component: 'LeadCard', field: 'status', source: 'lead.status', format: 'badge' },
+        { component: 'QuoteCard', field: 'total', source: 'quote.commercials.grand_total', format: 'currency' },
+        { component: 'BookingCard', field: 'stage', source: 'booking.current_stage', format: 'pill' },
+    ];
+
+    const coreRegistryPreviews = [
+        {
+            id: 'ProductCard',
+            path: '@/components/registry/ProductCard',
+            usage: 'Marketplace catalog + CRM inventory list.',
+            contract: 'product.(name, price, image_url, tag)',
+            preview: (
+                <ProductCard
+                    name="Aapli Autokin Spark"
+                    price={123000}
+                    imageUrl="/images/hero/bike.png"
+                    tag="NEW"
+                    subtitle="Premium Release"
+                    variant={registryVariant}
+                />
+            ),
+        },
+        {
+            id: 'LeadCard',
+            path: '@/components/registry/LeadCard',
+            usage: 'CRM leads pipeline + quick triage.',
+            contract: 'lead.(id, customer_name, phone, status, intent)',
+            preview: (
+                <LeadCard
+                    id="LD-204"
+                    customerName="Ajit Rathore"
+                    phone="+91 98200 11223"
+                    status="NEW"
+                    intent="HOT"
+                    model="TVS Jupiter 125"
+                    variant={registryVariant}
+                />
+            ),
+        },
+        {
+            id: 'QuoteCard',
+            path: '@/components/registry/QuoteCard',
+            usage: 'Quotes list + approval workflow.',
+            contract: 'quote.(id, customer, total, status, valid_till)',
+            preview: (
+                <QuoteCard
+                    id="QT-811"
+                    customerName="Riya Deshmukh"
+                    total={452000}
+                    status="PENDING"
+                    validTill="14 Feb 2026"
+                    variant={registryVariant}
+                />
+            ),
+        },
+        {
+            id: 'BookingCard',
+            path: '@/components/registry/BookingCard',
+            usage: 'Bookings + delivery pipeline.',
+            contract: 'booking.(id, customer, model, stage, delivery_date, amount)',
+            preview: (
+                <BookingCard
+                    id="BK-309"
+                    customerName="Nikhil Jadhav"
+                    model="Honda Dio 125"
+                    stage="APPROVED"
+                    deliveryDate="22 Feb 2026"
+                    amount={98500}
+                    variant={registryVariant}
+                />
+            ),
+        },
+        {
+            id: 'StatusBadge',
+            path: '@/components/registry/StatusBadge',
+            usage: 'Unified status tags in CRM + Marketplace.',
+            contract: 'status.(label, tone)',
+            preview: (
+                <div className="flex flex-wrap gap-2">
+                    <StatusBadge label="NEW" tone="indigo" />
+                    <StatusBadge label="HOT" tone="rose" />
+                    <StatusBadge label="APPROVED" tone="emerald" />
+                    <StatusBadge label="PENDING" tone="amber" />
+                    <StatusBadge label="CLOSED" tone="slate" />
+                </div>
+            ),
+        },
+        {
+            id: 'Table',
+            path: '@/components/registry/TablePreview',
+            usage: 'List pages for CRM operations + reporting.',
+            contract: 'table.(columns, rows, status)',
+            preview: <TablePreview variant={registryVariant} />,
+        },
+    ];
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
@@ -55,11 +185,144 @@ export default function BrandGuidelinesPage() {
                 <h1 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight uppercase">
                     Brand Guidelines
                 </h1>
+                <h2 className="text-lg md:text-xl font-bold text-slate-700 dark:text-slate-300 tracking-tight uppercase">
+                    Design System + UI Contracts + Component Registry
+                </h2>
                 <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl">
                     The single source of truth for the {tokens.meta.name} brand.
                     Use these tokens to ensure consistency across the entire ecosystem.
                 </p>
+                <div className="pt-4">
+                    <a
+                        href="/app/aums/dashboard/admin/templates"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/5 text-xs font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-white/10 transition-colors"
+                    >
+                        Open Template Studio
+                    </a>
+                </div>
             </header>
+
+            {/* 0. Design System Registry */}
+            <section className="space-y-8">
+                <div className="space-y-2">
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
+                        <span className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs">00</span>
+                        Design System Registry
+                    </h2>
+                    <p className="text-slate-500">Master reference for reusable UI, contracts, and templates.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {registryCards.map(card => (
+                        <div key={card.title} className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm space-y-4">
+                            <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">{card.title}</h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">{card.desc}</p>
+                            <div className="flex flex-wrap gap-2">
+                                {card.items.map(item => (
+                                    <span
+                                        key={item}
+                                        className="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300"
+                                    >
+                                        {item}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="space-y-6">
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                        <div className="space-y-1">
+                            <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Component Preview Library</h3>
+                            <p className="text-xs text-slate-500">These are the only approved cards/badges/tables. Do not create new ones.</p>
+                        </div>
+                        <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
+                            <button
+                                onClick={() => setRegistryVariant('desktop')}
+                                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${registryVariant === 'desktop' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                            >
+                                Desktop
+                            </button>
+                            <button
+                                onClick={() => setRegistryVariant('mobile')}
+                                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${registryVariant === 'mobile' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                            >
+                                Mobile
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {coreRegistryPreviews.map(component => (
+                            <RegistryPreviewCard
+                                key={component.id}
+                                title={component.id}
+                                path={component.path}
+                                usage={component.usage}
+                                contract={component.contract}
+                            >
+                                {component.preview}
+                            </RegistryPreviewCard>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* 0b. UI Contracts */}
+            <section className="space-y-8">
+                <div className="space-y-2">
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
+                        <span className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs">00b</span>
+                        UI Contracts
+                    </h2>
+                    <p className="text-slate-500">Data mapping rules to keep UI consistent across pages.</p>
+                </div>
+
+                <div className="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-200 dark:border-white/5 overflow-hidden shadow-sm">
+                    <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 uppercase tracking-widest font-black">
+                            <tr>
+                                <th className="px-6 py-4">Component</th>
+                                <th className="px-6 py-4">Field</th>
+                                <th className="px-6 py-4">Data Source</th>
+                                <th className="px-6 py-4">Format</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                            {contractRows.map(row => (
+                                <tr key={`${row.component}-${row.field}`} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                                    <td className="px-6 py-4 font-black text-slate-900 dark:text-white">{row.component}</td>
+                                    <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{row.field}</td>
+                                    <td className="px-6 py-4 font-mono text-slate-500 dark:text-slate-400">{row.source}</td>
+                                    <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{row.format}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            {/* 0c. Layout Templates */}
+            <section className="space-y-8">
+                <div className="space-y-2">
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
+                        <span className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xs">00c</span>
+                        Layout Templates
+                    </h2>
+                    <p className="text-slate-500">Use these layouts for CRM + Marketplace pages to avoid new ad-hoc structures.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {layoutTemplates.map(template => (
+                        <div key={template.id} className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm space-y-3">
+                            <div className="text-[10px] font-black uppercase tracking-widest text-indigo-600">{template.id}</div>
+                            <h3 className="text-lg font-black text-slate-900 dark:text-white">{template.title}</h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">{template.desc}</p>
+                        </div>
+                    ))}
+                </div>
+            </section>
 
             {/* 1. Logo Showcase */}
             <section className="space-y-8">
@@ -87,9 +350,19 @@ export default function BrandGuidelinesPage() {
                         <Logo variant="icon" size="lg" />
                     </LogoCard>
 
+                    {/* Icon Only - Dark */}
+                    <LogoCard title="Icon Only (Dark Mode)" bg="bg-slate-900">
+                        <Logo mode="dark" variant="icon" size="lg" />
+                    </LogoCard>
+
                     {/* Wordmark Only */}
                     <LogoCard title="Wordmark Only" bg="bg-white">
                         <Logo variant="wordmark" size="lg" />
+                    </LogoCard>
+
+                    {/* Wordmark Only - Dark */}
+                    <LogoCard title="Wordmark Only (Dark Mode)" bg="bg-slate-900">
+                        <Logo mode="dark" variant="wordmark" size="lg" />
                     </LogoCard>
 
                     {/* Monochrome Black */}
@@ -1067,6 +1340,42 @@ function LogoCard({ title, bg, children }: { title: string, bg: string, children
                     <span className="text-[10px] font-mono text-slate-400">PNG</span>
                     <span className="text-[10px] font-mono text-slate-400">PDF</span>
                 </div>
+            </div>
+        </div>
+    );
+}
+
+function RegistryPreviewCard({
+    title,
+    path,
+    usage,
+    contract,
+    children,
+}: {
+    title: string;
+    path: string;
+    usage: string;
+    contract: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm space-y-4">
+            <div className="flex items-start justify-between gap-4">
+                <div>
+                    <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">{title}</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{usage}</p>
+                </div>
+                <span className="text-[10px] font-mono text-slate-400 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 px-2 py-1 rounded">
+                    {path}
+                </span>
+            </div>
+
+            <div className="rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 p-4">
+                {children}
+            </div>
+
+            <div className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                Contract: <span className="font-mono">{contract}</span>
             </div>
         </div>
     );

@@ -129,7 +129,7 @@ export default function LeadsPage() {
     }) => {
         try {
             if (!tenantId || !selectedLead) return;
-            await createQuoteAction({
+            const result = await createQuoteAction({
                 tenant_id: tenantId as string,
                 lead_id: selectedLead.id,
                 variant_id: data.product.id,
@@ -141,10 +141,17 @@ export default function LeadsPage() {
                     color_name: data.color
                 }
             });
-            toast.success('Quote generated successfully');
-            triggerCelebration('QUOTE_CREATED');
-            setIsQuoteFormOpen(false);
+
+            if (result.success) {
+                toast.success('Quote generated successfully');
+                await fetchLeads();
+                setIsQuoteFormOpen(false);
+            } else {
+                console.error('Server reported failure creating quote:', result);
+                toast.error(result.message || 'Failed to generate quote');
+            }
         } catch (error) {
+            console.error('Network or logic error during quote creation:', error);
             toast.error('Failed to generate quote');
         }
     };

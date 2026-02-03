@@ -142,7 +142,7 @@ export default function LeadForm({ isOpen, onClose, onSubmit }: LeadFormProps) {
                                     }
                                 }}
                                 placeholder="10-DIGIT SECURE NUMBER"
-                                className={`w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-[1.25rem] text-sm font-black tracking-tight focus:bg-white focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-300 ${isCheckingPhone ? 'opacity-50' : ''}`}
+                                className={`w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-[1.25rem] text-sm font-black tracking-tight text-slate-900 dark:text-white focus:bg-white dark:focus:bg-white/5 focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 dark:focus:border-indigo-500/60 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-500 ${isCheckingPhone ? 'opacity-50' : ''}`}
                             />
                             {isCheckingPhone && (
                                 <div className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -155,7 +155,7 @@ export default function LeadForm({ isOpen, onClose, onSubmit }: LeadFormProps) {
                     {/* Customer Name */}
                     <div className="space-y-2">
                         <div className="flex justify-between items-center px-1">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
                                 Legal Name
                             </label>
                             {isExistingCustomer && (
@@ -177,7 +177,7 @@ export default function LeadForm({ isOpen, onClose, onSubmit }: LeadFormProps) {
                                 value={customerName}
                                 onChange={(e) => setCustomerName(e.target.value)}
                                 placeholder="e.g. ADITYA VERMA"
-                                className={`w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-[1.25rem] text-sm font-black tracking-tight focus:bg-white focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-300 uppercase italic ${isExistingCustomer ? 'bg-emerald-50/30' : ''}`}
+                                className={`w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-[1.25rem] text-sm font-black tracking-tight text-slate-900 dark:text-white focus:bg-white dark:focus:bg-white/5 focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 dark:focus:border-indigo-500/60 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-500 uppercase italic ${isExistingCustomer ? 'bg-emerald-50/30 dark:bg-emerald-500/10' : ''}`}
                             />
                         </div>
                     </div>
@@ -185,7 +185,7 @@ export default function LeadForm({ isOpen, onClose, onSubmit }: LeadFormProps) {
                     <div className="grid grid-cols-2 gap-4">
                         {/* Pincode */}
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
+                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">
                                 PINCODE
                             </label>
                             <div className="relative group">
@@ -198,14 +198,14 @@ export default function LeadForm({ isOpen, onClose, onSubmit }: LeadFormProps) {
                                     value={pincode}
                                     onChange={(e) => setPincode(e.target.value.replace(/\D/g, ''))}
                                     placeholder="000000"
-                                    className={`w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-[1.25rem] text-sm font-black tracking-tight focus:bg-white focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-300 ${isExistingCustomer && pincode ? 'bg-emerald-50/30' : ''}`}
+                                    className={`w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-[1.25rem] text-sm font-black tracking-tight text-slate-900 dark:text-white focus:bg-white dark:focus:bg-white/5 focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 dark:focus:border-indigo-500/60 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-500 ${isExistingCustomer && pincode ? 'bg-emerald-50/30 dark:bg-emerald-500/10' : ''}`}
                                 />
                             </div>
                         </div>
 
                         {/* Date of Birth */}
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
+                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">
                                 BIRTH RECORD
                             </label>
                             <div className="relative group">
@@ -222,7 +222,7 @@ export default function LeadForm({ isOpen, onClose, onSubmit }: LeadFormProps) {
                                             setDob(parsed);
                                         }
                                     }}
-                                    className={`w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-[1.25rem] text-xs font-black tracking-tight focus:bg-white focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all uppercase ${isExistingCustomer && dob ? 'bg-emerald-50/30' : ''}`}
+                                    className={`w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-[1.25rem] text-xs font-black tracking-tight text-slate-900 dark:text-white focus:bg-white dark:focus:bg-white/5 focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 dark:focus:border-indigo-500/60 outline-none transition-all uppercase ${isExistingCustomer && dob ? 'bg-emerald-50/30 dark:bg-emerald-500/10' : ''}`}
                                 />
                             </div>
                         </div>
@@ -235,14 +235,14 @@ export default function LeadForm({ isOpen, onClose, onSubmit }: LeadFormProps) {
                         type="button"
                         variant="ghost"
                         onClick={onClose}
-                        className="flex-1 h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest text-slate-400 hover:text-slate-900"
+                        className="flex-1 h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white dark:hover:bg-white/5"
                     >
                         Abort
                     </Button>
                     <Button
                         type="submit"
                         isLoading={isSubmitting}
-                        className="flex-[2] h-14 bg-slate-900 hover:bg-black text-white rounded-2xl shadow-2xl shadow-slate-200 font-black text-[11px] uppercase tracking-[0.2em] transition-all"
+                        className="flex-[2] h-14 bg-slate-900 hover:bg-black dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white rounded-2xl shadow-2xl shadow-slate-200 dark:shadow-none font-black text-[11px] uppercase tracking-[0.2em] transition-all"
                     >
                         Create Identity <Send size={16} className="ml-3 group-hover:translate-x-1 transition-transform" />
                     </Button>

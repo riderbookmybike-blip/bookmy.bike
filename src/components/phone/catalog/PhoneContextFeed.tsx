@@ -10,6 +10,7 @@ import { PhoneBottomNav } from '@/components/phone/layout/PhoneBottomNav';
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import { groupProductsByModel } from '@/utils/variantGrouping';
 import { useI18n } from '@/components/providers/I18nProvider';
+import { MobileFeedSkeleton } from '@/components/store/CatalogSkeleton';
 
 export const PhoneContextFeed = () => {
     const { items, isLoading } = useSystemCatalogLogic();
@@ -71,8 +72,12 @@ export const PhoneContextFeed = () => {
 
     if (isLoading) {
         return (
-            <div className="h-screen w-full bg-black flex items-center justify-center">
-                <div className="text-white text-sm font-bold uppercase tracking-widest">{t('Loading...')}</div>
+            <div className="w-full bg-slate-50 dark:bg-black relative overscroll-none" style={{ height: '100dvh', maxHeight: '100dvh' }}>
+                <PhoneHeader />
+                <div className="w-full h-[100dvh] overflow-y-auto pb-4 overscroll-y-contain no-scrollbar">
+                    <MobileFeedSkeleton count={3} />
+                </div>
+                <PhoneBottomNav />
             </div>
         );
     }

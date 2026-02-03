@@ -5,6 +5,7 @@ import { Camera, Save, Building2, MapPin, Phone, Mail, Globe } from 'lucide-reac
 import { createClient } from '@/lib/supabase/client';
 import Image from 'next/image';
 import { checkServiceability } from '@/actions/serviceArea';
+import LogoCropper from '@/components/ui/LogoCropper';
 
 const formatStudioId = (value: string) => {
     const upper = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -21,6 +22,7 @@ interface IdentitySettingsProps {
 export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsProps) {
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [cropSource, setCropSource] = useState<string | null>(null);
     const [pincodeLookupLoading, setPincodeLookupLoading] = useState(false);
     const [pincodeLookup, setPincodeLookup] = useState<{
         district?: string;
@@ -44,16 +46,26 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
         const file = e.target.files?.[0];
         if (!file) return;
 
+        const reader = new FileReader();
+        reader.onload = () => {
+            setCropSource(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+
+        // Allow re-selecting the same file
+        e.target.value = '';
+    };
+
+    const handleCroppedUpload = async (blob: Blob) => {
         setUploading(true);
         try {
             const supabase = createClient();
-            const fileExt = file.name.split('.').pop();
-            const fileName = `logo-${dealer.id}-${Math.random()}.${fileExt}`;
+            const fileName = `logo-${dealer.id}-${Date.now()}.png`;
             const filePath = `${fileName}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('tenants')
-                .upload(filePath, file, { upsert: true });
+                .upload(filePath, blob, { upsert: true, contentType: blob.type || 'image/png' });
 
             if (uploadError) throw uploadError;
 
@@ -68,6 +80,10 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
 
             if (updateError) throw updateError;
 
+            setCropSource(null);
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('tenantLogoUpdated', { detail: publicUrl }));
+            }
             onUpdate(); // Refresh parent
         } catch (error) {
             console.error('Error uploading logo:', error);
@@ -150,7 +166,14 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
     };
 
     return (
-        <div className="space-y-8" >
+        <div className="space-y-8">
+            {cropSource && (
+                <LogoCropper
+                    src={cropSource}
+                    onCancel={() => setCropSource(null)}
+                    onComplete={handleCroppedUpload}
+                />
+            )}
             <div className="flex flex-col md:flex-row gap-8 items-start">
 
                 {/* Logo Section */}

@@ -44,9 +44,10 @@ interface ProfileDropdownProps {
     onLoginClick: () => void;
     scrolled: boolean;
     theme: string;
+    tone?: 'light' | 'dark';
 }
 
-export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdownProps) {
+export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: ProfileDropdownProps) {
     const [user, setUser] = useState<User | null>(null);
     const [memberships, setMemberships] = useState<Membership[]>([]);
     const [activeTab, setActiveTab] = useState<'account' | 'workspace'>('account');
@@ -227,14 +228,18 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
         return labels[role] || role;
     };
 
-    const isLight = mounted ? theme === 'light' : true;
+    const isLight = tone === 'light' || (tone !== 'dark' && (mounted ? theme === 'light' : true));
+    const isDarkSurface = !isLight;
+    const triggerClass = isDarkSurface
+        ? 'border-white/20 text-white hover:bg-white hover:text-black hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]'
+        : 'border-slate-200/80 text-slate-900 hover:bg-slate-100 hover:border-slate-200 dark:border-white/10 dark:text-white dark:hover:bg-white/10';
 
     // Trigger Button Logic matches original
     if (!user) {
         return (
             <button
                 onClick={onLoginClick}
-                className="w-10 h-10 rounded-full border border-white/20 text-white flex items-center justify-center transition-all duration-300 hover:bg-white hover:text-black hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] group"
+                className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all duration-300 group ${triggerClass}`}
                 title="Sign In"
             >
                 <UserIcon size={20} />
@@ -293,15 +298,12 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme }: ProfileDropdo
         visible: { opacity: 1, x: 0 },
     };
 
-    // Force glass style when not scrolled to match MarketplaceHeader icons
-    const isGlass = !scrolled;
-
     return (
         <>
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 ref={dropdownRef}
-                className={`h-10 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 flex items-center gap-3 group z-[101] border-white/20 text-white hover:bg-white hover:text-black hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]`}
+                className={`h-10 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 flex items-center gap-3 group z-[101] ${triggerClass}`}
             >
                 <div className={`w-8 h-8 rounded-full overflow-hidden bg-brand-primary flex items-center justify-center text-black font-bold text-xs ring-2 transition-all ${scrolled || theme === 'dark' ? 'ring-white/20 group-hover:ring-transparent' : 'ring-slate-100 group-hover:ring-brand-primary/20'
                     }`}>

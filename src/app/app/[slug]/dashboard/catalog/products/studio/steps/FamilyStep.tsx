@@ -63,7 +63,26 @@ export default function FamilyStep({ brand, template, familyData, families = [],
 
     const handleAutoSave = async () => {
         if (!formData.name) return;
+
+        // Validation: engine_cc is mandatory for NEW model creation (not edit)
+        const isNewModel = !familyData?.id;
+        const engineCc = formData.specs?.engine_cc;
+
+        if (isNewModel && (!engineCc || engineCc === '' || engineCc === 0)) {
+            toast.error('Engine Capacity (CC) is mandatory for new model creation');
+            return;
+        }
+
         setIsSaving(true);
+
+        // Store old values for comparison (only for edits)
+        const oldValues = familyData ? {
+            name: familyData.name,
+            engine_cc: familyData.specs?.engine_cc,
+            price_base: familyData.price_base,
+            hsn_code: familyData.hsn_code
+        } : null;
+
         try {
             const supabase = createClient();
             const payload = {
@@ -107,7 +126,32 @@ export default function FamilyStep({ brand, template, familyData, families = [],
 
             if (data) {
                 onSave(data);
-                toast.success('Model saved successfully');
+
+                // DB-confirmed toast with old vs new comparison
+                if (oldValues) {
+                    // Build change summary from DB-confirmed data
+                    const changes: string[] = [];
+                    if (oldValues.name !== data.name) changes.push(`Name: ${oldValues.name} → ${data.name}`);
+                    if (oldValues.engine_cc !== data.specs?.engine_cc) changes.push(`CC: ${oldValues.engine_cc || '—'} → ${data.specs?.engine_cc || '—'}`);
+                    if (oldValues.price_base !== data.price_base) changes.push(`Price: ₹${oldValues.price_base} → ₹${data.price_base}`);
+                    if (oldValues.hsn_code !== data.hsn_code) changes.push(`HSN: ${oldValues.hsn_code || '—'} → ${data.hsn_code || '—'}`);
+
+                    if (changes.length > 0) {
+                        toast.success(
+                            <div className="text-xs">
+                                <div className="font-bold mb-1">✅ Saved to Database</div>
+                                <div className="text-slate-500 space-y-0.5">
+                                    {changes.map((c, i) => <div key={i}>{c}</div>)}
+                                </div>
+                            </div>,
+                            { duration: 5000 }
+                        );
+                    } else {
+                        toast.success('Model saved successfully');
+                    }
+                } else {
+                    toast.success(`✅ New model "${data.name}" created successfully`);
+                }
             }
         } catch (error: any) {
             console.error('Save failed details:', JSON.stringify(error, null, 2));

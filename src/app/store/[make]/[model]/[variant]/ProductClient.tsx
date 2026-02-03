@@ -26,6 +26,7 @@ interface ProductClientProps {
     initialAccessories?: any[];
     initialServices?: any[];
     initialFinance?: any;
+    initialDealerId?: string | null;
 }
 
 export default function ProductClient({
@@ -39,7 +40,8 @@ export default function ProductClient({
     registrationRule, // Added
     initialAccessories = [],
     initialServices = [],
-    initialFinance
+    initialFinance,
+    initialDealerId = null
 }: ProductClientProps) {
     const [clientAccessories, setClientAccessories] = useState(initialAccessories);
     const [clientColors, setClientColors] = useState(product.colors);
@@ -67,17 +69,37 @@ export default function ProductClient({
                 const supabase = createClient();
                 const { data: lead } = await supabase
                     .from('crm_leads')
-                    .select('id, full_name')
+                    .select('id, customer_name')
                     .eq('id', leadIdFromUrl)
-                    .single() as { data: { id: string, full_name: string } | null, error: any };
+                    .single() as { data: { id: string, customer_name: string } | null, error: any };
 
                 if (lead) {
-                    setLeadContext({ id: lead.id, name: lead.full_name });
+                    setLeadContext({ id: lead.id, name: lead.customer_name });
                 }
             };
             fetchLead();
         }
     }, [leadIdFromUrl]);
+
+    // Synchronize URL Pincode with Local Preference
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const urlPincode = searchParams.get('pincode');
+        const cached = localStorage.getItem('bkmb_user_pincode');
+
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            const prefPincode = parsed?.pincode;
+
+            // If URL is Palghar but user has a different preference, sync URL
+            if (urlPincode === 'Palghar' && prefPincode && prefPincode !== 'Palghar') {
+                const newParams = new URLSearchParams(searchParams.toString());
+                newParams.set('pincode', prefPincode);
+                router.replace(`?${newParams.toString()}`, { scroll: false });
+            }
+        }
+    }, [searchParams, router]);
 
     const { data, actions } = useSystemPDPLogic({
         initialPrice,
@@ -126,10 +148,8 @@ export default function ProductClient({
         product,
         initialAccessories,
         initialLocation,
-        selectedColor // This relies on the color state from useSystemPDPLogic, but wait... 
-        // Circular dependency risk: useSystemPDPLogic needs 'colors', but 'dealerColors' comes from hook.
-        // Solution: Pass 'dealerColors' to useSystemPDPLogic. 
-        // 'selectedColor' is state managed BY useSystemPDPLogic, so initially it might be undefined/default.
+        selectedColor, // This relies on the color state from useSystemPDPLogic
+        overrideDealerId: initialDealerId // Prioritize this dealer
     });
 
     // Update client state when hook returns new data
@@ -179,18 +199,62 @@ export default function ProductClient({
         }
     };
 
+    // SSPP v1: Map color slug to actual SKU UUID for database operations
+    const colorSkuId = clientColors?.find((c: any) => c.id === selectedColor || c.name === selectedColor)?.skuId || selectedColor;
+
     const handleConfirmQuote = async () => {
         if (!leadContext) return;
 
         try {
+            const resolvedColor =
+                data.colors?.find((c: any) => c.id === selectedColor || c.skuId === selectedColor || c.name === selectedColor) ||
+                clientColors?.find((c: any) => c.id === selectedColor || c.skuId === selectedColor || c.name === selectedColor);
+            const colorName = resolvedColor?.name || selectedColor;
+            const variantName = product.variant || variantParam;
+            const labelBase = [product.model, variantName].filter(Boolean).join(' ');
+            const displayLabel = `${labelBase}${colorName ? ` (${colorName})` : ''}`;
+
+            const selectedAccessoryItems = (data.activeAccessories || [])
+                .filter((a: any) => selectedAccessories.includes(a.id))
+                .map((a: any) => ({
+                    id: a.id,
+                    name: a.description || a.displayName || a.name,
+                    price: a.price,
+                    discountPrice: a.discountPrice,
+                    inclusionType: a.inclusionType
+                }));
+
+            const selectedServiceItems = (data.activeServices || [])
+                .filter((s: any) => selectedServices.includes(s.id))
+                .map((s: any) => ({
+                    id: s.id,
+                    name: s.name,
+                    price: s.price,
+                    discountPrice: s.discountPrice
+                }));
+
+            const selectedInsuranceAddonItems = (data.availableInsuranceAddons || [])
+                .filter((i: any) => selectedInsuranceAddons.includes(i.id))
+                .map((i: any) => ({
+                    id: i.id,
+                    name: i.name,
+                    price: i.price,
+                    discountPrice: i.discountPrice,
+                    inclusionType: i.inclusionType
+                }));
+
             const commercials = {
-                label: `${product.model} ${variantParam} (${selectedColor})`,
+                label: displayLabel,
+                color_name: colorName,
                 ex_showroom: baseExShowroom,
                 grand_total: totalOnRoad,
                 pricing_snapshot: {
                     accessories: selectedAccessories,
+                    accessory_items: selectedAccessoryItems,
                     services: selectedServices,
+                    service_items: selectedServiceItems,
                     insurance_addons: selectedInsuranceAddons,
+                    insurance_addon_items: selectedInsuranceAddonItems,
                     rto_type: data.regType,
                     emi_tenure: data.emiTenure,
                     down_payment: data.userDownPayment
@@ -201,7 +265,7 @@ export default function ProductClient({
                 tenant_id: product.tenant_id, // Ensure tenant_id is available
                 lead_id: leadContext.id,
                 variant_id: product.id,
-                color_id: selectedColor, // Assuming selectedColor is the color_id/SKU ID
+                color_id: colorSkuId,
                 commercials
             });
 
@@ -209,7 +273,8 @@ export default function ProductClient({
                 toast.success(`Quote saved for ${leadContext.name}`);
                 router.back(); // Go back to leads
             } else {
-                toast.error('Failed to save quote');
+                console.error('Server reported failure saving quote in PDP:', result);
+                toast.error(result?.message || 'Failed to save quote');
             }
         } catch (error) {
             console.error('Save quote error:', error);
@@ -305,11 +370,12 @@ export default function ProductClient({
                 productName={`${product.make} ${product.model}`}
                 model={product.model}
                 variant={variantParam}
-                color={selectedColor}
+                variantId={product.id}
+                color={colorSkuId}
                 priceSnapshot={{
                     exShowroom: data.baseExShowroom,
                     onRoad: data.totalOnRoad,
-                    taluka: initialLocation?.taluka || initialLocation?.city,
+                    taluka: resolvedLocation?.taluka || initialLocation?.taluka || initialLocation?.city,
                     schemeId: initialFinance?.scheme?.id
                 }}
             />

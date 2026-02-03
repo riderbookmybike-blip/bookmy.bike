@@ -209,26 +209,13 @@ export function useSystemPDPLogic({
     const accessoriesPrice = activeAccessories
         .filter(acc => selectedAccessories.includes(acc.id))
         .reduce((sum, acc) => {
-            // Priority 1: Zero price if BUNDLE logic applies (assuming the backend sends isFree or inclusionType)
-            // The previous check "inclusionType === 'BUNDLE'" returns sum (adding 0).
-            // However, we need to ensure that if it has a price but is 'free' due to bundle, it enters as 0.
-
-            // If the item is marked as bundled, it's free.
-
             const qty = quantities[acc.id] || 1;
-            // Priority 2: Discount Price (Effective Price)
-            // If discountPrice is present (and >= 0), use it. otherwise use price.
-            // Note: Some legacy data might have discountPrice: 0 meaning NO discount. 
-            // We should check if discountPrice is arguably set. 
-            // Better logic: `isActiveOffer ? discountPrice : price` but here we assume pre-calculated.
 
-            // FIX: The user saw "-₹0" and "Line Total ₹2500" for an item that should be free?
-            // If "Activa Silver" (bundled) was shown, it probably had inclusionType='BUNDLE'.
-            // In that case, this reducer adds 0. So the TOTAL on road is correct (it didn't add 2500).
-            // BUT the UI "Line Total" in MasterPDP might be calculating it differently?
-            // MasterPDP says: `Math.max(billedAmount, finalPrice)` where billedAmount = finalPrice * qty.
+            // BUNDLE Logic: If bundled, it is free (0 price)
+            if (acc.inclusionType === 'BUNDLE') {
+                return sum; // + 0
+            }
 
-            // Let's ensure consistency.
             const effectivePrice = (acc.discountPrice !== undefined && acc.discountPrice < acc.price)
                 ? acc.discountPrice
                 : acc.price;
@@ -240,6 +227,12 @@ export function useSystemPDPLogic({
         .filter(acc => selectedAccessories.includes(acc.id))
         .reduce((sum, acc) => {
             const qty = quantities[acc.id] || 1;
+
+            // BUNDLE Logic: If bundled, discount is 100% of price
+            if (acc.inclusionType === 'BUNDLE') {
+                return sum + ((acc.price || 0) * qty);
+            }
+
             const effectivePrice = (acc.discountPrice !== undefined && acc.discountPrice < acc.price)
                 ? acc.discountPrice
                 : acc.price;

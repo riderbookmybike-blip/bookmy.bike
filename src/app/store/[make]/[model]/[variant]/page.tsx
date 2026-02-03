@@ -1,5 +1,6 @@
 import React from 'react';
 import { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 import { resolveLocation } from '@/utils/locationResolver';
 import { createClient } from '@/lib/supabase/server';
 import { slugify } from '@/utils/slugs';
@@ -19,6 +20,7 @@ type Props = {
         pincode?: string;
         dealer?: string;
         leadId?: string;
+        quoteId?: string;
     }>;
 };
 
@@ -29,7 +31,7 @@ interface CatalogItem {
     slug: string;
     price_base: number;
     specs: any;
-    brand: { name: string };
+    brand: { name: string; slug?: string };
     parent: { name: string; slug: string }; // The Model
 }
 
@@ -97,16 +99,43 @@ const matchesAccessoryCompatibility = (
     model: string,
     variant: string
 ) => {
-    if (!suitableFor) return false;
+    // STRICT: Accessories MUST have explicit suitability tags.
+    // If no suitability is defined, accessory is NOT shown.
+    // Only accessories tagged with Universal/All OR matching brand/model/variant are shown.
+    const suitabilityRaw = Array.isArray(suitableFor) ? suitableFor.join(',') : suitableFor;
+    if (!suitabilityRaw || suitabilityRaw.trim() === '') return false;
 
-    const tags = suitableFor.split(',').map((t) => t.trim()).filter(Boolean);
-    if (tags.length === 0) return false;
+    const tags = suitabilityRaw.split(',').map((t) => t.trim()).filter(Boolean);
+    if (tags.length === 0) return false; // No valid tags = excluded
 
     const brandNorm = normalizeSuitabilityTag(brand || '');
     const modelNorm = normalizeSuitabilityTag(model || '');
     const variantNorm = normalizeSuitabilityTag(variant || '');
-    const brandModel = `${brandNorm} ${modelNorm}`.trim();
-    const brandModelVariant = `${brandModel} ${variantNorm}`.trim();
+
+    const buildKey = (...parts: string[]) =>
+        parts.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+
+    const variantHasModel = Boolean(modelNorm && variantNorm.includes(modelNorm));
+    const variantHasBrand = Boolean(brandNorm && variantNorm.includes(brandNorm));
+
+    const brandModel = buildKey(brandNorm, modelNorm);
+    const brandVariant = buildKey(variantHasBrand ? '' : brandNorm, variantNorm);
+    const modelVariant = buildKey(variantHasModel ? '' : modelNorm, variantNorm);
+    const brandModelVariant = buildKey(
+        variantHasBrand ? '' : brandNorm,
+        variantHasModel ? '' : modelNorm,
+        variantNorm
+    );
+
+    const matchKeys = new Set([
+        brandNorm,
+        modelNorm,
+        variantNorm,
+        brandModel,
+        brandVariant,
+        modelVariant,
+        brandModelVariant
+    ].filter(Boolean));
 
     return tags.some((tag) => {
         const normalized = normalizeSuitabilityTag(tag);
@@ -124,10 +153,8 @@ const matchesAccessoryCompatibility = (
             return Boolean(brandNorm && modelNorm && normalized.includes(brandNorm) && normalized.includes(modelNorm));
         }
 
-        if (brandNorm && normalized === brandNorm) return true;
         if (brandNorm && normalized.startsWith(brandNorm) && normalized.includes('all models')) return true;
-        if (brandModel && normalized === brandModel) return true;
-        if (brandModelVariant && normalized === brandModelVariant) return true;
+        if (matchKeys.has(normalized)) return true;
 
         return false;
     });
@@ -186,7 +213,7 @@ export default async function Page({ params, searchParams }: Props) {
         .from('cat_items')
         .select(`
             id, name, slug, price_base, specs,
-            brand:cat_brands(name),
+            brand:cat_brands(name, slug),
             parent:cat_items!parent_id(name, slug)
         `)
         .in('slug', possibleSlugs)
@@ -219,6 +246,33 @@ export default async function Page({ params, searchParams }: Props) {
     }
 
     const item = variantItem as unknown as CatalogItem;
+
+    const makeSlug = (item.brand as any)?.slug || slugify(item.brand?.name || resolvedParams.make || '');
+    const modelSlug = item.parent?.slug || slugify(item.parent?.name || resolvedParams.model || '');
+    const rawVariantSlug = item.slug || slugify(item.name || resolvedParams.variant || '');
+    let cleanVariantSlug = rawVariantSlug;
+
+    if (rawVariantSlug?.startsWith(`${makeSlug}-${modelSlug}-`)) {
+        cleanVariantSlug = rawVariantSlug.replace(`${makeSlug}-${modelSlug}-`, '');
+    } else if (rawVariantSlug?.startsWith(`${modelSlug}-`)) {
+        cleanVariantSlug = rawVariantSlug.replace(`${modelSlug}-`, '');
+    } else if (rawVariantSlug?.startsWith(`${makeSlug}-`)) {
+        cleanVariantSlug = rawVariantSlug.replace(`${makeSlug}-`, '');
+    }
+
+    if (!cleanVariantSlug) cleanVariantSlug = rawVariantSlug;
+
+    const canonicalPath = `/store/${makeSlug}/${modelSlug}/${cleanVariantSlug}`;
+    const currentPath = `/store/${resolvedParams.make}/${resolvedParams.model}/${resolvedParams.variant}`;
+
+    if (canonicalPath.toLowerCase() !== currentPath.toLowerCase()) {
+        const query = new URLSearchParams();
+        Object.entries(resolvedSearchParams || {}).forEach(([key, value]) => {
+            if (value) query.set(key, String(value));
+        });
+        const queryString = query.toString();
+        redirect(queryString ? `${canonicalPath}?${queryString}` : canonicalPath);
+    }
 
     // 2.5 Fetch SKUs EARLY (Needed for Market Offer Filtering)
     // We need to know the SKU IDs of this variant to check if a dealer has an offer for THIS bike.
@@ -264,10 +318,12 @@ export default async function Page({ params, searchParams }: Props) {
         .limit(1);
 
     // Fetch Accessories & Services
+    // Only fetch SKU-type items (final products), not FAMILY/VARIANT hierarchy items
     const { data: accessoriesData } = await supabase
         .from('cat_items')
         .select('*, brand:cat_brands(name), template:cat_templates!inner(category, name)')
         .eq('template.category', 'ACCESSORY')
+        .eq('type', 'SKU')  // Only final SKUs, not FAMILY or VARIANT
         .eq('status', 'ACTIVE');
 
     const { data: servicesData } = await supabase
@@ -447,13 +503,13 @@ export default async function Page({ params, searchParams }: Props) {
     }
     // 3.5 Fetch Accessory Rules (Dealer Pricing)
     // NOW VALID: We use the winningDealerId to fetch specific rules
-    let accessoryRules: Map<string, { offer: number, inclusion: string }> = new Map();
+    let accessoryRules: Map<string, { offer: number, inclusion: string, isActive: boolean }> = new Map();
     const accessoryIds = (accessoriesData || []).map((a: any) => a.id);
 
     if (accessoryIds.length > 0 && winningDealerId) {
         const { data: rules } = await supabase
             .from('id_dealer_pricing_rules')
-            .select('vehicle_color_id, offer_amount, inclusion_type')
+            .select('vehicle_color_id, offer_amount, inclusion_type, is_active')
             .in('vehicle_color_id', accessoryIds)
             .eq('tenant_id', winningDealerId) // STRICT DEALER MATCH
             .eq('state_code', stateCode);
@@ -461,7 +517,8 @@ export default async function Page({ params, searchParams }: Props) {
         rules?.forEach((r: any) => {
             accessoryRules.set(r.vehicle_color_id, {
                 offer: Number(r.offer_amount),
-                inclusion: r.inclusion_type
+                inclusion: r.inclusion_type,
+                isActive: r.is_active
             });
         });
         console.log('PDP Debug: Accessory Rules loaded:', accessoryRules.size, 'for dealer:', winningDealerId);
@@ -530,9 +587,22 @@ export default async function Page({ params, searchParams }: Props) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const accessories = (accessoriesData || [])
-        .filter((a: any) =>
-            matchesAccessoryCompatibility(a.specs?.suitable_for, productMake, productModel, productVariant)
-        )
+        .filter((a: any) => {
+            const dealerRule = accessoryRules.get(a.id);
+
+            // HYBRID LOGIC:
+            // 1. If dealer has an ACTIVE rule for this accessory -> INCLUDE
+            // 2. Otherwise, fall back to suitable_for compatibility check
+            const hasDealerRule = dealerRule && dealerRule.isActive !== false;
+            const matchesSuitability = matchesAccessoryCompatibility(
+                a.specs?.suitable_for,
+                productMake,
+                productModel,
+                productVariant
+            );
+
+            return hasDealerRule || matchesSuitability;
+        })
         .map((a: any) => {
             const rule = accessoryRules.get(a.id);
             const offer = rule ? rule.offer : 0; // Negative for discount
@@ -622,6 +692,7 @@ export default async function Page({ params, searchParams }: Props) {
                 scheme: resolvedFinance.scheme,
                 logic: resolvedFinance.logic // Trace logic
             } : undefined}
+            initialDealerId={winningDealerId}
         />
     );
 }

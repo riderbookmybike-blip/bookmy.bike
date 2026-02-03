@@ -2713,6 +2713,7 @@ export type Database = {
         Row: {
           config: Json | null
           created_at: string | null
+          display_id: string | null
           email: string | null
           id: string
           location: string | null
@@ -2722,11 +2723,13 @@ export type Database = {
           pincode: string | null
           slug: string
           status: string | null
+          studio_id: string | null
           type: string
         }
         Insert: {
           config?: Json | null
           created_at?: string | null
+          display_id?: string | null
           email?: string | null
           id?: string
           location?: string | null
@@ -2736,11 +2739,13 @@ export type Database = {
           pincode?: string | null
           slug: string
           status?: string | null
+          studio_id?: string | null
           type: string
         }
         Update: {
           config?: Json | null
           created_at?: string | null
+          display_id?: string | null
           email?: string | null
           id?: string
           location?: string | null
@@ -2750,6 +2755,7 @@ export type Database = {
           pincode?: string | null
           slug?: string
           status?: string | null
+          studio_id?: string | null
           type?: string
         }
         Relationships: []
@@ -2759,6 +2765,7 @@ export type Database = {
           addons: Json
           created_at: string | null
           display_id: string | null
+          effective_from: string | null
           gst_percentage: number | null
           id: string
           idv_percentage: number | null
@@ -2776,6 +2783,7 @@ export type Database = {
           addons?: Json
           created_at?: string | null
           display_id?: string | null
+          effective_from?: string | null
           gst_percentage?: number | null
           id?: string
           idv_percentage?: number | null
@@ -2793,6 +2801,7 @@ export type Database = {
           addons?: Json
           created_at?: string | null
           display_id?: string | null
+          effective_from?: string | null
           gst_percentage?: number | null
           id?: string
           idv_percentage?: number | null

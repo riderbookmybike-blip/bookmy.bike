@@ -187,11 +187,27 @@ export default function AttributeInput({ attr, value, onChange, placeholder, cla
     }
 
     // Default to Input (Text/Number)
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const rawValue = e.target.value;
+        if (attr.type === 'number') {
+            // Parse as number, but allow empty string for clearing
+            const numValue = rawValue === '' ? '' : Number(rawValue);
+            onChange(numValue);
+        } else {
+            onChange(rawValue);
+        }
+    };
+
+    // For numbers, handle 0 correctly (don't show empty)
+    const displayValue = attr.type === 'number'
+        ? (value === '' || value === null || value === undefined ? '' : value)
+        : (value || '');
+
     return (
         <input
             type={attr.type === 'number' ? 'number' : 'text'}
-            value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
+            value={displayValue}
+            onChange={handleChange}
             className={baseClass}
             placeholder={placeholder || (attr.type === 'number' ? '0' : '...')}
         />

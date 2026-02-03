@@ -23,7 +23,8 @@ import {
     Car,
     Palette,
     Wrench,
-    ShieldCheck
+    ShieldCheck,
+    Eye
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -98,7 +99,7 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
     const refreshTemplates = async () => {
         const supabase = createClient();
         const { data } = await supabase.from('cat_templates').select('*').order('name');
-        if (data) setTemplates(data);
+        if (data) setTemplates(data as unknown as CatalogTemplate[]);
     };
 
     const openCreateModal = () => {
@@ -295,12 +296,22 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
                                 <LayoutDashboard size={24} />
                             </div>
 
-                            <button
-                                onClick={() => openEditModal(t)}
-                                className="absolute top-4 right-4 p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
-                            >
-                                <Edit size={16} />
-                            </button>
+                            <div className="absolute top-4 right-4 flex gap-2">
+                                <button
+                                    onClick={() => alert('Product Preview Component Pending')}
+                                    className="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
+                                    title="Preview"
+                                >
+                                    <Eye size={16} />
+                                </button>
+                                <button
+                                    onClick={() => openEditModal(t)}
+                                    className="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
+                                    title="Edit"
+                                >
+                                    <Edit size={16} />
+                                </button>
+                            </div>
                         </div>
 
                         <span className="text-[10px] font-black uppercase tracking-wider text-slate-300 dark:text-slate-600 group-hover:text-indigo-500 transition-colors block mb-1">

@@ -25,6 +25,7 @@ import IdentitySettings from '@/components/dealers/settings/IdentitySettings';
 import LocationSettings from '@/components/dealers/settings/LocationSettings';
 import ComplianceSettings from '@/components/dealers/settings/ComplianceSettings';
 import FinanceSettings from '@/components/dealers/settings/FinanceSettings';
+import AddMemberModal from '@/components/dealers/AddMemberModal';
 
 interface DealerProfileContentProps {
     dealerId: string;
@@ -42,6 +43,9 @@ export default function DealerProfileContent({ dealerId, superAdminMode = false,
     // Config Sub-tab
     const [configTab, setConfigTab] = useState('identity');
 
+    // Add Member Modal
+    const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+
     useEffect(() => {
         if (dealerId) {
             fetchDealerDetails(dealerId);
@@ -54,11 +58,36 @@ export default function DealerProfileContent({ dealerId, superAdminMode = false,
         const { data: tenant } = await supabase.from('id_tenants').select('*').eq('id', id).single();
         if (tenant) {
             setDealer(tenant);
+
+            // Fetch team records
             const { data: team } = await supabase
                 .from('id_team')
-                .select('*, user:user_id(full_name, email, primary_phone, avatar_url)')
+                .select('*')
                 .eq('tenant_id', id);
-            if (team) setMembers(team);
+
+            if (team && team.length > 0) {
+                // Get member details separately since no FK exists between id_team.user_id and id_members
+                const memberIds = team.map(t => t.user_id).filter((uid): uid is string => uid !== null);
+
+                if (memberIds.length > 0) {
+                    const { data: memberDetails } = await supabase
+                        .from('id_members')
+                        .select('id, full_name, email, primary_phone')
+                        .in('id', memberIds);
+
+                    // Merge member details with team records
+                    const enrichedTeam = team.map(t => ({
+                        ...t,
+                        user: memberDetails?.find((m: any) => m.id === t.user_id) || null
+                    }));
+
+                    setMembers(enrichedTeam);
+                } else {
+                    setMembers(team);
+                }
+            } else {
+                setMembers([]);
+            }
         }
         setLoading(false);
     };
@@ -171,7 +200,10 @@ export default function DealerProfileContent({ dealerId, superAdminMode = false,
                                     <h3 className="text-lg font-bold text-white">Team Members</h3>
                                     <p className="text-xs text-slate-500">Manage access and roles.</p>
                                 </div>
-                                <button className="text-[10px] font-black text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 px-4 py-2 rounded-lg transition-colors border border-indigo-500/20 uppercase tracking-wider">
+                                <button
+                                    onClick={() => setIsAddMemberOpen(true)}
+                                    className="text-[10px] font-black text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 px-4 py-2 rounded-lg transition-colors border border-indigo-500/20 uppercase tracking-wider"
+                                >
                                     + Add Member
                                 </button>
                             </div>
@@ -214,6 +246,14 @@ export default function DealerProfileContent({ dealerId, superAdminMode = false,
                     </div>
                 </div>
             </div>
+
+            {/* Add Member Modal */}
+            <AddMemberModal
+                isOpen={isAddMemberOpen}
+                onClose={() => setIsAddMemberOpen(false)}
+                tenantId={dealerId}
+                onSuccess={() => fetchDealerDetails(dealerId)}
+            />
         </div>
     );
 }

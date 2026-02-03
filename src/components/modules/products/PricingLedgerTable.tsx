@@ -154,10 +154,20 @@ export default function PricingLedgerTable({
         setPrevSelectedCategory(selectedCategory);
         setCurrentPage(1);
         if (selectedCategory && selectedCategory !== 'ALL') {
-            const cat = selectedCategory.toLowerCase();
-            if (['vehicles', 'accessories', 'service'].includes(cat)) {
-                setActiveCategory(cat as CategoryType);
-            }
+            const rawCat = selectedCategory.toLowerCase();
+            let mappedCat: CategoryType = 'vehicles'; // Default
+
+            if (rawCat === 'accessory' || rawCat === 'accessories') mappedCat = 'accessories';
+            else if (rawCat === 'service' || rawCat === 'services') mappedCat = 'service';
+            else if (rawCat === 'vehicle' || rawCat === 'vehicles') mappedCat = 'vehicles';
+
+            setActiveCategory(mappedCat);
+        } else {
+            // If ALL, maybe default to vehicles or handle differently? 
+            // For now, let's keep it as is, or reset to vehicles.
+            // The Logic below filters by activeCategory. If we want ALL, we might need activeCategory to be null?
+            // But the UI seems tab-based logic. Let's assume Vehicle is default.
+            setActiveCategory('vehicles');
         }
     }
 
@@ -463,10 +473,13 @@ export default function PricingLedgerTable({
                                             className="rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500/20 cursor-pointer w-4 h-4"
                                         />
                                     </th>
-                                    {['model', 'variant', 'color'].map((key) => {
-                                        const values = getUniqueValues(key as keyof SKUPriceRow);
-                                        const currentFilter = filters[key as keyof SKUPriceRow];
-                                        const isActive = activeFilterColumn === key;
+                                    {/* DYAMIC COLUMNS based on Category */}
+                                    {(activeCategory === 'vehicles' ? ['model', 'variant', 'color', 'engineCc'] : ['product', 'color']).map((key) => {
+                                        // MAPPING: 'product' maps to 'model' for data operations
+                                        const dataKey = key === 'product' ? 'model' : key as keyof SKUPriceRow;
+                                        const values = getUniqueValues(dataKey);
+                                        const currentFilter = filters[dataKey];
+                                        const isActive = activeFilterColumn === key; // Use visual key for UI state
                                         const statusLabels: Record<string, string> = {
                                             'ACTIVE': 'Live',
                                             'DRAFT': 'New',
@@ -478,10 +491,10 @@ export default function PricingLedgerTable({
                                             <th key={key} className={`relative px-6 py-5 text-[10px] font-black uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30 group/header ${key === 'status' ? 'text-right' : 'text-slate-500 dark:text-slate-400'}`}>
                                                 <div className={`flex items-center gap-1 ${key === 'status' ? 'justify-end' : 'justify-between'}`}>
                                                     <div
-                                                        onClick={() => handleSort(key as keyof SKUPriceRow)}
+                                                        onClick={() => handleSort(dataKey)}
                                                         className={`flex items-center gap-1 hover:text-emerald-600 transition-colors cursor-pointer ${key === 'status' ? 'text-slate-500' : ''}`}
                                                     >
-                                                        {key} <ArrowUpDown size={12} className={`opacity-30 ${sortConfig?.key === key ? 'text-emerald-600 opacity-100' : ''}`} />
+                                                        {key === 'engineCc' ? 'Power' : key === 'product' ? 'Product' : key} <ArrowUpDown size={12} className={`opacity-30 ${sortConfig?.key === dataKey ? 'text-emerald-600 opacity-100' : ''}`} />
                                                     </div>
 
                                                     <button
@@ -507,7 +520,7 @@ export default function PricingLedgerTable({
                                                                 <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Filter {key}</span>
                                                                 {currentFilter && (
                                                                     <button
-                                                                        onClick={() => handleFilter(key as keyof SKUPriceRow, '')}
+                                                                        onClick={() => handleFilter(dataKey, '')}
                                                                         className="text-[9px] font-black text-emerald-600 uppercase tracking-tighter hover:underline"
                                                                     >
                                                                         Clear
@@ -516,7 +529,7 @@ export default function PricingLedgerTable({
                                                             </div>
                                                             <div className="max-h-64 overflow-y-auto p-2 scrollbar-thin">
                                                                 <button
-                                                                    onClick={() => handleFilter(key as keyof SKUPriceRow, '')}
+                                                                    onClick={() => handleFilter(dataKey, '')}
                                                                     className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${!currentFilter || currentFilter === '' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                                                                 >
                                                                     All {key}s
@@ -527,7 +540,7 @@ export default function PricingLedgerTable({
                                                                     values.map(val => (
                                                                         <button
                                                                             key={val}
-                                                                            onClick={() => handleFilter(key as keyof SKUPriceRow, val)}
+                                                                            onClick={() => handleFilter(dataKey, val)}
                                                                             className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${currentFilter === val ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                                                                         >
                                                                             {key === 'status' ? (statusLabels[val] || val) : val}
@@ -578,6 +591,12 @@ export default function PricingLedgerTable({
                                     {!isAums && activeCategory === 'vehicles' && (
                                         <th className="px-8 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-right">
                                             On-Road (Server)
+                                        </th>
+                                    )}
+
+                                    {activeCategory !== 'vehicles' && (
+                                        <th className="px-6 py-5 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border-b border-emerald-100 dark:border-emerald-900/30 text-right bg-emerald-50/80 dark:bg-emerald-900/20">
+                                            Offer (₹)
                                         </th>
                                     )}
 
@@ -678,17 +697,43 @@ export default function PricingLedgerTable({
                                                     className="rounded border-slate-300 dark:border-slate-700 text-emerald-600 focus:ring-2 focus:ring-emerald-500/20 cursor-pointer w-4 h-4"
                                                 />
                                             </td>
-                                            <td className="px-6 py-5">
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-tight">{sku.model}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-5">
-                                                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase">{sku.variant}</span>
-                                            </td>
+
+                                            {/* VEHICLE COLUMNS */}
+                                            {activeCategory === 'vehicles' && (
+                                                <>
+                                                    <td className="px-6 py-5">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-tight">{sku.model}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-5">
+                                                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase">{sku.variant}</span>
+                                                    </td>
+                                                </>
+                                            )}
+
+                                            {/* ACCESSORY COLUMNS - Composite Product */}
+                                            {activeCategory !== 'vehicles' && (
+                                                <td className="px-6 py-5">
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                                            {sku.category} / {sku.subCategory} / {sku.model} / {sku.variant}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                            )}
+
                                             <td className="px-6 py-5">
                                                 <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase leading-relaxed">{sku.color}</span>
                                             </td>
+
+                                            {activeCategory === 'vehicles' && (
+                                                <td className="px-6 py-5">
+                                                    <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+                                                        {sku.engineCc ? `${Number(sku.engineCc).toFixed(2)}cc` : '—'}
+                                                    </span>
+                                                </td>
+                                            )}
 
                                             <td className="px-6 py-5 text-right">
                                                 <div className="flex justify-end items-center gap-2">
@@ -739,22 +784,41 @@ export default function PricingLedgerTable({
                                             )}
 
                                             {activeCategory !== 'vehicles' && (
-                                                <td className="px-6 py-5 text-center">
-                                                    <select
-                                                        value={sku.inclusionType || 'OPTIONAL'}
-                                                        onChange={(e) => {
-                                                            const type = e.target.value as 'MANDATORY' | 'OPTIONAL' | 'BUNDLE';
-                                                            onUpdateInclusion(sku.id, type);
-                                                            if (type === 'MANDATORY' || type === 'BUNDLE') onUpdateOffer(sku.id, -sku.exShowroom);
-                                                            else onUpdateOffer(sku.id, 0);
-                                                        }}
-                                                        className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest outline-none border transition-all ${sku.inclusionType === 'MANDATORY' ? 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-900/30' : sku.inclusionType === 'BUNDLE' ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/30' : 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'}`}
-                                                    >
-                                                        <option value="OPTIONAL">Optional</option>
-                                                        <option value="MANDATORY">Mandatory</option>
-                                                        <option value="BUNDLE">Bundle</option>
-                                                    </select>
-                                                </td>
+                                                <>
+                                                    <td className="px-6 py-5 text-center">
+                                                        <select
+                                                            value={sku.inclusionType || 'OPTIONAL'}
+                                                            onChange={(e) => {
+                                                                const type = e.target.value as 'MANDATORY' | 'OPTIONAL' | 'BUNDLE';
+                                                                onUpdateInclusion(sku.id, type);
+                                                                if (type === 'MANDATORY' || type === 'BUNDLE') onUpdateOffer(sku.id, -sku.exShowroom);
+                                                                else onUpdateOffer(sku.id, 0);
+                                                            }}
+                                                            className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest outline-none border transition-all ${sku.inclusionType === 'MANDATORY' ? 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-900/30' : sku.inclusionType === 'BUNDLE' ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/30' : 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'}`}
+                                                        >
+                                                            <option value="OPTIONAL">Optional</option>
+                                                            <option value="MANDATORY">Mandatory</option>
+                                                            <option value="BUNDLE">Bundle</option>
+                                                        </select>
+                                                    </td>
+                                                    <td className="px-6 py-5 text-right">
+                                                        <input
+                                                            type="number"
+                                                            value={offerDelta}
+                                                            readOnly={!isSelected || !isEditMode}
+                                                            title="Offer Amount. Negative = discount."
+                                                            onChange={(e) => {
+                                                                onUpdateOffer(sku.id, Number(e.target.value));
+                                                            }}
+                                                            className={`w-28 rounded-lg px-3 py-1.5 text-sm font-black text-right outline-none transition-all
+                                                                ${(!isSelected || !isEditMode)
+                                                                    ? 'bg-transparent border-transparent text-emerald-700 dark:text-emerald-400 cursor-default'
+                                                                    : 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                                                                }
+                                                            `}
+                                                        />
+                                                    </td>
+                                                </>
                                             )}
 
                                             <td className="px-8 py-5 text-right bg-emerald-50/20 dark:bg-emerald-900/10">
@@ -780,7 +844,7 @@ export default function PricingLedgerTable({
                                                     />
                                                 ) : (
                                                     <span className="font-black text-[13px] text-emerald-700 tracking-tight">
-                                                        ₹{(sku.exShowroom + (sku.offerAmount || 0)).toLocaleString()}
+                                                        ₹{Math.max(0, sku.exShowroom + (sku.offerAmount || 0)).toLocaleString()}
                                                     </span>
                                                 )}
                                             </td>

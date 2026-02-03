@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { submitLead } from '@/actions/lead';
-import { X, CheckCircle, Loader2, Briefcase } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, CheckCircle, Loader2, Briefcase, ChevronRight, Phone, User, MapPin } from 'lucide-react';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { createClient } from '@/lib/supabase/client';
 import { normalizeIndianPhone } from '@/lib/utils/inputFormatters';
+import { checkExistingCustomer, createQuoteAction, createLeadAction } from '@/actions/crm';
+import { toast } from 'sonner';
 
 interface LeadCaptureModalProps {
     isOpen: boolean;
@@ -15,193 +16,331 @@ interface LeadCaptureModalProps {
     variant?: string;
     color?: string;
     priceSnapshot?: any;
+    variantId?: string;
 }
 
-export function LeadCaptureModal({ isOpen, onClose, productName, model, variant, color, priceSnapshot }: LeadCaptureModalProps) {
+export function LeadCaptureModal({
+    isOpen,
+    onClose,
+    productName,
+    model,
+    variant,
+    color,
+    priceSnapshot,
+    variantId
+}: LeadCaptureModalProps) {
     const { tenantId, userRole, memberships } = useTenant();
+    const [step, setStep] = useState<0 | 1>(0); // 0: Phone entry, 1: Name/Pincode entry
+    const [phone, setPhone] = useState('');
+    const [name, setName] = useState('');
+    const [pincode, setPincode] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [memberId, setMemberId] = useState<string | null>(null);
 
     // Detect if current user is a staff member of any dealership
     const isStaff = userRole && userRole !== 'MEMBER';
     const primaryMembership = memberships?.find(m => m.tenant_id === tenantId);
 
+    // Reset state when modal opens/closes
+    useEffect(() => {
+        if (!isOpen) {
+            setStep(0);
+            setPhone('');
+            setName('');
+            setPincode('');
+            setError(null);
+            setMemberId(null);
+            setSuccess(false);
+        }
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
-    async function handleSubmit(formData: FormData) {
-        setIsSubmitting(true);
+    async function handlePhoneSubmit(e: React.FormEvent) {
+        e.preventDefault();
         setError(null);
 
+        if (phone.length !== 10) {
+            setError('Please enter a valid 10-digit mobile number');
+            return;
+        }
+
+        setIsSubmitting(true);
         try {
-            // Append context data hiddenly if not present in form
-            formData.append('model', model);
-            if (variant) formData.append('variant', variant);
-            if (color) formData.append('color', color);
-            if (priceSnapshot) formData.append('priceSnapshot', JSON.stringify(priceSnapshot));
+            const { data: existingUser, memberId: existingMemberId } = await checkExistingCustomer(phone);
 
-            // Referral Data
-            if (isStaff) {
-                const supabase = createClient();
-                const { data: { user } } = await supabase.auth.getUser();
-                if (user) {
-                    formData.append('referrer_user_id', user.id);
-                    if (tenantId) formData.append('referrer_tenant_id', tenantId);
+            if (existingUser && existingMemberId) {
+                // User exists, create a lead for them first to link the quote
+                const leadResult = await createLeadAction({
+                    customer_name: existingUser.name || 'Unknown',
+                    customer_phone: phone,
+                    customer_pincode: existingUser.pincode || undefined,
+                    customer_dob: existingUser.dob || undefined,
+                    model: model,
+                    owner_tenant_id: tenantId || undefined,
+                    source: 'PDP_QUICK_QUOTE'
+                });
+
+                if (leadResult.success && leadResult.leadId) {
+                    await handleCreateQuote(leadResult.leadId);
+                } else {
+                    // Fallback to basic success if lead fails but user exists
+                    setSuccess(true);
                 }
-            }
-
-            const result = await submitLead(formData);
-
-            if (result.success) {
-                setSuccess(true);
             } else {
-                setError(result.message || 'Something went wrong');
+                // New user, move to step 1
+                setStep(1);
             }
-        } catch (e) {
+        } catch (err) {
+            console.error('Phone lookup error:', err);
+            setError('System error during lookup. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+
+    async function handleDetailSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        setError(null);
+
+        if (name.length < 2) {
+            setError('Please enter a valid name');
+            return;
+        }
+        if (pincode.length !== 6) {
+            setError('Please enter a valid 6-digit pincode');
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            // 1. Create Lead via CRM action (which also creates/updates member profile)
+            const leadResult = await createLeadAction({
+                customer_name: name,
+                customer_phone: phone,
+                customer_pincode: pincode,
+                model: model,
+                owner_tenant_id: tenantId || undefined,
+                source: isStaff ? 'DEALER_REFERRAL' : 'WEBSITE_PDP'
+            });
+
+            if (leadResult.success && leadResult.leadId) {
+                // 2. Create Quote Linked to the Lead
+                await handleCreateQuote(leadResult.leadId);
+            } else {
+                setError(leadResult.success === false ? 'Failed to save details' : 'System error');
+            }
+        } catch (err) {
+            console.error('Detail submission error:', err);
             setError('Network error. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
     }
 
+    async function handleCreateQuote(lId: string) {
+        if (!variantId || !tenantId) {
+            setSuccess(true); // Fallback if IDs missing but lead identified
+            return;
+        }
+
+        try {
+            const result = await createQuoteAction({
+                tenant_id: tenantId,
+                lead_id: lId,
+                variant_id: variantId,
+                color_id: color,
+                commercials: priceSnapshot,
+            });
+
+            if (result.success) {
+                setSuccess(true);
+            } else {
+                console.error('Server reported failure creating quote in modal:', result);
+                setError(result.message || 'Details saved, but quote generation failed. Our team will contact you.');
+                setSuccess(true); // Still show success as the lead is captured
+            }
+        } catch (err) {
+            console.error('Quote creation error:', err);
+            setSuccess(true);
+        }
+    }
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 relative overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-white/10 p-8 relative overflow-hidden">
 
                 {/* Close Button */}
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    className="absolute top-6 right-6 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/5 transition-all active:scale-95"
                 >
-                    <X className="w-5 h-5 text-slate-500" />
+                    <X className="w-5 h-5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-white" />
                 </button>
 
                 {success ? (
-                    <div className="text-center py-10 space-y-6 animate-in zoom-in-50 duration-500">
-                        <div className="relative w-24 h-24 mx-auto">
+                    <div className="text-center py-10 space-y-8 animate-in zoom-in-95 duration-500">
+                        <div className="relative w-32 h-32 mx-auto">
                             <div className="absolute inset-0 bg-emerald-500/20 rounded-full animate-ping" />
-                            <div className="relative w-24 h-24 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 border-2 border-emerald-500/50">
-                                <CheckCircle className="w-12 h-12" />
+                            <div className="relative w-32 h-32 bg-emerald-50 dark:bg-emerald-950/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 border-4 border-emerald-500/30">
+                                <CheckCircle className="w-16 h-16" />
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <h3 className="text-3xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white leading-none">Exclusive Deal Locked!</h3>
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-500">Priority Callback Initiated</p>
+                        <div className="space-y-3">
+                            <h3 className="text-4xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white leading-tight">
+                                EXCLUSIVE DEAL<br />LOCKED!
+                            </h3>
+                            <p className="inline-block px-4 py-1 bg-emerald-100 dark:bg-emerald-900/40 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-500 rounded-full">
+                                Priority Callback Initiated
+                            </p>
                         </div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
-                            Our dealer partner has received your configuration for the <strong>{productName}</strong>. You'll receive a VIP call within 30 minutes.
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
+                            Our dealer partner has received your configuration for the <span className="text-slate-900 dark:text-white font-bold">{productName}</span>.
+                            You'll receive a VIP call within 30 minutes.
                         </p>
                         <button
                             onClick={onClose}
-                            className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black uppercase italic tracking-widest rounded-2xl hover:scale-[1.02] transition-all shadow-xl"
+                            className="w-full py-5 bg-slate-950 dark:bg-white text-white dark:text-slate-950 font-black uppercase italic tracking-widest rounded-3xl hover:translate-y-[-2px] active:translate-y-[1px] transition-all shadow-xl shadow-slate-900/20 dark:shadow-white/10"
                         >
                             Back to Gallery
                         </button>
                     </div>
                 ) : (
-                    <div className="space-y-6">
-                        {isStaff && (
-                            <div className="bg-blue-600/10 border border-blue-600/20 rounded-2xl p-4 flex items-center gap-4 animate-in fade-in slide-in-from-top-2 duration-500">
-                                <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white flex-shrink-0 animate-pulse">
-                                    <Briefcase size={20} />
+                    <div className="space-y-8">
+                        {isStaff && step === 0 && (
+                            <div className="bg-blue-600/5 border border-blue-600/10 rounded-3xl p-5 flex items-center gap-5 animate-in slide-in-from-top-4 duration-500">
+                                <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white flex-shrink-0 shadow-lg shadow-blue-600/20">
+                                    <Briefcase size={24} />
                                 </div>
-                                <div className="flex-1">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Staff Referral Mode</p>
-                                    <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Booking for a customer from <span className="text-blue-600">{primaryMembership?.tenants?.name || 'your dealership'}</span>.</p>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 mb-1 leading-none">Staff Referral Mode</p>
+                                    <p className="text-xs font-bold text-slate-600 dark:text-slate-400 truncate">
+                                        Booking for a customer from <span className="text-blue-600 dark:text-blue-400">{primaryMembership?.tenants?.name || 'your dealership'}</span>
+                                    </p>
                                 </div>
                             </div>
                         )}
 
-                        <div className="text-center space-y-1">
-                            <h3 className="text-xl font-black uppercase italic text-slate-900 dark:text-white">
-                                {isStaff ? 'Book for Customer' : 'Get Best Offer'}
+                        <div className="text-center space-y-2">
+                            <h3 className="text-2xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white leading-none">
+                                {step === 0
+                                    ? (isStaff ? 'Identify Customer' : 'Get Personal Quote')
+                                    : 'Complete Profile'
+                                }
                             </h3>
-                            <p className="text-xs font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400">
+                            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-brand-primary">
                                 {productName}
                             </p>
                         </div>
 
                         {error && (
-                            <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-bold rounded-xl text-center">
+                            <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold rounded-2xl text-center animate-in shake duration-300">
                                 {error}
                             </div>
                         )}
 
-                        <form action={handleSubmit} className="space-y-4">
-                            {/* Honeypot */}
-                            <input type="text" name="hp_check" className="hidden" tabIndex={-1} autoComplete="off" />
-
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">
-                                    {isStaff ? 'Customer Name' : 'Your Name'}
-                                </label>
-                                <input
-                                    type="text"
-                                    name="name"
-                                    required
-                                    placeholder={isStaff ? "Customer's full name" : "Enter your full name"}
-                                    className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-blue-500 outline-none font-bold text-slate-900 dark:text-white transition-all"
-                                />
-                            </div>
-
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">
-                                    {isStaff ? 'Customer Mobile' : 'Mobile Number'}
-                                </label>
-                                <div className="relative">
-                                    <span className="absolute left-4 top-3.5 text-slate-400 font-bold">+91</span>
-                                    <input
-                                        type="tel"
-                                        name="phone"
-                                        required
-                                        pattern="[6-9][0-9]{9}"
-                                        maxLength={10}
-                                        placeholder="Mobile Number"
-                                        onInput={(e) => {
-                                            e.currentTarget.value = normalizeIndianPhone(e.currentTarget.value);
-                                        }}
-                                        onPaste={(e) => {
-                                            const text = e.clipboardData.getData('text');
-                                            const normalized = normalizeIndianPhone(text);
-                                            if (normalized) {
-                                                e.preventDefault();
-                                                e.currentTarget.value = normalized;
-                                            }
-                                        }}
-                                        className="w-full pl-12 pr-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-blue-500 outline-none font-bold text-slate-900 dark:text-white transition-all font-mono"
-                                    />
+                        {step === 0 ? (
+                            <form onSubmit={handlePhoneSubmit} className="space-y-6">
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between px-1">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                            {isStaff ? "Customer's Mobile" : "Confirm Mobile"}
+                                        </label>
+                                        <Phone className="w-3 h-3 text-slate-400" />
+                                    </div>
+                                    <div className="relative group">
+                                        <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-600 font-black tracking-tighter text-lg select-none">+91</span>
+                                        <input
+                                            type="tel"
+                                            required
+                                            value={phone}
+                                            onChange={(e) => setPhone(normalizeIndianPhone(e.target.value))}
+                                            placeholder="00000 00000"
+                                            maxLength={10}
+                                            className="w-full pl-16 pr-6 py-5 bg-slate-50 dark:bg-black/20 border-2 border-transparent focus:border-brand-primary/50 dark:focus:border-brand-primary/30 rounded-3xl outline-none font-black text-xl text-slate-900 dark:text-white tracking-[0.1em] transition-all placeholder:text-slate-200 dark:placeholder:text-slate-800"
+                                            autoFocus
+                                        />
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Taluka</label>
-                                <input
-                                    type="text"
-                                    name="taluka"
-                                    placeholder="Customer's Taluka"
-                                    className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-blue-500 outline-none font-bold text-slate-900 dark:text-white transition-all"
-                                />
-                            </div>
+                                <button
+                                    type="submit"
+                                    disabled={isSubmitting || phone.length !== 10}
+                                    className="w-full group py-5 bg-brand-primary hover:bg-[#E0A200] disabled:bg-slate-100 dark:disabled:bg-slate-800 text-black disabled:text-slate-400 font-black uppercase italic tracking-widest rounded-3xl transition-all shadow-xl shadow-brand-primary/20 disabled:shadow-none flex items-center justify-center gap-4 active:scale-[0.98]"
+                                >
+                                    {isSubmitting ? (
+                                        <Loader2 className="w-6 h-6 animate-spin text-black" />
+                                    ) : (
+                                        <>
+                                            Continue
+                                            <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                        </>
+                                    )}
+                                </button>
+                            </form>
+                        ) : (
+                            <form onSubmit={handleDetailSubmit} className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                                <div className="space-y-6">
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between px-1">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Full Name</label>
+                                            <User className="w-3 h-3 text-slate-400" />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            required
+                                            value={name}
+                                            onChange={(e) => setName(e.target.value)}
+                                            placeholder="Enter full name"
+                                            className="w-full px-6 py-4 bg-slate-50 dark:bg-black/20 border-2 border-transparent focus:border-brand-primary/50 rounded-3xl outline-none font-bold text-slate-900 dark:text-white transition-all"
+                                            autoFocus
+                                        />
+                                    </div>
 
-                            <button
-                                type="submit"
-                                disabled={isSubmitting}
-                                className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase italic tracking-wider rounded-xl transition-all hover:scale-[1.02] shadow-lg shadow-blue-600/20 disabled:opacity-70 disabled:hover:scale-100 flex items-center justify-center gap-2"
-                            >
-                                {isSubmitting ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                        Submitting Lead...
-                                    </>
-                                ) : (
-                                    isStaff ? 'Submit Referral' : 'Get Best Offer'
-                                )}
-                            </button>
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between px-1">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pincode</label>
+                                            <MapPin className="w-3 h-3 text-slate-400" />
+                                        </div>
+                                        <input
+                                            type="tel"
+                                            required
+                                            value={pincode}
+                                            onChange={(e) => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                            placeholder="6-digit Pincode"
+                                            className="w-full px-6 py-4 bg-slate-50 dark:bg-black/20 border-2 border-transparent focus:border-brand-primary/50 rounded-3xl outline-none font-bold text-slate-900 dark:text-white transition-all tracking-[0.2em]"
+                                        />
+                                    </div>
+                                </div>
 
-                            <p className="text-[9px] text-center text-slate-400 dark:text-slate-500 leading-relaxed">
-                                By clicking above, you agree to receive a callback/WhatsApp from our authorized dealer partners.
-                            </p>
-                        </form>
+                                <div className="flex gap-3 pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setStep(0)}
+                                        className="px-6 py-5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black uppercase italic tracking-widest rounded-3xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95"
+                                    >
+                                        Back
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={isSubmitting}
+                                        className="flex-1 py-5 bg-brand-primary hover:bg-[#E0A200] text-black font-black uppercase italic tracking-widest rounded-3xl transition-all shadow-xl shadow-brand-primary/20 active:scale-[0.98] flex items-center justify-center gap-3"
+                                    >
+                                        {isSubmitting ? (
+                                            <Loader2 className="w-6 h-6 animate-spin" />
+                                        ) : (
+                                            'Create Quote'
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+
+                        <p className="text-[9px] text-center text-slate-400 dark:text-slate-600 leading-relaxed font-medium uppercase tracking-wider px-4">
+                            By continuing, you agree to receive a callback/WhatsApp from our authorized dealer partners.
+                        </p>
                     </div>
                 )}
             </div>

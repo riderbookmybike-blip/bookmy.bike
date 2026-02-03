@@ -368,7 +368,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                             </AnimatePresence>
                         </div>
                         <ThemeToggle className="w-10 h-10 rounded-full border border-white/20 text-white hover:bg-white hover:text-black hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] transition-all duration-300" />
-                        <ProfileDropdown onLoginClick={onLoginClick} scrolled={!isHeaderTransparent} theme={theme} />
+                        <ProfileDropdown onLoginClick={onLoginClick} scrolled={!isHeaderTransparent} theme={theme} tone="dark" />
                     </div>
 
                     <button

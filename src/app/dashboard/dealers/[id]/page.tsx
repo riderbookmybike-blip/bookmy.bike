@@ -54,13 +54,35 @@ export default function DealerProfilePage({ params }: { params: Promise<{ id: st
         if (tenant) {
             setDealer(tenant);
 
-            // Fetch Team
+            // Fetch Team Members
             const { data: team } = await supabase
                 .from('id_team')
-                .select('*, user:user_id(full_name, email, primary_phone, avatar_url)')
+                .select('*')
                 .eq('tenant_id', dealerId);
 
-            if (team) setMembers(team);
+            if (team && team.length > 0) {
+                // Get member details separately since no FK exists
+                const memberIds = team.map(t => t.user_id).filter((id): id is string => id !== null);
+
+                if (memberIds.length > 0) {
+                    const { data: memberDetails } = await supabase
+                        .from('id_members')
+                        .select('id, full_name, email, primary_phone')
+                        .in('id', memberIds);
+
+                    // Merge member details with team records
+                    const enrichedTeam = team.map(t => ({
+                        ...t,
+                        user: memberDetails?.find((m: any) => m.id === t.user_id) || null
+                    }));
+
+                    setMembers(enrichedTeam);
+                } else {
+                    setMembers(team);
+                }
+            } else {
+                setMembers([]);
+            }
         }
         setLoading(false);
     };

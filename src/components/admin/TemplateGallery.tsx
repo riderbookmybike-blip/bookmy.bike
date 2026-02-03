@@ -8,7 +8,9 @@ import {
     Trash2,
     Plus,
     CheckCircle2,
-    Loader2
+    Loader2,
+    Eye,
+    X
 } from 'lucide-react';
 
 interface Template {
@@ -37,6 +39,7 @@ export function TemplateGallery({ initialTemplates, initialAssignments = [] }: T
     const router = useRouter();
     const [viewMode, setViewMode] = useState<'GALLERY' | 'ASSIGNMENTS'>('GALLERY');
     const [loadingId, setLoadingId] = useState<string | null>(null);
+    const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
 
     const tenantOptions = useMemo(() => {
         const dataTenants = Array.from(new Set(initialTemplates.map(t => t.tenant_type).filter(Boolean)));
@@ -278,6 +281,13 @@ export function TemplateGallery({ initialTemplates, initialAssignments = [] }: T
                                             <Edit size={16} />
                                         </button>
                                         <button
+                                            className="p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-indigo-600"
+                                            title="Preview"
+                                            onClick={() => setPreviewTemplate(tmpl)}
+                                        >
+                                            <Eye size={16} />
+                                        </button>
+                                        <button
                                             className="p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-emerald-600"
                                             title="Clone"
                                             onClick={() => handleClone(tmpl)}
@@ -303,6 +313,75 @@ export function TemplateGallery({ initialTemplates, initialAssignments = [] }: T
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {/* PREVIEW MODAL */}
+            {previewTemplate && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-10">
+                    <div
+                        className="absolute inset-0 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300"
+                        onClick={() => setPreviewTemplate(null)}
+                    />
+                    <div className="relative w-full max-w-6xl bg-slate-50 dark:bg-[#0b1224] rounded-[40px] shadow-2xl border border-white/10 overflow-hidden flex flex-col animate-in zoom-in-95 slide-in-from-bottom-10 duration-500">
+                        {/* Modal Header */}
+                        <div className="p-8 pb-0 flex justify-between items-start">
+                            <div>
+                                <div className="flex items-center gap-3 mb-2">
+                                    <span className="px-3 py-1 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-lg">LIVE PREVIEW</span>
+                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 tracking-widest">{previewTemplate.tenant_type} TEMPLATE</span>
+                                </div>
+                                <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">{previewTemplate.name}</h2>
+                            </div>
+                            <button
+                                onClick={() => setPreviewTemplate(null)}
+                                className="p-4 bg-white dark:bg-white/5 rounded-full text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all hover:rotate-90"
+                            >
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        {/* Modal Body - Mock Dashboard Representation */}
+                        <div className="p-8 flex-1 overflow-y-auto">
+                            <div className="bg-white dark:bg-slate-900/40 rounded-[32px] border border-slate-200 dark:border-white/5 p-8 min-h-[500px] flex flex-col gap-6">
+                                {/* Mock Shell UI */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    {[1, 2, 3, 4].map(i => (
+                                        <div key={i} className="h-32 bg-slate-50 dark:bg-white/5 rounded-3xl border border-slate-100 dark:border-white/5 animate-pulse" />
+                                    ))}
+                                </div>
+                                <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                    <div className="lg:col-span-2 h-[400px] bg-slate-50 dark:bg-white/5 rounded-[40px] border border-slate-100 dark:border-white/5 animate-pulse" />
+                                    <div className="space-y-4">
+                                        <div className="h-48 bg-slate-50 dark:bg-white/5 rounded-[32px] border border-slate-100 dark:border-white/5 animate-pulse" />
+                                        <div className="h-48 bg-slate-50 dark:bg-white/5 rounded-[32px] border border-slate-100 dark:border-white/5 animate-pulse" />
+                                    </div>
+                                </div>
+
+                                <div className="absolute inset-0 flex items-center justify-center bg-transparent pointer-events-none">
+                                    <div className="bg-white dark:bg-slate-900 px-8 py-4 rounded-2xl shadow-2xl border border-indigo-500/30 flex flex-col items-center gap-3 animate-bounce pointer-events-auto">
+                                        <Loader2 className="animate-spin text-indigo-600" size={32} />
+                                        <span className="text-xs font-black uppercase tracking-widest text-indigo-600">Simulating Workspace...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-8 pt-0 flex justify-end gap-3">
+                            <button
+                                onClick={() => setPreviewTemplate(null)}
+                                className="px-8 py-4 bg-slate-200 dark:bg-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all"
+                            >
+                                Close Preview
+                            </button>
+                            <button
+                                className="px-8 py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-indigo-500/20"
+                            >
+                                Edit Layout
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

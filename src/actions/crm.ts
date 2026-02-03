@@ -168,7 +168,7 @@ export async function getLeads(tenantId?: string, status?: string) {
     const { data, error } = await query;
     if (error) {
         console.error('Database error in getLeads:', error);
-        throw error;
+        return [];
     }
 
     if (!data) {
@@ -264,12 +264,11 @@ export async function createLeadAction(data: {
     customer_pincode?: string;
     customer_dob?: string;
     customer_taluka?: string;
-    interest_model?: string; // Optional because frontend might pass 'model'
-    model?: string;          // Added to handle frontend 'model' field
-    owner_tenant_id: string; // The dealership creating the lead
+    interest_model?: string;
+    model?: string;
+    owner_tenant_id?: string;
     source?: string;
 }) {
-    // Map 'model' to 'interest_model' if needed
     const interestModel = data.interest_model || data.model || 'GENERAL_ENQUIRY';
     const startTime = Date.now();
 
@@ -282,8 +281,22 @@ export async function createLeadAction(data: {
     });
 
     console.log('[DEBUG] createLeadAction triggered by client:', data.customer_phone);
+
     try {
-        // Use the pre-imported adminClient from '@/lib/supabase/admin'
+        // Handle owner_tenant_id fallback
+        let effectiveOwnerId = data.owner_tenant_id;
+        if (!effectiveOwnerId) {
+            const { data: settings } = await (adminClient
+                .from('app_settings' as any)
+                .select('default_owner_tenant_id')
+                .single() as any);
+            effectiveOwnerId = settings?.default_owner_tenant_id;
+        }
+
+        if (!effectiveOwnerId) {
+            console.error('[DEBUG] No owner tenant identified');
+            return { success: false, message: 'No owner tenant identified for lead creation' };
+        }
 
         // 1. Check/Create Customer Profile
         console.log('[DEBUG] Step 1: getOrCreateCustomerProfile...');
@@ -313,15 +326,16 @@ export async function createLeadAction(data: {
         const { data: lead, error } = await adminClient
             .from('crm_leads')
             .insert({
-                customer_id: customerId, // Linked to profile
+                customer_id: customerId,
                 customer_name: data.customer_name,
                 customer_phone: data.customer_phone,
                 customer_pincode: data.customer_pincode || null,
                 customer_taluka: data.customer_taluka || null,
                 customer_dob: data.customer_dob || null,
                 interest_model: interestModel,
-                interest_text: interestModel, // Populate explicitly
-                owner_tenant_id: data.owner_tenant_id,
+                interest_text: interestModel,
+                interest_variant: data.model === 'GENERAL_ENQUIRY' ? null : null,
+                owner_tenant_id: effectiveOwnerId,
                 status: status,
                 is_serviceable: isServiceable,
                 source: data.source || 'WALKIN',
@@ -330,7 +344,7 @@ export async function createLeadAction(data: {
                     auto_segregated: status === 'JUNK',
                     segregation_reason: status === 'JUNK' ? 'Unserviceable Pincode' : null
                 },
-                intent_score: status === 'JUNK' ? 'COLD' : 'WARM' // Updated to match check constraint
+                intent_score: status === 'JUNK' ? 'COLD' : 'WARM'
             })
             .select()
             .single();
@@ -345,7 +359,7 @@ export async function createLeadAction(data: {
                 error: error,
                 duration_ms: Date.now() - startTime
             });
-            throw error;
+            return { success: false, message: error.message };
         }
 
         console.log('[DEBUG] Lead created successfully:', lead.id);
@@ -359,6 +373,7 @@ export async function createLeadAction(data: {
         });
         revalidatePath('/app/[slug]/leads', 'page');
         return { success: true, leadId: lead.id };
+
     } catch (error) {
         console.error('[DEBUG] Lead creation process CRASHED:', error);
         await serverLog({
@@ -369,8 +384,7 @@ export async function createLeadAction(data: {
             error: error,
             duration_ms: Date.now() - startTime
         });
-        // Throw the error so the frontend catch block can handle it and show the toast.error
-        throw error;
+        return { success: false, message: error instanceof Error ? error.message : 'Unknown error' };
     }
 }
 
@@ -388,7 +402,10 @@ export async function getQuotes(tenantId?: string) {
     }
 
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) {
+        console.error('getQuotes Error:', error);
+        return [];
+    }
 
     return data.map((q: any) => ({
         id: q.id,
@@ -412,7 +429,10 @@ export async function getQuotesForLead(leadId: string) {
         .eq('lead_id', leadId)
         .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+        console.error('getQuotesForLead Error:', error);
+        return [];
+    }
     return data || [];
 }
 
@@ -423,32 +443,40 @@ export async function createQuoteAction(data: {
     color_id?: string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     commercials: Record<string, any>;
-}) {
+}): Promise<{ success: boolean; data?: any; message?: string }> {
     const supabase = await createClient();
+    const { data: authData } = await supabase.auth.getUser();
+    const createdBy = authData?.user?.id;
 
-    // Extract flat fields for analytics
-    const onRoadPrice = data.commercials.grand_total || 0;
-    const exShowroom = data.commercials.base_price || 0;
+    // Extract flat fields for analytics - handling Multiple naming conventions
+    const comms: any = data.commercials;
+    const onRoadPrice = Math.round(comms.grand_total || comms.onRoad || 0);
+    const exShowroom = Math.round(comms.base_price || comms.exShowroom || comms.ex_showroom || 0);
 
     let nextVersion = 1;
+    const vehicleSkuId = data.color_id || data.variant_id;
 
     // 1. Versioning Logic: If Lead & SKU match, increment version
-    if (data.lead_id && data.variant_id) {
+    if (data.lead_id && vehicleSkuId) {
         const { data: existingLatest } = await supabase
             .from('crm_quotes')
-            .select('id, version')
+            .select('id, version, parent_quote_id')
             .eq('lead_id', data.lead_id)
-            .eq('vehicle_sku_id', data.variant_id)
+            .eq('vehicle_sku_id', vehicleSkuId)
             .eq('is_latest', true)
             .maybeSingle(); // Use maybeSingle to avoid error if none found
 
         if (existingLatest) {
-            nextVersion = existingLatest.version + 1;
+            nextVersion = (existingLatest.version ?? 0) + 1;
             // Mark previous as not latest
             await supabase
                 .from('crm_quotes')
                 .update({ is_latest: false })
                 .eq('id', existingLatest.id);
+            data.commercials = {
+                ...data.commercials,
+                parent_quote_id: existingLatest.parent_quote_id || existingLatest.id
+            };
         }
     }
 
@@ -459,8 +487,9 @@ export async function createQuoteAction(data: {
             lead_id: data.lead_id,
             variant_id: data.variant_id,
             color_id: data.color_id,
-            vehicle_sku_id: data.variant_id, // Map variant to SKU ID
+            vehicle_sku_id: vehicleSkuId, // Use SKU (color) when available
             commercials: data.commercials,
+            parent_quote_id: (data.commercials as any)?.parent_quote_id || null,
 
             // New Flat Columns
             on_road_price: onRoadPrice,
@@ -471,19 +500,50 @@ export async function createQuoteAction(data: {
 
             status: 'DRAFT',
             version: nextVersion,
-            is_latest: true
+            is_latest: true,
+            created_by: createdBy
         })
         .select()
         .single();
 
-    if (error) throw error;
-    revalidatePath('/app/[slug]/quotes');
-    return quote;
+    if (error) {
+        console.error("Create Quote Logic Failure:", {
+            code: error.code,
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            context: { tenant_id: data.tenant_id, lead_id: data.lead_id, sku: data.variant_id }
+        });
+        return { success: false, message: error.message };
+    }
+
+    // 2. Sync Lead Status to 'QUOTE'
+    if (data.lead_id) {
+        const { error: leadUpdateError } = await supabase
+            .from('crm_leads')
+            .update({
+                status: 'QUOTE',
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', data.lead_id);
+
+        if (leadUpdateError) {
+            console.error("Critical: Lead status sync failed after quote creation:", leadUpdateError);
+        } else {
+            revalidatePath(`/app/[slug]/leads`);
+        }
+    }
+
+    revalidatePath("/app/[slug]/quotes");
+    revalidatePath("/profile"); // Transaction Registry
+    return { success: true, data: quote };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function createQuoteVersion(parentQuoteId: string, commercials: Record<string, any>) {
+export async function createQuoteVersion(parentQuoteId: string, commercials: Record<string, any>): Promise<{ success: boolean; data?: any; message?: string }> {
     const supabase = await createClient();
+    const { data: authData } = await supabase.auth.getUser();
+    const createdBy = authData?.user?.id;
 
     // Get parent version
     const { data: parent } = await supabase
@@ -496,6 +556,11 @@ export async function createQuoteVersion(parentQuoteId: string, commercials: Rec
 
     const onRoadPrice = commercials.grand_total || 0;
 
+    await supabase
+        .from('crm_quotes')
+        .update({ is_latest: false })
+        .eq('id', parentQuoteId);
+
     const { data: quote, error } = await supabase
         .from('crm_quotes')
         .insert({
@@ -503,9 +568,9 @@ export async function createQuoteVersion(parentQuoteId: string, commercials: Rec
             lead_id: parent.lead_id,
             variant_id: parent.variant_id,
             color_id: parent.color_id,
-            vehicle_sku_id: parent.variant_id, // Map variant to SKU ID
+            vehicle_sku_id: parent.color_id || parent.variant_id, // Prefer SKU (color) when present
             parent_quote_id: parentQuoteId,
-            version: parent.version + 1,
+            version: (parent.version ?? 0) + 1,
             commercials,
 
             // New Flat Columns
@@ -516,25 +581,67 @@ export async function createQuoteVersion(parentQuoteId: string, commercials: Rec
             // vehicle_color removed to fix 42703 error
 
             status: 'DRAFT',
-            is_latest: true
+            is_latest: true,
+            created_by: createdBy
         })
         .select()
         .single();
 
-    if (error) throw error;
-    revalidatePath('/app/[slug]/quotes');
-    return quote;
+    if (error) {
+        console.error("Create Quote Version Error:", error);
+        return { success: false, message: error.message };
+    }
+    revalidatePath("/app/[slug]/quotes");
+    return { success: true, data: quote };
 }
 
-export async function confirmQuote(id: string) {
+export async function acceptQuoteAction(id: string): Promise<{ success: boolean; message?: string }> {
     const supabase = await createClient();
     const { error } = await supabase
         .from('crm_quotes')
         .update({ status: 'ACCEPTED', updated_at: new Date().toISOString() })
         .eq('id', id);
 
-    if (error) throw error;
+    if (error) {
+        console.error("Accept Quote Error:", error);
+        return { success: false, message: error.message };
+    }
     revalidatePath('/app/[slug]/quotes');
+    revalidatePath('/profile');
+    return { success: true };
+}
+
+export async function confirmQuoteAction(id: string): Promise<{ success: boolean; message?: string }> {
+    const supabase = await createClient();
+    // In later phases, this will perform a SKU lockdown check
+    const { error } = await supabase
+        .from('crm_quotes')
+        .update({ status: 'CONFIRMED', updated_at: new Date().toISOString() })
+        .eq('id', id);
+
+    if (error) {
+        console.error("Confirm Quote Error:", error);
+        return { success: false, message: error.message };
+    }
+    revalidatePath('/app/[slug]/quotes');
+    revalidatePath('/profile');
+    return { success: true };
+}
+
+export async function lockQuoteAction(id: string): Promise<{ success: boolean; message?: string }> {
+    const supabase = await createClient();
+    const { error } = await supabase
+        .from('crm_quotes')
+        .update({ status: 'LOCKED', updated_at: new Date().toISOString() })
+        .eq('id', id);
+
+    if (error) {
+        console.error("Lock Quote Error:", error);
+        return { success: false, message: error.message };
+    }
+    revalidatePath('/app/[slug]/quotes');
+    revalidatePath('/profile');
+    return { success: true };
 }
 
 // --- BOOKINGS & SALES ORDERS ---
@@ -551,10 +658,13 @@ export async function getBookings(tenantId?: string) {
     }
 
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) {
+        console.error('getBookings Error:', error);
+        return [];
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return data.map((b: { id: string; quote_id: string; quotes: any; vehicle_details: any; status: string; created_at: string; current_stage: string }) => ({
+    return data.map((b: any) => ({
         id: b.id,
         displayId: `SO-${b.id.slice(0, 4).toUpperCase()}`,
         quoteId: b.quote_id,
@@ -578,7 +688,10 @@ export async function getBookingForLead(leadId: string) {
         .eq('lead_id', leadId)
         .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+        console.error('getBookingForLead Error:', error);
+        return null;
+    }
     return data;
 }
 
@@ -593,13 +706,21 @@ export async function createBookingFromQuote(quoteId: string) {
         .single();
 
     if (!quote) throw new Error('Quote not found');
+    if (quote.status !== 'LOCKED') {
+        throw new Error('Quote must be LOCKED before converting to Booking');
+    }
 
-    // 2. Create Booking
+    // 2. Create Booking with enhanced commercial tracking
     const { data: booking, error } = await supabase
         .from('crm_bookings')
         .insert({
             tenant_id: quote.tenant_id,
             quote_id: quote.id,
+            lead_id: quote.lead_id,
+            variant_id: quote.variant_id,
+            color_id: quote.color_id,
+            grand_total: quote.on_road_price || (quote.commercials as any)?.grand_total || 0,
+            base_price: quote.ex_showroom_price || (quote.commercials as any)?.ex_showroom || 0,
             vehicle_details: {
                 variant_id: quote.variant_id,
                 commercial_snapshot: quote.commercials
@@ -610,13 +731,17 @@ export async function createBookingFromQuote(quoteId: string) {
         .select()
         .single();
 
-    if (error) throw error;
+    if (error) {
+        console.error('Create Booking Error:', error);
+        return { success: false, message: error.message };
+    }
 
-    // 3. Update Quote status
-    await supabase.from('crm_quotes').update({ status: 'ACCEPTED' }).eq('id', quoteId);
+    // 3. Update Quote status to BOOKED
+    await supabase.from('crm_quotes').update({ status: 'BOOKED' }).eq('id', quoteId);
 
     revalidatePath('/app/[slug]/sales-orders');
-    return booking;
+    revalidatePath('/profile');
+    return { success: true, data: booking };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -631,8 +756,12 @@ export async function updateBookingStage(id: string, stage: string, statusUpdate
         })
         .eq('id', id);
 
-    if (error) throw error;
+    if (error) {
+        console.error('Update Booking Stage Error:', error);
+        return { success: false, message: error.message };
+    }
     revalidatePath('/app/[slug]/sales-orders');
+    return { success: true };
 }
 
 // --- MEMBER DOCUMENTS ---
@@ -733,4 +862,75 @@ export async function getSignedUrlAction(path: string) {
     }
 
     return data.signedUrl;
+}
+
+export async function getQuotePdpUrl(quoteId: string) {
+    const supabase = await createClient();
+
+    // 1. Fetch Quote to get variant_id
+    const { data: quote, error: quoteError } = await supabase
+        .from('crm_quotes')
+        .select('variant_id, lead_id')
+        .eq('id', quoteId)
+        .single();
+
+    if (quoteError || !quote || !quote.variant_id) {
+        console.error('getQuotePdpUrl Error: Quote not found', quoteError);
+        return { success: false, error: 'Quote or Variant not found' };
+    }
+
+    // 2. Fetch Variant Item (cat_items) to get slug and parent_id (Model)
+    const { data: variant, error: variantError } = await supabase
+        .from('cat_items')
+        .select('slug, parent_id')
+        .eq('id', quote.variant_id)
+        .single();
+
+    if (variantError || !variant || !variant.parent_id) {
+        console.error('getQuotePdpUrl Error: Variant not found', variantError);
+        return { success: false, error: 'Variant not found in catalog' };
+    }
+
+    // 3. Fetch Model Item (cat_items) to get slug and brand_id
+    const { data: model, error: modelError } = await supabase
+        .from('cat_items')
+        .select('slug, brand_id')
+        .eq('id', variant.parent_id)
+        .single();
+
+    if (modelError || !model || !model.brand_id) {
+        console.error('getQuotePdpUrl Error: Model not found', modelError);
+        return { success: false, error: 'Model not found in catalog' };
+    }
+
+    // 4. Fetch Brand (cat_brands) to get slug
+    const { data: brand, error: brandError } = await supabase
+        .from('cat_brands')
+        .select('slug')
+        .eq('id', model.brand_id)
+        .single();
+
+    if (brandError || !brand) {
+        console.error('getQuotePdpUrl Error: Brand not found', brandError);
+        return { success: false, error: 'Brand not found in catalog' };
+    }
+
+    // 5. Construct URL (canonical short slug)
+    const brandSlug = brand.slug;
+    const modelSlug = model.slug;
+    const rawVariantSlug = variant.slug;
+    let cleanVariantSlug = rawVariantSlug;
+
+    if (rawVariantSlug?.startsWith(`${brandSlug}-${modelSlug}-`)) {
+        cleanVariantSlug = rawVariantSlug.replace(`${brandSlug}-${modelSlug}-`, '');
+    } else if (rawVariantSlug?.startsWith(`${modelSlug}-`)) {
+        cleanVariantSlug = rawVariantSlug.replace(`${modelSlug}-`, '');
+    } else if (rawVariantSlug?.startsWith(`${brandSlug}-`)) {
+        cleanVariantSlug = rawVariantSlug.replace(`${brandSlug}-`, '');
+    }
+
+    if (!cleanVariantSlug) cleanVariantSlug = rawVariantSlug;
+
+    const url = `/store/${brandSlug}/${modelSlug}/${cleanVariantSlug}?quoteId=${quoteId}&leadId=${quote.lead_id}`;
+    return { success: true, url };
 }

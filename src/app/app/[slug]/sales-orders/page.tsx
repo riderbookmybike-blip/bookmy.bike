@@ -43,8 +43,12 @@ export default function SalesOrdersPage() {
     const handleCreateBooking = async (orderId: string) => {
         try {
             // If it's already a booking, we might just be moving to next stage
-            await updateBookingStage(orderId, 'FINANCE', { status: 'BOOKED' });
-            fetchOrders();
+            const result = await updateBookingStage(orderId, 'FINANCE', { status: 'BOOKED' });
+            if (result?.success) {
+                fetchOrders();
+            } else {
+                console.error('Failed to update booking:', result?.message);
+            }
         } catch (error) {
             console.error('Failed to update booking:', error);
         }
@@ -52,10 +56,10 @@ export default function SalesOrdersPage() {
 
     if (isLoading) {
         return (
-        <div className="flex h-[calc(100vh-140px)] items-center justify-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10">
-            <div className="flex flex-col items-center gap-4">
-                <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-                <p className="text-xs font-black uppercase tracking-widest text-slate-400">Loading Orders...</p>
+            <div className="flex h-[calc(100vh-140px)] items-center justify-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10">
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+                    <p className="text-xs font-black uppercase tracking-widest text-slate-400">Loading Orders...</p>
                 </div>
             </div>
         );

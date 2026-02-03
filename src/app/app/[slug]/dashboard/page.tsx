@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import AdminDashboard from '@/components/dashboard/AdminDashboard';
+import DealerDashboard from '@/components/dashboard/DealerDashboard';
 
 export default async function TenantDashboard(props: { params: Promise<{ slug: string }> }) {
     const params = await props.params;
@@ -17,12 +18,10 @@ export default async function TenantDashboard(props: { params: Promise<{ slug: s
     }
 
     // 1. Fetch all memberships for the user via secure RPC
-    // Handling JSONB return for maximum flexibility and to avoid schema mismatch errors
     const { data: rawMembershipsData } = await supabase
         .rpc('get_user_memberships', { p_user_id: user.id });
 
     // Identify if we got an array (new JSONB approach) or direct data
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let allMemberships = (Array.isArray(rawMembershipsData) ? rawMembershipsData : []).map((m: any) => ({
         ...m,
         tenants: {
@@ -41,29 +40,21 @@ export default async function TenantDashboard(props: { params: Promise<{ slug: s
             .eq('user_id', user.id)
             .eq('status', 'ACTIVE');
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         allMemberships = (fallbackMemberships || []).map((m: any) => ({
             ...m,
             tenants: Array.isArray(m.id_tenants) ? m.id_tenants[0] : m.id_tenants,
         }));
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     allMemberships = allMemberships.filter((m: any) => (m.status || '').toUpperCase() === 'ACTIVE');
 
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const directMembership = (allMemberships || []).find((m: any) =>
         (m.tenants?.slug || '').toLowerCase() === normalizedSlug
     );
     let effectiveMembership = directMembership;
 
-    // FAIL-SAFE: If no direct membership exists for this specific slug, 
-    // AND the slug is 'aums', check if the user has any admin-level role in the system.
     if (!directMembership && normalizedSlug === 'aums' && allMemberships.length > 0) {
-        // Strict list of roles allowed to bypass for AUMS management portal
         const adminRoles = ['SUPER_ADMIN', 'SUPERADMIN', 'ADMIN', 'MARKETPLACE_ADMIN', 'OWNER'];
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         effectiveMembership = allMemberships.find((m: any) => {
             const userRole = (m.role || '').toUpperCase();
             return adminRoles.includes(userRole);
@@ -94,7 +85,6 @@ export default async function TenantDashboard(props: { params: Promise<{ slug: s
 
     const { tenants: tenant } = effectiveMembership;
 
-    // Map role enum to friendly label
     const roleMap: Record<string, string> = {
         OWNER: 'Owner',
         ADMIN: 'Admin',
@@ -110,20 +100,10 @@ export default async function TenantDashboard(props: { params: Promise<{ slug: s
     }
 
     return (
-        <div className="p-8">
-            <div className="mb-6">
-                <h1 className="text-3xl font-bold mb-2">{tenant.name}</h1>
-                <p className="text-gray-600 dark:text-slate-400">
-                    Welcome back! Your role: <span className="font-medium text-brand-primary">{roleLabel}</span>
-                </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow">
-                    <h3 className="font-semibold mb-2">Quick Stats</h3>
-                    <p className="text-gray-600 dark:text-slate-400">Dashboard content coming soon...</p>
-                </div>
-            </div>
-        </div>
+        <DealerDashboard
+            tenant={tenant}
+            role={effectiveMembership.role}
+            roleLabel={roleLabel}
+        />
     );
 }

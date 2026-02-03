@@ -62,6 +62,9 @@ function HistoryTooltip({ history, users }: { history: any[]; users: any[] }) {
 }
 
 export default function ReviewStep({ brand, family, template, variants, colors, skus, onUpdate }: any) {
+    // Get category from template
+    const category = template?.category || 'VEHICLE';
+    const subCategory = template?.name || 'Unknown';
     const l2Label = template?.hierarchy_config?.l2 || 'Style';
     const [filterVariant, setFilterVariant] = useState<string>('ALL');
     const [filterColor, setFilterColor] = useState<string>('ALL');
@@ -241,6 +244,8 @@ export default function ReviewStep({ brand, family, template, variants, colors, 
                                 <th onClick={() => toggleSort('SNO')} className="p-3 pl-8 text-[9px] font-black text-slate-400 uppercase tracking-widest cursor-pointer hover:text-indigo-500 transition-colors">
                                     <div className="flex items-center gap-2">S.No <ArrowUpDown size={10} /></div>
                                 </th>
+                                <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Category</th>
+                                <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Sub Category</th>
                                 <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Brand</th>
                                 <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Model</th>
                                 <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Variant</th>
@@ -336,6 +341,8 @@ export default function ReviewStep({ brand, family, template, variants, colors, 
                                         return (
                                             <tr key={sku.id || idx} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
                                                 <td className="p-3 pl-8 text-[10px] font-bold text-slate-300">{(idx + 1).toString().padStart(2, '0')}</td>
+                                                <td className="p-3 text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">{category}</td>
+                                                <td className="p-3 text-[10px] font-bold text-indigo-600 uppercase">{subCategory}</td>
                                                 <td className="p-3 text-[10px] font-bold text-slate-900 dark:text-white uppercase">{brand?.name}</td>
                                                 <td className="p-3 text-xs font-black text-slate-900 dark:text-white uppercase italic">{family?.name}</td>
                                                 <td className="p-3 text-[10px] font-bold text-slate-500 uppercase">{parentVariant?.name || sku.variant_name || '-'}</td>
@@ -386,7 +393,7 @@ export default function ReviewStep({ brand, family, template, variants, colors, 
                                     })
                             ) : (
                                 <tr>
-                                    <td colSpan={10} className="p-12 text-center text-slate-400 font-bold uppercase tracking-widest">
+                                    <td colSpan={12} className="p-12 text-center text-slate-400 font-bold uppercase tracking-widest">
                                         No SKUs generated yet.
                                     </td>
                                 </tr>
