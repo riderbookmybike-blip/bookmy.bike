@@ -22,7 +22,7 @@ export function OwnershipBento() {
                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.05] mix-blend-overlay" />
             </div>
 
-            <div className="relative z-10 w-full max-w-[1440px] px-6 mx-auto">
+            <div className="page-container relative z-10">
                 <div className="flex flex-col items-center text-center mb-20 space-y-6">
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9 }}

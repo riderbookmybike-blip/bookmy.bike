@@ -17,11 +17,12 @@ import {
     ChevronRight,
     CircleDashed,
     Car,
-    ShieldCheck
+    ShieldCheck,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CatalogItem } from '@/types/store';
-import { MOCK_REGISTRATION_RULES } from '@/lib/mock/catalogMocks';
+import { createClient } from '@/lib/supabase/client';
+import { RegistrationRule } from '@/types/registration';
 
 interface PricingStepProps {
     family: CatalogItem | null;
@@ -48,11 +49,52 @@ export default function PricingStep({ family, skus, pricingState, onUpdate, onUp
     const { referenceState, rules, approvals, overrides } = pricingState;
 
     const [activeDestination, setActiveDestination] = useState<string>('KA');
+    const [regRules, setRegRules] = useState<RegistrationRule[]>([]);
 
     const setReferenceState = (val: string) => onUpdate({ ...pricingState, referenceState: val });
     const setRules = (val: any) => onUpdate({ ...pricingState, rules: val });
     const setApprovals = (val: any) => onUpdate({ ...pricingState, approvals: val });
     const setOverrides = (val: any) => onUpdate({ ...pricingState, overrides: val });
+
+    useEffect(() => {
+        const fetchRules = async () => {
+            const supabase = createClient();
+            const { data, error } = await supabase
+                .from('cat_reg_rules')
+                .select('*')
+                .eq('status', 'ACTIVE')
+                .order('state_code');
+
+            if (error) {
+                console.error('Failed to load registration rules:', error);
+                setRegRules([]);
+                return;
+            }
+
+            const mapped = (data || []).map((r: any) => ({
+                id: r.id,
+                displayId: r.display_id,
+                ruleName: r.rule_name,
+                stateCode: r.state_code,
+                vehicleType: r.vehicle_type,
+                effectiveFrom: r.effective_from || r.created_at?.split('T')[0],
+                status: r.status,
+                stateTenure: r.state_tenure || 15,
+                bhTenure: r.bh_tenure || 2,
+                companyMultiplier: Number(r.company_multiplier) || 2,
+                components: r.components || [],
+                version: r.version || 1,
+                lastUpdated: r.updated_at || new Date().toISOString(),
+            })) as RegistrationRule[];
+
+            setRegRules(mapped);
+            if (mapped.length > 0 && (!referenceState || !mapped.some(m => m.stateCode === referenceState))) {
+                setReferenceState(mapped[0].stateCode);
+            }
+        };
+
+        fetchRules();
+    }, []);
 
     // Correctly derive a base price for the entire family if individual SKU prices are set
     const basePrice = useMemo(() => {
@@ -76,7 +118,7 @@ export default function PricingStep({ family, skus, pricingState, onUpdate, onUp
             let calculated = skuRefPrice;
             if (activeRule) {
                 if (activeRule.type === 'PERCENTAGE') {
-                    calculated = skuRefPrice * (1 + (activeRule.value / 100));
+                    calculated = skuRefPrice * (1 + activeRule.value / 100);
                 } else {
                     calculated = skuRefPrice + activeRule.value;
                 }
@@ -93,7 +135,7 @@ export default function PricingStep({ family, skus, pricingState, onUpdate, onUp
                 calculatedPrice: calculated,
                 finalPrice,
                 isApproved,
-                hasOverride: overridePrice !== undefined
+                hasOverride: overridePrice !== undefined,
             });
         });
 
@@ -134,51 +176,74 @@ export default function PricingStep({ family, skus, pricingState, onUpdate, onUp
                         <Landmark size={24} strokeWidth={2.5} />
                     </div>
                     <div>
-                        <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">Smart Pricing Ledger</h2>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Multi-state price propagation & regulatory approval workflow</p>
+                        <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
+                            Smart Pricing Ledger
+                        </h2>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                            Multi-state price propagation & regulatory approval workflow
+                        </p>
                     </div>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-
                 {/* Left: Configuration & Rules */}
                 <div className="lg:col-span-4 flex flex-col gap-6 sticky top-32">
-
                     {/* Step 1: Reference Anchor */}
                     <div className="p-6 bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-xl">
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="w-8 h-8 rounded-full bg-indigo-500/10 text-indigo-600 flex items-center justify-center font-black">1</div>
-                            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Anchor Region</span>
+                            <div className="w-8 h-8 rounded-full bg-indigo-500/10 text-indigo-600 flex items-center justify-center font-black">
+                                1
+                            </div>
+                            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                Anchor Region
+                            </span>
                         </div>
 
                         <div className="space-y-4">
                             <div className="p-4 bg-slate-50 dark:bg-black/20 rounded-2xl border border-slate-100 dark:border-white/5">
-                                <span className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Base State (Reference)</span>
+                                <span className="text-[9px] font-bold text-slate-400 uppercase block mb-1">
+                                    Base State (Reference)
+                                </span>
                                 <select
                                     className="w-full bg-transparent font-black text-slate-900 dark:text-white outline-none appearance-none cursor-pointer"
                                     value={referenceState}
-                                    onChange={(e) => setReferenceState(e.target.value)}
+                                    onChange={e => setReferenceState(e.target.value)}
                                 >
-                                    {MOCK_REGISTRATION_RULES.map(r => (
-                                        <option key={r.id} value={r.stateCode}>{r.ruleName}</option>
+                                    {regRules.length === 0 && (
+                                        <option value="" disabled>
+                                            No active rules
+                                        </option>
+                                    )}
+                                    {regRules.map(r => (
+                                        <option key={r.id} value={r.stateCode}>
+                                            {r.ruleName}
+                                        </option>
                                     ))}
                                 </select>
                             </div>
 
                             <div className="p-4 bg-indigo-600 rounded-2xl shadow-lg shadow-indigo-600/20">
-                                <span className="text-[9px] font-bold text-indigo-200 uppercase block border-b border-indigo-400/30 pb-2 mb-2">Reference Ex-Showroom</span>
+                                <span className="text-[9px] font-bold text-indigo-200 uppercase block border-b border-indigo-400/30 pb-2 mb-2">
+                                    Reference Ex-Showroom
+                                </span>
                                 <div className="relative group flex items-center">
-                                    <span className="text-2xl font-black text-white italic tracking-tighter mr-1">₹</span>
+                                    <span className="text-2xl font-black text-white italic tracking-tighter mr-1">
+                                        ₹
+                                    </span>
                                     <input
                                         type="number"
                                         value={family?.price_base || 0}
-                                        onChange={(e) => onUpdateFamily({ ...family, price_base: parseFloat(e.target.value) || 0 })}
+                                        onChange={e =>
+                                            onUpdateFamily({ ...family, price_base: parseFloat(e.target.value) || 0 })
+                                        }
                                         className="w-full bg-transparent border-none text-2xl font-black text-white italic tracking-tighter outline-none focus:ring-0"
                                         placeholder="0"
                                     />
                                 </div>
-                                <p className="text-[8px] text-indigo-100 mt-1 uppercase font-bold">Edit to update all downstream rules</p>
+                                <p className="text-[8px] text-indigo-100 mt-1 uppercase font-bold">
+                                    Edit to update all downstream rules
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -186,22 +251,34 @@ export default function PricingStep({ family, skus, pricingState, onUpdate, onUp
                     {/* Step 2: Propagation Rules */}
                     <div className="p-6 bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-xl">
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-black">2</div>
-                            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Propagation Rules</span>
+                            <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-black">
+                                2
+                            </div>
+                            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                Propagation Rules
+                            </span>
                         </div>
 
                         <div className="space-y-4">
                             {rules.map((rule: any, idx: number) => (
-                                <div key={idx} className={`p-4 rounded-2xl border transition-all cursor-pointer ${activeDestination === rule.stateCode ? 'bg-emerald-500/5 border-emerald-500/30 shadow-lg shadow-emerald-500/5' : 'bg-slate-50 dark:bg-black/20 border-slate-100 dark:border-white/5 hover:border-slate-200'}`} onClick={() => setActiveDestination(rule.stateCode)}>
+                                <div
+                                    key={idx}
+                                    className={`p-4 rounded-2xl border transition-all cursor-pointer ${activeDestination === rule.stateCode ? 'bg-emerald-500/5 border-emerald-500/30 shadow-lg shadow-emerald-500/5' : 'bg-slate-50 dark:bg-black/20 border-slate-100 dark:border-white/5 hover:border-slate-200'}`}
+                                    onClick={() => setActiveDestination(rule.stateCode)}
+                                >
                                     <div className="flex items-center justify-between mb-3">
-                                        <span className="text-xs font-black text-slate-900 dark:text-white uppercase">{rule.stateCode} Target</span>
-                                        <button className="text-slate-300 hover:text-rose-500"><X size={14} /></button>
+                                        <span className="text-xs font-black text-slate-900 dark:text-white uppercase">
+                                            {rule.stateCode} Target
+                                        </span>
+                                        <button className="text-slate-300 hover:text-rose-500">
+                                            <X size={14} />
+                                        </button>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <select
                                             className="bg-white dark:bg-slate-800 border-none text-[10px] font-bold uppercase rounded p-1 outline-none"
                                             value={rule.type}
-                                            onChange={(e) => {
+                                            onChange={e => {
                                                 const newRules = [...rules];
                                                 newRules[idx].type = e.target.value as 'PERCENTAGE' | 'FIXED';
                                                 setRules(newRules);
@@ -214,7 +291,7 @@ export default function PricingStep({ family, skus, pricingState, onUpdate, onUp
                                             type="number"
                                             className="flex-1 bg-white dark:bg-slate-800 border-none text-xs font-black text-right rounded p-1 outline-none"
                                             value={rule.value}
-                                            onChange={(e) => {
+                                            onChange={e => {
                                                 const newRules = [...rules];
                                                 newRules[idx].value = parseFloat(e.target.value) || 0;
                                                 setRules(newRules);
@@ -223,7 +300,9 @@ export default function PricingStep({ family, skus, pricingState, onUpdate, onUp
                                     </div>
                                     <div className="mt-3 text-[9px] font-bold text-slate-400 uppercase flex items-center gap-2">
                                         <TrendingUp size={10} className="text-emerald-500" />
-                                        {rule.stateCode} = {referenceState} {rule.value > 0 ? '+' : ''}{rule.value}{rule.type === 'PERCENTAGE' ? '%' : ' ₹'}
+                                        {rule.stateCode} = {referenceState} {rule.value > 0 ? '+' : ''}
+                                        {rule.value}
+                                        {rule.type === 'PERCENTAGE' ? '%' : ' ₹'}
                                     </div>
                                 </div>
                             ))}
@@ -233,14 +312,11 @@ export default function PricingStep({ family, skus, pricingState, onUpdate, onUp
                             </button>
                         </div>
                     </div>
-
                 </div>
 
                 {/* Right: Validation Ledger */}
                 <div className="lg:col-span-8 flex flex-col gap-6">
-
                     <div className="p-6 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-white/5 shadow-2xl relative overflow-hidden">
-
                         {/* Status Bar */}
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100 dark:border-white/5">
                             <div className="flex items-center gap-3">
@@ -248,15 +324,24 @@ export default function PricingStep({ family, skus, pricingState, onUpdate, onUp
                                     <RefreshCw size={18} className="animate-spin-slow" />
                                 </div>
                                 <div>
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Review Ledger // {activeDestination}</span>
-                                    <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter leading-none mt-1">Row-by-Row Approval</h3>
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">
+                                        Review Ledger // {activeDestination}
+                                    </span>
+                                    <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter leading-none mt-1">
+                                        Row-by-Row Approval
+                                    </h3>
                                 </div>
                             </div>
 
                             <div className="flex items-center gap-3">
                                 <div className="text-right flex flex-col">
-                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Approved SKU Coverage</span>
-                                    <span className="text-[12px] font-black text-emerald-500 tracking-tighter">{Object.keys(approvals).filter(k => k.endsWith(activeDestination)).length} / {skus.length}</span>
+                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                                        Approved SKU Coverage
+                                    </span>
+                                    <span className="text-[12px] font-black text-emerald-500 tracking-tighter">
+                                        {Object.keys(approvals).filter(k => k.endsWith(activeDestination)).length} /{' '}
+                                        {skus.length}
+                                    </span>
                                 </div>
                                 <button
                                     onClick={handleApproveAll}
@@ -280,7 +365,7 @@ export default function PricingStep({ family, skus, pricingState, onUpdate, onUp
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <AnimatePresence mode='popLayout'>
+                                    <AnimatePresence mode="popLayout">
                                         {ledger.map((row, idx) => (
                                             <motion.tr
                                                 layout
@@ -296,13 +381,19 @@ export default function PricingStep({ family, skus, pricingState, onUpdate, onUp
                                                             {row.sku.name.charAt(0)}
                                                         </div>
                                                         <div className="flex flex-col">
-                                                            <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase leading-none">{row.sku.name}</span>
-                                                            <span className="text-[8px] font-bold text-slate-400 mt-1 uppercase tracking-widest opacity-60">REF // {idx + 1}</span>
+                                                            <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase leading-none">
+                                                                {row.sku.name}
+                                                            </span>
+                                                            <span className="text-[8px] font-bold text-slate-400 mt-1 uppercase tracking-widest opacity-60">
+                                                                REF // {idx + 1}
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td className="p-2.5 border-y border-slate-100 dark:border-white/5 text-center">
-                                                    <span className="text-[10px] font-bold text-slate-400 line-through decoration-slate-300">₹{row.referencePrice.toLocaleString()}</span>
+                                                    <span className="text-[10px] font-bold text-slate-400 line-through decoration-slate-300">
+                                                        ₹{row.referencePrice.toLocaleString()}
+                                                    </span>
                                                 </td>
                                                 <td className="p-2.5 border-y border-slate-100 dark:border-white/5">
                                                     <div className="flex flex-col items-center">
@@ -310,21 +401,35 @@ export default function PricingStep({ family, skus, pricingState, onUpdate, onUp
                                                             type="number"
                                                             className={`w-24 bg-white dark:bg-slate-800 border rounded-lg px-2 py-1 text-[11px] font-black text-right outline-none transition-all ${row.hasOverride ? 'border-amber-500 text-amber-500 shadow-lg shadow-amber-500/5' : 'border-slate-100 dark:border-white/10 focus:border-indigo-500 text-slate-900 dark:text-white'}`}
                                                             value={row.finalPrice}
-                                                            onChange={(e) => handleUpdateOverride(row.sku.id, e.target.value)}
+                                                            onChange={e =>
+                                                                handleUpdateOverride(row.sku.id, e.target.value)
+                                                            }
                                                         />
-                                                        {row.hasOverride && <span className="text-[7px] font-black text-amber-500 uppercase mt-0.5 italic tracking-widest">Override</span>}
+                                                        {row.hasOverride && (
+                                                            <span className="text-[7px] font-black text-amber-500 uppercase mt-0.5 italic tracking-widest">
+                                                                Override
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </td>
                                                 <td className="p-2.5 border-y border-slate-100 dark:border-white/5">
                                                     <div className="flex items-center justify-center gap-2">
                                                         <div className="flex flex-col items-end">
-                                                            <span className="text-[7px] font-bold text-slate-400 uppercase">{referenceState}</span>
-                                                            <span className="text-[9px] font-bold text-slate-600 dark:text-slate-400">RPC</span>
+                                                            <span className="text-[7px] font-bold text-slate-400 uppercase">
+                                                                {referenceState}
+                                                            </span>
+                                                            <span className="text-[9px] font-bold text-slate-600 dark:text-slate-400">
+                                                                RPC
+                                                            </span>
                                                         </div>
                                                         <ArrowRight size={12} className="text-slate-300" />
                                                         <div className="flex flex-col items-start px-1.5 py-0.5 bg-emerald-500/10 rounded-md">
-                                                            <span className="text-[7px] font-black text-emerald-600 uppercase">{activeDestination}</span>
-                                                            <span className="text-[9px] font-black text-emerald-600 italic">RPC</span>
+                                                            <span className="text-[7px] font-black text-emerald-600 uppercase">
+                                                                {activeDestination}
+                                                            </span>
+                                                            <span className="text-[9px] font-black text-emerald-600 italic">
+                                                                RPC
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -347,7 +452,9 @@ export default function PricingStep({ family, skus, pricingState, onUpdate, onUp
                         {skus.length === 0 && (
                             <div className="flex flex-col items-center justify-center py-20 bg-slate-50 dark:bg-black/20 rounded-[2rem] border-2 border-dashed border-slate-200 dark:border-white/10">
                                 <Calculator size={48} className="text-slate-200 mb-4" />
-                                <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Generate SKUs in previous step first</span>
+                                <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                                    Generate SKUs in previous step first
+                                </span>
                             </div>
                         )}
                     </div>
@@ -360,8 +467,13 @@ export default function PricingStep({ family, skus, pricingState, onUpdate, onUp
                                     <ShieldCheck size={20} className="text-emerald-400" />
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Regulatory Status</span>
-                                    <p className="text-[11px] font-medium leading-relaxed opacity-80 mt-1">Sahi hai! All approved prices are within 2% of previous month's ledger. No major audit alerts.</p>
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Regulatory Status
+                                    </span>
+                                    <p className="text-[11px] font-medium leading-relaxed opacity-80 mt-1">
+                                        Sahi hai! All approved prices are within 2% of previous month's ledger. No major
+                                        audit alerts.
+                                    </p>
                                 </div>
                             </div>
                             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-150 transition-transform">
@@ -375,14 +487,18 @@ export default function PricingStep({ family, skus, pricingState, onUpdate, onUp
                                     <TrendingUp size={20} className="text-white" />
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-[10px] font-black text-indigo-200 uppercase tracking-widest">Regional Advantage</span>
-                                    <p className="text-[11px] font-medium leading-relaxed opacity-80 mt-1">{activeDestination} pricing is competitive. On-road totals will be computed by server RPC at publish time.</p>
+                                    <span className="text-[10px] font-black text-indigo-200 uppercase tracking-widest">
+                                        Regional Advantage
+                                    </span>
+                                    <p className="text-[11px] font-medium leading-relaxed opacity-80 mt-1">
+                                        {activeDestination} pricing is competitive. On-road totals will be computed by
+                                        server RPC at publish time.
+                                    </p>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
             </div>
         </div>
     );

@@ -1,4 +1,4 @@
-import { getPincodeDetails } from '@/actions/pincode';
+import { getPincodeDetails, getDistrictDetails } from '@/actions/pincode';
 import { slugify } from './slugs';
 
 export type LocationContext = {
@@ -36,7 +36,7 @@ export async function resolveLocation(pincode: string): Promise<LocationContext 
                 state: data.state || '',
                 pricing_region_slug: slugify(data.taluka || 'mumbai'),
                 lat: data.latitude,
-                lng: data.longitude
+                lng: data.longitude,
             };
             locationCache.set(pincode, locationResult);
             return locationResult;
@@ -46,5 +46,50 @@ export async function resolveLocation(pincode: string): Promise<LocationContext 
     }
 
     locationCache.set(pincode, null);
+    return null;
+}
+
+export async function resolveLocationByDistrict(
+    district: string,
+    stateCode?: string | null
+): Promise<LocationContext | null> {
+    if (!district) return null;
+
+    // If it's a pincode, use the pincode resolver
+    if (/^\d{6}$/.test(district)) {
+        return resolveLocation(district);
+    }
+
+    // Use district name as cache key with prefix
+    const cacheKey = stateCode
+        ? `dist:${stateCode.toLowerCase()}:${district.toLowerCase()}`
+        : `dist:${district.toLowerCase()}`;
+    if (locationCache.has(cacheKey)) {
+        return locationCache.get(cacheKey) || null;
+    }
+
+    try {
+        const result = await getDistrictDetails(district, stateCode);
+
+        if (result.success && result.data) {
+            const data = result.data;
+            const locationResult: LocationContext = {
+                pincode: data.pincode,
+                area: data.area || '',
+                taluka: data.taluka || '',
+                district: data.district || '',
+                state: data.state || '',
+                pricing_region_slug: slugify(data.taluka || 'mumbai'),
+                lat: data.latitude,
+                lng: data.longitude,
+            };
+            locationCache.set(cacheKey, locationResult);
+            return locationResult;
+        }
+    } catch (error) {
+        console.error('Error resolving location by district:', error);
+    }
+
+    locationCache.set(cacheKey, null);
     return null;
 }

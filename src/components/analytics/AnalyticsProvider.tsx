@@ -101,7 +101,7 @@ const getDeviceInfo = () => {
         userAgent: ua,
         type: deviceType,
         os: navigator.platform,
-        browser: 'Modern' // Simplified, can use UAParser for detail
+        browser: 'Modern', // Simplified, can use UAParser for detail
     };
 };
 
@@ -126,7 +126,7 @@ export default function AnalyticsProvider({ children }: { children: React.ReactN
         sessionIdRef.current = sid;
 
         // Start processing queue (interval based)
-        const interval = setInterval(processQueue, 5000); // Flush every 5 seconds
+        const interval = setInterval(processQueue, 30000); // Flush every 30 seconds
 
         // Initial Flush on mount (page load)
         processQueue();
@@ -147,7 +147,7 @@ export default function AnalyticsProvider({ children }: { children: React.ReactN
         const initPayload: Record<string, unknown> = {
             event: 'bkmb_init',
             environment,
-            internal_traffic: internalTraffic ? 'true' : 'false'
+            internal_traffic: internalTraffic ? 'true' : 'false',
         };
         if (ga4MeasurementId) initPayload.ga4_measurement_id = ga4MeasurementId;
         pushDataLayer(initPayload);
@@ -169,7 +169,7 @@ export default function AnalyticsProvider({ children }: { children: React.ReactN
             page_type: getPageType(pathname),
             page_title: document.title,
             environment: resolvedEnvironment,
-            internal_traffic: resolvedInternalTraffic ? 'true' : 'false'
+            internal_traffic: resolvedInternalTraffic ? 'true' : 'false',
         };
         if (ga4MeasurementIdRef.current) pagePayload.ga4_measurement_id = ga4MeasurementIdRef.current;
         pushDataLayer(pagePayload);
@@ -178,15 +178,16 @@ export default function AnalyticsProvider({ children }: { children: React.ReactN
         trackEvent('PAGE_VIEW', 'page_load', {
             path: pathname,
             query: searchParams?.toString(),
-            referrer: document.referrer
+            referrer: document.referrer,
         });
-
     }, [pathname, searchParams]);
 
     // 3. User Identification (Auth Sync)
     useEffect(() => {
         const syncUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
             if (user) {
                 // We'll pass userId in the next batch
                 // Optionally we could force a session update here
@@ -202,7 +203,7 @@ export default function AnalyticsProvider({ children }: { children: React.ReactN
             name,
             path: window.location.pathname,
             metadata,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
 
         queueRef.current.push(event);
@@ -222,7 +223,9 @@ export default function AnalyticsProvider({ children }: { children: React.ReactN
         queueRef.current = []; // Clear queue immediately
 
         try {
-            const { data: { user } } = await supabase.auth.getUser();
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
             let locationData = null;
             try {
                 const locationCache = localStorage.getItem('bkmb_user_pincode');
@@ -246,8 +249,8 @@ export default function AnalyticsProvider({ children }: { children: React.ReactN
                     events: batch,
                     userAgent: navigator.userAgent,
                     device: getDeviceInfo(),
-                    location: locationData // Send if we have it locally
-                })
+                    location: locationData, // Send if we have it locally
+                }),
             });
         } catch (error) {
             console.error('Analytics flush failed', error);

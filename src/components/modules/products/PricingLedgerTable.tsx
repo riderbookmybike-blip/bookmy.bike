@@ -1,9 +1,36 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Landmark, Sparkles, TrendingUp, Info, Save, CheckCircle2, Car, Copy, Edit2, ArrowRight, ArrowUpDown, Search, Filter, Package, ExternalLink, Activity, Loader2, Power, AlertCircle, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+    Landmark,
+    Sparkles,
+    TrendingUp,
+    Info,
+    Save,
+    CheckCircle2,
+    Car,
+    Copy,
+    ArrowRight,
+    ArrowUpDown,
+    Search,
+    Filter,
+    Package,
+    ExternalLink,
+    Activity,
+    Loader2,
+    Power,
+    AlertCircle,
+    Zap,
+    ChevronLeft,
+    ChevronRight,
+    Download,
+    X,
+    FileText,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTenant } from '@/lib/tenant/tenantContext';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { RegistrationRule } from '@/types/registration';
 // Helper Component for Robust Brand Logo/Avatar
 interface SKUPriceRow {
@@ -37,6 +64,10 @@ interface SKUPriceRow {
     onRoad?: number;
     originalStatus?: 'ACTIVE' | 'INACTIVE' | 'DRAFT' | 'RELAUNCH';
     originalLocalIsActive?: boolean;
+    publishStage?: 'DRAFT' | 'UNDER_REVIEW' | 'PUBLISHED';
+    rto_data?: any;
+    insurance_data?: any;
+    displayState?: 'Draft' | 'In Review' | 'Published' | 'Live' | 'Inactive';
 }
 
 interface PricingLedgerTableProps {
@@ -61,13 +92,21 @@ interface PricingLedgerTableProps {
     subCategories: string[];
     selectedSubCategory: string;
     onSubCategoryChange: (sub: string) => void;
+    models: string[];
+    selectedModel: string;
+    onModelChange: (model: string) => void;
+    variants: string[];
+    selectedVariant: string;
+    onVariantChange: (variant: string) => void;
     onBulkUpdate?: (ids: string[], price: number) => void;
     hasUnsavedChanges?: boolean;
     isSaving?: boolean;
-    onSummaryChange?: (summary: { count: number, value: number }) => void;
+    onSummaryChange?: (summary: { count: number; value: number }) => void;
+    onCalculate?: (selectedIds: string[]) => void;
+    isCalculating?: boolean;
 }
 
-const BrandAvatar = ({ name, logo }: { name: string, logo?: string }) => {
+const BrandAvatar = ({ name, logo }: { name: string; logo?: string }) => {
     const [imgError, setImgError] = useState(false);
 
     // 1. If no logo or image failed, render First Letter Avatar
@@ -96,12 +135,7 @@ const BrandAvatar = ({ name, logo }: { name: string, logo?: string }) => {
     // 3. Render Image URL with Error Handler
     return (
         <div className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 flex items-center justify-center shrink-0 overflow-hidden p-1">
-            <img
-                src={logo}
-                alt={name}
-                className="w-full h-full object-contain"
-                onError={() => setImgError(true)}
-            />
+            <img src={logo} alt={name} className="w-full h-full object-contain" onError={() => setImgError(true)} />
         </div>
     );
 };
@@ -127,10 +161,18 @@ export default function PricingLedgerTable({
     subCategories,
     selectedSubCategory,
     onSubCategoryChange,
+    models,
+    selectedModel,
+    onModelChange,
+    variants,
+    selectedVariant,
+    onVariantChange,
     onBulkUpdate,
     hasUnsavedChanges,
     isSaving: isParentSaving,
-    onSummaryChange // NEW
+    onSummaryChange,
+    onCalculate,
+    isCalculating,
 }: PricingLedgerTableProps) {
     const router = useRouter();
     const { tenantSlug } = useTenant();
@@ -138,16 +180,98 @@ export default function PricingLedgerTable({
     const [skus, setSkus] = useState<SKUPriceRow[]>(initialSkus);
     const [isSaving, setIsSaving] = useState(false);
     const [selectedSkuIds, setSelectedSkuIds] = useState<Set<string>>(new Set());
-    const [isEditMode, setIsEditMode] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
+
+    const handleExportPDF = async () => {
+        setIsExporting(true);
+        try {
+            const element = document.getElementById('pricing-ledger-table');
+            if (!element) return;
+
+            // Hide UI elements during export
+            const uiElements = element.querySelectorAll('.no-export');
+            uiElements.forEach(el => ((el as HTMLElement).style.display = 'none'));
+
+            const canvas = await html2canvas(element, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff',
+            });
+
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('l', 'mm', 'a4');
+            const imgProps = pdf.getImageProperties(imgData);
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            pdf.save(`Pricing_Ledger_${new Date().toISOString().split('T')[0]}.pdf`);
+
+            // Restore UI elements
+            uiElements.forEach(el => ((el as HTMLElement).style.display = ''));
+        } catch (error) {
+            console.error('PDF Export failed:', error);
+            alert('PDF Export failed. Please try again.');
+        } finally {
+            setIsExporting(false);
+        }
+    };
     type CategoryType = 'vehicles' | 'accessories' | 'service';
     const [activeFilterColumn, setActiveFilterColumn] = useState<string | null>(null);
     const [activeCategory, setActiveCategory] = useState<CategoryType>('vehicles');
     const ITEMS_PER_PAGE = 50;
     const [currentPage, setCurrentPage] = useState(1);
-    const [filters, setFilters] = useState<Partial<Record<keyof SKUPriceRow, string>>>({ status: 'ACTIVE' });
+    const [filters, setFilters] = useState<Partial<Record<keyof SKUPriceRow, string>>>({});
     const [sortConfig, setSortConfig] = useState<{ key: keyof SKUPriceRow; direction: 'asc' | 'desc' } | null>(null);
     const [prevSelectedCategory, setPrevSelectedCategory] = useState(selectedCategory);
     const [prevFilters, setPrevFilters] = useState({ filters, selectedBrand, selectedSubCategory, selectedStateId });
+
+    const formatMoney = (value: number | null | undefined) => {
+        if (value === null || value === undefined) return '—';
+        return `₹${Number(value).toLocaleString()}`;
+    };
+
+    const getRtoTypeDetail = (rtoData: any, type: 'STATE' | 'BH' | 'COMPANY') => {
+        if (!rtoData) return null;
+        const typeVal = rtoData?.[type];
+        const fees = rtoData?.fees;
+        const tax = rtoData?.tax?.[type];
+
+        if (typeof typeVal === 'number') {
+            return { total: typeVal };
+        }
+
+        if (typeVal && typeof typeVal === 'object') {
+            return {
+                total: typeVal.total,
+                breakdown: typeVal,
+            };
+        }
+
+        if (fees && tax) {
+            const feeItems = Object.entries(fees)
+                .map(([key, val]: any) => ({
+                    label: key.replace(/_/g, ' '),
+                    amount: val?.amount ?? val,
+                }))
+                .filter((item: any) => Number(item.amount) > 0);
+
+            const taxItems = [
+                { label: 'Road Tax', amount: tax.road_tax ?? tax.roadTax ?? 0 },
+                { label: 'Cess', amount: tax.cess ?? tax.cessAmount ?? 0 },
+            ].filter(item => Number(item.amount) > 0);
+
+            const total = [...feeItems, ...taxItems].reduce((sum, i) => sum + Number(i.amount || 0), 0);
+            return { total, fees: feeItems, tax: taxItems };
+        }
+
+        return null;
+    };
+
+    useEffect(() => {
+        setSelectedSkuIds(new Set());
+    }, [activeCategory]);
 
     // Sync internal category with prop (Render phase adjustment)
     if (selectedCategory !== prevSelectedCategory) {
@@ -163,7 +287,7 @@ export default function PricingLedgerTable({
 
             setActiveCategory(mappedCat);
         } else {
-            // If ALL, maybe default to vehicles or handle differently? 
+            // If ALL, maybe default to vehicles or handle differently?
             // For now, let's keep it as is, or reset to vehicles.
             // The Logic below filters by activeCategory. If we want ALL, we might need activeCategory to be null?
             // But the UI seems tab-based logic. Let's assume Vehicle is default.
@@ -172,7 +296,12 @@ export default function PricingLedgerTable({
     }
 
     // Reset page 1 on internal filters (Render phase adjustment)
-    if (filters !== prevFilters.filters || selectedBrand !== prevFilters.selectedBrand || selectedSubCategory !== prevFilters.selectedSubCategory || selectedStateId !== prevFilters.selectedStateId) {
+    if (
+        filters !== prevFilters.filters ||
+        selectedBrand !== prevFilters.selectedBrand ||
+        selectedSubCategory !== prevFilters.selectedSubCategory ||
+        selectedStateId !== prevFilters.selectedStateId
+    ) {
         setPrevFilters({ filters, selectedBrand, selectedSubCategory, selectedStateId });
         setCurrentPage(1);
     }
@@ -195,7 +324,6 @@ export default function PricingLedgerTable({
         setActiveFilterColumn(null); // Close dropdown on select
     };
 
-
     // Derived Logic: Filters -> Unique Values for Dropdown (Cascading)
     const getUniqueValues = (key: keyof SKUPriceRow) => {
         const values = new Set<string>();
@@ -213,8 +341,8 @@ export default function PricingLedgerTable({
             if (fKey !== key) {
                 const filterValue = filters[fKey as keyof SKUPriceRow]?.toLowerCase();
                 if (filterValue) {
-                    baseSet = baseSet.filter(sku =>
-                        String(sku[fKey as keyof SKUPriceRow] || '').toLowerCase() === filterValue
+                    baseSet = baseSet.filter(
+                        sku => String(sku[fKey as keyof SKUPriceRow] || '').toLowerCase() === filterValue
                     );
                 }
             }
@@ -241,8 +369,8 @@ export default function PricingLedgerTable({
         Object.keys(filters).forEach(key => {
             const filterValue = filters[key as keyof SKUPriceRow]?.toLowerCase();
             if (filterValue) {
-                result = result.filter(sku =>
-                    String(sku[key as keyof SKUPriceRow] || '').toLowerCase() === filterValue
+                result = result.filter(
+                    sku => String(sku[key as keyof SKUPriceRow] || '').toLowerCase() === filterValue
                 );
             }
         });
@@ -263,9 +391,7 @@ export default function PricingLedgerTable({
 
                 const valA = String(aVal || '').toLowerCase();
                 const valB = String(bVal || '').toLowerCase();
-                return sortConfig.direction === 'asc'
-                    ? valA.localeCompare(valB)
-                    : valB.localeCompare(valA);
+                return sortConfig.direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
             });
         }
 
@@ -273,7 +399,7 @@ export default function PricingLedgerTable({
 
         return {
             tableSkus: result,
-            summary: { count: result.length, value: totalValue }
+            summary: { count: result.length, value: totalValue },
         };
     }, [processedSkus, filters, sortConfig, activeCategory]);
 
@@ -293,28 +419,38 @@ export default function PricingLedgerTable({
 
     // Selection Logic
     const toggleSelection = (id: string) => {
-        const newSet = new Set(selectedSkuIds);
-        if (newSet.has(id)) newSet.delete(id);
-        else newSet.add(id);
-        setSelectedSkuIds(newSet);
+        setSelectedSkuIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) {
+                next.delete(id);
+                return next;
+            }
+            if (activeCategory === 'vehicles' && selectedVariant === 'ALL') {
+                return new Set([id]);
+            }
+            next.add(id);
+            return next;
+        });
     };
 
     const toggleAll = () => {
-        // Check if all VISIBLE rows are currently selected
-        const allVisibleSelected = processedSkus.length > 0 && processedSkus.every(s => selectedSkuIds.has(s.id));
+        if (activeCategory === 'vehicles' && selectedVariant === 'ALL') return;
+        // Check if all VISIBLE/FILTERED rows are currently selected
+        // We use tableSkus (locally filtered) instead of processedSkus (parent filtered only)
+        // This ensures we don't accidentally select hidden rows when a column filter is active.
+        const allVisibleSelected = tableSkus.length > 0 && tableSkus.every(s => selectedSkuIds.has(s.id));
 
         const newSet = new Set(selectedSkuIds);
 
         if (allVisibleSelected) {
             // Deselect visible rows
-            processedSkus.forEach(s => newSet.delete(s.id));
+            tableSkus.forEach(s => newSet.delete(s.id));
         } else {
             // Select visible rows
-            processedSkus.forEach(s => newSet.add(s.id));
+            tableSkus.forEach(s => newSet.add(s.id));
         }
         setSelectedSkuIds(newSet);
     };
-
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -329,32 +465,19 @@ export default function PricingLedgerTable({
                 <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto">
                     {/* State Filter */}
                     <div className="relative group min-w-[180px]">
-                        <Landmark size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
+                        <Landmark
+                            size={14}
+                            className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 z-10"
+                        />
                         <select
                             value={selectedStateId}
-                            onChange={(e) => onStateChange(e.target.value)}
-                            className="w-full pl-11 pr-10 py-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 rounded-2xl text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-4 focus:ring-emerald-500/10 outline-none appearance-none cursor-pointer transition-all duration-300 relative"
+                            onChange={e => onStateChange(e.target.value)}
+                            className="w-full pl-11 pr-10 py-3 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 rounded-2xl text-[11px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-4 focus:ring-emerald-500/10 outline-none appearance-none cursor-pointer transition-all duration-300 relative"
                         >
                             {states.map((s: RegistrationRule) => (
-                                <option key={s.id} value={s.id}>{s.ruleName}</option>
-                            ))}
-                        </select>
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 z-10">
-                            <div className="w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-slate-500" />
-                        </div>
-                    </div>
-
-                    {/* Brand Filter */}
-                    <div className="relative group min-w-[160px]">
-                        <Car size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
-                        <select
-                            value={selectedBrand}
-                            onChange={(e) => onBrandChange(e.target.value)}
-                            className="w-full pl-11 pr-10 py-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 rounded-2xl text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-4 focus:ring-emerald-500/10 outline-none appearance-none cursor-pointer transition-all duration-300 relative"
-                        >
-                            <option value="ALL">All Brands</option>
-                            {brands.map((b) => (
-                                <option key={b} value={b}>{b}</option>
+                                <option key={s.id} value={s.id}>
+                                    {s.ruleName}
+                                </option>
                             ))}
                         </select>
                         <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 z-10">
@@ -364,15 +487,20 @@ export default function PricingLedgerTable({
 
                     {/* Category Filter */}
                     <div className="relative group min-w-[160px]">
-                        <Activity size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
+                        <Activity
+                            size={14}
+                            className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 z-10"
+                        />
                         <select
                             value={selectedCategory}
-                            onChange={(e) => onCategoryChange(e.target.value)}
+                            onChange={e => onCategoryChange(e.target.value)}
                             className="w-full pl-11 pr-10 py-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 rounded-2xl text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-4 focus:ring-emerald-500/10 outline-none appearance-none cursor-pointer transition-all duration-300 relative"
                         >
                             <option value="ALL">All Categories</option>
-                            {categories.map((c) => (
-                                <option key={c} value={c}>{c}</option>
+                            {categories.map(c => (
+                                <option key={c} value={c}>
+                                    {c}
+                                </option>
                             ))}
                         </select>
                         <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 z-10">
@@ -385,12 +513,14 @@ export default function PricingLedgerTable({
                         <Info size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
                         <select
                             value={selectedSubCategory}
-                            onChange={(e) => onSubCategoryChange(e.target.value)}
+                            onChange={e => onSubCategoryChange(e.target.value)}
                             className="w-full pl-11 pr-10 py-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 rounded-2xl text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-4 focus:ring-emerald-500/10 outline-none appearance-none cursor-pointer transition-all duration-300 relative"
                         >
                             <option value="ALL">All Sub-Categories</option>
-                            {subCategories.map((sc) => (
-                                <option key={sc} value={sc}>{sc}</option>
+                            {subCategories.map(sc => (
+                                <option key={sc} value={sc}>
+                                    {sc}
+                                </option>
                             ))}
                         </select>
                         <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 z-10">
@@ -398,17 +528,149 @@ export default function PricingLedgerTable({
                         </div>
                     </div>
 
-
-                    {(Object.keys(filters).some(k => !!filters[k as keyof SKUPriceRow])) && (
-                        <button
-                            onClick={() => {
-                                setFilters({ status: 'ACTIVE' });
-                            }}
-                            className="flex items-center gap-2 px-4 py-2 bg-slate-100/50 dark:bg-slate-800/50 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-slate-100 dark:border-slate-800 hover:border-rose-100 dark:hover:border-rose-800"
+                    {/* Brand Filter */}
+                    <div className="relative group min-w-[160px]">
+                        <Car size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
+                        <select
+                            value={selectedBrand}
+                            onChange={e => onBrandChange(e.target.value)}
+                            className="w-full pl-11 pr-10 py-3 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 rounded-2xl text-[11px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-4 focus:ring-emerald-500/10 outline-none appearance-none cursor-pointer transition-all duration-300 relative"
                         >
-                            <Power size={12} />
-                            Reset Filters
-                        </button>
+                            <option value="ALL">All Brands</option>
+                            {brands.map(b => (
+                                <option key={b} value={b}>
+                                    {b}
+                                </option>
+                            ))}
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 z-10">
+                            <div className="w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-slate-500" />
+                        </div>
+                    </div>
+
+                    {/* Model Filter */}
+                    <div className="relative group min-w-[180px]">
+                        <Package size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
+                        <select
+                            value={selectedModel}
+                            onChange={e => onModelChange(e.target.value)}
+                            className="w-full pl-11 pr-10 py-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 rounded-2xl text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-4 focus:ring-emerald-500/10 outline-none appearance-none cursor-pointer transition-all duration-300 relative"
+                        >
+                            <option value="ALL">All Models</option>
+                            {models.map(m => (
+                                <option key={m} value={m}>
+                                    {m}
+                                </option>
+                            ))}
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 z-10">
+                            <div className="w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-slate-500" />
+                        </div>
+                    </div>
+
+                    {/* Variant Filter */}
+                    <div className="relative group min-w-[180px]">
+                        <Package size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
+                        <select
+                            value={selectedVariant}
+                            onChange={e => onVariantChange(e.target.value)}
+                            className="w-full pl-11 pr-10 py-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 rounded-2xl text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-4 focus:ring-emerald-500/10 outline-none appearance-none cursor-pointer transition-all duration-300 relative"
+                        >
+                            <option value="ALL">All Variants</option>
+                            {variants.map(v => (
+                                <option key={v} value={v}>
+                                    {v}
+                                </option>
+                            ))}
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 z-10">
+                            <div className="w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-slate-500" />
+                        </div>
+                    </div>
+
+                    {/* Individual active filters with reset icons */}
+                    {Object.entries(filters).map(([key, value]) => {
+                        if (!value || value === 'ALL' || key === 'displayState') return null;
+                        return (
+                            <div
+                                key={key}
+                                className="flex items-center gap-2 px-4 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 group animate-in fade-in zoom-in duration-200"
+                            >
+                                <span className="opacity-50">{key}:</span>
+                                <span>{value}</span>
+                                <button
+                                    onClick={() => handleFilter(key as keyof SKUPriceRow, '')}
+                                    className="ml-1 hover:text-rose-500 transition-colors"
+                                >
+                                    <X size={12} />
+                                </button>
+                            </div>
+                        );
+                    })}
+
+                    {selectedBrand !== 'ALL' && (
+                        <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 group animate-in fade-in zoom-in duration-200">
+                            <span className="opacity-50">Brand:</span>
+                            <span>{selectedBrand}</span>
+                            <button
+                                onClick={() => onBrandChange('ALL')}
+                                className="ml-1 hover:text-rose-500 transition-colors"
+                            >
+                                <X size={12} />
+                            </button>
+                        </div>
+                    )}
+
+                    {selectedCategory !== 'ALL' && (
+                        <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-xl text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 group animate-in fade-in zoom-in duration-200">
+                            <span className="opacity-50">Category:</span>
+                            <span>{selectedCategory}</span>
+                            <button
+                                onClick={() => onCategoryChange('ALL')}
+                                className="ml-1 hover:text-rose-500 transition-colors"
+                            >
+                                <X size={12} />
+                            </button>
+                        </div>
+                    )}
+
+                    {selectedSubCategory !== 'ALL' && (
+                        <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-xl text-[10px] font-black uppercase tracking-widest text-purple-600 dark:text-purple-400 group animate-in fade-in zoom-in duration-200">
+                            <span className="opacity-50">Sub:</span>
+                            <span>{selectedSubCategory}</span>
+                            <button
+                                onClick={() => onSubCategoryChange('ALL')}
+                                className="ml-1 hover:text-rose-500 transition-colors"
+                            >
+                                <X size={12} />
+                            </button>
+                        </div>
+                    )}
+
+                    {selectedModel !== 'ALL' && (
+                        <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 group animate-in fade-in zoom-in duration-200">
+                            <span className="opacity-50">Model:</span>
+                            <span>{selectedModel}</span>
+                            <button
+                                onClick={() => onModelChange('ALL')}
+                                className="ml-1 hover:text-rose-500 transition-colors"
+                            >
+                                <X size={12} />
+                            </button>
+                        </div>
+                    )}
+
+                    {selectedVariant !== 'ALL' && (
+                        <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-slate-900/20 border border-slate-100 dark:border-slate-800 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 group animate-in fade-in zoom-in duration-200">
+                            <span className="opacity-50">Variant:</span>
+                            <span>{selectedVariant}</span>
+                            <button
+                                onClick={() => onVariantChange('ALL')}
+                                className="ml-1 hover:text-rose-500 transition-colors"
+                            >
+                                <X size={12} />
+                            </button>
+                        </div>
                     )}
                 </div>
 
@@ -416,18 +678,19 @@ export default function PricingLedgerTable({
                     <div className="h-10 w-[1px] bg-slate-200 hidden xl:block mx-2" />
 
                     {/* Status Filter Dropdown */}
-                    <div className="relative group min-w-[140px]">
+                    <div className="relative group min-w-[160px]">
                         <Zap size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
                         <select
-                            value={filters.status || 'ALL'}
-                            onChange={(e) => handleFilter('status', e.target.value === 'ALL' ? '' : e.target.value)}
+                            value={filters.displayState || 'ALL'}
+                            onChange={e => handleFilter('displayState', e.target.value === 'ALL' ? '' : e.target.value)}
                             className="w-full pl-11 pr-10 py-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 rounded-2xl text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-4 focus:ring-emerald-500/10 outline-none appearance-none cursor-pointer transition-all duration-300 relative"
                         >
-                            <option value="ALL">All Status</option>
-                            <option value="ACTIVE">Live</option>
-                            <option value="DRAFT">New</option>
-                            <option value="INACTIVE">Inactive</option>
-                            <option value="RELAUNCH">Relaunch</option>
+                            <option value="ALL">All States</option>
+                            <option value="Draft">Draft</option>
+                            <option value="In Review">In Review</option>
+                            <option value="Published">Published</option>
+                            <option value="Live">Live</option>
+                            <option value="Inactive">Inactive</option>
                         </select>
                         <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 z-10">
                             <div className="w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-slate-500" />
@@ -439,146 +702,210 @@ export default function PricingLedgerTable({
                             disabled={isSaving || isParentSaving}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-xl shadow-emerald-200/50 flex items-center gap-3 group active:scale-95 whitespace-nowrap"
                         >
-                            {(isSaving || isParentSaving) ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                            {isSaving || isParentSaving ? (
+                                <Loader2 size={18} className="animate-spin" />
+                            ) : (
+                                <Save size={18} />
+                            )}
                             Save Pricing Ledger
                         </button>
                     )}
 
+                    {/* AUMS-only Calculate button - only for selected SKUs */}
+                    {isAums && selectedSkuIds.size > 0 && (
+                        <button
+                            onClick={() => onCalculate?.(Array.from(selectedSkuIds))}
+                            disabled={isCalculating}
+                            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-xl shadow-blue-200/50 flex items-center gap-3 group active:scale-95 whitespace-nowrap"
+                            title="Calculate RTO & Insurance for selected SKUs"
+                        >
+                            {isCalculating ? <Loader2 size={18} className="animate-spin" /> : <Zap size={18} />}
+                            {isCalculating ? 'Calculating...' : `Calculate (${selectedSkuIds.size})`}
+                        </button>
+                    )}
+
                     <button
-                        onClick={() => setIsEditMode(!isEditMode)}
-                        className={`px-4 py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-sm flex items-center gap-2 border ${isEditMode
-                            ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800 shadow-rose-100 dark:shadow-rose-900/10'
-                            : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                            }`}
-                        title={isEditMode ? "Disable Editing" : "Enable Editing"}
+                        onClick={handleExportPDF}
+                        disabled={isExporting}
+                        className="px-4 py-4 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-black uppercase tracking-widest hover:border-blue-400 transition-all flex items-center gap-2 shadow-sm whitespace-nowrap"
                     >
-                        {isEditMode ? <Edit2 size={16} /> : <div className="relative"><Edit2 size={16} className="opacity-50" /><div className="absolute inset-0 flex items-center justify-center"><div className="w-full h-0.5 bg-slate-400 rotate-45"></div></div></div>}
-                        {isEditMode ? 'Editing On' : 'Locked'}
+                        {isExporting ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
+                        Export PDF
                     </button>
                 </div>
             </div>
 
             {/* Soft Tricolor Table Card */}
             <div className="flex-1 px-6 pb-6">
-                <div className="h-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-black/20 relative overflow-hidden flex flex-col">
+                <div
+                    id="pricing-ledger-table"
+                    className="h-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-black/20 relative overflow-hidden flex flex-col"
+                >
                     <div className="overflow-auto scrollbar-thin flex-1">
-                        <table className="w-full text-left border-collapse min-w-[1200px]">
-                            <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
-                                <tr>
+                        <table className="w-full text-left border-separate border-spacing-0 min-w-[1200px]">
+                            <thead className="sticky top-0 z-20">
+                                <tr className="bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-md group/header">
                                     <th className="px-4 py-4 w-10 border-b border-slate-200 dark:border-slate-800 pl-6">
                                         <input
                                             type="checkbox"
-                                            checked={tableSkus.length > 0 && tableSkus.every(s => selectedSkuIds.has(s.id))}
+                                            checked={
+                                                tableSkus.length > 0 && tableSkus.every(s => selectedSkuIds.has(s.id))
+                                            }
                                             onChange={toggleAll}
-                                            className="rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500/20 cursor-pointer w-4 h-4"
+                                            disabled={activeCategory === 'vehicles' && selectedVariant === 'ALL'}
+                                            className="rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500/20 cursor-pointer w-4 h-4 disabled:opacity-30 disabled:cursor-not-allowed"
                                         />
                                     </th>
                                     {/* DYAMIC COLUMNS based on Category */}
-                                    {(activeCategory === 'vehicles' ? ['model', 'variant', 'color', 'engineCc'] : ['product', 'color']).map((key) => {
-                                        // MAPPING: 'product' maps to 'model' for data operations
-                                        const dataKey = key === 'product' ? 'model' : key as keyof SKUPriceRow;
-                                        const values = getUniqueValues(dataKey);
-                                        const currentFilter = filters[dataKey];
-                                        const isActive = activeFilterColumn === key; // Use visual key for UI state
-                                        const statusLabels: Record<string, string> = {
-                                            'ACTIVE': 'Live',
-                                            'DRAFT': 'New',
-                                            'INACTIVE': 'Inactive',
-                                            'RELAUNCH': 'Relaunch'
-                                        };
+                                    {(activeCategory === 'vehicles' ? ['color', 'engineCc'] : ['product', 'color']).map(
+                                        key => {
+                                            // MAPPING: 'product' maps to 'model' for data operations
+                                            const dataKey = key === 'product' ? 'model' : (key as keyof SKUPriceRow);
+                                            const values = getUniqueValues(dataKey);
+                                            const currentFilter = filters[dataKey];
+                                            const isActive = activeFilterColumn === key; // Use visual key for UI state
+                                            const statusLabels: Record<string, string> = {
+                                                ACTIVE: 'Live',
+                                                DRAFT: 'New',
+                                                INACTIVE: 'Inactive',
+                                                RELAUNCH: 'Relaunch',
+                                            };
 
-                                        return (
-                                            <th key={key} className={`relative px-6 py-5 text-[10px] font-black uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30 group/header ${key === 'status' ? 'text-right' : 'text-slate-500 dark:text-slate-400'}`}>
-                                                <div className={`flex items-center gap-1 ${key === 'status' ? 'justify-end' : 'justify-between'}`}>
+                                            return (
+                                                <th
+                                                    key={key}
+                                                    className={`relative px-6 py-5 text-[10px] font-black uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 group/header ${key === 'status' ? 'text-right' : 'text-slate-500 dark:text-slate-400'} ${key === 'color' ? 'min-w-[160px]' : 'whitespace-nowrap'}`}
+                                                >
                                                     <div
-                                                        onClick={() => handleSort(dataKey)}
-                                                        className={`flex items-center gap-1 hover:text-emerald-600 transition-colors cursor-pointer ${key === 'status' ? 'text-slate-500' : ''}`}
+                                                        className={`flex items-center gap-1 ${key === 'status' ? 'justify-end' : 'justify-between'}`}
                                                     >
-                                                        {key === 'engineCc' ? 'Power' : key === 'product' ? 'Product' : key} <ArrowUpDown size={12} className={`opacity-30 ${sortConfig?.key === dataKey ? 'text-emerald-600 opacity-100' : ''}`} />
+                                                        <div
+                                                            onClick={() => handleSort(dataKey)}
+                                                            className={`flex items-center gap-1 hover:text-emerald-600 transition-colors cursor-pointer ${key === 'status' ? 'text-slate-500' : ''}`}
+                                                        >
+                                                            {key === 'engineCc'
+                                                                ? 'Power'
+                                                                : key === 'product'
+                                                                  ? 'Product'
+                                                                  : key}{' '}
+                                                            <ArrowUpDown
+                                                                size={12}
+                                                                className={`opacity-30 ${sortConfig?.key === dataKey ? 'text-emerald-600 opacity-100' : ''}`}
+                                                            />
+                                                        </div>
+
+                                                        <button
+                                                            onClick={e => {
+                                                                e.stopPropagation();
+                                                                setActiveFilterColumn(isActive ? null : key);
+                                                            }}
+                                                            className={`p-1 rounded-lg transition-all ${currentFilter && currentFilter !== 'ALL' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'text-slate-300 hover:bg-white hover:text-slate-600 hover:shadow-sm'}`}
+                                                        >
+                                                            <Filter
+                                                                size={12}
+                                                                className={
+                                                                    currentFilter && currentFilter !== 'ALL'
+                                                                        ? 'fill-current'
+                                                                        : ''
+                                                                }
+                                                            />
+                                                        </button>
                                                     </div>
 
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setActiveFilterColumn(isActive ? null : key);
-                                                        }}
-                                                        className={`p-1 rounded-lg transition-all ${currentFilter && currentFilter !== 'ALL' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'text-slate-300 hover:bg-white hover:text-slate-600 hover:shadow-sm'}`}
-                                                    >
-                                                        <Filter size={12} className={currentFilter && currentFilter !== 'ALL' ? 'fill-current' : ''} />
-                                                    </button>
-                                                </div>
-
-                                                {/* Filter Dropdown Popover */}
-                                                {isActive && (
-                                                    <>
-                                                        <div
-                                                            className="fixed inset-0 z-40 bg-transparent"
-                                                            onClick={() => setActiveFilterColumn(null)}
-                                                        />
-                                                        <div className={`absolute top-[80%] mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 ${key === 'status' ? 'right-6' : 'left-6'}`}>
-                                                            <div className="p-3 border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
-                                                                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Filter {key}</span>
-                                                                {currentFilter && (
+                                                    {/* Filter Dropdown Popover */}
+                                                    {isActive && (
+                                                        <>
+                                                            <div
+                                                                className="fixed inset-0 z-40 bg-transparent"
+                                                                onClick={() => setActiveFilterColumn(null)}
+                                                            />
+                                                            <div
+                                                                className={`absolute top-[80%] mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 ${key === 'status' ? 'right-6' : 'left-6'}`}
+                                                            >
+                                                                <div className="p-3 border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
+                                                                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                                                        Filter {key}
+                                                                    </span>
+                                                                    {currentFilter && (
+                                                                        <button
+                                                                            onClick={() => handleFilter(dataKey, '')}
+                                                                            className="text-[9px] font-black text-emerald-600 uppercase tracking-tighter hover:underline"
+                                                                        >
+                                                                            Clear
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                                <div className="max-h-64 overflow-y-auto p-2 scrollbar-thin">
                                                                     <button
                                                                         onClick={() => handleFilter(dataKey, '')}
-                                                                        className="text-[9px] font-black text-emerald-600 uppercase tracking-tighter hover:underline"
+                                                                        className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${!currentFilter || currentFilter === '' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                                                                     >
-                                                                        Clear
+                                                                        All {key}s
+                                                                        {(!currentFilter || currentFilter === '') && (
+                                                                            <CheckCircle2 size={12} />
+                                                                        )}
                                                                     </button>
-                                                                )}
+                                                                    <div className="h-px bg-slate-100 dark:bg-slate-800 my-2 mx-2" />
+                                                                    {values.length > 0 ? (
+                                                                        values.map(val => (
+                                                                            <button
+                                                                                key={val}
+                                                                                onClick={() =>
+                                                                                    handleFilter(dataKey, val)
+                                                                                }
+                                                                                className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${currentFilter === val ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                                                            >
+                                                                                {key === 'status'
+                                                                                    ? statusLabels[val] || val
+                                                                                    : val}
+                                                                                {currentFilter === val && (
+                                                                                    <CheckCircle2 size={12} />
+                                                                                )}
+                                                                            </button>
+                                                                        ))
+                                                                    ) : (
+                                                                        <div className="px-4 py-8 text-center">
+                                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                                                No options available
+                                                                            </p>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                             </div>
-                                                            <div className="max-h-64 overflow-y-auto p-2 scrollbar-thin">
-                                                                <button
-                                                                    onClick={() => handleFilter(dataKey, '')}
-                                                                    className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${!currentFilter || currentFilter === '' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-                                                                >
-                                                                    All {key}s
-                                                                    {(!currentFilter || currentFilter === '') && <CheckCircle2 size={12} />}
-                                                                </button>
-                                                                <div className="h-px bg-slate-100 dark:bg-slate-800 my-2 mx-2" />
-                                                                {values.length > 0 ? (
-                                                                    values.map(val => (
-                                                                        <button
-                                                                            key={val}
-                                                                            onClick={() => handleFilter(dataKey, val)}
-                                                                            className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${currentFilter === val ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-                                                                        >
-                                                                            {key === 'status' ? (statusLabels[val] || val) : val}
-                                                                            {currentFilter === val && <CheckCircle2 size={12} />}
-                                                                        </button>
-                                                                    ))
-                                                                ) : (
-                                                                    <div className="px-4 py-8 text-center">
-                                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No options available</p>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </th>
-                                        );
-                                    })}
+                                                        </>
+                                                    )}
+                                                </th>
+                                            );
+                                        }
+                                    )}
 
-
-                                    <th className="px-6 py-5 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border-b border-emerald-100 dark:border-emerald-900/30 bg-emerald-50/50 dark:bg-emerald-900/10 text-right">
+                                    <th className="px-6 py-5 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border-b border-emerald-100 dark:border-emerald-900/30 text-right whitespace-nowrap">
                                         <div
                                             className="flex items-center gap-1 justify-end cursor-pointer hover:text-emerald-700 transition-colors"
                                             onClick={() => handleSort('exShowroom')}
                                         >
-                                            {activeCategory === 'vehicles' ? 'Ex-Showroom' : 'MRP'} <ArrowUpDown size={12} />
+                                            {activeCategory === 'vehicles' ? 'Ex-Showroom' : 'MRP'}{' '}
+                                            <ArrowUpDown size={12} />
                                         </div>
                                     </th>
 
                                     {activeCategory === 'vehicles' ? (
                                         <>
-                                            <th className="px-6 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-right">RTO</th>
-                                            <th className="px-6 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-right">Insurance</th>
+                                            <th className="px-6 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap">
+                                                RTO
+                                            </th>
+                                            <th className="px-6 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap">
+                                                Insurance
+                                            </th>
                                         </>
                                     ) : (
                                         <>
-                                            <th className="px-6 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-right">Base Price</th>
-                                            <th className="px-6 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-right">GST (28%)</th>
+                                            <th className="px-6 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-right">
+                                                Base Price
+                                            </th>
+                                            <th className="px-6 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-right">
+                                                GST (28%)
+                                            </th>
                                         </>
                                     )}
 
@@ -589,49 +916,70 @@ export default function PricingLedgerTable({
                                     )}
 
                                     {!isAums && activeCategory === 'vehicles' && (
-                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-right">
-                                            On-Road (Server)
+                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap">
+                                            On-Road
                                         </th>
                                     )}
 
                                     {activeCategory !== 'vehicles' && (
-                                        <th className="px-6 py-5 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border-b border-emerald-100 dark:border-emerald-900/30 text-right bg-emerald-50/80 dark:bg-emerald-900/20">
+                                        <th className="px-6 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 text-right">
                                             Offer (₹)
                                         </th>
                                     )}
 
-                                    <th className="px-8 py-5 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border-b border-emerald-100 dark:border-emerald-900/30 text-right bg-emerald-50/80 dark:bg-emerald-900/20">
-                                        {activeCategory === 'vehicles' ? (isAums ? 'On-Road (Server)' : 'Offer Delta (INR)') : 'Final Price'}
+                                    <th className="px-8 py-5 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border-b border-emerald-100 dark:border-emerald-900/30 text-right whitespace-nowrap bg-emerald-50/80 dark:bg-emerald-900/20">
+                                        {activeCategory === 'vehicles'
+                                            ? isAums
+                                                ? 'On-Road'
+                                                : 'Offer On Road'
+                                            : 'Final Price'}
                                     </th>
 
                                     {!isAums && activeCategory === 'vehicles' && (
-                                        <th className="px-6 py-5 text-[10px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-widest border-b border-emerald-100 dark:border-emerald-900/30 bg-emerald-50/30 dark:bg-emerald-900/10 text-right">
-                                            Benefit
+                                        <th className="px-6 py-5 text-[10px] font-black text-emerald-400 uppercase tracking-widest border-b border-white/5 text-right whitespace-nowrap">
+                                            Delta
                                         </th>
                                     )}
 
-                                    <th className="relative px-8 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30 text-right group/header w-[140px]">
+                                    <th className="px-6 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 text-right w-[140px] whitespace-nowrap">
+                                        Last Updated
+                                    </th>
+
+                                    <th className="relative px-8 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 text-right group/header w-[140px] whitespace-nowrap">
                                         <div className="flex items-center justify-end gap-1">
                                             <div
-                                                onClick={() => handleSort('status')}
+                                                onClick={() => handleSort('displayState')}
                                                 className="flex items-center gap-1 hover:text-emerald-600 transition-colors cursor-pointer"
                                             >
-                                                Status <ArrowUpDown size={12} className={`opacity-30 ${sortConfig?.key === 'status' ? 'text-emerald-600 opacity-100' : ''}`} />
+                                                State{' '}
+                                                <ArrowUpDown
+                                                    size={12}
+                                                    className={`opacity-30 ${sortConfig?.key === 'displayState' ? 'text-emerald-600 opacity-100' : ''}`}
+                                                />
                                             </div>
 
                                             <button
-                                                onClick={(e) => {
+                                                onClick={e => {
                                                     e.stopPropagation();
-                                                    setActiveFilterColumn(activeFilterColumn === 'status' ? null : 'status');
+                                                    setActiveFilterColumn(
+                                                        activeFilterColumn === 'displayState' ? null : 'displayState'
+                                                    );
                                                 }}
-                                                className={`p-1 rounded-lg transition-all ${filters.status && filters.status !== 'ALL' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'text-slate-300 hover:bg-white hover:text-slate-600 hover:shadow-sm'}`}
+                                                className={`p-1 rounded-lg transition-all ${filters.displayState && filters.displayState !== 'ALL' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'text-slate-300 hover:bg-white hover:text-slate-600 hover:shadow-sm'}`}
                                             >
-                                                <Filter size={12} className={filters.status && filters.status !== 'ALL' ? 'fill-current' : ''} />
+                                                <Filter
+                                                    size={12}
+                                                    className={
+                                                        filters.displayState && filters.displayState !== 'ALL'
+                                                            ? 'fill-current'
+                                                            : ''
+                                                    }
+                                                />
                                             </button>
                                         </div>
 
                                         {/* Status Filter Dropdown */}
-                                        {activeFilterColumn === 'status' && (
+                                        {activeFilterColumn === 'displayState' && (
                                             <>
                                                 <div
                                                     className="fixed inset-0 z-40 bg-transparent"
@@ -639,10 +987,12 @@ export default function PricingLedgerTable({
                                                 />
                                                 <div className="absolute top-[80%] right-6 mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                                                     <div className="p-3 border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
-                                                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Filter status</span>
-                                                        {filters.status && (
+                                                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                                            Filter state
+                                                        </span>
+                                                        {filters.displayState && (
                                                             <button
-                                                                onClick={() => handleFilter('status', '')}
+                                                                onClick={() => handleFilter('displayState', '')}
                                                                 className="text-[9px] font-black text-emerald-600 uppercase tracking-tighter hover:underline"
                                                             >
                                                                 Clear
@@ -651,21 +1001,25 @@ export default function PricingLedgerTable({
                                                     </div>
                                                     <div className="max-h-64 overflow-y-auto p-2 scrollbar-thin">
                                                         <button
-                                                            onClick={() => handleFilter('status', '')}
-                                                            className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${!filters.status || filters.status === '' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                                            onClick={() => handleFilter('displayState', '')}
+                                                            className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${!filters.displayState || filters.displayState === '' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                                                         >
-                                                            All Statuses
-                                                            {(!filters.status || filters.status === '') && <CheckCircle2 size={12} />}
+                                                            All States
+                                                            {(!filters.displayState || filters.displayState === '') && (
+                                                                <CheckCircle2 size={12} />
+                                                            )}
                                                         </button>
                                                         <div className="h-px bg-slate-100 dark:bg-slate-800 my-2 mx-2" />
-                                                        {getUniqueValues('status').map(val => (
+                                                        {getUniqueValues('displayState').map(val => (
                                                             <button
                                                                 key={val}
-                                                                onClick={() => handleFilter('status', val)}
-                                                                className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${filters.status === val ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                                                onClick={() => handleFilter('displayState', val)}
+                                                                className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${filters.displayState === val ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                                                             >
-                                                                {{ 'ACTIVE': 'Live', 'DRAFT': 'New', 'INACTIVE': 'Inactive', 'RELAUNCH': 'Relaunch' }[val] || val}
-                                                                {filters.status === val && <CheckCircle2 size={12} />}
+                                                                {val}
+                                                                {filters.displayState === val && (
+                                                                    <CheckCircle2 size={12} />
+                                                                )}
                                                             </button>
                                                         ))}
                                                     </div>
@@ -676,18 +1030,27 @@ export default function PricingLedgerTable({
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                {paginatedSkus.map((sku) => {
+                                {paginatedSkus.map(sku => {
                                     const offerDelta = Number(sku.offerAmount || 0);
                                     const gstRate = sku.gstRate || 28;
                                     const basePrice = sku.exShowroom / (1 + gstRate / 100);
                                     const totalGst = sku.exShowroom - basePrice;
-                                    const isDirty = sku.originalExShowroom !== undefined && sku.exShowroom !== sku.originalExShowroom;
+                                    const isDirty =
+                                        sku.originalExShowroom !== undefined &&
+                                        sku.exShowroom !== sku.originalExShowroom;
                                     const isSelected = selectedSkuIds.has(sku.id);
+                                    const canEdit =
+                                        isSelected &&
+                                        (activeCategory !== 'vehicles' ||
+                                            selectedVariant !== 'ALL' ||
+                                            selectedSkuIds.size <= 1);
+                                    const updatedAt = sku.updatedAt || sku.publishedAt;
+                                    const updatedLabel = updatedAt ? new Date(updatedAt).toLocaleString() : '—';
 
                                     return (
                                         <tr
                                             key={sku.id}
-                                            className={`group transition-all duration-200 ${isSelected ? 'bg-emerald-50/30 dark:bg-emerald-900/10' : 'hover:bg-slate-50 dark:hover:bg-slate-900/50'}`}
+                                            className={`group transition-all duration-200 ${isSelected ? 'bg-emerald-50/50 dark:bg-emerald-900/20' : 'even:bg-slate-50/10 dark:even:bg-slate-800/10 hover:bg-slate-50 dark:hover:bg-slate-800/30'}`}
                                         >
                                             <td className="px-6 py-5 pl-8">
                                                 <input
@@ -699,37 +1062,29 @@ export default function PricingLedgerTable({
                                             </td>
 
                                             {/* VEHICLE COLUMNS */}
-                                            {activeCategory === 'vehicles' && (
-                                                <>
-                                                    <td className="px-6 py-5">
-                                                        <div className="flex flex-col">
-                                                            <span className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-tight">{sku.model}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-5">
-                                                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase">{sku.variant}</span>
-                                                    </td>
-                                                </>
-                                            )}
+                                            {activeCategory === 'vehicles' && null}
 
                                             {/* ACCESSORY COLUMNS - Composite Product */}
                                             {activeCategory !== 'vehicles' && (
                                                 <td className="px-6 py-5">
                                                     <div className="flex flex-col gap-0.5">
-                                                        <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                                                            {sku.category} / {sku.subCategory} / {sku.model} / {sku.variant}
+                                                        <span className="text-[11px] font-bold text-slate-900 dark:text-white uppercase tracking-tight">
+                                                            {sku.category} / {sku.subCategory} / {sku.model} /{' '}
+                                                            {sku.variant}
                                                         </span>
                                                     </div>
                                                 </td>
                                             )}
 
-                                            <td className="px-6 py-5">
-                                                <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase leading-relaxed">{sku.color}</span>
+                                            <td className="px-6 py-5 min-w-[160px]">
+                                                <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase leading-relaxed">
+                                                    {sku.color}
+                                                </span>
                                             </td>
 
                                             {activeCategory === 'vehicles' && (
                                                 <td className="px-6 py-5">
-                                                    <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+                                                    <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-tight">
                                                         {sku.engineCc ? `${Number(sku.engineCc).toFixed(2)}cc` : '—'}
                                                     </span>
                                                 </td>
@@ -740,12 +1095,15 @@ export default function PricingLedgerTable({
                                                     <input
                                                         type="number"
                                                         value={sku.exShowroom}
-                                                        readOnly={!isAums || !isSelected || !isEditMode}
-                                                        onChange={(e) => isAums && onUpdatePrice(sku.id, Number(e.target.value))}
+                                                        readOnly={!isAums || !canEdit}
+                                                        onChange={e =>
+                                                            isAums && onUpdatePrice(sku.id, Number(e.target.value))
+                                                        }
                                                         className={`w-28 rounded-lg px-3 py-1.5 text-sm font-black text-right transition-all 
-                                                            ${(!isAums || !isSelected || !isEditMode)
-                                                                ? 'bg-transparent border-transparent text-slate-900 dark:text-slate-100 cursor-default'
-                                                                : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 dark:text-white'
+                                                            ${
+                                                                !isAums || !canEdit
+                                                                    ? 'bg-transparent border-transparent text-slate-900 dark:text-slate-100 cursor-default'
+                                                                    : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 dark:text-white'
                                                             } 
                                                             ${isDirty ? 'text-amber-700 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-900/20' : ''}
                                                         `}
@@ -754,15 +1112,256 @@ export default function PricingLedgerTable({
                                             </td>
                                             {activeCategory === 'vehicles' ? (
                                                 <>
-                                                    <td className="px-6 py-5 text-right">
-                                                        <span className="font-bold text-[11px] text-slate-600 dark:text-slate-400">
+                                                    <td className="px-6 py-5 text-right relative group/tooltip">
+                                                        <span
+                                                            className={`font-bold text-[11px] text-slate-600 dark:text-slate-400 ${sku.rto_data ? 'cursor-help border-b border-dotted border-slate-300 dark:border-slate-700' : ''}`}
+                                                        >
                                                             {sku.rto ? `₹${sku.rto.toLocaleString()}` : '—'}
                                                         </span>
+                                                        {sku.rto_data && (
+                                                            <div className="fixed right-8 top-24 z-50 w-max min-w-[240px] p-3 rounded-xl bg-[#15191e] border border-white/10 shadow-2xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-300 pointer-events-none origin-top-right text-left">
+                                                                <div className="space-y-2">
+                                                                    <div className="pb-2 border-b border-white/5">
+                                                                        <p className="text-[9px] font-black uppercase tracking-widest text-emerald-500 mb-0.5">
+                                                                            Registration Options
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="grid grid-cols-1 gap-2">
+                                                                        {(
+                                                                            [
+                                                                                {
+                                                                                    label: 'State',
+                                                                                    key: 'STATE',
+                                                                                    desc: 'Standard Registration',
+                                                                                },
+                                                                                {
+                                                                                    label: 'Bharat (BH)',
+                                                                                    key: 'BH',
+                                                                                    desc: 'All India Permit',
+                                                                                },
+                                                                                {
+                                                                                    label: 'Company',
+                                                                                    key: 'COMPANY',
+                                                                                    desc: 'Corporate Registration',
+                                                                                },
+                                                                            ] as const
+                                                                        ).map(opt => {
+                                                                            const detail = getRtoTypeDetail(
+                                                                                sku.rto_data,
+                                                                                opt.key
+                                                                            );
+                                                                            const breakdown = detail?.breakdown;
+                                                                            return (
+                                                                                <div
+                                                                                    key={opt.key}
+                                                                                    className="bg-white/5 p-2.5 rounded-lg border border-white/5"
+                                                                                >
+                                                                                    <div className="flex items-center justify-between gap-4 mb-2">
+                                                                                        <div className="flex flex-col">
+                                                                                            <span className="text-[9px] font-bold text-white uppercase tracking-tighter">
+                                                                                                {opt.label}
+                                                                                            </span>
+                                                                                            <span className="text-[8px] text-slate-500">
+                                                                                                {opt.desc}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                        <span
+                                                                                            className={`text-[10px] font-black tabular-nums ${detail?.total ? 'text-emerald-500' : 'text-slate-600'}`}
+                                                                                        >
+                                                                                            {detail?.total
+                                                                                                ? formatMoney(
+                                                                                                      detail.total
+                                                                                                  )
+                                                                                                : 'N/A'}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                    {breakdown && (
+                                                                                        <div className="pt-2 border-t border-dashed border-white/10 space-y-1">
+                                                                                            {[
+                                                                                                {
+                                                                                                    l: 'Road Tax',
+                                                                                                    v: breakdown.roadTax,
+                                                                                                },
+                                                                                                {
+                                                                                                    l: 'Reg. Charges',
+                                                                                                    v: breakdown.registrationCharges,
+                                                                                                },
+                                                                                                {
+                                                                                                    l: 'Smart Card',
+                                                                                                    v: breakdown.smartCardCharges,
+                                                                                                },
+                                                                                                {
+                                                                                                    l: 'Hypothecation',
+                                                                                                    v: breakdown.hypothecationCharges,
+                                                                                                },
+                                                                                                {
+                                                                                                    l: 'Postal',
+                                                                                                    v: breakdown.postalCharges,
+                                                                                                },
+                                                                                                {
+                                                                                                    l: 'Cess',
+                                                                                                    v: breakdown.cessAmount,
+                                                                                                },
+                                                                                            ]
+                                                                                                .filter(i => i.v > 0)
+                                                                                                .map((item, idx) => (
+                                                                                                    <div
+                                                                                                        key={idx}
+                                                                                                        className="flex justify-between items-center text-[9px]"
+                                                                                                    >
+                                                                                                        <span className="text-slate-500">
+                                                                                                            {item.l}
+                                                                                                        </span>
+                                                                                                        <span className="text-slate-300 font-mono">
+                                                                                                            {formatMoney(
+                                                                                                                item.v
+                                                                                                            )}
+                                                                                                        </span>
+                                                                                                    </div>
+                                                                                                ))}
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {!breakdown && detail?.fees && (
+                                                                                        <div className="pt-2 border-t border-dashed border-white/10 space-y-1">
+                                                                                            {detail.fees.map(
+                                                                                                (
+                                                                                                    item: any,
+                                                                                                    idx: number
+                                                                                                ) => (
+                                                                                                    <div
+                                                                                                        key={`fee-${idx}`}
+                                                                                                        className="flex justify-between items-center text-[9px]"
+                                                                                                    >
+                                                                                                        <span className="text-slate-500">
+                                                                                                            {item.label}
+                                                                                                        </span>
+                                                                                                        <span className="text-slate-300 font-mono">
+                                                                                                            {formatMoney(
+                                                                                                                item.amount
+                                                                                                            )}
+                                                                                                        </span>
+                                                                                                    </div>
+                                                                                                )
+                                                                                            )}
+                                                                                            {detail.tax?.map(
+                                                                                                (
+                                                                                                    item: any,
+                                                                                                    idx: number
+                                                                                                ) => (
+                                                                                                    <div
+                                                                                                        key={`tax-${idx}`}
+                                                                                                        className="flex justify-between items-center text-[9px]"
+                                                                                                    >
+                                                                                                        <span className="text-slate-500">
+                                                                                                            {item.label}
+                                                                                                        </span>
+                                                                                                        <span className="text-slate-300 font-mono">
+                                                                                                            {formatMoney(
+                                                                                                                item.amount
+                                                                                                            )}
+                                                                                                        </span>
+                                                                                                    </div>
+                                                                                                )
+                                                                                            )}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                </div>
+                                                                {/* Triangle pointer */}
+                                                                <div className="absolute -top-1 right-8 w-2 h-2 bg-[#15191e] border-l border-t border-white/10 rotate-45" />
+                                                            </div>
+                                                        )}
                                                     </td>
-                                                    <td className="px-6 py-5 text-right">
-                                                        <span className="font-bold text-[11px] text-slate-600 dark:text-slate-400">
+                                                    <td className="px-6 py-5 text-right relative group/tooltip">
+                                                        <span
+                                                            className={`font-bold text-[11px] text-slate-600 dark:text-slate-400 ${sku.insurance_data ? 'cursor-help border-b border-dotted border-slate-300 dark:border-slate-700' : ''}`}
+                                                        >
                                                             {sku.insurance ? `₹${sku.insurance.toLocaleString()}` : '—'}
                                                         </span>
+                                                        {sku.insurance_data && (
+                                                            <div className="fixed right-8 top-24 z-50 w-max min-w-[260px] p-3 rounded-xl bg-[#15191e] border border-white/10 shadow-2xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-300 pointer-events-none origin-top-right text-left">
+                                                                <div className="space-y-2">
+                                                                    <div className="pb-2 border-b border-white/5">
+                                                                        <p className="text-[9px] font-black uppercase tracking-widest text-emerald-500 mb-0.5">
+                                                                            Insurance Breakdown
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="space-y-1">
+                                                                        <div className="flex justify-between items-center text-[9px]">
+                                                                            <span className="text-slate-500">
+                                                                                OD Premium
+                                                                            </span>
+                                                                            <span className="text-slate-300 font-mono">
+                                                                                {formatMoney(sku.insurance_data.od)}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="flex justify-between items-center text-[9px]">
+                                                                            <span className="text-slate-500">
+                                                                                TP Premium
+                                                                            </span>
+                                                                            <span className="text-slate-300 font-mono">
+                                                                                {formatMoney(sku.insurance_data.tp)}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="flex justify-between items-center text-[9px]">
+                                                                            <span className="text-slate-500">
+                                                                                GST ({sku.insurance_data.gst_rate || 18}
+                                                                                %)
+                                                                            </span>
+                                                                            <span className="text-slate-300 font-mono">
+                                                                                {formatMoney(
+                                                                                    (sku.insurance_data.base_total ||
+                                                                                        0) -
+                                                                                        ((sku.insurance_data.od || 0) +
+                                                                                            (sku.insurance_data.tp ||
+                                                                                                0))
+                                                                                )}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="flex justify-between items-center text-[9px] font-bold">
+                                                                            <span className="text-slate-400">
+                                                                                Base Total
+                                                                            </span>
+                                                                            <span className="text-emerald-500 font-mono">
+                                                                                {formatMoney(
+                                                                                    sku.insurance_data.base_total
+                                                                                )}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                    {Array.isArray(sku.insurance_data.addons) &&
+                                                                        sku.insurance_data.addons.length > 0 && (
+                                                                            <div className="pt-2 border-t border-dashed border-white/10 space-y-1">
+                                                                                {sku.insurance_data.addons.map(
+                                                                                    (addon: any) => (
+                                                                                        <div
+                                                                                            key={
+                                                                                                addon.id || addon.label
+                                                                                            }
+                                                                                            className="flex justify-between items-center text-[9px]"
+                                                                                        >
+                                                                                            <span className="text-slate-500">
+                                                                                                {addon.label ||
+                                                                                                    addon.id}
+                                                                                            </span>
+                                                                                            <span className="text-slate-300 font-mono">
+                                                                                                {formatMoney(
+                                                                                                    addon.total ??
+                                                                                                        addon.price
+                                                                                                )}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    )
+                                                                                )}
+                                                                            </div>
+                                                                        )}
+                                                                </div>
+                                                                <div className="absolute -top-1 right-8 w-2 h-2 bg-[#15191e] border-l border-t border-white/10 rotate-45" />
+                                                            </div>
+                                                        )}
                                                     </td>
                                                     {!isAums && (
                                                         <td className="px-8 py-5 text-right">
@@ -775,10 +1374,20 @@ export default function PricingLedgerTable({
                                             ) : (
                                                 <>
                                                     <td className="px-6 py-5 text-right">
-                                                        <span className="font-bold text-[11px] text-slate-500 dark:text-slate-400">₹{basePrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                                                        <span className="font-bold text-[11px] text-slate-500 dark:text-slate-400">
+                                                            ₹
+                                                            {basePrice.toLocaleString(undefined, {
+                                                                maximumFractionDigits: 0,
+                                                            })}
+                                                        </span>
                                                     </td>
                                                     <td className="px-6 py-5 text-right">
-                                                        <span className="font-bold text-[11px] text-slate-500 dark:text-slate-400">₹{totalGst.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                                                        <span className="font-bold text-[11px] text-slate-500 dark:text-slate-400">
+                                                            ₹
+                                                            {totalGst.toLocaleString(undefined, {
+                                                                maximumFractionDigits: 0,
+                                                            })}
+                                                        </span>
                                                     </td>
                                                 </>
                                             )}
@@ -788,10 +1397,14 @@ export default function PricingLedgerTable({
                                                     <td className="px-6 py-5 text-center">
                                                         <select
                                                             value={sku.inclusionType || 'OPTIONAL'}
-                                                            onChange={(e) => {
-                                                                const type = e.target.value as 'MANDATORY' | 'OPTIONAL' | 'BUNDLE';
+                                                            onChange={e => {
+                                                                const type = e.target.value as
+                                                                    | 'MANDATORY'
+                                                                    | 'OPTIONAL'
+                                                                    | 'BUNDLE';
                                                                 onUpdateInclusion(sku.id, type);
-                                                                if (type === 'MANDATORY' || type === 'BUNDLE') onUpdateOffer(sku.id, -sku.exShowroom);
+                                                                if (type === 'MANDATORY' || type === 'BUNDLE')
+                                                                    onUpdateOffer(sku.id, -sku.exShowroom);
                                                                 else onUpdateOffer(sku.id, 0);
                                                             }}
                                                             className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest outline-none border transition-all ${sku.inclusionType === 'MANDATORY' ? 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-900/30' : sku.inclusionType === 'BUNDLE' ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/30' : 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'}`}
@@ -801,105 +1414,156 @@ export default function PricingLedgerTable({
                                                             <option value="BUNDLE">Bundle</option>
                                                         </select>
                                                     </td>
-                                                    <td className="px-6 py-5 text-right">
-                                                        <input
-                                                            type="number"
-                                                            value={offerDelta}
-                                                            readOnly={!isSelected || !isEditMode}
-                                                            title="Offer Amount. Negative = discount."
-                                                            onChange={(e) => {
-                                                                onUpdateOffer(sku.id, Number(e.target.value));
-                                                            }}
-                                                            className={`w-28 rounded-lg px-3 py-1.5 text-sm font-black text-right outline-none transition-all
-                                                                ${(!isSelected || !isEditMode)
-                                                                    ? 'bg-transparent border-transparent text-emerald-700 dark:text-emerald-400 cursor-default'
-                                                                    : 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                                                                }
-                                                            `}
-                                                        />
-                                                    </td>
+                                                    {!isAums && (
+                                                        <td className="px-6 py-5 text-right">
+                                                            {(() => {
+                                                                const delta = offerDelta;
+                                                                if (delta === 0)
+                                                                    return (
+                                                                        <span className="text-xs font-bold text-slate-300">
+                                                                            —
+                                                                        </span>
+                                                                    );
+                                                                const isSave = delta < 0; // Negative = discount = customer saves
+                                                                return (
+                                                                    <div
+                                                                        className={`inline-flex items-center gap-1 font-black text-xs ${isSave ? 'text-emerald-600' : 'text-rose-600'}`}
+                                                                    >
+                                                                        {isSave ? (
+                                                                            <Sparkles size={12} />
+                                                                        ) : (
+                                                                            <Zap size={12} />
+                                                                        )}
+                                                                        {isSave
+                                                                            ? `₹${Math.abs(delta).toLocaleString()}`
+                                                                            : `-₹${Math.abs(delta).toLocaleString()}`}
+                                                                    </div>
+                                                                );
+                                                            })()}
+                                                        </td>
+                                                    )}
                                                 </>
                                             )}
 
                                             <td className="px-8 py-5 text-right bg-emerald-50/20 dark:bg-emerald-900/10">
                                                 {isAums ? (
-                                                    <span className="font-black text-[13px] text-emerald-700 dark:text-emerald-400 tracking-tight">
-                                                        {activeCategory === 'vehicles' ? (sku.onRoad ? `₹${sku.onRoad.toLocaleString()}` : '—') : `₹${sku.exShowroom.toLocaleString()}`}
+                                                    <span className="font-bold text-[11px] text-emerald-700 dark:text-emerald-400 tracking-tight">
+                                                        {activeCategory === 'vehicles'
+                                                            ? sku.onRoad
+                                                                ? `₹${sku.onRoad.toLocaleString()}`
+                                                                : '—'
+                                                            : `₹${sku.exShowroom.toLocaleString()}`}
                                                     </span>
-                                                ) : activeCategory === 'vehicles' ? (
-                                                    <input
-                                                        type="number"
-                                                        value={offerDelta}
-                                                        readOnly={!isSelected || !isEditMode}
-                                                        title="Offer delta. Negative = discount, positive = premium."
-                                                        onChange={(e) => {
-                                                            onUpdateOffer(sku.id, Number(e.target.value));
-                                                        }}
-                                                        className={`w-28 rounded-lg px-3 py-1.5 text-sm font-black text-right outline-none transition-all
-                                                            ${(!isSelected || !isEditMode)
-                                                                ? 'bg-transparent border-transparent text-emerald-700 dark:text-emerald-400 cursor-default'
-                                                                : 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                                                            }
-                                                        `}
-                                                    />
                                                 ) : (
-                                                    <span className="font-black text-[13px] text-emerald-700 tracking-tight">
-                                                        ₹{Math.max(0, sku.exShowroom + (sku.offerAmount || 0)).toLocaleString()}
-                                                    </span>
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        <input
+                                                            type="number"
+                                                            value={
+                                                                activeCategory === 'vehicles'
+                                                                    ? (sku.onRoad || 0) + offerDelta
+                                                                    : sku.exShowroom + offerDelta
+                                                            }
+                                                            readOnly={!canEdit}
+                                                            title={
+                                                                activeCategory === 'vehicles'
+                                                                    ? "Dealer's Offer On Road price to customer."
+                                                                    : "Dealer's Final Price for this item."
+                                                            }
+                                                            onChange={e => {
+                                                                const enteredPrice = Number(e.target.value);
+                                                                const base =
+                                                                    activeCategory === 'vehicles'
+                                                                        ? sku.onRoad || 0
+                                                                        : sku.exShowroom;
+                                                                const newDelta = enteredPrice - base;
+                                                                onUpdateOffer(sku.id, newDelta);
+                                                            }}
+                                                            className={`w-28 rounded-lg px-3 py-1.5 text-[11px] font-bold text-right outline-none transition-all
+                                                                ${
+                                                                    !canEdit
+                                                                        ? 'bg-transparent border-transparent text-emerald-700 dark:text-emerald-400 cursor-default'
+                                                                        : 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                                                                }
+                                                            `}
+                                                        />
+                                                        {isSelected && selectedSkuIds.size > 1 && (
+                                                            <button
+                                                                type="button"
+                                                                title="Copy to all selected rows"
+                                                                onClick={() => {
+                                                                    const currentDelta = sku.offerAmount || 0;
+                                                                    selectedSkuIds.forEach(id => {
+                                                                        if (id !== sku.id) {
+                                                                            onUpdateOffer(id, currentDelta);
+                                                                        }
+                                                                    });
+                                                                }}
+                                                                className="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:hover:bg-amber-900/40 dark:text-amber-400 transition-all"
+                                                            >
+                                                                <Copy size={12} />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 )}
                                             </td>
 
                                             {!isAums && activeCategory === 'vehicles' && (
                                                 <td className="px-6 py-5 text-right">
                                                     {(() => {
-                                                        if (offerDelta === 0) return <span className="text-xs font-bold text-slate-300">—</span>;
-                                                        const isDiscount = offerDelta < 0;
+                                                        // Delta = OnRoad (AUMS base) - OfferOnRoad (dealer input)
+                                                        // offerDelta here is the dealer's Offer On Road price
+                                                        const onRoadBase = sku.onRoad || 0;
+                                                        const dealerOfferPrice = onRoadBase + offerDelta; // offerDelta is the adjustment
+                                                        const delta = onRoadBase - dealerOfferPrice; // = -offerDelta
+
+                                                        if (delta === 0 || offerDelta === 0)
+                                                            return (
+                                                                <span className="text-xs font-bold text-slate-300">
+                                                                    —
+                                                                </span>
+                                                            );
+                                                        const isSave = delta > 0; // Positive = customer saves
                                                         return (
-                                                            <div className={`inline-flex items-center gap-1 font-black text-xs ${isDiscount ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                                                {isDiscount ? <Sparkles size={12} /> : <Zap size={12} />}
-                                                                {isDiscount ? `-₹${Math.abs(offerDelta).toLocaleString()}` : `+₹${offerDelta.toLocaleString()}`}
+                                                            <div
+                                                                className={`inline-flex items-center gap-1 font-black text-xs ${isSave ? 'text-emerald-600' : 'text-rose-600'}`}
+                                                            >
+                                                                {isSave ? <Sparkles size={12} /> : <Zap size={12} />}
+                                                                {isSave
+                                                                    ? `₹${Math.abs(delta).toLocaleString()}`
+                                                                    : `-₹${Math.abs(delta).toLocaleString()}`}
                                                             </div>
                                                         );
                                                     })()}
                                                 </td>
                                             )}
 
-                                            <td className="px-8 py-5 text-right w-[140px]">
-                                                {isAums ? (
-                                                    <button
-                                                        onClick={() => {
-                                                            type StatusType = 'ACTIVE' | 'DRAFT' | 'INACTIVE' | 'RELAUNCH';
-                                                            const statuses: StatusType[] = ['ACTIVE', 'DRAFT', 'INACTIVE', 'RELAUNCH'];
-                                                            const currentStatus = (sku.status || 'INACTIVE') as StatusType;
-                                                            const currentIndex = statuses.indexOf(currentStatus);
-                                                            const nextStatus = statuses[(currentIndex + 1) % statuses.length];
+                                            <td className="px-6 py-5 text-right w-[140px]">
+                                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                                                    {updatedLabel}
+                                                </span>
+                                            </td>
 
-                                                            if (nextStatus === 'ACTIVE' && (!sku.exShowroom || sku.exShowroom <= 0)) {
-                                                                alert('Set Ex-Showroom Price first.');
-                                                                return;
-                                                            }
-                                                            if (onUpdateStatus) onUpdateStatus(sku.id, nextStatus);
-                                                        }}
-                                                        className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-sm border ${sku.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800' :
-                                                            sku.status === 'DRAFT' ? 'bg-indigo-50 text-indigo-600 border-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 dark:border-indigo-800' :
-                                                                sku.status === 'RELAUNCH' ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800' :
-                                                                    'bg-slate-50 text-slate-400 border-slate-100 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700'
-                                                            }`}
-                                                    >
-                                                        {sku.status === 'ACTIVE' ? 'Live' : sku.status === 'DRAFT' ? 'New' : sku.status === 'INACTIVE' ? 'Inactive' : 'Relaunch'}
-                                                    </button>
-                                                ) : (
-                                                    <button
-                                                        onClick={() => {
-                                                            if (sku.status !== 'ACTIVE') return;
-                                                            if (onUpdateLocalStatus) onUpdateLocalStatus(sku.id, !sku.localIsActive);
-                                                        }}
-                                                        disabled={sku.status !== 'ACTIVE'}
-                                                        className={`w-10 h-5 rounded-full flex items-center transition-all ml-auto ${sku.status === 'ACTIVE' ? (sku.localIsActive ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700') : 'bg-slate-100 dark:bg-slate-800 opacity-50 cursor-not-allowed'}`}
-                                                    >
-                                                        <div className={`w-4 h-4 rounded-full bg-white dark:bg-slate-200 shadow-sm transition-all mx-0.5 ${sku.localIsActive && sku.status === 'ACTIVE' ? 'translate-x-5' : 'translate-x-0'}`} />
-                                                    </button>
-                                                )}
+                                            <td className="px-8 py-5 text-right w-[140px]">
+                                                {(() => {
+                                                    const state = sku.displayState || 'Draft';
+                                                    const styleMap: Record<string, string> = {
+                                                        Published:
+                                                            'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800',
+                                                        Live: 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800',
+                                                        'In Review':
+                                                            'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800',
+                                                        Draft: 'bg-slate-50 text-slate-500 border-slate-100 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
+                                                        Inactive:
+                                                            'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-800',
+                                                    };
+                                                    return (
+                                                        <span
+                                                            className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-sm border ${styleMap[state] || styleMap['Draft']}`}
+                                                        >
+                                                            {state}
+                                                        </span>
+                                                    );
+                                                })()}
                                             </td>
                                         </tr>
                                     );
@@ -912,7 +1576,15 @@ export default function PricingLedgerTable({
                     {tableSkus.length > 0 && (
                         <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
                             <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                                Showing <span className="text-slate-900 dark:text-white">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span className="text-slate-900 dark:text-white">{Math.min(currentPage * ITEMS_PER_PAGE, tableSkus.length)}</span> of <span className="text-slate-900 dark:text-white">{tableSkus.length}</span>
+                                Showing{' '}
+                                <span className="text-slate-900 dark:text-white">
+                                    {(currentPage - 1) * ITEMS_PER_PAGE + 1}
+                                </span>{' '}
+                                -{' '}
+                                <span className="text-slate-900 dark:text-white">
+                                    {Math.min(currentPage * ITEMS_PER_PAGE, tableSkus.length)}
+                                </span>{' '}
+                                of <span className="text-slate-900 dark:text-white">{tableSkus.length}</span>
                             </div>
 
                             <div className="flex items-center gap-2">
@@ -947,7 +1619,8 @@ export default function PricingLedgerTable({
                     <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
                         <Info size={16} className="text-emerald-600" />
                         <p className="text-[10px] font-black uppercase tracking-widest italic">
-                            On-road charges are computed by server RPC (SSPP). This ledger edits ex-showroom and offer deltas only.
+                            On-road charges are computed by server RPC (SSPP). This ledger edits ex-showroom and offer
+                            deltas only.
                         </p>
                     </div>
                 </div>

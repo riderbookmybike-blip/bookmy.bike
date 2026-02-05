@@ -26,13 +26,14 @@ export async function getProductBySlug(
     const possibleVariantSlugs = [
         decodedVariant,
         `${decodedMake}-${decodedModel}-${decodedVariant}`,
-        `${decodedModel}-${decodedVariant}`
+        `${decodedModel}-${decodedVariant}`,
     ];
 
     // First, find the family (model) by brand and model slug
     const { data: familyData, error: familyError } = await supabase
         .from('cat_items')
-        .select(`
+        .select(
+            `
             id, type, name, slug, specs, price_base, brand_id,
             brand:cat_brands(name, logo_svg),
             template:cat_templates!inner(name, code, category),
@@ -58,10 +59,11 @@ export async function getProductBySlug(
                     is_flipped,
                     offset_x,
                     assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
-                    prices:cat_prices!vehicle_color_id(ex_showroom_price, state_code, district, latitude, longitude, is_active)
+                    prices:cat_price_state!vehicle_color_id(ex_showroom_price, state_code, district, latitude, longitude, is_active)
                 )
             )
-        `)
+        `
+        )
         .eq('type', 'FAMILY')
         .eq('status', 'ACTIVE')
         .eq('slug', decodedModel)
@@ -75,10 +77,11 @@ export async function getProductBySlug(
 
     // Find the specific variant within the family
     const variants = (familyData.children || []).filter((c: any) => c.type === 'VARIANT');
-    const matchedVariant = variants.find((v: any) =>
-        possibleVariantSlugs.includes(v.slug) ||
-        v.slug === decodedVariant ||
-        v.name?.toLowerCase().replace(/\s+/g, '-') === decodedVariant
+    const matchedVariant = variants.find(
+        (v: any) =>
+            possibleVariantSlugs.includes(v.slug) ||
+            v.slug === decodedVariant ||
+            v.name?.toLowerCase().replace(/\s+/g, '-') === decodedVariant
     );
 
     if (!matchedVariant) {
@@ -115,7 +118,7 @@ export async function getProductBySlug(
     // Fetch market best offers
     const { data: offerData } = await supabase.rpc('get_market_best_offers', {
         p_district_name: userDistrict || '',
-        p_state_code: stateCode
+        p_state_code: stateCode,
     });
 
     // Create a modified family structure with only the matched variant
@@ -123,22 +126,17 @@ export async function getProductBySlug(
         ...familyData,
         brand: familyData.brand as any,
         template: familyData.template as any,
-        children: matchedVariant ? [matchedVariant] : (variants.length > 0 ? [variants[0]] : [])
+        children: matchedVariant ? [matchedVariant] : variants.length > 0 ? [variants[0]] : [],
     };
 
     // Use the existing mapper to transform the data
-    const mappedItems = mapCatalogItems(
-        [filteredFamily],
-        ruleData || [],
-        insuranceRuleData || [],
-        {
-            stateCode,
-            userLat: null,
-            userLng: null,
-            userDistrict,
-            offers: offerData || []
-        }
-    );
+    const mappedItems = mapCatalogItems([filteredFamily], ruleData || [], insuranceRuleData || [], {
+        stateCode,
+        userLat: null,
+        userLng: null,
+        userDistrict,
+        offers: offerData || [],
+    });
 
     if (mappedItems.length === 0) {
         console.error('[getProductBySlug] Mapping returned no items');

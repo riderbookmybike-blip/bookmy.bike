@@ -1,13 +1,15 @@
 import React from 'react';
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { resolveLocation } from '@/utils/locationResolver';
+import { resolveLocation, resolveLocationByDistrict } from '@/utils/locationResolver';
 import { createClient } from '@/lib/supabase/server';
 import { slugify } from '@/utils/slugs';
 import ProductClient from './ProductClient';
 import { cookies } from 'next/headers';
 import { resolveFinanceScheme } from '@/utils/financeResolver';
 import { BankPartner, BankScheme } from '@/types/bankPartner';
+import { resolvePricingContext } from '@/lib/server/pricingContext';
+import { getSitemapData } from '@/lib/server/sitemapFetcher';
 
 type Props = {
     params: Promise<{
@@ -17,8 +19,10 @@ type Props = {
     }>;
     searchParams: Promise<{
         color?: string;
-        pincode?: string;
+        district?: string;
+        state?: string;
         dealer?: string;
+        studio?: string;
         leadId?: string;
         quoteId?: string;
     }>;
@@ -36,20 +40,48 @@ interface CatalogItem {
 }
 
 const normalizeSuitabilityTag = (value: string) =>
-    value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    value
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
 
-const escapeRegExp = (value: string) =>
-    value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const COLOR_WORDS = new Set([
-    'black', 'white', 'silver', 'grey', 'gray', 'red', 'blue', 'green', 'yellow',
-    'orange', 'gold', 'brown', 'maroon', 'navy', 'beige', 'cream', 'copper',
-    'bronze', 'teal', 'purple', 'pink'
+    'black',
+    'white',
+    'silver',
+    'grey',
+    'gray',
+    'red',
+    'blue',
+    'green',
+    'yellow',
+    'orange',
+    'gold',
+    'brown',
+    'maroon',
+    'navy',
+    'beige',
+    'cream',
+    'copper',
+    'bronze',
+    'teal',
+    'purple',
+    'pink',
 ]);
 
 const COLOR_MODIFIERS = new Set([
-    'matte', 'gloss', 'glossy', 'metallic', 'pearl', 'satin', 'chrome', 'carbon',
-    'gunmetal', 'midnight'
+    'matte',
+    'gloss',
+    'glossy',
+    'metallic',
+    'pearl',
+    'satin',
+    'chrome',
+    'carbon',
+    'gunmetal',
+    'midnight',
 ]);
 
 const extractColorFromName = (name: string) => {
@@ -68,12 +100,12 @@ const extractColorFromName = (name: string) => {
         if (second && COLOR_MODIFIERS.has(secondNorm)) {
             return {
                 baseName: parts.slice(0, -2).join(' ').trim(),
-                color: `${second} ${last}`
+                color: `${second} ${last}`,
             };
         }
         return {
             baseName: parts.slice(0, -1).join(' ').trim(),
-            color: last
+            color: last,
         };
     }
 
@@ -105,15 +137,17 @@ const matchesAccessoryCompatibility = (
     const suitabilityRaw = Array.isArray(suitableFor) ? suitableFor.join(',') : suitableFor;
     if (!suitabilityRaw || suitabilityRaw.trim() === '') return false;
 
-    const tags = suitabilityRaw.split(',').map((t) => t.trim()).filter(Boolean);
+    const tags = suitabilityRaw
+        .split(',')
+        .map(t => t.trim())
+        .filter(Boolean);
     if (tags.length === 0) return false; // No valid tags = excluded
 
     const brandNorm = normalizeSuitabilityTag(brand || '');
     const modelNorm = normalizeSuitabilityTag(model || '');
     const variantNorm = normalizeSuitabilityTag(variant || '');
 
-    const buildKey = (...parts: string[]) =>
-        parts.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+    const buildKey = (...parts: string[]) => parts.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
 
     const variantHasModel = Boolean(modelNorm && variantNorm.includes(modelNorm));
     const variantHasBrand = Boolean(brandNorm && variantNorm.includes(brandNorm));
@@ -121,23 +155,13 @@ const matchesAccessoryCompatibility = (
     const brandModel = buildKey(brandNorm, modelNorm);
     const brandVariant = buildKey(variantHasBrand ? '' : brandNorm, variantNorm);
     const modelVariant = buildKey(variantHasModel ? '' : modelNorm, variantNorm);
-    const brandModelVariant = buildKey(
-        variantHasBrand ? '' : brandNorm,
-        variantHasModel ? '' : modelNorm,
-        variantNorm
+    const brandModelVariant = buildKey(variantHasBrand ? '' : brandNorm, variantHasModel ? '' : modelNorm, variantNorm);
+
+    const matchKeys = new Set(
+        [brandNorm, modelNorm, variantNorm, brandModel, brandVariant, modelVariant, brandModelVariant].filter(Boolean)
     );
 
-    const matchKeys = new Set([
-        brandNorm,
-        modelNorm,
-        variantNorm,
-        brandModel,
-        brandVariant,
-        modelVariant,
-        brandModelVariant
-    ].filter(Boolean));
-
-    return tags.some((tag) => {
+    return tags.some(tag => {
         const normalized = normalizeSuitabilityTag(tag);
         if (!normalized) return false;
 
@@ -160,26 +184,85 @@ const matchesAccessoryCompatibility = (
     });
 };
 
+export async function generateStaticParams() {
+    try {
+        const { families } = await getSitemapData();
+        const params: any[] = [];
+
+        families?.forEach(family => {
+            const make = (family.brand as any)?.name?.toLowerCase().replace(/\s+/g, '-') || 'unknown';
+            const model = family.slug || family.name.toLowerCase().replace(/\s+/g, '-');
+
+            (family.variants as any[])?.forEach(variant => {
+                const variantSlug = variant.slug || variant.name.toLowerCase().replace(/\s+/g, '-');
+                params.push({
+                    make,
+                    model,
+                    variant: variantSlug,
+                });
+            });
+        });
+
+        // Limit to top 50 for build speed, others will be ISR-ed on demand
+        return params.slice(0, 50);
+    } catch (e) {
+        console.error('Error generating static params:', e);
+        return [];
+    }
+}
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
     const { make, model, variant } = await params;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { color, pincode, dealer } = await searchParams;
+    const { color, district, dealer, state, studio } = await searchParams;
 
     // Canonical is always the clean variant path
     const canonical = `/store/${make}/${model}/${variant}`;
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bookmy.bike';
 
-    const toTitleCase = (str: string) => str.split(/[\s-]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    const toTitleCase = (str: string) =>
+        str
+            .split(/[\s-]+/)
+            .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+            .join(' ');
+
+    const title = `${toTitleCase(make)} ${toTitleCase(model)} ${toTitleCase(variant)} - BookMyBike`;
+    const description = `Get the best on-road price for ${toTitleCase(make)} ${toTitleCase(model)} ${toTitleCase(variant)}. Compare dealers, check EMI options, and book your bike online at BookMyBike.`;
+
+    // Dynamic OG Image (using variant slug for OG image generation)
+    const ogImageUrl = `${baseUrl}/api/og?make=${make}&model=${model}&variant=${variant}`;
 
     return {
-        title: `${toTitleCase(make)} ${toTitleCase(model)} ${toTitleCase(variant)} - BookMyBike`,
+        title,
+        description,
         alternates: {
             canonical: canonical,
         },
         robots: {
-            index: !pincode && !dealer, // Location/Dealer context is noindex
+            index: !district && !dealer && !state && !studio, // Location/Dealer context is noindex
             follow: true,
-        }
+        },
+        openGraph: {
+            title,
+            description,
+            url: `${baseUrl}${canonical}`,
+            siteName: 'BookMyBike',
+            type: 'website',
+            images: [
+                {
+                    url: ogImageUrl,
+                    width: 1200,
+                    height: 630,
+                    alt: `${toTitleCase(make)} ${toTitleCase(model)} ${toTitleCase(variant)}`,
+                },
+            ],
+        },
+        twitter: {
+            card: 'summary_large_image',
+            title,
+            description,
+            images: [ogImageUrl],
+        },
     };
 }
 
@@ -188,16 +271,36 @@ export default async function Page({ params, searchParams }: Props) {
     const resolvedSearchParams = await searchParams;
     const supabase = await createClient();
     const cookieStore = await cookies(); // Access cookies
-    console.log('PDP Debug: Page Load Start', { params: resolvedParams, search: resolvedSearchParams });
+    // 0. Redirect if pincode is present (Standardizing on district parameter)
+    if ((resolvedSearchParams as any).pincode) {
+        const newParams = new URLSearchParams();
+        Object.entries(resolvedSearchParams).forEach(([key, val]) => {
+            if (key === 'pincode') {
+                newParams.set('district', val as string);
+            } else {
+                newParams.set(key, val as string);
+            }
+        });
+        redirect(`?${newParams.toString()}`);
+    }
 
-    // 1. Resolve Location
-    // Priority: query param > cookie > default
-    const pincodeFromCookie = cookieStore.get('bkmb_user_pincode')?.value || '';
-    const pincodeToResolve = resolvedSearchParams.pincode || pincodeFromCookie || '';
+    // 1. Resolve Pricing Context (Primary Dealer Only)
+    const pricingContext = await resolvePricingContext({
+        leadId: resolvedSearchParams.leadId,
+        dealerId: resolvedSearchParams.dealer,
+        district: resolvedSearchParams.district,
+        state: resolvedSearchParams.state,
+        studio: resolvedSearchParams.studio,
+    });
 
-    const location = await resolveLocation(pincodeToResolve);
-    console.log('PDP Debug: Location Resolved:', { pincode: pincodeToResolve, location });
-    const stateCode = location?.state === 'Maharashtra' ? 'MH' : 'MH';
+    const stateCode = pricingContext.stateCode || 'MH';
+    const resolvedDistrict = pricingContext.district || '';
+    let location = null;
+    if (resolvedDistrict) {
+        location = await resolveLocationByDistrict(resolvedDistrict, stateCode);
+    }
+
+    console.log('PDP Debug: Pricing Context:', pricingContext);
 
     // 2. Fetch Variant from Unified Catalog
     // We fetch by slug and ensure it's a VARIANT type
@@ -211,11 +314,13 @@ export default async function Page({ params, searchParams }: Props) {
 
     const { data: variantItem, error } = await supabase
         .from('cat_items')
-        .select(`
+        .select(
+            `
             id, name, slug, price_base, specs,
             brand:cat_brands(name, slug),
             parent:cat_items!parent_id(name, slug)
-        `)
+        `
+        )
         .in('slug', possibleSlugs)
         .eq('type', 'VARIANT')
         .maybeSingle();
@@ -227,7 +332,20 @@ export default async function Page({ params, searchParams }: Props) {
                 <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20" />
                 <div className="relative z-10 glass-panel border border-white/10 p-12 rounded-[3rem] shadow-2xl max-w-lg mx-auto backdrop-blur-xl">
                     <div className="w-20 h-20 bg-red-500/10 rounded-3xl flex items-center justify-center mx-auto mb-8 border border-red-500/20 text-red-500 shadow-[0_0_30px_rgba(239,68,68,0.2)]">
-                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                        <svg
+                            width="40"
+                            height="40"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="8" x2="12" y2="12" />
+                            <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
                     </div>
                     <h1 className="text-4xl font-black italic tracking-tighter mb-4 text-white">
                         PRODUCT <span className="text-red-500">NOT FOUND</span>
@@ -236,7 +354,10 @@ export default async function Page({ params, searchParams }: Props) {
                         {error ? error.message : 'The requested configuration is currently unavailable in our catalog.'}
                     </p>
                     <div className="mt-8 flex justify-center gap-4">
-                        <a href="/store" className="px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all hover:scale-105 active:scale-95">
+                        <a
+                            href="/store"
+                            className="px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all hover:scale-105 active:scale-95"
+                        >
                             Return to Store
                         </a>
                     </div>
@@ -282,22 +403,38 @@ export default async function Page({ params, searchParams }: Props) {
         .eq('parent_id', item.id)
         .eq('type', 'SKU');
 
-    // 2.6 Fetch Prices from cat_prices (Authoritative Source)
+    // 2.6 Fetch Prices from cat_price_state (Authoritative Source)
     const skuIds = (skus || []).map((s: any) => s.id);
-    let vehiclePrices: Record<string, number> = {};
+    let publishedPriceData: any = null;
+
     if (skuIds.length > 0) {
         const { data: priceRecords } = await supabase
-            .from('cat_prices')
-            .select('vehicle_color_id, ex_showroom_price, state_code, district')
+            .from('cat_price_state')
+            .select(
+                `
+                vehicle_color_id, 
+                ex_showroom_price, 
+                rto_total, 
+                insurance_total, 
+                on_road_price, 
+                rto,
+                insurance,
+                rto_breakdown, 
+                insurance_breakdown,
+                state_code, 
+                district,
+                published_at
+            `
+            )
             .in('vehicle_color_id', skuIds)
             .eq('state_code', stateCode)
-            .eq('is_active', true);
+            .eq('district', 'ALL')
+            .eq('is_active', true)
+            .order('district', { ascending: false }); // State-level SOT (district = ALL)
 
-        if (priceRecords) {
-            priceRecords.forEach((p: any) => {
-                const price = parseFloat(p.ex_showroom_price);
-                vehiclePrices[p.vehicle_color_id] = price;
-            });
+        if (priceRecords && priceRecords.length > 0) {
+            // Find the first valid published record
+            publishedPriceData = priceRecords.find((p: any) => p.rto_total > 0) || priceRecords[0];
         }
     }
 
@@ -323,175 +460,160 @@ export default async function Page({ params, searchParams }: Props) {
         .from('cat_items')
         .select('*, brand:cat_brands(name), template:cat_templates!inner(category, name)')
         .eq('template.category', 'ACCESSORY')
-        .eq('type', 'SKU')  // Only final SKUs, not FAMILY or VARIANT
+        .eq('type', 'SKU') // Only final SKUs, not FAMILY or VARIANT
         .eq('status', 'ACTIVE');
 
-    const { data: servicesData } = await supabase
-        .from('cat_services')
-        .select('*')
-        .eq('status', 'ACTIVE');
-
+    const { data: servicesData } = await supabase.from('cat_services').select('*').eq('status', 'ACTIVE');
 
     // Fallback/Mock Rule if missing
     const effectiveRule: any = ruleData?.[0] || {
         id: 'default',
         stateCode: 'MH',
-        components: [{ id: 'tax', type: 'PERCENTAGE', label: 'Road Tax', percentage: 10, isRoadTax: true }]
+        components: [{ id: 'tax', type: 'PERCENTAGE', label: 'Road Tax', percentage: 10, isRoadTax: true }],
     };
 
     const insuranceRule: any = insuranceRuleData?.[0];
 
     // 4. Resolve Server Pricing (SSPP)
-    // Use cat_prices as fallback for ex-showroom if RPC is unavailable
     const firstSkuId = skuIds[0];
-    const baseExShowroom = vehiclePrices[firstSkuId] || item.price_base || 0;
+    const baseExShowroom = publishedPriceData?.ex_showroom_price || item.price_base || 0;
     let serverPricing: any = null;
 
-    if (firstSkuId) {
-        const { data: pricingData, error: pricingError } = await supabase.rpc('get_variant_on_road_price_v1', {
-            p_vehicle_color_id: firstSkuId,
-            p_district_name: location?.district || 'ALL',
-            p_state_code: stateCode,
-            p_registration_type: 'STATE'
-        });
+    if (firstSkuId && publishedPriceData && publishedPriceData.rto_total > 0) {
+        const rec = publishedPriceData;
 
-        if (pricingError) {
-            console.error('SSPP RPC Error (PDP server):', pricingError);
-        }
+        // SOT Phase 3: Use new JSON columns if available, fallback to legacy
+        const rtoJsonData = rec.rto && typeof rec.rto === 'object' && rec.rto.STATE !== undefined ? rec.rto : null;
+        const insJsonData =
+            rec.insurance && typeof rec.insurance === 'object' && rec.insurance.base_total !== undefined
+                ? rec.insurance
+                : null;
 
-        serverPricing = pricingData && (pricingData.success === undefined || pricingData.success) ? pricingData : null;
+        // Build RTO breakdown from JSON or legacy
+        const rtoData = rtoJsonData
+            ? [{ label: 'RTO Total', amount: Number(rtoJsonData.STATE || 0) }]
+            : typeof rec.rto_breakdown === 'object' && rec.rto_breakdown
+              ? Object.entries(rec.rto_breakdown).map(([label, amount]) => ({ label, amount: Number(amount) }))
+              : [];
+
+        // Build Insurance breakdown from JSON or legacy
+        const insData = insJsonData
+            ? [
+                  { label: 'OD Premium', amount: Number(insJsonData.od || 0), componentId: 'od' },
+                  { label: 'TP Premium', amount: Number(insJsonData.tp || 0), componentId: 'tp' },
+                  {
+                      label: 'GST',
+                      amount: Math.round(
+                          Number(insJsonData.base_total || 0) -
+                              Number(insJsonData.od || 0) -
+                              Number(insJsonData.tp || 0)
+                      ),
+                      componentId: 'gst',
+                  },
+              ].filter(i => i.amount > 0)
+            : typeof rec.insurance_breakdown === 'object' && rec.insurance_breakdown
+              ? [
+                    {
+                        label: 'OD Premium',
+                        amount: Number((rec.insurance_breakdown as any).odPremium || 0),
+                        componentId: 'od',
+                    },
+                    {
+                        label: 'TP Premium',
+                        amount: Number((rec.insurance_breakdown as any).tpPremium || 0),
+                        componentId: 'tp',
+                    },
+                    {
+                        label: 'Zero Depreciation',
+                        amount: Number(
+                            (rec.insurance_breakdown as any).addons?.zeroDep ||
+                                (rec.insurance_breakdown as any).zeroDep ||
+                                0
+                        ),
+                        componentId: 'zeroDep',
+                    },
+                    { label: 'GST', amount: Number((rec.insurance_breakdown as any).gst || 0), componentId: 'gst' },
+                ].filter(i => i.amount > 0)
+              : [];
+
+        serverPricing = {
+            success: true,
+            ex_showroom: parseFloat(rec.ex_showroom_price),
+            // SOT Phase 3: Include full rto JSON for client hooks
+            rto: rtoJsonData || {
+                STATE: parseFloat(rec.rto_total),
+                BH: null,
+                COMPANY: null,
+                default: 'STATE',
+                total: parseFloat(rec.rto_total),
+                type: 'STATE',
+                breakdown: rtoData,
+            },
+            // SOT Phase 3: Include full insurance JSON for client hooks
+            insurance: insJsonData || {
+                od: Number((rec.insurance_breakdown as any)?.odPremium || 0),
+                tp: Number((rec.insurance_breakdown as any)?.tpPremium || 0),
+                gst_rate: 18,
+                base_total: parseFloat(rec.insurance_total),
+                addons: [],
+                total: parseFloat(rec.insurance_total),
+                breakdown: insData,
+            },
+            // Legacy fields for backward compat
+            rto_breakdown: rtoData,
+            insurance_breakdown: insData,
+            final_on_road: parseFloat(rec.on_road_price),
+            location: {
+                district: rec.district,
+                state_code: rec.state_code,
+            },
+            source: 'PUBLISHED_CAT_PRICES',
+        };
     }
-    const initialPricingSnapshot = serverPricing ? {
-        exShowroom: serverPricing.ex_showroom ?? baseExShowroom,
-        rto: serverPricing?.rto?.total ?? 0,
-        insurance: serverPricing?.insurance?.total ?? 0,
-        total: serverPricing?.final_on_road ?? baseExShowroom,
-        breakdown: serverPricing
-    } : {
-        exShowroom: baseExShowroom,
-        rto: 0,
-        insurance: 0,
-        total: baseExShowroom,
-        breakdown: null
-    };
+    let initialPricingSnapshot = serverPricing
+        ? {
+              exShowroom: serverPricing.ex_showroom ?? baseExShowroom,
+              rto: serverPricing?.rto?.total ?? 0,
+              insurance: serverPricing?.insurance?.total ?? 0,
+              total: serverPricing?.final_on_road ?? baseExShowroom,
+              breakdown: serverPricing,
+          }
+        : {
+              exShowroom: baseExShowroom,
+              rto: 0,
+              insurance: 0,
+              total: baseExShowroom,
+              breakdown: null,
+          };
 
-    // 4.5 Fetch Market Offers (Dealer Pricing)
-    // 4.5 Fetch Market Offers (Dealer Pricing)
-    // We fetch this EARLIER now to determine the "winning" dealer for accessories
-    // CRITICAL FIX: We must only consider offers for the CURRENT VEHICLE SKUs
+    // 4.5 Resolve Dealer Offers (Primary Dealer Only)
     let marketOffers: Record<string, number> = {};
-    let winningDealerId: string | null = resolvedSearchParams.dealer || null;
+    let winningDealerId: string | null = pricingContext.dealerId || null;
     let bundleIdsForDealer: Set<string> = new Set();
     const leadId = resolvedSearchParams.leadId;
 
-    // Resolve Dealer from Lead if present
-    if (leadId) {
-        const { data: lead } = await supabase
-            .from('crm_leads')
-            .select('owner_tenant_id, customer_pincode')
-            .eq('id', leadId)
-            .single();
-
-        if (lead) {
-            winningDealerId = lead.owner_tenant_id;
-            console.log('PDP Debug: Lead context found. Dealer:', winningDealerId);
-        }
-    }
-
-    if (location?.district || winningDealerId) {
-        if (!winningDealerId && location?.district) {
-            const { data: offers } = await supabase.rpc('get_market_best_offers', {
-                p_district_name: location.district,
-                p_state_code: stateCode
-            });
-            if (offers && offers.length > 0) {
-                // Filter offers to only include those matching our current vehicle SKUs
-                const currentSkuIds = (skus || []).map((s: any) => s.id);
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const relevantOffers = offers.filter((o: any) => currentSkuIds.includes(o.vehicle_color_id));
-
-                if (relevantOffers.length > 0) {
-                    // Pick the dealer with the BEST offer on ANY of the current vehicle's SKUs
-                    // Since get_market_best_offers is already sorted? Does it sort by best offer? 
-                    // The RPC usually returns best offer per color.
-                    // We take the dealer from the first relevant offer as the "Winning Dealer" for consistency.
-                    winningDealerId = relevantOffers[0].dealer_id;
-                    bundleIdsForDealer = new Set(relevantOffers[0].bundle_ids || []);
-                    console.log('PDP Debug: Market Winner:', winningDealerId, 'Offers:', relevantOffers.map((o: any) => ({ dealer: o.dealer_id, price: o.best_offer, bundle: o.bundle_value })));
-
-                    // Populate marketOffers only with offers from this Winning Dealer for this vehicle
-                    // This ensures we don't mix and match prices if multiple dealers have offers
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    relevantOffers.forEach((o: any) => {
-                        if (o.dealer_id === winningDealerId) {
-                            marketOffers[o.vehicle_color_id] = Number(o.best_offer);
-                        }
-                    });
-                }
-            }
-        }
-
-        // Fallback: If NO winning dealer found (e.g. no one has a discount rule), 
-        // find ANY serviceable dealer in the district so we can at least show their bundles.
-        if (!winningDealerId && location?.district) {
-            // 1. Check Explicit Service Areas
-            const { data: serviceAreaDealer } = await supabase
-                .from('id_dealer_service_areas')
-                .select('tenant_id')
-                .ilike('district', location.district)
-                .eq('is_active', true)
-                .limit(1)
-                .maybeSingle();
-
-            if (serviceAreaDealer) {
-                winningDealerId = serviceAreaDealer.tenant_id;
-            } else {
-                // 2. Check Physical Location (Implicit Coverage)
-                const { data: locationDealer } = await supabase
-                    .from('id_locations')
-                    .select('tenant_id')
-                    .ilike('district', location.district)
-                    .eq('is_active', true)
-                    .limit(1)
-                    .maybeSingle();
-
-                if (locationDealer) {
-                    winningDealerId = locationDealer.tenant_id;
-                }
-            }
-        }
-    }
-
-    // 3.4 Ensure Market Offers are Populated for the Winning Dealer
-    // If dealer was pre-selected (URL) or found via Fallback, marketOffers might be empty.
-    // We must fetch their specific vehicle pricing rules to show the discount.
+    // Fetch dealer pricing rules for vehicle SKUs
     const currentSkuIds = (skus || []).map((s: any) => s.id);
     if (winningDealerId && currentSkuIds.length > 0) {
-        // Only fetch if we haven't already populated marketOffers for these SKUs
-        // (Optimization: Check if marketOffers has keys? Or just re-fetch to be safe/consistent)
-        const hasOffers = Object.keys(marketOffers).length > 0;
+        const { data: vehicleRules } = await supabase
+            .from('cat_price_dealer')
+            .select('vehicle_color_id, offer_amount')
+            .in('vehicle_color_id', currentSkuIds)
+            .eq('tenant_id', winningDealerId)
+            .eq('state_code', stateCode)
+            .eq('is_active', true);
 
-        if (!hasOffers) {
-            const { data: vehicleRules } = await supabase
-                .from('id_dealer_pricing_rules')
-                .select('vehicle_color_id, offer_amount')
-                .in('vehicle_color_id', currentSkuIds)
-                .eq('tenant_id', winningDealerId)
-                .eq('state_code', stateCode)
-                .eq('is_active', true);
-
-            if (vehicleRules) {
-                vehicleRules.forEach((r: any) => {
-                    marketOffers[r.vehicle_color_id] = Number(r.offer_amount);
-                });
-            }
+        if (vehicleRules) {
+            vehicleRules.forEach((r: any) => {
+                marketOffers[r.vehicle_color_id] = Number(r.offer_amount);
+            });
         }
     }
 
-    // If bundle IDs not resolved from RPC, fall back to dealer pricing rules (bundle inclusion)
-    if (winningDealerId && bundleIdsForDealer.size === 0) {
+    // Bundle inclusion from dealer rules
+    if (winningDealerId) {
         const { data: bundleRules } = await supabase
-            .from('id_dealer_pricing_rules')
+            .from('cat_price_dealer')
             .select('vehicle_color_id')
             .eq('tenant_id', winningDealerId)
             .eq('state_code', stateCode)
@@ -503,12 +625,12 @@ export default async function Page({ params, searchParams }: Props) {
     }
     // 3.5 Fetch Accessory Rules (Dealer Pricing)
     // NOW VALID: We use the winningDealerId to fetch specific rules
-    let accessoryRules: Map<string, { offer: number, inclusion: string, isActive: boolean }> = new Map();
+    let accessoryRules: Map<string, { offer: number; inclusion: string; isActive: boolean }> = new Map();
     const accessoryIds = (accessoriesData || []).map((a: any) => a.id);
 
     if (accessoryIds.length > 0 && winningDealerId) {
         const { data: rules } = await supabase
-            .from('id_dealer_pricing_rules')
+            .from('cat_price_dealer')
             .select('vehicle_color_id, offer_amount, inclusion_type, is_active')
             .in('vehicle_color_id', accessoryIds)
             .eq('tenant_id', winningDealerId) // STRICT DEALER MATCH
@@ -518,10 +640,45 @@ export default async function Page({ params, searchParams }: Props) {
             accessoryRules.set(r.vehicle_color_id, {
                 offer: Number(r.offer_amount),
                 inclusion: r.inclusion_type,
-                isActive: r.is_active
+                isActive: r.is_active,
             });
         });
         console.log('PDP Debug: Accessory Rules loaded:', accessoryRules.size, 'for dealer:', winningDealerId);
+    }
+
+    // 4.6 Enrich Server Pricing with Winning Dealer Info
+    if (winningDealerId && serverPricing) {
+        // Fetch Dealer Info for Metadata (Safe Multi-fetch)
+        const [tenantRes, locationRes] = await Promise.all([
+            supabase.from('id_tenants').select('name, studio_id').eq('id', winningDealerId).single(),
+            supabase.from('id_locations').select('district').eq('tenant_id', winningDealerId).limit(1).maybeSingle(),
+        ]);
+
+        const dealerName = tenantRes.data?.name || 'Assigned Dealer';
+        const dealerStudioId = (tenantRes.data as any)?.studio_id || null;
+        const dealerDistrict = locationRes.data?.district;
+
+        const winningOffer = Number(marketOffers[firstSkuId] || 0);
+
+        serverPricing.dealer = {
+            id: winningDealerId,
+            name: dealerName,
+            studio_id: dealerStudioId,
+            offer: winningOffer,
+            is_serviceable: true,
+        };
+
+        // If a specific dealer is resolved, we enrich the location context with the dealer's physical district
+        // to show accurate "Studio Location" labels in the UI.
+        if (dealerDistrict) {
+            serverPricing.location = {
+                ...serverPricing.location,
+                district: dealerDistrict,
+            };
+        }
+
+        // Sync snapshot top-level totals
+        initialPricingSnapshot.total = serverPricing.final_on_road + winningOffer;
     }
 
     // 5. Map to Product Object
@@ -548,10 +705,9 @@ export default async function Page({ params, searchParams }: Props) {
         // Derive clean ID (slug) for URL
         const cleanId = sku.specs?.color_slug || slugify(cleanName);
 
-        // Calculate Dealer Offer (Invert negative value for usePDPData subtraction)
+        // Dealer Offer Delta (positive = surge, negative = discount)
         // We use the filtered marketOffers map populated earlier
         const rawOffer = marketOffers[sku.id] || 0;
-        const dealerOfferValue = rawOffer < 0 ? Math.abs(rawOffer) : -rawOffer; // If offer is -2000 (discount), we send 2000
 
         return {
             id: cleanId, // Use clean slug as stable ID
@@ -561,13 +717,22 @@ export default async function Page({ params, searchParams }: Props) {
             image: sku.specs?.primary_image || sku.specs?.gallery?.[0] || null,
             video: sku.video_url || sku.specs?.video_urls?.[0] || sku.specs?.video_url || null,
             priceOverride: sku.price_base, // SKU might override price
-            dealerOffer: dealerOfferValue // Inject Dealer Offer
+            dealerOffer: rawOffer, // Inject Dealer Offer Delta
         };
     });
 
     // If no SKUs, make a default One
     if (colors.length === 0) {
-        colors.push({ id: 'default', skuId: 'default', name: 'Standard', hex: '#000000', image: null, video: null, priceOverride: null, dealerOffer: 0 });
+        colors.push({
+            id: 'default',
+            skuId: 'default',
+            name: 'Standard',
+            hex: '#000000',
+            image: null,
+            video: null,
+            priceOverride: null,
+            dealerOffer: 0,
+        });
     }
 
     const product = {
@@ -577,7 +742,7 @@ export default async function Page({ params, searchParams }: Props) {
         variant: item.name,
         basePrice: Number(baseExShowroom),
         colors: colors,
-        specs: item.specs
+        specs: item.specs,
     };
 
     // 6. Accessories & Services
@@ -611,10 +776,11 @@ export default async function Page({ params, searchParams }: Props) {
             // Ensure strictly non-negative
             const discountPrice = Math.max(0, basePrice + offer);
 
-            const inclusionType = rule?.inclusion
-                || (bundleIdsForDealer.has(a.id) ? 'BUNDLE' : undefined)
-                || a.inclusion_type
-                || 'OPTIONAL';
+            const inclusionType =
+                rule?.inclusion ||
+                (bundleIdsForDealer.has(a.id) ? 'BUNDLE' : undefined) ||
+                a.inclusion_type ||
+                'OPTIONAL';
             const isMandatory = inclusionType === 'MANDATORY';
 
             let colorLabel = a.specs?.color || a.specs?.colour || a.specs?.finish || a.specs?.shade || '';
@@ -629,14 +795,8 @@ export default async function Page({ params, searchParams }: Props) {
             }
 
             const accessoryName = nameBase || a.name;
-            const displayName = [
-                a.brand?.name,
-                a.template?.name
-            ].filter(Boolean).join(' ');
-            const descriptionLabel = [
-                accessoryName,
-                colorLabel
-            ].filter(Boolean).join(' ');
+            const displayName = [a.brand?.name, a.template?.name].filter(Boolean).join(' ');
+            const descriptionLabel = [accessoryName, colorLabel].filter(Boolean).join(' ');
 
             return {
                 id: a.id,
@@ -651,7 +811,7 @@ export default async function Page({ params, searchParams }: Props) {
                 inclusionType: inclusionType,
                 category: a.template?.category || 'OTHERS',
                 brand: a.brand?.name || null,
-                subCategory: a.template?.name || null
+                subCategory: a.template?.name || null,
             };
         });
 
@@ -664,7 +824,7 @@ export default async function Page({ params, searchParams }: Props) {
         discountPrice: Number(s.discount_price),
         maxQty: s.max_qty,
         isMandatory: s.is_mandatory,
-        durationMonths: s.duration_months
+        durationMonths: s.duration_months,
     }));
 
     // 7. Resolve Finance Scheme
@@ -682,16 +842,20 @@ export default async function Page({ params, searchParams }: Props) {
             registrationRule={effectiveRule} // Passing registration rule for client side calc
             initialAccessories={accessories}
             initialServices={services}
-            initialFinance={resolvedFinance ? {
-                bank: {
-                    id: resolvedFinance.bank.id,
-                    name: resolvedFinance.bank.name,
-                    identity: resolvedFinance.bank.config?.identity,
-                    overview: resolvedFinance.bank.config?.overview
-                },
-                scheme: resolvedFinance.scheme,
-                logic: resolvedFinance.logic // Trace logic
-            } : undefined}
+            initialFinance={
+                resolvedFinance
+                    ? {
+                          bank: {
+                              id: resolvedFinance.bank.id,
+                              name: resolvedFinance.bank.name,
+                              identity: resolvedFinance.bank.config?.identity,
+                              overview: resolvedFinance.bank.config?.overview,
+                          },
+                          scheme: resolvedFinance.scheme,
+                          logic: resolvedFinance.logic, // Trace logic
+                      }
+                    : undefined
+            }
             initialDealerId={winningDealerId}
         />
     );

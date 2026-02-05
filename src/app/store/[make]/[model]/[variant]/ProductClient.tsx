@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { useSystemPDPLogic } from '@/hooks/SystemPDPLogic';
-import { DesktopPDP } from '@/components/store/DesktopPDP';
 import { LeadCaptureModal } from '@/components/leads/LeadCaptureModal';
 import { EmailUpdateModal } from '@/components/auth/EmailUpdateModal';
 import { createClient } from '@/lib/supabase/client';
@@ -10,9 +10,33 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { createQuoteAction } from '@/actions/crm';
 import { toast } from 'sonner';
 import { useSystemDealerContext } from '@/hooks/useSystemDealerContext';
-import { PhonePDPEnhanced } from '@/components/phone/pdp/PhonePDPEnhanced';
 
 import { InsuranceRule } from '@/types/insurance';
+
+// Dynamic imports for heavy PDP components (bundle optimization)
+const PDPSkeleton = () => (
+    <div className="min-h-screen bg-black animate-pulse">
+        <div className="h-16 bg-zinc-900 border-b border-zinc-800" />
+        <div className="max-w-7xl mx-auto p-6 grid md:grid-cols-2 gap-8 mt-8">
+            <div className="aspect-square bg-zinc-800 rounded-3xl" />
+            <div className="space-y-4">
+                <div className="h-12 bg-zinc-800 rounded-xl w-3/4" />
+                <div className="h-8 bg-zinc-800 rounded-lg w-1/2" />
+                <div className="h-32 bg-zinc-800 rounded-2xl mt-8" />
+            </div>
+        </div>
+    </div>
+);
+
+const DesktopPDP = dynamic(() => import('@/components/store/DesktopPDP').then(mod => mod.DesktopPDP), {
+    loading: () => <PDPSkeleton />,
+    ssr: false,
+});
+
+const PhonePDPEnhanced = dynamic(
+    () => import('@/components/phone/pdp/PhonePDPEnhanced').then(mod => mod.PhonePDPEnhanced),
+    { loading: () => <PDPSkeleton />, ssr: false }
+);
 
 interface ProductClientProps {
     product: any; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -41,17 +65,20 @@ export default function ProductClient({
     initialAccessories = [],
     initialServices = [],
     initialFinance,
-    initialDealerId = null
+    initialDealerId = null,
 }: ProductClientProps) {
     const [clientAccessories, setClientAccessories] = useState(initialAccessories);
     const [clientColors, setClientColors] = useState(product.colors);
     const [hasTouchedAccessories, setHasTouchedAccessories] = useState(false);
+    const initialServerPricing =
+        initialPrice?.breakdown && typeof initialPrice.breakdown === 'object' ? initialPrice.breakdown : null;
+    const hasResolvedDealer = Boolean(initialDealerId || initialServerPricing?.dealer?.id);
     // SSPP v1: Local state to bridge serverPricing from useSystemDealerContext to useSystemPDPLogic
-    const [ssppServerPricing, setSsppServerPricing] = useState<any>(null);
+    const [ssppServerPricing, setSsppServerPricing] = useState<any>(initialServerPricing);
     const searchParams = useSearchParams();
     const router = useRouter();
     const leadIdFromUrl = searchParams.get('leadId');
-    const [leadContext, setLeadContext] = useState<{ id: string, name: string } | null>(null);
+    const [leadContext, setLeadContext] = useState<{ id: string; name: string } | null>(null);
     const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {
@@ -67,11 +94,11 @@ export default function ProductClient({
         if (leadIdFromUrl) {
             const fetchLead = async () => {
                 const supabase = createClient();
-                const { data: lead } = await supabase
+                const { data: lead } = (await supabase
                     .from('crm_leads')
                     .select('id, customer_name')
                     .eq('id', leadIdFromUrl)
-                    .single() as { data: { id: string, customer_name: string } | null, error: any };
+                    .single()) as { data: { id: string; customer_name: string } | null; error: any };
 
                 if (lead) {
                     setLeadContext({ id: lead.id, name: lead.customer_name });
@@ -80,26 +107,6 @@ export default function ProductClient({
             fetchLead();
         }
     }, [leadIdFromUrl]);
-
-    // Synchronize URL Pincode with Local Preference
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-
-        const urlPincode = searchParams.get('pincode');
-        const cached = localStorage.getItem('bkmb_user_pincode');
-
-        if (cached) {
-            const parsed = JSON.parse(cached);
-            const prefPincode = parsed?.pincode;
-
-            // If URL is Palghar but user has a different preference, sync URL
-            if (urlPincode === 'Palghar' && prefPincode && prefPincode !== 'Palghar') {
-                const newParams = new URLSearchParams(searchParams.toString());
-                newParams.set('pincode', prefPincode);
-                router.replace(`?${newParams.toString()}`, { scroll: false });
-            }
-        }
-    }, [searchParams, router]);
 
     const { data, actions } = useSystemPDPLogic({
         initialPrice,
@@ -110,7 +117,7 @@ export default function ProductClient({
         initialServices,
         product,
         initialFinance,
-        serverPricing: ssppServerPricing // SSPP v1: Pass server-calculated pricing for Single Source of Truth
+        serverPricing: ssppServerPricing, // SSPP v1: Pass server-calculated pricing for Single Source of Truth
     });
 
     const {
@@ -122,7 +129,7 @@ export default function ProductClient({
         selectedOffers,
         quantities,
         isReferralActive,
-        baseExShowroom
+        baseExShowroom,
     } = data;
 
     const {
@@ -136,7 +143,7 @@ export default function ProductClient({
         setRegType,
         setEmiTenure,
         setConfigTab,
-        setUserDownPayment
+        setUserDownPayment,
     } = actions;
 
     const [showQuoteSuccess, setShowQuoteSuccess] = useState(false);
@@ -149,7 +156,10 @@ export default function ProductClient({
         initialAccessories,
         initialLocation,
         selectedColor, // This relies on the color state from useSystemPDPLogic
-        overrideDealerId: initialDealerId // Prioritize this dealer
+        overrideDealerId: initialDealerId, // Prioritize this dealer
+        disabled: hasResolvedDealer,
+        prefetchedPricing: initialServerPricing,
+        prefetchedLocation: initialLocation,
     });
 
     // Update client state when hook returns new data
@@ -161,10 +171,10 @@ export default function ProductClient({
 
     // SSPP v1: Sync serverPricing from useSystemDealerContext to local state
     useEffect(() => {
-        if (serverPricing) {
+        if (!hasResolvedDealer && serverPricing) {
             setSsppServerPricing(serverPricing);
         }
-    }, [serverPricing]);
+    }, [serverPricing, hasResolvedDealer]);
 
     useEffect(() => {
         if (dealerAccessories && dealerAccessories.length > 0) {
@@ -180,35 +190,82 @@ export default function ProductClient({
         }
     }, [dealerAccessories, hasTouchedAccessories, setSelectedAccessories]);
 
+    const shareInFlightRef = useRef(false);
 
-    const handleShareQuote = () => {
+    const handleShareQuote = async () => {
+        if (shareInFlightRef.current) return;
         const url = new URL(window.location.href);
         url.searchParams.set('color', selectedColor);
-        if (initialLocation?.pincode) url.searchParams.set('pincode', initialLocation.pincode);
+
+        // Remove legacy pincode if it somehow exists
+        url.searchParams.delete('pincode');
+
+        if (initialLocation?.district) {
+            url.searchParams.set('district', initialLocation.district);
+        } else if (initialLocation?.pincode) {
+            url.searchParams.set('district', initialLocation.pincode);
+        }
+
+        const existingState = url.searchParams.get('state');
+        if (!existingState) {
+            let stateValue: string | null = initialLocation?.state || null;
+            if (!stateValue && typeof window !== 'undefined') {
+                const cached = localStorage.getItem('bkmb_user_pincode');
+                if (cached) {
+                    try {
+                        const parsed = JSON.parse(cached);
+                        stateValue = parsed?.stateCode || parsed?.state || null;
+                    } catch {
+                        stateValue = null;
+                    }
+                }
+            }
+            if (stateValue) {
+                url.searchParams.set('state', stateValue);
+            }
+        }
         if (leadIdFromUrl) url.searchParams.set('leadId', leadIdFromUrl);
 
         if (navigator.share) {
-            navigator.share({
-                title: `${product.model} Configuration`,
-                text: `Check out ${product.model} on BookMyBike! Price: ₹${totalOnRoad.toLocaleString()}`,
-                url: url.toString(),
-            });
+            try {
+                shareInFlightRef.current = true;
+                await navigator.share({
+                    title: `${product.model} Configuration`,
+                    text: `Check out ${product.model} on BookMyBike! Price: ₹${totalOnRoad.toLocaleString()}`,
+                    url: url.toString(),
+                });
+            } catch (err: any) {
+                if (err?.name !== 'AbortError' && err?.name !== 'InvalidStateError') {
+                    console.error('Share failed:', err);
+                }
+            } finally {
+                shareInFlightRef.current = false;
+            }
         } else {
-            navigator.clipboard.writeText(url.toString());
-            alert('URL copied!');
+            try {
+                await navigator.clipboard.writeText(url.toString());
+                alert('URL copied!');
+            } catch (err) {
+                console.error('Clipboard copy failed:', err);
+            }
         }
     };
 
     // SSPP v1: Map color slug to actual SKU UUID for database operations
-    const colorSkuId = clientColors?.find((c: any) => c.id === selectedColor || c.name === selectedColor)?.skuId || selectedColor;
+    const colorSkuId =
+        clientColors?.find((c: any) => c.id === selectedColor || c.name === selectedColor)?.skuId || selectedColor;
 
     const handleConfirmQuote = async () => {
         if (!leadContext) return;
 
         try {
             const resolvedColor =
-                data.colors?.find((c: any) => c.id === selectedColor || c.skuId === selectedColor || c.name === selectedColor) ||
-                clientColors?.find((c: any) => c.id === selectedColor || c.skuId === selectedColor || c.name === selectedColor);
+                data.colors?.find(
+                    (c: any) => c.id === selectedColor || c.skuId === selectedColor || c.name === selectedColor
+                ) ||
+                clientColors?.find(
+                    (c: any) => c.id === selectedColor || c.skuId === selectedColor || c.name === selectedColor
+                );
             const colorName = resolvedColor?.name || selectedColor;
             const variantName = product.variant || variantParam;
             const labelBase = [product.model, variantName].filter(Boolean).join(' ');
@@ -221,7 +278,7 @@ export default function ProductClient({
                     name: a.description || a.displayName || a.name,
                     price: a.price,
                     discountPrice: a.discountPrice,
-                    inclusionType: a.inclusionType
+                    inclusionType: a.inclusionType,
                 }));
 
             const selectedServiceItems = (data.activeServices || [])
@@ -230,7 +287,7 @@ export default function ProductClient({
                     id: s.id,
                     name: s.name,
                     price: s.price,
-                    discountPrice: s.discountPrice
+                    discountPrice: s.discountPrice,
                 }));
 
             const selectedInsuranceAddonItems = (data.availableInsuranceAddons || [])
@@ -240,7 +297,7 @@ export default function ProductClient({
                     name: i.name,
                     price: i.price,
                     discountPrice: i.discountPrice,
-                    inclusionType: i.inclusionType
+                    inclusionType: i.inclusionType,
                 }));
 
             const commercials = {
@@ -257,8 +314,8 @@ export default function ProductClient({
                     insurance_addon_items: selectedInsuranceAddonItems,
                     rto_type: data.regType,
                     emi_tenure: data.emiTenure,
-                    down_payment: data.userDownPayment
-                }
+                    down_payment: data.userDownPayment,
+                },
             };
 
             const result: any = await createQuoteAction({
@@ -266,7 +323,7 @@ export default function ProductClient({
                 lead_id: leadContext.id,
                 variant_id: product.id,
                 color_id: colorSkuId,
-                commercials
+                commercials,
             });
 
             if (result?.success) {
@@ -284,7 +341,9 @@ export default function ProductClient({
 
     const handleBookingRequest = async () => {
         const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
 
         if (user?.email?.endsWith('@bookmy.bike')) {
             setShowEmailModal(true);
@@ -302,21 +361,21 @@ export default function ProductClient({
         const accessory = data.activeAccessories.find((a: any) => a.id === id);
         if (accessory?.isMandatory) return;
         setHasTouchedAccessories(true);
-        setSelectedAccessories(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+        setSelectedAccessories(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
     };
 
     const toggleInsuranceAddon = (id: string) => {
         const addon = data.availableInsuranceAddons.find((i: any) => i.id === id);
         if (addon?.isMandatory) return;
-        setSelectedInsuranceAddons(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+        setSelectedInsuranceAddons(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
     };
 
     const toggleService = (id: string) => {
-        setSelectedServices(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+        setSelectedServices(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
     };
 
     const toggleOffer = (id: string) => {
-        setSelectedOffers(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+        setSelectedOffers(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
     };
 
     const updateQuantity = (id: string, delta: number, max: number = 1) => {
@@ -340,7 +399,7 @@ export default function ProductClient({
         setRegType,
         setEmiTenure,
         setConfigTab,
-        setUserDownPayment
+        setUserDownPayment,
     };
 
     const commonProps = {
@@ -353,16 +412,12 @@ export default function ProductClient({
         leadContext: leadContext || undefined,
         initialLocation: resolvedLocation || initialLocation,
         bestOffer, // Passing bestOffer to children
-        serverPricing // SSPP v1: Server-calculated pricing breakdown
+        serverPricing, // SSPP v1: Server-calculated pricing breakdown
     };
 
     return (
         <>
-            {isMobile ? (
-                <PhonePDPEnhanced {...commonProps} />
-            ) : (
-                <DesktopPDP {...commonProps} basePath="/phone/store" />
-            )}
+            {isMobile ? <PhonePDPEnhanced {...commonProps} /> : <DesktopPDP {...commonProps} basePath="/phone/store" />}
 
             <LeadCaptureModal
                 isOpen={showQuoteSuccess}
@@ -376,7 +431,7 @@ export default function ProductClient({
                     exShowroom: data.baseExShowroom,
                     onRoad: data.totalOnRoad,
                     taluka: resolvedLocation?.taluka || initialLocation?.taluka || initialLocation?.city,
-                    schemeId: initialFinance?.scheme?.id
+                    schemeId: initialFinance?.scheme?.id,
                 }}
             />
 

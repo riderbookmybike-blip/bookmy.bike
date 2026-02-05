@@ -32,11 +32,12 @@ export default function VisualsRow({
     videoSource,
     className = '',
     isVideoOpen = false,
-    onCloseVideo = () => { },
+    onCloseVideo = () => {},
 }: VisualsRowProps) {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [imageLoaded, setImageLoaded] = useState(false);
-    const activeColorName = colors.find(c => c.id === selectedColor)?.name;
+    const activeColor = colors.find(c => c.id === selectedColor) || colors[0];
+    const activeColorName = activeColor.name;
 
     // Reset loading state when image changes
     React.useEffect(() => {
@@ -57,14 +58,20 @@ export default function VisualsRow({
                 <div className="absolute inset-x-0 bottom-0 top-1/2 z-0 bg-gradient-to-t from-[#F4B000]/20 to-transparent opacity-60 blur-3xl rounded-b-[4rem]" />
                 <div className="absolute inset-0 z-0 bg-radial-at-c from-white/10 to-transparent opacity-50" />
 
-                {/* Status Indicator (Top Right) */}
-                <div className="absolute top-8 right-8 z-20 flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-4 py-1.5 rounded-full backdrop-blur-md">
-                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">In Stock</span>
+                {/* Status Indicator (Top Right) - Glassmorphism */}
+                <div className="absolute top-8 right-8 z-20 flex items-center gap-2 bg-white/10 dark:bg-black/20 border border-white/20 dark:border-white/10 px-4 py-1.5 rounded-full backdrop-blur-xl shadow-lg ring-1 ring-white/20">
+                    <div className="w-2 h-2 bg-[#F4B000] rounded-full animate-pulse shadow-[0_0_10px_rgba(244,176,0,0.8)]" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-[#F4B000]">In Stock</span>
                 </div>
 
                 {/* PART 1: Image Area (75%) - Strictly contained */}
                 <div className="relative flex-[3] z-10 flex items-center justify-center overflow-hidden">
+                    {/* Dynamic Backlight Glow */}
+                    <div
+                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[60%] blur-[120px] opacity-20 dark:opacity-30 transition-all duration-1000 z-0 pointer-events-none"
+                        style={{ backgroundColor: activeColor.hex }}
+                    />
+
                     {/* Skeleton Loader */}
                     {!imageLoaded && (
                         <div className="absolute inset-0 flex items-center justify-center">
@@ -76,8 +83,9 @@ export default function VisualsRow({
                         src={productImage || '/images/categories/scooter_nobg.png'}
                         alt="Product Visual"
                         onLoad={() => setImageLoaded(true)}
-                        className={`w-full max-w-[65%] max-h-[90%] object-contain brightness-[1.1] contrast-[1.1] drop-shadow-[0_40px_80px_rgba(0,0,0,0.5)] dark:drop-shadow-[0_60px_100px_rgba(0,0,0,0.9)] transition-opacity duration-500 ${imageLoaded ? 'opacity-100 animate-in fade-in zoom-in-95 duration-700' : 'opacity-0'
-                            }`}
+                        className={`w-full max-w-[65%] max-h-[90%] object-contain brightness-[1.1] contrast-[1.1] drop-shadow-[0_40px_80px_rgba(0,0,0,0.5)] dark:drop-shadow-[0_60px_100px_rgba(0,0,0,0.9)] transition-opacity duration-500 ${
+                            imageLoaded ? 'opacity-100 animate-in fade-in zoom-in-95 duration-700' : 'opacity-0'
+                        }`}
                         key={currentImageIndex}
                     />
 

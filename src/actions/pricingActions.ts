@@ -7,11 +7,7 @@ import { createClient } from '@/lib/supabase/server';
  */
 export async function getDistrictFromPincode(pincode: string): Promise<string | null> {
     const supabase = await createClient();
-    const { data, error } = await supabase
-        .from('loc_pincodes')
-        .select('district')
-        .eq('pincode', pincode)
-        .maybeSingle();
+    const { data, error } = await supabase.from('loc_pincodes').select('district').eq('pincode', pincode).maybeSingle();
 
     if (error || !data) return null;
     return data.district;
@@ -24,12 +20,13 @@ export async function getDistrictFromPincode(pincode: string): Promise<string | 
 export async function getDealerPriceAction(itemId: string, stateCode?: string): Promise<number> {
     const supabase = await createClient();
 
-    // 1. Try to get price from cat_prices (single source of truth)
+    // 1. Try to get price from cat_price_state (single source of truth)
     const { data: price, error } = await supabase
-        .from('cat_prices')
+        .from('cat_price_state')
         .select('ex_showroom_price')
         .eq('vehicle_color_id', itemId)
         .eq('state_code', stateCode || 'MH')
+        .eq('district', 'ALL')
         .eq('is_active', true)
         .maybeSingle();
 

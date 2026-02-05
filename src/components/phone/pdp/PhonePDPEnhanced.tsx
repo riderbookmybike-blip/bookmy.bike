@@ -5,8 +5,21 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
-    ChevronLeft, Share2, Heart, Zap, ShieldCheck, ChevronDown, ChevronRight,
-    Star, Package, ClipboardList, Wrench, Gift, Info, CheckCircle2, X
+    ChevronLeft,
+    Share2,
+    Heart,
+    Zap,
+    ShieldCheck,
+    ChevronDown,
+    ChevronRight,
+    Star,
+    Package,
+    ClipboardList,
+    Wrench,
+    Gift,
+    Info,
+    CheckCircle2,
+    X,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useI18n } from '@/components/providers/I18nProvider';
@@ -36,7 +49,7 @@ const SectionHeader = ({ icon: Icon, title, subtitle }: any) => (
     </div>
 );
 
-const SpecRow = ({ label, value }: { label: string, value: string }) => (
+const SpecRow = ({ label, value }: { label: string; value: string }) => (
     <div className="flex justify-between py-2.5 border-b border-white/5 last:border-0">
         <span className="text-zinc-400 text-xs font-medium">{label}</span>
         <span className="text-zinc-100 text-xs font-bold text-right">{value}</span>
@@ -51,7 +64,7 @@ export const PhonePDPEnhanced = ({
     data,
     handlers,
     leadContext,
-    initialLocation
+    initialLocation,
 }: PhonePDPEnhancedProps) => {
     const router = useRouter();
     const { language } = useI18n();
@@ -83,8 +96,12 @@ export const PhonePDPEnhanced = ({
         servicesPrice,
         offersDiscount,
         colorDiscount,
+        accessoriesDiscount,
+        servicesDiscount,
+        insuranceAddonsDiscount,
         totalOnRoad,
         totalSavings: computedTotalSavings,
+        totalSurge: computedTotalSurge,
         downPayment,
         minDownPayment,
         maxDownPayment,
@@ -94,7 +111,7 @@ export const PhonePDPEnhanced = ({
         activeAccessories,
         activeServices,
         availableInsuranceAddons,
-        warrantyItems
+        warrantyItems,
     } = data;
 
     const {
@@ -121,12 +138,20 @@ export const PhonePDPEnhanced = ({
     const displayMake = scriptText(product?.make || makeParam);
     const displayModel = scriptText(product?.model || modelParam);
     const displayVariant = scriptText(variantParam);
-    const totalSavings = computedTotalSavings ?? (offersDiscount + colorDiscount + (isReferralActive ? REFERRAL_BONUS : 0));
+    const totalSavingsBase =
+        computedTotalSavings ??
+        colorDiscount +
+            (offersDiscount < 0 ? Math.abs(offersDiscount) : 0) +
+            (accessoriesDiscount || 0) +
+            (servicesDiscount || 0) +
+            (insuranceAddonsDiscount || 0);
+    const totalSavings = totalSavingsBase + (isReferralActive ? REFERRAL_BONUS : 0);
+    const totalSurge = computedTotalSurge ?? 0;
 
     const getProductImage = () => {
         if (activeColorConfig?.image) return activeColorConfig.image;
         if (activeColorConfig?.gallery_urls?.length > 0) return activeColorConfig.gallery_urls[0];
-        return '/images/hero-bike.png';
+        return '/images/hero-bike.webp';
     };
 
     // Price Breakup Data
@@ -138,6 +163,7 @@ export const PhonePDPEnhanced = ({
         { label: 'Accessories', value: accessoriesPrice },
         { label: 'Services / AMC', value: servicesPrice },
         ...(otherCharges > 0 ? [{ label: 'Other Charges', value: otherCharges }] : []),
+        ...(totalSurge > 0 ? [{ label: 'Surge Applied', value: totalSurge }] : []),
         { label: 'Savings Applied', value: totalSavings, isDeduction: true },
     ];
 
@@ -193,7 +219,9 @@ export const PhonePDPEnhanced = ({
                 {/* Product Title */}
                 <div className="absolute bottom-4 left-4 right-4">
                     <div className="flex items-center gap-2 mb-2">
-                        <span className="px-2 py-0.5 bg-white text-black text-[10px] font-black uppercase rounded">{displayMake}</span>
+                        <span className="px-2 py-0.5 bg-white text-black text-[10px] font-black uppercase rounded">
+                            {displayMake}
+                        </span>
                     </div>
                     <h1 className="text-4xl font-black italic uppercase leading-tight">{displayModel}</h1>
                     <p className="text-sm text-zinc-400 uppercase tracking-wider mt-1">{displayVariant}</p>
@@ -223,7 +251,9 @@ export const PhonePDPEnhanced = ({
                         <div className="text-center py-4 bg-white/5 rounded-xl border border-white/10">
                             <p className="text-xs text-zinc-400 uppercase tracking-widest mb-1">Monthly EMI</p>
                             <p className="text-4xl font-black text-white">₹{emi.toLocaleString()}</p>
-                            <p className="text-xs text-zinc-500 mt-1">{emiTenure} months @ {annualInterest}% p.a.</p>
+                            <p className="text-xs text-zinc-500 mt-1">
+                                {emiTenure} months @ {annualInterest}% p.a.
+                            </p>
                         </div>
 
                         {/* Down Payment Slider */}
@@ -237,10 +267,10 @@ export const PhonePDPEnhanced = ({
                                 min={minDownPayment}
                                 max={maxDownPayment}
                                 value={downPayment}
-                                onChange={(e) => setUserDownPayment(parseInt(e.target.value))}
+                                onChange={e => setUserDownPayment(parseInt(e.target.value))}
                                 className="w-full h-2 bg-zinc-800 rounded-full appearance-none cursor-pointer"
                                 style={{
-                                    background: `linear-gradient(to right, #F4B000 0%, #F4B000 ${((downPayment - minDownPayment) / (maxDownPayment - minDownPayment)) * 100}%, #27272a ${((downPayment - minDownPayment) / (maxDownPayment - minDownPayment)) * 100}%, #27272a 100%)`
+                                    background: `linear-gradient(to right, #F4B000 0%, #F4B000 ${((downPayment - minDownPayment) / (maxDownPayment - minDownPayment)) * 100}%, #27272a ${((downPayment - minDownPayment) / (maxDownPayment - minDownPayment)) * 100}%, #27272a 100%)`,
                                 }}
                             />
                             <div className="flex justify-between text-[10px] text-zinc-500 mt-1">
@@ -253,14 +283,15 @@ export const PhonePDPEnhanced = ({
                         <div>
                             <p className="text-xs text-zinc-400 mb-2">Loan Tenure</p>
                             <div className="grid grid-cols-4 gap-2">
-                                {[12, 24, 36, 48].map((months) => (
+                                {[12, 24, 36, 48].map(months => (
                                     <button
                                         key={months}
                                         onClick={() => setEmiTenure(months)}
-                                        className={`py-2 px-3 rounded-lg text-xs font-bold transition-all ${emiTenure === months
-                                            ? 'bg-white text-black'
-                                            : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                                            }`}
+                                        className={`py-2 px-3 rounded-lg text-xs font-bold transition-all ${
+                                            emiTenure === months
+                                                ? 'bg-white text-black'
+                                                : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                                        }`}
                                     >
                                         {months}M
                                     </button>
@@ -278,22 +309,25 @@ export const PhonePDPEnhanced = ({
                         {[
                             { type: 'STATE', label: 'State RTO', desc: 'Standard registration' },
                             { type: 'BH', label: 'BH Series', desc: 'Bharat series (All India)' },
-                            { type: 'COMPANY', label: 'Company', desc: 'Corporate registration' }
-                        ].map((option) => (
+                            { type: 'COMPANY', label: 'Company', desc: 'Corporate registration' },
+                        ].map(option => (
                             <button
                                 key={option.type}
                                 onClick={() => setRegType(option.type as any)}
-                                className={`w-full p-4 rounded-xl border-2 transition-all text-left ${regType === option.type
-                                    ? 'border-white/30 bg-white/10'
-                                    : 'border-white/10 bg-white/5 hover:border-white/20'
-                                    }`}
+                                className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                                    regType === option.type
+                                        ? 'border-white/30 bg-white/10'
+                                        : 'border-white/10 bg-white/5 hover:border-white/20'
+                                }`}
                             >
                                 <div className="flex justify-between items-start">
                                     <div>
                                         <p className="text-sm font-bold">{option.label}</p>
                                         <p className="text-xs text-zinc-400 mt-0.5">{option.desc}</p>
                                     </div>
-                                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${regType === option.type ? 'border-white bg-white' : 'border-zinc-600'}`}>
+                                    <div
+                                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${regType === option.type ? 'border-white bg-white' : 'border-zinc-600'}`}
+                                    >
                                         {regType === option.type && <CheckCircle2 size={12} className="text-black" />}
                                     </div>
                                 </div>
@@ -305,7 +339,11 @@ export const PhonePDPEnhanced = ({
                 {/* 3. ACCESSORIES SECTION */}
                 <div className="bg-zinc-900/50 backdrop-blur-sm border border-white/10 rounded-2xl p-5 space-y-4">
                     <div className="flex justify-between items-center">
-                        <SectionHeader icon={Package} title="Accessories" subtitle={`${selectedAccessories.length} selected`} />
+                        <SectionHeader
+                            icon={Package}
+                            title="Accessories"
+                            subtitle={`${selectedAccessories.length} selected`}
+                        />
                         <button
                             onClick={() => setShowAccessorySheet(true)}
                             className="text-xs font-bold text-white/60 hover:text-white"
@@ -319,18 +357,23 @@ export const PhonePDPEnhanced = ({
                             <div
                                 key={acc.id}
                                 onClick={() => toggleAccessory(acc.id)}
-                                className={`p-3 rounded-lg border transition-all ${selectedAccessories.includes(acc.id)
-                                    ? 'border-white/30 bg-white/10'
-                                    : 'border-white/10 bg-white/5'
-                                    }`}
+                                className={`p-3 rounded-lg border transition-all ${
+                                    selectedAccessories.includes(acc.id)
+                                        ? 'border-white/30 bg-white/10'
+                                        : 'border-white/10 bg-white/5'
+                                }`}
                             >
                                 <div className="flex justify-between items-center">
                                     <div>
                                         <p className="text-sm font-bold">{acc.displayName || acc.name}</p>
                                         <p className="text-xs text-zinc-400">₹{acc.price.toLocaleString()}</p>
                                     </div>
-                                    <div className={`w-5 h-5 rounded-full border-2 ${selectedAccessories.includes(acc.id) ? 'border-white bg-white' : 'border-zinc-600'}`}>
-                                        {selectedAccessories.includes(acc.id) && <CheckCircle2 size={12} className="text-black" />}
+                                    <div
+                                        className={`w-5 h-5 rounded-full border-2 ${selectedAccessories.includes(acc.id) ? 'border-white bg-white' : 'border-zinc-600'}`}
+                                    >
+                                        {selectedAccessories.includes(acc.id) && (
+                                            <CheckCircle2 size={12} className="text-black" />
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -347,18 +390,23 @@ export const PhonePDPEnhanced = ({
                             <div
                                 key={addon.id}
                                 onClick={() => toggleInsuranceAddon(addon.id)}
-                                className={`p-3 rounded-lg border transition-all ${selectedInsuranceAddons.includes(addon.id)
-                                    ? 'border-white/30 bg-white/10'
-                                    : 'border-white/10 bg-white/5'
-                                    }`}
+                                className={`p-3 rounded-lg border transition-all ${
+                                    selectedInsuranceAddons.includes(addon.id)
+                                        ? 'border-white/30 bg-white/10'
+                                        : 'border-white/10 bg-white/5'
+                                }`}
                             >
                                 <div className="flex justify-between items-center">
                                     <div>
                                         <p className="text-sm font-bold">{addon.displayName || addon.name}</p>
                                         <p className="text-xs text-zinc-400">₹{addon.price.toLocaleString()}</p>
                                     </div>
-                                    <div className={`w-5 h-5 rounded-full border-2 ${selectedInsuranceAddons.includes(addon.id) ? 'border-white bg-white' : 'border-zinc-600'}`}>
-                                        {selectedInsuranceAddons.includes(addon.id) && <CheckCircle2 size={12} className="text-black" />}
+                                    <div
+                                        className={`w-5 h-5 rounded-full border-2 ${selectedInsuranceAddons.includes(addon.id) ? 'border-white bg-white' : 'border-zinc-600'}`}
+                                    >
+                                        {selectedInsuranceAddons.includes(addon.id) && (
+                                            <CheckCircle2 size={12} className="text-black" />
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -375,18 +423,23 @@ export const PhonePDPEnhanced = ({
                             <div
                                 key={service.id}
                                 onClick={() => toggleService(service.id)}
-                                className={`p-3 rounded-lg border transition-all ${selectedServices.includes(service.id)
-                                    ? 'border-white/30 bg-white/10'
-                                    : 'border-white/10 bg-white/5'
-                                    }`}
+                                className={`p-3 rounded-lg border transition-all ${
+                                    selectedServices.includes(service.id)
+                                        ? 'border-white/30 bg-white/10'
+                                        : 'border-white/10 bg-white/5'
+                                }`}
                             >
                                 <div className="flex justify-between items-center">
                                     <div>
                                         <p className="text-sm font-bold">{service.displayName || service.name}</p>
                                         <p className="text-xs text-zinc-400">₹{service.price.toLocaleString()}</p>
                                     </div>
-                                    <div className={`w-5 h-5 rounded-full border-2 ${selectedServices.includes(service.id) ? 'border-white bg-white' : 'border-zinc-600'}`}>
-                                        {selectedServices.includes(service.id) && <CheckCircle2 size={12} className="text-black" />}
+                                    <div
+                                        className={`w-5 h-5 rounded-full border-2 ${selectedServices.includes(service.id) ? 'border-white bg-white' : 'border-zinc-600'}`}
+                                    >
+                                        {selectedServices.includes(service.id) && (
+                                            <CheckCircle2 size={12} className="text-black" />
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -430,10 +483,30 @@ export const PhonePDPEnhanced = ({
                                     </button>
                                 </div>
                                 {priceBreakupData.map((item: any, idx) => (
-                                    <div key={idx} className={`flex justify-between text-xs py-2 border-b border-white/5 ${item.isDeduction ? 'text-green-400' : ''}`}>
-                                        <span className="text-zinc-400">{item.label}</span>
-                                        <span className="font-bold">{item.isDeduction ? '-' : ''}₹{item.value.toLocaleString()}</span>
-                                    </div>
+                                    <React.Fragment key={idx}>
+                                        <div
+                                            className={`flex justify-between text-xs py-2 border-b border-white/5 ${item.isDeduction ? 'text-green-400' : ''}`}
+                                        >
+                                            <span className="text-zinc-400">{item.label}</span>
+                                            <span className="font-bold">
+                                                {item.isDeduction ? '-' : ''}₹{item.value.toLocaleString()}
+                                            </span>
+                                        </div>
+                                        {/* Nested Breakdown for Mobile */}
+                                        {item.breakdown && item.breakdown.length > 0 && (
+                                            <div className="pl-4 pr-2 pb-2 space-y-1 bg-white/5 rounded-b-lg mb-2">
+                                                {item.breakdown.map((b: any, bIdx: number) => (
+                                                    <div
+                                                        key={bIdx}
+                                                        className="flex justify-between text-[10px] text-zinc-500"
+                                                    >
+                                                        <span>{b.label}</span>
+                                                        <span className="font-mono">₹{b.amount.toLocaleString()}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </React.Fragment>
                                 ))}
                             </div>
                         </motion.div>
@@ -455,7 +528,10 @@ export const PhonePDPEnhanced = ({
                         </div>
                         <div className="flex items-center gap-2 text-xs text-zinc-500">
                             <span>Breakup</span>
-                            <ChevronDown size={14} className={`transition-transform ${showPriceBreakup ? 'rotate-180' : ''}`} />
+                            <ChevronDown
+                                size={14}
+                                className={`transition-transform ${showPriceBreakup ? 'rotate-180' : ''}`}
+                            />
                         </div>
                     </div>
 

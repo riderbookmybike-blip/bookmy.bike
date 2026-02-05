@@ -25,6 +25,7 @@ interface ProductClientProps {
     initialAccessories?: any[];
     initialServices?: any[];
     initialFinance?: any;
+    initialDealerId?: string | null;
 }
 
 export default function SystemPDPRouter({
@@ -38,17 +39,21 @@ export default function SystemPDPRouter({
     registrationRule, // Added
     initialAccessories = [],
     initialServices = [],
-    initialFinance
+    initialFinance,
+    initialDealerId = null,
 }: ProductClientProps) {
     const [clientAccessories, setClientAccessories] = useState(initialAccessories);
     const [clientColors, setClientColors] = useState(product.colors);
     const [hasTouchedAccessories, setHasTouchedAccessories] = useState(false);
+    const initialServerPricing =
+        initialPrice?.breakdown && typeof initialPrice.breakdown === 'object' ? initialPrice.breakdown : null;
+    const hasResolvedDealer = Boolean(initialDealerId || initialServerPricing?.dealer?.id);
     // SSPP v1: Local state to bridge serverPricing from useSystemDealerContext to useSystemPDPLogic
-    const [ssppServerPricing, setSsppServerPricing] = useState<any>(null);
+    const [ssppServerPricing, setSsppServerPricing] = useState<any>(initialServerPricing);
     const searchParams = useSearchParams();
     const router = useRouter();
     const leadIdFromUrl = searchParams.get('leadId');
-    const [leadContext, setLeadContext] = useState<{ id: string, name: string } | null>(null);
+    const [leadContext, setLeadContext] = useState<{ id: string; name: string } | null>(null);
     const [isMobile, setIsMobile] = useState(false);
     const [activeVariant, setActiveVariant] = useState(0); // 0 = Accordion (Current)
 
@@ -63,13 +68,13 @@ export default function SystemPDPRouter({
         if (leadIdFromUrl) {
             const fetchLead = async () => {
                 const supabase = createClient();
-                const { data: lead } = await supabase
+                const { data: lead } = (await supabase
                     .from('crm_leads')
-                    .select('id, full_name')
+                    .select('id, customer_name')
                     .eq('id', leadIdFromUrl)
-                    .single();
+                    .single()) as { data: { id: string; customer_name: string } | null; error: any };
                 if (lead) {
-                    setLeadContext({ id: lead.id, name: lead.full_name });
+                    setLeadContext({ id: lead.id, name: lead.customer_name });
                 }
             };
             fetchLead();
@@ -85,7 +90,7 @@ export default function SystemPDPRouter({
         initialServices,
         product,
         initialFinance,
-        serverPricing: ssppServerPricing // SSPP v1: Pass server-calculated pricing for Single Source of Truth
+        serverPricing: ssppServerPricing, // SSPP v1: Pass server-calculated pricing for Single Source of Truth
     });
 
     const {
@@ -97,7 +102,7 @@ export default function SystemPDPRouter({
         selectedOffers,
         quantities,
         isReferralActive,
-        baseExShowroom
+        baseExShowroom,
     } = data;
 
     const {
@@ -111,7 +116,7 @@ export default function SystemPDPRouter({
         setRegType,
         setEmiTenure,
         setConfigTab,
-        setUserDownPayment
+        setUserDownPayment,
     } = actions;
 
     const [showLeadModal, setShowLeadModal] = useState(false);
@@ -119,13 +124,16 @@ export default function SystemPDPRouter({
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [showReferralModal, setShowReferralModal] = useState(false);
 
-
     // Unified Dealer Context Hook
     const { dealerColors, dealerAccessories, bestOffer, resolvedLocation, serverPricing } = useSystemDealerContext({
         product,
         initialAccessories,
         initialLocation,
-        selectedColor
+        selectedColor,
+        overrideDealerId: initialDealerId,
+        disabled: hasResolvedDealer,
+        prefetchedPricing: initialServerPricing,
+        prefetchedLocation: initialLocation,
     });
 
     useEffect(() => {
@@ -136,10 +144,10 @@ export default function SystemPDPRouter({
 
     // SSPP v1: Sync serverPricing from useSystemDealerContext to local state
     useEffect(() => {
-        if (serverPricing) {
+        if (!hasResolvedDealer && serverPricing) {
             setSsppServerPricing(serverPricing);
         }
-    }, [serverPricing]);
+    }, [serverPricing, hasResolvedDealer]);
 
     useEffect(() => {
         if (dealerAccessories && dealerAccessories.length > 0) {
@@ -157,7 +165,15 @@ export default function SystemPDPRouter({
     const handleShareQuote = () => {
         const url = new URL(window.location.href);
         url.searchParams.set('color', selectedColor);
-        if (initialLocation?.pincode) url.searchParams.set('pincode', initialLocation.pincode);
+
+        // Standardize on district
+        url.searchParams.delete('pincode');
+        if (initialLocation?.district) {
+            url.searchParams.set('district', initialLocation.district);
+        } else if (initialLocation?.pincode) {
+            url.searchParams.set('district', initialLocation.pincode);
+        }
+
         if (leadIdFromUrl) url.searchParams.set('leadId', leadIdFromUrl);
 
         if (navigator.share) {
@@ -177,8 +193,12 @@ export default function SystemPDPRouter({
 
         try {
             const resolvedColor =
-                data.colors?.find((c: any) => c.id === selectedColor || c.skuId === selectedColor || c.name === selectedColor) ||
-                clientColors?.find((c: any) => c.id === selectedColor || c.skuId === selectedColor || c.name === selectedColor);
+                data.colors?.find(
+                    (c: any) => c.id === selectedColor || c.skuId === selectedColor || c.name === selectedColor
+                ) ||
+                clientColors?.find(
+                    (c: any) => c.id === selectedColor || c.skuId === selectedColor || c.name === selectedColor
+                );
             const colorName = resolvedColor?.name || selectedColor;
             const variantName = product.variant || variantParam;
             const labelBase = [product.model, variantName].filter(Boolean).join(' ');
@@ -191,7 +211,7 @@ export default function SystemPDPRouter({
                     name: a.description || a.displayName || a.name,
                     price: a.price,
                     discountPrice: a.discountPrice,
-                    inclusionType: a.inclusionType
+                    inclusionType: a.inclusionType,
                 }));
 
             const selectedServiceItems = (data.activeServices || [])
@@ -200,7 +220,7 @@ export default function SystemPDPRouter({
                     id: s.id,
                     name: s.name,
                     price: s.price,
-                    discountPrice: s.discountPrice
+                    discountPrice: s.discountPrice,
                 }));
 
             const selectedInsuranceAddonItems = (data.availableInsuranceAddons || [])
@@ -210,7 +230,7 @@ export default function SystemPDPRouter({
                     name: i.name,
                     price: i.price,
                     discountPrice: i.discountPrice,
-                    inclusionType: i.inclusionType
+                    inclusionType: i.inclusionType,
                 }));
 
             const commercials = {
@@ -227,8 +247,8 @@ export default function SystemPDPRouter({
                     insurance_addon_items: selectedInsuranceAddonItems,
                     rto_type: data.regType,
                     emi_tenure: data.emiTenure,
-                    down_payment: data.userDownPayment
-                }
+                    down_payment: data.userDownPayment,
+                },
             };
 
             const result = await createQuoteAction({
@@ -236,7 +256,7 @@ export default function SystemPDPRouter({
                 lead_id: leadContext.id,
                 variant_id: product.id,
                 color_id: selectedColor, // Assuming selectedColor is the color_id/SKU ID
-                commercials
+                commercials,
             });
 
             if (result.success) {
@@ -253,7 +273,9 @@ export default function SystemPDPRouter({
 
     const handleBookingRequest = async () => {
         const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
 
         if (user?.email?.endsWith('@bookmy.bike')) {
             setShowEmailUpdateModal(true);
@@ -271,21 +293,21 @@ export default function SystemPDPRouter({
         const accessory = data.activeAccessories.find((a: any) => a.id === id);
         if (accessory?.isMandatory) return;
         setHasTouchedAccessories(true);
-        setSelectedAccessories(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+        setSelectedAccessories(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
     };
 
     const toggleInsuranceAddon = (id: string) => {
         const addon = data.availableInsuranceAddons.find((i: any) => i.id === id);
         if (addon?.isMandatory) return;
-        setSelectedInsuranceAddons(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+        setSelectedInsuranceAddons(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
     };
 
     const toggleService = (id: string) => {
-        setSelectedServices(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+        setSelectedServices(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
     };
 
     const toggleOffer = (id: string) => {
-        setSelectedOffers(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+        setSelectedOffers(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
     };
 
     const updateQuantity = (id: string, delta: number, max: number = 1) => {
@@ -309,7 +331,7 @@ export default function SystemPDPRouter({
         setRegType,
         setEmiTenure,
         setConfigTab,
-        setUserDownPayment
+        setUserDownPayment,
     };
 
     const commonProps = {
@@ -319,7 +341,7 @@ export default function SystemPDPRouter({
         variantParam,
         data,
         handlers,
-        leadContext: leadContext || undefined
+        leadContext: leadContext || undefined,
     };
 
     return (
@@ -339,14 +361,18 @@ export default function SystemPDPRouter({
                 handlers={handlers}
                 bestOffer={bestOffer}
                 serverPricing={serverPricing}
-                serviceability={resolvedLocation ? {
-                    status: 'serviceable',
-                    location: resolvedLocation.district || resolvedLocation.city || 'India',
-                    distance: 0
-                } : {
-                    status: initialLocation ? 'serviceable' : 'unset',
-                    location: initialLocation?.district || initialLocation?.city || 'India'
-                }}
+                serviceability={
+                    resolvedLocation
+                        ? {
+                              status: 'serviceable',
+                              location: resolvedLocation.district || resolvedLocation.city || 'India',
+                              distance: 0,
+                          }
+                        : {
+                              status: initialLocation ? 'serviceable' : 'unset',
+                              location: initialLocation?.district || initialLocation?.city || 'India',
+                          }
+                }
             />
 
             <LeadCaptureModal
@@ -359,7 +385,7 @@ export default function SystemPDPRouter({
                     exShowroom: data.baseExShowroom,
                     onRoad: data.totalOnRoad,
                     taluka: initialLocation?.taluka || initialLocation?.city,
-                    schemeId: initialFinance?.scheme?.id
+                    schemeId: initialFinance?.scheme?.id,
                 }}
             />
 

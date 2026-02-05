@@ -8,17 +8,12 @@ interface PersonalizeLayoutProps {
     className?: string;
 }
 
-export default function PersonalizeLayout({
-    header,
-    visuals,
-    tabs,
-    children,
-    className = ''
-}: PersonalizeLayoutProps) {
+export default function PersonalizeLayout({ header, visuals, tabs, children, className = '' }: PersonalizeLayoutProps) {
     return (
-        <section className={`w-full bg-white dark:bg-slate-950 text-slate-900 dark:text-white transition-colors duration-500 ${className}`}>
-            <div className="max-w-[1400px] mx-auto px-6 py-4 md:py-8 space-y-8">
-
+        <section
+            className={`w-full bg-white dark:bg-slate-950 text-slate-900 dark:text-white transition-colors duration-500 ${className}`}
+        >
+            <div className="page-container py-4 md:py-8 space-y-8">
                 {/* 1. Header Section */}
                 {header && (
                     <div className="sticky top-[var(--header-h)] z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl px-6 -mx-6 py-4 border-b border-slate-200 dark:border-white/5 transition-all duration-300">
@@ -27,23 +22,16 @@ export default function PersonalizeLayout({
                 )}
 
                 {/* 2. Visuals Section (Image | Video) */}
-                <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
-                    {visuals}
-                </div>
+                <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">{visuals}</div>
 
                 {/* 3. Configuration Section (Tabs + Content) */}
                 <div className="bg-white dark:bg-slate-900/20 border border-slate-200 dark:border-white/5 rounded-[3rem] p-6 md:p-10 space-y-8 animate-in fade-in slide-in-from-bottom-12 duration-700 delay-100 shadow-xl shadow-slate-200/50 dark:shadow-none">
                     {/* Tab Navigation */}
-                    <div className="flex justify-center md:justify-start overflow-x-auto pb-2">
-                        {tabs}
-                    </div>
+                    <div className="flex justify-center md:justify-start overflow-x-auto pb-2">{tabs}</div>
 
                     {/* Active Tab Content */}
-                    <div className="min-h-[400px]">
-                        {children}
-                    </div>
+                    <div className="min-h-[400px]">{children}</div>
                 </div>
-
             </div>
         </section>
     );

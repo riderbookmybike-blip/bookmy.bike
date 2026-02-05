@@ -5,8 +5,22 @@ export type InsuranceVariable =
     | 'IDV' // Insured Declared Value (usually 95% of Ex-Showroom)
     | 'ENGINE_CC'
     | 'BASE_PREMIUM' // Total of OD + TP
-    | 'NET_PREMIUM'  // Total before GST
+    | 'NET_PREMIUM' // Total before GST
     | 'TARGET_COMPONENT';
+
+export interface TenureConfig {
+    min: number;
+    max: number;
+    default: number;
+    allowed: number[];
+    linkedTo?: 'OD' | 'TP'; // For addons
+}
+
+export interface InsuranceRuleTenureConfig {
+    od: TenureConfig;
+    tp: TenureConfig;
+    addons: TenureConfig;
+}
 
 export interface InsuranceRule {
     id: string;
@@ -24,9 +38,12 @@ export interface InsuranceRule {
     // Components
     odComponents: FormulaComponent[]; // Own Damage components
     tpComponents: FormulaComponent[]; // Third Party components
-    addons: FormulaComponent[];       // Add-on components (Zero Dep etc)
+    addons: FormulaComponent[]; // Add-on components (Zero Dep etc)
 
     gstPercentage: number; // usually 18
+
+    // Tenure Configuration
+    tenureConfig?: InsuranceRuleTenureConfig;
 
     version: number;
     lastUpdated: string;
@@ -39,8 +56,8 @@ export interface InsuranceCalculationContext {
 
     // Policy Details
     isNewVehicle?: boolean; // Default true
-    odTenure?: 1 | 3 | 5;   // Default 1
-    tpTenure?: 1 | 5;       // Default 5 for New
+    odTenure?: 1 | 3 | 5; // Default 1
+    tpTenure?: 1 | 5; // Default 5 for New
     ncbPercentage?: 0 | 20 | 25 | 35 | 45 | 50; // Default 0
 
     // Optional manually specified IDV
@@ -62,4 +79,11 @@ export interface InsuranceCalculationResult {
     totalPremium: number;
 
     ruleId: string;
+
+    // Tenure info applied in calculation
+    tenures?: {
+        od: number;
+        tp: number;
+        addons: number;
+    };
 }

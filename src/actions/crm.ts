@@ -42,7 +42,7 @@ async function getOrCreateCustomerProfile(data: {
                 whatsapp: data.phone,
                 date_of_birth: dob,
                 aadhaar_pincode: pincode,
-                taluka: data.taluka || null
+                taluka: data.taluka || null,
             })
             .eq('id', existingProfile.id);
 
@@ -63,7 +63,7 @@ async function getOrCreateCustomerProfile(data: {
         phone_confirm: true,
         user_metadata: {
             full_name: toTitleCase(data.name),
-        }
+        },
     });
 
     if (authError) {
@@ -97,7 +97,7 @@ async function getOrCreateCustomerProfile(data: {
             date_of_birth: dob,
             aadhaar_pincode: pincode,
             taluka: data.taluka || null,
-            role: 'customer' // Corrected from 'dealer_staff' to 'customer'
+            role: 'customer', // Corrected from 'dealer_staff' to 'customer'
         })
         .select('id')
         .single();
@@ -117,14 +117,16 @@ export async function checkExistingCustomer(phone: string) {
     // Search id_members by whatsapp OR primary_phone
     const { data: profile, error } = await adminClient
         .from('id_members')
-        .select(`
+        .select(
+            `
             id,
             full_name, 
             aadhaar_pincode, 
             date_of_birth,
             whatsapp,
             primary_phone
-        `)
+        `
+        )
         .or(`whatsapp.eq.${cleanPhone},primary_phone.eq.${cleanPhone}`)
         .maybeSingle();
 
@@ -138,9 +140,9 @@ export async function checkExistingCustomer(phone: string) {
             data: {
                 name: profile.full_name,
                 pincode: profile.aadhaar_pincode,
-                dob: profile.date_of_birth
+                dob: profile.date_of_birth,
             },
-            memberId: profile.id
+            memberId: profile.id,
         };
     }
 
@@ -198,7 +200,7 @@ export async function getLeads(tenantId?: string, status?: string) {
             created_at: l.created_at,
             intentScore: l.intent_score || 'COLD',
             referralSource: l.referral_data?.referred_by_name || l.referral_data?.source,
-            events_log: l.events_log || []
+            events_log: l.events_log || [],
         };
     });
 }
@@ -230,17 +232,13 @@ export async function getCustomerHistory(customerId: string) {
     return {
         leads: leads || [],
         quotes: quotes || [],
-        bookings: bookings || []
+        bookings: bookings || [],
     };
 }
 
 export async function getCatalogModels() {
     const supabase = await createClient();
-    const { data, error } = await supabase
-        .from('cat_items')
-        .select('name')
-        .eq('type', 'FAMILY')
-        .eq('status', 'ACTIVE');
+    const { data, error } = await supabase.from('cat_items').select('name').eq('type', 'FAMILY').eq('status', 'ACTIVE');
 
     if (error) {
         console.error('Error fetching catalog models:', error);
@@ -253,9 +251,13 @@ export async function getCatalogModels() {
 // Helper to format text as Title Case
 function toTitleCase(str: string): string {
     if (!str) return '';
-    return str.toLowerCase().split(' ').map(word => {
-        return word.charAt(0).toUpperCase() + word.slice(1);
-    }).join(' ');
+    return str
+        .toLowerCase()
+        .split(' ')
+        .map(word => {
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        })
+        .join(' ');
 }
 
 export async function createLeadAction(data: {
@@ -277,7 +279,7 @@ export async function createLeadAction(data: {
         action: 'createLeadAction',
         status: 'START',
         message: `Registering new identity for ${data.customer_phone}`,
-        payload: { phone: data.customer_phone, name: data.customer_name }
+        payload: { phone: data.customer_phone, name: data.customer_name },
     });
 
     console.log('[DEBUG] createLeadAction triggered by client:', data.customer_phone);
@@ -305,7 +307,7 @@ export async function createLeadAction(data: {
             phone: data.customer_phone,
             pincode: data.customer_pincode,
             dob: data.customer_dob,
-            taluka: data.customer_taluka
+            taluka: data.customer_taluka,
         });
 
         console.log('[DEBUG] Step 1 Complete. CustomerId:', customerId);
@@ -342,9 +344,9 @@ export async function createLeadAction(data: {
                 utm_data: {
                     utm_source: data.source || 'MANUAL',
                     auto_segregated: status === 'JUNK',
-                    segregation_reason: status === 'JUNK' ? 'Unserviceable Pincode' : null
+                    segregation_reason: status === 'JUNK' ? 'Unserviceable Pincode' : null,
                 },
-                intent_score: status === 'JUNK' ? 'COLD' : 'WARM'
+                intent_score: status === 'JUNK' ? 'COLD' : 'WARM',
             })
             .select()
             .single();
@@ -357,7 +359,7 @@ export async function createLeadAction(data: {
                 status: 'ERROR',
                 message: `Lead insertion failed: ${error.message}`,
                 error: error,
-                duration_ms: Date.now() - startTime
+                duration_ms: Date.now() - startTime,
             });
             return { success: false, message: error.message };
         }
@@ -369,11 +371,10 @@ export async function createLeadAction(data: {
             status: 'SUCCESS',
             message: `Identity Registered Successfully: ${lead.customer_name}`,
             payload: { leadId: lead.id },
-            duration_ms: Date.now() - startTime
+            duration_ms: Date.now() - startTime,
         });
         revalidatePath('/app/[slug]/leads', 'page');
         return { success: true, leadId: lead.id };
-
     } catch (error) {
         console.error('[DEBUG] Lead creation process CRASHED:', error);
         await serverLog({
@@ -382,7 +383,7 @@ export async function createLeadAction(data: {
             status: 'ERROR',
             message: error instanceof Error ? error.message : 'Process Crashed',
             error: error,
-            duration_ms: Date.now() - startTime
+            duration_ms: Date.now() - startTime,
         });
         return { success: false, message: error instanceof Error ? error.message : 'Unknown error' };
     }
@@ -392,10 +393,15 @@ export async function createLeadAction(data: {
 
 export async function getQuotes(tenantId?: string) {
     const supabase = await createClient();
-    let query = supabase.from('crm_quotes').select(`
+    let query = supabase
+        .from('crm_quotes')
+        .select(
+            `
         *,
         leads:crm_leads (customer_name)
-    `).order('created_at', { ascending: false });
+    `
+        )
+        .order('created_at', { ascending: false });
 
     if (tenantId) {
         query = query.eq('tenant_id', tenantId);
@@ -417,7 +423,7 @@ export async function getQuotes(tenantId?: string) {
         status: q.status,
         date: q.created_at.split('T')[0],
         version: q.version,
-        isLatest: q.is_latest
+        isLatest: q.is_latest,
     }));
 }
 
@@ -436,6 +442,8 @@ export async function getQuotesForLead(leadId: string) {
     return data || [];
 }
 
+import { getAuthUser } from '@/lib/auth/resolver';
+
 export async function createQuoteAction(data: {
     tenant_id: string;
     lead_id?: string;
@@ -444,9 +452,9 @@ export async function createQuoteAction(data: {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     commercials: Record<string, any>;
 }): Promise<{ success: boolean; data?: any; message?: string }> {
+    const user = await getAuthUser();
     const supabase = await createClient();
-    const { data: authData } = await supabase.auth.getUser();
-    const createdBy = authData?.user?.id;
+    const createdBy = user?.id;
 
     // Extract flat fields for analytics - handling Multiple naming conventions
     const comms: any = data.commercials;
@@ -469,13 +477,10 @@ export async function createQuoteAction(data: {
         if (existingLatest) {
             nextVersion = (existingLatest.version ?? 0) + 1;
             // Mark previous as not latest
-            await supabase
-                .from('crm_quotes')
-                .update({ is_latest: false })
-                .eq('id', existingLatest.id);
+            await supabase.from('crm_quotes').update({ is_latest: false }).eq('id', existingLatest.id);
             data.commercials = {
                 ...data.commercials,
-                parent_quote_id: existingLatest.parent_quote_id || existingLatest.id
+                parent_quote_id: existingLatest.parent_quote_id || existingLatest.id,
             };
         }
     }
@@ -501,18 +506,18 @@ export async function createQuoteAction(data: {
             status: 'DRAFT',
             version: nextVersion,
             is_latest: true,
-            created_by: createdBy
+            created_by: createdBy,
         })
         .select()
         .single();
 
     if (error) {
-        console.error("Create Quote Logic Failure:", {
+        console.error('Create Quote Logic Failure:', {
             code: error.code,
             message: error.message,
             details: error.details,
             hint: error.hint,
-            context: { tenant_id: data.tenant_id, lead_id: data.lead_id, sku: data.variant_id }
+            context: { tenant_id: data.tenant_id, lead_id: data.lead_id, sku: data.variant_id },
         });
         return { success: false, message: error.message };
     }
@@ -523,27 +528,30 @@ export async function createQuoteAction(data: {
             .from('crm_leads')
             .update({
                 status: 'QUOTE',
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
             })
             .eq('id', data.lead_id);
 
         if (leadUpdateError) {
-            console.error("Critical: Lead status sync failed after quote creation:", leadUpdateError);
+            console.error('Critical: Lead status sync failed after quote creation:', leadUpdateError);
         } else {
             revalidatePath(`/app/[slug]/leads`);
         }
     }
 
-    revalidatePath("/app/[slug]/quotes");
-    revalidatePath("/profile"); // Transaction Registry
+    revalidatePath('/app/[slug]/quotes');
+    revalidatePath('/profile'); // Transaction Registry
     return { success: true, data: quote };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function createQuoteVersion(parentQuoteId: string, commercials: Record<string, any>): Promise<{ success: boolean; data?: any; message?: string }> {
+export async function createQuoteVersion(
+    parentQuoteId: string,
+    commercials: Record<string, any>
+): Promise<{ success: boolean; data?: any; message?: string }> {
+    const user = await getAuthUser();
     const supabase = await createClient();
-    const { data: authData } = await supabase.auth.getUser();
-    const createdBy = authData?.user?.id;
+    const createdBy = user?.id;
 
     // Get parent version
     const { data: parent } = await supabase
@@ -556,10 +564,7 @@ export async function createQuoteVersion(parentQuoteId: string, commercials: Rec
 
     const onRoadPrice = commercials.grand_total || 0;
 
-    await supabase
-        .from('crm_quotes')
-        .update({ is_latest: false })
-        .eq('id', parentQuoteId);
+    await supabase.from('crm_quotes').update({ is_latest: false }).eq('id', parentQuoteId);
 
     const { data: quote, error } = await supabase
         .from('crm_quotes')
@@ -582,16 +587,16 @@ export async function createQuoteVersion(parentQuoteId: string, commercials: Rec
 
             status: 'DRAFT',
             is_latest: true,
-            created_by: createdBy
+            created_by: createdBy,
         })
         .select()
         .single();
 
     if (error) {
-        console.error("Create Quote Version Error:", error);
+        console.error('Create Quote Version Error:', error);
         return { success: false, message: error.message };
     }
-    revalidatePath("/app/[slug]/quotes");
+    revalidatePath('/app/[slug]/quotes');
     return { success: true, data: quote };
 }
 
@@ -603,7 +608,7 @@ export async function acceptQuoteAction(id: string): Promise<{ success: boolean;
         .eq('id', id);
 
     if (error) {
-        console.error("Accept Quote Error:", error);
+        console.error('Accept Quote Error:', error);
         return { success: false, message: error.message };
     }
     revalidatePath('/app/[slug]/quotes');
@@ -620,7 +625,7 @@ export async function confirmQuoteAction(id: string): Promise<{ success: boolean
         .eq('id', id);
 
     if (error) {
-        console.error("Confirm Quote Error:", error);
+        console.error('Confirm Quote Error:', error);
         return { success: false, message: error.message };
     }
     revalidatePath('/app/[slug]/quotes');
@@ -636,7 +641,7 @@ export async function lockQuoteAction(id: string): Promise<{ success: boolean; m
         .eq('id', id);
 
     if (error) {
-        console.error("Lock Quote Error:", error);
+        console.error('Lock Quote Error:', error);
         return { success: false, message: error.message };
     }
     revalidatePath('/app/[slug]/quotes');
@@ -648,10 +653,15 @@ export async function lockQuoteAction(id: string): Promise<{ success: boolean; m
 
 export async function getBookings(tenantId?: string) {
     const supabase = await createClient();
-    let query = supabase.from('crm_bookings').select(`
+    let query = supabase
+        .from('crm_bookings')
+        .select(
+            `
         *,
         quotes:crm_quotes (commercials, leads:crm_leads(customer_name))
-    `).order('created_at', { ascending: false });
+    `
+        )
+        .order('created_at', { ascending: false });
 
     if (tenantId) {
         query = query.eq('tenant_id', tenantId);
@@ -676,17 +686,13 @@ export async function getBookings(tenantId?: string) {
         price: b.vehicle_details?.commercial_snapshot?.grand_total || 0,
         status: b.status,
         date: b.created_at.split('T')[0],
-        currentStage: b.current_stage
+        currentStage: b.current_stage,
     }));
 }
 
 export async function getBookingForLead(leadId: string) {
     const supabase = await createClient();
-    const { data, error } = await supabase
-        .from('crm_bookings')
-        .select('*')
-        .eq('lead_id', leadId)
-        .maybeSingle();
+    const { data, error } = await supabase.from('crm_bookings').select('*').eq('lead_id', leadId).maybeSingle();
 
     if (error) {
         console.error('getBookingForLead Error:', error);
@@ -699,11 +705,7 @@ export async function createBookingFromQuote(quoteId: string) {
     const supabase = await createClient();
 
     // 1. Get Quote Details
-    const { data: quote } = await supabase
-        .from('crm_quotes')
-        .select('*')
-        .eq('id', quoteId)
-        .single();
+    const { data: quote } = await supabase.from('crm_quotes').select('*').eq('id', quoteId).single();
 
     if (!quote) throw new Error('Quote not found');
     if (quote.status !== 'LOCKED') {
@@ -723,10 +725,10 @@ export async function createBookingFromQuote(quoteId: string) {
             base_price: quote.ex_showroom_price || (quote.commercials as any)?.ex_showroom || 0,
             vehicle_details: {
                 variant_id: quote.variant_id,
-                commercial_snapshot: quote.commercials
+                commercial_snapshot: quote.commercials,
             },
             status: 'BOOKED',
-            current_stage: 'FINANCE'
+            current_stage: 'FINANCE',
         })
         .select()
         .single();
@@ -752,7 +754,7 @@ export async function updateBookingStage(id: string, stage: string, statusUpdate
         .update({
             current_stage: stage,
             ...statusUpdates,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
         })
         .eq('id', id);
 
@@ -800,7 +802,7 @@ export async function uploadMemberDocumentAction(data: {
             file_type: data.fileType,
             purpose: data.purpose,
             metadata: data.metadata || {},
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
         })
         .select()
         .single();
@@ -815,10 +817,7 @@ export async function uploadMemberDocumentAction(data: {
 
 export async function deleteMemberDocumentAction(documentId: string) {
     const supabase = await createClient();
-    const { error } = await supabase
-        .from('id_member_assets')
-        .delete()
-        .eq('id', documentId);
+    const { error } = await supabase.from('id_member_assets').delete().eq('id', documentId);
 
     if (error) {
         console.error('Error deleting member document:', error);
@@ -826,18 +825,21 @@ export async function deleteMemberDocumentAction(documentId: string) {
     }
 }
 
-export async function updateMemberDocumentAction(id: string, updates: {
-    path?: string;
-    purpose?: string;
-    file_type?: string;
-    metadata?: any;
-}) {
+export async function updateMemberDocumentAction(
+    id: string,
+    updates: {
+        path?: string;
+        purpose?: string;
+        file_type?: string;
+        metadata?: any;
+    }
+) {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from('id_member_assets')
         .update({
             ...updates,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
         })
         .eq('id', id)
         .select()
@@ -852,9 +854,7 @@ export async function updateMemberDocumentAction(id: string, updates: {
 
 export async function getSignedUrlAction(path: string) {
     const supabase = await createClient();
-    const { data, error } = await supabase.storage
-        .from('documents')
-        .createSignedUrl(path, 60); // 60 seconds expiry
+    const { data, error } = await supabase.storage.from('documents').createSignedUrl(path, 60); // 60 seconds expiry
 
     if (error) {
         console.error('Error creating signed URL:', error);

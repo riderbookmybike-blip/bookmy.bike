@@ -3,15 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 
 // Hardcoded Serviceable Districts for now
-const SERVICEABLE_DISTRICTS = [
-    'MUMBAI',
-    'MUMBAI SUBURBAN',
-    'THANE',
-    'PALGHAR',
-    'RAIGAD',
-    'PUNE',
-    'NASHIK'
-];
+const SERVICEABLE_DISTRICTS = ['MUMBAI', 'MUMBAI SUBURBAN', 'THANE', 'PALGHAR', 'RAIGAD', 'PUNE', 'NASHIK'];
 
 export async function checkServiceability(pincode: string) {
     if (!pincode || pincode.length !== 6) {
@@ -32,7 +24,7 @@ export async function checkServiceability(pincode: string) {
             return {
                 isServiceable: false,
                 location: null,
-                error: 'Pincode not found'
+                error: 'Pincode not found',
             };
         }
 
@@ -41,7 +33,7 @@ export async function checkServiceability(pincode: string) {
 
         // 2. Override: if District is in whitelist, force TRUE
         const districtUpper = data.district?.toUpperCase();
-        if (SERVICEABLE_DISTRICTS.includes(districtUpper)) {
+        if (districtUpper && SERVICEABLE_DISTRICTS.includes(districtUpper)) {
             isServiceable = true;
         }
 
@@ -60,7 +52,7 @@ export async function checkServiceability(pincode: string) {
             taluka: data.taluka,
             area: data.area,
             state: data.state,
-            stateCode
+            stateCode,
         };
     } catch (err) {
         console.error('Serviceability Check Failed:', err);
@@ -73,14 +65,53 @@ export async function bulkUpdateServiceability(pincodes: string[], isServiceable
     const status = isServiceable ? 'Deliverable' : 'Not Deliverable';
 
     try {
-        const { error } = await supabase
-            .from('pincodes')
-            .update({ status })
-            .in('pincode', pincodes);
+        const { error } = await supabase.from('loc_pincodes').update({ status }).in('pincode', pincodes);
 
         if (error) throw error;
         return { success: true };
     } catch (err: any) {
+        return { success: false, error: err.message };
+    }
+}
+
+export async function upsertLocation(data: {
+    pincode: string;
+    area?: string;
+    taluka?: string;
+    district?: string;
+    state?: string;
+    stateCode?: string;
+    latitude?: number;
+    longitude?: number;
+}) {
+    if (!data.pincode || data.pincode.length !== 6) {
+        return { success: false, error: 'Invalid pincode' };
+    }
+
+    const supabase = await createClient();
+
+    try {
+        const { error } = await supabase.from('loc_pincodes').upsert(
+            {
+                pincode: data.pincode,
+                area: data.area,
+                taluka: data.taluka,
+                district: data.district,
+                state: data.state,
+                state_code: data.stateCode,
+                latitude: data.latitude,
+                longitude: data.longitude,
+                updated_at: new Date().toISOString(),
+            },
+            {
+                onConflict: 'pincode',
+            }
+        );
+
+        if (error) throw error;
+        return { success: true };
+    } catch (err: any) {
+        console.error('Location Upsert Failed:', err);
         return { success: false, error: err.message };
     }
 }

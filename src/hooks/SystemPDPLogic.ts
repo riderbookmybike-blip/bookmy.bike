@@ -22,6 +22,7 @@ export interface LocalColorConfig {
 import { InsuranceRule } from '@/types/insurance';
 import { Accessory, ServiceOption } from '@/types/store';
 import { BankScheme, BankPartner } from '@/types/bankPartner';
+// SOT Phase 3: Rule engine removed, pricing from JSON only
 
 export function useSystemPDPLogic({
     initialPrice,
@@ -32,9 +33,15 @@ export function useSystemPDPLogic({
     initialServices = [],
     product,
     initialFinance,
-    serverPricing
+    serverPricing,
 }: {
-    initialPrice: { exShowroom: number };
+    initialPrice: {
+        exShowroom: number;
+        total?: number;
+        rto?: number;
+        insurance?: number;
+        breakdown?: any;
+    };
     colors: LocalColorConfig[];
     insuranceRule?: InsuranceRule;
     registrationRule?: any; // Still using any if type not fully defined, but better than before
@@ -46,14 +53,23 @@ export function useSystemPDPLogic({
         scheme: BankScheme;
         logic?: string;
     };
-    // SSPP v1: Server-calculated pricing (Single Source of Truth)
+    // SSPP v2: Server-calculated pricing (SOT JSON structure)
     serverPricing?: {
         ex_showroom: number;
-        rto: { total: number; type: string; breakdown: any[] };
-        insurance: { total: number; od: number; tp: number; gst_rate: number; breakdown?: any[] };
-        dealer: { offer: number; name?: string; id?: string };
+        rto: { STATE: number; BH: number | null; COMPANY: number | null; default: string };
+        insurance: {
+            od: number;
+            tp: number;
+            gst_rate: number;
+            base_total: number;
+            addons: { id: string; label: string; price: number; gst: number; total: number; default: boolean }[];
+        };
+        dealer: { offer: number; name?: string; id?: string; studio_id?: string | null };
         final_on_road: number;
         location?: { district?: string | null; state_code?: string | null };
+        // Legacy fallback (deprecated)
+        rto_breakdown?: any[];
+        insurance_breakdown?: any[];
     } | null;
 }) {
     const router = useRouter();
@@ -61,32 +77,73 @@ export function useSystemPDPLogic({
 
     const colorFromQuery = searchParams.get('color');
     const isValidColor = colorFromQuery && colors.some(c => c.id === colorFromQuery);
-    const initialColor = isValidColor ? colorFromQuery : (colors[0]?.id || 'default');
+    const initialColor = isValidColor ? colorFromQuery : colors[0]?.id || 'default';
 
     const [selectedColor, setSelectedColor] = useState(initialColor);
     const [regType, setRegType] = useState<'STATE' | 'BH' | 'COMPANY'>('STATE');
+    const [hasManualRegType, setHasManualRegType] = useState(false);
     const fallbackPricing =
-        serverPricing || (initialPrice?.breakdown && typeof initialPrice.breakdown === 'object' ? initialPrice.breakdown : null);
+        serverPricing ||
+        (initialPrice?.breakdown && typeof initialPrice.breakdown === 'object' ? initialPrice.breakdown : null);
     const pricingReady = Boolean(
-        fallbackPricing?.ex_showroom || fallbackPricing?.final_on_road || initialPrice?.exShowroom || initialPrice?.total
+        fallbackPricing?.ex_showroom ||
+        fallbackPricing?.final_on_road ||
+        initialPrice?.exShowroom ||
+        initialPrice?.total
     );
 
     const activeAccessories = initialAccessories.length > 0 ? initialAccessories : [];
     const activeServices = initialServices.length > 0 ? initialServices : [];
 
-    const defaultSelectedAccessoryIds = activeAccessories.filter(a => a.isMandatory || a.inclusionType === 'BUNDLE').map(a => a.id);
+    const defaultSelectedAccessoryIds = activeAccessories
+        .filter(a => a.isMandatory || a.inclusionType === 'BUNDLE')
+        .map(a => a.id);
     const [selectedAccessories, setSelectedAccessories] = useState<string[]>(defaultSelectedAccessoryIds);
-    const defaultInsuranceAddonIds = (insuranceRule?.addons || [])
-        .filter((a: any) => (a?.inclusion_type || a?.inclusionType) === 'MANDATORY' || (a?.inclusion_type || a?.inclusionType) === 'BUNDLE')
-        .map((a: any) => a.id);
+    // SOT Phase 3: Use JSON addons with default flag; fallback to legacy insuranceRule
+    const defaultInsuranceAddonIds = (serverPricing?.insurance?.addons || [])
+        .filter(
+            (a: { id: string; default?: boolean; inclusion_type?: string; inclusionType?: string }) =>
+                a.default === true ||
+                (a.inclusion_type || a.inclusionType) === 'MANDATORY' ||
+                (a.inclusion_type || a.inclusionType) === 'BUNDLE'
+        )
+        .map((a: { id: string }) => a.id);
     const [selectedInsuranceAddons, setSelectedInsuranceAddons] = useState<string[]>(defaultInsuranceAddonIds);
     const [selectedServices, setSelectedServices] = useState<string[]>([]);
     const [selectedOffers, setSelectedOffers] = useState<string[]>([]);
     const [quantities, setQuantities] = useState<Record<string, number>>({});
 
     const [emiTenure, setEmiTenure] = useState(36);
-    const [configTab, setConfigTab] = useState<'PRICE_BREAKUP' | 'FINANCE' | 'ACCESSORIES' | 'INSURANCE' | 'REGISTRATION' | 'SERVICES' | 'OFFERS' | 'WARRANTY' | 'TECH_SPECS'>('PRICE_BREAKUP');
+    const [configTab, setConfigTab] = useState<
+        | 'PRICE_BREAKUP'
+        | 'FINANCE'
+        | 'ACCESSORIES'
+        | 'INSURANCE'
+        | 'REGISTRATION'
+        | 'SERVICES'
+        | 'OFFERS'
+        | 'WARRANTY'
+        | 'TECH_SPECS'
+    >('PRICE_BREAKUP');
     const [userDownPayment, setUserDownPayment] = useState<number | null>(null);
+
+    // SSPP v1.8: Re-sync selectedAccessories when accessories are hydrated from dealer
+    // This ensures mandatory/bundled items are correctly selected when IDs change from catalog to dealer
+    useEffect(() => {
+        if (initialAccessories.length > 0) {
+            const currentValidIds = selectedAccessories.filter(id => initialAccessories.some(a => a.id === id));
+
+            // If we have no valid IDs or all current IDs are from a previous set, reset to mandatory defaults
+            if (currentValidIds.length === 0) {
+                const defaults = initialAccessories
+                    .filter(a => a.isMandatory || a.inclusionType === 'BUNDLE')
+                    .map(a => a.id);
+                if (defaults.length > 0) {
+                    setSelectedAccessories(defaults);
+                }
+            }
+        }
+    }, [initialAccessories]);
 
     // Runtime Debug Persistence
     useEffect(() => {
@@ -104,78 +161,234 @@ export function useSystemPDPLogic({
                 dealerId: searchParams.get('dealerId') || undefined,
                 tenantId: product?.dealership_id || product?.make || 'NOT_SET',
                 pageId: `${product?.make}/${product?.model}/${product?.variant}`,
-                userId: typeof window !== 'undefined' ? localStorage.getItem('userId') || 'GUEST' : 'GUEST'
+                userId: typeof window !== 'undefined' ? localStorage.getItem('userId') || 'GUEST' : 'GUEST',
             };
         }
     }, [registrationRule, initialFinance, searchParams, pricingReady, product]);
 
     useEffect(() => {
-        const nextType = fallbackPricing?.rto?.type;
+        if (hasManualRegType) return;
+        // SOT Phase 3: Use rto.default from JSON instead of rto.type
+        const nextType = fallbackPricing?.rto?.default;
         if (nextType && nextType !== regType) {
             setRegType(nextType as 'STATE' | 'BH' | 'COMPANY');
         }
-    }, [fallbackPricing?.rto?.type, regType]);
+    }, [fallbackPricing?.rto?.default, regType, hasManualRegType]);
+
+    const setRegTypeManual = (type: 'STATE' | 'BH' | 'COMPANY') => {
+        setHasManualRegType(true);
+        setRegType(type);
+    };
 
     // Color Config & Price Override
-    const activeColorConfig = colors.find(c => c.id === selectedColor) || colors[0] || {} as any;
+    const activeColorConfig = colors.find(c => c.id === selectedColor) || colors[0] || ({} as any);
     const baseExShowroom = pricingReady
-        ? (fallbackPricing?.ex_showroom ?? activeColorConfig.pricingOverride?.exShowroom ?? initialPrice?.exShowroom ?? 0)
+        ? (fallbackPricing?.ex_showroom ??
+          activeColorConfig.pricingOverride?.exShowroom ??
+          initialPrice?.exShowroom ??
+          0)
         : 0;
-    const pricingLocationLabel = pricingReady
-        ? [fallbackPricing?.location?.district, fallbackPricing?.location?.state_code].filter(Boolean).join(', ')
-        : undefined;
+    const pricingLocationLabel =
+        pricingReady &&
+        fallbackPricing?.location?.district &&
+        String(fallbackPricing.location.district).toUpperCase() !== 'ALL'
+            ? fallbackPricing.location.district
+            : undefined;
+
     const pricingSourceLabel = pricingLocationLabel
-        ? (fallbackPricing?.dealer?.name ? `${pricingLocationLabel} • ${fallbackPricing.dealer.name}` : pricingLocationLabel)
-        : (fallbackPricing?.dealer?.name || undefined);
+        ? fallbackPricing?.dealer?.studio_id
+            ? `${pricingLocationLabel} • ${fallbackPricing.dealer.studio_id}`
+            : pricingLocationLabel
+        : fallbackPricing?.dealer?.studio_id || undefined;
 
-    // SSPP v1: Server pricing only (Single Source of Truth!)
-    const rtoEstimates = pricingReady ? (fallbackPricing?.rto?.total ?? initialPrice?.rto ?? 0) : 0;
-    const rtoBreakdown = pricingReady ? (fallbackPricing?.rto?.breakdown ?? []) : [];
-    const insuranceGstRate = Number(fallbackPricing?.insurance?.gst_rate ?? insuranceRule?.gstPercentage ?? 18);
-    const applyInsuranceGst = (amount: number) => Math.round(amount + (amount * insuranceGstRate / 100));
+    // SOT Phase 3: Read RTO directly from JSON, no client-side rule engine
+    // rto JSON: { STATE: number, BH: number | null, COMPANY: number | null, default: 'STATE' }
+    // Note: JSON values may come as strings from Supabase, so use Number() coercion
+    // SOT Phase 3: Read RTO directly from JSON, no client-side rule engine
+    // rto JSON: { STATE: { total: number, roadTax... }, BH: { ... }, ... }
+    const rtoJson = fallbackPricing?.rto;
 
-    const odWithGst = pricingReady ? Number(fallbackPricing?.insurance?.od || 0) : 0;
-    const tpWithGst = pricingReady ? Number(fallbackPricing?.insurance?.tp || 0) : 0;
+    const parseRtoData = (val: any): { total: number; breakdown: any[] } | null => {
+        if (val === null || val === undefined) return null;
 
-    const baseInsurance = pricingReady ? Number(fallbackPricing?.insurance?.total || initialPrice?.insurance || 0) : 0;
-    const insuranceBreakdown = pricingReady && fallbackPricing?.insurance?.breakdown?.length
-        ? fallbackPricing.insurance.breakdown
-        : [
-            { label: 'Liability Only', amount: tpWithGst, detail: '5Y Cover' },
-            { label: 'Comprehensive', amount: odWithGst, detail: '1Y Cover' }
-        ];
-    const otherCharges = 0; // Defaulting to 0 since it's not in the engine yet
+        // Handle legacy number format
+        if (typeof val === 'number') return { total: val, breakdown: [] };
 
-    const addonAmountMap = new Map<string, number>(
-        (fallbackPricing?.insurance?.breakdown || [])
-            .map((i: any) => [i.componentId || i.label, Number(i.amount || 0)])
-    );
+        // Handle new object format
+        if (typeof val === 'object' && 'total' in val) {
+            const b = [
+                { label: 'Road Tax', amount: val.roadTax },
+                { label: 'Reg. Charges', amount: val.registrationCharges },
+                { label: 'Smart Card', amount: val.smartCardCharges },
+                { label: 'Hypothecation', amount: val.hypothecationCharges },
+                { label: 'Postal Charges', amount: val.postalCharges },
+                { label: 'Cess', amount: val.cessAmount },
+            ].filter(x => x.amount > 0);
+            return { total: val.total, breakdown: b };
+        }
+        return null;
+    };
 
-    // Mapping Insurance Rule Addons to UI Format (GST inclusive)
-    const availableInsuranceAddons = insuranceRule?.addons?.map(a => {
-        const inclusionType = (a as any).inclusion_type || (a as any).inclusionType || 'OPTIONAL';
-        const baseAmount = addonAmountMap.get(a.id) ?? addonAmountMap.get(a.label) ?? (
-            a.type === 'FIXED'
-                ? (a.amount || 0)
-                : Math.round((a.percentage || 0) * (a.basis === 'EX_SHOWROOM' ? baseExShowroom : 100000) / 100)
-        );
-        const priceWithGst = applyInsuranceGst(baseAmount);
-        const gstAmount = Math.max(0, priceWithGst - baseAmount);
+    const rtoByType = {
+        STATE: parseRtoData(rtoJson?.STATE),
+        BH: parseRtoData(rtoJson?.BH),
+        COMPANY: parseRtoData(rtoJson?.COMPANY),
+    };
 
-        return {
-            id: a.id,
-            name: a.label,
-            price: priceWithGst,
-            description: a.type === 'PERCENTAGE' ? `${a.percentage}% of ${a.basis}` : 'Fixed Coverage',
-            discountPrice: 0,
-            isMandatory: inclusionType === 'MANDATORY',
-            inclusionType: inclusionType,
-            breakdown: [
-                { label: 'Base Premium', amount: baseAmount },
-                { label: `GST (${insuranceGstRate}%)`, amount: gstAmount }
-            ]
-        };
-    }) || [];
+    // SSPP v2: Server pricing only (SOT JSON!)
+    const rtoBreakdown = pricingReady ? fallbackPricing?.rto_breakdown || [] : [];
+
+    // Build rtoOptions from JSON values
+    const availableRtoOptions = [];
+
+    // 1. State Registration
+    const stateData = rtoByType.STATE;
+    availableRtoOptions.push({
+        id: 'STATE',
+        name: 'State Registration',
+        price: stateData?.total ?? 0,
+        description: 'Standard RTO charges for your state.',
+        breakdown: stateData?.breakdown || [],
+    });
+
+    // 2. BH Registration
+    const bhData = rtoByType.BH;
+    availableRtoOptions.push({
+        id: 'BH',
+        name: 'Bharat Series (BH)',
+        price: bhData?.total ?? 0, // Should be populated by server now
+        description: 'For frequent interstate travel.',
+        breakdown: bhData?.breakdown || [],
+    });
+
+    // 3. Company Registration
+    const companyData = rtoByType.COMPANY;
+    availableRtoOptions.push({
+        id: 'COMPANY',
+        name: 'Company Registration',
+        price: companyData?.total ?? 0, // Should be populated by server now
+        description: 'Corporate entity registration.',
+        breakdown: companyData?.breakdown || [],
+    });
+
+    const rtoOptions = pricingReady ? availableRtoOptions : undefined;
+
+    // RE-CALCULATE selectedRtoValue using the defined prices
+    const effectiveRtoValues: Record<string, number> = {
+        STATE: rtoByType.STATE?.total ?? 0,
+        BH: rtoByType.BH?.total ?? 0,
+        COMPANY: rtoByType.COMPANY?.total ?? 0,
+    };
+
+    // Get RTO for selected type (fallback to STATE if type unavailable)
+    const selectedRtoValue = effectiveRtoValues[regType] ?? effectiveRtoValues.STATE ?? 0;
+
+    // SSPP v2: Server pricing only (SOT JSON!)
+    // Re-assigning rtoEstimates to use the corrected selectedRtoValue
+    const rtoEstimates = pricingReady ? selectedRtoValue : 0;
+
+    // SOT Phase 3: Insurance from JSON - no client-side rule engine
+    const insuranceJson = fallbackPricing?.insurance;
+    const insuranceGstRate = Number(insuranceJson?.gst_rate ?? insuranceRule?.gstPercentage ?? 18);
+
+    // SOT Phase 4: OD/TP are now objects with {base, gst, total}
+    const odData = insuranceJson?.od;
+    const tpData = insuranceJson?.tp;
+
+    // Handle both old (number) and new (object) formats
+    const odWithGst = pricingReady
+        ? typeof odData === 'object'
+            ? Number(odData?.total || 0)
+            : Number(odData || 0)
+        : 0;
+    const tpWithGst = pricingReady
+        ? typeof tpData === 'object'
+            ? Number(tpData?.total || 0)
+            : Number(tpData || 0)
+        : 0;
+
+    // SOT: base_total = od + tp + GST (excludes addons)
+    const baseInsurance = pricingReady ? Number(insuranceJson?.base_total || 0) : 0;
+
+    // ⚠️ TEMP DIAGNOSTICS - Remove after debugging Financial Summary ₹0 bug
+    if (typeof window !== 'undefined' && pricingReady) {
+        console.log('[SystemPDPLogic DIAG]', {
+            serverPricing: !!serverPricing,
+            fallbackPricingSource: serverPricing ? 'serverPricing' : 'initialPrice.breakdown',
+            rtoJson,
+            rtoByType,
+            rtoEstimates,
+            insuranceJson,
+            baseInsurance,
+            pricingReady,
+        });
+    }
+
+    const insuranceBreakdown = pricingReady
+        ? fallbackPricing?.insurance_breakdown || [
+              { label: 'Liability Only', amount: tpWithGst, detail: '5Y Cover' },
+              { label: 'Comprehensive', amount: odWithGst, detail: '1Y Cover' },
+          ]
+        : [];
+    const otherCharges = 0;
+
+    // SOT Phase 3: Build addons from JSON + Fallback Merge
+    const jsonAddons = (insuranceJson?.addons || []) as {
+        id: string;
+        label: string;
+        price: number;
+        gst: number;
+        total: number;
+        default: boolean;
+    }[];
+
+    // Map JSON addons to UI format
+    const mappedJsonAddons = jsonAddons.map(addon => ({
+        id: addon.id,
+        name: addon.label,
+        price: addon.total,
+        description: 'Coverage',
+        discountPrice: 0,
+        isMandatory: addon.default === true,
+        inclusionType: addon.default ? 'BUNDLE' : 'OPTIONAL',
+        breakdown: [
+            { label: 'Base Premium', amount: addon.price },
+            { label: `GST (${insuranceGstRate}%)`, amount: addon.gst },
+        ],
+    }));
+
+    // Map Rule addons to UI format (Fallback source)
+    const ruleAddons =
+        insuranceRule?.addons?.map(a => {
+            const inclusionType = (a as any).inclusion_type || (a as any).inclusionType || 'OPTIONAL';
+            const baseAmount =
+                a.type === 'FIXED'
+                    ? a.amount || 0
+                    : Math.round(((a.percentage || 0) * (a.basis === 'EX_SHOWROOM' ? baseExShowroom : 100000)) / 100);
+            const priceWithGst = Math.round(baseAmount + (baseAmount * insuranceGstRate) / 100);
+            const gstAmount = Math.max(0, priceWithGst - baseAmount);
+
+            return {
+                id: a.id,
+                name: a.label,
+                price: priceWithGst,
+                description: a.type === 'PERCENTAGE' ? `${a.percentage}% of ${a.basis}` : 'Fixed Coverage',
+                discountPrice: 0,
+                isMandatory: inclusionType === 'MANDATORY',
+                inclusionType: inclusionType,
+                breakdown: [
+                    { label: 'Base Premium', amount: baseAmount },
+                    { label: `GST (${insuranceGstRate}%)`, amount: gstAmount },
+                ],
+            };
+        }) || [];
+
+    // Merge: Prefer JSON addons, append missing ones from Rules
+    // This allows SOT to override prices but falls back to rule engine for missing options
+    const jsonAddonIds = new Set(mappedJsonAddons.map(a => a.id));
+    const missingRuleAddons = ruleAddons.filter(a => !jsonAddonIds.has(a.id));
+
+    const availableInsuranceAddons = [...mappedJsonAddons, ...missingRuleAddons];
 
     const insuranceRequiredItems = [
         {
@@ -186,8 +399,8 @@ export function useSystemPDPLogic({
             isMandatory: true,
             breakdown: [
                 { label: 'Base Premium', amount: Math.max(0, tpWithGst) },
-                { label: `GST (${insuranceGstRate}%)`, amount: 0 }
-            ]
+                { label: `GST (${insuranceGstRate}%)`, amount: 0 },
+            ],
         },
         {
             id: 'insurance-od',
@@ -197,30 +410,35 @@ export function useSystemPDPLogic({
             isMandatory: true,
             breakdown: [
                 { label: 'Base Premium', amount: Math.max(0, odWithGst) },
-                { label: `GST (${insuranceGstRate}%)`, amount: 0 }
-            ]
-        }
+                { label: `GST (${insuranceGstRate}%)`, amount: 0 },
+            ],
+        },
     ];
 
     const insuranceAddonsPrice = availableInsuranceAddons
         .filter(a => selectedInsuranceAddons.includes(a.id))
         .reduce((sum, a) => sum + (a.discountPrice || a.price || 0), 0);
 
+    const resolveAccessoryPricing = (acc: Accessory) => {
+        const base = Number(acc.price || 0);
+        const override = acc.discountPrice;
+        const effective =
+            override === undefined || override === null || Number.isNaN(Number(override)) ? base : Number(override);
+        return { base, effective };
+    };
+
     const accessoriesPrice = activeAccessories
         .filter(acc => selectedAccessories.includes(acc.id))
         .reduce((sum, acc) => {
-            const qty = quantities[acc.id] || 1;
+            const qty = Number(quantities[acc.id] || 1);
 
             // BUNDLE Logic: If bundled, it is free (0 price)
             if (acc.inclusionType === 'BUNDLE') {
-                return sum; // + 0
+                return sum;
             }
 
-            const effectivePrice = (acc.discountPrice !== undefined && acc.discountPrice < acc.price)
-                ? acc.discountPrice
-                : acc.price;
-
-            return sum + (effectivePrice * qty);
+            const { effective } = resolveAccessoryPricing(acc);
+            return sum + effective * qty;
         }, 0);
 
     const accessoriesDiscount = activeAccessories
@@ -230,59 +448,119 @@ export function useSystemPDPLogic({
 
             // BUNDLE Logic: If bundled, discount is 100% of price
             if (acc.inclusionType === 'BUNDLE') {
-                return sum + ((acc.price || 0) * qty);
+                return sum + (acc.price || 0) * qty;
             }
 
-            const effectivePrice = (acc.discountPrice !== undefined && acc.discountPrice < acc.price)
-                ? acc.discountPrice
-                : acc.price;
-            const discount = Math.max(0, (acc.price || 0) - (effectivePrice || 0));
-            return sum + (discount * qty);
+            const { base, effective } = resolveAccessoryPricing(acc);
+            const discount = Math.max(0, base - effective);
+            return sum + discount * qty;
+        }, 0);
+
+    const accessoriesSurge = activeAccessories
+        .filter(acc => selectedAccessories.includes(acc.id))
+        .reduce((sum, acc) => {
+            const qty = quantities[acc.id] || 1;
+
+            if (acc.inclusionType === 'BUNDLE') {
+                return sum;
+            }
+
+            const { base, effective } = resolveAccessoryPricing(acc);
+            const surge = Math.max(0, effective - base);
+            return sum + surge * qty;
         }, 0);
 
     const servicesPrice = activeServices
         .filter(s => selectedServices.includes(s.id))
         .reduce((sum, s) => {
-            const qty = quantities[s.id] || 1;
-            const price = (s.discountPrice || 0) > 0 ? (s.discountPrice || 0) : (s.price || 0);
-            return sum + (price * qty);
+            const qty = Number(quantities[s.id] || 1);
+            const base = Number(s.price || 0);
+            const disc = Number(s.discountPrice ?? base);
+            const price = disc > 0 && disc < base ? disc : base;
+            return sum + price * qty;
         }, 0);
 
     const servicesDiscount = activeServices
         .filter(s => selectedServices.includes(s.id))
         .reduce((sum, s) => {
-            const qty = quantities[s.id] || 1;
-            const base = s.price || 0;
-            const effective = (s.discountPrice || 0) > 0 ? (s.discountPrice || 0) : base;
-            const discount = Math.max(0, base - effective);
-            return sum + (discount * qty);
+            const qty = Number(quantities[s.id] || 1);
+            const base = Number(s.price || 0);
+            const disc = Number(s.discountPrice ?? base);
+            const discount = Math.max(0, base - disc);
+            return sum + discount * qty;
+        }, 0);
+
+    const servicesSurge = activeServices
+        .filter(s => selectedServices.includes(s.id))
+        .reduce((sum, s) => {
+            const qty = Number(quantities[s.id] || 1);
+            const base = Number(s.price || 0);
+            const disc = Number(s.discountPrice ?? base);
+            const surge = Math.max(0, disc - base);
+            return sum + surge * qty;
         }, 0);
 
     const insuranceAddonsDiscount = availableInsuranceAddons
         .filter(a => selectedInsuranceAddons.includes(a.id))
         .reduce((sum, a) => {
             const base = a.price || 0;
-            const effective = (a.discountPrice || 0) > 0 ? (a.discountPrice || 0) : base;
+            const effective = (a.discountPrice || 0) > 0 ? a.discountPrice || 0 : base;
             const discount = Math.max(0, base - effective);
             return sum + discount;
         }, 0);
 
-    const colorDiscount = pricingReady
-        ? Number(fallbackPricing?.dealer?.offer || activeColorConfig?.dealerOffer || activeColorConfig?.pricingOverride?.dealerOffer || 0)
+    const insuranceAddonsSurge = availableInsuranceAddons
+        .filter(a => selectedInsuranceAddons.includes(a.id))
+        .reduce((sum, a) => {
+            const base = a.price || 0;
+            const effective = (a.discountPrice || 0) > 0 ? a.discountPrice || 0 : base;
+            const surge = Math.max(0, effective - base);
+            return sum + surge;
+        }, 0);
+
+    const colorDelta = pricingReady
+        ? Number(
+              fallbackPricing?.dealer?.offer ||
+                  activeColorConfig?.dealerOffer ||
+                  activeColorConfig?.pricingOverride?.dealerOffer ||
+                  0
+          )
         : 0;
+    const colorDiscount = colorDelta < 0 ? Math.abs(colorDelta) : 0;
+    const colorSurge = colorDelta > 0 ? colorDelta : 0;
 
-    // Offers are now provided via initialServices/initialAccessories, removing legacy mock lookup
-    const activeOffers = selectedOffers
-        .map(id => initialServices?.find((s: ServiceOption) => s.id === id))
-        .filter(Boolean) as ServiceOption[];
+    // Offers Tab Logic (Distinct from Services/AMC)
+    const activeOffers = (selectedOffers || [])
+        .map(id => initialServices?.find((s: any) => s.id === id))
+        .filter(Boolean) as any[];
 
-    const offersDiscount = activeOffers
-        .reduce((sum, o) => sum + (o?.discountPrice || 0), 0);
+    const offersDelta = activeOffers.reduce((sum, o) => {
+        const base = Number(o?.price || 0);
+        const effective = o?.discountPrice !== undefined && o?.discountPrice !== null ? Number(o.discountPrice) : base;
+        const delta = effective - base; // negative = discount, positive = surge
+        return sum + delta;
+    }, 0);
+    const offersDiscount = offersDelta;
+    const offersDiscountAmount = offersDelta < 0 ? Math.abs(offersDelta) : 0;
+    const offersSurge = offersDelta > 0 ? offersDelta : 0;
 
-    const baseOnRoad = pricingReady ? Number(fallbackPricing?.final_on_road || initialPrice?.total || 0) : 0;
-    const totalOnRoadRaw = baseOnRoad + insuranceAddonsPrice + accessoriesPrice + servicesPrice + otherCharges - offersDiscount;
+    const baseOnRoad = pricingReady ? Number(baseExShowroom + baseInsurance + rtoEstimates) : 0;
+
+    // Final Calculation: Correcting delta logic
+    // accessoriesPrice, servicesPrice, insuranceAddonsPrice are already NET (paid by user)
+    // otherCharges is assumed paid.
+    // colorDelta is a signed difference (negative for discount, positive for surge)
+    // offersDelta is a signed difference (negative for discount)
+    const totalOnRoadRaw =
+        baseOnRoad + insuranceAddonsPrice + accessoriesPrice + servicesPrice + otherCharges + colorDelta + offersDelta;
+
     const totalOnRoad = pricingReady ? totalOnRoadRaw : 0;
-    const totalSavings = pricingReady ? (colorDiscount + offersDiscount + accessoriesDiscount + servicesDiscount + insuranceAddonsDiscount) : 0;
+    const totalSavings = pricingReady
+        ? colorDiscount + offersDiscountAmount + accessoriesDiscount + servicesDiscount + insuranceAddonsDiscount
+        : 0;
+    const totalSurge = pricingReady
+        ? colorSurge + offersSurge + accessoriesSurge + servicesSurge + insuranceAddonsSurge
+        : 0;
 
     // Dynamic Finance Logic
     const financeScheme = initialFinance?.scheme;
@@ -299,27 +577,31 @@ export function useSystemPDPLogic({
     // REQUIREMENT: Default to Zero unless user overrides
     const defaultDownPayment = 0;
 
-    const downPayment = userDownPayment !== null
-        ? Math.min(Math.max(userDownPayment, minDownPayment), maxDownPayment)
-        : defaultDownPayment;
+    const downPayment =
+        userDownPayment !== null
+            ? Math.min(Math.max(userDownPayment, minDownPayment), maxDownPayment)
+            : defaultDownPayment;
 
     const loanAmount = totalOnRoad - downPayment;
-    const annualInterest = financeScheme ? (financeScheme.interestRate / 100) : 0.095;
+    const annualInterest = financeScheme ? financeScheme.interestRate / 100 : 0.095;
     const monthlyRate = annualInterest / 12;
 
     // EMI Calculation (handle FLAT vs REDUCING)
     let emi = 0;
     if (loanAmount > 0) {
         if (financeScheme?.interestType === 'FLAT') {
-            const totalInterest = (loanAmount * (financeScheme.interestRate / 100) * (emiTenure / 12));
+            const totalInterest = loanAmount * (financeScheme.interestRate / 100) * (emiTenure / 12);
             emi = Math.round((loanAmount + totalInterest) / emiTenure);
         } else {
-            emi = Math.round((loanAmount * monthlyRate * Math.pow(1 + monthlyRate, emiTenure)) / (Math.pow(1 + monthlyRate, emiTenure) - 1));
+            emi = Math.round(
+                (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, emiTenure)) /
+                    (Math.pow(1 + monthlyRate, emiTenure) - 1)
+            );
         }
     }
 
     // Dynamic Charges Calculation - Consolidate all into "Processing Charges"
-    const allCharges = (financeScheme?.charges || []);
+    const allCharges = financeScheme?.charges || [];
     let totalChargeAmount = 0;
     const chargeBreakup: string[] = [];
 
@@ -336,22 +618,28 @@ export function useSystemPDPLogic({
 
         totalChargeAmount += amount;
 
-        const taxInfo = charge.taxStatus === 'INCLUSIVE'
-            ? ` (incl. ${charge.taxRate}% GST)`
-            : charge.taxStatus === 'EXCLUSIVE'
-                ? ` + ${charge.taxRate}% GST`
-                : '';
+        const taxInfo =
+            charge.taxStatus === 'INCLUSIVE'
+                ? ` (incl. ${charge.taxRate}% GST)`
+                : charge.taxStatus === 'EXCLUSIVE'
+                  ? ` + ${charge.taxRate}% GST`
+                  : '';
 
         chargeBreakup.push(`${charge.name}: ₹${Math.round(amount).toLocaleString()}${taxInfo}`);
     });
 
-    const financeCharges = allCharges.length > 0 ? [{
-        id: 'processing_charges',
-        label: 'Processing Charges',
-        value: Math.round(totalChargeAmount),
-        isDeduction: false,
-        helpText: chargeBreakup.join(' • ')
-    }] : [];
+    const financeCharges =
+        allCharges.length > 0
+            ? [
+                  {
+                      id: 'processing_charges',
+                      label: 'Processing Charges',
+                      value: Math.round(totalChargeAmount),
+                      isDeduction: false,
+                      helpText: chargeBreakup.join(' • '),
+                  },
+              ]
+            : [];
 
     const [isReferralActive, setIsReferralActive] = useState(false);
 
@@ -383,10 +671,15 @@ export function useSystemPDPLogic({
             servicesPrice,
             offersDiscount,
             colorDiscount,
+            colorSurge,
             accessoriesDiscount,
+            accessoriesSurge,
             servicesDiscount,
+            servicesSurge,
             insuranceAddonsDiscount,
+            insuranceAddonsSurge,
             totalSavings,
+            totalSurge,
             totalOnRoad,
             downPayment,
             minDownPayment,
@@ -402,6 +695,7 @@ export function useSystemPDPLogic({
             insuranceRequiredItems,
             warrantyItems: product?.specs?.warranty || [],
             regType,
+            rtoOptions,
             emiTenure,
             configTab,
             selectedAccessories,
@@ -412,11 +706,11 @@ export function useSystemPDPLogic({
             userDownPayment,
             isReferralActive,
             initialFinance,
-            pricingSource: pricingSourceLabel
+            pricingSource: pricingSourceLabel,
         },
         actions: {
             setSelectedColor: handleColorChange,
-            setRegType,
+            setRegType: setRegTypeManual,
             setSelectedAccessories,
             setSelectedInsuranceAddons,
             setEmiTenure,
@@ -425,7 +719,7 @@ export function useSystemPDPLogic({
             setSelectedOffers,
             setQuantities,
             setUserDownPayment,
-            setIsReferralActive
-        }
+            setIsReferralActive,
+        },
     };
 }

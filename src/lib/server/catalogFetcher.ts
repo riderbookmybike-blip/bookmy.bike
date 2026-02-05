@@ -1,90 +1,35 @@
-
-import { createClient } from '@/lib/supabase/server';
+import { withCache, generateFilterKey } from '../cache/cache';
+import { CACHE_TAGS, districtTag, tenantTag } from '../cache/tags';
+import { createClient } from '../supabase/server';
 import { cookies } from 'next/headers';
 import { mapCatalogItems } from '@/utils/catalogMapper';
 import { ProductVariant } from '@/types/productMaster';
+import { resolvePricingContext } from '@/lib/server/pricingContext';
 
-export async function fetchCatalogServerSide(leadId?: string): Promise<ProductVariant[]> {
+/**
+ * FETCHERS
+ */
+
+// SOT Phase 3: Rule fetches deprecated - pricing comes from JSON columns in cat_price_state
+// Keeping functions for potential fallback/debugging but not called in catalog path
+// async function getRawRules(stateCode: string) { ... }
+// async function getRawInsuranceRules(stateCode: string) { ... }
+
+async function getRawDealerOffers(dealerId: string, stateCode: string) {
     const supabase = await createClient();
-    const cookieStore = await cookies();
+    const { data } = await supabase.rpc('get_dealer_offers', {
+        p_tenant_id: dealerId,
+        p_state_code: stateCode,
+    });
+    return data || [];
+}
 
-    // 1. Resolve Location from Cookies
-    const locationCookie = cookieStore.get('bkmb_user_pincode')?.value;
-    let stateCode = 'MH'; // Default
-    let userLat: number | null = null;
-    let userLng: number | null = null;
-    let userDistrict: string | null = null;
-    let dealerId: string | null = null;
-
-    if (locationCookie) {
-        try {
-            const data = JSON.parse(locationCookie);
-            if (data.stateCode) stateCode = data.stateCode;
-            else if (data.state) {
-                const stateMap: Record<string, string> = {
-                    MAHARASHTRA: 'MH',
-                    KARNATAKA: 'KA',
-                    DELHI: 'DL',
-                    GUJARAT: 'GJ',
-                    TAMIL_NADU: 'TN',
-                    TELANGANA: 'TS',
-                    UTTAR_PRADESH: 'UP',
-                    WEST_BENGAL: 'WB',
-                    RAJASTHAN: 'RJ',
-                };
-                stateCode = stateMap[data.state.toUpperCase()] || data.state.substring(0, 2).toUpperCase();
-            }
-
-            if (data.lat && data.lng) {
-                userLat = data.lat;
-                userLng = data.lng;
-            }
-            if (data.district) {
-                // Ensure district is clean string
-                userDistrict = data.district;
-            }
-        } catch (e) {
-            console.error('Error parsing location cookie:', e);
-        }
-    }
-
-    // 1.5 Resolve Dealer Context from Lead (if quoting)
-    if (leadId) {
-        const { data: lead } = await supabase
-            .from('crm_leads')
-            .select('owner_tenant_id, customer_pincode')
-            .eq('id', leadId)
-            .single();
-
-        if (lead) {
-            // NEW LOGIC: Prefer Market Best price in the lead's district over the owner dealer's price
-            if (lead.customer_pincode) {
-                // We need to resolve district from pincode to get market best offers
-                const { data: pincodeData } = await supabase
-                    .from('loc_pincodes')
-                    .select('district, state_code')
-                    .eq('pincode', lead.customer_pincode)
-                    .single();
-
-                if (pincodeData) {
-                    userDistrict = pincodeData.district;
-                    stateCode = pincodeData.state_code || 'MH';
-                    // Intentionally NOT setting dealerId here to force 'get_market_best_offers' 
-                    // in section 4 below.
-                } else {
-                    // Fallback to owner dealer if pincode unknown
-                    dealerId = lead.owner_tenant_id;
-                }
-            } else {
-                dealerId = lead.owner_tenant_id;
-            }
-        }
-    }
-
-    // 2. Fetch Catalog Data (Identical Query to useCatalog)
+async function getRawCatalog() {
+    const supabase = await createClient();
     const { data, error } = await supabase
         .from('cat_items')
-        .select(`
+        .select(
+            `
             id, type, name, slug, specs, price_base, brand_id,
             brand:cat_brands(name, logo_svg),
             template:cat_templates!inner(name, code, category),
@@ -111,67 +56,94 @@ export async function fetchCatalogServerSide(leadId?: string): Promise<ProductVa
                     offset_y,
                     specs,
                     assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
-                    prices:cat_prices!vehicle_color_id(ex_showroom_price, state_code, district, latitude, longitude, is_active)
+                    prices:cat_price_state!vehicle_color_id(ex_showroom_price, rto_total, insurance_total, rto, insurance, on_road_price, published_at, state_code, district, latitude, longitude, is_active)
                 )
             )
-        `)
+        `
+        )
         .eq('type', 'FAMILY')
         .eq('status', 'ACTIVE')
         .not('template_id', 'is', null)
         .eq('template.category', 'VEHICLE');
 
     if (error) {
-        console.error('Server Catalog Fetch Error:', {
-            message: error.message,
-            code: error.code,
-            details: error.details,
-            hint: error.hint,
-            debug: { stateCode, userDistrict, dealerId }
-        });
-        return [];
+        console.error('[CatalogCache] Fetch Error:', error.message);
+        return null;
+    }
+    return data;
+}
+
+export async function fetchCatalogServerSide(leadId?: string): Promise<ProductVariant[]> {
+    const cookieStore = await cookies();
+
+    // 1. Resolve pricing context (Primary dealer only)
+    const pricingContext = await resolvePricingContext({ leadId });
+    const dealerId = pricingContext.dealerId;
+    const userDistrict = pricingContext.district;
+    const stateCode = pricingContext.stateCode;
+
+    if (!dealerId) return [];
+
+    // 2. Parallel Fetch - SOT Phase 3: Rules removed, pricing from JSON
+    const [rawCatalog, offerData] = await Promise.all([
+        withCache(() => getRawCatalog(), ['raw-catalog'], {
+            revalidate: 3600,
+            tags: [CACHE_TAGS.catalog, CACHE_TAGS.catalog_global],
+        }),
+        withCache(() => getRawDealerOffers(dealerId, stateCode), ['dealer-offers', dealerId, stateCode], {
+            revalidate: 3600,
+            tags: [CACHE_TAGS.catalog, CACHE_TAGS.offers, tenantTag(dealerId), districtTag(userDistrict || 'ALL')],
+        }),
+    ]);
+
+    if (!rawCatalog) return [];
+
+    // Location coordinates for distance calc (optional)
+    let userLat: number | null = null;
+    let userLng: number | null = null;
+    const locationCookie = cookieStore.get('bkmb_user_pincode')?.value;
+    if (locationCookie) {
+        try {
+            const data = JSON.parse(locationCookie);
+            if (data.lat && data.lng) {
+                userLat = data.lat;
+                userLng = data.lng;
+            }
+        } catch (e) {
+            if (/^\d{6}$/.test(locationCookie)) {
+                // legacy cookie format: pincode only (no coords)
+            } else {
+                console.error('Error parsing location cookie:', e);
+            }
+        }
     }
 
-    // 3. Fetch Rules
-    const { data: ruleData } = await supabase
-        .from('cat_reg_rules')
-        .select('*')
-        .eq('state_code', stateCode)
-        .eq('status', 'ACTIVE');
+    // 3. Map Items
+    let filteredData = rawCatalog as any[];
 
-    const { data: insuranceRuleData } = await supabase
-        .from('cat_ins_rules')
-        .select('*')
-        .eq('status', 'ACTIVE') // Fixed from ACTIVE to 'ACTIVE' (Wait, code says .eq('status', 'ACTIVE'))
-        .eq('vehicle_type', 'TWO_WHEELER')
-        .or(`state_code.eq.${stateCode},state_code.eq.ALL`)
-        .order('state_code', { ascending: false })
-        .limit(1);
+    // 3.1 Dealer-only filter
+    const activeOffers = offerData || [];
+    const activeVehicleColorIds = new Set(activeOffers.map((offer: any) => offer.vehicle_color_id));
 
-    // 4. Fetch Offers (Market Best or Specific Dealer)
-    let offerData;
-    if (dealerId) {
-        const { data: dealerOffers } = await supabase.rpc('get_dealer_offers', {
-            p_tenant_id: dealerId,
-            p_state_code: stateCode
-        });
-        offerData = dealerOffers;
-    } else {
-        const { data } = await supabase.rpc('get_market_best_offers', {
-            p_district_name: userDistrict || '',
-            p_state_code: stateCode
-        });
-        offerData = data;
-    }
+    if (activeVehicleColorIds.size === 0) return [];
 
-    // 5. Map Items
-    if (data) {
-        return mapCatalogItems(
-            data as any[],
-            ruleData || [],
-            insuranceRuleData || [],
-            { stateCode, userLat, userLng, userDistrict, offers: offerData || [] }
-        );
-    }
+    filteredData = filteredData
+        .map(family => ({
+            ...family,
+            children: (family.children || [])
+                .map((variant: any) => ({
+                    ...variant,
+                    skus: (variant.skus || []).filter((sku: any) => activeVehicleColorIds.has(sku.id)),
+                }))
+                .filter((variant: any) => variant.skus && variant.skus.length > 0),
+        }))
+        .filter(family => family.children && family.children.length > 0);
 
-    return [];
+    // SOT Phase 3: Pass empty arrays for rules - pricing comes from JSON columns
+    return mapCatalogItems(
+        filteredData,
+        [], // ruleData deprecated
+        [], // insuranceRuleData deprecated
+        { stateCode, userLat, userLng, userDistrict, offers: offerData || [] }
+    );
 }

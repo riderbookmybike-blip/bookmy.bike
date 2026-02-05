@@ -48,7 +48,10 @@ export default function LocationSettings({ dealerId }: LocationSettingsProps) {
                     <p className="text-sm text-slate-500">Manage showrooms, warehouses, and service centers.</p>
                 </div>
                 <button
-                    onClick={() => { setEditingLoc(null); setIsModalOpen(true); }}
+                    onClick={() => {
+                        setEditingLoc(null);
+                        setIsModalOpen(true);
+                    }}
                     className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/20"
                 >
                     <Plus size={16} />
@@ -66,14 +69,22 @@ export default function LocationSettings({ dealerId }: LocationSettingsProps) {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {locations.map((loc) => (
-                        <div key={loc.id} className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-5 hover:shadow-lg transition-all relative overflow-hidden">
+                    {locations.map(loc => (
+                        <div
+                            key={loc.id}
+                            className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-5 hover:shadow-lg transition-all relative overflow-hidden"
+                        >
                             <div className="flex justify-between items-start mb-4">
                                 <div className="flex items-center gap-3">
-                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${loc.type === 'SHOWROOM' ? 'bg-indigo-50 text-indigo-600' :
-                                        loc.type === 'WAREHOUSE' ? 'bg-amber-50 text-amber-600' :
-                                            'bg-cyan-50 text-cyan-600'
-                                        }`}>
+                                    <div
+                                        className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                                            loc.type === 'SHOWROOM'
+                                                ? 'bg-indigo-50 text-indigo-600'
+                                                : loc.type === 'WAREHOUSE'
+                                                  ? 'bg-amber-50 text-amber-600'
+                                                  : 'bg-cyan-50 text-cyan-600'
+                                        }`}
+                                    >
                                         {loc.type === 'SHOWROOM' && <Store size={18} />}
                                         {loc.type === 'WAREHOUSE' && <Warehouse size={18} />}
                                         {loc.type === 'SERVICE_CENTER' && <Wrench size={18} />}
@@ -81,12 +92,17 @@ export default function LocationSettings({ dealerId }: LocationSettingsProps) {
                                     </div>
                                     <div>
                                         <h4 className="text-sm font-bold text-slate-900 dark:text-white">{loc.name}</h4>
-                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{loc.type.replace('_', ' ')}</div>
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                            {loc.type.replace('_', ' ')}
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button
-                                        onClick={() => { setEditingLoc(loc); setIsModalOpen(true); }}
+                                        onClick={() => {
+                                            setEditingLoc(loc);
+                                            setIsModalOpen(true);
+                                        }}
                                         className="p-1.5 hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors"
                                     >
                                         <Edit2 size={14} />
@@ -104,7 +120,9 @@ export default function LocationSettings({ dealerId }: LocationSettingsProps) {
                                 <div className="flex items-start gap-2 text-xs text-slate-500">
                                     <MapPin size={14} className="mt-0.5 shrink-0" />
                                     <p className="line-clamp-2">
-                                        {[loc.address_line_1, loc.address_line_2, loc.city, loc.state, loc.pincode].filter(Boolean).join(', ')}
+                                        {[loc.address_line_1, loc.address_line_2, loc.city, loc.state, loc.pincode]
+                                            .filter(Boolean)
+                                            .join(', ')}
                                     </p>
                                 </div>
                                 {(loc.contact_phone || loc.contact_email) && (
@@ -125,7 +143,10 @@ export default function LocationSettings({ dealerId }: LocationSettingsProps) {
                     dealerId={dealerId}
                     initialData={editingLoc}
                     onClose={() => setIsModalOpen(false)}
-                    onSuccess={() => { setIsModalOpen(false); fetchLocations(); }}
+                    onSuccess={() => {
+                        setIsModalOpen(false);
+                        fetchLocations();
+                    }}
                 />
             )}
 
@@ -148,7 +169,7 @@ function LocationModal({ dealerId, initialData, onClose, onSuccess }: any) {
         state: '',
         pincode: '',
         contact_phone: '',
-        contact_email: ''
+        contact_email: '',
     });
 
     useEffect(() => {
@@ -162,7 +183,7 @@ function LocationModal({ dealerId, initialData, onClose, onSuccess }: any) {
                 state: initialData.state || '',
                 pincode: initialData.pincode || '',
                 contact_phone: initialData.contact_phone || '',
-                contact_email: initialData.contact_email || ''
+                contact_email: initialData.contact_email || '',
             });
         }
     }, [initialData]);
@@ -196,12 +217,15 @@ function LocationModal({ dealerId, initialData, onClose, onSuccess }: any) {
                 }
 
                 // 2. Fetch coordinates from Nominatim (OSM)
-                const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?postalcode=${pincode}&country=India&format=json`, {
-                    headers: {
-                        'Accept-Language': 'en-US,en;q=0.5',
-                        'User-Agent': 'BookMyBike-App'
+                const geoRes = await fetch(
+                    `https://nominatim.openstreetmap.org/search?postalcode=${pincode}&country=India&format=json`,
+                    {
+                        headers: {
+                            'Accept-Language': 'en-US,en;q=0.5',
+                            'User-Agent': 'BookMyBike-App',
+                        },
                     }
-                });
+                );
                 const geoData = await geoRes.json();
 
                 if (geoData && geoData.length > 0) {
@@ -209,11 +233,14 @@ function LocationModal({ dealerId, initialData, onClose, onSuccess }: any) {
                     const latitude = parseFloat(lat);
                     const longitude = parseFloat(lon);
 
-                    setFormData(prev => ({
-                        ...prev,
-                        latitude,
-                        longitude
-                    }) as any);
+                    setFormData(
+                        prev =>
+                            ({
+                                ...prev,
+                                latitude,
+                                longitude,
+                            }) as any
+                    );
 
                     // 3. Proactively update loc_pincodes if coords are missing there
                     // This powers the ServiceAreaManager proximity logic
@@ -232,7 +259,7 @@ function LocationModal({ dealerId, initialData, onClose, onSuccess }: any) {
                                 longitude,
                                 district: foundDistrict || (existingPin as any).district,
                                 state: foundState || (existingPin as any).state,
-                                taluka: foundTaluka || (existingPin as any).taluka
+                                taluka: foundTaluka || (existingPin as any).taluka,
                             })
                             .eq('pincode', pincode);
                     }
@@ -251,21 +278,35 @@ function LocationModal({ dealerId, initialData, onClose, onSuccess }: any) {
         const supabase = createClient();
 
         try {
+            // Exclude latitude/longitude - they don't exist in id_locations table
+            const { latitude, longitude, ...cleanFormData } = formData as any;
+
             const payload = {
-                ...formData,
-                city: formData.district, // Map district to city for legacy compatibility if needed
-                tenant_id: dealerId
+                ...cleanFormData,
+                city: formData.district, // Map district to city for legacy compatibility
+                tenant_id: dealerId,
             };
 
+            console.log('[LOCATION_DEBUG] Saving location:', payload);
+
+            let error;
             if (initialData) {
-                await supabase.from('id_locations').update(payload).eq('id', initialData.id);
+                const result = await supabase.from('id_locations').update(payload).eq('id', initialData.id);
+                error = result.error;
             } else {
-                await supabase.from('id_locations').insert(payload);
+                const result = await supabase.from('id_locations').insert(payload);
+                error = result.error;
             }
-            onSuccess();
-        } catch (error) {
-            console.error(error);
-            alert('Failed to save location');
+
+            if (error) {
+                console.error('[LOCATION_DEBUG] Save error:', error);
+                alert(`Failed to save location: ${error.message}`);
+            } else {
+                onSuccess();
+            }
+        } catch (error: any) {
+            console.error('[LOCATION_DEBUG] Exception:', error);
+            alert(`Failed to save location: ${error?.message || 'Unknown error'}`);
         } finally {
             setLoading(false);
         }
@@ -278,7 +319,10 @@ function LocationModal({ dealerId, initialData, onClose, onSuccess }: any) {
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                         {initialData ? 'Edit Location' : 'Add New Location'}
                     </h3>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-full text-slate-400 transition-colors">
+                    <button
+                        onClick={onClose}
+                        className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-full text-slate-400 transition-colors"
+                    >
                         <X size={20} />
                     </button>
                 </div>

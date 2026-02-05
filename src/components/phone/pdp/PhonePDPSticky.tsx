@@ -4,17 +4,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence, useMotionValueEvent } from 'framer-motion';
 import { ProductCard } from '@/components/store/desktop/ProductCard';
-import {
-    ChevronDown,
-    ChevronUp,
-    Zap,
-    Package,
-    ShieldCheck,
-    Gift,
-    Wrench,
-    Info,
-    ArrowRight
-} from 'lucide-react';
+import { ChevronDown, ChevronUp, Zap, Package, ShieldCheck, Gift, Wrench, Info, ArrowRight } from 'lucide-react';
 
 interface PhonePDPStickyProps {
     product: any;
@@ -27,14 +17,23 @@ interface PhonePDPStickyProps {
     serverPricing?: any; // SSPP v1: Server-calculated pricing breakdown
 }
 
-export function PhonePDPSticky({ product, modelParam, variantParam, data, handlers, bestOffer, serviceability, serverPricing }: PhonePDPStickyProps) {
+export function PhonePDPSticky({
+    product,
+    modelParam,
+    variantParam,
+    data,
+    handlers,
+    bestOffer,
+    serviceability,
+    serverPricing,
+}: PhonePDPStickyProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const { scrollY } = useScroll();
 
     const [compactValue, setCompactValue] = useState(false);
 
     // One-way scroll collapse logic
-    useMotionValueEvent(scrollY, "change", (latest) => {
+    useMotionValueEvent(scrollY, 'change', latest => {
         // Collapse if scrolled down more than 50px
         if (latest > 50 && !compactValue) {
             setCompactValue(true);
@@ -60,8 +59,10 @@ export function PhonePDPSticky({ product, modelParam, variantParam, data, handle
     const pricingSourceLabel = (() => {
         const source = serverPricing?.location?.district
             ? [serverPricing.location.district, serverPricing.location.state_code].filter(Boolean).join(', ')
-            : (bestOffer?.dealerLocation || undefined);
-        return source ? source.replace(/^(Best:|Base:)\s*/i, '').trim() : undefined;
+            : bestOffer?.dealerLocation || undefined;
+        const cleaned = source ? source.replace(/^(Best:|Base:)\s*/i, '').trim() : undefined;
+        const studio = serverPricing?.dealer?.studio_id || bestOffer?.studio_id;
+        return cleaned ? (studio ? `${cleaned} • ${studio}` : cleaned) : undefined;
     })();
 
     const GlassCard = ({ title, icon: Icon, children, id, summary }: any) => {
@@ -81,7 +82,9 @@ export function PhonePDPSticky({ product, modelParam, variantParam, data, handle
                             <Icon size={24} />
                         </div>
                         <div>
-                            <h3 className="text-lg font-black uppercase italic tracking-tight text-slate-900 dark:text-white">{title}</h3>
+                            <h3 className="text-lg font-black uppercase italic tracking-tight text-slate-900 dark:text-white">
+                                {title}
+                            </h3>
                             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{summary}</p>
                         </div>
                     </div>
@@ -98,9 +101,7 @@ export function PhonePDPSticky({ product, modelParam, variantParam, data, handle
                             exit={{ height: 0, opacity: 0 }}
                             className="px-6 pb-6 overflow-hidden"
                         >
-                            <div className="pt-4 border-t border-slate-100 dark:border-white/5">
-                                {children}
-                            </div>
+                            <div className="pt-4 border-t border-slate-100 dark:border-white/5">{children}</div>
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -114,10 +115,9 @@ export function PhonePDPSticky({ product, modelParam, variantParam, data, handle
             <div className="sticky top-[58px] z-[100] w-full">
                 <motion.div
                     layout
-                    className={`w-full overflow-hidden transition-all duration-300 ${compactValue
-                        ? 'bg-transparent py-0 cursor-pointer'
-                        : 'bg-transparent py-4 px-4 shadow-none'
-                        }`}
+                    className={`w-full overflow-hidden transition-all duration-300 ${
+                        compactValue ? 'bg-transparent py-0 cursor-pointer' : 'bg-transparent py-4 px-4 shadow-none'
+                    }`}
                     onClick={() => {
                         if (compactValue) {
                             setCompactValue(false);
@@ -138,7 +138,7 @@ export function PhonePDPSticky({ product, modelParam, variantParam, data, handle
                                         imageUrl: vehicleImage,
                                         price: {
                                             ...product.price,
-                                            onRoad: totalOnRoad // Inject current calculated total
+                                            onRoad: totalOnRoad, // Inject current calculated total
                                         },
                                         availableColors: colors?.map((c: any) => ({
                                             id: c.id,
@@ -148,15 +148,15 @@ export function PhonePDPSticky({ product, modelParam, variantParam, data, handle
                                             zoomFactor: c.zoomFactor,
                                             isFlipped: c.isFlipped,
                                             offsetX: c.offsetX,
-                                            offsetY: c.offsetY
-                                        }))
+                                            offsetY: c.offsetY,
+                                        })),
                                     }}
                                     viewMode="grid"
                                     downpayment={data.userDownPayment}
                                     tenure={data.emiTenure}
                                     basePath="/phone/store"
                                     isParentCompact={compactValue}
-                                    onColorChange={(colorId) => handlers.handleColorChange(colorId)}
+                                    onColorChange={colorId => handlers.handleColorChange(colorId)}
                                     // Inject Serviceability and Best Offer for District Display
                                     serviceability={serviceability}
                                     bestOffer={bestOffer}
@@ -216,7 +216,7 @@ export function PhonePDPSticky({ product, modelParam, variantParam, data, handle
                 <GlassCard
                     title="Price Summary"
                     icon={Wrench}
-                    summary={`On-Road: ₹${(serverPricing?.final_on_road || totalOnRoad).toLocaleString()}${pricingSourceLabel ? ` • ${pricingSourceLabel}` : ''}`}
+                    summary={`On-Road: ₹${totalOnRoad.toLocaleString()}${pricingSourceLabel ? ` • ${pricingSourceLabel}` : ''}`}
                     id="PRICE_BREAKUP"
                 >
                     <div className="space-y-3">
@@ -226,11 +226,17 @@ export function PhonePDPSticky({ product, modelParam, variantParam, data, handle
                         </div>
                         <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                             <span>RTO & Reg.</span>
-                            <span>₹{(serverPricing?.rto?.total || data.onRoadDetails?.rto)?.toLocaleString() || '0'}</span>
+                            <span>
+                                ₹{(serverPricing?.rto?.total || data.onRoadDetails?.rto)?.toLocaleString() || '0'}
+                            </span>
                         </div>
                         <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                             <span>Insurance</span>
-                            <span>₹{(serverPricing?.insurance?.total || data.onRoadDetails?.insurance)?.toLocaleString() || '0'}</span>
+                            <span>
+                                ₹
+                                {(serverPricing?.insurance?.total || data.onRoadDetails?.insurance)?.toLocaleString() ||
+                                    '0'}
+                            </span>
                         </div>
                         {serverPricing?.dealer?.offer > 0 && (
                             <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-green-600">
@@ -240,10 +246,12 @@ export function PhonePDPSticky({ product, modelParam, variantParam, data, handle
                         )}
                         <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex justify-between text-sm font-black uppercase italic tracking-tighter text-slate-900 dark:text-white">
                             <span>Total On-Road</span>
-                            <span className="text-brand-primary">₹{(serverPricing?.final_on_road || totalOnRoad).toLocaleString()}</span>
+                            <span className="text-brand-primary">₹{totalOnRoad.toLocaleString()}</span>
                         </div>
                         {serverPricing && (
-                            <p className="text-[9px] text-slate-400 uppercase tracking-widest">Calculated by Server • Single Source of Truth</p>
+                            <p className="text-[9px] text-slate-400 uppercase tracking-widest">
+                                Calculated by Server • Single Source of Truth
+                            </p>
                         )}
                         <button
                             onClick={() => handlers.setConfigTab('PRICE_BREAKUP')}
@@ -261,7 +269,10 @@ export function PhonePDPSticky({ product, modelParam, variantParam, data, handle
                     id="FINANCE"
                 >
                     <div className="space-y-4">
-                        <p className="text-xs text-slate-500 font-medium">Monthly commitment starting from ₹{emi?.toLocaleString()}. Adjust your downpayment for better rates.</p>
+                        <p className="text-xs text-slate-500 font-medium">
+                            Monthly commitment starting from ₹{emi?.toLocaleString()}. Adjust your downpayment for
+                            better rates.
+                        </p>
                         <button
                             onClick={() => handlers.setConfigTab('FINANCE')}
                             className="w-full py-4 bg-brand-primary text-black font-black uppercase tracking-widest text-xs rounded-2xl flex items-center justify-center gap-2"
@@ -281,7 +292,10 @@ export function PhonePDPSticky({ product, modelParam, variantParam, data, handle
                     <div className="space-y-4">
                         <div className="grid grid-cols-1 gap-2">
                             {selectedAccessories.slice(0, 3).map((acc: any) => (
-                                <div key={acc.id} className="flex items-center justify-between p-3 bg-black/5 dark:bg-white/5 rounded-xl text-xs">
+                                <div
+                                    key={acc.id}
+                                    className="flex items-center justify-between p-3 bg-black/5 dark:bg-white/5 rounded-xl text-xs"
+                                >
                                     <span className="font-bold uppercase italic">{acc.name}</span>
                                     <span className="text-slate-500">₹{acc.price?.toLocaleString()}</span>
                                 </div>
@@ -312,12 +326,7 @@ export function PhonePDPSticky({ product, modelParam, variantParam, data, handle
                     </div>
                 </GlassCard>
 
-                <GlassCard
-                    title="Legal & Registry"
-                    icon={Gift}
-                    summary={`Type: ${regType}`}
-                    id="REGISTRATION"
-                >
+                <GlassCard title="Legal & Registry" icon={Gift} summary={`Type: ${regType}`} id="REGISTRATION">
                     <div className="space-y-4">
                         <button
                             onClick={() => handlers.setConfigTab('REGISTRATION')}
@@ -333,7 +342,9 @@ export function PhonePDPSticky({ product, modelParam, variantParam, data, handle
             <div className="fixed bottom-0 left-0 right-0 z-[100] p-6 bg-gradient-to-t from-white dark:from-[#060709] via-white/90 dark:via-[#060709]/90 to-transparent">
                 <div className="max-w-md mx-auto flex items-center justify-between gap-4">
                     <div className="flex-1">
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Total Selection</p>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                            Total Selection
+                        </p>
                         <h2 className="text-3xl font-black italic tracking-tighter text-slate-900 dark:text-white leading-none">
                             ₹{totalOnRoad.toLocaleString()}
                         </h2>
@@ -348,6 +359,6 @@ export function PhonePDPSticky({ product, modelParam, variantParam, data, handle
                     </motion.button>
                 </div>
             </div>
-        </div >
+        </div>
     );
 }

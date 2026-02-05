@@ -59,17 +59,23 @@ export function DesktopHome() {
     const categoryCopy: Record<string, { title: string; desc: string; features: string[] }> = {
         Scooters: {
             title: t('Scooters'),
-            desc: t('Daily commuting made easy with comfort and great mileage. See transparent on-road prices and get instant quotes. Book your scooter in minutes.'),
+            desc: t(
+                'Daily commuting made easy with comfort and great mileage. See transparent on-road prices and get instant quotes. Book your scooter in minutes.'
+            ),
             features: [t('Most Popular')],
         },
         Motorcycles: {
             title: t('Motorcycles'),
-            desc: t('Find the right bike—commuter, cruiser, or sport. Compare on-road prices from verified dealers instantly. Get a quote and book in minutes.'),
+            desc: t(
+                'Find the right bike—commuter, cruiser, or sport. Compare on-road prices from verified dealers instantly. Get a quote and book in minutes.'
+            ),
             features: [t('Youth Love')],
         },
         Mopeds: {
             title: t('Mopeds'),
-            desc: t('Work-ready utility rides built for heavy daily use. Low running cost with transparent on-road pricing. Get instant quotes and book fast.'),
+            desc: t(
+                'Work-ready utility rides built for heavy daily use. Low running cost with transparent on-road pricing. Get instant quotes and book fast.'
+            ),
             features: [t('Utility Hero')],
         },
     };
@@ -312,29 +318,29 @@ export function DesktopHome() {
                             The Highest Fidelity Marketplace
                         </motion.div>
 
-                            <div className="relative group/title">
-                                {/* reflective shadow layer */}
-                                <motion.h1
-                                    initial={{ opacity: 0, y: 40 }}
-                                    animate={{ opacity: 0.1, y: 0 }}
-                                    transition={{ delay: 0.4, duration: 1.5 }}
+                        <div className="relative group/title">
+                            {/* reflective shadow layer */}
+                            <motion.h1
+                                initial={{ opacity: 0, y: 40 }}
+                                animate={{ opacity: 0.1, y: 0 }}
+                                transition={{ delay: 0.4, duration: 1.5 }}
                                 className="absolute -inset-2 text-7xl md:text-8xl lg:text-[clamp(4rem,12.5vw,10.5rem)] font-black uppercase text-white blur-3xl pointer-events-none opacity-20"
-                                    style={{
-                                        backgroundPosition: 'calc(100% - var(--mouse-x-pct)) 50%',
-                                    }}
-                                >
-                                    MOTORCYCLES
-                                </motion.h1>
+                                style={{
+                                    backgroundPosition: 'calc(100% - var(--mouse-x-pct)) 50%',
+                                }}
+                            >
+                                MOTORCYCLES
+                            </motion.h1>
 
                             {/* main liquid-metal text */}
                             <motion.h1
-                                    initial={{ opacity: 0, scale: 0.95, y: 30 }}
-                                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                                    transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+                                initial={{ opacity: 0, scale: 0.95, y: 30 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
                                 className="relative text-7xl md:text-8xl lg:text-[clamp(4rem,12vw,9.5rem)] font-black italic uppercase tracking-[-0.03em] leading-none text-transparent bg-clip-text bg-[linear-gradient(110deg,#fff_0%,#fff_40%,#ff9d00_50%,#fff_60%,#fff_100%)] bg-[length:200%_100%] transition-all duration-1000 font-[family-name:var(--font-bruno-ace)]"
-                                    style={{
-                                        textShadow: '0 20px 50px rgba(0,0,0,0.5)',
-                                        WebkitTextFillColor: 'transparent',
+                                style={{
+                                    textShadow: '0 20px 50px rgba(0,0,0,0.5)',
+                                    WebkitTextFillColor: 'transparent',
                                     backgroundPositionX: 'calc(100% - var(--mouse-x-pct))',
                                 }}
                             >
@@ -405,7 +411,9 @@ export function DesktopHome() {
                                                 </span>
                                             </div>
                                             <p className="text-[12px] text-zinc-300 font-medium leading-[1.6] max-w-[240px]">
-                                                {t("Access India's largest curated collection of premium motorcycles, updated real-time across regional hubs.")}
+                                                {t(
+                                                    "Access India's largest curated collection of premium motorcycles, updated real-time across regional hubs."
+                                                )}
                                             </p>
                                         </motion.div>
                                     </>
@@ -463,7 +471,9 @@ export function DesktopHome() {
                                                 </span>
                                             </div>
                                             <p className="text-[12px] text-zinc-300 font-medium leading-[1.6] max-w-[240px]">
-                                                {t('Hyper-local processing ensure your premium ride is dispatched and ready in record time.')}
+                                                {t(
+                                                    'Hyper-local processing ensure your premium ride is dispatched and ready in record time.'
+                                                )}
                                             </p>
                                         </motion.div>
                                     </>
@@ -521,7 +531,9 @@ export function DesktopHome() {
                                                 </span>
                                             </div>
                                             <p className="text-[12px] text-zinc-300 font-medium leading-[1.6] max-w-[240px]">
-                                                {t('Leverage our Lowest EMI Guarantee and exclusive dealer rebates to save an average of ₹12,000 per booking.')}
+                                                {t(
+                                                    'Leverage our Lowest EMI Guarantee and exclusive dealer rebates to save an average of ₹12,000 per booking.'
+                                                )}
                                             </p>
                                         </motion.div>
                                     </>
@@ -614,7 +626,9 @@ export function DesktopHome() {
                                 </h1>
                             </div>
                             <p className="text-zinc-500 text-lg leading-relaxed max-w-sm">
-                                {t('A curated roster of engineering giants setting global standards. Seamless, elite performance across every brand.')}
+                                {t(
+                                    'A curated roster of engineering giants setting global standards. Seamless, elite performance across every brand.'
+                                )}
                             </p>
                         </div>
 
@@ -695,10 +709,11 @@ export function DesktopHome() {
                                             />
 
                                             <div
-                                                className={`absolute inset-0 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] rounded-3xl pointer-events-none ${isHovered && isAtFront
-                                                    ? 'shadow-[0_0_120px_rgba(255,255,255,0.25)] border border-white/20'
-                                                    : 'backdrop-blur-md text-zinc-400 border-y border-white/5'
-                                                    }`}
+                                                className={`absolute inset-0 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] rounded-3xl pointer-events-none ${
+                                                    isHovered && isAtFront
+                                                        ? 'shadow-[0_0_120px_rgba(255,255,255,0.25)] border border-white/20'
+                                                        : 'backdrop-blur-md text-zinc-400 border-y border-white/5'
+                                                }`}
                                                 style={{
                                                     transform:
                                                         isHovered && isAtFront
@@ -789,10 +804,11 @@ export function DesktopHome() {
 
                                                 {/* Brand Letter Watermark */}
                                                 <div
-                                                    className={`absolute -right-4 top-1/2 -translate-y-1/2 text-[12rem] font-black italic uppercase select-none pointer-events-none transition-all duration-1000 ${isHovered && isAtFront
-                                                        ? 'text-white/[0.1] scale-100 opacity-100'
-                                                        : 'text-white/[0.02] scale-110 opacity-0'
-                                                        }`}
+                                                    className={`absolute -right-4 top-1/2 -translate-y-1/2 text-[12rem] font-black italic uppercase select-none pointer-events-none transition-all duration-1000 ${
+                                                        isHovered && isAtFront
+                                                            ? 'text-white/[0.1] scale-100 opacity-100'
+                                                            : 'text-white/[0.02] scale-110 opacity-0'
+                                                    }`}
                                                 >
                                                     {brand.name[0]}
                                                 </div>
@@ -839,10 +855,11 @@ export function DesktopHome() {
                                         <div
                                             key={i}
                                             onMouseEnter={() => setActiveStep(i)}
-                                            className={`transition-all duration-500 ease-out origin-left ${activeStep === i
-                                                ? 'text-white translate-x-4 scale-105'
-                                                : 'text-white/20 hover:text-white/60 hover:translate-x-2'
-                                                }`}
+                                            className={`transition-all duration-500 ease-out origin-left ${
+                                                activeStep === i
+                                                    ? 'text-white translate-x-4 scale-105'
+                                                    : 'text-white/20 hover:text-white/60 hover:translate-x-2'
+                                            }`}
                                         >
                                             {text}
                                         </div>
@@ -869,10 +886,11 @@ export function DesktopHome() {
                                     key={i}
                                     layout
                                     onMouseEnter={() => setActiveStep(i)}
-                                    className={`relative rounded-[2rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${activeStep === i
-                                        ? 'flex-[3] bg-white text-black border-white shadow-[0_0_50px_rgba(255,255,255,0.2)]'
-                                        : 'flex-[1] bg-zinc-900/60 border-white/5 text-zinc-500 hover:bg-zinc-800'
-                                        }`}
+                                    className={`relative rounded-[2rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+                                        activeStep === i
+                                            ? 'flex-[3] bg-white text-black border-white shadow-[0_0_50px_rgba(255,255,255,0.2)]'
+                                            : 'flex-[1] bg-zinc-900/60 border-white/5 text-zinc-500 hover:bg-zinc-800'
+                                    }`}
                                 >
                                     {/* Inner Content Layout */}
                                     <div className="absolute inset-0 p-8 flex flex-col justify-between">
@@ -946,7 +964,7 @@ export function DesktopHome() {
                 </div>
             </section>
 
-            <section className="h-screen ebook-section relative flex flex-col justify-start bg-[#0b0d10] pt-[var(--header-h)] overflow-hidden">
+            <section className="h-screen ebook-section relative flex flex-col justify-start bg-gradient-to-br from-emerald-100 via-slate-50 to-slate-50 dark:from-emerald-950/80 dark:via-black dark:to-black pt-[var(--header-h)] overflow-hidden">
                 {/* Vibrant Background Layer: Silken 'Aurora' cross-fades to avoid the flash */}
                 <div className="absolute inset-0 z-0 pointer-events-none">
                     <div className="absolute inset-0 bg-gradient-to-tr from-emerald-800/50 via-[#0b0d10] to-black" />
@@ -987,10 +1005,11 @@ export function DesktopHome() {
                                     key={i}
                                     href={cat.link}
                                     onMouseEnter={() => setActiveVibe(i)}
-                                    className={`group relative overflow-hidden rounded-[2rem] border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between ${activeVibe === i
-                                        ? 'flex-[3] bg-white/10 border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-md'
-                                        : 'flex-[1] bg-white/5 border-white/5 opacity-60 hover:opacity-100 hover:bg-white/10'
-                                        }`}
+                                    className={`group relative overflow-hidden rounded-[2rem] border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between ${
+                                        activeVibe === i
+                                            ? 'flex-[3] bg-white/10 border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-md'
+                                            : 'flex-[1] bg-white/5 border-white/5 opacity-60 hover:opacity-100 hover:bg-white/10'
+                                    }`}
                                 >
                                     {(() => {
                                         const copy = categoryCopy[cat.title];
@@ -1001,7 +1020,9 @@ export function DesktopHome() {
                                             <>
                                                 {/* Background Mesh Gradient (Subtle) */}
                                                 {/* Background Mesh Gradient (Subtle) */}
-                                                <div className={`absolute inset-0 opacity-20 bg-gradient-to-br ${cat.color} to-transparent mix-blend-overlay`} />
+                                                <div
+                                                    className={`absolute inset-0 opacity-20 bg-gradient-to-br ${cat.color} to-transparent mix-blend-overlay`}
+                                                />
 
                                                 {/* Interactive Layout Container: Nested vertical sandwich to fix overlap */}
                                                 <div className="absolute inset-0 p-8 md:p-10 flex flex-col justify-between z-20">
@@ -1082,7 +1103,7 @@ export function DesktopHome() {
             </section>
 
             {/* Restored Rider Pulse (Reviews) Section */}
-            <div className="ebook-section h-screen flex flex-col justify-start pt-[var(--header-h)] bg-gradient-to-br from-blue-900/50 via-[#0b0d10] to-[#0b0d10]">
+            <div className="ebook-section h-screen flex flex-col justify-start pt-[var(--header-h)] bg-gradient-to-br from-blue-100 via-slate-50 to-slate-50 dark:from-blue-900/50 dark:via-[#0b0d10] dark:to-[#0b0d10]">
                 <RiderPulse />
             </div>
 
@@ -1090,7 +1111,7 @@ export function DesktopHome() {
             <EliteCircle />
 
             {/* Integrated Footer as Last Section */}
-            <div className="ebook-section h-screen bg-[#0b0d10]">
+            <div className="ebook-section h-screen bg-gradient-to-t from-slate-200 via-white to-white dark:from-zinc-950/80 dark:via-black dark:to-black">
                 <Footer />
             </div>
         </div>

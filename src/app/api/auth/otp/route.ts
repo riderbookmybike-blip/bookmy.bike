@@ -31,12 +31,9 @@ export async function POST(request: NextRequest) {
         else if (cleaned.length === 11 && cleaned.startsWith('0')) formattedPhone = `91${cleaned.substring(1)}`;
         else formattedPhone = `91${cleaned}`; // Default fallback
 
-
-
         // 1. VERIFY WIDGET TOKEN
         if (action === 'verify') {
             if (!otp) return NextResponse.json({ success: false, message: 'Token Required' }, { status: 400 });
-
 
             const verifyUrl = `https://control.msg91.com/api/v5/widget/verifyAccessToken`;
 
@@ -71,8 +68,6 @@ export async function POST(request: NextRequest) {
                     );
                 }
 
-
-
                 // BRIDGE: Create Supabase Session
                 const supabaseAdmin = createClient(
                     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -80,17 +75,27 @@ export async function POST(request: NextRequest) {
                     { auth: { autoRefreshToken: false, persistSession: false } }
                 );
 
-                // Find User by VERIFIED MOBILE
+                // Find User by VERIFIED MOBILE (Targeted Lookup)
                 const {
                     data: { users },
-                } = await supabaseAdmin.auth.admin.listUsers();
-                const user = users?.find(
-                    u =>
-                        u.phone === verifiedMobileNum ||
-                        u.phone === `+${verifiedMobileNum}` ||
-                        u.user_metadata?.phone === verifiedMobileNum ||
-                        u.phone?.endsWith(verifiedMobileNum.slice(-10))
-                );
+                    error: listError,
+                } = await supabaseAdmin.auth.admin.listUsers({
+                    filters: {
+                        phone: verifiedMobileNum,
+                    },
+                });
+
+                let user = users?.[0];
+
+                // Fallback: Try with + prefix if exact match fails
+                if (!user && !verifiedMobileNum.startsWith('+')) {
+                    const { data: usersPlus } = await supabaseAdmin.auth.admin.listUsers({
+                        filters: {
+                            phone: `+${verifiedMobileNum}`,
+                        },
+                    });
+                    user = usersPlus?.[0];
+                }
 
                 if (!user) {
                     // Start of New User Logic?
@@ -114,8 +119,6 @@ export async function POST(request: NextRequest) {
                     .setIssuedAt()
                     .setExpirationTime('1h')
                     .sign(secret);
-
-
 
                 return NextResponse.json({
                     success: true,

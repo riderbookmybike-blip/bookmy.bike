@@ -24,12 +24,14 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
     }, [searchQuery]);
 
     const availableMakes = useMemo(() => {
-        const makes = Array.from(new Set(
-            initialVehicles
-                .map(v => (v.make || '').trim())
-                .filter(Boolean)
-                .map(m => m.toUpperCase())
-        ));
+        const makes = Array.from(
+            new Set(
+                initialVehicles
+                    .map(v => (v.make || '').trim())
+                    .filter(Boolean)
+                    .map(m => m.toUpperCase())
+            )
+        );
         return makes.length > 0 ? makes : brands;
     }, [initialVehicles]);
 
@@ -86,11 +88,26 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
 
             const prevUpper = prev.map(m => m.toUpperCase());
             const defaultUpper = brands.map(m => m.toUpperCase());
-            const isDefault = prevUpper.length === defaultUpper.length && defaultUpper.every(m => prevUpper.includes(m));
+            const isDefault =
+                prevUpper.length === defaultUpper.length && defaultUpper.every(m => prevUpper.includes(m));
 
             return isDefault ? availableMakes : prev;
         });
     }, [availableMakes, searchParams]);
+
+    const [debouncedDownpayment, setDebouncedDownpayment] = useState(downpayment);
+    const [debouncedMaxPrice, setDebouncedMaxPrice] = useState(maxPrice);
+    const [debouncedMaxEMI, setDebouncedMaxEMI] = useState(maxEMI);
+
+    // Debounce slider updates for URL sync
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedDownpayment(downpayment);
+            setDebouncedMaxPrice(maxPrice);
+            setDebouncedMaxEMI(maxEMI);
+        }, 500); // 500ms debounce for sliders
+        return () => clearTimeout(timer);
+    }, [downpayment, maxPrice, maxEMI]);
 
     // Update URL when filters change
     useEffect(() => {
@@ -101,8 +118,9 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
 
         // Only set brand if it's not the full brands list (default)
         const selectedMakeSet = new Set(selectedMakes.map(m => m.toUpperCase()));
-        const isAllMakesSelected = selectedMakes.length === 0
-            || (availableMakes.length > 0 && availableMakes.every(m => selectedMakeSet.has(m.toUpperCase())));
+        const isAllMakesSelected =
+            selectedMakes.length === 0 ||
+            (availableMakes.length > 0 && availableMakes.every(m => selectedMakeSet.has(m.toUpperCase())));
         if (isAllMakesSelected) {
             params.delete('brand');
         } else {
@@ -119,13 +137,15 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         else params.delete('cc');
         if (selectedFinishes.length > 0) params.set('finish', selectedFinishes.join(','));
         else params.delete('finish');
-        if (downpayment !== 0) params.set('dp', downpayment.toString());
+
+        // Use debounced values for URL to prevent spamming history/analytics
+        if (debouncedDownpayment !== 0) params.set('dp', debouncedDownpayment.toString());
         else params.delete('dp');
         if (tenure !== 36) params.set('tenure', tenure.toString());
         else params.delete('tenure');
-        if (maxPrice < 1000000) params.set('maxPrice', maxPrice.toString());
+        if (debouncedMaxPrice < 1000000) params.set('maxPrice', debouncedMaxPrice.toString());
         else params.delete('maxPrice');
-        if (maxEMI < 20000) params.set('maxEMI', maxEMI.toString());
+        if (debouncedMaxEMI < 20000) params.set('maxEMI', debouncedMaxEMI.toString());
         else params.delete('maxEMI');
 
         const queryString = params.toString();
@@ -142,8 +162,10 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         selectedBodyTypes,
         selectedCC,
         selectedFinishes,
-        downpayment,
+        debouncedDownpayment,
         tenure,
+        debouncedMaxPrice,
+        debouncedMaxEMI,
         availableMakes,
     ]);
 
@@ -154,8 +176,9 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
                 .includes(debouncedSearch.toLowerCase());
             const normalizedMake = (v.make || '').toUpperCase();
             const selectedMakeSet = new Set(selectedMakes.map(m => m.toUpperCase()));
-            const isAllMakesSelected = selectedMakes.length === 0
-                || (availableMakes.length > 0 && availableMakes.every(m => selectedMakeSet.has(m.toUpperCase())));
+            const isAllMakesSelected =
+                selectedMakes.length === 0 ||
+                (availableMakes.length > 0 && availableMakes.every(m => selectedMakeSet.has(m.toUpperCase())));
             const matchesMake = isAllMakesSelected || selectedMakeSet.has(normalizedMake);
 
             const isElectric = v.model.toLowerCase().includes('electric') || v.fuelType === 'ELECTRIC';
@@ -173,10 +196,10 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
                 displacement < 125
                     ? '< 125cc'
                     : displacement < 250
-                        ? '125-250cc'
-                        : displacement < 500
-                            ? '250-500cc'
-                            : '> 500cc';
+                      ? '125-250cc'
+                      : displacement < 500
+                        ? '250-500cc'
+                        : '> 500cc';
             const matchesCC = selectedCC.length === 0 || selectedCC.includes(ccTag);
 
             const brakeType = v.specifications?.brakes?.front?.toLowerCase().includes('disc') ? 'Disc (Front)' : 'Drum';

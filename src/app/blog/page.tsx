@@ -34,7 +34,10 @@ export default function BlogListingPage() {
                         transition={{ delay: 0.1 }}
                         className="text-4xl md:text-6xl font-black text-white mb-6 tracking-tight"
                     >
-                        Stories from the <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F4B000] to-[#FFD700]">Fast Lane</span>
+                        Stories from the{' '}
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F4B000] to-[#FFD700]">
+                            Fast Lane
+                        </span>
                     </motion.h1>
                     <motion.p
                         initial={{ opacity: 0, y: 20 }}
@@ -48,7 +51,7 @@ export default function BlogListingPage() {
             </section>
 
             {/* CONTENT GRID */}
-            <section className="py-20 px-6 md:px-12 max-w-7xl mx-auto -mt-20 relative z-30">
+            <section className="py-20 page-container -mt-20 relative z-30">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {BLOG_POSTS.map((post, index) => (
                         <motion.article
@@ -69,7 +72,10 @@ export default function BlogListingPage() {
                                 />
                                 <div className="absolute top-4 left-4 z-20 flex gap-2">
                                     {post.tags.map(tag => (
-                                        <span key={tag} className="px-3 py-1 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md text-[10px] font-black uppercase tracking-wider text-slate-900 dark:text-white rounded-lg shadow-sm">
+                                        <span
+                                            key={tag}
+                                            className="px-3 py-1 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md text-[10px] font-black uppercase tracking-wider text-slate-900 dark:text-white rounded-lg shadow-sm"
+                                        >
                                             {tag}
                                         </span>
                                     ))}
@@ -102,7 +108,10 @@ export default function BlogListingPage() {
                                     className="flex items-center gap-2 text-xs font-black text-slate-900 dark:text-white uppercase tracking-[0.2em] group/link"
                                 >
                                     Read Article
-                                    <ArrowRight size={16} className="transform group-hover/link:translate-x-1 transition-transform text-[#F4B000]" />
+                                    <ArrowRight
+                                        size={16}
+                                        className="transform group-hover/link:translate-x-1 transition-transform text-[#F4B000]"
+                                    />
                                 </Link>
                             </div>
                         </motion.article>

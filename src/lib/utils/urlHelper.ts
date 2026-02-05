@@ -8,7 +8,7 @@ interface BuildUrlOptions {
     model: string;
     variant: string;
     color?: string;
-    pincode?: string;
+    district?: string;
     region?: string;
     dealer?: string;
     leadId?: string;
@@ -16,8 +16,8 @@ interface BuildUrlOptions {
 }
 
 interface UrlResult {
-    url: string;           // The user-facing URL for sharing
-    canonicalUrl: string;  // The SEO truth
+    url: string; // The user-facing URL for sharing
+    canonicalUrl: string; // The SEO truth
     robots: 'index,follow' | 'noindex,follow';
 }
 
@@ -29,18 +29,18 @@ function slugify(text: string): string {
         .toString()
         .toLowerCase()
         .trim()
-        .replace(/\s+/g, '-')     // Replace spaces with -
-        .replace(/[^\w-]+/g, '')  // Remove all non-word chars
-        .replace(/--+/g, '-');    // Replace multiple - with single -
+        .replace(/\s+/g, '-') // Replace spaces with -
+        .replace(/[^\w-]+/g, '') // Remove all non-word chars
+        .replace(/--+/g, '-'); // Replace multiple - with single -
 }
 
 /**
  * buildProductUrl
  * Generates the correct preferred URL and SEO metadata.
- * Pattern: /store/{make}/{model}/{variant}?color=...&pincode=...
+ * Pattern: /store/{make}/{model}/{variant}?color=...&district=...
  */
 export function buildProductUrl(options: BuildUrlOptions): UrlResult {
-    const { make, model, variant, color, pincode, region, dealer, leadId, basePath = '/store' } = options;
+    const { make, model, variant, color, district, region, dealer, leadId, basePath = '/store' } = options;
 
     // 1. Identifiers (Path Segments)
     const makeSlug = slugify(make);
@@ -58,7 +58,7 @@ export function buildProductUrl(options: BuildUrlOptions): UrlResult {
     // 4. Construct Query Params (Context)
     const params = new URLSearchParams();
     if (color) params.set('color', slugify(color));
-    if (pincode) params.set('pincode', pincode);
+    if (district) params.set('district', district);
     if (region) params.set('region', slugify(region));
     if (leadId) params.set('leadId', leadId);
 
@@ -69,12 +69,12 @@ export function buildProductUrl(options: BuildUrlOptions): UrlResult {
 
     // 6. Robots Rules
     // Noindex if location, dealer context, or color (optional) is present
-    const isContextual = !!(pincode || region || dealer || color);
+    const isContextual = !!(district || region || dealer || color);
     const robots = isContextual ? 'noindex,follow' : 'index,follow';
 
     return {
         url: `${path}${queryString}`,
         canonicalUrl,
-        robots
+        robots,
     };
 }

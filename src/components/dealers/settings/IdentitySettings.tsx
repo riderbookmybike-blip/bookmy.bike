@@ -35,11 +35,11 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
     const [didInitLookup, setDidInitLookup] = useState(false);
     const [formData, setFormData] = useState({
         name: dealer.name || '',
-        display_id: dealer.display_id || '',
+        studio_id: dealer.studio_id || '',
         location: dealer.location || '',
         pincode: dealer.pincode || '',
         phone: dealer.phone || '',
-        email: dealer.email || ''
+        email: dealer.email || '',
     });
 
     const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -69,9 +69,9 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
 
             if (uploadError) throw uploadError;
 
-            const { data: { publicUrl } } = supabase.storage
-                .from('tenants')
-                .getPublicUrl(filePath);
+            const {
+                data: { publicUrl },
+            } = supabase.storage.from('tenants').getPublicUrl(filePath);
 
             const { error: updateError } = await supabase
                 .from('id_tenants')
@@ -108,7 +108,7 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
                         taluka: (result as any).taluka || '',
                         area: (result as any).area || '',
                         state: result.state || '',
-                        stateCode: result.stateCode || ''
+                        stateCode: result.stateCode || '',
                     });
                     if (!locationTouched && result.district) {
                         setFormData(prev => ({ ...prev, location: result.district || prev.location }));
@@ -135,24 +135,22 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
             const supabase = createClient();
             const payload = {
                 ...formData,
-                display_id: formData.display_id.trim() || null
+                studio_id: formData.studio_id.trim() || null,
             };
-            const { error } = await supabase
-                .from('id_tenants')
-                .update(payload)
-                .eq('id', dealer.id);
+            const { error } = await supabase.from('id_tenants').update(payload).eq('id', dealer.id);
 
             if (error) throw error;
 
             if (pincodeLookup?.district) {
-                await supabase
-                    .from('id_dealer_service_areas')
-                    .upsert({
+                await supabase.from('id_dealer_service_areas').upsert(
+                    {
                         tenant_id: dealer.id,
                         district: pincodeLookup.district,
                         state_code: pincodeLookup.stateCode || 'MH',
-                        is_active: true
-                    }, { onConflict: 'tenant_id, district' });
+                        is_active: true,
+                    },
+                    { onConflict: 'tenant_id, district' }
+                );
             }
 
             onUpdate();
@@ -168,14 +166,9 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
     return (
         <div className="space-y-8">
             {cropSource && (
-                <LogoCropper
-                    src={cropSource}
-                    onCancel={() => setCropSource(null)}
-                    onComplete={handleCroppedUpload}
-                />
+                <LogoCropper src={cropSource} onCancel={() => setCropSource(null)} onComplete={handleCroppedUpload} />
             )}
             <div className="flex flex-col md:flex-row gap-8 items-start">
-
                 {/* Logo Section */}
                 <div className="w-full md:w-auto flex flex-col items-center gap-4">
                     <div className="relative group">
@@ -228,7 +221,9 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
                             disabled={loading}
                             className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-xs font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
                         >
-                            {loading ? 'SAVING...' : (
+                            {loading ? (
+                                'SAVING...'
+                            ) : (
                                 <>
                                     <Save size={16} />
                                     SAVE CHANGES
@@ -239,7 +234,9 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Trading Name</label>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                Trading Name
+                            </label>
                             <div className="relative">
                                 <Building2 className="absolute left-4 top-3.5 text-slate-400" size={16} />
                                 <input
@@ -252,16 +249,20 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Studio ID</label>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                Studio ID
+                            </label>
                             <div className="relative">
                                 <Building2 className="absolute left-4 top-3.5 text-slate-400" size={16} />
                                 <input
                                     type="text"
-                                    value={formData.display_id}
-                                    onChange={e => setFormData({
-                                        ...formData,
-                                        display_id: formatStudioId(e.target.value)
-                                    })}
+                                    value={formData.studio_id}
+                                    onChange={e =>
+                                        setFormData({
+                                            ...formData,
+                                            studio_id: formatStudioId(e.target.value),
+                                        })
+                                    }
                                     placeholder="e.g. 48J"
                                     className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                                 />
@@ -269,7 +270,9 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Location / City</label>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                Location / City
+                            </label>
                             <div className="relative">
                                 <MapPin className="absolute left-4 top-3.5 text-slate-400" size={16} />
                                 <input
@@ -295,21 +298,53 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
                                     className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                                 />
                                 {pincodeLookupLoading && (
-                                    <p className="text-[10px] text-slate-400 mt-2 uppercase tracking-widest">Resolving pincode…</p>
+                                    <p className="text-[10px] text-slate-400 mt-2 uppercase tracking-widest">
+                                        Resolving pincode…
+                                    </p>
                                 )}
                                 {!pincodeLookupLoading && pincodeLookup && (
                                     <div className="mt-2 text-[10px] text-slate-500 uppercase tracking-widest space-y-1">
-                                        {pincodeLookup.state && <div>State: <span className="text-slate-700 dark:text-slate-200">{pincodeLookup.state}</span></div>}
-                                        {pincodeLookup.district && <div>District: <span className="text-slate-700 dark:text-slate-200">{pincodeLookup.district}</span></div>}
-                                        {pincodeLookup.taluka && <div>Taluka: <span className="text-slate-700 dark:text-slate-200">{pincodeLookup.taluka}</span></div>}
-                                        {pincodeLookup.area && <div>Area: <span className="text-slate-700 dark:text-slate-200">{pincodeLookup.area}</span></div>}
+                                        {pincodeLookup.state && (
+                                            <div>
+                                                State:{' '}
+                                                <span className="text-slate-700 dark:text-slate-200">
+                                                    {pincodeLookup.state}
+                                                </span>
+                                            </div>
+                                        )}
+                                        {pincodeLookup.district && (
+                                            <div>
+                                                District:{' '}
+                                                <span className="text-slate-700 dark:text-slate-200">
+                                                    {pincodeLookup.district}
+                                                </span>
+                                            </div>
+                                        )}
+                                        {pincodeLookup.taluka && (
+                                            <div>
+                                                Taluka:{' '}
+                                                <span className="text-slate-700 dark:text-slate-200">
+                                                    {pincodeLookup.taluka}
+                                                </span>
+                                            </div>
+                                        )}
+                                        {pincodeLookup.area && (
+                                            <div>
+                                                Area:{' '}
+                                                <span className="text-slate-700 dark:text-slate-200">
+                                                    {pincodeLookup.area}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Contact Email</label>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                Contact Email
+                            </label>
                             <div className="relative">
                                 <Mail className="absolute left-4 top-3.5 text-slate-400" size={16} />
                                 <input
@@ -322,7 +357,9 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Contact Phone</label>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                Contact Phone
+                            </label>
                             <div className="relative">
                                 <Phone className="absolute left-4 top-3.5 text-slate-400" size={16} />
                                 <input
@@ -336,6 +373,6 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
                     </div>
                 </div>
             </div>
-        </div >
+        </div>
     );
 }

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { X, MapPin, Loader2, ArrowRight } from 'lucide-react';
 import { resolveLocation } from '@/utils/locationResolver';
 import { setLocationCookie } from '@/actions/locationCookie';
+import { updateSelfMemberLocation } from '@/actions/members';
 
 interface LocationPickerProps {
     isOpen: boolean;
@@ -30,8 +31,34 @@ export function LocationPicker({ isOpen, onClose, onLocationSet }: LocationPicke
         try {
             const resolved = await resolveLocation(pincode);
             if (resolved) {
+                const cookiePayload = {
+                    pincode: resolved.pincode,
+                    district: resolved.district,
+                    taluka: resolved.taluka,
+                    state: resolved.state,
+                    lat: resolved.lat,
+                    lng: resolved.lng,
+                };
                 // Set Server Cookie
-                await setLocationCookie(pincode);
+                try {
+                    await setLocationCookie(cookiePayload);
+                } catch (err) {
+                    console.error('[Location] Cookie set failed:', err);
+                }
+
+                // Persist for logged-in users (best-effort)
+                try {
+                    await updateSelfMemberLocation({
+                        pincode: resolved.pincode,
+                        district: resolved.district,
+                        taluka: resolved.taluka,
+                        state: resolved.state,
+                        latitude: resolved.lat ?? null,
+                        longitude: resolved.lng ?? null,
+                    });
+                } catch (err) {
+                    console.error('[Location] Profile update failed:', err);
+                }
 
                 // localStorage fallback for older components if needed (cleaning gradually)
                 localStorage.setItem('bkmb_user_pincode', JSON.stringify(resolved));
@@ -74,7 +101,8 @@ export function LocationPicker({ isOpen, onClose, onLocationSet }: LocationPicke
                             <span className="text-brand-primary italic">Location</span>
                         </h2>
                         <p className="text-sm font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
-                            See accurate on-road pricing <br />for your specific taluka.
+                            See accurate on-road pricing <br />
+                            for your specific taluka.
                         </p>
                     </div>
 
@@ -85,12 +113,12 @@ export function LocationPicker({ isOpen, onClose, onLocationSet }: LocationPicke
                                 type="text"
                                 maxLength={6}
                                 value={pincode}
-                                onChange={(e) => {
+                                onChange={e => {
                                     const val = e.target.value.replace(/\D/g, '');
                                     setPincode(val);
                                     setError('');
                                 }}
-                                onKeyDown={(e) => e.key === 'Enter' && handleApply()}
+                                onKeyDown={e => e.key === 'Enter' && handleApply()}
                                 placeholder="ENTER 6-DIGIT PINCODE"
                                 className="w-full h-20 bg-slate-50 dark:bg-white/5 border-2 border-slate-200 dark:border-white/10 rounded-[2rem] px-8 text-xl font-black tracking-[0.2em] outline-none focus:border-brand-primary transition-all text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-white/10"
                             />
@@ -110,12 +138,15 @@ export function LocationPicker({ isOpen, onClose, onLocationSet }: LocationPicke
                         <button
                             onClick={handleApply}
                             disabled={loading || pincode.length !== 6}
-                            className={`w-full h-20 rounded-[2rem] font-black uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-3 transition-all ${loading || pincode.length !== 6
-                                ? 'bg-slate-100 dark:bg-white/5 text-slate-400'
-                                : 'bg-brand-primary text-black shadow-[0_20px_40px_rgba(244,176,0,0.2)] hover:shadow-[0_25px_50px_rgba(244,176,0,0.3)] hover:-translate-y-1'
-                                }`}
+                            className={`w-full h-20 rounded-[2rem] font-black uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-3 transition-all ${
+                                loading || pincode.length !== 6
+                                    ? 'bg-slate-100 dark:bg-white/5 text-slate-400'
+                                    : 'bg-brand-primary text-black shadow-[0_20px_40px_rgba(244,176,0,0.2)] hover:shadow-[0_25px_50px_rgba(244,176,0,0.3)] hover:-translate-y-1'
+                            }`}
                         >
-                            {loading ? 'RESOLVING...' : (
+                            {loading ? (
+                                'RESOLVING...'
+                            ) : (
                                 <>
                                     Apply Changes
                                     <ArrowRight size={16} />

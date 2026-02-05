@@ -1,17 +1,36 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import MasterListDetailLayout from '@/components/templates/MasterListDetailLayout';
 import DetailPanel from '@/components/templates/DetailPanel';
 import ContextSidePanel from '@/components/templates/ContextSidePanel';
-import { MOCK_REGISTRATION_RULES } from '@/lib/mock/catalogMocks';
 import { RegistrationRule } from '@/types/registration';
 import PricingLedgerTable from '@/components/modules/products/PricingLedgerTable';
-import { Landmark, Filter, ShieldCheck, FileCheck, Layers, Car, Zap, Loader2, Save, ExternalLink, Activity, Target, ClipboardCheck, Package, TrendingUp, Sparkles } from 'lucide-react';
+import {
+    Landmark,
+    Filter,
+    ShieldCheck,
+    FileCheck,
+    Layers,
+    Car,
+    Zap,
+    Loader2,
+    Save,
+    ExternalLink,
+    Activity,
+    Target,
+    ClipboardCheck,
+    Package,
+    TrendingUp,
+    Sparkles,
+} from 'lucide-react';
 import { KpiCard } from '@/components/dashboard/DashboardWidgets';
 import { KPIItem } from '@/components/layout/KPIBar';
+import { publishPrices } from '@/actions/publishPrices';
+import { savePrices } from '@/actions/savePrices';
 
 interface SKUPriceRow {
     id: string; // vehicle_color_id
@@ -44,21 +63,48 @@ interface SKUPriceRow {
     rto?: number; // RTO from RPC
     insurance?: number; // Insurance from RPC
     onRoad?: number; // On-Road from RPC
+    publishedAt?: string; // Latest publish timestamp
+    displayState?: 'Draft' | 'In Review' | 'Published' | 'Live' | 'Inactive';
+    insurance_data?: any;
 }
 
 export default function PricingPage() {
     const supabase = createClient();
     const { tenantId, tenantSlug } = useTenant();
+    const searchParams = useSearchParams();
+    const router = useRouter();
+
     const [states, setStates] = useState<RegistrationRule[]>([]);
-    const [selectedStateId, setSelectedStateId] = useState<string>('');
-    const [selectedBrand, setSelectedBrand] = useState<string>('ALL');
-    const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
-    const [selectedSubCategory, setSelectedSubCategory] = useState<string>('ALL');
+    // Read initial filter values from URL (persist on reload)
+    const [selectedStateId, setSelectedStateId] = useState<string>(searchParams.get('state') || '');
+    const [selectedBrand, setSelectedBrand] = useState<string>(searchParams.get('brand') || 'ALL');
+    const [selectedCategory, setSelectedCategory] = useState<string>(searchParams.get('category') || 'ALL');
+    const [selectedSubCategory, setSelectedSubCategory] = useState<string>(searchParams.get('subCategory') || 'ALL');
+    const [selectedModel, setSelectedModel] = useState<string>(searchParams.get('model') || 'ALL');
+    const [selectedVariant, setSelectedVariant] = useState<string>(searchParams.get('variant') || 'ALL');
     const [skus, setSkus] = useState<SKUPriceRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [lastEditTime, setLastEditTime] = useState<number | null>(null);
-    const [tableSummary, setTableSummary] = useState<{ count: number, value: number }>({ count: 0, value: 0 });
+    const [tableSummary, setTableSummary] = useState<{ count: number; value: number }>({ count: 0, value: 0 });
+    const [isPublishing, setIsPublishing] = useState(false);
+
+    // Sync filters to URL when they change (persist across reloads)
+    useEffect(() => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (selectedStateId) params.set('state', selectedStateId);
+        if (selectedBrand !== 'ALL') params.set('brand', selectedBrand);
+        else params.delete('brand');
+        if (selectedCategory !== 'ALL') params.set('category', selectedCategory);
+        else params.delete('category');
+        if (selectedSubCategory !== 'ALL') params.set('subCategory', selectedSubCategory);
+        else params.delete('subCategory');
+        if (selectedModel !== 'ALL') params.set('model', selectedModel);
+        else params.delete('model');
+        if (selectedVariant !== 'ALL') params.set('variant', selectedVariant);
+        else params.delete('variant');
+        router.replace(`?${params.toString()}`, { scroll: false });
+    }, [selectedStateId, selectedBrand, selectedCategory, selectedSubCategory, selectedModel, selectedVariant]);
 
     // Initial Load - Fetch Rules
     useEffect(() => {
@@ -101,7 +147,7 @@ export default function PricingPage() {
                 displayId: r.display_id,
                 ruleName: r.rule_name,
                 stateCode: r.state_code,
-                vehicleType: r.vehicle_type
+                vehicleType: r.vehicle_type,
             }));
             setStates(mappedRules);
             setSelectedStateId(mappedRules[0].id);
@@ -113,40 +159,48 @@ export default function PricingPage() {
         try {
             const { data: skuData, error: skuError } = await supabase
                 .from('cat_items')
-                .select(`
-                    id, name, slug, specs, price_base, template_id, parent_id, inclusion_type, status,
-                    template:cat_templates(category, name),
+                .select(
+                    `
+                    id, name, slug, specs, price_base, parent_id, inclusion_type, status, position,
                     parent:parent_id (
                         id,
                         name,
                         specs,
+                        position,
                         parent:parent_id (
                             id,
                             name,
                             price_base,
                             specs,
+                            template:cat_templates(category, name),
                             brand:cat_brands(id, name, logo_svg)
                         )
                     )
-                `)
-                .eq('type', 'SKU');
+                `
+                )
+                .eq('type', 'SKU')
+                .order('position', { ascending: true, nullsFirst: false });
 
             if (skuError) throw skuError;
 
-            const activeStateCode = states.find(s => s.id === selectedStateId)?.stateCode || 'MH';
+            const activeStateCode = states.find(s => s.id === selectedStateId)?.stateCode ?? 'MH';
             const [priceRes, offerRes, stockRes] = await Promise.all([
                 supabase
-                    .from('cat_prices')
-                    .select('vehicle_color_id, ex_showroom_price, updated_at, district')
+                    .from('cat_price_state')
+                    .select(
+                        'vehicle_color_id, ex_showroom_price, rto_total, rto, insurance_total, insurance, on_road_price, updated_at, district, published_at, publish_stage'
+                    )
                     .eq('state_code', activeStateCode)
                     .eq('is_active', true)
                     .or('district.is.null,district.eq.ALL'),
-                tenantSlug !== 'aums' ? supabase
-                    .from('id_dealer_pricing_rules')
-                    .select('vehicle_color_id, offer_amount, inclusion_type, is_active')
-                    .eq('state_code', activeStateCode)
-                    .eq('tenant_id', tenantId) : Promise.resolve({ data: [] as any, error: null as any }),
-                Promise.resolve({ data: [] as any, error: null as any })
+                tenantSlug !== 'aums'
+                    ? supabase
+                          .from('cat_price_dealer')
+                          .select('vehicle_color_id, offer_amount, inclusion_type, is_active')
+                          .eq('state_code', activeStateCode)
+                          .eq('tenant_id', tenantId)
+                    : Promise.resolve({ data: [] as any, error: null as any }),
+                Promise.resolve({ data: [] as any, error: null as any }),
             ]);
 
             const { data: priceData, error: priceError } = priceRes;
@@ -158,12 +212,37 @@ export default function PricingPage() {
             const { data: stockData, error: stockError } = stockRes;
             if (stockError) console.error('Stock Fetch Error:', stockError);
 
-            const priceMap = new Map<string, { price: number; district?: string | null }>();
+            const priceMap = new Map<
+                string,
+                {
+                    price: number;
+                    rto: number;
+                    rto_data?: any;
+                    insurance: number;
+                    insurance_data?: any;
+                    onRoad: number;
+                    district?: string | null;
+                    publishedAt?: string;
+                    publishStage?: string;
+                    updatedAt?: string;
+                }
+            >();
             priceData?.forEach((p: any) => {
                 const district = (p.district || '').toString().toUpperCase();
                 const existing = priceMap.get(p.vehicle_color_id);
                 if (!existing || district === 'ALL' || (existing.district || '').toUpperCase() !== 'ALL') {
-                    priceMap.set(p.vehicle_color_id, { price: p.ex_showroom_price, district: p.district });
+                    priceMap.set(p.vehicle_color_id, {
+                        price: p.ex_showroom_price || 0,
+                        rto: p.rto_total || 0,
+                        rto_data: p.rto,
+                        insurance: p.insurance_total || 0,
+                        insurance_data: p.insurance,
+                        onRoad: p.on_road_price || p.ex_showroom_price || 0,
+                        district: p.district,
+                        publishedAt: p.published_at,
+                        publishStage: p.publish_stage || 'DRAFT',
+                        updatedAt: p.updated_at,
+                    });
                 }
             });
 
@@ -186,10 +265,15 @@ export default function PricingPage() {
             brandDeltas?.forEach(d => brandDeltaMap.set(d.brand_id, d.delta_percentage));
 
             const formattedSkus: SKUPriceRow[] = (skuData || []).map((sku: any) => {
-                const skuTemplate = Array.isArray(sku.template) ? sku.template[0] : sku.template;
                 const variant = Array.isArray(sku.parent) ? sku.parent[0] : sku.parent;
                 const family = variant ? (Array.isArray(variant.parent) ? variant.parent[0] : variant.parent) : null;
                 const brand = family ? (Array.isArray(family.brand) ? family.brand[0] : family.brand) : null;
+                // Template is at family (grandparent) level, not sku
+                const familyTemplate = family
+                    ? Array.isArray(family.template)
+                        ? family.template[0]
+                        : family.template
+                    : null;
 
                 const statePrice = priceMap.get(sku.id)?.price;
                 const pricingRule = (offerData || []).find((o: any) => o.vehicle_color_id === sku.id);
@@ -197,23 +281,42 @@ export default function PricingPage() {
                 const stateInclusion = pricingRule?.inclusion_type || sku.inclusion_type || 'OPTIONAL';
                 const localIsActive = activeMap.has(sku.id) ? activeMap.get(sku.id) : false;
 
-                const basePrice = (sku.price_base || family?.price_base || 0);
+                const basePrice = sku.price_base || family?.price_base || 0;
                 const brandDelta = brandDeltaMap.get(brand?.id) || 0;
 
-                const finalPrice = statePrice !== undefined
-                    ? statePrice
-                    : Math.round(Number(basePrice) * (1 + Number(brandDelta) / 100));
+                const priceRecord = priceMap.get(sku.id);
+                const publishedAt = priceRecord?.publishedAt;
+                const updatedAt = priceRecord?.updatedAt;
+                const publishStage = priceRecord?.publishStage || 'DRAFT';
+                const resolvedStatus = sku.status || 'INACTIVE';
+                let displayState: SKUPriceRow['displayState'] = 'Draft';
+                if (tenantSlug !== 'aums') {
+                    displayState = resolvedStatus === 'ACTIVE' && localIsActive ? 'Live' : 'Inactive';
+                } else {
+                    if (resolvedStatus === 'INACTIVE') displayState = 'Inactive';
+                    else if (publishStage === 'PUBLISHED') displayState = 'Published';
+                    else if (publishStage === 'UNDER_REVIEW') displayState = 'In Review';
+                    else displayState = 'Draft';
+                }
+
+                const finalPrice =
+                    statePrice !== undefined
+                        ? statePrice
+                        : Math.round(Number(basePrice) * (1 + Number(brandDelta) / 100));
 
                 const finalInclusionType = stateInclusion as 'MANDATORY' | 'OPTIONAL' | 'BUNDLE';
 
+                // Determine item type from template category
                 let itemType: 'vehicles' | 'accessories' | 'service' = 'vehicles';
-                const tempCat = skuTemplate?.category?.toUpperCase();
+                const tempCat = familyTemplate?.category?.toUpperCase();
 
                 if (tempCat === 'ACCESSORY') itemType = 'accessories';
                 else if (tempCat === 'SERVICE') itemType = 'service';
 
-                const categoryLabel = itemType === 'vehicles' ? 'Vehicle' : (itemType === 'accessories' ? 'Accessory' : 'Service');
-                const subCategoryLabel = skuTemplate?.name || 'General';
+                const categoryLabel =
+                    familyTemplate?.category ||
+                    (itemType === 'vehicles' ? 'VEHICLE' : itemType === 'accessories' ? 'ACCESSORY' : 'SERVICE');
+                const subCategoryLabel = familyTemplate?.name || 'General';
 
                 return {
                     id: sku.id,
@@ -225,7 +328,9 @@ export default function PricingPage() {
                     model: family?.name || sku.name || 'UNKNOWN',
                     modelId: family?.id,
                     variant: variant?.name || '',
-                    color: (sku.specs?.color) || (variant?.name ? sku.name.replace(new RegExp(`^${variant.name}\\s*`, 'i'), '') : sku.name),
+                    color:
+                        sku.specs?.color ||
+                        (variant?.name ? sku.name.replace(new RegExp(`^${variant.name}\\s*`, 'i'), '') : sku.name),
                     engineCc: parseInt(sku.specs?.engine_cc || family?.specs?.engine_cc || '0'),
                     suitableFor: sku.specs?.suitable_for || '',
                     exShowroom: finalPrice,
@@ -239,47 +344,22 @@ export default function PricingPage() {
                     status: sku.status || 'INACTIVE',
                     originalStatus: sku.status || 'INACTIVE',
                     localIsActive: localIsActive,
-                    originalLocalIsActive: localIsActive
+                    originalLocalIsActive: localIsActive,
+                    publishedAt: publishedAt,
+                    updatedAt: updatedAt,
+                    rto: priceRecord?.rto || 0,
+                    rto_data: priceRecord?.rto_data,
+                    insurance: priceRecord?.insurance || 0,
+                    insurance_data: priceRecord?.insurance_data,
+                    onRoad: priceRecord?.onRoad || finalPrice,
+                    publishStage: publishStage,
+                    displayState: displayState,
                 };
             });
 
             formattedSkus.sort((a, b) => a.brand.localeCompare(b.brand) || a.model.localeCompare(b.model));
 
-            // Fetch on-road pricing via RPC for vehicles only
-            const vehicleSkuIds = formattedSkus.filter(s => s.type === 'vehicles').map(s => s.id);
-            if (vehicleSkuIds.length > 0) {
-                try {
-                    const { data: pricingData, error: pricingError } = await supabase.rpc('get_catalog_prices_v1', {
-                        p_vehicle_color_ids: vehicleSkuIds,
-                        p_district_name: '',
-                        p_state_code: activeStateCode,
-                        p_registration_type: 'STATE'
-                    });
-
-                    if (pricingError) {
-                        console.error('RPC Pricing Error:', pricingError);
-                    } else if (pricingData) {
-                        const pricingMap = new Map<string, any>();
-                        pricingData.forEach((row: any) => {
-                            if (row?.vehicle_color_id && row?.pricing) {
-                                pricingMap.set(row.vehicle_color_id, row.pricing);
-                            }
-                        });
-
-                        // Merge pricing into SKUs
-                        formattedSkus.forEach(sku => {
-                            const pricing = pricingMap.get(sku.id);
-                            if (pricing) {
-                                sku.rto = pricing?.rto?.total ?? 0;
-                                sku.insurance = pricing?.insurance?.total ?? 0;
-                                sku.onRoad = pricing?.final_on_road ?? sku.exShowroom;
-                            }
-                        });
-                    }
-                } catch (rpcErr) {
-                    console.error('RPC call failed:', rpcErr);
-                }
-            }
+            // RPC removed - all pricing data now comes from cat_price_state table (Published SOT)
 
             setSkus(formattedSkus);
         } catch (error: any) {
@@ -291,37 +371,37 @@ export default function PricingPage() {
     };
 
     const handleUpdatePrice = (skuId: string, price: number) => {
-        setSkus(prev => prev.map(s => s.id === skuId ? { ...s, exShowroom: price } : s));
+        setSkus(prev => prev.map(s => (s.id === skuId ? { ...s, exShowroom: price } : s)));
         setHasUnsavedChanges(true);
         setLastEditTime(Date.now());
     };
 
     const handleUpdateOffer = (skuId: string, offer: number) => {
-        setSkus(prev => prev.map(s => s.id === skuId ? { ...s, offerAmount: offer } : s));
+        setSkus(prev => prev.map(s => (s.id === skuId ? { ...s, offerAmount: offer } : s)));
         setHasUnsavedChanges(true);
         setLastEditTime(Date.now());
     };
 
     const handleUpdateInclusion = (skuId: string, type: 'MANDATORY' | 'OPTIONAL' | 'BUNDLE') => {
-        setSkus(prev => prev.map(s => s.id === skuId ? { ...s, inclusionType: type } : s));
+        setSkus(prev => prev.map(s => (s.id === skuId ? { ...s, inclusionType: type } : s)));
         setHasUnsavedChanges(true);
         setLastEditTime(Date.now());
     };
 
     const handleUpdateStatus = (skuId: string, status: 'ACTIVE' | 'INACTIVE' | 'DRAFT' | 'RELAUNCH') => {
-        setSkus(prev => prev.map(s => s.id === skuId ? { ...s, status: status } : s));
+        setSkus(prev => prev.map(s => (s.id === skuId ? { ...s, status: status } : s)));
         setHasUnsavedChanges(true);
         setLastEditTime(Date.now());
     };
 
     const handleUpdateLocalStatus = (skuId: string, isActive: boolean) => {
-        setSkus(prev => prev.map(s => s.id === skuId ? { ...s, localIsActive: isActive } : s));
+        setSkus(prev => prev.map(s => (s.id === skuId ? { ...s, localIsActive: isActive } : s)));
         setHasUnsavedChanges(true);
         setLastEditTime(Date.now());
     };
 
     const handleBulkUpdate = (ids: string[], price: number) => {
-        setSkus(prev => prev.map(s => ids.includes(s.id) ? { ...s, exShowroom: price } : s));
+        setSkus(prev => prev.map(s => (ids.includes(s.id) ? { ...s, exShowroom: price } : s)));
         setHasUnsavedChanges(true);
         setLastEditTime(Date.now());
     };
@@ -331,7 +411,6 @@ export default function PricingPage() {
         if (!activeStateCode) return;
 
         const isAums = tenantSlug === 'aums';
-        const updates: Promise<any>[] = [];
 
         if (isAums) {
             const pricePayload = skus.map(s => ({
@@ -340,17 +419,28 @@ export default function PricingPage() {
                 district: 'ALL',
                 ex_showroom_price: s.exShowroom,
                 is_active: true,
-                updated_at: new Date().toISOString()
             }));
 
-            updates.push(Promise.resolve(supabase.rpc('upsert_cat_prices_bypass', { prices: pricePayload })));
-
             const modifiedStatusSkus = skus.filter(s => s.status !== s.originalStatus);
-            if (modifiedStatusSkus.length > 0) {
-                const statusUpdates = modifiedStatusSkus.map(async (sku) => {
-                    return supabase.from('cat_items').update({ status: sku.status }).eq('id', sku.id);
-                });
-                updates.push(...statusUpdates);
+            const statusPayload = modifiedStatusSkus.map(sku => ({
+                id: sku.id,
+                status: sku.status,
+            }));
+
+            const result = await savePrices(pricePayload, statusPayload);
+
+            if (result.error) {
+                alert(`Failed to save changes: ${result.error}`);
+            } else {
+                setHasUnsavedChanges(false);
+                setSkus(prev =>
+                    prev.map(s => ({
+                        ...s,
+                        originalExShowroom: s.exShowroom,
+                        originalOfferAmount: s.offerAmount,
+                        originalStatus: s.status,
+                    }))
+                );
             }
         } else {
             const offerPayload = skus.map(s => ({
@@ -359,54 +449,125 @@ export default function PricingPage() {
                 state_code: activeStateCode,
                 offer_amount: s.offerAmount,
                 inclusion_type: s.inclusionType,
-                is_active: s.localIsActive
+                is_active: s.localIsActive,
             }));
 
-            updates.push(Promise.resolve(supabase.rpc('upsert_dealer_offers', { offers: offerPayload })));
-        }
+            const { error } = await supabase.rpc('upsert_dealer_offers', { offers: offerPayload });
 
-        const results = await Promise.all(updates);
-        const hasErrors = results.some(r => r.error);
-
-        if (hasErrors) {
-            const errorMsg = results.find(r => r.error)?.error.message || 'Unknown error';
-            alert(`Failed to save changes: ${errorMsg}`);
-        } else {
-            setHasUnsavedChanges(false);
-            setSkus(prev => prev.map(s => ({ ...s, originalExShowroom: s.exShowroom, originalOfferAmount: s.offerAmount, originalStatus: s.status })));
+            if (error) {
+                alert(`Failed to save changes: ${error.message}`);
+            } else {
+                setHasUnsavedChanges(false);
+                setSkus(prev =>
+                    prev.map(s => ({
+                        ...s,
+                        originalExShowroom: s.exShowroom,
+                        originalOfferAmount: s.offerAmount,
+                        originalStatus: s.status,
+                    }))
+                );
+            }
         }
     };
 
-    const { uniqueBrands, uniqueCategories, uniqueSubCategories } = useMemo(() => {
+    // AUMS-only: Calculate RTO/Insurance for SELECTED SKUs only
+    const handleCalculate = async (selectedIds: string[]) => {
+        if (tenantSlug !== 'aums') return;
+
+        const activeStateCode = states.find(s => s.id === selectedStateId)?.stateCode;
+        if (!activeStateCode) {
+            alert('Please select a state first');
+            return;
+        }
+
+        // Filter to only selected SKUs with valid ex-showroom prices
+        const vehicleSkuIds = skus.filter(s => selectedIds.includes(s.id) && s.exShowroom > 0).map(s => s.id);
+
+        if (vehicleSkuIds.length === 0) {
+            alert('No valid SKUs selected. Please select SKUs with prices first.');
+            return;
+        }
+
+        setIsPublishing(true);
+        try {
+            const result = await publishPrices(vehicleSkuIds, activeStateCode);
+
+            if (result.success) {
+                const publishedIds = result.results
+                    .filter(r => r.success)
+                    .map(r => r.skuId)
+                    .join(', ');
+                alert(
+                    `Calculated ${result.totalPublished} SKUs. RTO and Insurance values updated.\n\nSKU IDs: ${publishedIds}`
+                );
+                // Refresh data to show updated RTO/Insurance
+                await fetchSKUsAndPrices();
+            } else {
+                alert(`Calculate failed: ${result.errors.join(', ')}`);
+            }
+        } catch (err) {
+            alert(`Calculate error: ${String(err)}`);
+        } finally {
+            setIsPublishing(false);
+        }
+    };
+
+    const { uniqueBrands, uniqueCategories, uniqueSubCategories, uniqueModels, uniqueVariants } = useMemo(() => {
         const bMap = new Set<string>();
         const cMap = new Set<string>();
         const scMap = new Set<string>();
+        const mMap = new Set<string>();
+        const vMap = new Set<string>();
 
         skus.forEach(s => {
             if (s.brand) bMap.add(s.brand);
             if (s.category) cMap.add(s.category);
-            const matchesBrand = (selectedBrand === 'ALL' || s.brand === selectedBrand);
-            const matchesCategory = (selectedCategory === 'ALL' || s.category === selectedCategory);
+            const matchesBrand = selectedBrand === 'ALL' || s.brand === selectedBrand;
+            const matchesCategory = selectedCategory === 'ALL' || s.category === selectedCategory;
             if (matchesBrand && matchesCategory && s.subCategory) {
                 scMap.add(s.subCategory);
+            }
+            const matchesSubCategory = selectedSubCategory === 'ALL' || s.subCategory === selectedSubCategory;
+            if (matchesBrand && matchesCategory && matchesSubCategory && s.model) {
+                mMap.add(s.model);
+            }
+            const matchesModel = selectedModel === 'ALL' || s.model === selectedModel;
+            if (matchesBrand && matchesCategory && matchesSubCategory && matchesModel && s.variant) {
+                vMap.add(s.variant);
             }
         });
 
         return {
             uniqueBrands: Array.from(bMap).sort(),
             uniqueCategories: Array.from(cMap).sort(),
-            uniqueSubCategories: Array.from(scMap).sort()
+            uniqueSubCategories: Array.from(scMap).sort(),
+            uniqueModels: Array.from(mMap).sort(),
+            uniqueVariants: Array.from(vMap).sort(),
         };
-    }, [skus, selectedBrand, selectedCategory]);
+    }, [skus, selectedBrand, selectedCategory, selectedSubCategory, selectedModel]);
+
+    useEffect(() => {
+        if (selectedModel !== 'ALL' && !uniqueModels.includes(selectedModel)) {
+            setSelectedModel('ALL');
+        }
+    }, [uniqueModels, selectedModel]);
+
+    useEffect(() => {
+        if (selectedVariant !== 'ALL' && !uniqueVariants.includes(selectedVariant)) {
+            setSelectedVariant('ALL');
+        }
+    }, [uniqueVariants, selectedVariant]);
 
     const filteredSkus = useMemo(() => {
         return skus.filter(s => {
             const matchesBrand = selectedBrand === 'ALL' || s.brand === selectedBrand;
             const matchesCategory = selectedCategory === 'ALL' || s.category === selectedCategory;
             const matchesSubCategory = selectedSubCategory === 'ALL' || s.subCategory === selectedSubCategory;
-            return matchesBrand && matchesCategory && matchesSubCategory;
+            const matchesModel = selectedModel === 'ALL' || s.model === selectedModel;
+            const matchesVariant = selectedVariant === 'ALL' || s.variant === selectedVariant;
+            return matchesBrand && matchesCategory && matchesSubCategory && matchesModel && matchesVariant;
         });
-    }, [skus, selectedBrand, selectedCategory, selectedSubCategory]);
+    }, [skus, selectedBrand, selectedCategory, selectedSubCategory, selectedModel, selectedVariant]);
 
     const activeRule = states.find(s => s.id === selectedStateId) || null;
 
@@ -414,16 +575,26 @@ export default function PricingPage() {
         const missingPrices = skus.filter(s => s.exShowroom === 0).length;
         const liveSkus = skus.filter(s => s.status === 'ACTIVE').length;
         const draftSkus = skus.filter(s => s.status !== 'ACTIVE').length;
-        const pendingSaves = hasUnsavedChanges ? skus.filter(s => s.exShowroom !== s.originalExShowroom || s.offerAmount !== s.originalOfferAmount || s.inclusionType !== s.originalInclusionType || s.status !== s.originalStatus || s.localIsActive !== s.originalLocalIsActive).length : 0;
+        const pendingSaves = hasUnsavedChanges
+            ? skus.filter(
+                  s =>
+                      s.exShowroom !== s.originalExShowroom ||
+                      s.offerAmount !== s.originalOfferAmount ||
+                      s.inclusionType !== s.originalInclusionType ||
+                      s.status !== s.originalStatus ||
+                      s.localIsActive !== s.originalLocalIsActive
+              ).length
+            : 0;
         const activeRuleObj = states.find(s => s.id === selectedStateId);
 
         // Dynamic sum from Table's current view
         const totalValue = tableSummary.value;
-        const formattedValue = totalValue >= 10000000
-            ? `₹${(totalValue / 10000000).toFixed(2)} Cr`
-            : totalValue >= 100000
-                ? `₹${(totalValue / 100000).toFixed(2)} L`
-                : `₹${totalValue.toLocaleString()}`;
+        const formattedValue =
+            totalValue >= 10000000
+                ? `₹${(totalValue / 10000000).toFixed(2)} Cr`
+                : totalValue >= 100000
+                  ? `₹${(totalValue / 100000).toFixed(2)} L`
+                  : `₹${totalValue.toLocaleString()}`;
 
         return (
             <div className="max-w-[1600px] mx-auto space-y-12 mb-12">
@@ -441,9 +612,13 @@ export default function PricingPage() {
                     </div>
 
                     <div className="flex items-center gap-4 relative z-10">
-                        <div className={`flex items-center gap-2 text-[10px] font-bold px-4 py-2 rounded-lg transition-all duration-300 border ${hasUnsavedChanges ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-200 scale-100' : 'opacity-0 scale-95 border-transparent'}`}>
+                        <div
+                            className={`flex items-center gap-2 text-[10px] font-bold px-4 py-2 rounded-lg transition-all duration-300 border ${hasUnsavedChanges ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-200 scale-100' : 'opacity-0 scale-95 border-transparent'}`}
+                        >
                             <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                            <span className="uppercase tracking-widest font-black text-xs text-left">Unsaved Changes</span>
+                            <span className="uppercase tracking-widest font-black text-xs text-left">
+                                Unsaved Changes
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -459,13 +634,17 @@ export default function PricingPage() {
                             <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
                                 <Package size={20} className="fill-current" />
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Inventory</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                Inventory
+                            </span>
                         </div>
                         <div className="text-left">
                             <div className="text-4xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
                                 {loading ? '-' : tableSummary.count}
                             </div>
-                            <div className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-1">Filtered SKUs</div>
+                            <div className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-1">
+                                Filtered SKUs
+                            </div>
                         </div>
                     </div>
 
@@ -478,13 +657,17 @@ export default function PricingPage() {
                             <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
                                 <TrendingUp size={20} className="fill-current" />
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Market Ready</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                Market Ready
+                            </span>
                         </div>
                         <div className="text-left">
                             <div className="text-4xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
                                 {loading ? '-' : liveSkus}
                             </div>
-                            <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">Active Status</div>
+                            <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">
+                                Active Status
+                            </div>
                         </div>
                     </div>
 
@@ -497,13 +680,17 @@ export default function PricingPage() {
                             <div className="p-2 rounded-xl bg-amber-50 text-amber-600">
                                 <Zap size={20} className="fill-current" />
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Pipeline</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                Pipeline
+                            </span>
                         </div>
                         <div className="text-left">
                             <div className="text-4xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
                                 {loading ? '-' : draftSkus}
                             </div>
-                            <div className="text-[10px] font-bold text-amber-600 uppercase tracking-widest mt-1">Pending Sync</div>
+                            <div className="text-[10px] font-bold text-amber-600 uppercase tracking-widest mt-1">
+                                Pending Sync
+                            </div>
                         </div>
                     </div>
 
@@ -516,13 +703,19 @@ export default function PricingPage() {
                             <div className="p-2 rounded-xl bg-rose-50 text-rose-600">
                                 <Target size={20} />
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Critical Fix</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                Critical Fix
+                            </span>
                         </div>
                         <div className="text-left">
-                            <div className={`text-4xl font-black uppercase italic tracking-tighter ${missingPrices > 0 ? 'text-rose-600' : 'text-slate-900 dark:text-white'}`}>
+                            <div
+                                className={`text-4xl font-black uppercase italic tracking-tighter ${missingPrices > 0 ? 'text-rose-600' : 'text-slate-900 dark:text-white'}`}
+                            >
                                 {loading ? '-' : missingPrices}
                             </div>
-                            <div className="text-[10px] font-bold text-rose-600 uppercase tracking-widest mt-1">Zero Price SKU</div>
+                            <div className="text-[10px] font-bold text-rose-600 uppercase tracking-widest mt-1">
+                                Zero Price SKU
+                            </div>
                         </div>
                     </div>
 
@@ -535,13 +728,17 @@ export default function PricingPage() {
                             <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
                                 <Sparkles size={20} />
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Inventory Value</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                Inventory Value
+                            </span>
                         </div>
                         <div className="text-left">
                             <div className="text-3xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter overflow-hidden text-ellipsis whitespace-nowrap">
                                 {loading ? '-' : formattedValue}
                             </div>
-                            <div className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-1">Sum Ex-Showroom</div>
+                            <div className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-1">
+                                Sum Ex-Showroom
+                            </div>
                         </div>
                     </div>
 
@@ -554,11 +751,13 @@ export default function PricingPage() {
                             <div className="p-2 rounded-xl bg-slate-100 text-slate-500">
                                 <Landmark size={20} />
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Current Market</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                Current Market
+                            </span>
                         </div>
                         <div className="text-left">
                             <div className="text-4xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
-                                {loading ? '-' : (activeRuleObj?.stateCode || '--')}
+                                {loading ? '-' : activeRuleObj?.stateCode || '--'}
                             </div>
                             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 overflow-hidden text-ellipsis whitespace-nowrap">
                                 {activeRuleObj?.ruleName || 'Unknown Region'}
@@ -580,7 +779,9 @@ export default function PricingPage() {
                         <div className="flex h-[600px] items-center justify-center">
                             <div className="flex flex-col items-center gap-4 text-left">
                                 <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-none">Loading Ledger...</span>
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-none">
+                                    Loading Ledger...
+                                </span>
                             </div>
                         </div>
                     ) : (
@@ -595,6 +796,8 @@ export default function PricingPage() {
                             onUpdateLocalStatus={handleUpdateLocalStatus}
                             onBulkUpdate={handleBulkUpdate}
                             onSaveAll={handleSaveAll}
+                            onCalculate={handleCalculate}
+                            isCalculating={isPublishing}
                             states={states}
                             selectedStateId={selectedStateId}
                             onStateChange={setSelectedStateId}
@@ -607,6 +810,12 @@ export default function PricingPage() {
                             subCategories={uniqueSubCategories}
                             selectedSubCategory={selectedSubCategory}
                             onSubCategoryChange={setSelectedSubCategory}
+                            models={uniqueModels}
+                            selectedModel={selectedModel}
+                            onModelChange={setSelectedModel}
+                            variants={uniqueVariants}
+                            selectedVariant={selectedVariant}
+                            onVariantChange={setSelectedVariant}
                             hasUnsavedChanges={hasUnsavedChanges}
                             isSaving={false}
                             onSummaryChange={setTableSummary}

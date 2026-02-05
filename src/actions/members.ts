@@ -599,11 +599,11 @@ export async function addMemberEvent(
     if (error) throw error;
 }
 
+import { getAuthUser } from '@/lib/auth/resolver';
+
 export async function getSelfMemberProfile() {
+    const user = await getAuthUser();
     const supabase = await createClient();
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
     if (!user) return null;
 
     const { data: member } = await supabase.from('id_members').select('*').eq('id', user.id).maybeSingle();
@@ -629,4 +629,56 @@ export async function getSelfMemberProfile() {
         .order('created_at', { ascending: false });
 
     return { member, contacts: contacts || [], addresses: addresses || [], assets: assets || [] };
+}
+
+export async function getSelfMemberLocation() {
+    const user = await getAuthUser();
+    const supabase = await createClient();
+    if (!user) return null;
+
+    const { data: member } = await supabase
+        .from('id_members')
+        .select('id, pincode, district, taluka, state, latitude, longitude, tenant_id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+    return member || null;
+}
+
+export async function updateSelfMemberLocation(location: {
+    pincode?: string | null;
+    district?: string | null;
+    taluka?: string | null;
+    state?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+}) {
+    const user = await getAuthUser();
+    const supabase = await createClient();
+    if (!user) return { success: false, error: 'UNAUTHENTICATED' };
+
+    const updates: Record<string, unknown> = {};
+    if (location.pincode) updates.pincode = location.pincode;
+    if (location.district) updates.district = location.district;
+    if (location.taluka) updates.taluka = location.taluka;
+    if (location.state) updates.state = location.state;
+    if (typeof location.latitude === 'number') updates.latitude = location.latitude;
+    if (typeof location.longitude === 'number') updates.longitude = location.longitude;
+
+    if (Object.keys(updates).length === 0) {
+        return { success: false, error: 'NO_UPDATES' };
+    }
+
+    const { data, error } = await supabase
+        .from('id_members')
+        .update(updates)
+        .eq('id', user.id)
+        .select('id, pincode, district, taluka, state, latitude, longitude')
+        .maybeSingle();
+
+    if (error) {
+        return { success: false, error: error.message };
+    }
+
+    return { success: true, data };
 }

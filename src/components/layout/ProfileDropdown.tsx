@@ -25,18 +25,25 @@ import {
     Linkedin,
     ChevronRight,
     Camera,
+    Zap,
+    Power,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { Logo } from '@/components/brand/Logo';
+import { useDealerSession } from '@/hooks/useDealerSession';
 
 interface Membership {
     role: string;
+    tenant_id?: string;
     tenants: {
+        id?: string;
         slug: string;
         name: string;
         type: string;
+        studio_id?: string;
+        district_name?: string;
     };
 }
 
@@ -62,6 +69,17 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
     } | null>(null);
     const [uploading, setUploading] = useState(false);
 
+    // Dealer Session Hook
+    const {
+        isTeamMode,
+        activeTenantId,
+        studioId: activeStudioId,
+        tenantName: activeTenantName,
+        activateDealer,
+        switchToIndividual,
+        isLoaded: isSessionLoaded,
+    } = useDealerSession();
+
     const fileInputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLButtonElement>(null); // Fixed: Ref is attached to a button
 
@@ -71,19 +89,31 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
         const supabase = createClient();
 
         const loadMemberships = async (userId: string) => {
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from('id_team')
-                .select('role, id_tenants!inner(slug, name, type)')
+                .select('role, tenant_id, id_tenants!inner(id, slug, name, type, studio_id)')
                 .eq('user_id', userId)
                 .eq('status', 'ACTIVE');
+
+            if (error) {
+                console.error('Error loading memberships:', error);
+                return;
+            }
 
             if (data) {
                 setMemberships(
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    data.map((m: any) => ({
-                        role: m.role,
-                        tenants: Array.isArray(m.id_tenants) ? m.id_tenants[0] : m.id_tenants,
-                    }))
+                    data.map((m: any) => {
+                        const tenant = Array.isArray(m.id_tenants) ? m.id_tenants[0] : m.id_tenants;
+                        return {
+                            role: m.role,
+                            tenant_id: m.tenant_id,
+                            tenants: {
+                                ...tenant,
+                                district_name: null, // Will be resolved separately if needed
+                            },
+                        };
+                    })
                 );
             }
         };
@@ -305,8 +335,13 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                 ref={dropdownRef}
                 className={`h-10 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 flex items-center gap-3 group z-[101] ${triggerClass}`}
             >
-                <div className={`w-8 h-8 rounded-full overflow-hidden bg-brand-primary flex items-center justify-center text-black font-bold text-xs ring-2 transition-all ${scrolled || theme === 'dark' ? 'ring-white/20 group-hover:ring-transparent' : 'ring-slate-100 group-hover:ring-brand-primary/20'
-                    }`}>
+                <div
+                    className={`w-8 h-8 rounded-full overflow-hidden bg-brand-primary flex items-center justify-center text-black font-bold text-xs ring-2 transition-all ${
+                        scrolled || theme === 'dark'
+                            ? 'ring-white/20 group-hover:ring-transparent'
+                            : 'ring-slate-100 group-hover:ring-brand-primary/20'
+                    }`}
+                >
                     {user.user_metadata?.avatar_url ? (
                         <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full object-cover" />
                     ) : (
@@ -314,10 +349,17 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                     )}
                 </div>
                 <div className="flex items-center gap-1.5 leading-none">
-                    <span className="text-[11px] font-black uppercase tracking-widest group-hover:opacity-100 transition-opacity">HI,</span>
+                    <span className="text-[11px] font-black uppercase tracking-widest group-hover:opacity-100 transition-opacity">
+                        HI,
+                    </span>
                     <span className="text-[11px] font-black uppercase tracking-widest whitespace-nowrap max-w-[150px] truncate">
                         {displayName}
                     </span>
+                    {isTeamMode && activeStudioId && (
+                        <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-500 text-white text-[8px] font-black uppercase tracking-wider">
+                            ⚡ {activeStudioId}
+                        </span>
+                    )}
                 </div>
             </button>
 
@@ -441,8 +483,8 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                                                             {location.stateCode
                                                                 ? `(${location.stateCode})`
                                                                 : location.state
-                                                                    ? `(${location.state})`
-                                                                    : ''}
+                                                                  ? `(${location.state})`
+                                                                  : ''}
                                                         </div>
                                                     )}
                                                 </div>
@@ -452,20 +494,22 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                                             <div className="flex p-1 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/5 mx-1">
                                                 <button
                                                     onClick={() => setActiveTab('account')}
-                                                    className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${activeTab === 'account'
-                                                        ? 'bg-white dark:bg-brand-primary text-black shadow-md shadow-black/5 dark:shadow-none'
-                                                        : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-white/50 dark:hover:bg-white/5'
-                                                        }`}
+                                                    className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
+                                                        activeTab === 'account'
+                                                            ? 'bg-white dark:bg-brand-primary text-black shadow-md shadow-black/5 dark:shadow-none'
+                                                            : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-white/50 dark:hover:bg-white/5'
+                                                    }`}
                                                 >
                                                     <UserIcon size={12} strokeWidth={3} />
                                                     The O' Circle
                                                 </button>
                                                 <button
                                                     onClick={() => setActiveTab('workspace')}
-                                                    className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${activeTab === 'workspace'
-                                                        ? 'bg-white dark:bg-brand-primary text-black shadow-md shadow-black/5 dark:shadow-none'
-                                                        : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-white/50 dark:hover:bg-white/5'
-                                                        }`}
+                                                    className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
+                                                        activeTab === 'workspace'
+                                                            ? 'bg-white dark:bg-brand-primary text-black shadow-md shadow-black/5 dark:shadow-none'
+                                                            : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-white/50 dark:hover:bg-white/5'
+                                                    }`}
                                                 >
                                                     <Building2 size={12} strokeWidth={3} />
                                                     My Workspace
@@ -549,7 +593,10 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                                                     {memberships.length === 0 ? (
                                                         <div className="p-8 text-center border-2 border-dashed border-slate-100 dark:border-white/5 rounded-2xl">
                                                             <div className="w-10 h-10 rounded-full bg-slate-50 dark:bg-white/5 mx-auto flex items-center justify-center mb-3">
-                                                                <Building2 className="text-slate-300 dark:text-slate-600" size={18} />
+                                                                <Building2
+                                                                    className="text-slate-300 dark:text-slate-600"
+                                                                    size={18}
+                                                                />
                                                             </div>
                                                             <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                                                                 No Workspaces Found
@@ -557,42 +604,123 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                                                         </div>
                                                     ) : (
                                                         <div className="space-y-1.5">
-                                                            {memberships.map(m => (
-                                                                <a
-                                                                    key={m.tenants.slug}
-                                                                    href={`/app/${m.tenants.slug}/dashboard`}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 hover:border-brand-primary/50 transition-all group hover:shadow-md hover:shadow-brand-primary/5 relative overflow-hidden"
-                                                                >
-                                                                    <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-black border border-slate-100 dark:border-white/10 flex items-center justify-center text-slate-400 group-hover:text-brand-primary group-hover:scale-105 transition-all shrink-0">
-                                                                        {getTenantIcon(m.tenants.type)}
-                                                                    </div>
-                                                                    <div className="flex-1 min-w-0">
-                                                                        <div className="flex flex-col">
-                                                                            <div className="flex items-center justify-between">
+                                                            {/* Sort: Dealers first (alphabetically), then others (alphabetically) */}
+                                                            {[...memberships]
+                                                                .sort((a, b) => {
+                                                                    const aIsDealer = a.tenants.type === 'DEALER';
+                                                                    const bIsDealer = b.tenants.type === 'DEALER';
+                                                                    if (aIsDealer && !bIsDealer) return -1;
+                                                                    if (!aIsDealer && bIsDealer) return 1;
+                                                                    return a.tenants.name.localeCompare(b.tenants.name);
+                                                                })
+                                                                .map(m => {
+                                                                    const isDealer = m.tenants.type === 'DEALER';
+                                                                    const isActive =
+                                                                        isTeamMode && activeTenantId === m.tenant_id;
+
+                                                                    return (
+                                                                        <div
+                                                                            key={m.tenants.slug}
+                                                                            className={`flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-white/[0.03] border transition-all group hover:shadow-md relative overflow-hidden ${
+                                                                                isActive
+                                                                                    ? 'border-emerald-500/50 bg-emerald-50/50 dark:bg-emerald-500/10'
+                                                                                    : 'border-slate-100 dark:border-white/5'
+                                                                            }`}
+                                                                        >
+                                                                            {/* Tenant Icon */}
+                                                                            <div
+                                                                                className={`w-10 h-10 rounded-xl bg-slate-50 dark:bg-black border border-slate-100 dark:border-white/10 flex items-center justify-center shrink-0 ${
+                                                                                    isActive
+                                                                                        ? 'text-emerald-500'
+                                                                                        : 'text-slate-400'
+                                                                                }`}
+                                                                            >
+                                                                                {getTenantIcon(m.tenants.type)}
+                                                                            </div>
+
+                                                                            {/* Info */}
+                                                                            <div className="flex-1 min-w-0">
                                                                                 <h5 className="font-black text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
                                                                                     {m.tenants.name}
+                                                                                    {isDealer &&
+                                                                                        m.tenants.studio_id && (
+                                                                                            <span className="ml-1 text-brand-primary">
+                                                                                                ({m.tenants.studio_id})
+                                                                                            </span>
+                                                                                        )}
                                                                                 </h5>
+                                                                                <div className="flex items-center gap-2 mt-0.5">
+                                                                                    <span className="px-1.5 py-px rounded bg-slate-100 dark:bg-white/10 text-[7px] font-bold text-slate-500 uppercase tracking-wider">
+                                                                                        {m.tenants.type.replace(
+                                                                                            '_',
+                                                                                            ' '
+                                                                                        )}
+                                                                                    </span>
+                                                                                    <span className="text-[8px] font-bold text-slate-300">
+                                                                                        •
+                                                                                    </span>
+                                                                                    <span className="text-[8px] font-black text-brand-primary uppercase tracking-widest">
+                                                                                        {getRoleLabel(m.role)}
+                                                                                    </span>
+                                                                                </div>
                                                                             </div>
-                                                                            <div className="flex items-center gap-2 mt-0.5">
-                                                                                <span className="px-1.5 py-px rounded bg-slate-100 dark:bg-white/10 text-[7px] font-bold text-slate-500 uppercase tracking-wider">
-                                                                                    {m.tenants.type.replace('_', ' ')}
-                                                                                </span>
-                                                                                <span className="text-[8px] font-bold text-slate-300">
-                                                                                    •
-                                                                                </span>
-                                                                                <span className="text-[8px] font-black text-brand-primary uppercase tracking-widest flex items-center gap-1">
-                                                                                    {getRoleLabel(m.role)}
-                                                                                </span>
+
+                                                                            {/* Simple Pill Buttons */}
+                                                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                                                {/* Green/Red Toggle for Dealers */}
+                                                                                {isDealer && (
+                                                                                    <button
+                                                                                        onClick={e => {
+                                                                                            e.preventDefault();
+                                                                                            e.stopPropagation();
+                                                                                            if (isActive) {
+                                                                                                switchToIndividual();
+                                                                                            } else {
+                                                                                                activateDealer({
+                                                                                                    tenantId:
+                                                                                                        m.tenant_id!,
+                                                                                                    studioId:
+                                                                                                        m.tenants
+                                                                                                            .studio_id ||
+                                                                                                        null,
+                                                                                                    district:
+                                                                                                        m.tenants
+                                                                                                            .district_name ||
+                                                                                                        null,
+                                                                                                    tenantName:
+                                                                                                        m.tenants.name,
+                                                                                                });
+                                                                                            }
+                                                                                        }}
+                                                                                        className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-wider transition-all ${
+                                                                                            isActive
+                                                                                                ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                                                                                                : 'bg-rose-500 hover:bg-rose-600 text-white'
+                                                                                        }`}
+                                                                                        title={
+                                                                                            isActive
+                                                                                                ? 'Click to Deactivate'
+                                                                                                : 'Click to Activate'
+                                                                                        }
+                                                                                    >
+                                                                                        {isActive
+                                                                                            ? 'Active'
+                                                                                            : 'Inactive'}
+                                                                                    </button>
+                                                                                )}
+
+                                                                                {/* Dashboard Pill */}
+                                                                                <a
+                                                                                    href={`/app/${m.tenants.slug}/dashboard`}
+                                                                                    className="px-2.5 py-1 rounded-full bg-blue-500 hover:bg-blue-600 text-white text-[8px] font-black uppercase tracking-wider transition-all"
+                                                                                    title="Go to Dashboard"
+                                                                                >
+                                                                                    Dashboard
+                                                                                </a>
                                                                             </div>
                                                                         </div>
-                                                                    </div>
-                                                                    <div className="w-8 h-8 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-300 group-hover:text-brand-primary group-hover:bg-brand-primary/10 transition-colors">
-                                                                        <ChevronRight size={12} />
-                                                                    </div>
-                                                                </a>
-                                                            ))}
+                                                                    );
+                                                                })}
                                                         </div>
                                                     )}
                                                 </motion.div>
@@ -637,10 +765,9 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                                         </div>
                                     </div>
                                 </motion.div>
-                            </div >
-                        )
-                        }
-                    </AnimatePresence >,
+                            </div>
+                        )}
+                    </AnimatePresence>,
                     document.body
                 )}
         </>

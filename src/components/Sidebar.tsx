@@ -11,6 +11,7 @@ import { Pin, PinOff, ChevronRight } from 'lucide-react';
 import { useTheme } from '@/components/providers/ThemeProvider';
 import { Logo } from '@/components/brand/Logo';
 import { can } from '@/lib/auth/rbac';
+import { SystemDebugger } from '@/components/debug/SystemDebugger';
 
 interface SidebarProps {
     role: UserRole;
@@ -170,9 +171,10 @@ export default function Sidebar({
                                                 href={href}
                                                 className={`
                                                     relative flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-300
-                                                    ${isActive
-                                                        ? 'text-brand-primary'
-                                                        : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
+                                                    ${
+                                                        isActive
+                                                            ? 'text-brand-primary'
+                                                            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
                                                     }
                                                 `}
                                             >
@@ -287,15 +289,17 @@ export default function Sidebar({
                                             if (shouldPrefix) {
                                                 href = `/app/${tenantSlug}${href}`;
                                             }
+                                            const isActive = pathname === href;
                                             return (
                                                 <Link
                                                     key={item.href}
                                                     href={href}
                                                     onClick={onMobileClose}
-                                                    className={`flex items-center gap-3 p-3 rounded-xl text-sm font-extrabold transition-all ${isActive
+                                                    className={`flex items-center gap-3 p-3 rounded-xl text-sm font-extrabold transition-all ${
+                                                        isActive
                                                             ? 'bg-brand-primary text-slate-900 shadow-lg shadow-brand-primary/20'
                                                             : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5'
-                                                        }`}
+                                                    }`}
                                                 >
                                                     {item.icon && <item.icon size={20} />}
                                                     {item.title}
@@ -309,6 +313,7 @@ export default function Sidebar({
                     </div>
                 </div>
             )}
+            <SystemDebugger />
         </>
     );
 }

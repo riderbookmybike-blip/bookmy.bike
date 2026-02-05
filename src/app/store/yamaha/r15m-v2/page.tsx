@@ -14,8 +14,8 @@ export default function R15MV2Page() {
     const { scrollYProgress } = useScroll({ target: containerRef });
 
     // Parallax effects
-    const heroY = useTransform(scrollYProgress, [0, 0.2], ["0%", "50%"]);
-    const textY = useTransform(scrollYProgress, [0, 0.2], ["0%", "100%"]);
+    const heroY = useTransform(scrollYProgress, [0, 0.2], ['0%', '50%']);
+    const textY = useTransform(scrollYProgress, [0, 0.2], ['0%', '100%']);
     const opacityFade = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
 
     // Features reveal
@@ -24,14 +24,16 @@ export default function R15MV2Page() {
 
     return (
         <div ref={containerRef} className="bg-[#0b0d10] text-white selection:bg-blue-600 selection:text-white">
-
             {/* ════════════ FIXED HEADER ════════════ */}
             <motion.header
                 initial={{ y: -100 }}
                 animate={{ y: 0 }}
                 className="fixed top-0 left-0 right-0 z-50 px-6 py-6 flex items-center justify-between mix-blend-difference"
             >
-                <Link href="/store/catalog" className="flex items-center gap-2 text-white/60 hover:text-white transition-colors group">
+                <Link
+                    href="/store/catalog"
+                    className="flex items-center gap-2 text-white/60 hover:text-white transition-colors group"
+                >
                     <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
                     <span className="text-xs font-bold uppercase tracking-widest">Back to Garage</span>
                 </Link>
@@ -41,7 +43,6 @@ export default function R15MV2Page() {
                 </button>
             </motion.header>
 
-
             {/* ════════════ HERO SECTION ════════════ */}
             <section className="relative h-screen w-full overflow-hidden flex items-center justify-center">
                 {/* Background Text Layer */}
@@ -49,16 +50,11 @@ export default function R15MV2Page() {
                     style={{ y: textY, opacity: opacityFade }}
                     className="absolute inset-0 flex items-center justify-center select-none"
                 >
-                    <h1 className="text-[20vw] font-black italic tracking-tighter text-[#1a1a1a] leading-none">
-                        R15M
-                    </h1>
+                    <h1 className="text-[20vw] font-black italic tracking-tighter text-[#1a1a1a] leading-none">R15M</h1>
                 </motion.div>
 
                 {/* Main Image Layer */}
-                <motion.div
-                    style={{ y: heroY }}
-                    className="relative z-10 w-full max-w-[90vw] md:max-w-[70vw]"
-                >
+                <motion.div style={{ y: heroY }} className="relative z-10 w-full max-w-[90vw] md:max-w-[70vw]">
                     <img
                         src="/images/products/yamaha-r15m-hero-v2.jpg"
                         alt="Yamaha R15M"
@@ -82,8 +78,7 @@ export default function R15MV2Page() {
                         We R Racing <br /> Perfection.
                     </h2>
                     <p className="text-white/60 text-sm leading-relaxed">
-                        Born from the YZF-R1. The R15M isn't just a bike.
-                        It's a statement of dominance.
+                        Born from the YZF-R1. The R15M isn't just a bike. It's a statement of dominance.
                     </p>
                 </motion.div>
 
@@ -99,18 +94,19 @@ export default function R15MV2Page() {
                 </motion.div>
             </section>
 
-
             {/* ════════════ STATS STRIP ════════════ */}
             <section className="py-20 border-y border-white/5 bg-[#0f1115]">
-                <div className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-12">
+                <div className="page-container grid grid-cols-2 md:grid-cols-4 gap-12">
                     {[
-                        { label: "Displacement", value: "155", unit: "cc" },
-                        { label: "Max Power", value: "18.4", unit: "PS" },
-                        { label: "Top Speed", value: "140", unit: "km/h" },
-                        { label: "Technology", value: "VVA", unit: "Active" }
+                        { label: 'Displacement', value: '155', unit: 'cc' },
+                        { label: 'Max Power', value: '18.4', unit: 'PS' },
+                        { label: 'Top Speed', value: '140', unit: 'km/h' },
+                        { label: 'Technology', value: 'VVA', unit: 'Active' },
                     ].map((stat, i) => (
                         <div key={i} className="text-center md:text-left">
-                            <p className="text-xs font-bold uppercase tracking-widest text-white/40 mb-2">{stat.label}</p>
+                            <p className="text-xs font-bold uppercase tracking-widest text-white/40 mb-2">
+                                {stat.label}
+                            </p>
                             <div className="flex items-baseline justify-center md:justify-start gap-1">
                                 <span className="text-4xl md:text-5xl font-black italic">{stat.value}</span>
                                 <span className="text-xl text-blue-500 font-bold">{stat.unit}</span>
@@ -120,10 +116,9 @@ export default function R15MV2Page() {
                 </div>
             </section>
 
-
             {/* ════════════ FEATURE: ENGINE ════════════ */}
             <section className="min-h-screen flex items-center py-20 relative overflow-hidden">
-                <div className="max-w-7xl mx-auto px-6 w-full grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+                <div className="page-container grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
                     <div className="relative z-10 order-2 md:order-1">
                         <motion.div style={{ y: feature1Y }} className="space-y-8">
                             <div className="w-16 h-16 bg-blue-600/10 rounded-2xl flex items-center justify-center text-blue-500 mb-6">
@@ -131,12 +126,13 @@ export default function R15MV2Page() {
                             </div>
                             <h3 className="text-4xl md:text-6xl font-black italic tracking-tighter">
                                 155cc LC4V <br />
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-white">SOHC Engine.</span>
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-white">
+                                    SOHC Engine.
+                                </span>
                             </h3>
                             <p className="text-xl text-white/50 leading-relaxed max-w-lg">
-                                Liquid-cooled, 4-stroke, SOHC, 4-value engine.
-                                Featuring Variable Valve Actuation (VVA) that kicks in at 7,400 RPM
-                                for top-end fury.
+                                Liquid-cooled, 4-stroke, SOHC, 4-value engine. Featuring Variable Valve Actuation (VVA)
+                                that kicks in at 7,400 RPM for top-end fury.
                             </p>
                             <div className="grid grid-cols-2 gap-6 pt-8">
                                 <div className="p-4 border border-white/10 rounded-xl bg-white/5">
@@ -164,49 +160,56 @@ export default function R15MV2Page() {
                 </div>
             </section>
 
-
             {/* ════════════ TECH GRID ════════════ */}
             <section className="py-32 bg-[#0f1115] relative">
-                <div className="max-w-7xl mx-auto px-6">
+                <div className="page-container">
                     <div className="mb-20">
-                        <span className="text-blue-500 font-bold tracking-widest text-sm uppercase">Smart Technology</span>
-                        <h2 className="text-4xl md:text-5xl font-bold mt-4">Born on the Track. <br />Built for the Road.</h2>
+                        <span className="text-blue-500 font-bold tracking-widest text-sm uppercase">
+                            Smart Technology
+                        </span>
+                        <h2 className="text-4xl md:text-5xl font-bold mt-4">
+                            Born on the Track. <br />
+                            Built for the Road.
+                        </h2>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {[
                             {
                                 icon: <Wind size={24} />,
-                                title: "Quick Shifter",
-                                desc: "Clutchless upshifts for seamless acceleration. Keep the throttle pinned."
+                                title: 'Quick Shifter',
+                                desc: 'Clutchless upshifts for seamless acceleration. Keep the throttle pinned.',
                             },
                             {
                                 icon: <Disc size={24} />,
-                                title: "Traction Control",
-                                desc: "Dedicated electronic system to reduce rear wheel spin in all conditions."
+                                title: 'Traction Control',
+                                desc: 'Dedicated electronic system to reduce rear wheel spin in all conditions.',
                             },
                             {
                                 icon: <Gauge size={24} />,
-                                title: "Y-Connect",
-                                desc: "Bluetooth connectivity. Call alerts, SMS, battery status, and breakdown alerts."
+                                title: 'Y-Connect',
+                                desc: 'Bluetooth connectivity. Call alerts, SMS, battery status, and breakdown alerts.',
                             },
                             {
                                 icon: <Trophy size={24} />,
-                                title: "Assist & Slipper Clutch",
-                                desc: "Lighter clutch pull and smoother downshifts during aggressive braking."
+                                title: 'Assist & Slipper Clutch',
+                                desc: 'Lighter clutch pull and smoother downshifts during aggressive braking.',
                             },
                             {
                                 icon: <Zap size={24} />,
-                                title: "Class D Headlight",
-                                desc: "Bi-functional LED headlight unit for superior night visibility."
+                                title: 'Class D Headlight',
+                                desc: 'Bi-functional LED headlight unit for superior night visibility.',
                             },
                             {
                                 icon: <Shield size={24} />,
-                                title: "Dual Channel ABS",
-                                desc: "Superior braking control with 282mm front and 220mm rear disc brakes."
-                            }
+                                title: 'Dual Channel ABS',
+                                desc: 'Superior braking control with 282mm front and 220mm rear disc brakes.',
+                            },
                         ].map((feature, i) => (
-                            <div key={i} className="group p-8 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-blue-500/30 transition-all duration-300">
+                            <div
+                                key={i}
+                                className="group p-8 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-blue-500/30 transition-all duration-300"
+                            >
                                 <div className="w-12 h-12 rounded-full bg-[#0b0d10] flex items-center justify-center text-white mb-6 group-hover:scale-110 group-hover:bg-blue-600 transition-all">
                                     {feature.icon}
                                 </div>
@@ -219,7 +222,6 @@ export default function R15MV2Page() {
                     </div>
                 </div>
             </section>
-
 
             {/* ════════════ BUYING CTA ════════════ */}
             <section className="h-[80vh] relative flex items-center justify-center overflow-hidden">
@@ -244,13 +246,12 @@ export default function R15MV2Page() {
                             Check EMI
                             <ArrowRight size={18} />
                         </button>
-                            <button className="px-10 py-5 bg-white dark:bg-white text-black hover:bg-gray-200 font-bold uppercase tracking-widest rounded-full transition-all hover:scale-105">
-                                Book Test Ride
-                            </button>
+                        <button className="px-10 py-5 bg-white dark:bg-white text-black hover:bg-gray-200 font-bold uppercase tracking-widest rounded-full transition-all hover:scale-105">
+                            Book Test Ride
+                        </button>
                     </div>
                 </div>
             </section>
-
         </div>
     );
 }

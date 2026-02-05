@@ -7,8 +7,19 @@ export async function proxy(request: NextRequest) {
     const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
     const isLocalhost = host.includes('localhost') || host.startsWith('127.') || host.startsWith('0.0.0.0');
     const cookieDomain = !isLocalhost ? `.${rootDomain}` : undefined;
+    const userAgent = request.headers.get('user-agent') || '';
 
-    // A. PUBLIC/STATIC ASSETS -> PASS
+    // A. BOT PROTECTION FOR API
+    const IS_BOT_REGEX =
+        /bot|spider|crawl|slurp|adsbot|mediapartners-google|apis-google|adsbot-google|google-polaris|bingpreview|bingbot|baiduspider|yandexbot|duckduckbot|rogerbot|exabot|facebot|facebookexternalhit|ia_archiver/i;
+    if (pathname.startsWith('/api') && IS_BOT_REGEX.test(userAgent)) {
+        return new NextResponse(JSON.stringify({ error: 'Bots not allowed on API' }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    }
+
+    // B. PUBLIC/STATIC ASSETS -> PASS
     if (
         pathname.startsWith('/_next') ||
         pathname.startsWith('/api/public') ||
@@ -68,9 +79,7 @@ export async function proxy(request: NextRequest) {
             .maybeSingle();
 
         const legacyTenant = legacyMembership?.id_tenants as { slug: string } | { slug: string }[] | null;
-        const legacySlug = Array.isArray(legacyTenant)
-            ? legacyTenant[0]?.slug
-            : legacyTenant?.slug;
+        const legacySlug = Array.isArray(legacyTenant) ? legacyTenant[0]?.slug : legacyTenant?.slug;
         if (legacySlug) {
             return NextResponse.redirect(new URL(`/app/${legacySlug}/dashboard`, request.url));
         }
@@ -151,7 +160,6 @@ export async function proxy(request: NextRequest) {
         }
         return response;
     }
-
 
     // Dynamic Partner Check
     const { data: tenantMembership } = await supabase

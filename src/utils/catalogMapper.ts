@@ -55,6 +55,14 @@ export interface CatalogItemDB {
             specs?: any;
             prices?: {
                 ex_showroom_price: number;
+                rto_total?: number;
+                insurance_total?: number;
+                rto?: any; // New JSON SOT
+                insurance?: any; // New JSON SOT
+                rto_breakdown?: any;
+                insurance_breakdown?: any;
+                on_road_price?: number;
+                published_at?: string;
                 state_code: string;
                 district?: string;
                 latitude?: number;
@@ -126,6 +134,8 @@ export function mapCatalogItems(
             // Extract dealer/studio info from best offer match
             let studioName: string | undefined = undefined;
             let dealerId: string | undefined = undefined;
+            let studioId: string | undefined = undefined;
+            let dealerDistrict: string | undefined = undefined;
             if (offers && Array.isArray(offers)) {
                 const skuIds = allSkus.map((s: any) => s.id);
                 const dealerMatch = offers
@@ -134,6 +144,8 @@ export function mapCatalogItems(
                 if (dealerMatch) {
                     studioName = dealerMatch.dealer_name || undefined;
                     dealerId = dealerMatch.dealer_id || undefined;
+                    studioId = dealerMatch.studio_id || undefined;
+                    dealerDistrict = dealerMatch.district || dealerMatch.dealer_location || undefined;
                 }
             }
 
@@ -159,10 +171,13 @@ export function mapCatalogItems(
                 rating: 4.5,
 
                 price: (() => {
-                    const skuPrices = allSkus.flatMap((sku: any) => sku.prices || []);
+                    const allSkuPrices = allSkus.flatMap((sku: any) => sku.prices || []);
+                    const skuPrices = allSkuPrices.filter((p: any) => !p.district || p.district === 'ALL');
+                    const effectivePrices = skuPrices.length > 0 ? skuPrices : allSkuPrices;
                     let activePriceObj = null;
                     let pricingSource = '';
                     let dealerLocation: string | undefined = undefined;
+                    let dealerStudioId: string | undefined = studioId;
                     let isEstimate = false;
 
                     // 1. Find Best Offer from RPC results
@@ -183,19 +198,20 @@ export function mapCatalogItems(
                             } else {
                                 bundlePriceAmount = bundleValueAmount;
                             }
-                            dealerLocation = match.dealer_location || undefined;
+                            dealerLocation = match.district || match.dealer_location || dealerDistrict || undefined;
+                            dealerStudioId = match.studio_id || dealerStudioId;
                         }
                     }
 
                     if (dealerLocation && !pricingSource) {
-                        pricingSource = dealerLocation;
+                        pricingSource = dealerStudioId ? `${dealerLocation} • ${dealerStudioId}` : dealerLocation;
                     }
 
-                    // 2. Find Location/Distance match from cat_prices
-                    if (skuPrices.length > 0) {
+                    // 2. Find Location/Distance match from cat_price_state
+                    if (effectivePrices.length > 0) {
                         // A. Exact District/Point Match
                         if (userLat && userLng) {
-                            const withDistance = skuPrices.map((p: any) => {
+                            const withDistance = effectivePrices.map((p: any) => {
                                 if (!p.latitude || !p.longitude) return { ...p, distance: 999999 };
                                 const dist = Math.sqrt(
                                     Math.pow(p.latitude - userLat, 2) + Math.pow(p.longitude - userLng, 2)
@@ -208,21 +224,21 @@ export function mapCatalogItems(
 
                         // A.5 District Name Match
                         if (!activePriceObj && userDistrict) {
-                            activePriceObj = skuPrices.find(
+                            activePriceObj = effectivePrices.find(
                                 (p: any) => p.district?.toLowerCase().trim() === userDistrict?.toLowerCase().trim()
                             );
                         }
 
                         // B. State Match (Fallback)
                         if (!activePriceObj) {
-                            activePriceObj = skuPrices.find((p: any) => p.state_code === stateCode);
+                            activePriceObj = effectivePrices.find((p: any) => p.state_code === stateCode);
                         }
 
                         // C. Lowest Price (Hard Fallback)
                         if (!activePriceObj) {
-                            activePriceObj = skuPrices.reduce((min: any, curr: any) => {
+                            activePriceObj = effectivePrices.reduce((min: any, curr: any) => {
                                 return curr.ex_showroom_price < min.ex_showroom_price ? curr : min;
-                            }, skuPrices[0]);
+                            }, effectivePrices[0]);
                             isEstimate = true;
                         }
 
@@ -238,19 +254,21 @@ export function mapCatalogItems(
                         }
                     }
 
-                    // 3. Calculate Final Prices with improved fallback
-                    // IMPROVED FALLBACK CHAIN:
-                    // Try: cat_prices.ex_showroom_price -> SKU.price_base -> Variant.price_base -> Family.price_base -> 0
+                    // 3. Calculate Final Prices with Improved Fallback
+                    // Try: cat_price_state.on_road_price -> cat_price_state.ex_showroom -> Base Fallback
                     let baseExShowroom = 0;
+                    let onRoadTotal = 0;
+
                     if (activePriceObj?.ex_showroom_price) {
-                        // Best case: location-specific price from cat_prices
                         baseExShowroom = activePriceObj.ex_showroom_price;
+                        // Use Published On-Road if available, else Ex-Showroom (Legacy behavior)
+                        onRoadTotal = activePriceObj.on_road_price || activePriceObj.ex_showroom_price;
                     } else {
                         // Fallback: Use price_base from SKU/Variant/Family hierarchy
-                        // Try first SKU if available
                         const firstSku = allSkus.length > 0 ? allSkus[0] : null;
                         baseExShowroom =
                             firstSku?.price_base || (variantItem as any).price_base || family.price_base || 0;
+                        onRoadTotal = baseExShowroom;
 
                         // Mark as estimate since we're using base price instead of location-specific
                         if (baseExShowroom > 0 && !pricingSource) {
@@ -260,21 +278,28 @@ export function mapCatalogItems(
                         }
                     }
 
-                    const onRoadTotal = Number(baseExShowroom || 0);
-                    const offerPrice = onRoadTotal;
+                    // Dealer Offer Application (Delta-based)
+                    // best_offer is a delta: +ve = surge (price increases), -ve = discount (price decreases).
+
+                    const offerPrice = onRoadTotal + bestOfferAmount;
                     const bundleSavingsAmount = Math.max(0, Math.round(bundleValueAmount - bundlePriceAmount));
 
                     return {
                         exShowroom: baseExShowroom,
                         onRoad: Math.round(onRoadTotal),
                         offerPrice: Math.round(offerPrice),
-                        discount: Math.abs(bestOfferAmount),
+                        discount: bestOfferAmount < 0 ? Math.abs(bestOfferAmount) : 0,
                         bundleValue: Math.round(bundleValueAmount),
                         bundlePrice: Math.round(bundlePriceAmount),
                         bundleSavings: bundleSavingsAmount,
-                        totalSavings: Math.abs(bestOfferAmount) + bundleSavingsAmount,
+                        totalSavings: (bestOfferAmount < 0 ? Math.abs(bestOfferAmount) : 0) + bundleSavingsAmount,
                         pricingSource,
                         isEstimate,
+                        // NEW: Pass through granular JSON from DB (SOT)
+                        rto: activePriceObj?.rto,
+                        insurance: activePriceObj?.insurance,
+                        rto_breakdown: activePriceObj?.rto_breakdown,
+                        insurance_breakdown: activePriceObj?.insurance_breakdown,
                     };
                 })(),
 
@@ -437,6 +462,100 @@ export function mapCatalogItems(
                 })(),
                 studioName,
                 dealerId,
+                serverPricing: (() => {
+                    const skuPrices = allSkus.flatMap((sku: any) => sku.prices || []);
+                    // Re-finding simplified for serverPricing population
+                    let activeP = null;
+                    if (userLat && userLng) {
+                        activeP = skuPrices.sort((a: any, b: any) => {
+                            const da =
+                                a.latitude && a.longitude
+                                    ? Math.sqrt(Math.pow(a.latitude - userLat, 2) + Math.pow(a.longitude - userLng, 2))
+                                    : 999999;
+                            const db =
+                                b.latitude && b.longitude
+                                    ? Math.sqrt(Math.pow(b.latitude - userLat, 2) + Math.pow(b.longitude - userLng, 2))
+                                    : 999999;
+                            return da - db;
+                        })[0];
+                    } else if (userDistrict) {
+                        activeP = skuPrices.find((p: any) => p.district?.toLowerCase() === userDistrict?.toLowerCase());
+                    }
+
+                    if (!activeP) activeP = skuPrices.find((p: any) => p.state_code === stateCode);
+
+                    if (activeP) {
+                        // SOT Phase 3: Prefer new JSON columns, fallback to legacy breakdown
+                        const hasRtoJson =
+                            activeP.rto && typeof activeP.rto === 'object' && activeP.rto.STATE !== undefined;
+                        const hasInsJson =
+                            activeP.insurance &&
+                            typeof activeP.insurance === 'object' &&
+                            activeP.insurance.base_total !== undefined;
+
+                        const rtoData = hasRtoJson
+                            ? activeP.rto
+                            : {
+                                  STATE: activeP.rto_total || 0,
+                                  BH: null,
+                                  COMPANY: null,
+                                  default: 'STATE',
+                              };
+
+                        const insData = hasInsJson
+                            ? activeP.insurance
+                            : {
+                                  od: activeP.insurance_breakdown?.odPremium || 0,
+                                  tp: activeP.insurance_breakdown?.tpPremium || 0,
+                                  gst_rate: 18,
+                                  base_total: activeP.insurance_total || 0,
+                                  addons: [],
+                              };
+
+                        // Legacy breakdown for UI compatibility
+                        const legacyRtoBreakdown = activeP.rto_breakdown
+                            ? [
+                                  { label: 'Road Tax', amount: activeP.rto_breakdown.roadTax || 0 },
+                                  { label: 'Registration', amount: activeP.rto_breakdown.registrationCharges || 0 },
+                                  ...(activeP.rto_breakdown.smartCardCharges
+                                      ? [{ label: 'Smart Card', amount: activeP.rto_breakdown.smartCardCharges }]
+                                      : []),
+                                  ...(activeP.rto_breakdown.postalCharges
+                                      ? [{ label: 'Postal Charges', amount: activeP.rto_breakdown.postalCharges }]
+                                      : []),
+                                  ...(activeP.rto_breakdown.hypothecationCharges
+                                      ? [{ label: 'Hypothecation', amount: activeP.rto_breakdown.hypothecationCharges }]
+                                      : []),
+                              ]
+                            : activeP.rto?.breakdown || [];
+
+                        const legacyInsBreakdown = activeP.insurance_breakdown
+                            ? [
+                                  { label: 'OD Premium', amount: activeP.insurance_breakdown.odPremium || 0 },
+                                  { label: 'TP Premium', amount: activeP.insurance_breakdown.tpPremium || 0 },
+                                  ...(activeP.insurance_breakdown.addons?.zeroDep
+                                      ? [{ label: 'Zero Dep', amount: activeP.insurance_breakdown.addons.zeroDep }]
+                                      : []),
+                                  { label: 'GST (18%)', amount: activeP.insurance_breakdown.gst || 0 },
+                              ]
+                            : activeP.insurance?.breakdown || [];
+
+                        return {
+                            final_on_road: activeP.on_road_price || activeP.ex_showroom_price,
+                            ex_showroom: activeP.ex_showroom_price,
+                            rto: rtoData,
+                            insurance: insData,
+                            location: {
+                                district: activeP.district,
+                                state_code: activeP.state_code,
+                            },
+                            // Legacy for backward compat
+                            rto_breakdown: legacyRtoBreakdown,
+                            insurance_breakdown: legacyInsBreakdown,
+                        };
+                    }
+                    return undefined;
+                })(),
             };
         });
     });

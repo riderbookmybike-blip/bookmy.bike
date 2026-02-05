@@ -36,10 +36,10 @@ export function PhoneHome() {
         window.scrollTo(0, 0);
     }, []);
 
-    const heroImage = '/images/templates/t3_night.png';
+    const heroImage = '/images/templates/t3_night.webp';
 
     // Standard horizontal padding matching header
-    const SIDE_PADDING = "px-5";
+    const SIDE_PADDING = 'px-5';
 
     // Gyroscope Parallax Effect for Mobile
     const [permissionGranted, setPermissionGranted] = useState(false);
@@ -66,7 +66,10 @@ export function PhoneHome() {
 
         if (permissionGranted) {
             window.addEventListener('deviceorientation', handleOrientation);
-        } else if (typeof DeviceOrientationEvent !== 'undefined' && typeof (DeviceOrientationEvent as any).requestPermission !== 'function') {
+        } else if (
+            typeof DeviceOrientationEvent !== 'undefined' &&
+            typeof (DeviceOrientationEvent as any).requestPermission !== 'function'
+        ) {
             // Non-iOS 13+ (Android)
             window.addEventListener('deviceorientation', handleOrientation);
             setPermissionGranted(true);
@@ -85,7 +88,7 @@ export function PhoneHome() {
                     setPermissionGranted(true);
                 }
             } catch (e) {
-                console.error("Motion permission error:", e);
+                console.error('Motion permission error:', e);
             }
         } else {
             setPermissionGranted(true);
@@ -143,7 +146,7 @@ export function PhoneHome() {
                                 <motion.div
                                     key={i}
                                     initial={{
-                                        x: (i * 7) % 100 + '%',
+                                        x: ((i * 7) % 100) + '%',
                                         y: ((i * 11) % 100) + '%',
                                         opacity: 0,
                                     }}
@@ -182,7 +185,12 @@ export function PhoneHome() {
                                 className="text-[8.5px] font-black uppercase tracking-[0.6em] fill-slate-900 dark:fill-white font-[family-name:var(--font-bruno-ace)] transition-colors"
                                 style={{ opacity: 0.95 }}
                             >
-                                <textPath href="#circlePath" startOffset="0%" textLength="262" lengthAdjust="spacingAndGlyphs">
+                                <textPath
+                                    href="#circlePath"
+                                    startOffset="0%"
+                                    textLength="262"
+                                    lengthAdjust="spacingAndGlyphs"
+                                >
                                     INDIA&apos;S LOWEST EMI GUARANTEE *&nbsp;
                                 </textPath>
                             </text>
@@ -217,9 +225,15 @@ export function PhoneHome() {
                             transition={{ duration: 1.2, ease: 'circOut' }}
                             className="flex flex-col items-center text-center"
                         >
-                            <span className="text-[10px] font-black uppercase tracking-[0.6em] text-slate-400 dark:text-white/30 leading-none mb-2">THE</span>
-                            <span className="text-sm font-black uppercase tracking-[0.4em] text-slate-600 dark:text-white/80 leading-none mb-2">HIGHEST FIDELITY</span>
-                            <span className="text-2xl font-black italic uppercase tracking-[0.2em] text-brand-primary leading-none">MARKETPLACE</span>
+                            <span className="text-[10px] font-black uppercase tracking-[0.6em] text-slate-400 dark:text-white/30 leading-none mb-2">
+                                THE
+                            </span>
+                            <span className="text-sm font-black uppercase tracking-[0.4em] text-slate-600 dark:text-white/80 leading-none mb-2">
+                                HIGHEST FIDELITY
+                            </span>
+                            <span className="text-2xl font-black italic uppercase tracking-[0.2em] text-brand-primary leading-none">
+                                MARKETPLACE
+                            </span>
                         </motion.div>
 
                         <div className="relative group/title w-full max-w-full px-4 text-center">
@@ -257,15 +271,26 @@ export function PhoneHome() {
                             >
                                 <svg className="absolute inset-0 w-full h-full overflow-visible">
                                     <rect
-                                        x="0" y="0" width="100%" height="100%"
-                                        fill="transparent" rx="8"
-                                        stroke="currentColor" strokeWidth="1" strokeOpacity="0.1"
+                                        x="0"
+                                        y="0"
+                                        width="100%"
+                                        height="100%"
+                                        fill="transparent"
+                                        rx="8"
+                                        stroke="currentColor"
+                                        strokeWidth="1"
+                                        strokeOpacity="0.1"
                                         className="text-slate-900 dark:text-white group-hover:stroke-brand-primary/50 transition-colors"
                                     />
                                     <motion.rect
-                                        x="0" y="0" width="100%" height="100%"
-                                        fill="transparent" rx="8"
-                                        stroke="#ff9d00" strokeWidth="2"
+                                        x="0"
+                                        y="0"
+                                        width="100%"
+                                        height="100%"
+                                        fill="transparent"
+                                        rx="8"
+                                        stroke="#ff9d00"
+                                        strokeWidth="2"
                                         strokeDasharray="80, 240"
                                         strokeDashoffset="0"
                                         animate={{ strokeDashoffset: -320 }}
@@ -292,7 +317,9 @@ export function PhoneHome() {
                 </div>
 
                 {/* BOTTOM CONTENT: COMPACT METRICS ROW */}
-                <div className={`absolute bottom-6 md:bottom-20 left-0 right-0 z-50 flex flex-col items-center gap-8 ${SIDE_PADDING}`}>
+                <div
+                    className={`absolute bottom-6 md:bottom-20 left-0 right-0 z-50 flex flex-col items-center gap-8 ${SIDE_PADDING}`}
+                >
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -359,7 +386,9 @@ export function PhoneHome() {
                     </motion.div>
 
                     <div className="flex flex-col items-center gap-4 opacity-40">
-                        <span className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.5em] text-white transition-colors">{t('Scroll to Explore')}</span>
+                        <span className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.5em] text-white transition-colors">
+                            {t('Scroll to Explore')}
+                        </span>
                         <motion.div
                             animate={{ y: [0, 8, 0] }}
                             transition={{ duration: 2, repeat: Infinity }}
@@ -372,10 +401,19 @@ export function PhoneHome() {
             {/* RESTORED MOBILE SECTIONS - ALL ALIGNED WITH px-6 */}
 
             {/* Brands Section */}
-            <section className={`bg-slate-50 dark:bg-gradient-to-bl dark:from-orange-800/20 dark:via-[#0b0d10] dark:to-[#0b0d10] py-16 ${SIDE_PADDING} transition-colors duration-500`}>
+            <section
+                className={`bg-slate-50 dark:bg-gradient-to-bl dark:from-orange-800/20 dark:via-[#0b0d10] dark:to-[#0b0d10] py-16 ${SIDE_PADDING} transition-colors duration-500`}
+            >
                 <div className="mb-12">
-                    <h2 className="text-slate-400 dark:text-zinc-500 font-black uppercase tracking-[0.3em] text-xs mb-4">{t('THE SYNDICATE')}</h2>
-                    <h1 className="text-5xl font-extrabold italic uppercase tracking-tight leading-tight text-slate-900 dark:text-white transition-colors">{t('ELITE')}<br />{t('MAKERS')}<span className="text-brand-primary">.</span></h1>
+                    <h2 className="text-slate-400 dark:text-zinc-500 font-black uppercase tracking-[0.3em] text-xs mb-4">
+                        {t('THE SYNDICATE')}
+                    </h2>
+                    <h1 className="text-5xl font-extrabold italic uppercase tracking-tight leading-tight text-slate-900 dark:text-white transition-colors">
+                        {t('ELITE')}
+                        <br />
+                        {t('MAKERS')}
+                        <span className="text-brand-primary">.</span>
+                    </h1>
                 </div>
 
                 <div className="relative -mx-6 px-6 overflow-hidden">
@@ -393,26 +431,57 @@ export function PhoneHome() {
                             { name: 'VESPA', color: '#0097DA', tagline: 'LIVE MORE VESPA' },
                             { name: 'VIDA', color: '#FF5722', tagline: 'MAKE WAY' },
                             { name: 'YAMAHA', color: '#183693', tagline: 'REVS YOUR HEART' },
-                        ].map((brand) => {
+                        ].map(brand => {
                             const dbBrand = brands?.find(b => b.name.toUpperCase() === brand.name.toUpperCase());
                             return (
-                                <motion.div key={brand.name} className="flex-none w-64 snap-center" whileTap={{ scale: 0.95 }}>
-                                    <Link href={`/phone/store/catalog?brand=${brand.name}`} className="block h-80 p-6 bg-white dark:bg-zinc-900/80 border border-slate-200 dark:border-white/10 rounded-3xl backdrop-blur-xl relative overflow-hidden group shadow-sm dark:shadow-none transition-all" style={{ background: hasMounted && theme === 'dark' ? `linear-gradient(135deg, ${brand.color}10 0%, #18181b 50%)` : undefined }}>
-                                        <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: brand.color }} />
+                                <motion.div
+                                    key={brand.name}
+                                    className="flex-none w-64 snap-center"
+                                    whileTap={{ scale: 0.95 }}
+                                >
+                                    <Link
+                                        href={`/phone/store/catalog?brand=${brand.name}`}
+                                        className="block h-80 p-6 bg-white dark:bg-zinc-900/80 border border-slate-200 dark:border-white/10 rounded-3xl backdrop-blur-xl relative overflow-hidden group shadow-sm dark:shadow-none transition-all"
+                                        style={{
+                                            background:
+                                                hasMounted && theme === 'dark'
+                                                    ? `linear-gradient(135deg, ${brand.color}10 0%, #18181b 50%)`
+                                                    : undefined,
+                                        }}
+                                    >
+                                        <div
+                                            className="absolute bottom-0 left-0 right-0 h-1"
+                                            style={{ backgroundColor: brand.color }}
+                                        />
                                         <div className="relative h-full flex flex-col justify-between">
                                             <div className="flex justify-end">
-                                                <ArrowRight className="text-white/20 group-hover:text-white/80 transition-all -rotate-45" size={18} />
+                                                <ArrowRight
+                                                    className="text-white/20 group-hover:text-white/80 transition-all -rotate-45"
+                                                    size={18}
+                                                />
                                             </div>
                                             <div className="flex-1 flex items-center justify-center">
                                                 {dbBrand?.brand_logos?.icon || dbBrand?.logo_svg ? (
-                                                    <div className="w-24 h-24 flex items-center justify-center dark:brightness-0 dark:invert opacity-60 group-hover:opacity-100 transition-opacity [&>svg]:w-full [&>svg]:h-full [&>svg]:block" dangerouslySetInnerHTML={{ __html: dbBrand?.brand_logos?.icon || dbBrand?.logo_svg || '' }} />
+                                                    <div
+                                                        className="w-24 h-24 flex items-center justify-center dark:brightness-0 dark:invert opacity-60 group-hover:opacity-100 transition-opacity [&>svg]:w-full [&>svg]:h-full [&>svg]:block"
+                                                        dangerouslySetInnerHTML={{
+                                                            __html:
+                                                                dbBrand?.brand_logos?.icon || dbBrand?.logo_svg || '',
+                                                        }}
+                                                    />
                                                 ) : (
-                                                    <span className="text-5xl font-black italic text-slate-200 dark:text-white/40">{brand.name[0]}</span>
+                                                    <span className="text-5xl font-black italic text-slate-200 dark:text-white/40">
+                                                        {brand.name[0]}
+                                                    </span>
                                                 )}
                                             </div>
                                             <div>
-                                                <h3 className="text-xl font-black italic uppercase text-slate-900 dark:text-white transition-colors">{brand.name}</h3>
-                                                <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-white/30 transition-colors">{brand.tagline}</p>
+                                                <h3 className="text-xl font-black italic uppercase text-slate-900 dark:text-white transition-colors">
+                                                    {brand.name}
+                                                </h3>
+                                                <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-white/30 transition-colors">
+                                                    {brand.tagline}
+                                                </p>
                                             </div>
                                         </div>
                                     </Link>
@@ -424,20 +493,45 @@ export function PhoneHome() {
             </section>
 
             {/* How It Works Section */}
-            <section className={`bg-white dark:bg-gradient-to-tr dark:from-amber-700/20 dark:via-[#0b0d10] dark:to-[#0b0d10] py-16 border-t border-slate-100 dark:border-white/5 ${SIDE_PADDING} transition-colors duration-500`}>
+            <section
+                className={`bg-white dark:bg-gradient-to-tr dark:from-amber-700/20 dark:via-[#0b0d10] dark:to-[#0b0d10] py-16 border-t border-slate-100 dark:border-white/5 ${SIDE_PADDING} transition-colors duration-500`}
+            >
                 <div className="mb-12">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="w-8 h-px bg-brand-primary" />
-                        <p className="text-xs font-black text-brand-primary uppercase tracking-[0.2em]">{t('The Process')}</p>
+                        <p className="text-xs font-black text-brand-primary uppercase tracking-[0.2em]">
+                            {t('The Process')}
+                        </p>
                     </div>
-                    <h2 className="text-5xl font-extrabold uppercase tracking-tight italic leading-tight text-slate-900 dark:text-white transition-colors">{t('Select.')}<br />{t('Quote.')}<br />{t('Ride.')}</h2>
+                    <h2 className="text-5xl font-extrabold uppercase tracking-tight italic leading-tight text-slate-900 dark:text-white transition-colors">
+                        {t('Select.')}
+                        <br />
+                        {t('Quote.')}
+                        <br />
+                        {t('Ride.')}
+                    </h2>
                 </div>
 
                 <div className="space-y-6">
                     {[
-                        { step: '01', title: 'Select', desc: 'Browse 380+ premium motorcycles across 12 elite brands.', icon: Search },
-                        { step: '02', title: 'Quote', desc: 'Get instant on-road pricing with our Lowest EMI Guarantee.', icon: Zap },
-                        { step: '03', title: 'Ride', desc: 'Complete paperwork online. Asset delivery in 4 hours.', icon: MapPin },
+                        {
+                            step: '01',
+                            title: 'Select',
+                            desc: 'Browse 380+ premium motorcycles across 12 elite brands.',
+                            icon: Search,
+                        },
+                        {
+                            step: '02',
+                            title: 'Quote',
+                            desc: 'Get instant on-road pricing with our Lowest EMI Guarantee.',
+                            icon: Zap,
+                        },
+                        {
+                            step: '03',
+                            title: 'Ride',
+                            desc: 'Complete paperwork online. Asset delivery in 4 hours.',
+                            icon: MapPin,
+                        },
                     ].map((item, index) => (
                         <motion.div key={item.step} className="relative flex gap-6">
                             <div className="flex-none flex flex-col items-center">
@@ -447,8 +541,12 @@ export function PhoneHome() {
                                 {index < 2 && <div className="w-px flex-1 bg-slate-200 dark:bg-white/10 my-4" />}
                             </div>
                             <div className="flex-1 pb-8">
-                                <h3 className="text-2xl font-black italic uppercase text-slate-900 dark:text-white mb-2 transition-colors">{t(item.title)}</h3>
-                                <p className="text-sm text-slate-500 dark:text-zinc-400 leading-relaxed transition-colors">{t(item.desc)}</p>
+                                <h3 className="text-2xl font-black italic uppercase text-slate-900 dark:text-white mb-2 transition-colors">
+                                    {t(item.title)}
+                                </h3>
+                                <p className="text-sm text-slate-500 dark:text-zinc-400 leading-relaxed transition-colors">
+                                    {t(item.desc)}
+                                </p>
                             </div>
                         </motion.div>
                     ))}
@@ -456,25 +554,61 @@ export function PhoneHome() {
             </section>
 
             {/* Categories Section */}
-            <section className={`bg-slate-50 dark:bg-gradient-to-tr dark:from-emerald-800/20 dark:via-[#0b0d10] dark:to-black py-16 transition-colors duration-500 ${SIDE_PADDING}`}>
+            <section
+                className={`bg-slate-50 dark:bg-gradient-to-tr dark:from-emerald-800/20 dark:via-[#0b0d10] dark:to-black py-16 transition-colors duration-500 ${SIDE_PADDING}`}
+            >
                 <div className="mb-12">
-                    <p className="text-xs font-black text-slate-400 dark:text-white uppercase tracking-[0.2em] mb-4">{t('Curated Collections')}</p>
-                    <h2 className="text-5xl font-extrabold uppercase italic text-slate-900 dark:text-white mb-4 transition-colors">{t('Select')}<br />{t('Your')}<br />{t('Vibe')}</h2>
+                    <p className="text-xs font-black text-slate-400 dark:text-white uppercase tracking-[0.2em] mb-4">
+                        {t('Curated Collections')}
+                    </p>
+                    <h2 className="text-5xl font-extrabold uppercase italic text-slate-900 dark:text-white mb-4 transition-colors">
+                        {t('Select')}
+                        <br />
+                        {t('Your')}
+                        <br />
+                        {t('Vibe')}
+                    </h2>
                 </div>
 
                 <div className="space-y-4">
                     {[
-                        { title: 'Scooters', icon: 'SC', link: '/phone/store/catalog?category=SCOOTER', bg: 'from-violet-500/10' },
-                        { title: 'Motorcycles', icon: 'MC', link: '/phone/store/catalog?category=MOTORCYCLE', bg: 'from-rose-500/10' },
-                        { title: 'Mopeds', icon: 'MP', link: '/phone/store/catalog?category=MOPED', bg: 'from-amber-500/10' },
-                    ].map((cat) => (
-                        <Link key={cat.title} href={cat.link} className={`block relative p-8 rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 bg-gradient-to-br ${cat.bg} to-transparent overflow-hidden group shadow-sm dark:shadow-none transition-all`}>
+                        {
+                            title: 'Scooters',
+                            icon: 'SC',
+                            link: '/phone/store/catalog?category=SCOOTER',
+                            bg: 'from-violet-500/10',
+                        },
+                        {
+                            title: 'Motorcycles',
+                            icon: 'MC',
+                            link: '/phone/store/catalog?category=MOTORCYCLE',
+                            bg: 'from-rose-500/10',
+                        },
+                        {
+                            title: 'Mopeds',
+                            icon: 'MP',
+                            link: '/phone/store/catalog?category=MOPED',
+                            bg: 'from-amber-500/10',
+                        },
+                    ].map(cat => (
+                        <Link
+                            key={cat.title}
+                            href={cat.link}
+                            className={`block relative p-8 rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 bg-gradient-to-br ${cat.bg} to-transparent overflow-hidden group shadow-sm dark:shadow-none transition-all`}
+                        >
                             <div className="flex justify-between items-center relative z-10">
                                 <div className="space-y-1">
-                                    <span className="text-[10px] font-black text-slate-400 dark:text-white/30 tracking-[0.3em] uppercase transition-colors">{t('Most Popular')}</span>
-                                    <h3 className="text-3xl font-black italic uppercase text-slate-900 dark:text-white transition-colors">{t(cat.title)}</h3>
+                                    <span className="text-[10px] font-black text-slate-400 dark:text-white/30 tracking-[0.3em] uppercase transition-colors">
+                                        {t('Most Popular')}
+                                    </span>
+                                    <h3 className="text-3xl font-black italic uppercase text-slate-900 dark:text-white transition-colors">
+                                        {t(cat.title)}
+                                    </h3>
                                 </div>
-                                <ArrowRight className="text-slate-200 dark:text-white/20 group-hover:text-brand-primary transition-all -rotate-45 group-hover:rotate-0" size={24} />
+                                <ArrowRight
+                                    className="text-slate-200 dark:text-white/20 group-hover:text-brand-primary transition-all -rotate-45 group-hover:rotate-0"
+                                    size={24}
+                                />
                             </div>
                         </Link>
                     ))}
@@ -482,21 +616,43 @@ export function PhoneHome() {
             </section>
 
             {/* Rider Pulse */}
-            <section className={`bg-white dark:bg-gradient-to-br dark:from-blue-900/20 dark:via-[#0b0d10] dark:to-[#0b0d10] py-16 transition-colors duration-500 ${SIDE_PADDING}`}>
+            <section
+                className={`bg-white dark:bg-gradient-to-br dark:from-blue-900/20 dark:via-[#0b0d10] dark:to-[#0b0d10] py-16 transition-colors duration-500 ${SIDE_PADDING}`}
+            >
                 <div className="mb-12">
-                    <h2 className="text-5xl font-black uppercase italic text-slate-900 dark:text-white mb-4 transition-colors">{t('Rider')}<br /><span className="text-brand-primary">{t('Pulse.')}</span></h2>
-                    <p className="text-sm text-slate-400 dark:text-zinc-500 border-l border-slate-200 dark:border-white/10 pl-4 transition-colors">{t('Real stories. Real roads.')}</p>
+                    <h2 className="text-5xl font-black uppercase italic text-slate-900 dark:text-white mb-4 transition-colors">
+                        {t('Rider')}
+                        <br />
+                        <span className="text-brand-primary">{t('Pulse.')}</span>
+                    </h2>
+                    <p className="text-sm text-slate-400 dark:text-zinc-500 border-l border-slate-200 dark:border-white/10 pl-4 transition-colors">
+                        {t('Real stories. Real roads.')}
+                    </p>
                 </div>
                 <div className="relative -mx-6 px-6 overflow-hidden">
                     <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4">
                         {[
-                            { name: 'Arjun Kapoor', quote: 'Booking my bike online was as easy as ordering food. EMI comparison saved me from 5 showrooms.' },
-                            { name: 'Meera Reddy', quote: 'The transparency is what I loved. No hidden costs, everything upfront. Delivery was right on time.' },
-                            { name: 'Karan Malhotra', quote: 'Finally a platform that understands riders. The EMI tool saved me so much time and money.' },
-                        ].map((review) => (
-                            <div key={review.name} className="flex-none w-72 snap-center p-8 bg-slate-50 dark:bg-zinc-900/80 border border-slate-200 dark:border-white/5 rounded-3xl transition-colors">
+                            {
+                                name: 'Arjun Kapoor',
+                                quote: 'Booking my bike online was as easy as ordering food. EMI comparison saved me from 5 showrooms.',
+                            },
+                            {
+                                name: 'Meera Reddy',
+                                quote: 'The transparency is what I loved. No hidden costs, everything upfront. Delivery was right on time.',
+                            },
+                            {
+                                name: 'Karan Malhotra',
+                                quote: 'Finally a platform that understands riders. The EMI tool saved me so much time and money.',
+                            },
+                        ].map(review => (
+                            <div
+                                key={review.name}
+                                className="flex-none w-72 snap-center p-8 bg-slate-50 dark:bg-zinc-900/80 border border-slate-200 dark:border-white/5 rounded-3xl transition-colors"
+                            >
                                 <Quote className="text-brand-primary/20 mb-6" size={32} />
-                                <p className="text-base font-bold italic leading-tight mb-8 text-slate-900 dark:text-white transition-colors">"{t(review.quote)}"</p>
+                                <p className="text-base font-bold italic leading-tight mb-8 text-slate-900 dark:text-white transition-colors">
+                                    "{t(review.quote)}"
+                                </p>
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-full bg-brand-primary/20 flex items-center justify-center font-black text-brand-primary text-xs">
                                         <img
@@ -505,7 +661,9 @@ export function PhoneHome() {
                                             className="w-full h-full object-cover rounded-full"
                                         />
                                     </div>
-                                    <span className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white transition-colors">{review.name}</span>
+                                    <span className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white transition-colors">
+                                        {review.name}
+                                    </span>
                                 </div>
                             </div>
                         ))}

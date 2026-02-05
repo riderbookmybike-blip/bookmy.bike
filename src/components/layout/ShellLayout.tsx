@@ -10,11 +10,7 @@ import { MarketplaceHeader } from '@/components/layout/MarketplaceHeader';
 import { UserRole } from '@/config/permissions';
 import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
 
-export default function ShellLayout({
-    children,
-}: {
-    children: React.ReactNode;
-}) {
+export default function ShellLayout({ children }: { children: React.ReactNode }) {
     const { userRole, activeRole, isSidebarExpanded, setIsSidebarExpanded, tenantConfig } = useTenant();
     const pathname = usePathname();
     const [isSidebarPinned, setIsSidebarPinned] = useState(false);
@@ -36,10 +32,17 @@ export default function ShellLayout({
 
     // DETECT REGULAR USER (BMB Visitors)
     // Fix: check based on effectiveRole to avoid flicker during initial undefined state
-    const isRegularUser = !isAppRoute && (
-        effectiveRole === 'BMB_USER' ||
-        !(['OWNER', 'DEALERSHIP_ADMIN', 'DEALERSHIP_STAFF', 'BANK_STAFF', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN'].includes(effectiveRole || ''))
-    );
+    const isRegularUser =
+        !isAppRoute &&
+        (effectiveRole === 'BMB_USER' ||
+            ![
+                'OWNER',
+                'DEALERSHIP_ADMIN',
+                'DEALERSHIP_STAFF',
+                'BANK_STAFF',
+                'SUPER_ADMIN',
+                'MARKETPLACE_ADMIN',
+            ].includes(effectiveRole || ''));
 
     // SETUP ENFORCEMENT
     useEffect(() => {
@@ -49,7 +52,11 @@ export default function ShellLayout({
 
         if (tenantConfig && tenantConfig.setup?.isComplete === false) {
             // Only force setup for Admins
-            const isAdmin = effectiveRole === 'OWNER' || effectiveRole === 'DEALERSHIP_ADMIN' || effectiveRole === 'SUPER_ADMIN' || effectiveRole === 'MARKETPLACE_ADMIN';
+            const isAdmin =
+                effectiveRole === 'OWNER' ||
+                effectiveRole === 'DEALERSHIP_ADMIN' ||
+                effectiveRole === 'SUPER_ADMIN' ||
+                effectiveRole === 'MARKETPLACE_ADMIN';
             if (isAdmin) {
                 window.location.href = '/setup';
             }
@@ -88,7 +95,9 @@ export default function ShellLayout({
                 <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
                     <div className="text-center space-y-3">
                         <div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loading workspace...</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            Loading workspace...
+                        </p>
                     </div>
                 </div>
             );
@@ -113,27 +122,22 @@ export default function ShellLayout({
             <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
                 <div className="text-center space-y-3">
                     <div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loading workspace...</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        Loading workspace...
+                    </p>
                 </div>
             </div>
         );
         return <FavoritesProvider>{content}</FavoritesProvider>;
     }
 
-
     // --- REGULAR USER LAYOUT ---
     if (isRegularUser) {
         content = (
             <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
                 <MarketplaceHeader onLoginClick={() => setIsLoginOpen(true)} />
-                <main className="pt-20 p-6 md:p-8 max-w-7xl mx-auto">
-                    {children}
-                </main>
-                <LoginSidebar
-                    isOpen={isLoginOpen}
-                    onClose={() => setIsLoginOpen(false)}
-                    variant="RETAIL"
-                />
+                <main className="pt-20 p-8 md:p-10 max-w-7xl mx-auto">{children}</main>
+                <LoginSidebar isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} variant="RETAIL" />
             </div>
         );
         return <FavoritesProvider>{content}</FavoritesProvider>;
@@ -143,15 +147,14 @@ export default function ShellLayout({
     content = (
         <div
             className="min-h-screen bg-slate-50 dark:bg-slate-950"
-            style={{
-                '--primary': primaryColor || '#4F46E5', // Indigo-600 default
-            } as React.CSSProperties}
+            style={
+                {
+                    '--primary': primaryColor || '#4F46E5', // Indigo-600 default
+                } as React.CSSProperties
+            }
         >
             {/* Dedicated CRM Header */}
-            <DashboardHeader
-                onMenuClick={() => setIsMobileSidebarOpen(true)}
-                showSearch={true}
-            />
+            <DashboardHeader onMenuClick={() => setIsMobileSidebarOpen(true)} showSearch={true} />
 
             <div className="flex pt-14 h-screen overflow-hidden">
                 {/* Sidebar Component */}
@@ -169,17 +172,13 @@ export default function ShellLayout({
                 <div
                     className={`flex-1 flex flex-col h-full transition-all duration-300 ease-in-out ${isSidebarExpanded ? 'md:ml-64' : 'md:ml-20'}`}
                 >
-                    <main className="flex-1 h-full overflow-y-auto p-4 md:p-6 bg-slate-50 dark:bg-slate-950 relative">
+                    <main className="flex-1 h-full overflow-y-auto p-6 md:p-8 bg-slate-50 dark:bg-slate-950 relative">
                         {children}
                     </main>
                 </div>
             </div>
 
-            <LoginSidebar
-                isOpen={isLoginOpen}
-                onClose={() => setIsLoginOpen(false)}
-                variant="TERMINAL"
-            />
+            <LoginSidebar isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} variant="TERMINAL" />
         </div>
     );
     return <FavoritesProvider>{content}</FavoritesProvider>;

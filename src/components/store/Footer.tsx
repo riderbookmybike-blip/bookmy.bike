@@ -7,6 +7,7 @@ import { useSystemBrandsLogic } from '@/hooks/SystemBrandsLogic';
 import { slugify } from '@/utils/slugs';
 import { motion } from 'framer-motion';
 import { useI18n } from '@/components/providers/I18nProvider';
+import { SystemDebugger } from '@/components/debug/SystemDebugger';
 
 export const Footer = () => {
     const { brands } = useSystemBrandsLogic();
@@ -80,14 +81,13 @@ export const Footer = () => {
 
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-white/5 to-transparent" />
 
-            <div className="max-w-[1440px] mx-auto w-full px-6 relative z-10 flex-1 flex flex-col justify-center">
+            <div className="page-container relative z-10 flex-1 flex flex-col justify-center">
                 {/* SPLIT LAYOUT: Left Content (5) | Right Accordion (7) */}
                 {/* SPLIT LAYOUT: Left Content (5) | Right Accordion (7) */}
                 {/* SPLIT LAYOUT: Re-architected for Responsive Ordering */}
                 {/* Mobile: Brand -> Accordion -> Socials */}
                 {/* Desktop: Brand (Left Top) + Socials (Left Bottom) | Accordion (Right Full Height) */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-y-12 lg:gap-16 items-start relative min-h-[60vh] lg:h-[60vh]">
-
                     {/* 1. BRAND HEADER (Mobile: Top, Desktop: Top-Left) */}
                     <div className="lg:col-span-5 relative z-20">
                         <div className="space-y-8">
@@ -104,7 +104,9 @@ export const Footer = () => {
                                 </span>
                             </h3>
                             <p className="text-lg text-zinc-400 leading-relaxed max-w-lg font-medium mt-[60px] border-l-2 border-white/5 pl-6">
-                                {t("India's premier marketplace for the next generation of riders. Engineering excellence into every booking.")}
+                                {t(
+                                    "India's premier marketplace for the next generation of riders. Engineering excellence into every booking."
+                                )}
                             </p>
                         </div>
                     </div>
@@ -119,10 +121,11 @@ export const Footer = () => {
                                     layout
                                     onMouseEnter={() => setActiveSection(idx)}
                                     onClick={() => setActiveSection(idx)}
-                                    className={`relative rounded-[2rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between flex-shrink-0 lg:flex-shrink snap-center ${isActive
-                                        ? `w-[300px] lg:w-auto lg:flex-[3] bg-white dark:bg-zinc-900 text-slate-900 dark:text-white border-slate-200 dark:border-white/10 shadow-2xl dark:shadow-[0_0_80px_rgba(0,0,0,0.5)]`
-                                        : 'w-[80px] lg:w-auto lg:flex-[1] bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/5 text-zinc-400 dark:text-zinc-500 hover:bg-slate-100 dark:hover:bg-white/10'
-                                        }`}
+                                    className={`relative rounded-[2rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between flex-shrink-0 lg:flex-shrink snap-center ${
+                                        isActive
+                                            ? `w-[300px] lg:w-auto lg:flex-[3] bg-white dark:bg-zinc-900 text-slate-900 dark:text-white border-slate-200 dark:border-white/10 shadow-2xl dark:shadow-[0_0_80px_rgba(0,0,0,0.5)]`
+                                            : 'w-[80px] lg:w-auto lg:flex-[1] bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/5 text-zinc-400 dark:text-zinc-500 hover:bg-slate-100 dark:hover:bg-white/10'
+                                    }`}
                                 >
                                     <div className="absolute inset-0 p-8 flex flex-col justify-between">
                                         {/* Header / Vertical Title */}
@@ -132,7 +135,9 @@ export const Footer = () => {
                                             >
                                                 {`0${idx + 1}`}
                                             </span>
-                                            {isActive && <ArrowRight className="text-slate-900 dark:text-white -rotate-45" />}
+                                            {isActive && (
+                                                <ArrowRight className="text-slate-900 dark:text-white -rotate-45" />
+                                            )}
                                         </div>
 
                                         {/* Content Area */}
@@ -158,10 +163,11 @@ export const Footer = () => {
                                                         <li key={i}>
                                                             <Link
                                                                 href={link.href}
-                                                                className={`text-lg font-medium transition-colors flex items-center gap-2 group/link ${link.highlight
-                                                                    ? 'text-slate-900 dark:text-white hover:text-slate-700 dark:hover:text-white/80 underline decoration-slate-300 dark:decoration-white/30'
-                                                                    : 'text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
-                                                                    }`}
+                                                                className={`text-lg font-medium transition-colors flex items-center gap-2 group/link ${
+                                                                    link.highlight
+                                                                        ? 'text-slate-900 dark:text-white hover:text-slate-700 dark:hover:text-white/80 underline decoration-slate-300 dark:decoration-white/30'
+                                                                        : 'text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
+                                                                }`}
                                                             >
                                                                 {link.label}
                                                                 <ArrowRight
@@ -212,281 +218,24 @@ export const Footer = () => {
                                 <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-[0.2em]">
                                     © 2011-2026
                                 </p>
-                                <ViewportDebug />
+                                <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest flex items-center gap-1">
+                                    Engineered with
+                                    <SystemDebugger
+                                        trigger={
+                                            <Heart
+                                                size={10}
+                                                className="text-red-500 fill-red-500 animate-pulse cursor-pointer hover:scale-125 transition-transform"
+                                            />
+                                        }
+                                    />
+                                    in India.
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
             </div>
         </footer>
-    );
-};
-
-// Internal Debug Component for Production Verification
-const ViewportDebug = () => {
-    const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
-    const [mounted, setMounted] = React.useState(false);
-    const [time] = React.useState(new Date().toLocaleTimeString());
-    const [forceShow, setForceShow] = React.useState(false);
-
-    React.useEffect(() => {
-        setMounted(true);
-        const handleResize = () => setDimensions({ width: window.innerWidth, height: window.innerHeight });
-        handleResize();
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
-
-    if (!mounted) return null;
-
-    const { width, height } = dimensions;
-    const screenWidth = typeof window !== 'undefined' ? window.screen.width : 0;
-    const screenHeight = typeof window !== 'undefined' ? window.screen.height : 0;
-    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio : 1;
-
-    // Aspect Ratio Calculation
-    const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
-    const common = gcd(width, height);
-    const aspect = `${width / common}:${height / common}`;
-
-    // Improved Mode Logic (Must match DeviceLayout.tsx)
-    let mode = 'MOBILE';
-    const isTvActual =
-        width >= 2000 ||
-        (width === 960 && height === 540 && dpr >= 2) ||
-        (width === 1280 && height === 720 && dpr >= 2) ||
-        (width === 1129 && height === 635);
-
-    if (isTvActual) mode = 'ULTRA-WIDE / TV';
-    else if (width >= 1024) mode = 'DESKTOP';
-    else if (width >= 768) mode = 'TABLET';
-
-    // Simple Device Info
-    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
-    const device = ua.includes('Macintosh')
-        ? 'MacBook'
-        : ua.includes('iPhone')
-            ? 'iPhone'
-            : ua.includes('Android')
-                ? 'Android'
-                : 'Device';
-
-    const commitSha = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA || 'DEV';
-
-    return (
-        <div className="group relative">
-            <button
-                onClick={() => setForceShow(!forceShow)}
-                className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-600 font-medium uppercase tracking-widest hover:text-brand-primary transition-all select-none cursor-pointer outline-none focus:ring-1 focus:ring-brand-primary/20 rounded-md px-2 py-1"
-                aria-label="Toggle Debugger"
-            >
-                <span>Engineered with</span>
-                <Heart size={10} className="text-brand-primary fill-brand-primary animate-pulse" />
-                <span>in India</span>
-            </button>
-
-            <div
-                className={`absolute bottom-full left-0 mb-3 w-80 p-4 bg-slate-900/95 text-white text-[10px] font-mono rounded-lg border border-white/10 shadow-xl transition-all z-[100] backdrop-blur-md ${forceShow
-                    ? 'opacity-100 translate-y-0 pointer-events-auto'
-                    : 'opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0'
-                    }`}
-            >
-                <div className="space-y-2">
-                    {/* Header */}
-                    <div className="flex justify-between items-center border-b border-white/10 pb-2 mb-2">
-                        <span className="text-brand-primary font-black uppercase tracking-widest text-[11px]">BMB Debugger</span>
-                        <span className="opacity-50">{commitSha.slice(0, 7)}</span>
-                    </div>
-
-                    {/* Viewport Info */}
-                    <div className="grid grid-cols-2 gap-2 text-[9px] border-b border-white/10 pb-2">
-                        <div>
-                            <p className="text-slate-500 uppercase">Viewport</p>
-                            <p className="font-bold text-white">{width}x{height}</p>
-                        </div>
-                        <div>
-                            <p className="text-slate-500 uppercase">Device/Mode</p>
-                            <p className="font-bold text-white">
-                                {(() => {
-                                    if (typeof navigator === 'undefined') return 'Server';
-                                    const ua = navigator.userAgent;
-                                    let b = 'Unknown';
-                                    if (ua.includes('Edg')) b = 'Edge';
-                                    else if (ua.includes('Chrome') && !ua.includes('Edg')) b = 'Chrome';
-                                    else if (ua.includes('Safari') && !ua.includes('Chrome')) b = 'Safari';
-                                    else if (ua.includes('Firefox')) b = 'Firefox';
-                                    return `${b} | ${device}`;
-                                })()}
-                            </p>
-                            <p className="font-mono text-[8px] text-slate-500 mt-0.5">{mode}</p>
-                        </div>
-                    </div>
-
-                    {/* Marketplace Runtime Diagnostics */}
-                    <div className="space-y-2 py-2">
-                        <p className="text-[10px] font-black text-brand-primary uppercase tracking-widest bg-brand-primary/10 px-2 py-1 rounded-md">Marketplace Diagnostics</p>
-
-                        {(window as any).__BMB_DEBUG__ ? (
-                            <div className="space-y-2">
-                                {/* USER LOCATION */}
-                                <div className="space-y-1">
-                                    <p className="text-slate-400 uppercase text-[8px] font-bold">📍 User Location</p>
-                                    <div className="bg-blue-500/10 border border-blue-500/20 p-2 rounded-md space-y-1">
-                                        <div className="flex justify-between">
-                                            <span>Pincode:</span>
-                                            <span className="text-blue-400 font-mono">{(window as any).__BMB_DEBUG__.pincode || 'NOT_SET'}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>District:</span>
-                                            <span className="text-white">{(window as any).__BMB_DEBUG__.district || 'NOT_SET'}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>State:</span>
-                                            <span className="text-white">{(window as any).__BMB_DEBUG__.stateCode || 'NOT_SET'}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Loc Source:</span>
-                                            <span className="text-orange-400">{(window as any).__BMB_DEBUG__.locSource || 'AUTO'}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* PRICING RESOLUTION */}
-                                <div className="space-y-1">
-                                    <p className="text-slate-400 uppercase text-[8px] font-bold">💰 Pricing</p>
-                                    <div className="bg-white/5 p-2 rounded-md">
-                                        <div className="flex justify-between">
-                                            <span>Source:</span>
-                                            <span className="text-emerald-400">{(window as any).__BMB_DEBUG__.pricingSource || 'MARKET_BEST'}</span>
-                                        </div>
-                                        <div className="flex justify-between mt-1">
-                                            <span>Offers Loaded:</span>
-                                            <span className="text-cyan-400">{(window as any).__BMB_DEBUG__.marketOffersCount || 0}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* STUDIO/DEALER INFO */}
-                                <div className="space-y-1">
-                                    <p className="text-slate-400 uppercase text-[8px] font-bold">🏪 Studio/Dealer</p>
-                                    <div className="bg-amber-500/10 border border-amber-500/20 p-2 rounded-md space-y-1">
-                                        {(window as any).__BMB_DEBUG__.studioName ? (
-                                            <>
-                                                <div className="flex justify-between">
-                                                    <span>✅ Served:</span>
-                                                    <span className="text-amber-400 font-mono text-[9px]">{(window as any).__BMB_DEBUG__.studioName}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span>ID:</span>
-                                                    <span className="text-slate-300 font-mono text-[8px]">{(window as any).__BMB_DEBUG__.dealerId || 'N/A'}</span>
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <div className="text-red-400 text-[9px] italic">
-                                                ⚠️ Studio name NOT loaded<br />
-                                                <span className="text-slate-500 text-[8px]">Check: Location set? Offers loaded?</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* EXPECTED (For debugging) */}
-                                <div className="space-y-1">
-                                    <p className="text-slate-400 uppercase text-[8px] font-bold">🎯 Expected</p>
-                                    <div className="bg-green-500/10 border border-green-500/20 p-2 rounded-md space-y-1 text-[9px]">
-                                        <div className="text-green-400">
-                                            {(window as any).__BMB_DEBUG__.marketOffersCount > 0
-                                                ? `${(window as any).__BMB_DEBUG__.marketOffersCount} dealer offers loaded`
-                                                : 'No dealer offers (check RPC)'}
-                                        </div>
-                                        {(window as any).__BMB_DEBUG__.stateCode && (
-                                            <div className="text-slate-400">
-                                                For {(window as any).__BMB_DEBUG__.stateCode}: Should show dealer name from RPC
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Finance Logic */}
-                                <div className="space-y-1">
-                                    <p className="text-slate-500 uppercase">Finance Resolution</p>
-                                    <div className="bg-white/5 p-2 rounded-md space-y-1">
-                                        <div className="flex justify-between">
-                                            <span>Bank:</span>
-                                            <span className="text-emerald-400">{(window as any).__BMB_DEBUG__?.bankName || 'NOT_SET'}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Scheme ID:</span>
-                                            <span className="text-indigo-400">{(window as any).__BMB_DEBUG__?.schemeId || 'NONE'}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Scheme Name:</span>
-                                            <span className="text-indigo-300 text-xs">{(window as any).__BMB_DEBUG__?.schemeName || 'N/A'}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Resolution:</span>
-                                            <span className="text-white text-xs">{(window as any).__BMB_DEBUG__?.financeLogic || 'NOT_RESOLVED'}</span>
-                                        </div>
-                                        {(window as any).__BMB_DEBUG__?.dealerId && (
-                                            <div className="flex justify-between border-t border-white/5 pt-1 mt-1">
-                                                <span>Dealership:</span>
-                                                <span className="text-amber-400 text-[9px] font-mono">{(window as any).__BMB_DEBUG__.dealerId}</span>
-                                            </div>
-                                        )}
-                                        {(window as any).__BMB_DEBUG__?.leadId && (
-                                            <div className="flex justify-between">
-                                                <span>Lead ID:</span>
-                                                <span className="text-rose-400 text-[9px] font-mono">{(window as any).__BMB_DEBUG__.leadId}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Context */}
-                                {(window as any).__BMB_DEBUG__.leadId && (
-                                    <div className="space-y-1">
-                                        <p className="text-slate-500 uppercase">Active Context</p>
-                                        <div className="bg-amber-500/10 border border-amber-500/20 p-2 rounded-md flex justify-between items-center">
-                                            <span className="italic text-amber-500">Lead Mode</span>
-                                            <span className="text-[9px] font-mono text-white">{(window as any).__BMB_DEBUG__.leadId}</span>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <p className="text-slate-500 italic p-2 text-center border border-dashed border-white/10 rounded-lg">No runtime diagnostics captured yet. Navigate to a catalog or PDP to populate.</p>
-                        )}
-                    </div>
-
-                    {/* Context Info */}
-                    <div className="space-y-1 pt-2 border-t border-white/10">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Context Info</p>
-                        <div className="bg-white/5 p-2 rounded-md space-y-1 text-[9px]">
-                            <div className="flex justify-between">
-                                <span>Tenant:</span>
-                                <span className="text-purple-400 font-mono">{(window as any).__BMB_DEBUG__?.tenantId || 'NOT_SET'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span>Page:</span>
-                                <span className="text-cyan-400 font-mono">{(window as any).__BMB_DEBUG__?.pageId || 'NOT_SET'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span>User:</span>
-                                <span className="text-pink-400 font-mono">{(window as any).__BMB_DEBUG__?.userId || 'GUEST'}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Build & Time */}
-                    <div className="flex justify-between pt-2 border-t border-white/10 text-slate-500">
-                        <span>Local Time</span>
-                        <span>{time}</span>
-                    </div>
-                </div>
-                <div className="absolute -bottom-1 right-8 w-2 h-2 bg-slate-900 rotate-45 border-r border-b border-white/10"></div>
-            </div>
-        </div>
     );
 };
 

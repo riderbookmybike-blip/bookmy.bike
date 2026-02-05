@@ -4,6 +4,7 @@
 'use client';
 
 import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     Zap,
     Download,
@@ -83,7 +84,7 @@ export default function SidebarHUD({
     schemeId,
     financeCharges = [],
     annualInterest,
-    interestType
+    interestType,
 }: SidebarHUDProps) {
     console.log('SidebarHUD Debug:', { schemeId, leadName, pricingSource });
     const discountPercent = Math.round((savings / totalMRP) * 100);
@@ -97,6 +98,7 @@ export default function SidebarHUD({
         isServiceable: boolean;
         status: 'CHECKING' | 'SET' | 'UNSET';
     }>({ isServiceable: false, status: 'CHECKING' });
+    const [isExpanded, setIsExpanded] = React.useState(false);
 
     React.useEffect(() => {
         const checkCurrentServiceability = async () => {
@@ -114,13 +116,13 @@ export default function SidebarHUD({
                         pincode: data.pincode,
                         taluka: result.location || data.taluka || data.city,
                         isServiceable: result.isServiceable,
-                        status: 'SET'
+                        status: 'SET',
                     });
                 } else {
                     setServiceability({
                         taluka: data.taluka || data.city,
                         isServiceable: false, // Or keep as unset if no pincode
-                        status: 'SET'
+                        status: 'SET',
                     });
                 }
             } catch {
@@ -138,7 +140,9 @@ export default function SidebarHUD({
     }
 
     return (
-        <div className="hidden lg:block lg:w-[440px] lg:sticky lg:top-[var(--header-h)] glass-panel dark:bg-black/60 rounded-[2.5rem] overflow-hidden shadow-2xl flex-col animate-in fade-in slide-in-from-right-8 duration-700 h-fit lg:flex">
+        <div className="hidden lg:block lg:w-[440px] lg:sticky lg:top-[var(--header-h)] glass-panel dark:bg-[#0b0d10]/60 rounded-[3rem] overflow-hidden shadow-2xl flex-col animate-in fade-in slide-in-from-right-8 duration-700 h-fit lg:flex border border-slate-200 dark:border-white/5 relative">
+            {/* Ambient Card Glow */}
+            <div className="absolute -top-24 -right-24 w-48 h-48 bg-brand-primary/10 blur-3xl rounded-full pointer-events-none" />
             {/* 1. Global Actions */}
             <div className="p-8 pb-4">
                 <div className="flex items-center justify-end gap-1">
@@ -185,87 +189,95 @@ export default function SidebarHUD({
                         </div>
                     </div>
                 )}
-
-                <div className="flex gap-6 items-center pt-2">
-                    <div className="w-32 h-32 flex items-center justify-center group overflow-hidden relative">
-                        <div className="absolute inset-0 bg-gradient-to-tr from-slate-100 to-white dark:from-white/5 dark:to-white/10 rounded-[2rem] opacity-50" />
-                        {productImage && !productImage.includes('categories/') ? (
-                            <img
-                                src={productImage}
-                                alt="thumb"
-                                className="w-[120%] h-[120%] object-contain group-hover:scale-110 transition-transform duration-500 drop-shadow-xl z-10"
-                            />
-                        ) : (
-                            <div
-                                className="w-full h-full rounded-[2rem] z-10 p-4 flex flex-col items-center justify-center text-center opacity-80"
-                                style={{
-                                    background: `linear-gradient(135deg, ${activeColor.hex}dd, ${activeColor.hex}44)`,
-                                    border: `1px solid ${activeColor.hex}33`,
-                                }}
-                            >
-                                <Zap size={40} className="text-white/20 mb-2" />
-                            </div>
-                        )}
-                    </div>
-                    <div className="flex-1 text-right">
-                        <h3 className="text-2xl font-black italic tracking-tighter uppercase leading-none text-slate-900 dark:text-white">
-                            {product.model}
-                        </h3>
-                        <p className="text-sm font-bold text-slate-500 italic mt-1.5">{variantName}</p>
-                        <div className="flex items-center justify-end gap-2 mt-3">
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 leading-none">
-                                {activeColor.name}
-                            </span>
-                            <div
-                                className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-sm"
-                                style={{ backgroundColor: activeColor.hex }}
-                            />
-                        </div>
-                    </div>
-                </div>
             </div>
 
             {/* 2. Pricing Section */}
             <div className="px-8 py-5">
                 <div className="glass-card dark:bg-white/[0.02] rounded-3xl p-7 space-y-6">
-                    <div className="space-y-3">
-                        {priceBreakup
-                            .filter(item => !item.isTotal)
-                            .map((item, idx) => (
-                                <div key={idx} className="flex justify-between items-center text-[11px]">
-                                    <span className="font-bold text-slate-500/80 uppercase tracking-widest">
-                                        {item.label}
-                                    </span>
-                                    <span
-                                        className={`font-mono font-black ${item.isDeduction ? 'text-emerald-500' : item.isInfo ? 'text-brand-primary' : 'text-slate-700 dark:text-slate-300'} flex items-center gap-1.5`}
-                                    >
-                                        <span>
-                                            {item.isDeduction ? '-' : ''}
-                                            {typeof item.value === 'number'
-                                                ? `₹${item.value.toLocaleString()}`
-                                                : item.value}
-                                        </span>
-                                        {item.helpText && (
-                                            <span className="relative group/help cursor-help">
-                                                <HelpCircle size={12} className="text-slate-400 group-hover/help:text-slate-600" />
-                                                <div className="absolute right-0 bottom-full mb-2 w-max max-w-[220px] rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[9px] font-black uppercase tracking-widest px-3 py-2 opacity-0 group-hover/help:opacity-100 transition-opacity pointer-events-none shadow-2xl z-50">
-                                                    {Array.isArray(item.helpText)
-                                                        ? (
-                                                            <div className="space-y-1">
-                                                                {item.helpText.map((line, lineIdx) => (
-                                                                    <div key={lineIdx} className="flex justify-between gap-4">
-                                                                        <span className="text-white/70">{line}</span>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        )
-                                                        : item.helpText}
-                                                </div>
+                    <div className="space-y-4">
+                        <AnimatePresence initial={false}>
+                            {priceBreakup
+                                .filter(item => !item.isTotal)
+                                .map((item, idx) => {
+                                    // Only show basic items when collapsed, show all when expanded
+                                    const isBasic = idx < 2 || item.isDeduction || item.isInfo;
+                                    if (!isExpanded && !isBasic) return null;
+
+                                    return (
+                                        <motion.div
+                                            key={idx}
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            transition={{ duration: 0.3 }}
+                                            className="flex justify-between items-center text-[10px] relative group/item"
+                                        >
+                                            <span
+                                                className={`font-bold uppercase tracking-[0.1em] ${item.breakdown || item.helpText ? 'cursor-help border-b border-dotted border-slate-300 dark:border-white/20' : 'text-slate-500/80'}`}
+                                            >
+                                                {item.label}
                                             </span>
-                                        )}
-                                    </span>
-                                </div>
-                            ))}
+                                            <span
+                                                className={`font-mono font-black ${item.isDeduction ? 'text-emerald-500' : item.isInfo ? 'text-brand-primary' : 'text-slate-700 dark:text-slate-300'} flex items-center gap-1.5`}
+                                            >
+                                                <span className={item.isDeduction ? 'animate-pulse' : ''}>
+                                                    {item.isDeduction ? '-' : ''}
+                                                    {typeof item.value === 'number'
+                                                        ? `₹${Math.abs(item.value).toLocaleString()}`
+                                                        : item.value}
+                                                </span>
+                                            </span>
+
+                                            {/* Tooltip for Breakdown or HelpText */}
+                                            {(item.breakdown || item.helpText) && (
+                                                <div className="absolute right-0 bottom-full mb-2 w-max max-w-[240px] rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 p-3 opacity-0 group-hover/item:opacity-100 transition-opacity pointer-events-none shadow-2xl z-50">
+                                                    {item.breakdown ? (
+                                                        <div className="space-y-1">
+                                                            <p className="text-[9px] font-black uppercase tracking-widest opacity-50 mb-2 border-b border-white/20 dark:border-black/10 pb-1">
+                                                                Breakdown
+                                                            </p>
+                                                            {item.breakdown.map((b, bIdx) => (
+                                                                <div
+                                                                    key={bIdx}
+                                                                    className="flex justify-between gap-6 text-[10px]"
+                                                                >
+                                                                    <span className="opacity-80 font-medium">
+                                                                        {b.label}
+                                                                    </span>
+                                                                    <span className="font-mono font-bold">
+                                                                        ₹{b.amount.toLocaleString()}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-[9px] font-bold uppercase tracking-wide">
+                                                            {Array.isArray(item.helpText)
+                                                                ? item.helpText.map((line, lineIdx) => (
+                                                                      <div key={lineIdx}>{line}</div>
+                                                                  ))
+                                                                : item.helpText}
+                                                        </div>
+                                                    )}
+                                                    {/* Arrow */}
+                                                    <div className="absolute top-full right-4 -mt-1 w-2 h-2 bg-slate-900 dark:bg-white rotate-45"></div>
+                                                </div>
+                                            )}
+                                        </motion.div>
+                                    );
+                                })}
+                        </AnimatePresence>
+
+                        <button
+                            onClick={() => setIsExpanded(!isExpanded)}
+                            className="w-full py-2 border border-slate-200 dark:border-white/5 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-brand-primary hover:border-brand-primary/30 transition-all flex items-center justify-center gap-2 group/toggle"
+                        >
+                            <span>{isExpanded ? 'Show Less' : 'Show Full Breakdown'}</span>
+                            <ChevronRight
+                                size={12}
+                                className={`transition-transform duration-300 ${isExpanded ? '-rotate-90' : 'rotate-90'}`}
+                            />
+                        </button>
                     </div>
 
                     <div className="pt-6 border-t border-slate-100 dark:border-white/5 flex justify-between items-center group/price relative">
@@ -298,14 +310,18 @@ export default function SidebarHUD({
                                                         : 'text-red-400 font-black'
                                                 }
                                             >
-                                                {serviceability.isServiceable ? 'Fully Serviceable' : 'Not Serviceable Area'}
+                                                {serviceability.isServiceable
+                                                    ? 'Fully Serviceable'
+                                                    : 'Not Serviceable Area'}
                                             </span>
                                         </div>
                                         <span className="opacity-50 font-medium">
                                             {serviceability.taluka || serviceability.pincode}
                                         </span>
                                         {isEstimate && (
-                                            <span className="text-amber-500 font-bold block mt-1">*Estimated Price (Non-Binding)</span>
+                                            <span className="text-amber-500 font-bold block mt-1">
+                                                *Estimated Price (Non-Binding)
+                                            </span>
                                         )}
                                     </div>
                                 )}
@@ -313,12 +329,11 @@ export default function SidebarHUD({
                         </div>
 
                         <div className="text-right">
-                            <span className="text-3xl font-black italic tracking-tighter text-brand-primary dark:text-brand-primary font-mono block drop-shadow-[0_0_15px_rgba(244,176,0,0.2)]">
+                            <span className="text-4xl font-black italic tracking-tighter text-brand-primary dark:text-brand-primary font-mono block drop-shadow-[0_0_20px_rgba(255,215,0,0.3)] animate-in zoom-in-95 duration-700">
                                 ₹{totalOnRoad.toLocaleString()}
                             </span>
                         </div>
                     </div>
-
                 </div>
             </div>
 
@@ -328,20 +343,22 @@ export default function SidebarHUD({
                     {/* List-style Finance Details */}
                     <div className="space-y-4">
                         {[
-
-                            { label: 'Down Payment', value: `₹${(displayDownPayment).toLocaleString()}` },
+                            { label: 'Down Payment', value: `₹${displayDownPayment.toLocaleString()}` },
                             // Dynamic Charges
                             ...financeCharges.map(charge => ({
                                 label: charge.label,
-                                value: typeof charge.value === 'number' ? `₹${charge.value.toLocaleString()}` : charge.value,
+                                value:
+                                    typeof charge.value === 'number'
+                                        ? `₹${charge.value.toLocaleString()}`
+                                        : charge.value,
                                 isDeduction: false,
-                                helpText: charge.helpText
+                                helpText: charge.helpText,
                             })),
                             { label: 'Loan Amount', value: `₹${loanAmount.toLocaleString()}` },
                             {
                                 label: `Interest Rate (${interestType || 'REDUCING'})`,
                                 value: `${(annualInterest * 100).toFixed(2)}%`,
-                                isHighlight: true
+                                isHighlight: true,
                             },
                             { label: 'Duration', value: `${emiTenure} Months` },
                             {
@@ -350,15 +367,15 @@ export default function SidebarHUD({
                                     downPayment / totalOnRoad > 0.25
                                         ? 'High'
                                         : downPayment / totalOnRoad > 0.15
-                                            ? 'Medium'
-                                            : 'Low',
+                                          ? 'Medium'
+                                          : 'Low',
                                 isHighlight: true,
                                 colorClass:
                                     downPayment / totalOnRoad > 0.25
                                         ? 'text-emerald-500'
                                         : downPayment / totalOnRoad > 0.15
-                                            ? 'text-brand-primary'
-                                            : 'text-amber-500',
+                                          ? 'text-brand-primary'
+                                          : 'text-amber-500',
                             },
                             {
                                 label: 'Finance TAT',
@@ -367,31 +384,38 @@ export default function SidebarHUD({
                                 colorClass: 'text-brand-primary',
                             },
                             // Applied Scheme - moved to bottom
-                            (schemeId || 'QGH-X2A-SMY') ? {
-                                label: 'Applied Scheme',
-                                value: formatDisplayIdForUI(unformatDisplayId(schemeId || 'QGH-X2A-SMY')),
-                                isHighlight: false
-                            } : null,
-                        ].filter(Boolean).map((item: any, idx) => (
-                            <div key={idx} className="flex justify-between items-center text-[10px]">
-                                <span className="font-bold text-slate-500/80 uppercase tracking-widest">
-                                    {item.label}
-                                </span>
-                                <span
-                                    className={`font-mono font-black tracking-tight uppercase ${item.isHighlight ? item.colorClass || 'text-brand-primary italic' : 'text-slate-900 dark:text-white'} flex items-center gap-1.5`}
-                                >
-                                    {item.value}
-                                    {item.helpText && (
-                                        <div className="relative group/help cursor-help">
-                                            <HelpCircle size={10} className="text-slate-400 group-hover/help:text-slate-600" />
-                                            <div className="absolute right-0 bottom-full mb-2 w-max max-w-[200px] rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[9px] font-bold uppercase tracking-wide px-2 py-1 opacity-0 group-hover/help:opacity-100 transition-opacity pointer-events-none shadow-xl z-50">
-                                                {item.helpText}
+                            schemeId || 'QGH-X2A-SMY'
+                                ? {
+                                      label: 'Applied Scheme',
+                                      value: formatDisplayIdForUI(unformatDisplayId(schemeId || 'QGH-X2A-SMY')),
+                                      isHighlight: false,
+                                  }
+                                : null,
+                        ]
+                            .filter(Boolean)
+                            .map((item: any, idx) => (
+                                <div key={idx} className="flex justify-between items-center text-[10px]">
+                                    <span className="font-bold text-slate-500/80 uppercase tracking-widest">
+                                        {item.label}
+                                    </span>
+                                    <span
+                                        className={`font-mono font-black tracking-tight uppercase ${item.isHighlight ? item.colorClass || 'text-brand-primary italic' : 'text-slate-900 dark:text-white'} flex items-center gap-1.5`}
+                                    >
+                                        {item.value}
+                                        {item.helpText && (
+                                            <div className="relative group/help cursor-help">
+                                                <HelpCircle
+                                                    size={10}
+                                                    className="text-slate-400 group-hover/help:text-slate-600"
+                                                />
+                                                <div className="absolute right-0 bottom-full mb-2 w-max max-w-[200px] rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[9px] font-bold uppercase tracking-wide px-2 py-1 opacity-0 group-hover/help:opacity-100 transition-opacity pointer-events-none shadow-xl z-50">
+                                                    {item.helpText}
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
-                                </span>
-                            </div>
-                        ))}
+                                        )}
+                                    </span>
+                                </div>
+                            ))}
                     </div>
 
                     {/* Primary EMI Highlight (Aligned with Final Price) */}
@@ -400,7 +424,7 @@ export default function SidebarHUD({
                             Monthly EMI
                         </span>
                         <div className="text-right">
-                            <span className="text-3xl font-black italic tracking-tighter text-brand-primary dark:text-brand-primary font-mono block">
+                            <span className="text-4xl font-black italic tracking-tighter text-brand-primary dark:text-brand-primary font-mono block drop-shadow-[0_0_20px_rgba(255,215,0,0.2)]">
                                 ₹{emi.toLocaleString()}
                             </span>
                         </div>
@@ -414,13 +438,18 @@ export default function SidebarHUD({
                     onClick={onGetQuote}
                     disabled={serviceability.status === 'SET' && !serviceability.isServiceable}
                     className={`w-full h-18 py-6 rounded-[2rem] text-base font-black uppercase tracking-[0.2em] italic flex items-center justify-center gap-5 shadow-2xl transition-all group
-                        ${(serviceability.status === 'SET' && !serviceability.isServiceable)
-                            ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed shadow-none'
-                            : 'bg-[#F4B000] hover:bg-[#E0A800] text-black shadow-[#F4B000]/30 active:scale-[0.98]'
+                        ${
+                            serviceability.status === 'SET' && !serviceability.isServiceable
+                                ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed shadow-none'
+                                : 'bg-[#FFD700] hover:bg-[#FFD700]/90 text-black shadow-[#FFD700]/30 active:scale-[0.98]'
                         }`}
                 >
-                    {leadName ? 'SAVE QUOTE' : (serviceability.status === 'SET' && !serviceability.isServiceable) ? 'NOT SERVICEABLE' : 'GET QUOTE'}
-                    {!((serviceability.status === 'SET' && !serviceability.isServiceable)) && (
+                    {leadName
+                        ? 'SAVE QUOTE'
+                        : serviceability.status === 'SET' && !serviceability.isServiceable
+                          ? 'NOT SERVICEABLE'
+                          : 'GET QUOTE'}
+                    {!(serviceability.status === 'SET' && !serviceability.isServiceable) && (
                         <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-2 transition-transform">
                             <ChevronRight size={22} />
                         </div>

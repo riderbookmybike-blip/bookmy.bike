@@ -2,7 +2,21 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, Heart, Share2, Shield, Zap, Fuel, Gauge, Settings, Star, ChevronRight, Calculator, Check } from 'lucide-react';
+import {
+    ArrowLeft,
+    ArrowRight,
+    Heart,
+    Share2,
+    Shield,
+    Zap,
+    Fuel,
+    Gauge,
+    Settings,
+    Star,
+    ChevronRight,
+    Calculator,
+    Check,
+} from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 
 /**
@@ -103,12 +117,14 @@ export default function YamahaR15MPage() {
 
     return (
         <div className="min-h-screen bg-[#0b0d10] text-white">
-
             {/* Header */}
             <header className="fixed top-0 left-0 right-0 z-50 bg-[#0b0d10]/85 backdrop-blur-xl border-b border-white/5">
-                <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+                <div className="page-container py-4 flex items-center justify-between">
                     <div className="flex items-center gap-6">
-                        <Link href="/store/catalog" className="flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors">
+                        <Link
+                            href="/store/catalog"
+                            className="flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors"
+                        >
                             <ArrowLeft size={16} />
                             <span className="hidden sm:inline">Back to Catalog</span>
                         </Link>
@@ -138,17 +154,13 @@ export default function YamahaR15MPage() {
                     <div className="absolute inset-0 bg-gradient-to-r from-[#0b0d10]/85 via-transparent to-transparent" />
                 </div>
 
-                <div className="relative z-10 max-w-7xl mx-auto px-6 py-24 md:py-32">
+                <div className="page-container relative z-10 py-24 md:py-32">
                     <div className="max-w-2xl">
                         <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-blue-400 mb-4">
                             {R15M_DATA.brand}
                         </p>
-                        <h1 className="text-6xl md:text-8xl font-black tracking-tight mb-4">
-                            {R15M_DATA.model}
-                        </h1>
-                        <p className="text-xl text-white/60 italic mb-8">
-                            {R15M_DATA.tagline}
-                        </p>
+                        <h1 className="text-6xl md:text-8xl font-black tracking-tight mb-4">{R15M_DATA.model}</h1>
+                        <p className="text-xl text-white/60 italic mb-8">{R15M_DATA.tagline}</p>
 
                         {/* Quick Specs */}
                         <div className="grid grid-cols-3 gap-6 mb-10">
@@ -157,7 +169,9 @@ export default function YamahaR15MPage() {
                                 <p className="text-xs text-white/40 uppercase tracking-wider mt-1">Engine</p>
                             </div>
                             <div>
-                                <p className="text-3xl font-black">{R15M_DATA.specifications.engine.maxPower.split('@')[0].trim()}</p>
+                                <p className="text-3xl font-black">
+                                    {R15M_DATA.specifications.engine.maxPower.split('@')[0].trim()}
+                                </p>
                                 <p className="text-xs text-white/40 uppercase tracking-wider mt-1">Power</p>
                             </div>
                             <div>
@@ -168,7 +182,9 @@ export default function YamahaR15MPage() {
 
                         {/* Price */}
                         <div className="mb-8">
-                            <p className="text-sm text-white/40 uppercase tracking-wider mb-2">Ex-Showroom Price (Delhi)</p>
+                            <p className="text-sm text-white/40 uppercase tracking-wider mb-2">
+                                Ex-Showroom Price (Delhi)
+                            </p>
                             <p className="text-4xl md:text-5xl font-black" style={{ color: BRAND_GOLD }}>
                                 {formatPrice(R15M_DATA.exShowroomPrice)}
                             </p>
@@ -196,10 +212,9 @@ export default function YamahaR15MPage() {
                 </div>
             </section>
 
-
             {/* Color Selector */}
             <section className="py-12 bg-[#0b0d10] border-y border-white/5">
-                <div className="max-w-7xl mx-auto px-6">
+                <div className="page-container">
                     <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                         <div>
                             <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Available Colors</p>
@@ -217,31 +232,33 @@ export default function YamahaR15MPage() {
                             <p className="text-sm text-white/60 mt-3">{R15M_DATA.colors[selectedColor].name}</p>
                         </div>
                         <div className="flex items-center gap-3">
-                            {[1, 2, 3, 4, 5].map(i => <Star key={i} size={16} fill="#F4B000" color="#F4B000" />)}
+                            {[1, 2, 3, 4, 5].map(i => (
+                                <Star key={i} size={16} fill="#F4B000" color="#F4B000" />
+                            ))}
                             <span className="text-sm text-white/60 ml-2">4.8/5 (324 reviews)</span>
                         </div>
                     </div>
                 </div>
             </section>
 
-
             {/* Specifications Tabs */}
             <section className="py-16 bg-[#0b0d10]">
-                <div className="max-w-7xl mx-auto px-6">
+                <div className="page-container">
                     {/* Tab Headers */}
                     <div className="flex gap-4 mb-12 overflow-x-auto pb-4">
                         {[
                             { id: 'specs', label: 'Specifications' },
                             { id: 'features', label: 'Features' },
                             { id: 'emi', label: 'EMI Calculator' },
-                        ].map((tab) => (
+                        ].map(tab => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                                className={`px-6 py-3 rounded-full font-bold text-sm uppercase tracking-wider transition-all whitespace-nowrap ${activeTab === tab.id
+                                className={`px-6 py-3 rounded-full font-bold text-sm uppercase tracking-wider transition-all whitespace-nowrap ${
+                                    activeTab === tab.id
                                         ? 'bg-white text-black'
                                         : 'bg-white/5 text-white/60 hover:bg-white/10'
-                                    }`}
+                                }`}
                             >
                                 {tab.label}
                             </button>
@@ -254,7 +271,10 @@ export default function YamahaR15MPage() {
                             {/* Engine */}
                             <div className="bg-white/5 rounded-3xl p-6 border border-white/5">
                                 <div className="flex items-center gap-3 mb-6">
-                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${BRAND_GOLD}20`, color: BRAND_GOLD }}>
+                                    <div
+                                        className="w-10 h-10 rounded-xl flex items-center justify-center"
+                                        style={{ backgroundColor: `${BRAND_GOLD}20`, color: BRAND_GOLD }}
+                                    >
                                         <Settings size={20} />
                                     </div>
                                     <h3 className="font-bold">Engine</h3>
@@ -262,7 +282,9 @@ export default function YamahaR15MPage() {
                                 <div className="space-y-4">
                                     {Object.entries(R15M_DATA.specifications.engine).map(([key, value]) => (
                                         <div key={key} className="flex justify-between text-sm">
-                                            <span className="text-white/40 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                                            <span className="text-white/40 capitalize">
+                                                {key.replace(/([A-Z])/g, ' $1').trim()}
+                                            </span>
                                             <span className="text-white font-medium">{value}</span>
                                         </div>
                                     ))}
@@ -272,7 +294,10 @@ export default function YamahaR15MPage() {
                             {/* Transmission */}
                             <div className="bg-white/5 rounded-3xl p-6 border border-white/5">
                                 <div className="flex items-center gap-3 mb-6">
-                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${BRAND_GOLD}20`, color: BRAND_GOLD }}>
+                                    <div
+                                        className="w-10 h-10 rounded-xl flex items-center justify-center"
+                                        style={{ backgroundColor: `${BRAND_GOLD}20`, color: BRAND_GOLD }}
+                                    >
                                         <Zap size={20} />
                                     </div>
                                     <h3 className="font-bold">Transmission</h3>
@@ -280,7 +305,9 @@ export default function YamahaR15MPage() {
                                 <div className="space-y-4">
                                     {Object.entries(R15M_DATA.specifications.transmission).map(([key, value]) => (
                                         <div key={key} className="flex justify-between text-sm">
-                                            <span className="text-white/40 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                                            <span className="text-white/40 capitalize">
+                                                {key.replace(/([A-Z])/g, ' $1').trim()}
+                                            </span>
                                             <span className="text-white font-medium">{value}</span>
                                         </div>
                                     ))}
@@ -290,7 +317,10 @@ export default function YamahaR15MPage() {
                             {/* Dimensions */}
                             <div className="bg-white/5 rounded-3xl p-6 border border-white/5">
                                 <div className="flex items-center gap-3 mb-6">
-                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${BRAND_GOLD}20`, color: BRAND_GOLD }}>
+                                    <div
+                                        className="w-10 h-10 rounded-xl flex items-center justify-center"
+                                        style={{ backgroundColor: `${BRAND_GOLD}20`, color: BRAND_GOLD }}
+                                    >
                                         <Gauge size={20} />
                                     </div>
                                     <h3 className="font-bold">Dimensions</h3>
@@ -298,7 +328,9 @@ export default function YamahaR15MPage() {
                                 <div className="space-y-4">
                                     {Object.entries(R15M_DATA.specifications.dimensions).map(([key, value]) => (
                                         <div key={key} className="flex justify-between text-sm">
-                                            <span className="text-white/40 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                                            <span className="text-white/40 capitalize">
+                                                {key.replace(/([A-Z])/g, ' $1').trim()}
+                                            </span>
                                             <span className="text-white font-medium">{value}</span>
                                         </div>
                                     ))}
@@ -308,7 +340,10 @@ export default function YamahaR15MPage() {
                             {/* Performance */}
                             <div className="bg-white/5 rounded-3xl p-6 border border-white/5">
                                 <div className="flex items-center gap-3 mb-6">
-                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${BRAND_GOLD}20`, color: BRAND_GOLD }}>
+                                    <div
+                                        className="w-10 h-10 rounded-xl flex items-center justify-center"
+                                        style={{ backgroundColor: `${BRAND_GOLD}20`, color: BRAND_GOLD }}
+                                    >
                                         <Fuel size={20} />
                                     </div>
                                     <h3 className="font-bold">Performance</h3>
@@ -316,7 +351,9 @@ export default function YamahaR15MPage() {
                                 <div className="space-y-4">
                                     {Object.entries(R15M_DATA.specifications.performance).map(([key, value]) => (
                                         <div key={key} className="flex justify-between text-sm">
-                                            <span className="text-white/40 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                                            <span className="text-white/40 capitalize">
+                                                {key.replace(/([A-Z])/g, ' $1').trim()}
+                                            </span>
                                             <span className="text-white font-medium">{value}</span>
                                         </div>
                                     ))}
@@ -329,8 +366,14 @@ export default function YamahaR15MPage() {
                     {activeTab === 'features' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             {R15M_DATA.features.map((feature, i) => (
-                                <div key={i} className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5">
-                                    <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: BRAND_GOLD }}>
+                                <div
+                                    key={i}
+                                    className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5"
+                                >
+                                    <div
+                                        className="w-8 h-8 rounded-full flex items-center justify-center"
+                                        style={{ backgroundColor: BRAND_GOLD }}
+                                    >
                                         <Check size={16} className="text-black" />
                                     </div>
                                     <span className="font-medium">{feature}</span>
@@ -344,16 +387,25 @@ export default function YamahaR15MPage() {
                         <div id="emi-calculator">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                 {R15M_DATA.emiOptions.map((option, i) => (
-                                    <div key={i} className={`p-6 rounded-3xl border transition-all cursor-pointer hover:scale-105 ${i === 1 ? 'bg-white/10 border-white/20' : 'bg-white/5 border-white/5'}`}>
+                                    <div
+                                        key={i}
+                                        className={`p-6 rounded-3xl border transition-all cursor-pointer hover:scale-105 ${i === 1 ? 'bg-white/10 border-white/20' : 'bg-white/5 border-white/5'}`}
+                                    >
                                         {i === 1 && (
-                                            <span className="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-4 inline-block" style={{ backgroundColor: BRAND_GOLD, color: '#000' }}>
+                                            <span
+                                                className="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-4 inline-block"
+                                                style={{ backgroundColor: BRAND_GOLD, color: '#000' }}
+                                            >
                                                 Popular
                                             </span>
                                         )}
                                         <p className="text-4xl font-black mb-2" style={{ color: BRAND_GOLD }}>
-                                            {formatPrice(option.emi)}<span className="text-lg text-white/40">/mo</span>
+                                            {formatPrice(option.emi)}
+                                            <span className="text-lg text-white/40">/mo</span>
                                         </p>
-                                        <p className="text-sm text-white/60 mb-4">{option.tenure} months @ {option.interest}</p>
+                                        <p className="text-sm text-white/60 mb-4">
+                                            {option.tenure} months @ {option.interest}
+                                        </p>
                                         <button className="w-full py-3 border border-white/20 rounded-xl font-bold text-sm uppercase tracking-wide hover:bg-white/5 transition-all">
                                             Apply Now
                                         </button>
@@ -361,17 +413,17 @@ export default function YamahaR15MPage() {
                                 ))}
                             </div>
                             <p className="text-xs text-white/30 mt-8 text-center">
-                                *EMI calculated on loan amount of {formatPrice(R15M_DATA.onRoadPrice - 20000)} with down payment of ₹20,000. Actual EMI may vary based on credit score and bank policies.
+                                *EMI calculated on loan amount of {formatPrice(R15M_DATA.onRoadPrice - 20000)} with down
+                                payment of ₹20,000. Actual EMI may vary based on credit score and bank policies.
                             </p>
                         </div>
                     )}
                 </div>
             </section>
 
-
             {/* Trust Footer */}
             <section className="py-12 bg-[#0b0d10] border-t border-white/5">
-                <div className="max-w-7xl mx-auto px-6">
+                <div className="page-container">
                     <div className="flex flex-col md:flex-row items-center justify-center gap-8 text-center md:text-left">
                         <div className="flex items-center gap-3">
                             <Shield size={20} style={{ color: BRAND_GOLD }} />
@@ -388,7 +440,6 @@ export default function YamahaR15MPage() {
                     </div>
                 </div>
             </section>
-
         </div>
     );
 }

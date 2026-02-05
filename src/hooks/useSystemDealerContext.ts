@@ -9,31 +9,35 @@ interface UseDealerContextProps {
     initialLocation?: any;
     selectedColor?: string;
     overrideDealerId?: string | null;
+    disabled?: boolean;
+    prefetchedPricing?: ServerPricing | null;
+    prefetchedLocation?: any;
 }
 
-const DEFAULT_PRICING_DEALER_TENANT_ID =
-    process.env.NEXT_PUBLIC_DEFAULT_PRICING_DEALER_TENANT_ID || '';
+const DEFAULT_PRICING_DEALER_TENANT_ID = process.env.NEXT_PUBLIC_DEFAULT_PRICING_DEALER_TENANT_ID || '';
 
-// SSPP v1: Server-side calculated pricing structure
+// SSPP v2: Server-side calculated pricing structure (SOT JSON)
 interface ServerPricing {
     success: boolean;
     ex_showroom: number;
     rto: {
-        total: number;
-        type: string;
-        breakdown: { label: string; amount: number }[];
+        STATE: number;
+        BH: number | null;
+        COMPANY: number | null;
+        default: string;
     };
     insurance: {
-        total: number;
         od: number;
         tp: number;
         gst_rate: number;
-        breakdown: { label: string; amount: number }[];
+        base_total: number;
+        addons: { id: string; label: string; price: number; gst: number; total: number; default: boolean }[];
     };
     dealer: {
         offer: number;
         name: string | null;
         id: string | null;
+        studio_id?: string | null;
         is_serviceable: boolean;
     };
     final_on_road: number;
@@ -47,6 +51,9 @@ interface ServerPricing {
         idv: number;
         calculated_at: string;
     };
+    // Legacy fallback (deprecated)
+    rto_breakdown?: { label: string; amount: number }[];
+    insurance_breakdown?: { label: string; amount: number }[];
     error?: string;
     message?: string;
 }
@@ -57,32 +64,55 @@ export function useSystemDealerContext({
     hasTouchedAccessories = false,
     initialLocation,
     selectedColor,
-    overrideDealerId
+    overrideDealerId,
+    disabled = false,
+    prefetchedPricing,
+    prefetchedLocation,
 }: UseDealerContextProps) {
     // These states hold the "Hydrated" versions of data implies Dealer-specific overrides
     const [dealerColors, setDealerColors] = useState<any[]>(product.colors || []);
     const [dealerAccessories, setDealerAccessories] = useState<any[]>(initialAccessories);
 
     // The "Best Offer" object to be passed to UI (PhonePDPSticky / ProductCard)
-    const [bestOffer, setBestOffer] = useState<{
-        price: number;
-        dealer: string;
-        dealerId?: string;
-        isServiceable: boolean;
-        dealerLocation?: string;
-        bundleValue?: number;
-        bundlePrice?: number;
-    } | undefined>(undefined);
+    const [bestOffer, setBestOffer] = useState<
+        | {
+              price: number;
+              dealer: string;
+              dealerId?: string;
+              isServiceable: boolean;
+              dealerLocation?: string;
+              studio_id?: string;
+              bundleValue?: number;
+              bundlePrice?: number;
+          }
+        | undefined
+    >(() => {
+        if (!prefetchedPricing?.dealer) return undefined;
+        return {
+            price: Number(prefetchedPricing.dealer.offer || 0),
+            dealer: prefetchedPricing.dealer.name || 'Studio',
+            dealerId: prefetchedPricing.dealer.id || undefined,
+            isServiceable: true,
+            dealerLocation: prefetchedPricing.location?.district || prefetchedLocation?.district || undefined,
+            studio_id: prefetchedPricing.dealer?.studio_id || undefined,
+            bundleValue: 0,
+            bundlePrice: 0,
+        };
+    });
 
-    const [resolvedLocation, setResolvedLocation] = useState<any>(initialLocation);
+    const [resolvedLocation, setResolvedLocation] = useState<any>(prefetchedLocation || initialLocation);
 
     // SSPP v1: Server-Side Calculated Pricing (Single Source of Truth!)
-    const [serverPricing, setServerPricing] = useState<ServerPricing | null>(null);
+    const [serverPricing, setServerPricing] = useState<ServerPricing | null>(prefetchedPricing || null);
 
-    const [isHydrating, setIsHydrating] = useState(true);
+    const [isHydrating, setIsHydrating] = useState(!disabled);
 
     useEffect(() => {
         const hydrate = async () => {
+            if (disabled) {
+                setIsHydrating(false);
+                return;
+            }
             if (typeof window === 'undefined') {
                 setIsHydrating(false);
                 return;
@@ -119,7 +149,7 @@ export function useSystemDealerContext({
                     setResolvedLocation({
                         district,
                         stateCode,
-                        pincode
+                        pincode,
                     });
                 }
 
@@ -146,75 +176,149 @@ export function useSystemDealerContext({
                     selectedColor,
                     productFirstColorSkuId: product.colors?.[0]?.skuId,
                     district,
-                    stateCode
+                    stateCode,
                 });
 
                 const applyPricing = (pricingData: any) => {
                     setServerPricing(pricingData as ServerPricing);
 
+                    const dealerOffer = Number(pricingData?.dealer?.offer || 0);
                     setBestOffer({
-                        price: pricingData.ex_showroom,
+                        price: dealerOffer,
                         dealer: pricingData.dealer?.name || 'Studio',
-                        dealerId: pricingData.dealer?.id,
-                        isServiceable: pricingData.dealer?.is_serviceable || false,
+                        dealerId: pricingData.dealer?.id || undefined,
+                        isServiceable: pricingData.dealer?.is_serviceable ?? true,
                         dealerLocation: pricingData.location?.district || undefined,
+                        studio_id: pricingData.dealer?.studio_id || undefined,
                         bundleValue: 0,
-                        bundlePrice: 0
+                        bundlePrice: 0,
                     });
 
-                    setDealerColors((prev) => prev.map((c: any) => {
-                        if (c.skuId === activeSku) {
-                            return {
-                                ...c,
-                                pricingOverride: {
-                                    ...c.pricingOverride,
-                                    exShowroom: pricingData.ex_showroom
-                                },
-                                dealerOffer: pricingData.dealer?.offer || 0
-                            };
-                        }
-                        return c;
-                    }));
-                };
-
-                const callPricingRpc = async (targetDistrict: string, targetState: string) => {
-                    const resolvedDistrict = targetDistrict || 'ALL';
-                    // @ts-ignore - Types might be outdated
-                    const { data: pricingData, error: pricingError } = await supabase.rpc('get_variant_on_road_price_v1', {
-                        p_vehicle_color_id: activeSku || '',
-                        p_district_name: resolvedDistrict,
-                        p_state_code: targetState,
-                        p_registration_type: 'STATE' // Default to STATE, can be toggled by UI later
-                    }) as { data: any, error: any };
-
-                    if (pricingData && pricingData.success) {
-                        applyPricing(pricingData);
-                        return { ok: true };
-                    }
-
-                    if (pricingError) {
-                        console.error('SSPP RPC Error:', pricingError, 'for activeSku:', activeSku);
-                    } else if (pricingData && !pricingData.success) {
-                        console.warn('SSPP RPC returned failure:', pricingData.error, pricingData.message);
-                    }
-
-                    return { ok: false };
+                    setDealerColors(prev =>
+                        prev.map((c: any) => {
+                            if (c.skuId === activeSku) {
+                                return {
+                                    ...c,
+                                    pricingOverride: {
+                                        ...c.pricingOverride,
+                                        exShowroom: pricingData.ex_showroom,
+                                    },
+                                    dealerOffer: pricingData.dealer?.offer || 0,
+                                };
+                            }
+                            return c;
+                        })
+                    );
                 };
 
                 if (activeSku) {
-                    const primaryAttempt = await callPricingRpc(district || 'ALL', stateCode || 'MH');
+                    // SSPP v1.5: PRIORITIZE cat_price_state (Published SOT)
+                    const { data: publishedRecord } = await supabase
+                        .from('cat_price_state')
+                        .select('*')
+                        .eq('vehicle_color_id', activeSku)
+                        .eq('state_code', stateCode || 'MH')
+                        .eq('district', 'ALL')
+                        .eq('is_active', true)
+                        .order('district', { ascending: false }) // Stable fetch (state-level SOT)
+                        .limit(1)
+                        .single();
 
-                    if (!primaryAttempt.ok && DEFAULT_PRICING_DEALER_TENANT_ID) {
-                        const { data: fallbackDealer } = await supabase
-                            .from('id_tenants')
-                            .select('id, name, slug, location, pincode')
-                            .eq('id', DEFAULT_PRICING_DEALER_TENANT_ID)
-                            .single();
+                    if (publishedRecord && (publishedRecord as any).rto_total > 0) {
+                        const rec = publishedRecord as any;
 
-                        const fallbackDistrict = fallbackDealer?.location || district || 'ALL';
-                        const fallbackState = stateCode || 'MH';
+                        // SOT Phase 3: Prefer new JSON columns, fallback to legacy
+                        const hasRtoJson = rec.rto && typeof rec.rto === 'object' && rec.rto.STATE !== undefined;
+                        const hasInsJson =
+                            rec.insurance &&
+                            typeof rec.insurance === 'object' &&
+                            rec.insurance.base_total !== undefined;
 
-                        await callPricingRpc(fallbackDistrict, fallbackState);
+                        const rtoData = hasRtoJson
+                            ? rec.rto
+                            : {
+                                  STATE: parseFloat(rec.rto_total),
+                                  BH: null,
+                                  COMPANY: null,
+                                  default: 'STATE',
+                              };
+
+                        const insData = hasInsJson
+                            ? rec.insurance
+                            : {
+                                  od: Number((rec.insurance_breakdown as any)?.odPremium || 0),
+                                  tp: Number((rec.insurance_breakdown as any)?.tpPremium || 0),
+                                  gst_rate: 18,
+                                  base_total: parseFloat(rec.insurance_total),
+                                  addons: [],
+                              };
+
+                        // Legacy breakdown for UI compatibility
+                        const legacyRtoBreakdown =
+                            typeof rec.rto_breakdown === 'object' && rec.rto_breakdown
+                                ? Object.entries(rec.rto_breakdown).map(([label, amount]) => ({
+                                      label,
+                                      amount: Number(amount),
+                                  }))
+                                : [];
+
+                        const legacyInsBreakdown =
+                            typeof rec.insurance_breakdown === 'object' && rec.insurance_breakdown
+                                ? [
+                                      {
+                                          label: 'OD Premium',
+                                          amount: Number((rec.insurance_breakdown as any).odPremium || 0),
+                                          componentId: 'od',
+                                      },
+                                      {
+                                          label: 'TP Premium',
+                                          amount: Number((rec.insurance_breakdown as any).tpPremium || 0),
+                                          componentId: 'tp',
+                                      },
+                                      {
+                                          label: 'Zero Depreciation',
+                                          amount: Number(
+                                              (rec.insurance_breakdown as any).addons?.zeroDep ||
+                                                  (rec.insurance_breakdown as any).zeroDep ||
+                                                  0
+                                          ),
+                                          componentId: 'zeroDep',
+                                      },
+                                      {
+                                          label: 'GST',
+                                          amount: Number((rec.insurance_breakdown as any).gst || 0),
+                                          componentId: 'gst',
+                                      },
+                                  ].filter(i => i.amount > 0)
+                                : [];
+
+                        const pricingSnap = {
+                            success: true,
+                            ex_showroom: parseFloat(rec.ex_showroom_price),
+                            rto: rtoData,
+                            insurance: insData,
+                            dealer: {
+                                offer: 0,
+                                name: null,
+                                id: null,
+                                studio_id: null,
+                                is_serviceable: true,
+                            },
+                            final_on_road: parseFloat(rec.on_road_price),
+                            location: {
+                                district: rec.district,
+                                state_code: rec.state_code,
+                            },
+                            meta: {
+                                vehicle_color_id: activeSku,
+                                engine_cc: (product.specs as any)?.engine_cc || 110,
+                                idv: Math.round(parseFloat(rec.ex_showroom_price) * 0.95),
+                                calculated_at: new Date().toISOString(),
+                            },
+                            rto_breakdown: legacyRtoBreakdown,
+                            insurance_breakdown: legacyInsBreakdown,
+                        };
+                        applyPricing(pricingSnap);
                     }
                 }
 
@@ -233,13 +337,13 @@ export function useSystemDealerContext({
                     // Always fetch dealer info for consistent context
                     const { data: dealerInfo } = await supabase
                         .from('id_tenants')
-                        .select('id, name')
+                        .select('id, name, studio_id')
                         .eq('id', overrideDealerId)
                         .single();
 
                     if (skuIds.length > 0) {
                         const { data: dealerRules } = await supabase
-                            .from('id_dealer_pricing_rules')
+                            .from('cat_price_dealer')
                             .select('vehicle_color_id, offer_amount, inclusion_type')
                             .in('vehicle_color_id', skuIds)
                             .eq('tenant_id', overrideDealerId)
@@ -251,38 +355,45 @@ export function useSystemDealerContext({
                                 vehicle_color_id: r.vehicle_color_id,
                                 dealer_id: overrideDealerId,
                                 dealer_name: dealerInfo?.name || 'Assigned Dealer',
+                                studio_id: dealerInfo?.studio_id || null,
                                 best_offer: Number(r.offer_amount),
-                                bundle_ids: []
+                                bundle_ids: [],
                             }));
                         } else {
                             // Valid SKUs but no rules -> Dummy offer to lock dealer
-                            relevantOffers = [{
-                                vehicle_color_id: skuIds[0],
-                                dealer_id: overrideDealerId,
-                                dealer_name: dealerInfo?.name || 'Assigned Dealer',
-                                best_offer: 0,
-                                bundle_ids: []
-                            }];
+                            relevantOffers = [
+                                {
+                                    vehicle_color_id: skuIds[0],
+                                    dealer_id: overrideDealerId,
+                                    dealer_name: dealerInfo?.name || 'Assigned Dealer',
+                                    studio_id: dealerInfo?.studio_id || null,
+                                    best_offer: 0,
+                                    bundle_ids: [],
+                                },
+                            ];
                         }
                     } else {
                         // No valid SKUs (e.g. only Default) -> Dummy offer to lock dealer
                         // Use activeSku if valid UUID, else 'default' (which won't match but locks dealer)
                         const safeSku = activeSku && uuidRegex.test(activeSku) ? activeSku : 'default';
-                        relevantOffers = [{
-                            vehicle_color_id: safeSku,
-                            dealer_id: overrideDealerId,
-                            dealer_name: dealerInfo?.name || 'Assigned Dealer',
-                            best_offer: 0,
-                            bundle_ids: []
-                        }];
+                        relevantOffers = [
+                            {
+                                vehicle_color_id: safeSku,
+                                dealer_id: overrideDealerId,
+                                dealer_name: dealerInfo?.name || 'Assigned Dealer',
+                                studio_id: dealerInfo?.studio_id || null,
+                                best_offer: 0,
+                                bundle_ids: [],
+                            },
+                        ];
                     }
                 } else {
                     // MARKET BEST RESOLUTION (Default)
                     // @ts-ignore - Types might be outdated for this RPC
-                    const { data: offers } = await supabase.rpc('get_market_best_offers', {
+                    const { data: offers } = (await supabase.rpc('get_market_best_offers', {
                         p_district_name: district || 'ALL',
-                        p_state_code: stateCode || 'MH'
-                    }) as { data: any[], error: any };
+                        p_state_code: stateCode || 'MH',
+                    })) as { data: any[]; error: any };
 
                     if (offers && offers.length > 0) {
                         const skuIds = (product.colors || []).map((c: any) => c.skuId).filter(Boolean);
@@ -296,17 +407,57 @@ export function useSystemDealerContext({
                 }
 
                 // 5. Identify Winning Dealer
-                // If overrideDealerId is set, it forces the winner. 
+                // If overrideDealerId is set, it forces the winner.
                 // Otherwise we take the first one from relevantOffers (Standard logic)
                 const winningDealerId = relevantOffers[0].dealer_id;
                 const bundleIds = new Set(relevantOffers[0].bundle_ids || []);
                 const winningDealerName = relevantOffers[0].dealer_name;
+                const winningOfferAmount = Number(relevantOffers[0].best_offer || 0);
+
+                // SSPP v1.6: Merge Winner Details back into SSPP state
+                setServerPricing(prev =>
+                    prev
+                        ? {
+                              ...prev,
+                              dealer: {
+                                  id: winningDealerId,
+                                  name: winningDealerName,
+                                  studio_id: relevantOffers[0].studio_id,
+                                  offer: winningOfferAmount,
+                                  is_serviceable: true,
+                              },
+                          }
+                        : null
+                );
+
+                setBestOffer({
+                    price: winningOfferAmount,
+                    dealer: winningDealerName,
+                    dealerId: winningDealerId,
+                    isServiceable: true,
+                    dealerLocation: serverPricing?.location?.district || undefined,
+                    studio_id: relevantOffers[0].studio_id || undefined,
+                    bundleValue: 0,
+                    bundlePrice: 0,
+                });
+
+                setDealerColors(prev =>
+                    prev.map((c: any) => {
+                        if (c.skuId === activeSku) {
+                            return {
+                                ...c,
+                                dealerOffer: winningOfferAmount,
+                            };
+                        }
+                        return c;
+                    })
+                );
 
                 // 6. Update Accessories with Dealer Pricing Rules
                 if ((initialAccessories || []).length > 0 && winningDealerId) {
                     const accessoryIds = initialAccessories.map((a: any) => a.id);
                     const { data: rules } = await supabase
-                        .from('id_dealer_pricing_rules')
+                        .from('cat_price_dealer')
                         .select('vehicle_color_id, offer_amount, inclusion_type, is_active')
                         .in('vehicle_color_id', accessoryIds)
                         .eq('tenant_id', winningDealerId)
@@ -324,20 +475,20 @@ export function useSystemDealerContext({
                         }
 
                         const offer = rule ? Number(rule.offer_amount) : 0;
-                        const inclusionType = rule?.inclusion_type || (bundleIds.has(a.id) ? 'BUNDLE' : a.inclusionType || 'OPTIONAL');
+                        const inclusionType =
+                            rule?.inclusion_type || (bundleIds.has(a.id) ? 'BUNDLE' : a.inclusionType || 'OPTIONAL');
                         const discountPrice = Math.max(0, Number(a.price) + offer);
 
                         return {
                             ...a,
                             inclusionType,
                             isMandatory: inclusionType === 'MANDATORY',
-                            discountPrice
+                            discountPrice,
                         };
                     });
 
                     setDealerAccessories(updatedAccessories.filter(Boolean));
                 }
-
             } catch (err) {
                 console.error('Failed to hydrate dealer context:', err);
             } finally {
@@ -346,11 +497,7 @@ export function useSystemDealerContext({
         };
 
         hydrate();
-    }, [
-        product.id,
-        initialLocation?.district,
-        selectedColor
-    ]);
+    }, [product.id, initialLocation?.district, selectedColor, disabled]);
 
     return {
         dealerColors,
@@ -358,6 +505,6 @@ export function useSystemDealerContext({
         bestOffer,
         isHydrating,
         resolvedLocation,
-        serverPricing // SSPP v1: Single Source of Truth pricing breakdown
+        serverPricing, // SSPP v1: Single Source of Truth pricing breakdown
     };
 }

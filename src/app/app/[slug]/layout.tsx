@@ -3,12 +3,7 @@ import ShellLayout from '@/components/layout/ShellLayout';
 import TenantHydrator from '@/components/tenant/TenantHydrator';
 import { createClient } from '@/lib/supabase/server';
 import DebugPortal from '@/components/debug/DebugPortal';
-import {
-    TenantType,
-    TenantProvider,
-    TenantConfig,
-    Membership,
-} from '@/lib/tenant/tenantContext';
+import { TenantType, TenantProvider, TenantConfig, Membership } from '@/lib/tenant/tenantContext';
 import { CelebrationProvider } from '@/components/providers/CelebrationProvider';
 
 interface Tenant {
@@ -22,12 +17,14 @@ interface Tenant {
 interface LocalMembership extends Omit<Membership, 'tenants'> {
     tenants?: Tenant;
     tenant_id: string; // Ensure it's required locally
-    user_id: string;   // Ensure it's required locally
+    user_id: string; // Ensure it's required locally
     tenant_name?: string;
     tenant_slug?: string;
     tenant_type?: string;
     tenant_config?: TenantConfig;
 }
+
+import { getAuthUser } from '@/lib/auth/resolver';
 
 export default async function TenantDashboardLayout({
     children,
@@ -36,10 +33,8 @@ export default async function TenantDashboardLayout({
     children: React.ReactNode;
     params: Promise<{ slug: string }>;
 }) {
+    const user = await getAuthUser();
     const supabase = await createClient();
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
 
     const { slug } = await params;
     const normalizedSlug = slug.toLowerCase();
@@ -47,8 +42,7 @@ export default async function TenantDashboardLayout({
     if (!user) {
         redirect(`/login?next=/app/${slug}/dashboard`);
     }
-    const { data: rawMemberships } = await supabase
-        .rpc('get_user_memberships', { p_user_id: user.id });
+    const { data: rawMemberships } = await supabase.rpc('get_user_memberships', { p_user_id: user.id });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const memberships: LocalMembership[] = (Array.isArray(rawMemberships) ? rawMemberships : []).map((m: any) => ({
@@ -101,17 +95,14 @@ export default async function TenantDashboardLayout({
     }
     if (!matched) redirect('/403');
 
-    const { data: profile } = await supabase
-        .from('id_members')
-        .select('full_name')
-        .eq('id', user.id)
-        .maybeSingle();
+    const { data: profile } = await supabase.from('id_members').select('full_name').eq('id', user.id).maybeSingle();
 
-    const resolvedName = profile?.full_name
-        || user.user_metadata?.full_name
-        || user.user_metadata?.name
-        || user.email?.split('@')[0]
-        || 'User';
+    const resolvedName =
+        profile?.full_name ||
+        user.user_metadata?.full_name ||
+        user.user_metadata?.name ||
+        user.email?.split('@')[0] ||
+        'User';
     const tenantConfig = (matched.tenants?.config as unknown as TenantConfig) || null;
     const tenantType = (matched.tenants?.type === 'SUPER_ADMIN' ? 'AUMS' : matched.tenants?.type) as TenantType;
 

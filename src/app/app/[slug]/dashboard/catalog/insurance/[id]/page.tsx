@@ -12,17 +12,23 @@ import { FormulaComponent } from '@/types/registration';
 import InsuranceOverview from '@/components/catalog/insurance/InsuranceOverview';
 import InsuranceFormulaBuilder from '@/components/catalog/insurance/InsuranceFormulaBuilder';
 import InsurancePreview from '@/components/catalog/insurance/InsurancePreview';
-import { MOCK_INSURANCE_RULES } from '@/lib/mock/insuranceMocks';
 import { Save, ChevronLeft, Calculator, Sparkles, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import DataSourceIndicator from '@/components/dev/DataSourceIndicator';
 
 const COLUMNS = [
     { key: 'insurerName', header: 'Insurer / Rule', width: '70%' },
-    { key: 'status', header: 'Status', type: 'badge' as const, align: 'right' as const }
+    { key: 'status', header: 'Status', type: 'badge' as const, align: 'right' as const },
 ];
 
 // Mapping Utility
+// Default tenure config
+const DEFAULT_TENURE_CONFIG = {
+    od: { min: 1, max: 5, default: 1, allowed: [1] },
+    tp: { min: 1, max: 5, default: 5, allowed: [5] },
+    addons: { min: 1, max: 5, default: 1, allowed: [1], linkedTo: 'OD' as const },
+};
+
 const mapDbToFrontend = (d: any): InsuranceRule => ({
     id: d.id,
     displayId: d.display_id,
@@ -37,8 +43,9 @@ const mapDbToFrontend = (d: any): InsuranceRule => ({
     odComponents: d.od_components || [],
     tpComponents: d.tp_components || [],
     addons: d.addons || [],
+    tenureConfig: d.tenure_config || DEFAULT_TENURE_CONFIG,
     version: d.version || 1,
-    lastUpdated: d.updated_at
+    lastUpdated: d.updated_at,
 });
 
 const mapFrontendToDb = (r: InsuranceRule) => ({
@@ -54,8 +61,9 @@ const mapFrontendToDb = (r: InsuranceRule) => ({
     od_components: r.odComponents,
     tp_components: r.tpComponents,
     addons: r.addons,
+    tenure_config: r.tenureConfig || DEFAULT_TENURE_CONFIG,
     version: r.version,
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
 });
 
 export default function InsuranceDetailPage() {
@@ -68,7 +76,8 @@ export default function InsuranceDetailPage() {
     // Permission Logic
     const { activeRole, userRole: contextUserRole } = useTenant();
     const localRole = activeRole || contextUserRole;
-    const isPrivilegedRole = !!localRole && ['OWNER', 'SUPER_ADMIN', 'SUPERADMIN', 'MARKETPLACE_ADMIN'].includes(localRole);
+    const isPrivilegedRole =
+        !!localRole && ['OWNER', 'SUPER_ADMIN', 'SUPERADMIN', 'MARKETPLACE_ADMIN'].includes(localRole);
     const canEdit = can('catalog-insurance', id === 'new' ? 'create' : 'edit') || isPrivilegedRole;
 
     const [loading, setLoading] = useState(false);
@@ -89,7 +98,7 @@ export default function InsuranceDetailPage() {
 
         // Robust lookup: UUID vs DisplayId vs StateCode
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
-        let query = supabase.from('insurance_rules').select('*');
+        let query = supabase.from('cat_ins_rules').select('*');
 
         if (isUuid) {
             query = query.eq('id', targetId);
@@ -118,7 +127,7 @@ export default function InsuranceDetailPage() {
                 tpComponents: [],
                 addons: [],
                 version: 1,
-                lastUpdated: new Date().toISOString()
+                lastUpdated: new Date().toISOString(),
             });
         }
         setLoading(false);
@@ -151,17 +160,15 @@ export default function InsuranceDetailPage() {
         const supabase = createClient();
         const dbPayload = mapFrontendToDb(rule);
 
-        const { error } = await supabase
-            .from('insurance_rules')
-            .upsert(dbPayload);
+        const { error } = await supabase.from('cat_ins_rules').upsert(dbPayload);
 
         if (!error) {
-            alert("Insurance Rule Saved Successfully to Database!");
+            alert('Insurance Rule Saved Successfully to Database!');
             setIsEditing(false);
             setIsDirty(false);
             router.push('/catalog/insurance');
         } else {
-            console.error("Save error", error);
+            console.error('Save error', error);
             alert(`Failed to save: ${error.message}`);
         }
     };
@@ -175,7 +182,9 @@ export default function InsuranceDetailPage() {
         return (
             <div className="h-full w-full flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 p-20 text-center">
                 <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
-                <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">Syncing with Live DB...</h3>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
+                    Syncing with Live DB...
+                </h3>
             </div>
         );
     }
@@ -195,7 +204,10 @@ export default function InsuranceDetailPage() {
                     {/* Header */}
                     <div className="flex justify-between items-center px-8 py-6 border-b border-slate-100 dark:border-white/5 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md sticky top-0 z-20">
                         <div className="flex items-center gap-4">
-                            <button className="p-2 -ml-2 text-slate-400 hover:text-blue-600 transition-colors" onClick={handleBack}>
+                            <button
+                                className="p-2 -ml-2 text-slate-400 hover:text-blue-600 transition-colors"
+                                onClick={handleBack}
+                            >
                                 <ChevronLeft size={24} />
                             </button>
                             <div>
@@ -234,10 +246,11 @@ export default function InsuranceDetailPage() {
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
-                                className={`px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === tab
-                                    ? 'border-blue-600 text-blue-600'
-                                    : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
-                                    }`}
+                                className={`px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${
+                                    activeTab === tab
+                                        ? 'border-blue-600 text-blue-600'
+                                        : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+                                }`}
                             >
                                 <div className="flex items-center gap-2">
                                     {tab === 'Premium Studio' && <Calculator size={14} />}
@@ -253,7 +266,7 @@ export default function InsuranceDetailPage() {
                             <div className="p-8">
                                 <InsuranceOverview
                                     rule={rule}
-                                    onChange={(nextRule) => {
+                                    onChange={nextRule => {
                                         setRule(nextRule);
                                         setIsDirty(true);
                                     }}
@@ -273,8 +286,13 @@ export default function InsuranceDetailPage() {
                                                     <Sparkles size={24} />
                                                 </div>
                                                 <div>
-                                                    <h4 className="text-sm font-black uppercase tracking-widest mb-1 italic">Policy Logic Editor</h4>
-                                                    <p className="text-[11px] text-white/80 font-medium tracking-wide leading-relaxed">Configure OD rates as percentage of IDV, TP premiums as slab tables, and optional add-on covers.</p>
+                                                    <h4 className="text-sm font-black uppercase tracking-widest mb-1 italic">
+                                                        Policy Logic Editor
+                                                    </h4>
+                                                    <p className="text-[11px] text-white/80 font-medium tracking-wide leading-relaxed">
+                                                        Configure OD rates as percentage of IDV, TP premiums as slab
+                                                        tables, and optional add-on covers.
+                                                    </p>
                                                 </div>
                                             </div>
                                         </div>
@@ -284,12 +302,20 @@ export default function InsuranceDetailPage() {
                                             tpComponents={rule.tpComponents}
                                             addons={rule.addons}
                                             idvPercentage={rule.idvPercentage}
-                                            onIdvChange={(val) => {
+                                            tenureConfig={rule.tenureConfig}
+                                            onIdvChange={val => {
                                                 setRule({ ...rule, idvPercentage: val });
                                                 setIsDirty(true);
                                             }}
+                                            onTenureChange={config => {
+                                                setRule({ ...rule, tenureConfig: config });
+                                                setIsDirty(true);
+                                            }}
                                             onChange={(section, comps) => {
-                                                setRule({ ...rule, [section + (section === 'addons' ? '' : 'Components')]: comps });
+                                                setRule({
+                                                    ...rule,
+                                                    [section + (section === 'addons' ? '' : 'Components')]: comps,
+                                                });
                                                 setIsCalcValid(false);
                                                 setIsDirty(true);
                                             }}
@@ -299,10 +325,7 @@ export default function InsuranceDetailPage() {
                                     </div>
 
                                     <div className="col-span-12 xl:col-span-5 sticky top-8">
-                                        <InsurancePreview
-                                            rule={rule}
-                                            onValidCalculation={setIsCalcValid}
-                                        />
+                                        <InsurancePreview rule={rule} onValidCalculation={setIsCalcValid} />
                                     </div>
                                 </div>
                             </div>

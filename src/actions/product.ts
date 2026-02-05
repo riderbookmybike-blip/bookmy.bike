@@ -6,13 +6,17 @@ import { ProductVariant, VehicleSpecifications } from '@/types/productMaster';
 // Helper to format text as Title Case
 function toTitleCase(str: string): string {
     if (!str) return '';
-    return str.toLowerCase().split(' ').map(word => {
-        // Handle special cases or generic title casing
-        return word.charAt(0).toUpperCase() + word.slice(1);
-    }).join(' ');
+    return str
+        .toLowerCase()
+        .split(' ')
+        .map(word => {
+            // Handle special cases or generic title casing
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        })
+        .join(' ');
 }
 
-export async function getAllProducts(): Promise<{ products: ProductVariant[], error?: string }> {
+export async function getAllProducts(): Promise<{ products: ProductVariant[]; error?: string }> {
     const supabase = await createClient();
 
     try {
@@ -20,7 +24,8 @@ export async function getAllProducts(): Promise<{ products: ProductVariant[], er
         // Using the same query structure as useCatalog.ts to ensure data consistency
         const { data, error } = await supabase
             .from('cat_items')
-            .select(`
+            .select(
+                `
                 id, type, name, slug, specs, price_base, brand_id,
                 brand:cat_brands(name),
                 template:cat_templates!inner(name, code, category),
@@ -28,10 +33,11 @@ export async function getAllProducts(): Promise<{ products: ProductVariant[], er
                     id, type, name, slug, specs, price_base, position,
                     skus:cat_items!parent_id(
                         id, type, price_base, is_primary, image_url, specs,
-                        prices:cat_prices!vehicle_color_id(ex_showroom_price, state_code, district, is_active)
+                        prices:cat_price_state!vehicle_color_id(ex_showroom_price, state_code, district, is_active)
                     )
                 )
-            `)
+            `
+            )
             .eq('type', 'FAMILY')
             .eq('status', 'ACTIVE');
 
@@ -55,9 +61,7 @@ export async function getAllProducts(): Promise<{ products: ProductVariant[], er
             // If not (e.g. simple accessory), list the family itself or its specific SKUs.
 
             const variants = familyChildren.filter((c: any) => c.type === 'VARIANT');
-            const displayNodes = variants.length > 0
-                ? variants
-                : (familyChildren.length > 0 ? familyChildren : [family]);
+            const displayNodes = variants.length > 0 ? variants : familyChildren.length > 0 ? familyChildren : [family];
 
             return displayNodes.map((node: any) => {
                 const isFamilyNode = node.id === family.id;
@@ -79,12 +83,18 @@ export async function getAllProducts(): Promise<{ products: ProductVariant[], er
                 const nodeSkus = node.skus || [];
 
                 // Price logic: use lowest SKU price or node base price
-                const prices = nodeSkus.flatMap((s: any) => s.prices?.map((p: any) => p.ex_showroom_price) || s.price_base).filter((p: any) => p > 0);
-                const basePrice = prices.length > 0 ? Math.min(...prices) : (node.price_base || family.price_base || 0);
+                const prices = nodeSkus
+                    .flatMap((s: any) => s.prices?.map((p: any) => p.ex_showroom_price) || s.price_base)
+                    .filter((p: any) => p > 0);
+                const basePrice = prices.length > 0 ? Math.min(...prices) : node.price_base || family.price_base || 0;
 
                 // Image logic: Primary SKU > First SKU > Variant Spec > Family Spec
                 const primarySku = nodeSkus.find((s: any) => s.is_primary) || nodeSkus[0];
-                const imageUrl = primarySku?.image_url || primarySku?.specs?.image_url || node.specs?.image_url || family.specs?.image_url;
+                const imageUrl =
+                    primarySku?.image_url ||
+                    primarySku?.specs?.image_url ||
+                    node.specs?.image_url ||
+                    family.specs?.image_url;
 
                 // Specs merging
                 const specs = { ...family.specs, ...node.specs };
@@ -121,31 +131,34 @@ export async function getAllProducts(): Promise<{ products: ProductVariant[], er
                     status: 'ACTIVE',
                     price: {
                         exShowroom: basePrice,
-                        onRoad: 0 // Client-side calculation would require RTO rules
+                        onRoad: 0, // Client-side calculation would require RTO rules
                     },
-                    districtPrices: nodeSkus.flatMap((s: any) =>
-                        s.prices?.map((p: any) => ({
-                            district: p.district,
-                            exShowroom: parseFloat(p.ex_showroom_price)
-                        })) || []
-                    ).filter((p: any) => p.exShowroom > 0),
+                    districtPrices: nodeSkus
+                        .flatMap(
+                            (s: any) =>
+                                s.prices?.map((p: any) => ({
+                                    district: p.district,
+                                    exShowroom: parseFloat(p.ex_showroom_price),
+                                })) || []
+                        )
+                        .filter((p: any) => p.exShowroom > 0),
                     availableColors: nodeSkus.map((s: any) => ({
                         id: s.id,
                         name: s.specs?.Color || s.specs?.Colour || s.name || 'Standard',
                         hexCode: s.specs?.hex_primary || '#CCCCCC',
-                        imageUrl: s.image_url || s.specs?.primary_image || s.specs?.image_url
+                        imageUrl: s.image_url || s.specs?.primary_image || s.specs?.image_url,
                     })),
                     imageUrl: imageUrl,
                     specifications: {
                         engine: {
                             displacement: specs.engine_cc ? `${specs.engine_cc} cc` : undefined,
                             maxPower: specs.max_power,
-                            maxTorque: specs.max_torque
+                            maxTorque: specs.max_torque,
                         },
                         transmission: {
-                            type: specs.transmission_type
-                        }
-                    } as VehicleSpecifications
+                            type: specs.transmission_type,
+                        },
+                    } as VehicleSpecifications,
                 };
             });
         });

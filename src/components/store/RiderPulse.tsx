@@ -11,19 +11,25 @@ export const RiderPulse = () => {
         {
             name: 'Arjun Kapoor',
             handle: 'TVS Jupiter',
-            quote: t('"Booking my bike online should be as easy as ordering food. I want to see my on-road price, compare EMIs, and confirm the delivery date—without visiting five different showrooms or decoding hidden charges."'),
+            quote: t(
+                '"Booking my bike online should be as easy as ordering food. I want to see my on-road price, compare EMIs, and confirm the delivery date—without visiting five different showrooms or decoding hidden charges."'
+            ),
             color: 'from-orange-500',
         },
         {
             name: 'Meera Reddy',
             handle: 'Honda Activa',
-            quote: t('"The transparency is what I loved. No hidden costs, everything upfront. The delivery was right on time as promised. This is exactly what the two-wheeler market needed."'),
+            quote: t(
+                '"The transparency is what I loved. No hidden costs, everything upfront. The delivery was right on time as promised. This is exactly what the two-wheeler market needed."'
+            ),
             color: 'from-blue-500',
         },
         {
             name: 'Karan Malhotra',
             handle: 'Suzuki V-Strom',
-            quote: t('"Finally a platform that understands what riders need. The EMI comparison tool saved me so much time and money. Highly recommended for anyone looking to buy a bike."'),
+            quote: t(
+                '"Finally a platform that understands what riders need. The EMI comparison tool saved me so much time and money. Highly recommended for anyone looking to buy a bike."'
+            ),
             color: 'from-amber-500',
         },
     ];
@@ -32,7 +38,7 @@ export const RiderPulse = () => {
         // Note: The parent container (MasterLayout) controls the section background gradient.
         // We utilize transparent backgrounds here to let that flow through.
         <section className="h-full w-full flex flex-col justify-center relative overflow-hidden">
-            <div className="max-w-[1440px] mx-auto px-6 h-full flex flex-col justify-center relative z-10 w-full">
+            <div className="page-container h-full flex flex-col justify-center relative z-10">
                 <div className="grid grid-cols-12 gap-8 lg:gap-16 items-center h-full">
                     {/* LEFT COLUMN: Static Context (5/12) - Matches 'Select Your Vibe' */}
                     <div className="col-span-12 lg:col-span-5 space-y-8 relative z-30 lg:pr-12">

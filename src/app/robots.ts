@@ -5,21 +5,19 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
     const headersList = await headers();
     const host = headersList.get('host') || '';
 
-    // Public domain allows indexing
-    const isPublicDomain = host === 'bookmy.bike' || host === 'www.bookmy.bike';
+    // Allow indexing for public domain and local development
+    const isPublicDomain = host.includes('bookmy.bike') || host.includes('localhost');
 
     if (isPublicDomain) {
         return {
             rules: {
                 userAgent: '*',
                 allow: '/',
-                disallow: '/dashboard/', // Even on public site, don't index dashboard if it exists there
             },
-            sitemap: `https://${host}/sitemap.xml`,
+            sitemap: `https://${host.includes('localhost') ? 'bookmy.bike' : host}/sitemap.xml`,
         };
     }
 
-    // ALL Subdomains (Internal & Partners) -> Block Everything
     return {
         rules: {
             userAgent: '*',

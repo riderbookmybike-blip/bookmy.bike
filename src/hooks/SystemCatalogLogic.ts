@@ -1,36 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { ProductVariant } from '@/types/productMaster';
 import { mapCatalogItems } from '@/utils/catalogMapper';
-import { BMBDebug } from '@/types/debug';
-import { Database } from '@/types/supabase';
-
-// State code to full name mapping
-const STATE_NAMES: Record<string, string> = {
-    'MH': 'Maharashtra',
-    'KA': 'Karnataka',
-    'TN': 'Tamil Nadu',
-    'DL': 'Delhi',
-    'UP': 'Uttar Pradesh',
-    'GJ': 'Gujarat',
-    'RJ': 'Rajasthan',
-    'WB': 'West Bengal',
-    'AP': 'Andhra Pradesh',
-    'TS': 'Telangana',
-    'KL': 'Kerala',
-    'PB': 'Punjab',
-    'HR': 'Haryana',
-    'MP': 'Madhya Pradesh',
-    'BR': 'Bihar',
-    'OR': 'Odisha',
-    'AS': 'Assam',
-    'JH': 'Jharkhand',
-    'UK': 'Uttarakhand',
-    'CG': 'Chhattisgarh',
-    'HP': 'Himachal Pradesh',
-    'GA': 'Goa',
-    'ALL': 'India',
-};
 
 // Interface for Materialized Summary
 interface MarketSummary {
@@ -78,6 +49,10 @@ interface CatalogItemDB {
                 district?: string;
                 latitude?: number;
                 longitude?: number;
+                rto?: any;
+                insurance?: any;
+                rto_breakdown?: any;
+                insurance_breakdown?: any;
             }[];
         }[];
     }[];
@@ -90,86 +65,136 @@ export function useSystemCatalogLogic(leadId?: string) {
     const [skuCount, setSkuCount] = useState<number>(0);
     const [stateCode, setStateCode] = useState('MH');
     const [userDistrict, setUserDistrict] = useState<string | null>(null);
-    const [locationLabel, setLocationLabel] = useState('Mumbai, MH');
+    const [locationVersion, setLocationVersion] = useState(0);
+    const disableOffersRef = useRef(false);
+    const isValidUuid = (value: unknown) =>
+        typeof value === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
-    useEffect(() => {
-        const resolveLocation = () => {
-            if (typeof window === 'undefined') return;
-            const cached = localStorage.getItem('bkmb_user_pincode');
-            if (!cached) return;
-            try {
-                const data = JSON.parse(cached) as { state?: string; stateCode?: string; district?: string; taluka?: string };
+    const resolveLocationFromCache = () => {
+        if (typeof window === 'undefined') {
+            return { stateCode: null, district: null, lat: null, lng: null, pincode: null };
+        }
+        const cached = localStorage.getItem('bkmb_user_pincode');
+        if (!cached) {
+            return { stateCode: null, district: null, lat: null, lng: null, pincode: null };
+        }
+        try {
+            const data = JSON.parse(cached) as {
+                state?: string;
+                stateCode?: string;
+                district?: string;
+                taluka?: string;
+                lat?: number;
+                lng?: number;
+                pincode?: string;
+            };
 
-                // prefer stateCode
-                let code = data.stateCode;
-                const dist = data.district; // Capture district
+            // prefer stateCode
+            let code = data.stateCode;
+            const dist = data.district; // Capture district
 
-                // Fallback map if strict stateCode missing
-                if (!code && data.state) {
-                    const stateMap: Record<string, string> = {
-                        MAHARASHTRA: 'MH',
-                        KARNATAKA: 'KA',
-                        DELHI: 'DL',
-                        GUJARAT: 'GJ',
-                        TAMIL_NADU: 'TN',
-                        TELANGANA: 'TS',
-                        UTTAR_PRADESH: 'UP',
-                        WEST_BENGAL: 'WB',
-                        RAJASTHAN: 'RJ',
-                    };
-                    code = stateMap[data.state.toUpperCase()] || data.state.substring(0, 2).toUpperCase();
-                }
+            // Fallback map if strict stateCode missing
+            if (!code && data.state) {
+                const stateMap: Record<string, string> = {
+                    MAHARASHTRA: 'MH',
+                    KARNATAKA: 'KA',
+                    DELHI: 'DL',
+                    GUJARAT: 'GJ',
+                    TAMIL_NADU: 'TN',
+                    TELANGANA: 'TS',
+                    UTTAR_PRADESH: 'UP',
+                    WEST_BENGAL: 'WB',
+                    RAJASTHAN: 'RJ',
+                };
+                code = stateMap[data.state.toUpperCase()] || data.state.substring(0, 2).toUpperCase();
+            }
 
-                if (code) {
-                    setStateCode(code);
-                    if (dist) setUserDistrict(dist);
-                    // Construct Label: "District, Code" e.g. "Pune, MH"
-                    const talukaPart = data.district || data.taluka || '';
-                    const label = talukaPart ? `${talukaPart}, ${code}` : code;
-                    setLocationLabel(label);
+            if (code) {
+                // Construct Label: "District, Code" e.g. "Pune, MH"
+                if (typeof window !== 'undefined') {
+                    // Update global debug context
+                    const supabase = createClient();
+                    const distFinal = dist || data.district || 'MUMBAI_FALLBACK';
 
-                    if (typeof window !== 'undefined') {
-                        (window as any).__BMB_DEBUG__ = {
-                            ...(window as any).__BMB_DEBUG__,
-                            pricingSource: leadId ? 'DEALER_OFFERS_RPC' : 'MARKET_BEST_RPC',
-                            district: data.district || 'MUMBAI_FALLBACK',
+                    (async () => {
+                        const {
+                            data: { user },
+                        } = await supabase.auth.getUser();
+
+                        const debugData = {
+                            pricingSource: leadId ? 'PRIMARY_LEAD_DISTRICT' : 'PRIMARY_DEALER',
+                            district: distFinal,
                             stateCode: code,
                             leadId: leadId,
                             locSource: 'CACHE',
-                            pincode: (data as any).pincode || 'UNKNOWN'
+                            pincode: (data as any).pincode || 'UNKNOWN',
+                            userId: user?.email || user?.id || 'GUEST',
                         };
-                    }
-                }
-            } catch (e) {
-                console.error('Error parsing stored location:', e);
-            }
-        };
 
-        resolveLocation();
-        window.addEventListener('locationChanged', resolveLocation);
-        return () => window.removeEventListener('locationChanged', resolveLocation);
-    }, [stateCode, userDistrict]);
+                        if ((window as any).__BMB_DEBUG__) {
+                            (window as any).__BMB_DEBUG__ = {
+                                ...(window as any).__BMB_DEBUG__,
+                                ...debugData,
+                            };
+                        } else {
+                            // Initialize if missing
+                            (window as any).__BMB_DEBUG__ = debugData as any;
+                        }
+                    })();
+                }
+            }
+
+            return {
+                stateCode: code || null,
+                district: dist || null,
+                lat: typeof data.lat === 'number' ? data.lat : null,
+                lng: typeof data.lng === 'number' ? data.lng : null,
+                pincode: data.pincode || null,
+            };
+        } catch (e) {
+            console.error('Error parsing stored location:', e);
+            return { stateCode: null, district: null, lat: null, lng: null, pincode: null };
+        }
+    };
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const handleLocationChanged = () => setLocationVersion(prev => prev + 1);
+        window.addEventListener('locationChanged', handleLocationChanged);
+        return () => window.removeEventListener('locationChanged', handleLocationChanged);
+    }, []);
 
     useEffect(() => {
         const fetchItems = async () => {
             try {
                 setIsLoading(true);
                 const supabase = createClient();
+                const cachedLocation = resolveLocationFromCache();
+
+                let resolvedStateCode = cachedLocation.stateCode || stateCode;
+                let resolvedUserDistrict = cachedLocation.district || userDistrict;
+                if (!resolvedStateCode) resolvedStateCode = 'MH';
+
+                if (cachedLocation.stateCode && cachedLocation.stateCode !== stateCode) {
+                    setStateCode(cachedLocation.stateCode);
+                }
+                if (cachedLocation.district && cachedLocation.district !== userDistrict) {
+                    setUserDistrict(cachedLocation.district);
+                }
 
                 // ---------------------------------------------------------
                 // 🚀 PERFORMANCE LAYER: Materialized Summary (Read Model)
                 // ---------------------------------------------------------
                 // Attempt to fetch pre-calculated market data first
-                const { data: rawSummaryData, error: summaryError } = await supabase
+                const { data: rawSummaryData } = await supabase
                     .from('mat_market_summary')
                     .select('*')
-                    .eq('state_code', stateCode)
+                    .eq('state_code', resolvedStateCode)
                     .order('lowest_price', { ascending: true });
 
                 // Fetch brands for mapping (lightweight)
-                const { data: rawBrandsData } = await supabase
-                    .from('cat_brands')
-                    .select('id, name, logo_svg');
+                const { data: rawBrandsData } = await supabase.from('cat_brands').select('id, name, logo_svg');
 
                 const brandsData = rawBrandsData as { id: string; name: string; logo_svg: string | null }[] | null;
 
@@ -194,7 +219,7 @@ export function useSystemCatalogLogic(leadId?: string) {
 
                     // STRATEGY: Hybrid.
                     // 1. Show Summary immediately.
-                    // 2. Background fetch full data if needed? 
+                    // 2. Background fetch full data if needed?
                     // Actually, let's stick to the Plan: If summary exists, use it.
 
                     // We need to match the type 'ProductVariant' approximately.
@@ -236,9 +261,9 @@ export function useSystemCatalogLogic(leadId?: string) {
                                 onRoad: Math.round(s.lowest_price * 1.12), // Rough estimate for UI feel before hydration
                                 offerPrice: Math.round(s.lowest_price * 1.12),
                                 discount: 0,
-                                pricingSource: 'Starting From'
+                                pricingSource: 'Starting From',
                             },
-                            availableColors: []
+                            availableColors: [],
                         };
                     });
 
@@ -254,7 +279,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                     // Setting this aside: The standard "Solution" is to fetch items but use prices from summary?
                     // No, the goal is to avoid the heavy joins.
 
-                    // Let's stick to the RPC for "correctness" in this step if I can't map 1:1, 
+                    // Let's stick to the RPC for "correctness" in this step if I can't map 1:1,
                     // OR execute the RPC but leverage the summary for sorting?
 
                     // CORRECT IMPLEMENTATION:
@@ -269,11 +294,13 @@ export function useSystemCatalogLogic(leadId?: string) {
                     const familyIds = summaryData!.map(s => s.family_id);
                     const { data: rawFullData } = await supabase
                         .from('cat_items')
-                        .select(`
+                        .select(
+                            `
                             id, type, name, slug, specs, price_base, brand_id,
                             brand:cat_brands(name, logo_svg),
                             template:cat_templates!inner(name, code, category)
-                        `)
+                        `
+                        )
                         .in('id', familyIds);
 
                     const fullData = rawFullData as any[];
@@ -286,7 +313,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                                 ...item,
                                 children: [], // No need to fetch children! We have the price.
                                 price_base: summary?.lowest_price || item.price_base,
-                                _summary_image: summary?.image_url
+                                _summary_image: summary?.image_url,
                             };
                         });
 
@@ -304,7 +331,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                             window.__BMB_DEBUG__ = {
                                 ...window.__BMB_DEBUG__,
                                 pricingSource: 'MAT_VIEW_FAST_LANE',
-                                marketOffersCount: summaryData!.length
+                                marketOffersCount: summaryData!.length,
                             };
                         }
                         return; // EXIT EARLY - SUCCESS
@@ -318,7 +345,8 @@ export function useSystemCatalogLogic(leadId?: string) {
                 // Fetch Families + Children (Variants) + Grandchildren (SKUs)
                 const { data, error: dbError } = await supabase
                     .from('cat_items')
-                    .select(`
+                    .select(
+                        `
                         id, type, name, slug, specs, price_base, brand_id,
                         brand:cat_brands(name, logo_svg),
                         template:cat_templates!inner(name, code, category),
@@ -344,10 +372,11 @@ export function useSystemCatalogLogic(leadId?: string) {
                                     is_flipped,
                                     offset_x,
                                      assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
-                                     prices:cat_prices!vehicle_color_id(ex_showroom_price, state_code, district, latitude, longitude, is_active)
+                                     prices:cat_price_state!vehicle_color_id(ex_showroom_price, state_code, district, latitude, longitude, is_active)
                                 )
                         )
-                    `)
+                    `
+                    )
                     .eq('type', 'FAMILY')
                     .eq('status', 'ACTIVE')
                     .not('template_id', 'is', null)
@@ -361,7 +390,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                 const { data: ruleData } = await supabase
                     .from('cat_reg_rules')
                     .select('*')
-                    .eq('state_code', stateCode)
+                    .eq('state_code', resolvedStateCode)
                     .eq('status', 'ACTIVE');
 
                 const { data: insuranceRuleData } = await supabase
@@ -369,111 +398,176 @@ export function useSystemCatalogLogic(leadId?: string) {
                     .select('*')
                     .eq('status', 'ACTIVE')
                     .eq('vehicle_type', 'TWO_WHEELER')
-                    .or(`state_code.eq.${stateCode},state_code.eq.ALL`)
+                    .or(`state_code.eq.${resolvedStateCode},state_code.eq.ALL`)
                     .order('state_code', { ascending: false })
                     .limit(1);
 
-                // Fetch Offers (Market Best or Specific Dealer)
+                // Fetch Offers (Primary Dealer Only)
                 let offerData;
                 let resolvedDealerId: string | null = null;
+
+                // Team session lock (client cookie)
+                if (typeof document !== 'undefined') {
+                    const cookies = document.cookie.split(';').reduce(
+                        (acc, cookie) => {
+                            const [key, value] = cookie.trim().split('=');
+                            acc[key] = value;
+                            return acc;
+                        },
+                        {} as Record<string, string>
+                    );
+                    const sessionCookie = cookies['bmb_dealer_session'];
+                    if (sessionCookie) {
+                        try {
+                            const session = JSON.parse(decodeURIComponent(sessionCookie));
+                            if (
+                                session?.mode === 'TEAM' &&
+                                session?.activeTenantId &&
+                                isValidUuid(session.activeTenantId)
+                            ) {
+                                resolvedDealerId = session.activeTenantId;
+                            }
+                        } catch {}
+                    }
+                }
 
                 if (leadId) {
                     const { data: lead } = await supabase
                         .from('crm_leads')
-                        .select('owner_tenant_id, customer_pincode')
+                        .select('customer_pincode')
                         .eq('id', leadId)
-                        .returns<{ owner_tenant_id: string | null; customer_pincode: string | null }[]>()
+                        .returns<{ customer_pincode: string | null }[]>()
                         .single();
 
-                    if (lead) {
-                        // NEW LOGIC: Prefer Market Best price in the lead's district over the owner dealer's price
-                        if (lead.customer_pincode && lead.customer_pincode.length === 6) {
-                            const { data: pincodeData } = await supabase
-                                .from('loc_pincodes')
-                                .select('district, state_code')
-                                .eq('pincode', lead.customer_pincode)
-                                .returns<{ district: string | null; state_code: string | null }[]>()
-                                .single();
+                    if (lead?.customer_pincode && lead.customer_pincode.length === 6) {
+                        const { data: pincodeData } = await supabase
+                            .from('loc_pincodes')
+                            .select('district, state_code')
+                            .eq('pincode', lead.customer_pincode)
+                            .returns<{ district: string | null; state_code: string | null }[]>()
+                            .single();
 
-                            if (pincodeData) {
-                                // Update local state for consistency
-                                setUserDistrict(pincodeData.district || '');
-                                setStateCode(pincodeData.state_code || '');
-                                // Force null resolvedDealerId to trigger market best logic
-                                resolvedDealerId = null;
+                        if (pincodeData) {
+                            resolvedUserDistrict = pincodeData.district || resolvedUserDistrict;
+                            resolvedStateCode = pincodeData.state_code || resolvedStateCode;
+                            setUserDistrict(resolvedUserDistrict || '');
+                            setStateCode(resolvedStateCode || '');
 
-                                if (typeof window !== 'undefined') {
-                                    window.__BMB_DEBUG__ = {
-                                        ...window.__BMB_DEBUG__,
-                                        pricingSource: 'MARKET_BEST (Lead District)',
-                                        district: pincodeData.district || '',
-                                        stateCode: pincodeData.state_code || '',
-                                        locSource: 'LEAD_PINCODE',
-                                        pincode: lead.customer_pincode || ''
-                                    };
-                                }
-                            } else {
-                                resolvedDealerId = lead.owner_tenant_id;
+                            if (typeof window !== 'undefined') {
+                                window.__BMB_DEBUG__ = {
+                                    ...window.__BMB_DEBUG__,
+                                    pricingSource: 'PRIMARY (Lead District)',
+                                    district: resolvedUserDistrict || '',
+                                    stateCode: resolvedStateCode || '',
+                                    locSource: 'LEAD_PINCODE',
+                                    pincode: lead.customer_pincode || '',
+                                };
                             }
-                        } else {
-                            resolvedDealerId = lead.owner_tenant_id;
                         }
                     }
                 }
 
-                if (resolvedDealerId) {
-                    const { data: dealerOffers } = await (supabase.rpc as any)('get_dealer_offers', {
-                        p_tenant_id: resolvedDealerId,
-                        p_state_code: stateCode
-                    });
-                    offerData = dealerOffers;
-                } else {
-                    const { data } = await (supabase.rpc as any)('get_market_best_offers', {
-                        p_district: userDistrict || '',
-                        p_state_code: stateCode
-                    });
-                    offerData = data;
+                if (!resolvedDealerId && resolvedUserDistrict) {
+                    const { data: primary } = await supabase
+                        .from('id_primary_dealer_districts')
+                        .select('tenant_id')
+                        .eq('state_code', resolvedStateCode)
+                        .ilike('district', resolvedUserDistrict)
+                        .eq('is_active', true)
+                        .maybeSingle();
+
+                    if (primary?.tenant_id) {
+                        resolvedDealerId = primary.tenant_id;
+                    }
+                }
+
+                if (!resolvedDealerId || !isValidUuid(resolvedDealerId)) {
+                    setItems([]);
+                    setIsLoading(false);
+                    return;
+                }
+
+                if (resolvedStateCode && resolvedDealerId && !disableOffersRef.current) {
+                    try {
+                        const { data: dealerOffers, error: rpcError } = await (supabase.rpc as any)(
+                            'get_dealer_offers',
+                            {
+                                p_tenant_id: resolvedDealerId,
+                                p_state_code: resolvedStateCode,
+                            }
+                        );
+                        if (rpcError) {
+                            console.error('[CATALOG] RPC error:', rpcError.message, rpcError.details || null);
+                            disableOffersRef.current = true;
+                            offerData = [];
+                        } else {
+                            offerData = dealerOffers || [];
+                        }
+                    } catch (err: any) {
+                        console.error('[CATALOG] RPC error:', err?.message || err);
+                        disableOffersRef.current = true;
+                        offerData = [];
+                    }
                 }
 
                 if (offerData && Array.isArray(offerData) && offerData.length > 0) {
-                    const dealerIds = Array.from(new Set(offerData.map((o: any) => o?.dealer_id).filter(Boolean)));
+                    const dealerIds = Array.from(
+                        new Set(offerData.map((o: any) => o?.dealer_id).filter((id: any) => isValidUuid(id)))
+                    );
                     if (dealerIds.length > 0) {
                         const { data: dealers } = await supabase
                             .from('id_tenants')
-                            .select('id, location')
+                            .select('id, location, studio_id, name') // Added name for debug
                             .in('id', dealerIds);
-                        const dealerLocationMap = (dealers || []).reduce((acc: Record<string, string>, dealer: any) => {
-                            if (dealer?.id && dealer?.location) acc[dealer.id] = dealer.location;
-                            return acc;
-                        }, {});
+
+                        const dealerMap = (dealers || []).reduce(
+                            (acc: Record<string, { loc: string; code: string; name: string }>, dealer: any) => {
+                                if (dealer?.id) {
+                                    acc[dealer.id] = {
+                                        loc: dealer.location,
+                                        code: dealer.studio_id,
+                                        name: dealer.name,
+                                    };
+                                }
+                                return acc;
+                            },
+                            {}
+                        );
+
+                        // Update Debugger with Real Primary Dealer Context
+                        if (typeof window !== 'undefined' && resolvedDealerId && dealerMap[resolvedDealerId]) {
+                            const activeDealer = dealerMap[resolvedDealerId];
+                            window.__BMB_DEBUG__ = {
+                                ...window.__BMB_DEBUG__,
+                                dealerId: resolvedDealerId,
+                                studioName: activeDealer.code
+                                    ? `${activeDealer.name} (${activeDealer.code})`
+                                    : activeDealer.name,
+                                marketOffersCount: offerData?.length || 0,
+                                pricingSource: 'PRIMARY_DEALER_RESOLVED',
+                            };
+                        }
+
                         offerData = offerData.map((offer: any) => ({
                             ...offer,
-                            dealer_location: dealerLocationMap[offer.dealer_id]
+                            dealer_location: dealerMap[offer.dealer_id]?.loc,
+                            studio_code: dealerMap[offer.dealer_id]?.code,
                         }));
                     }
                 }
 
                 if (data) {
                     // Get User Location from LocalStorage for Client Side Distance Calc
-                    let userLat: number | null = null;
-                    let userLng: number | null = null;
-                    const cached = localStorage.getItem('bkmb_user_pincode');
-                    if (cached) {
-                        try {
-                            const uData = JSON.parse(cached);
-                            if (uData.lat && uData.lng) {
-                                userLat = uData.lat;
-                                userLng = uData.lng;
-                            }
-                        } catch (e) { }
-                    }
+                    const userLat: number | null = cachedLocation.lat;
+                    const userLng: number | null = cachedLocation.lng;
 
-                    const mappedItems = mapCatalogItems(
-                        data as any[],
-                        ruleData || [],
-                        insuranceRuleData || [],
-                        { stateCode, userLat, userLng, userDistrict, offers: offerData || [] }
-                    );
+                    const mappedItems = mapCatalogItems(data as any[], ruleData || [], insuranceRuleData || [], {
+                        stateCode: resolvedStateCode,
+                        userLat,
+                        userLng,
+                        userDistrict: resolvedUserDistrict,
+                        offers: offerData || [],
+                    });
 
                     let enrichedItems = mappedItems;
 
@@ -483,17 +577,34 @@ export function useSystemCatalogLogic(leadId?: string) {
                             .filter(Boolean) as string[];
 
                         if (primarySkuIds.length > 0) {
-                            const { data: pricingRows } = await (supabase.rpc as any)('get_catalog_prices_v1', {
-                                p_vehicle_color_ids: primarySkuIds,
-                                p_district_name: userDistrict || '',
-                                p_state_code: stateCode || 'MH',
-                                p_registration_type: 'STATE'
-                            });
+                            // Published SOT: Read directly from cat_price_state instead of RPC
+                            const { data: pricingRows } = await supabase
+                                .from('cat_price_state')
+                                .select(
+                                    'vehicle_color_id, ex_showroom_price, rto_total, insurance_total, on_road_price, district'
+                                )
+                                .eq('state_code', resolvedStateCode || 'MH')
+                                .in(
+                                    'district',
+                                    ['ALL', resolvedUserDistrict?.toUpperCase()].filter(Boolean) as string[]
+                                )
+                                .eq('is_active', true)
+                                .in('vehicle_color_id', primarySkuIds);
 
                             const pricingMap = new Map<string, any>();
                             (pricingRows || []).forEach((row: any) => {
-                                if (row?.vehicle_color_id && row?.pricing) {
-                                    pricingMap.set(row.vehicle_color_id, row.pricing);
+                                if (row?.vehicle_color_id) {
+                                    const existing = pricingMap.get(row.vehicle_color_id);
+                                    // Prefer district match over 'ALL' fallback
+                                    if (!existing || row.district !== 'ALL') {
+                                        pricingMap.set(row.vehicle_color_id, {
+                                            ex_showroom: row.ex_showroom_price,
+                                            rto_total: row.rto_total,
+                                            insurance_total: row.insurance_total,
+                                            final_on_road: row.on_road_price || row.ex_showroom_price,
+                                            location: { district: row.district, state_code: resolvedStateCode },
+                                        });
+                                    }
                                 }
                             });
 
@@ -506,6 +617,10 @@ export function useSystemCatalogLogic(leadId?: string) {
                                     .filter(Boolean)
                                     .join(', ');
 
+                                // Find dealer offer from offerData
+                                const dealerOffer = (offerData || []).find((o: any) => o?.vehicle_color_id === skuId);
+                                const offerDelta = Number(dealerOffer?.best_offer || 0);
+
                                 return {
                                     ...item,
                                     serverPricing: pricing,
@@ -513,18 +628,21 @@ export function useSystemCatalogLogic(leadId?: string) {
                                         ...item.price,
                                         exShowroom: pricing?.ex_showroom ?? item.price?.exShowroom,
                                         onRoad: pricing?.final_on_road ?? item.price?.onRoad,
-                                        offerPrice: pricing?.final_on_road ?? item.price?.offerPrice,
-                                        discount: pricing?.dealer?.offer ?? item.price?.discount,
+                                        offerPrice: (pricing?.final_on_road ?? item.price?.offerPrice) + offerDelta,
+                                        discount: offerDelta < 0 ? Math.abs(offerDelta) : 0,
                                         pricingSource: pricingSource || item.price?.pricingSource,
-                                        isEstimate: false
+                                        isEstimate: false,
                                     },
-                                    studioName: pricing?.dealer?.name ?? item.studioName,
-                                    dealerId: pricing?.dealer?.id ?? item.dealerId
+                                    studioName: dealerOffer?.dealer_name ?? item.studioName,
+                                    dealerId: dealerOffer?.dealer_id ?? item.dealerId,
+                                    // Flattened Dealer Context for UI
+                                    studioCode: dealerOffer?.studio_code,
+                                    dealerLocation: dealerOffer?.dealer_location,
                                 };
                             });
                         }
                     } catch (pricingErr) {
-                        console.error('Catalog pricing RPC failed:', pricingErr);
+                        console.error('Catalog pricing fetch failed:', pricingErr);
                     }
 
                     setItems(enrichedItems);
@@ -532,7 +650,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                     if (typeof window !== 'undefined') {
                         window.__BMB_DEBUG__ = {
                             ...window.__BMB_DEBUG__,
-                            marketOffersCount: (offerData as any[])?.length || 0
+                            marketOffersCount: (offerData as any[])?.length || 0,
                         };
                     }
 
@@ -560,7 +678,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                         message: err.message,
                         details: err.details,
                         hint: err.hint,
-                        code: err.code
+                        code: err.code,
                     });
                 }
                 setError(err instanceof Error ? err.message : 'Unknown error');
@@ -571,7 +689,7 @@ export function useSystemCatalogLogic(leadId?: string) {
         };
 
         fetchItems();
-    }, [stateCode, userDistrict, leadId]);
+    }, [leadId, locationVersion]);
 
     return { items, isLoading, error, skuCount };
 }

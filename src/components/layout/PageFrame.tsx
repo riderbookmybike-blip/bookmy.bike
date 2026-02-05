@@ -22,44 +22,27 @@ interface PageFrameProps {
 
 /**
  * Premium Page Frame
- * 
+ *
  * Enforces the global layout system:
  * 1. Background/Backdrop: Handled by parent layout (bg-slate-50/950)
- * 2. Canvas: Max-width constraints based on variant.
- * 3. Breathing Room: Responsive h-padding (px-6 to px-20).
+ * 2. Canvas: Aligned with header container width.
+ * 3. Breathing Room: Shared page container padding.
  * 4. Headroom: Dynamic top padding based on --header-h variable.
  */
-export const PageFrame: React.FC<PageFrameProps> = ({
-    children,
-    className = "",
-    variant = 'wide',
-    noTopPadding = false
-}) => {
-
-    // Variant Max-Width Map (Phase 2 Spec)
-    const maxWidthClass = {
-        wide: 'max-w-[1800px]', // Catalog, Dashboard
-        default: 'max-w-[1280px]', // Standard Content
-        narrow: 'max-w-[1024px]', // Forms, Text
-    }[variant];
-
+export const PageFrame: React.FC<PageFrameProps> = ({ children, className = '', noTopPadding = false }) => {
     return (
         <div
             className={clsx(
                 // Layout & Sizing
-                "w-full mx-auto section-transition", // animates padding changes
-                maxWidthClass,
-
-                // Side Breathing Room (Desktop Store Spec: 6 -> 12 -> 20 scale)
-                "px-6 md:px-12 lg:px-20",
+                'page-container section-transition', // animates padding changes
 
                 // Headroom (Top Spacing)
                 // Default: Standard headroom (Header Height only).
                 // noTopPadding: Used for Heroes that bleed behind header.
-                !noTopPadding ? "pt-[var(--header-h,80px)]" : undefined,
+                !noTopPadding ? 'pt-[var(--header-h,80px)]' : undefined,
 
                 // Bottom Spacing (Desktop Store Spec)
-                "pb-12 md:pb-16",
+                'pb-12 md:pb-16',
 
                 className
             )}

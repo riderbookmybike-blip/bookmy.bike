@@ -22,14 +22,14 @@ export interface ProductVariant {
         offerPrice?: number;
         discount?: number;
         pricingSource?: string; // e.g., 'MH', 'KA'
-        isEstimate?: boolean;   // true if fallback used
-        bundleValue?: number;   // Value of free bundled accessories
-        bundlePrice?: number;   // Discounted price of bundled accessories
+        isEstimate?: boolean; // true if fallback used
+        bundleValue?: number; // Value of free bundled accessories
+        bundlePrice?: number; // Discounted price of bundled accessories
         bundleSavings?: number; // Bundle MRP - Bundle Price
-        totalSavings?: number;  // Vehicle Discount + Bundle Value
+        totalSavings?: number; // Vehicle Discount + Bundle Value
     };
     skuIds?: string[]; // IDs of all SKUs belonging to this variant for pricing aggregation
-    districtPrices?: Array<{ district: string, exShowroom: number }>;
+    districtPrices?: Array<{ district: string; exShowroom: number }>;
     specifications: VehicleSpecifications;
     availableColors: Array<{
         id: string; // The SKU ID for this specific color
@@ -49,15 +49,9 @@ export interface ProductVariant {
     color?: string; // Selected color
     suitableFor?: string;
     studioName?: string; // Dealer/Studio name from best offer
-    dealerId?: string;   // Dealer tenant ID
-    serverPricing?: {
-        final_on_road: number;
-        ex_showroom: number;
-        rto?: { total: number };
-        insurance?: { total: number };
-        dealer?: { offer?: number; name?: string; id?: string };
-        location?: { district?: string | null; state_code?: string | null };
-    };
+    dealerId?: string; // Dealer tenant ID
+    studioCode?: string; // e.g. 'ST-001'
+    dealerLocation?: string; // e.g. 'MUMBAI, MAHARASHTRA'
 }
 
 export interface VehicleSpecifications {
@@ -122,10 +116,10 @@ export const MOCK_VEHICLES: ProductVariant[] = [
         availableColors: [
             { id: 'rebel-blue', name: 'Rebel Blue', hexCode: '#0047AB' },
             { id: 'rebel-red', name: 'Rebel Red', hexCode: '#D22B2B' },
-            { id: 'rebel-black', name: 'Rebel Black', hexCode: '#1A1A1A' }
+            { id: 'rebel-black', name: 'Rebel Black', hexCode: '#1A1A1A' },
         ],
         imageUrl: '/images/bikes/hunter350.png',
-        color: 'Rebel Blue'
+        color: 'Rebel Blue',
     },
     {
         id: 're-classic-350-signals',
@@ -157,10 +151,10 @@ export const MOCK_VEHICLES: ProductVariant[] = [
         },
         availableColors: [
             { id: 'desert-sand', name: 'Desert Sand', hexCode: '#C2B280' },
-            { id: 'marsh-grey', name: 'Marsh Grey', hexCode: '#4B5320' }
+            { id: 'marsh-grey', name: 'Marsh Grey', hexCode: '#4B5320' },
         ],
         imageUrl: '/images/bikes/classic350.png',
-        color: 'Desert Sand'
+        color: 'Desert Sand',
     },
     {
         id: 'honda-cb350-hness',
@@ -193,11 +187,11 @@ export const MOCK_VEHICLES: ProductVariant[] = [
         },
         availableColors: [
             { id: 'precious-red', name: 'Precious Red Metallic', hexCode: '#8B0000' },
-            { id: 'marshal-green', name: 'Matte Marshal Green Metallic', hexCode: '#2F4F4F' }
+            { id: 'marshal-green', name: 'Matte Marshal Green Metallic', hexCode: '#2F4F4F' },
         ],
         imageUrl: '/images/bikes/hness350.png',
-        color: 'Precious Red Metallic'
-    }
+        color: 'Precious Red Metallic',
+    },
 ];
 
 export const MOCK_ACCESSORIES = [
@@ -207,7 +201,7 @@ export const MOCK_ACCESSORIES = [
         brand: 'Axor',
         price: 4500,
         image: '/images/accessories/helmet.png',
-        category: 'Safety'
+        category: 'Safety',
     },
     {
         id: 'acc-2',
@@ -215,8 +209,8 @@ export const MOCK_ACCESSORIES = [
         brand: 'Rynox',
         price: 2800,
         image: '/images/accessories/gloves.png',
-        category: 'Riding Gear'
-    }
+        category: 'Riding Gear',
+    },
 ];
 
 export const MOCK_SERVICES = [
@@ -225,15 +219,15 @@ export const MOCK_SERVICES = [
         name: 'General Service',
         description: 'Comprehensive checkup and oil change',
         price: 1499,
-        duration: '4 Hours'
+        duration: '4 Hours',
     },
     {
         id: 'serv-2',
         name: 'Teflon Coating',
         description: 'Paint protection for long lasting shine',
         price: 899,
-        duration: '2 Hours'
-    }
+        duration: '2 Hours',
+    },
 ];
 
 export interface DealerBrandConfig {
@@ -248,18 +242,18 @@ export const MOCK_DEALER_BRANDS: DealerBrandConfig[] = [
         brandName: 'Royal Enfield',
         logoUrl: '/images/logos/royal-enfield.png',
         isActive: true,
-        margin: 12
+        margin: 12,
     },
     {
         brandName: 'Honda',
         logoUrl: '/images/logos/honda.png',
         isActive: true,
-        margin: 10
+        margin: 10,
     },
     {
         brandName: 'TVS',
         logoUrl: '/images/logos/tvs.png',
         isActive: false,
-        margin: 8
-    }
+        margin: 8,
+    },
 ];

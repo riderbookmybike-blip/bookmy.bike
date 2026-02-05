@@ -30,8 +30,13 @@ import {
     Shield,
     Smartphone,
     Map as MapIcon,
-    AlertCircle
+    AlertCircle,
+    Building2,
+    Users,
+    LayoutDashboard,
+    Star,
 } from 'lucide-react';
+import { useDealerSession } from '@/hooks/useDealerSession';
 import { Logo } from '@/components/brand/Logo';
 import { MarketplaceHeader } from '@/components/layout/MarketplaceHeader';
 import { MarketplaceFooter } from '@/components/layout/MarketplaceFooter';
@@ -61,6 +66,24 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
     const [originalMember, setOriginalMember] = useState(member || {});
     const [originalAddresses, setOriginalAddresses] = useState(addresses || []);
 
+    // Dealer Session Hook
+    const {
+        session,
+        isTeamMode,
+        activeTenantId,
+        studioId,
+        district,
+        tenantName,
+        activateDealer,
+        switchToIndividual,
+        isLoaded: isSessionLoaded,
+    } = useDealerSession();
+
+    // Filter DEALER type memberships only
+    const dealerMemberships = (memberships || []).filter(
+        (m: any) => m.tenant_type === 'DEALER' && m.status === 'ACTIVE'
+    );
+
     // Sync local state if prop changes
     React.useEffect(() => {
         setLocalMember(member || {});
@@ -79,15 +102,19 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
         const supabase = createClient();
         const channel = supabase
             .channel(`member_${member.id}`)
-            .on('postgres_changes', {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'id_members',
-                filter: `id=eq.${member.id}`
-            }, (payload) => {
-                console.log('[Realtime] Profile updated:', payload.new);
-                setLocalMember(payload.new);
-            })
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'id_members',
+                    filter: `id=eq.${member.id}`,
+                },
+                payload => {
+                    console.log('[Realtime] Profile updated:', payload.new);
+                    setLocalMember(payload.new);
+                }
+            )
             .subscribe();
 
         return () => {
@@ -112,7 +139,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
             const memberToSave = {
                 ...localMember,
                 whatsapp: normalizePhone(localMember.whatsapp),
-                primary_phone: normalizePhone(localMember.primary_phone)
+                primary_phone: normalizePhone(localMember.primary_phone),
             };
 
             // 2. Save Member Profile
@@ -143,10 +170,15 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
         setLocalMember(prev => ({ ...prev, [field]: value }));
     };
 
-    const displayName = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
-    const initials = displayName.split(' ').map((n: string) => n[0]).join('').toUpperCase();
+    const displayName =
+        user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
+    const initials = displayName
+        .split(' ')
+        .map((n: string) => n[0])
+        .join('')
+        .toUpperCase();
     const avatarUrl = user?.user_metadata?.avatar_url;
-    const referralCode = member?.display_id || member?.referral_code || (user?.id?.split('-')[0]?.toUpperCase() || 'REF');
+    const referralCode = member?.display_id || member?.referral_code || user?.id?.split('-')[0]?.toUpperCase() || 'REF';
 
     const handleCopyCode = () => {
         navigator.clipboard.writeText(referralCode);
@@ -157,9 +189,9 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
     const handleInviteFriend = async () => {
         const shareUrl = `${window.location.origin}?ref=${referralCode}`;
         const shareData = {
-            title: 'Join The O\' Circle at BookMyBike',
+            title: "Join The O' Circle at BookMyBike",
             text: `Hey! 🏍️ Join me on BookMyBike and get exclusive O-Club benefits on your next bike booking. Use my referral code: ${referralCode}`,
-            url: shareUrl
+            url: shareUrl,
         };
 
         if (navigator.share && navigator.canShare(shareData)) {
@@ -211,10 +243,10 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
     }, {});
 
     const statusConfig: any = {
-        'DRAFT': { color: 'text-slate-400', bg: 'bg-slate-400/10', icon: Clock },
-        'FINAL': { color: 'text-blue-500', bg: 'bg-blue-500/10', icon: FileText },
-        'APPROVED': { color: 'text-emerald-500', bg: 'bg-emerald-500/10', icon: ShieldCheck },
-        'EXPIRED': { color: 'text-rose-500', bg: 'bg-rose-500/10', icon: Package }
+        DRAFT: { color: 'text-slate-400', bg: 'bg-slate-400/10', icon: Clock },
+        FINAL: { color: 'text-blue-500', bg: 'bg-blue-500/10', icon: FileText },
+        APPROVED: { color: 'text-emerald-500', bg: 'bg-emerald-500/10', icon: ShieldCheck },
+        EXPIRED: { color: 'text-rose-500', bg: 'bg-rose-500/10', icon: Package },
     };
 
     const containerVariants = {
@@ -222,14 +254,14 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
         visible: {
             opacity: 1,
             transition: {
-                staggerChildren: 0.1
-            }
-        }
+                staggerChildren: 0.1,
+            },
+        },
     };
 
     const itemVariants = {
         hidden: { opacity: 0, y: 20 },
-        visible: { opacity: 1, y: 0 }
+        visible: { opacity: 1, y: 0 },
     };
 
     return (
@@ -238,7 +270,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                 <MarketplaceHeader onLoginClick={() => setIsLoginOpen(true)} />
 
                 <motion.div
-                    className="max-w-7xl mx-auto px-4 py-32 md:py-40"
+                    className="page-container py-32 md:py-40"
                     variants={containerVariants}
                     initial="hidden"
                     animate="visible"
@@ -250,7 +282,11 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                 <div className="relative group">
                                     <div className="w-24 h-24 md:w-32 md:h-32 rounded-[2.5rem] bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-3xl md:text-5xl font-black text-white shadow-2xl shadow-indigo-500/20 ring-4 ring-white dark:ring-slate-900 overflow-hidden">
                                         {avatarUrl ? (
-                                            <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" />
+                                            <img
+                                                src={avatarUrl}
+                                                alt={displayName}
+                                                className="w-full h-full object-cover"
+                                            />
                                         ) : (
                                             <span>{initials}</span>
                                         )}
@@ -298,7 +334,11 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                             disabled={isSaving}
                                             className="px-8 py-3 rounded-2xl bg-indigo-600 text-white text-xs font-black uppercase tracking-widest hover:scale-105 transition-all flex items-center gap-2 disabled:opacity-50"
                                         >
-                                            {isSaving ? <Activity size={16} className="animate-spin" /> : <Save size={16} />}
+                                            {isSaving ? (
+                                                <Activity size={16} className="animate-spin" />
+                                            ) : (
+                                                <Save size={16} />
+                                            )}
                                             Save Changes
                                         </button>
                                     </>
@@ -307,69 +347,228 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                         </div>
                     </motion.div>
 
+                    {/* Workspace Section */}
+                    {dealerMemberships.length > 0 && (
+                        <motion.div variants={itemVariants} className="mb-12">
+                            <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 rounded-[40px] p-8 md:p-12 border border-white/5 shadow-2xl relative overflow-hidden">
+                                {/* Background Pattern */}
+                                <div className="absolute inset-0 opacity-5">
+                                    <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full blur-[100px]" />
+                                </div>
+
+                                <div className="relative z-10">
+                                    {/* Header with Toggle */}
+                                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-10">
+                                        <div>
+                                            <h3 className="text-xl font-black uppercase tracking-tighter italic text-white flex items-center gap-3">
+                                                <Building2 size={24} className="text-orange-500" />
+                                                Work<span className="text-orange-500">space</span>
+                                            </h3>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                                Switch between Individual and Team modes
+                                            </p>
+                                        </div>
+
+                                        {/* Mode Toggle */}
+                                        <div className="flex items-center gap-2 p-1.5 bg-white/5 rounded-2xl border border-white/10">
+                                            <button
+                                                onClick={switchToIndividual}
+                                                className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
+                                                    !isTeamMode
+                                                        ? 'bg-white text-slate-900 shadow-lg'
+                                                        : 'text-slate-400 hover:text-white'
+                                                }`}
+                                            >
+                                                <User size={14} />
+                                                Individual
+                                            </button>
+                                            <button
+                                                className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
+                                                    isTeamMode
+                                                        ? 'bg-orange-500 text-white shadow-lg'
+                                                        : 'text-slate-400 hover:text-white'
+                                                }`}
+                                                disabled={!isTeamMode && dealerMemberships.length === 0}
+                                            >
+                                                <Users size={14} />
+                                                Team
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Mode Description */}
+                                    <div className="mb-8 p-4 rounded-2xl bg-white/5 border border-white/10">
+                                        {isTeamMode ? (
+                                            <p className="text-sm text-slate-300">
+                                                <span className="text-orange-500 font-bold">Team Mode Active:</span> All
+                                                pricing, leads, and quotes will use{' '}
+                                                <span className="font-bold text-white">
+                                                    {tenantName} ({studioId})
+                                                </span>{' '}
+                                                context.
+                                            </p>
+                                        ) : (
+                                            <p className="text-sm text-slate-300">
+                                                <span className="text-indigo-400 font-bold">Individual Mode:</span>{' '}
+                                                You'll see market-best prices. Select a dealership below to switch to
+                                                Team mode.
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {/* Dealership Cards */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {dealerMemberships.map((m: any) => {
+                                            const isActive = isTeamMode && activeTenantId === m.tenant_id;
+                                            return (
+                                                <div
+                                                    key={m.id}
+                                                    className={`group p-6 rounded-3xl border transition-all ${
+                                                        isActive
+                                                            ? 'bg-orange-500/10 border-orange-500/30'
+                                                            : 'bg-white/5 border-white/10 hover:border-white/20'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-4">
+                                                            <div
+                                                                className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black ${
+                                                                    isActive
+                                                                        ? 'bg-orange-500 text-white'
+                                                                        : 'bg-white/10 text-white'
+                                                                }`}
+                                                            >
+                                                                {m.studio_id || m.tenant_name?.charAt(0) || '?'}
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-sm font-black uppercase tracking-tight text-white flex items-center gap-2">
+                                                                    {m.tenant_name}
+                                                                    {isActive && (
+                                                                        <Star
+                                                                            size={12}
+                                                                            className="text-orange-500 fill-orange-500"
+                                                                        />
+                                                                    )}
+                                                                </p>
+                                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                                                                    {m.studio_id && `${m.studio_id} • `}
+                                                                    {m.district_name || m.role}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex items-center gap-2">
+                                                            {!isActive && (
+                                                                <button
+                                                                    onClick={() =>
+                                                                        activateDealer({
+                                                                            tenantId: m.tenant_id,
+                                                                            studioId: m.studio_id || null,
+                                                                            district: m.district_name || null,
+                                                                            tenantName: m.tenant_name,
+                                                                        })
+                                                                    }
+                                                                    className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-400 text-white text-[9px] font-black uppercase tracking-widest transition-all"
+                                                                >
+                                                                    Activate
+                                                                </button>
+                                                            )}
+                                                            <a
+                                                                href={`/app/${m.tenant_slug}/dashboard`}
+                                                                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all"
+                                                                title="Go to Dashboard"
+                                                            >
+                                                                <LayoutDashboard size={16} />
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+
                     {/* Jan Kundali: Primary Matrix */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
                         {/* Personal Matrix */}
-                        <motion.div variants={itemVariants} className="lg:col-span-2 bg-white dark:bg-slate-900/40 rounded-[40px] p-8 md:p-12 border border-slate-200 dark:border-white/5 shadow-sm">
+                        <motion.div
+                            variants={itemVariants}
+                            className="lg:col-span-2 bg-white dark:bg-slate-900/40 rounded-[40px] p-8 md:p-12 border border-slate-200 dark:border-white/5 shadow-sm"
+                        >
                             <div className="flex items-center justify-between mb-10">
                                 <div>
                                     <h3 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white flex items-center gap-3">
                                         <User size={24} className="text-indigo-600" />
                                         Personal <span className="text-indigo-600">Matrix</span>
                                     </h3>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Foundational Identity Details</p>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                        Foundational Identity Details
+                                    </p>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Full Name (On Documents)</label>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">
+                                        Full Name (On Documents)
+                                    </label>
                                     <input
                                         type="text"
                                         value={localMember.full_name || ''}
-                                        onChange={(e) => handleUpdateField('full_name', e.target.value)}
+                                        onChange={e => handleUpdateField('full_name', e.target.value)}
                                         disabled={!isEditMode}
                                         placeholder="Enter full name"
                                         className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-300 disabled:opacity-50"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Date of Birth</label>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">
+                                        Date of Birth
+                                    </label>
                                     <input
                                         type="date"
                                         value={localMember.date_of_birth || ''}
-                                        onChange={(e) => handleUpdateField('date_of_birth', e.target.value)}
+                                        onChange={e => handleUpdateField('date_of_birth', e.target.value)}
                                         disabled={!isEditMode}
                                         className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all disabled:opacity-50"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Father's Name</label>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">
+                                        Father's Name
+                                    </label>
                                     <input
                                         type="text"
                                         value={localMember.father_name || ''}
-                                        onChange={(e) => handleUpdateField('father_name', e.target.value)}
+                                        onChange={e => handleUpdateField('father_name', e.target.value)}
                                         disabled={!isEditMode}
                                         placeholder="Father's full name"
                                         className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-300 disabled:opacity-50"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Mother's Name</label>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">
+                                        Mother's Name
+                                    </label>
                                     <input
                                         type="text"
                                         value={localMember.mother_name || ''}
-                                        onChange={(e) => handleUpdateField('mother_name', e.target.value)}
+                                        onChange={e => handleUpdateField('mother_name', e.target.value)}
                                         disabled={!isEditMode}
                                         placeholder="Mother's full name"
                                         className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-300 disabled:opacity-50"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Religion</label>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">
+                                        Religion
+                                    </label>
                                     <select
                                         value={localMember.religion || ''}
-                                        onChange={(e) => handleUpdateField('religion', e.target.value)}
+                                        onChange={e => handleUpdateField('religion', e.target.value)}
                                         disabled={!isEditMode}
                                         className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
                                     >
@@ -384,10 +583,12 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                     </select>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Social Category</label>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">
+                                        Social Category
+                                    </label>
                                     <select
                                         value={localMember.category || ''}
-                                        onChange={(e) => handleUpdateField('category', e.target.value)}
+                                        onChange={e => handleUpdateField('category', e.target.value)}
                                         disabled={!isEditMode}
                                         className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
                                     >
@@ -403,7 +604,10 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                         </motion.div>
 
                         {/* Communication Hub */}
-                        <motion.div variants={itemVariants} className="lg:col-span-1 bg-slate-900 rounded-[40px] p-8 md:p-12 text-white relative overflow-hidden shadow-2xl">
+                        <motion.div
+                            variants={itemVariants}
+                            className="lg:col-span-1 bg-slate-900 rounded-[40px] p-8 md:p-12 text-white relative overflow-hidden shadow-2xl"
+                        >
                             <div className="absolute top-0 right-0 p-12 opacity-5">
                                 <Smartphone size={160} />
                             </div>
@@ -416,7 +620,9 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                 <div className="space-y-8">
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between">
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Login Phone (Auth)</p>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                Login Phone (Auth)
+                                            </p>
                                             <Shield size={12} className="text-emerald-500" />
                                         </div>
                                         <div className="bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-300">
@@ -425,11 +631,13 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                     </div>
 
                                     <div className="space-y-4">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">WhatsApp Number</p>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                            WhatsApp Number
+                                        </p>
                                         <input
                                             type="tel"
                                             value={localMember.whatsapp || ''}
-                                            onChange={(e) => handleUpdateField('whatsapp', e.target.value)}
+                                            onChange={e => handleUpdateField('whatsapp', e.target.value)}
                                             disabled={!isEditMode}
                                             placeholder="WhatsApp number"
                                             className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-600"
@@ -437,11 +645,13 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                     </div>
 
                                     <div className="space-y-4">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Alternate Phone</p>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                            Alternate Phone
+                                        </p>
                                         <input
                                             type="tel"
                                             value={localMember.primary_phone || ''}
-                                            onChange={(e) => handleUpdateField('primary_phone', e.target.value)}
+                                            onChange={e => handleUpdateField('primary_phone', e.target.value)}
                                             disabled={!isEditMode}
                                             placeholder="Secondary contact"
                                             className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-600"
@@ -449,11 +659,13 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                     </div>
 
                                     <div className="space-y-4">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Alternate Email</p>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                            Alternate Email
+                                        </p>
                                         <input
                                             type="email"
                                             value={localMember.primary_email || ''}
-                                            onChange={(e) => handleUpdateField('primary_email', e.target.value)}
+                                            onChange={e => handleUpdateField('primary_email', e.target.value)}
                                             disabled={!isEditMode}
                                             placeholder="Backup email"
                                             className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-600"
@@ -467,30 +679,47 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                     {/* Jan Kundali: Address & Vault Matrix */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
                         {/* Address Portfolio */}
-                        <motion.div variants={itemVariants} className="lg:col-span-2 bg-white dark:bg-slate-900/40 rounded-[40px] p-8 md:p-12 border border-slate-200 dark:border-white/5 shadow-sm">
+                        <motion.div
+                            variants={itemVariants}
+                            className="lg:col-span-2 bg-white dark:bg-slate-900/40 rounded-[40px] p-8 md:p-12 border border-slate-200 dark:border-white/5 shadow-sm"
+                        >
                             <div className="flex items-center justify-between mb-10">
                                 <div>
                                     <h3 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white flex items-center gap-3">
                                         <MapIcon size={24} className="text-orange-500" />
                                         Address <span className="text-orange-500">Portfolio</span>
                                     </h3>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Labeled Delivery & Registration Hub</p>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                        Labeled Delivery & Registration Hub
+                                    </p>
                                 </div>
                             </div>
 
                             <div className="space-y-4">
                                 {localAddresses.length > 0 ? (
                                     localAddresses.map((addr: any) => (
-                                        <div key={addr.id} className="p-6 rounded-3xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 flex items-center justify-between group">
+                                        <div
+                                            key={addr.id}
+                                            className="p-6 rounded-3xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 flex items-center justify-between group"
+                                        >
                                             <div className="flex items-center gap-4">
-                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${addr.is_current ? 'bg-orange-500/10 text-orange-500' : 'bg-indigo-500/10 text-indigo-500'}`}>
+                                                <div
+                                                    className={`w-12 h-12 rounded-2xl flex items-center justify-center ${addr.is_current ? 'bg-orange-500/10 text-orange-500' : 'bg-indigo-500/10 text-indigo-500'}`}
+                                                >
                                                     {addr.is_current ? <Home size={20} /> : <Shield size={20} />}
                                                 </div>
                                                 <div>
                                                     <p className="text-[12px] font-black uppercase text-slate-900 dark:text-white tracking-tight">
-                                                        {addr.label} {addr.is_current && <span className="ml-2 text-[8px] px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-500">CURRENT</span>}
+                                                        {addr.label}{' '}
+                                                        {addr.is_current && (
+                                                            <span className="ml-2 text-[8px] px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-500">
+                                                                CURRENT
+                                                            </span>
+                                                        )}
                                                     </p>
-                                                    <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest line-clamp-1">{addr.line1}, {addr.pincode}</p>
+                                                    <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest line-clamp-1">
+                                                        {addr.line1}, {addr.pincode}
+                                                    </p>
                                                 </div>
                                             </div>
                                             <button className="p-2 rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-400 opacity-0 group-hover:opacity-100 transition-all">
@@ -500,7 +729,9 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                     ))
                                 ) : (
                                     <div className="text-center py-12 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-[32px]">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No addresses on portfolio</p>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                            No addresses on portfolio
+                                        </p>
                                         <button className="mt-4 px-6 py-2 rounded-xl bg-orange-500 text-white text-[9px] font-black uppercase tracking-widest hover:bg-orange-400 transition-all">
                                             Add New Entry
                                         </button>
@@ -510,7 +741,10 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                         </motion.div>
 
                         {/* Identity Vault */}
-                        <motion.div variants={itemVariants} className="lg:col-span-1 bg-white dark:bg-slate-900/40 rounded-[40px] p-8 md:p-12 border border-slate-200 dark:border-white/5 shadow-sm">
+                        <motion.div
+                            variants={itemVariants}
+                            className="lg:col-span-1 bg-white dark:bg-slate-900/40 rounded-[40px] p-8 md:p-12 border border-slate-200 dark:border-white/5 shadow-sm"
+                        >
                             <h3 className="text-xl font-black uppercase tracking-tighter italic mb-8 flex items-center gap-3 text-slate-900 dark:text-white">
                                 <Fingerprint size={24} className="text-emerald-500" />
                                 Identity <span className="text-emerald-500">Vault</span>
@@ -520,19 +754,29 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                 {/* Aadhaar Vault */}
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Aadhaar Number</p>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                            Aadhaar Number
+                                        </p>
                                         {localMember.aadhaar_number ? (
-                                            <span className="text-[8px] font-black bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full border border-emerald-500/20">VERIFIED</span>
+                                            <span className="text-[8px] font-black bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                                VERIFIED
+                                            </span>
                                         ) : (
-                                            <span className="text-[8px] font-black bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full border border-amber-500/20">REQUIRED</span>
+                                            <span className="text-[8px] font-black bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full border border-amber-500/20">
+                                                REQUIRED
+                                            </span>
                                         )}
                                     </div>
                                     <div className="relative group">
                                         <input
                                             type="password"
                                             value={localMember.aadhaar_number || ''}
-                                            onChange={(e) => setLocalMember({ ...localMember, aadhaar_number: e.target.value })}
-                                            onBlur={(e) => handleUpdateField('aadhaar_number', e.target.value.replace(/\s/g, ''))}
+                                            onChange={e =>
+                                                setLocalMember({ ...localMember, aadhaar_number: e.target.value })
+                                            }
+                                            onBlur={e =>
+                                                handleUpdateField('aadhaar_number', e.target.value.replace(/\s/g, ''))
+                                            }
                                             placeholder="XXXX XXXX XXXX"
                                             className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-slate-300"
                                         />
@@ -544,25 +788,35 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                         <div className="w-10 h-10 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-400 group-hover:text-emerald-500 transition-colors">
                                             <Plus size={18} />
                                         </div>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest group-hover:text-emerald-500 transition-colors">Upload Aadhaar Front</p>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest group-hover:text-emerald-500 transition-colors">
+                                            Upload Aadhaar Front
+                                        </p>
                                     </button>
                                 </div>
 
                                 {/* PAN Vault */}
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">PAN Number</p>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                            PAN Number
+                                        </p>
                                         {localMember.pan_number ? (
-                                            <span className="text-[8px] font-black bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full border border-emerald-500/20">VERIFIED</span>
+                                            <span className="text-[8px] font-black bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                                VERIFIED
+                                            </span>
                                         ) : (
-                                            <span className="text-[8px] font-black bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full border border-amber-500/20">REQUIRED</span>
+                                            <span className="text-[8px] font-black bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full border border-amber-500/20">
+                                                REQUIRED
+                                            </span>
                                         )}
                                     </div>
                                     <input
                                         type="text"
                                         value={localMember.pan_number || ''}
-                                        onChange={(e) => setLocalMember({ ...localMember, pan_number: e.target.value.toUpperCase() })}
-                                        onBlur={(e) => handleUpdateField('pan_number', e.target.value.toUpperCase())}
+                                        onChange={e =>
+                                            setLocalMember({ ...localMember, pan_number: e.target.value.toUpperCase() })
+                                        }
+                                        onBlur={e => handleUpdateField('pan_number', e.target.value.toUpperCase())}
                                         placeholder="ABCDE1234F"
                                         className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-slate-300"
                                     />
@@ -570,7 +824,9 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                         <div className="w-10 h-10 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-400 group-hover:text-emerald-500 transition-colors">
                                             <Plus size={18} />
                                         </div>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest group-hover:text-emerald-500 transition-colors">Upload PAN Card</p>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest group-hover:text-emerald-500 transition-colors">
+                                            Upload PAN Card
+                                        </p>
                                     </button>
                                 </div>
                             </div>
@@ -590,19 +846,22 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                         <h3 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white">
                                             Transaction <span className="text-indigo-600">Registry</span>
                                         </h3>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Unified Commercial Log</p>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                            Unified Commercial Log
+                                        </p>
                                     </div>
                                 </div>
 
                                 <div className="flex items-center gap-2 p-1 bg-slate-100 dark:bg-white/5 rounded-2xl">
-                                    {['QUOTES', 'BOOKINGS', 'PAYMENTS', 'INVOICES'].map((tab) => (
+                                    {['QUOTES', 'BOOKINGS', 'PAYMENTS', 'INVOICES'].map(tab => (
                                         <button
                                             key={tab}
                                             onClick={() => setActiveTab(tab)}
-                                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab
-                                                ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm'
-                                                : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
-                                                }`}
+                                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                                                activeTab === tab
+                                                    ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm'
+                                                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                                            }`}
                                         >
                                             {tab}
                                         </button>
@@ -623,32 +882,57 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                         >
                                             {quotes.length > 0 ? (
                                                 quotes.map((q: any) => (
-                                                    <div key={q.id} className="group p-6 rounded-3xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 hover:border-indigo-500/20 transition-all">
+                                                    <div
+                                                        key={q.id}
+                                                        className="group p-6 rounded-3xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 hover:border-indigo-500/20 transition-all"
+                                                    >
                                                         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                                                             <div className="flex items-center gap-4">
                                                                 <div className="w-16 h-16 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-400">
                                                                     <FileText size={24} />
                                                                 </div>
                                                                 <div>
-                                                                    <p className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">{q.commercials?.label || 'Vehicle Quote'}</p>
+                                                                    <p className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">
+                                                                        {q.commercials?.label || 'Vehicle Quote'}
+                                                                    </p>
                                                                     <div className="flex items-center gap-3 mt-1.5">
-                                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-white dark:bg-white/5 px-2 py-0.5 rounded-lg border border-slate-100 dark:border-white/5">{q.display_id}</span>
-                                                                        <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg ${statusConfig[q.status]?.bg || 'bg-slate-100'} ${statusConfig[q.status]?.color || 'text-slate-500'}`}>
+                                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-white dark:bg-white/5 px-2 py-0.5 rounded-lg border border-slate-100 dark:border-white/5">
+                                                                            {q.display_id}
+                                                                        </span>
+                                                                        <span
+                                                                            className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg ${statusConfig[q.status]?.bg || 'bg-slate-100'} ${statusConfig[q.status]?.color || 'text-slate-500'}`}
+                                                                        >
                                                                             {q.status}
                                                                         </span>
-                                                                        <span className="text-[10px] font-bold text-slate-400 font-mono">v{q.version || 1.0}</span>
+                                                                        <span className="text-[10px] font-bold text-slate-400 font-mono">
+                                                                            v{q.version || 1.0}
+                                                                        </span>
                                                                     </div>
                                                                 </div>
                                                             </div>
 
                                                             <div className="flex flex-wrap items-center gap-8 md:gap-12 w-full md:w-auto pt-4 md:pt-0 border-t md:border-t-0 border-slate-200/50 dark:border-white/5">
                                                                 <div className="space-y-1">
-                                                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Base Price</p>
-                                                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300">₹ {Number(q.ex_showroom_price || 0).toLocaleString('en-IN')}</p>
+                                                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                                                                        Base Price
+                                                                    </p>
+                                                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                                                                        ₹{' '}
+                                                                        {Number(
+                                                                            q.ex_showroom_price || 0
+                                                                        ).toLocaleString('en-IN')}
+                                                                    </p>
                                                                 </div>
                                                                 <div className="space-y-1">
-                                                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest text-[#FF5F1F]">Grand Total</p>
-                                                                    <p className="text-lg font-black text-[#FF5F1F]">₹ {Number(q.on_road_price || 0).toLocaleString('en-IN')}</p>
+                                                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest text-[#FF5F1F]">
+                                                                        Grand Total
+                                                                    </p>
+                                                                    <p className="text-lg font-black text-[#FF5F1F]">
+                                                                        ₹{' '}
+                                                                        {Number(q.on_road_price || 0).toLocaleString(
+                                                                            'en-IN'
+                                                                        )}
+                                                                    </p>
                                                                 </div>
                                                                 <button className="flex-1 md:flex-none px-6 py-3 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-all flex items-center justify-center gap-2">
                                                                     View Details
@@ -660,8 +944,13 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                                 ))
                                             ) : (
                                                 <div className="text-center py-24">
-                                                    <FileText size={48} className="mx-auto text-slate-200 dark:text-white/5 mb-4" />
-                                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">No commercial quotes found</p>
+                                                    <FileText
+                                                        size={48}
+                                                        className="mx-auto text-slate-200 dark:text-white/5 mb-4"
+                                                    />
+                                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                                                        No commercial quotes found
+                                                    </p>
                                                 </div>
                                             )}
                                         </motion.div>
@@ -675,8 +964,13 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                             exit={{ opacity: 0, x: -20 }}
                                             className="text-center py-24"
                                         >
-                                            <Package size={48} className="mx-auto text-slate-200 dark:text-white/5 mb-4" />
-                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">No active bookings detected</p>
+                                            <Package
+                                                size={48}
+                                                className="mx-auto text-slate-200 dark:text-white/5 mb-4"
+                                            />
+                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                                                No active bookings detected
+                                            </p>
                                         </motion.div>
                                     )}
 
@@ -689,8 +983,13 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                             exit={{ opacity: 0, x: -20 }}
                                             className="text-center py-24"
                                         >
-                                            <ShieldCheck size={48} className="mx-auto text-slate-200 dark:text-white/5 mb-4" />
-                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">No {activeTab.toLowerCase()} recorded yet</p>
+                                            <ShieldCheck
+                                                size={48}
+                                                className="mx-auto text-slate-200 dark:text-white/5 mb-4"
+                                            />
+                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                                                No {activeTab.toLowerCase()} recorded yet
+                                            </p>
                                         </motion.div>
                                     )}
                                 </AnimatePresence>

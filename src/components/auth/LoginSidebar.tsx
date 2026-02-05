@@ -20,6 +20,7 @@ import {
 import { Logo } from '@/components/brand/Logo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useTenant, TenantType } from '@/lib/tenant/tenantContext';
 import { createClient } from '@/lib/supabase/client';
 import { getSmartPincode } from '@/lib/location/geocode';
@@ -458,10 +459,13 @@ export default function LoginSidebar({
 
                         {/* Full-Height Background Image with Mask */}
                         <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-                            <img
-                                src="/images/biker_ladakh_vertical.png"
+                            <Image
+                                src="/images/biker_ladakh_vertical.webp"
                                 alt="Rider background"
-                                className="absolute inset-0 w-full h-full object-cover object-center opacity-50 dark:opacity-35 mix-blend-multiply dark:mix-blend-overlay"
+                                fill
+                                priority
+                                sizes="(max-width: 480px) 100vw, 480px"
+                                className="object-cover object-center opacity-50 dark:opacity-35 mix-blend-multiply dark:mix-blend-overlay"
                             />
                             {/* Layered Masks for Legibility */}
                             <div className="absolute inset-x-0 top-0 h-[50%] bg-gradient-to-b from-white via-white/80 to-transparent dark:from-[#0B0F1A] dark:via-[#0B0F1A]/80 dark:to-transparent" />
@@ -504,14 +508,14 @@ export default function LoginSidebar({
                                             {step === 'INITIAL'
                                                 ? 'Start Your'
                                                 : step === 'SIGNUP'
-                                                    ? 'Create'
-                                                    : 'Verify'}
+                                                  ? 'Create'
+                                                  : 'Verify'}
                                             <span className="block text-[#F4B000]">
                                                 {step === 'INITIAL'
                                                     ? 'Journey.'
                                                     : step === 'SIGNUP'
-                                                        ? 'Profile.'
-                                                        : 'Identity.'}
+                                                      ? 'Profile.'
+                                                      : 'Identity.'}
                                             </span>
                                         </h2>
                                         <p className="text-sm font-bold text-black dark:text-white max-w-xs leading-relaxed text-center mx-auto">
@@ -587,8 +591,8 @@ export default function LoginSidebar({
                                                 {step === 'OTP'
                                                     ? 'OTP Code'
                                                     : authMethod === 'EMAIL'
-                                                        ? 'Email Address'
-                                                        : 'Mobile Number'}
+                                                      ? 'Email Address'
+                                                      : 'Mobile Number'}
                                             </label>
                                             <div className="relative group w-[80%] max-w-sm mx-auto">
                                                 <input
@@ -624,7 +628,11 @@ export default function LoginSidebar({
                                                     className={`w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl py-5 px-5 text-xl font-bold text-black dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/40 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all text-center ${step === 'OTP' ? 'tracking-[0.5em]' : 'tracking-wide'}`}
                                                     onKeyDown={e => {
                                                         if (e.key === 'Enter') {
-                                                            if (step === 'INITIAL' && authMethod === 'EMAIL' && (authMethod === 'EMAIL' || termsAccepted))
+                                                            if (
+                                                                step === 'INITIAL' &&
+                                                                authMethod === 'EMAIL' &&
+                                                                (authMethod === 'EMAIL' || termsAccepted)
+                                                            )
                                                                 handleCheckUser();
                                                             if (step === 'SIGNUP')
                                                                 authMethod === 'EMAIL'
@@ -645,7 +653,9 @@ export default function LoginSidebar({
                                         {/* TERMS DISCLAIMER (Replaced Checkbox) */}
                                         {step === 'INITIAL' && (
                                             <p className="w-[80%] max-w-sm mx-auto text-[9px] font-bold text-black dark:text-white uppercase tracking-widest text-center whitespace-nowrap opacity-50">
-                                                By proceeding, you agree to our <span className="text-brand-primary">Terms</span> & <span className="text-brand-primary">Privacy</span>.
+                                                By proceeding, you agree to our{' '}
+                                                <span className="text-brand-primary">Terms</span> &{' '}
+                                                <span className="text-brand-primary">Privacy</span>.
                                             </p>
                                         )}
 
@@ -655,8 +665,7 @@ export default function LoginSidebar({
                                                 onClick={() => {
                                                     if (step === 'INITIAL') {
                                                         handleCheckUser();
-                                                    }
-                                                    else if (step === 'SIGNUP') {
+                                                    } else if (step === 'SIGNUP') {
                                                         if (!validateSignupRequirements()) return;
                                                         authMethod === 'EMAIL'
                                                             ? handleSendEmailOtp(identifier)
@@ -666,7 +675,11 @@ export default function LoginSidebar({
                                                 disabled={loading || (step === 'OTP' && otp.length < 4)}
                                                 className="w-[80%] max-w-sm mx-auto py-5 bg-black dark:bg-white text-white dark:text-black rounded-2xl text-xs font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-xl disabled:opacity-50"
                                             >
-                                                {step === 'INITIAL' ? 'Agree & Proceed' : step === 'SIGNUP' ? 'Complete Signup' : 'Verify & Proceed'}{' '}
+                                                {step === 'INITIAL'
+                                                    ? 'Agree & Proceed'
+                                                    : step === 'SIGNUP'
+                                                      ? 'Complete Signup'
+                                                      : 'Verify & Proceed'}{' '}
                                                 <ChevronRight size={16} />
                                             </button>
                                         )}

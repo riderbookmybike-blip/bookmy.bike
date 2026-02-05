@@ -36,7 +36,7 @@
 | Standard | ₹77,375 | ₹9,251 | ₹5,515 | ₹86,998 |
 
 **Legacy Code Status:**
-- `calculateOnRoad` retained in `pricingUtility.ts` for admin studio preview only
+- Removed `pricingUtility.ts` and `pricing-parity` script (no longer used).
 - All production UI surfaces now use RPC exclusively
 
 **Definition of Done:** ✅

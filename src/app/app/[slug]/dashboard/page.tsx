@@ -3,23 +3,22 @@ import { createClient } from '@/lib/supabase/server';
 import AdminDashboard from '@/components/dashboard/AdminDashboard';
 import DealerDashboard from '@/components/dashboard/DealerDashboard';
 
+import { getAuthUser } from '@/lib/auth/resolver';
+
 export default async function TenantDashboard(props: { params: Promise<{ slug: string }> }) {
     const params = await props.params;
     const { slug } = params;
     const normalizedSlug = slug.toLowerCase();
-    const supabase = await createClient();
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getAuthUser();
+    const supabase = await createClient();
 
     if (!user) {
         redirect(`/login?next=/app/${slug}/dashboard`);
     }
 
     // 1. Fetch all memberships for the user via secure RPC
-    const { data: rawMembershipsData } = await supabase
-        .rpc('get_user_memberships', { p_user_id: user.id });
+    const { data: rawMembershipsData } = await supabase.rpc('get_user_memberships', { p_user_id: user.id });
 
     // Identify if we got an array (new JSONB approach) or direct data
     let allMemberships = (Array.isArray(rawMembershipsData) ? rawMembershipsData : []).map((m: any) => ({
@@ -30,7 +29,7 @@ export default async function TenantDashboard(props: { params: Promise<{ slug: s
             slug: m.tenant_slug,
             type: m.tenant_type,
             config: m.tenant_config,
-        }
+        },
     }));
 
     if (allMemberships.length === 0) {
@@ -48,8 +47,8 @@ export default async function TenantDashboard(props: { params: Promise<{ slug: s
 
     allMemberships = allMemberships.filter((m: any) => (m.status || '').toUpperCase() === 'ACTIVE');
 
-    const directMembership = (allMemberships || []).find((m: any) =>
-        (m.tenants?.slug || '').toLowerCase() === normalizedSlug
+    const directMembership = (allMemberships || []).find(
+        (m: any) => (m.tenants?.slug || '').toLowerCase() === normalizedSlug
     );
     let effectiveMembership = directMembership;
 
@@ -74,7 +73,10 @@ export default async function TenantDashboard(props: { params: Promise<{ slug: s
                     </div>
 
                     <div className="mt-8">
-                        <a href="/login" className="px-6 py-3 bg-brand-primary text-slate-900 rounded-lg text-sm font-black uppercase tracking-wider shadow-lg shadow-brand-primary/20">
+                        <a
+                            href="/login"
+                            className="px-6 py-3 bg-brand-primary text-slate-900 rounded-lg text-sm font-black uppercase tracking-wider shadow-lg shadow-brand-primary/20"
+                        >
                             Switch Account // Login
                         </a>
                     </div>
@@ -99,11 +101,5 @@ export default async function TenantDashboard(props: { params: Promise<{ slug: s
         return <AdminDashboard />;
     }
 
-    return (
-        <DealerDashboard
-            tenant={tenant}
-            role={effectiveMembership.role}
-            roleLabel={roleLabel}
-        />
-    );
+    return <DealerDashboard tenant={tenant} role={effectiveMembership.role} roleLabel={roleLabel} />;
 }

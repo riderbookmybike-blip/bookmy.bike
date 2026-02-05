@@ -15,7 +15,7 @@ interface SKU {
     brandLogo?: string;
     exShowroom: number;
     offerAmount: number; // Current dealer offer (numeric value for calculations)
-    inputOffer: string;  // Controlled input value (allows '-' and empty states)
+    inputOffer: string; // Controlled input value (allows '-' and empty states)
     rtoAmount: number;
     insuranceAmount: number;
     onRoadBase: number;
@@ -25,7 +25,13 @@ interface SKU {
     pricingReady?: boolean;
 }
 
-export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantId: string, defaultStateCode?: string }) => {
+export const DealerPricelist = ({
+    tenantId,
+    defaultStateCode = 'MH',
+}: {
+    tenantId: string;
+    defaultStateCode?: string;
+}) => {
     const [skus, setSkus] = useState<SKU[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -41,7 +47,8 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
             // 1. Fetch SKUs
             const { data: skuData, error: skuError } = await supabase
                 .from('cat_items')
-                .select(`
+                .select(
+                    `
                     id, 
                     name, 
                     specs,
@@ -53,7 +60,8 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                             brand:cat_brands(name, logo_svg)
                         )
                     )
-                `)
+                `
+                )
                 .eq('type', 'SKU')
                 .eq('status', 'ACTIVE');
 
@@ -61,7 +69,7 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
 
             // 2. Fetch Rules
             const { data: rulesData, error: rulesError } = await supabase
-                .from('id_dealer_pricing_rules')
+                .from('cat_price_dealer')
                 .select('id, vehicle_color_id, offer_amount')
                 .eq('tenant_id', tenantId);
 
@@ -79,15 +87,18 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
 
             const skuIds = (skuData || []).map((item: any) => item.id).filter(Boolean);
 
-            // 4. Fetch Base Prices (cat_prices)
-            const { data: pricingData } = skuIds.length > 0
-                ? await supabase
-                    .from('cat_prices')
-                    .select('vehicle_color_id, ex_showroom_price, district')
-                    .eq('state_code', defaultStateCode)
-                    .eq('is_active', true)
-                    .in('vehicle_color_id', skuIds)
-                : { data: [] as any[] };
+            // 4. Fetch Base Prices (cat_price_state) - Now includes RTO, Insurance, On-Road (Published SOT)
+            const { data: pricingData } =
+                skuIds.length > 0
+                    ? await supabase
+                          .from('cat_price_state')
+                          .select(
+                              'vehicle_color_id, ex_showroom_price, rto_total, insurance_total, on_road_price, district'
+                          )
+                          .eq('state_code', defaultStateCode)
+                          .eq('is_active', true)
+                          .in('vehicle_color_id', skuIds)
+                    : { data: [] as any[] };
 
             const ruleMap = new Map(rulesData?.map(r => [r.vehicle_color_id, r]));
 
@@ -99,46 +110,25 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                 return 0;
             };
 
-            const priceMap = new Map<string, { price: number; district?: string | null }>();
+            const priceMap = new Map<
+                string,
+                { price: number; rto: number; insurance: number; onRoad: number; district?: string | null }
+            >();
             (pricingData || []).forEach((p: any) => {
-                const next = { price: Number(p.ex_showroom_price), district: p.district };
+                const next = {
+                    price: Number(p.ex_showroom_price) || 0,
+                    rto: Number(p.rto_total) || 0,
+                    insurance: Number(p.insurance_total) || 0,
+                    onRoad: Number(p.on_road_price) || Number(p.ex_showroom_price) || 0,
+                    district: p.district,
+                };
                 const existing = priceMap.get(p.vehicle_color_id);
                 if (!existing || districtPriority(next.district) > districtPriority(existing.district)) {
                     priceMap.set(p.vehicle_color_id, next);
                 }
             });
 
-            // 5. Fetch Server Pricing (SSPP RPC) in chunks
-            const pricingMap = new Map<string, any>();
-            const fetchPricingBatch = async (district: string | null) => {
-                if (skuIds.length === 0) return;
-                const chunkSize = 150;
-                for (let i = 0; i < skuIds.length; i += chunkSize) {
-                    const chunk = skuIds.slice(i, i + chunkSize);
-                    const { data: pricingRows, error: pricingError } = await supabase.rpc('get_catalog_prices_v1', {
-                        p_vehicle_color_ids: chunk,
-                        p_district_name: district,
-                        p_state_code: defaultStateCode,
-                        p_registration_type: 'STATE'
-                    });
-
-                    if (pricingError) {
-                        console.error('DealerPricelist pricing RPC error:', pricingError);
-                        continue;
-                    }
-
-                    (pricingRows || []).forEach((row: any) => {
-                        if (row?.vehicle_color_id && row?.pricing) {
-                            pricingMap.set(row.vehicle_color_id, row.pricing);
-                        }
-                    });
-                }
-            };
-
-            await fetchPricingBatch(dealerDistrict || null);
-            if (pricingMap.size === 0 && !dealerDistrict) {
-                await fetchPricingBatch('ALL');
-            }
+            // RPC removed - all pricing data now comes from cat_price_state table (Published SOT)
 
             const formatted: SKU[] = (skuData || []).map((item: any) => {
                 const color = item.specs?.Color || item.name;
@@ -147,14 +137,12 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                 const brand = item.parent?.parent?.brand;
 
                 const rule = ruleMap.get(item.id);
-                const pricing = pricingMap.get(item.id);
-                const pricingReady = Boolean(pricing?.ex_showroom || pricing?.final_on_road);
-                const statePrice = pricing?.ex_showroom ?? priceMap.get(item.id)?.price ?? item.price_base ?? 0;
-                const rto = pricingReady ? Number(pricing?.rto?.total || 0) : 0;
-                const insurance = pricingReady ? Number(pricing?.insurance?.total || 0) : 0;
-                const onRoadBase = pricingReady
-                    ? Number(pricing?.final_on_road ?? (statePrice + rto + insurance))
-                    : statePrice;
+                const priceRecord = priceMap.get(item.id);
+                const pricingReady = Boolean(priceRecord?.price || priceRecord?.onRoad);
+                const statePrice = priceRecord?.price ?? item.price_base ?? 0;
+                const rto = priceRecord?.rto || 0;
+                const insurance = priceRecord?.insurance || 0;
+                const onRoadBase = priceRecord?.onRoad || statePrice + rto + insurance;
                 const currentOffer = rule ? (rule as any).offer_amount : 0;
 
                 return {
@@ -173,7 +161,7 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                     hasRule: !!rule,
                     ruleId: rule?.id,
                     isDirty: false,
-                    pricingReady
+                    pricingReady,
                 };
             });
 
@@ -191,20 +179,22 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
     }, [tenantId]);
 
     const handleUpdateOffer = (skuId: string, newValue: string) => {
-        setSkus(prev => prev.map(s => {
-            if (s.id !== skuId) return s;
+        setSkus(prev =>
+            prev.map(s => {
+                if (s.id !== skuId) return s;
 
-            // Allow '-' or empty string to be visually represented
-            // But keep the numeric value as 0 for calculations until valid
-            const numericValue = newValue === '' || newValue === '-' ? 0 : Number(newValue);
+                // Allow '-' or empty string to be visually represented
+                // But keep the numeric value as 0 for calculations until valid
+                const numericValue = newValue === '' || newValue === '-' ? 0 : Number(newValue);
 
-            return {
-                ...s,
-                inputOffer: newValue,
-                offerAmount: isNaN(numericValue) ? 0 : numericValue,
-                isDirty: true
-            };
-        }));
+                return {
+                    ...s,
+                    inputOffer: newValue,
+                    offerAmount: isNaN(numericValue) ? 0 : numericValue,
+                    isDirty: true,
+                };
+            })
+        );
     };
 
     const saveChanges = async () => {
@@ -221,24 +211,22 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
 
                 if (amount === 0 && sku.hasRule && sku.ruleId) {
                     // Delete
-                    await supabase.from('id_dealer_pricing_rules').delete().eq('id', sku.ruleId);
+                    await supabase.from('cat_price_dealer').delete().eq('id', sku.ruleId);
                 } else if (amount !== 0) {
                     // Upsert
                     if (sku.hasRule && sku.ruleId) {
                         await supabase
-                            .from('id_dealer_pricing_rules')
+                            .from('cat_price_dealer')
                             .update({ offer_amount: amount, updated_at: new Date().toISOString() })
                             .eq('id', sku.ruleId);
                     } else {
-                        await supabase
-                            .from('id_dealer_pricing_rules')
-                            .insert({
-                                tenant_id: tenantId,
-                                vehicle_color_id: sku.id,
-                                offer_amount: amount,
-                                state_code: defaultStateCode,
-                                is_active: true
-                            });
+                        await supabase.from('cat_price_dealer').insert({
+                            tenant_id: tenantId,
+                            vehicle_color_id: sku.id,
+                            offer_amount: amount,
+                            state_code: defaultStateCode,
+                            is_active: true,
+                        });
                     }
                 }
                 successCount++;
@@ -261,9 +249,8 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
         let result = skus;
         if (searchTerm) {
             const lower = searchTerm.toLowerCase();
-            result = result.filter(s =>
-                s.fullName.toLowerCase().includes(lower) ||
-                s.colorName.toLowerCase().includes(lower)
+            result = result.filter(
+                s => s.fullName.toLowerCase().includes(lower) || s.colorName.toLowerCase().includes(lower)
             );
         }
         if (brandFilter !== 'ALL') {
@@ -291,7 +278,9 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                             <Tag size={20} />
                         </div>
                         <div>
-                            <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">On-Road Pricing & Offers</h2>
+                            <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
+                                On-Road Pricing & Offers
+                            </h2>
                             <p className="text-sm text-slate-500 font-medium">
                                 Regulatory Ledger • {defaultStateCode}
                                 {pricingDistrict ? ` • ${pricingDistrict}` : ''}
@@ -302,17 +291,25 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                     <div className="flex items-center gap-2 md:gap-6">
                         <div className="flex flex-col items-center px-4 md:border-r border-slate-100 dark:border-white/5 last:border-0">
                             <span className="text-2xl font-black text-slate-900 dark:text-white">{stats.total}</span>
-                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Tracked SKUs</span>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                                Tracked SKUs
+                            </span>
                         </div>
                         <div className="flex flex-col items-center px-4 border-r border-slate-100 dark:border-white/5 last:border-0">
                             <span className="text-2xl font-black text-green-500">{stats.activeOffers}</span>
-                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Active Offers</span>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                                Active Offers
+                            </span>
                         </div>
                         <div className="flex flex-col items-center px-4 last:border-0 border-r border-slate-100 dark:border-white/5">
-                            <span className={`text-2xl font-black ${stats.dirtyCount > 0 ? 'text-amber-500' : 'text-slate-300'}`}>
+                            <span
+                                className={`text-2xl font-black ${stats.dirtyCount > 0 ? 'text-amber-500' : 'text-slate-300'}`}
+                            >
                                 {stats.dirtyCount}
                             </span>
-                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Pending Saves</span>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                                Pending Saves
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -322,16 +319,18 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl overflow-hidden shadow-sm flex flex-col min-h-[600px]">
                 {/* Integrated Toolbar */}
                 <div className="p-4 border-b border-slate-100 dark:border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-950/50">
-
                     {/* Left: Filters & Search */}
                     <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto">
                         {/* Search */}
                         <div className="relative group">
-                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-400 transition-colors" />
+                            <Search
+                                size={14}
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-400 transition-colors"
+                            />
                             <input
                                 type="text"
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onChange={e => setSearchTerm(e.target.value)}
                                 placeholder="Search inventory..."
                                 className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white pl-9 pr-4 py-2 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none w-48 transition-all hover:border-indigo-300"
                             />
@@ -343,15 +342,20 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                         <div className="relative">
                             <select
                                 value={brandFilter}
-                                onChange={(e) => setBrandFilter(e.target.value)}
+                                onChange={e => setBrandFilter(e.target.value)}
                                 className="appearance-none bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 pl-3 pr-8 py-2 rounded-xl text-xs font-bold uppercase tracking-wide focus:ring-2 focus:ring-indigo-500/20 outline-none cursor-pointer hover:border-indigo-300 transition-colors shadow-sm"
                             >
                                 <option value="ALL">All Brands</option>
                                 {brands.map(b => (
-                                    <option key={b} value={b}>{b}</option>
+                                    <option key={b} value={b}>
+                                        {b}
+                                    </option>
                                 ))}
                             </select>
-                            <LayoutGrid size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                            <LayoutGrid
+                                size={14}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                            />
                         </div>
                     </div>
 
@@ -360,7 +364,9 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                         {/* State Badge */}
                         <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 rounded-lg text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20">
                             <MapPin size={12} />
-                            <span className="text-[10px] font-black uppercase tracking-wider">{defaultStateCode} Zone</span>
+                            <span className="text-[10px] font-black uppercase tracking-wider">
+                                {defaultStateCode} Zone
+                            </span>
                         </div>
 
                         {stats.dirtyCount > 0 ? (
@@ -384,14 +390,30 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                     <table className="w-full text-left border-collapse">
                         <thead className="bg-slate-50 dark:bg-slate-950 sticky top-0 z-10 backdrop-blur-md shadow-sm">
                             <tr>
-                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 w-16 text-center">Brand</th>
-                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Vehicle Details</th>
-                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Ex-Showroom</th>
-                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">RTO</th>
-                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Insurance</th>
-                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">On-Road (Server)</th>
-                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center w-40">Offer</th>
-                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Final Price</th>
+                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 w-16 text-center">
+                                    Brand
+                                </th>
+                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                    Vehicle Details
+                                </th>
+                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                    Ex-Showroom
+                                </th>
+                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                    RTO
+                                </th>
+                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                    Insurance
+                                </th>
+                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                    On-Road
+                                </th>
+                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center w-40">
+                                    Offer
+                                </th>
+                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                    Final Price
+                                </th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-white/5">
@@ -410,20 +432,31 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                                 </tr>
                             ) : (
                                 filteredSkus.map((sku, idx) => (
-                                    <tr key={sku.id} className="group hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
+                                    <tr
+                                        key={sku.id}
+                                        className="group hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
+                                    >
                                         <td className="p-4 bg-white/50 dark:bg-transparent group-hover:bg-transparent transition-colors">
                                             <div className="w-10 h-10 rounded-xl bg-white dark:bg-white/5 border border-slate-100 dark:border-white/5 flex items-center justify-center p-1.5 shadow-sm">
                                                 {sku.brandLogo ? (
-                                                    <img src={sku.brandLogo} alt={sku.brandName} className="w-full h-full object-contain opacity-80" />
+                                                    <img
+                                                        src={sku.brandLogo}
+                                                        alt={sku.brandName}
+                                                        className="w-full h-full object-contain opacity-80"
+                                                    />
                                                 ) : (
-                                                    <span className="text-[9px] font-black text-slate-300">{sku.brandName.substring(0, 2)}</span>
+                                                    <span className="text-[9px] font-black text-slate-300">
+                                                        {sku.brandName.substring(0, 2)}
+                                                    </span>
                                                 )}
                                             </div>
                                         </td>
                                         <td className="p-4">
                                             <div className="flex flex-col">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-sm font-bold text-slate-900 dark:text-white">{sku.modelName}</span>
+                                                    <span className="text-sm font-bold text-slate-900 dark:text-white">
+                                                        {sku.modelName}
+                                                    </span>
                                                     <span className="px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-white/10 text-[9px] font-bold text-slate-500 uppercase tracking-wide">
                                                         {sku.variantName}
                                                     </span>
@@ -436,7 +469,9 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                                                 <span className="text-sm font-bold text-slate-600 dark:text-slate-400">
                                                     ₹{sku.exShowroom.toLocaleString('en-IN')}
                                                 </span>
-                                                <span className="text-[9px] text-slate-300 uppercase font-bold tracking-wider">Base</span>
+                                                <span className="text-[9px] text-slate-300 uppercase font-bold tracking-wider">
+                                                    Base
+                                                </span>
                                             </div>
                                         </td>
                                         <td className="p-4 text-right">
@@ -446,7 +481,9 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                                         </td>
                                         <td className="p-4 text-right">
                                             <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                                                {sku.pricingReady ? `₹${sku.insuranceAmount.toLocaleString('en-IN')}` : '—'}
+                                                {sku.pricingReady
+                                                    ? `₹${sku.insuranceAmount.toLocaleString('en-IN')}`
+                                                    : '—'}
                                             </span>
                                         </td>
                                         <td className="p-4 text-right">
@@ -459,9 +496,11 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                                                 <div className="relative w-32 group-focus-within:w-36 transition-all">
                                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                                         {sku.offerAmount !== 0 ? (
-                                                            sku.offerAmount < 0 ?
-                                                                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> :
+                                                            sku.offerAmount < 0 ? (
+                                                                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                                            ) : (
                                                                 <div className="w-2 h-2 rounded-full bg-amber-500" />
+                                                            )
                                                         ) : (
                                                             <div className="w-2 h-2 rounded-full bg-slate-200 dark:bg-slate-700" />
                                                         )}
@@ -469,17 +508,19 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                                                     <input
                                                         type="number"
                                                         value={sku.inputOffer ?? ''}
-                                                        onChange={(e) => handleUpdateOffer(sku.id, e.target.value)}
+                                                        onChange={e => handleUpdateOffer(sku.id, e.target.value)}
                                                         placeholder="Add Offer"
-                                                        className={`block w-full pl-8 pr-3 py-2 text-center text-sm font-bold rounded-xl border-2 outline-none transition-all ${sku.isDirty
-                                                            ? 'border-indigo-400 bg-indigo-50 focus:ring-4 focus:ring-indigo-100'
-                                                            : 'border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/5 focus:border-indigo-500 focus:bg-white dark:focus:bg-black'
-                                                            } ${sku.offerAmount < 0
+                                                        className={`block w-full pl-8 pr-3 py-2 text-center text-sm font-bold rounded-xl border-2 outline-none transition-all ${
+                                                            sku.isDirty
+                                                                ? 'border-indigo-400 bg-indigo-50 focus:ring-4 focus:ring-indigo-100'
+                                                                : 'border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/5 focus:border-indigo-500 focus:bg-white dark:focus:bg-black'
+                                                        } ${
+                                                            sku.offerAmount < 0
                                                                 ? 'text-green-600'
                                                                 : sku.offerAmount > 0
-                                                                    ? 'text-amber-600'
-                                                                    : 'text-slate-900 dark:text-white'
-                                                            }`}
+                                                                  ? 'text-amber-600'
+                                                                  : 'text-slate-900 dark:text-white'
+                                                        }`}
                                                     />
                                                 </div>
                                             </div>
@@ -488,22 +529,38 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                                             <div className="flex flex-col items-end min-w-[100px]">
                                                 {/* Rough calculation of delta for visual feedback - note: strictly we should sum standard on-road + offer, but here we just show base + offer effect */}
                                                 <div className="flex items-center gap-1">
-                                                    <span className={`text-sm font-black ${sku.offerAmount < 0 ? 'text-green-500' : 'text-slate-900 dark:text-white'
-                                                        }`}>
+                                                    <span
+                                                        className={`text-sm font-black ${
+                                                            sku.offerAmount < 0
+                                                                ? 'text-green-500'
+                                                                : 'text-slate-900 dark:text-white'
+                                                        }`}
+                                                    >
                                                         {sku.pricingReady
                                                             ? `₹${(sku.onRoadBase + sku.offerAmount).toLocaleString('en-IN')}`
                                                             : '—'}
                                                     </span>
-                                                    {sku.pricingReady && <span className="text-[9px] text-slate-300 font-bold">*</span>}
+                                                    {sku.pricingReady && (
+                                                        <span className="text-[9px] text-slate-300 font-bold">*</span>
+                                                    )}
                                                 </div>
 
                                                 {sku.offerAmount !== 0 ? (
-                                                    <span className={`text-[9px] font-bold uppercase tracking-wider ${sku.offerAmount < 0 ? 'text-green-600 bg-green-50 dark:bg-green-500/10 px-1.5 py-0.5 rounded' : 'text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded'
-                                                        }`}>
-                                                        {sku.offerAmount < 0 ? `${Math.abs(sku.offerAmount)} OFF` : `+${sku.offerAmount} Premium`}
+                                                    <span
+                                                        className={`text-[9px] font-bold uppercase tracking-wider ${
+                                                            sku.offerAmount < 0
+                                                                ? 'text-green-600 bg-green-50 dark:bg-green-500/10 px-1.5 py-0.5 rounded'
+                                                                : 'text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded'
+                                                        }`}
+                                                    >
+                                                        {sku.offerAmount < 0
+                                                            ? `${Math.abs(sku.offerAmount)} OFF`
+                                                            : `+${sku.offerAmount} Premium`}
                                                     </span>
                                                 ) : (
-                                                    <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wider">Standard</span>
+                                                    <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wider">
+                                                        Standard
+                                                    </span>
                                                 )}
                                             </div>
                                         </td>
@@ -517,7 +574,8 @@ export const DealerPricelist = ({ tenantId, defaultStateCode = 'MH' }: { tenantI
                 <div className="p-4 border-t border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/[0.02] flex items-center justify-center gap-2">
                     <AlertCircle size={12} className="text-slate-400" />
                     <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">
-                        * Server RPC provides on-road pricing for {defaultStateCode}. Offer adjustments are previewed client-side and finalized on save.
+                        On-road pricing from published price ledger for {defaultStateCode}. Offer adjustments are
+                        previewed client-side and finalized on save.
                     </p>
                 </div>
             </div>

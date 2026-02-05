@@ -6,26 +6,27 @@ import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
 import { Zap, ShieldCheck, Package, Wrench, Gift, CheckCircle2 } from 'lucide-react';
 import { PhonePDPBottomBar } from './PhonePDPBottomBar';
+import Image from 'next/image';
 
 // Lazy load tab components
 const FinanceTab = dynamic(() => import('@/components/store/Personalize/Tabs/FinanceTab'), {
-    loading: () => <div className="h-64 bg-slate-100 dark:bg-white/5 rounded-3xl animate-pulse" />
+    loading: () => <div className="h-64 bg-slate-100 dark:bg-white/5 rounded-3xl animate-pulse" />,
 });
 
 const InsuranceTab = dynamic(() => import('@/components/store/Personalize/Tabs/InsuranceTab'), {
-    loading: () => <div className="h-64 bg-slate-100 dark:bg-white/5 rounded-3xl animate-pulse" />
+    loading: () => <div className="h-64 bg-slate-100 dark:bg-white/5 rounded-3xl animate-pulse" />,
 });
 
 const RegistrationTab = dynamic(() => import('@/components/store/Personalize/Tabs/RegistrationTab'), {
-    loading: () => <div className="h-64 bg-slate-100 dark:bg-white/5 rounded-3xl animate-pulse" />
+    loading: () => <div className="h-64 bg-slate-100 dark:bg-white/5 rounded-3xl animate-pulse" />,
 });
 
 const ServicesTab = dynamic(() => import('@/components/store/Personalize/Tabs/ServicesTab'), {
-    loading: () => <div className="h-64 bg-slate-100 dark:bg-white/5 rounded-3xl animate-pulse" />
+    loading: () => <div className="h-64 bg-slate-100 dark:bg-white/5 rounded-3xl animate-pulse" />,
 });
 
 const WarrantyTab = dynamic(() => import('@/components/store/Personalize/Tabs/WarrantyTab'), {
-    loading: () => <div className="h-64 bg-slate-100 dark:bg-white/5 rounded-3xl animate-pulse" />
+    loading: () => <div className="h-64 bg-slate-100 dark:bg-white/5 rounded-3xl animate-pulse" />,
 });
 
 interface PhonePDPSimpleProps {
@@ -79,7 +80,7 @@ export function PhonePDPSimple({ product, modelParam, variantParam, data, handle
         availableInsuranceAddons,
         insuranceRequiredItems,
         warrantyItems,
-        initialFinance
+        initialFinance,
     } = data;
 
     const {
@@ -135,15 +136,19 @@ export function PhonePDPSimple({ product, modelParam, variantParam, data, handle
         }
     };
 
-    const activeColorConfig = colors?.find((c: any) => c.id === selectedColor) || colors?.[0] || { name: 'Default', hex: '#888888' };
+    const activeColorConfig = colors?.find((c: any) => c.id === selectedColor) ||
+        colors?.[0] || { name: 'Default', hex: '#888888' };
 
     const getProductImage = () => {
         if (activeColorConfig?.image) return activeColorConfig.image;
         if (activeColorConfig?.gallery_urls?.length > 0) return activeColorConfig.gallery_urls[0];
         switch (product.bodyType) {
-            case 'SCOOTER': return '/images/categories/scooter_nobg.png';
-            case 'MOTORCYCLE': return '/images/categories/motorcycle_nobg.png';
-            default: return '/images/hero-bike.png';
+            case 'SCOOTER':
+                return '/images/categories/scooter_nobg.webp';
+            case 'MOTORCYCLE':
+                return '/images/categories/motorcycle_nobg.webp';
+            default:
+                return '/images/hero-bike.webp';
         }
     };
 
@@ -163,33 +168,38 @@ export function PhonePDPSimple({ product, modelParam, variantParam, data, handle
             whileTap={{ scale: 0.98 }}
             onClick={() => !isMandatory && onToggle?.()}
             className={`p-4 rounded-2xl border transition-all duration-300 flex items-center justify-between gap-3
-                ${isSelected
-                    ? 'bg-brand-primary/10 border-brand-primary/30'
-                    : 'bg-white dark:bg-white/[0.03] border-slate-200 dark:border-white/10'
+                ${
+                    isSelected
+                        ? 'bg-brand-primary/10 border-brand-primary/30'
+                        : 'bg-white dark:bg-white/[0.03] border-slate-200 dark:border-white/10'
                 }
                 ${isMandatory ? 'opacity-70' : 'active:bg-slate-50 dark:active:bg-white/5'}
             `}
         >
             <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all
-                    ${isSelected ? 'bg-brand-primary text-black' : 'bg-slate-100 dark:bg-white/10 text-slate-400'}`}>
+                <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all
+                    ${isSelected ? 'bg-brand-primary text-black' : 'bg-slate-100 dark:bg-white/10 text-slate-400'}`}
+                >
                     <Zap size={18} />
                 </div>
                 <div className="min-w-0">
-                    <p className={`text-sm font-bold uppercase tracking-tight truncate ${isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
+                    <p
+                        className={`text-sm font-bold uppercase tracking-tight truncate ${isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}
+                    >
                         {item.displayName || item.name}
                     </p>
-                    {item.description && (
-                        <p className="text-[10px] text-slate-400 truncate">{item.description}</p>
-                    )}
+                    {item.description && <p className="text-[10px] text-slate-400 truncate">{item.description}</p>}
                 </div>
             </div>
             <div className="flex items-center gap-3 shrink-0">
                 <span className={`text-sm font-black italic ${isSelected ? 'text-brand-primary' : 'text-slate-400'}`}>
                     ₹{(item.discountPrice || item.price || 0).toLocaleString()}
                 </span>
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all
-                    ${isSelected ? 'bg-brand-primary border-brand-primary' : 'border-slate-300 dark:border-slate-600'}`}>
+                <div
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all
+                    ${isSelected ? 'bg-brand-primary border-brand-primary' : 'border-slate-300 dark:border-slate-600'}`}
+                >
                     {isSelected && <CheckCircle2 className="w-3 h-3 text-black" strokeWidth={3} />}
                 </div>
             </div>
@@ -273,10 +283,13 @@ export function PhonePDPSimple({ product, modelParam, variantParam, data, handle
                 <div className="flex items-center gap-4 px-4">
                     {/* Product Image */}
                     <div className="relative w-28 h-28 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 dark:from-white/5 dark:to-white/[0.02] overflow-hidden shrink-0 border border-slate-200/50 dark:border-white/10 shadow-lg">
-                        <img
+                        <Image
                             src={getProductImage()}
                             alt={modelParam}
-                            className="w-full h-full object-contain p-2"
+                            fill
+                            sizes="112px"
+                            priority
+                            className="object-contain p-2"
                         />
                     </div>
 
@@ -302,7 +315,9 @@ export function PhonePDPSimple({ product, modelParam, variantParam, data, handle
 
                         {/* Ex-Showroom Price */}
                         <div className="mt-3">
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Ex-Showroom</span>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                Ex-Showroom
+                            </span>
                             <p className="text-xl font-black italic text-slate-900 dark:text-white">
                                 ₹{baseExShowroom?.toLocaleString('en-IN') || '—'}
                             </p>
@@ -313,7 +328,7 @@ export function PhonePDPSimple({ product, modelParam, variantParam, data, handle
 
             {/* Collapsible Accordion Cards */}
             <div className="px-4 py-4 space-y-3">
-                {TABS.map((tab) => {
+                {TABS.map(tab => {
                     const isExpanded = configTab === tab.id;
                     const Icon = tab.icon;
                     return (
@@ -321,9 +336,10 @@ export function PhonePDPSimple({ product, modelParam, variantParam, data, handle
                             key={tab.id}
                             layout
                             className={`rounded-3xl border overflow-hidden transition-all duration-300
-                                ${isExpanded
-                                    ? 'bg-white dark:bg-white/[0.03] border-brand-primary/30 shadow-lg'
-                                    : 'bg-white dark:bg-white/[0.02] border-slate-200 dark:border-white/10'
+                                ${
+                                    isExpanded
+                                        ? 'bg-white dark:bg-white/[0.03] border-brand-primary/30 shadow-lg'
+                                        : 'bg-white dark:bg-white/[0.02] border-slate-200 dark:border-white/10'
                                 }`}
                         >
                             {/* Card Header - Always Visible */}
@@ -333,18 +349,24 @@ export function PhonePDPSimple({ product, modelParam, variantParam, data, handle
                                 className="w-full flex items-center justify-between p-4"
                             >
                                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all
-                                        ${isExpanded ? 'bg-brand-primary text-black' : 'bg-slate-100 dark:bg-white/10 text-slate-400'}`}>
+                                    <div
+                                        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all
+                                        ${isExpanded ? 'bg-brand-primary text-black' : 'bg-slate-100 dark:bg-white/10 text-slate-400'}`}
+                                    >
                                         <Icon size={20} strokeWidth={2} />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <span className={`text-sm font-black uppercase tracking-wider transition-colors block
-                                            ${isExpanded ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>
+                                        <span
+                                            className={`text-sm font-black uppercase tracking-wider transition-colors block
+                                            ${isExpanded ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}
+                                        >
                                             {tab.label}
                                         </span>
                                         {/* Summary Info Pill */}
-                                        <span className={`text-[10px] font-bold tracking-wide block truncate transition-colors mt-0.5
-                                            ${isExpanded ? 'text-brand-primary' : 'text-slate-400'}`}>
+                                        <span
+                                            className={`text-[10px] font-bold tracking-wide block truncate transition-colors mt-0.5
+                                            ${isExpanded ? 'text-brand-primary' : 'text-slate-400'}`}
+                                        >
                                             {getCardSummary(tab.id)}
                                         </span>
                                     </div>
@@ -355,7 +377,14 @@ export function PhonePDPSimple({ product, modelParam, variantParam, data, handle
                                     className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-colors
                                         ${isExpanded ? 'bg-brand-primary/20 text-brand-primary' : 'bg-slate-100 dark:bg-white/10 text-slate-400'}`}
                                 >
-                                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <svg
+                                        width="12"
+                                        height="12"
+                                        viewBox="0 0 12 12"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                    >
                                         <path d="M2 4L6 8L10 4" />
                                     </svg>
                                 </motion.div>
@@ -366,14 +395,12 @@ export function PhonePDPSimple({ product, modelParam, variantParam, data, handle
                                 initial={false}
                                 animate={{
                                     height: isExpanded ? 'auto' : 0,
-                                    opacity: isExpanded ? 1 : 0
+                                    opacity: isExpanded ? 1 : 0,
                                 }}
                                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                                 className="overflow-hidden"
                             >
-                                <div className="px-4 pb-4">
-                                    {isExpanded && renderTabContent()}
-                                </div>
+                                <div className="px-4 pb-4">{isExpanded && renderTabContent()}</div>
                             </motion.div>
                         </motion.div>
                     );

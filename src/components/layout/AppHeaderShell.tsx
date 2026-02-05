@@ -30,7 +30,7 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
     className = '',
 }) => {
     // Quick rollback: switch to 'spacious' for the previous 96px height + wider container.
-    const containerClass = 'max-w-[1440px] px-6';
+    const containerClass = 'page-container';
 
     // Variant-based background and border styles
     const getBgClass = () => {

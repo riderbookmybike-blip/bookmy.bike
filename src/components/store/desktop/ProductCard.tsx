@@ -1,16 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import {
-    Heart,
-    Star,
-    StarHalf,
-    MapPin,
-    Bluetooth,
-    ArrowRight,
-    Sparkles,
-    Zap,
-    CircleHelp
-} from 'lucide-react';
+import { Heart, Star, StarHalf, MapPin, Bluetooth, ArrowRight, Sparkles, Zap, CircleHelp } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { buildProductUrl } from '@/lib/utils/urlHelper';
@@ -58,6 +48,7 @@ export const ProductCard = ({
     serviceability?: {
         status: 'loading' | 'serviceable' | 'unserviceable' | 'unset';
         location?: string;
+        district?: string;
         distance?: number;
     };
     onLocationClick?: () => void;
@@ -68,6 +59,7 @@ export const ProductCard = ({
         dealerId?: string;
         isServiceable: boolean;
         dealerLocation?: string;
+        studio_id?: string;
         bundleValue?: number;
         bundlePrice?: number;
     };
@@ -113,45 +105,84 @@ export const ProductCard = ({
         return randomFactor * 100;
     });
 
-    const marketAdjustedPrice = bestOffer
-        ? (v.price?.onRoad || 0) + bestOffer.price + (bestOffer.bundlePrice || 0)
-        : v.price?.offerPrice || v.price?.onRoad || v.price?.exShowroom || 0;
-    const effectiveServerPricing = serverPricing || (v as any)?.serverPricing;
-    // SSPP v1: Use server-calculated price when available (Single Source of Truth)
-    const basePrice = effectiveServerPricing?.final_on_road ?? marketAdjustedPrice;
-    const priceSourceLocation = effectiveServerPricing?.location?.district
-        || bestOffer?.dealerLocation
-        || v.price?.pricingSource
-        || undefined;
+    const effectiveServerPricing = (v as any)?.serverPricing;
+
+    // Use the comprehensive price from SystemCatalogLogic (already includes offer)
+    const displayPrice = v.price?.offerPrice || v.price?.onRoad || v.price?.exShowroom || 0;
+
+    const liveOnRoad = typeof v.price?.onRoad === 'number' ? v.price.onRoad : undefined;
+    const basePrice =
+        isPdp && liveOnRoad !== undefined ? liveOnRoad : displayPrice || effectiveServerPricing?.final_on_road || 0;
+
+    // Location & Dealer Labels - derived directly from ProductVariant
+    const priceSourceLocation =
+        v.dealerLocation || effectiveServerPricing?.location?.district || v.price?.pricingSource || undefined;
+
     const cleanedPriceSourceLocation = priceSourceLocation
         ? priceSourceLocation.replace(/^(Best:|Base:)\s*/i, '').trim()
         : undefined;
+
     const priceSourceLabel = cleanedPriceSourceLocation
-        ? (effectiveServerPricing?.location?.state_code ? `${cleanedPriceSourceLocation}, ${effectiveServerPricing.location.state_code}` : cleanedPriceSourceLocation)
+        ? effectiveServerPricing?.location?.state_code
+            ? `${cleanedPriceSourceLocation}, ${effectiveServerPricing.location.state_code}`
+            : cleanedPriceSourceLocation
         : undefined;
+
     const districtLabel = (() => {
         if (!cleanedPriceSourceLocation) return null;
-        const STATE_NAMES = ['MAHARASHTRA', 'KARNATAKA', 'GUJARAT', 'RAJASTHAN', 'DELHI', 'KERALA', 'GOA', 'PUNJAB', 'HARYANA', 'BIHAR', 'INDIA', 'ALL'];
+        const STATE_NAMES = [
+            'MAHARASHTRA',
+            'KARNATAKA',
+            'GUJARAT',
+            'RAJASTHAN',
+            'DELHI',
+            'KERALA',
+            'GOA',
+            'PUNJAB',
+            'HARYANA',
+            'BIHAR',
+            'INDIA',
+            'ALL',
+        ];
         if (STATE_NAMES.includes(cleanedPriceSourceLocation.toUpperCase())) return null;
         return cleanedPriceSourceLocation.split(',')[0]?.trim();
     })();
-    const dealerLabel = bestOffer?.dealer?.trim();
+
+    const dealerLabel = v.studioName?.trim();
     const dealerLabelDisplay = dealerLabel || 'UNASSIGNED';
-    const districtLabelDisplay = districtLabel || null; // Don't show fallback text, hide completely
-    const priceSourceDisplay = districtLabelDisplay || priceSourceLabel || '—';
+    const districtLabelDisplay = districtLabel || null;
+    const studioDisplayLabel = v.studioCode || null;
+
+    // Combine District and Studio Code
+    const combinedLocationLabel = districtLabelDisplay
+        ? studioDisplayLabel
+            ? `${districtLabelDisplay}, ${studioDisplayLabel}`
+            : districtLabelDisplay
+        : studioDisplayLabel || null;
+
+    const priceSourceDisplay = combinedLocationLabel || priceSourceLabel || '—';
+    const isTrulyOnRoad = effectiveServerPricing
+        ? effectiveServerPricing.final_on_road > effectiveServerPricing.ex_showroom
+        : (v.price?.onRoad || 0) > (v.price?.exShowroom || 0);
+
+    const pricingLabel = isTrulyOnRoad ? 'ON-ROAD' : 'EX-SHOWROOM';
+
     // If dealer offer exists, price is CONFIRMED not estimated
     const isConfirmedPrice = !!bestOffer;
     // Savings calculation
     const onRoad = v.price?.onRoad || 0;
     const offerPrice = v.price?.offerPrice || basePrice;
 
+    const offerDelta = bestOffer?.price ?? 0;
     // Calculate savings based on source (Live Best Offer vs Server/Mapped Data)
     const bundleSavings = bestOffer
         ? Math.max(0, (bestOffer.bundleValue || 0) - (bestOffer.bundlePrice || 0))
         : v.price?.bundleSavings || 0;
     const savings = bestOffer
-        ? Math.abs(bestOffer.price) + bundleSavings
+        ? (offerDelta < 0 ? Math.abs(offerDelta) : 0) + bundleSavings
         : v.price?.totalSavings || onRoad - offerPrice;
+    const surge = bestOffer && offerDelta > 0 ? offerDelta : 0;
+    const netImpact = bestOffer ? savings - surge : savings;
 
     // Continuous EMI Flip Logic
     // const TENURE_OPTIONS = [12, 24, 36, 48, 60];
@@ -307,14 +338,14 @@ export const ProductCard = ({
                         </div>
                         <div className="space-y-1">
                             <p
-                                className={`text-[8px] font-black uppercase tracking-widest ${savings >= 0 ? 'text-emerald-500/80' : 'text-rose-500/80'}`}
+                                className={`text-[8px] font-black uppercase tracking-widest ${netImpact >= 0 ? 'text-emerald-500/80' : 'text-rose-500/80'}`}
                             >
-                                {savings >= 0 ? 'Total Savings' : 'Price Surge'}
+                                {netImpact >= 0 ? 'Total Savings' : 'Price Surge'}
                             </p>
                             <p
-                                className={`text-sm font-black ${savings >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}
+                                className={`text-sm font-black ${netImpact >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}
                             >
-                                {savings !== 0 ? `₹${Math.abs(savings).toLocaleString('en-IN')}` : 'No Change'}
+                                {netImpact !== 0 ? `₹${Math.abs(netImpact).toLocaleString('en-IN')}` : 'No Change'}
                             </p>
                         </div>
                     </div>
@@ -323,7 +354,7 @@ export const ProductCard = ({
                         <div className="flex gap-16">
                             <div className="space-y-1">
                                 <p className="text-[9px] font-bold text-slate-400 dark:text-slate-300 uppercase tracking-widest">
-                                    On-Road price
+                                    {pricingLabel === 'ON-ROAD' ? 'On-Road price' : 'Ex-Showroom price'}
                                 </p>
                                 <div className="flex flex-col">
                                     <div className="flex items-baseline gap-3">
@@ -386,10 +417,10 @@ export const ProductCard = ({
                                     <div className="relative group/location inline-flex">
                                         <span
                                             className="inline-flex items-center gap-1 rounded-full border border-brand-primary/30 bg-brand-primary/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.35em] text-brand-primary max-w-full truncate"
-                                            title={districtLabelDisplay}
+                                            title={combinedLocationLabel || ''}
                                         >
                                             <MapPin size={14} />
-                                            {districtLabelDisplay}
+                                            {combinedLocationLabel}
                                         </span>
                                         {(dealerLabel || districtLabel) && (
                                             <div className="absolute bottom-full left-0 mb-2 w-52 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-[10px] text-slate-700 dark:text-slate-200 shadow-xl opacity-0 invisible group-hover/location:opacity-100 group-hover/location:visible transition-all duration-200 pointer-events-none">
@@ -430,10 +461,7 @@ export const ProductCard = ({
                                                 make: v.make,
                                                 model: v.model,
                                                 variant: v.variant,
-                                                pincode:
-                                                    serviceability?.status === 'serviceable'
-                                                        ? serviceability.location
-                                                        : undefined,
+                                                district: serviceability?.district || serviceability?.location,
                                                 leadId: leadId,
                                                 basePath,
                                             }).url
@@ -507,10 +535,11 @@ export const ProductCard = ({
                         initial={{ scale: 0.9, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         transition={{ duration: 0.3 }}
-                        className={`absolute top-4 left-4 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border shadow-lg ${bestOffer.price < 0
-                            ? 'bg-emerald-500 dark:bg-emerald-600 text-white border-emerald-400/30'
-                            : 'bg-rose-500 dark:bg-rose-600 text-white border-rose-400/30'
-                            }`}
+                        className={`absolute top-4 left-4 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border shadow-lg ${
+                            bestOffer.price < 0
+                                ? 'bg-emerald-500 dark:bg-emerald-600 text-white border-emerald-400/30'
+                                : 'bg-rose-500 dark:bg-rose-600 text-white border-rose-400/30'
+                        }`}
                     >
                         <motion.div
                             animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.2, 1] }}
@@ -586,7 +615,7 @@ export const ProductCard = ({
                         {v.availableColors && v.availableColors.length > 0 && (
                             <div className="flex items-center flex-wrap min-h-[1.25rem]">
                                 <div
-                                    onClick={(e) => {
+                                    onClick={e => {
                                         if (!isSwatchesExpanded) {
                                             e.stopPropagation();
                                             setIsSwatchesExpanded(true);
@@ -594,41 +623,41 @@ export const ProductCard = ({
                                     }}
                                     className={`flex items-center transition-all duration-500 ${isSwatchesExpanded ? 'gap-2 px-1 cursor-default' : '-space-x-2 cursor-pointer'}`}
                                 >
-                                    {v.availableColors.slice(0, isSwatchesExpanded ? v.availableColors.length : 3).map((c, i) => (
-                                        <div
-                                            key={i}
-                                            onClick={e => {
-                                                e.stopPropagation();
-                                                // If collapsed, clicking a swatch should expand first
-                                                if (!isSwatchesExpanded) {
-                                                    setIsSwatchesExpanded(true);
-                                                    return;
-                                                }
+                                    {v.availableColors
+                                        .slice(0, isSwatchesExpanded ? v.availableColors.length : 3)
+                                        .map((c, i) => (
+                                            <div
+                                                key={i}
+                                                onClick={e => {
+                                                    e.stopPropagation();
+                                                    // If collapsed, clicking a swatch should expand first
+                                                    if (!isSwatchesExpanded) {
+                                                        setIsSwatchesExpanded(true);
+                                                        return;
+                                                    }
 
-                                                if (c.imageUrl) {
-                                                    setSelectedColorImage(c.imageUrl);
-                                                    setSelectedColorZoom(c.zoomFactor || null);
-                                                    setSelectedColorFlip(c.isFlipped || false);
-                                                    setSelectedColorOffsetX(c.offsetX || 0);
-                                                    setSelectedColorOffsetY(c.offsetY || 0);
-                                                }
-                                                if (c.hexCode) {
-                                                    setSelectedHex(c.hexCode);
-                                                }
-                                                // Trigger callback if provided (e.g., in PDP)
-                                                if (onColorChange && c.id) {
-                                                    onColorChange(c.id);
-                                                }
-                                            }}
-                                            className={`rounded-full border border-white dark:border-slate-900 shadow-sm relative hover:scale-125 transition-all duration-300 ${isSwatchesExpanded ? 'w-6 h-6 cursor-pointer' : 'w-5 h-5 cursor-pointer'} ${selectedHex === c.hexCode ? 'z-20 scale-110 ring-2 ring-brand-primary border-transparent' : 'z-10'}`}
-                                            style={{ background: c.hexCode }}
-                                            title={c.name}
-                                        />
-                                    ))}
+                                                    if (c.imageUrl) {
+                                                        setSelectedColorImage(c.imageUrl);
+                                                        setSelectedColorZoom(c.zoomFactor || null);
+                                                        setSelectedColorFlip(c.isFlipped || false);
+                                                        setSelectedColorOffsetX(c.offsetX || 0);
+                                                        setSelectedColorOffsetY(c.offsetY || 0);
+                                                    }
+                                                    if (c.hexCode) {
+                                                        setSelectedHex(c.hexCode);
+                                                    }
+                                                    // Trigger callback if provided (e.g., in PDP)
+                                                    if (onColorChange && c.id) {
+                                                        onColorChange(c.id);
+                                                    }
+                                                }}
+                                                className={`rounded-full border border-white dark:border-slate-900 shadow-sm relative hover:scale-110 transition-all duration-300 ${isSwatchesExpanded ? 'w-6 h-6 cursor-pointer' : 'w-5 h-5 cursor-pointer'} ${selectedHex === c.hexCode ? 'z-20 scale-105 ring-2 ring-brand-primary ring-offset-1 ring-offset-white dark:ring-offset-[#0f1115] border-transparent' : 'z-10'}`}
+                                                style={{ background: c.hexCode }}
+                                                title={c.name}
+                                            />
+                                        ))}
                                     {v.availableColors.length > 3 && !isSwatchesExpanded && (
-                                        <div
-                                            className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 border border-white dark:border-slate-900 flex items-center justify-center relative z-10 text-[9px] font-bold text-slate-500 hover:bg-slate-200"
-                                        >
+                                        <div className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 border border-white dark:border-slate-900 flex items-center justify-center relative z-10 text-[9px] font-bold text-slate-500 hover:bg-slate-200">
                                             +{v.availableColors.length - 3}
                                         </div>
                                     )}
@@ -662,7 +691,7 @@ export const ProductCard = ({
                 <div className="mt-1.5 md:mt-4 pt-1.5 md:pt-4 border-t border-slate-100 dark:border-white/5 grid grid-cols-2 gap-4">
                     <div className="flex flex-col items-start">
                         <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-0.5 italic">
-                            ON-ROAD
+                            {pricingLabel}
                         </p>
                         <div className="flex items-baseline gap-1.5">
                             <span className="text-xl md:text-2xl font-black italic text-slate-900 dark:text-white px-1 pb-1">
@@ -673,7 +702,7 @@ export const ProductCard = ({
                             <div className="relative group/location flex items-center gap-1.5 mt-2 bg-slate-100 dark:bg-white/5 px-2 py-1 rounded-lg w-fit border border-slate-200/50 dark:border-white/5">
                                 <MapPin size={12} className="text-brand-primary animate-bounce-subtle" />
                                 <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest italic">
-                                    {districtLabelDisplay}
+                                    {combinedLocationLabel}
                                 </p>
                                 {(dealerLabel || districtLabel) && (
                                     <div className="absolute bottom-full left-0 mb-2 w-52 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-[10px] text-slate-700 dark:text-slate-200 shadow-xl opacity-0 invisible group-hover/location:opacity-100 group-hover/location:visible transition-all duration-200 pointer-events-none z-50">
@@ -722,7 +751,9 @@ export const ProductCard = ({
                         <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-slate-900 dark:bg-slate-800 text-white text-[10px] rounded-xl shadow-xl opacity-0 invisible group-hover/emi:opacity-100 group-hover/emi:visible transition-all duration-200 z-50 pointer-events-none">
                             <p className="leading-relaxed">
                                 This EMI is calculated on{' '}
-                                <span className="font-bold text-green-400">₹{(downpayment || 0).toLocaleString('en-IN')}</span>{' '}
+                                <span className="font-bold text-green-400">
+                                    ₹{(downpayment || 0).toLocaleString('en-IN')}
+                                </span>{' '}
                                 downpayment at <span className="font-bold text-green-400">{tenure} months</span>.
                             </p>
                             <p className="mt-1.5 text-slate-300">
@@ -753,8 +784,7 @@ export const ProductCard = ({
                                         make: v.make,
                                         model: v.model,
                                         variant: v.variant,
-                                        pincode:
-                                            serviceability?.status === 'serviceable' ? serviceability.location : undefined,
+                                        district: serviceability?.district || serviceability?.location,
                                         leadId: leadId,
                                         basePath,
                                     }).url

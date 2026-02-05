@@ -24,7 +24,6 @@ import { buildProductUrl } from '@/lib/utils/urlHelper';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 
 import { BRANDS as defaultBrands } from '@/config/market';
-import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import type { useCatalogFilters } from '@/hooks/useCatalogFilters';
 import { getStableReviewCount } from '@/utils/vehicleUtils';
 import type { ProductVariant } from '@/types/productMaster';
@@ -33,16 +32,18 @@ import { resolveLocation } from '@/utils/locationResolver';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { LocationPicker } from './LocationPicker';
 import { calculateDistance, HUB_LOCATION, MAX_SERVICEABLE_DISTANCE_KM } from '@/utils/geoUtils';
-import { removeLocationCookie } from '@/actions/locationCookie';
+import { setLocationCookie } from '@/actions/locationCookie';
 import { ProductCard } from './desktop/ProductCard';
 import { CatalogGridSkeleton } from './CatalogSkeleton';
+import { getSelfMemberLocation, updateSelfMemberLocation } from '@/actions/members';
 
 type CatalogFilters = ReturnType<typeof useCatalogFilters>;
 
 interface DesktopCatalogProps {
     filters: CatalogFilters;
     variant?: 'default' | 'tv';
-    initialItems?: ProductVariant[]; // Added for SSR Hydration
+    items?: ProductVariant[];
+    isLoading?: boolean;
     leadId?: string;
     basePath?: string;
 }
@@ -61,23 +62,18 @@ const StarRating = ({ rating = 4.5, size = 10 }: { rating?: number; size?: numbe
     );
 };
 
-
-
 // ... ProductCard ends above ...
 
 export const DesktopCatalog = ({
     filters,
     variant: _variant = 'default',
-    initialItems = [],
+    items = [],
+    isLoading: externalLoading = false,
     leadId,
     basePath = '/store',
 }: DesktopCatalogProps) => {
-    // 1. Initialize with SSR Data (Instant Render)
-    const { items: clientItems, isLoading: isClientLoading } = useSystemCatalogLogic();
-
-    // Prefer client items once loaded, otherwise show server items
-    const displayItems = clientItems.length > 0 ? clientItems : initialItems;
-    const isLoading = displayItems.length === 0 && isClientLoading;
+    // Prefer client-resolved items when available, otherwise SSR
+    const isLoading = externalLoading;
 
     // Destructure filters from props
     const {
@@ -139,110 +135,6 @@ export const DesktopCatalog = ({
 
     const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
 
-    const [marketOffers, setMarketOffers] = useState<
-        Record<
-            string,
-            {
-                price: number;
-                dealer: string;
-                dealerId?: string;
-                isServiceable: boolean;
-                dealerLocation?: string;
-                bundleValue?: number;
-                bundlePrice?: number;
-            }
-        >
-    >({});
-    const AUMS_DEALER_ID = 'f3e6e266-3ca5-4c67-91ce-b7cc98e30ee5';
-
-    // Fetch Market Offers when Serviceability Updates
-    useEffect(() => {
-        const fetchOffers = async () => {
-            // ALWAYS call RPC - default to MH state if no location
-            const supabase = createClient();
-            const stateCode = serviceability.stateCode || 'MH'; // Default fallback
-            const district = serviceability.district || null;
-
-            console.log('[MasterCatalog] Calling RPC with:', { stateCode, district });
-
-            const { data, error } = await supabase.rpc('get_market_best_offers', {
-                p_state_code: stateCode,
-                p_district: serviceability.district || null, // Pass district if available
-            });
-
-            if (!error && data) {
-                const dealerIds = Array.from(new Set((data as any[])
-                    .map((item: any) => item?.dealer_id)
-                    .filter(Boolean)));
-                let dealerLocationMap: Record<string, string> = {};
-                if (dealerIds.length > 0) {
-                    const { data: dealers } = await supabase
-                        .from('id_tenants')
-                        .select('id, location')
-                        .in('id', dealerIds);
-                    dealerLocationMap = (dealers || []).reduce((acc: Record<string, string>, dealer: any) => {
-                        if (dealer?.id && dealer?.location) acc[dealer.id] = dealer.location;
-                        return acc;
-                    }, {});
-                }
-
-                const offerMap: Record<
-                    string,
-                    {
-                        price: number;
-                        dealer: string;
-                        dealerId?: string;
-                        isServiceable: boolean;
-                        dealerLocation?: string;
-                        bundleValue?: number;
-                        bundlePrice?: number;
-                    }
-                > = {};
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                data.forEach((item: any) => {
-                    offerMap[item.vehicle_color_id] = {
-                        price: Number(item.best_offer), // Ensure number
-                        dealer: item.dealer_name,
-                        dealerId: item.dealer_id,
-                        isServiceable: item.is_serviceable,
-                        dealerLocation: dealerLocationMap[item.dealer_id],
-                        bundleValue: Number(item.bundle_value || 0),
-                        bundlePrice: Number(item.bundle_price ?? item.bundle_value ?? 0),
-                    };
-                });
-                setMarketOffers(offerMap);
-
-                // Debug: Log studio name availability
-                if (typeof window !== 'undefined') {
-                    const sampleOffer = Object.values(offerMap)[0];
-                    console.log('[MasterCatalog] Market offers loaded:', {
-                        offerCount: Object.keys(offerMap).length,
-                        sampleDealer: sampleOffer?.dealer,
-                        sampleDealerId: sampleOffer?.dealerId,
-                        location: serviceability.location,
-                        stateCode: serviceability.stateCode,
-                        status: serviceability.status,
-                    });
-
-                    // Update debug panel
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    (window as any).__BMB_DEBUG__ = {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        ...(window as any).__BMB_DEBUG__,
-                        district: serviceability.location,
-                        stateCode: serviceability.stateCode,
-                        pricingSource: 'MARKET_RULES',
-                        locSource: 'AUTO',
-                        dealerId: sampleOffer?.dealerId,
-                        studioName: sampleOffer?.dealer,
-                        marketOffersCount: Object.keys(offerMap).length,
-                    };
-                }
-            }
-        };
-        fetchOffers();
-    }, [serviceability.location, serviceability.status, serviceability.stateCode]);
-
     useEffect(() => {
         const checkCurrentServiceability = async () => {
             if (typeof window === 'undefined') return;
@@ -252,51 +144,144 @@ export const DesktopCatalog = ({
 
             // ... (rest of serviceability check logic which is usually constant) ...
 
-            // Tier 2: Local Storage
+            let cachedData: any = null;
             const cached = localStorage.getItem('bkmb_user_pincode');
             console.log('[Location] Cached data:', cached);
             if (cached) {
                 try {
-                    const data = JSON.parse(cached);
-                    if (data.pincode) {
-                        console.log('[Location] Using cached pincode:', data.pincode);
-
-                        // Optimistic Update: Unblock UI immediately using cached data
-                        setServiceability(prev => ({
-                            ...prev,
-                            status: 'serviceable',
-                            location: data.district || data.pincode,
-                            district: data.district,
-                            stateCode: data.stateCode || 'MH',
-                        }));
-
-                        const result = await checkServiceability(data.pincode);
-                        // Construct display location: District ONLY
-                        const displayLoc = result.district || result.location || data.pincode;
-                        setServiceability({
-                            status: result.isServiceable ? 'serviceable' : 'unserviceable',
-                            location: displayLoc,
-                            district: result.district,
-                            stateCode: result.stateCode,
-                        });
-                        // Allow silent update of details (District/State)
-                        localStorage.setItem(
-                            'bkmb_user_pincode',
-                            JSON.stringify({
-                                pincode: data.pincode,
-                                taluka: result.location || data.taluka || data.city,
-                                district: result.district,
-                                state: result.state,
-                                stateCode: result.stateCode,
-                                manuallySet: false,
-                            })
-                        );
-                        window.dispatchEvent(new Event('locationChanged'));
-                        return; // STOP HERE - don't ask for geolocation
-                    }
+                    cachedData = JSON.parse(cached);
                 } catch {
                     localStorage.removeItem('bkmb_user_pincode');
+                    cachedData = null;
                 }
+            }
+
+            // Tier 1.5: Logged-in Profile (skip if user explicitly set location)
+            if (!cachedData?.manuallySet) {
+                let member: any = null;
+                try {
+                    member = await getSelfMemberLocation();
+                } catch (err) {
+                    console.error('[Location] Profile fetch failed:', err);
+                }
+                if (member?.pincode) {
+                    console.log('[Location] Using profile pincode:', member.pincode);
+
+                    const resolved = await resolveLocation(member.pincode);
+                    const result = await checkServiceability(member.pincode);
+
+                    const payload = {
+                        pincode: member.pincode,
+                        taluka: resolved?.taluka || member.taluka || result.taluka || result.location || '',
+                        district: resolved?.district || member.district || result.district || undefined,
+                        state: resolved?.state || member.state || result.state || undefined,
+                        stateCode: result.stateCode || undefined,
+                        lat: resolved?.lat ?? member.latitude ?? null,
+                        lng: resolved?.lng ?? member.longitude ?? null,
+                        manuallySet: false,
+                        source: 'PROFILE',
+                    };
+
+                    // Optimistic Update: Unblock UI immediately using profile data
+                    setServiceability(prev => ({
+                        ...prev,
+                        status: 'serviceable',
+                        location: payload.district || payload.pincode || '',
+                        district: payload.district || undefined,
+                        stateCode: payload.stateCode || 'MH',
+                    }));
+
+                    const displayLoc = result.district || result.location || payload.pincode;
+                    setServiceability({
+                        status: result.isServiceable ? 'serviceable' : 'unserviceable',
+                        location: displayLoc,
+                        district: result.district || payload.district || undefined,
+                        stateCode: result.stateCode,
+                    });
+
+                    localStorage.setItem('bkmb_user_pincode', JSON.stringify(payload));
+                    try {
+                        await setLocationCookie({
+                            pincode: payload.pincode,
+                            taluka: payload.taluka,
+                            district: payload.district,
+                            state: payload.state,
+                            stateCode: payload.stateCode,
+                            lat: payload.lat,
+                            lng: payload.lng,
+                        });
+                    } catch (err) {
+                        console.error('[Location] Cookie set failed:', err);
+                    }
+                    window.dispatchEvent(new Event('locationChanged'));
+
+                    // Persist back to profile if missing data
+                    if (!member.district || !member.taluka || !member.state || !member.latitude || !member.longitude) {
+                        try {
+                            await updateSelfMemberLocation({
+                                pincode: payload.pincode,
+                                district: payload.district || null,
+                                taluka: payload.taluka || null,
+                                state: payload.state || null,
+                                latitude: payload.lat,
+                                longitude: payload.lng,
+                            });
+                        } catch (err) {
+                            console.error('[Location] Profile update failed:', err);
+                        }
+                    }
+
+                    return; // STOP HERE - don't ask for geolocation
+                }
+            }
+
+            // Tier 2: Local Storage
+            if (cachedData?.pincode) {
+                console.log('[Location] Using cached pincode:', cachedData.pincode);
+
+                // Optimistic Update: Unblock UI immediately using cached data
+                setServiceability(prev => ({
+                    ...prev,
+                    status: 'serviceable',
+                    location: cachedData.district || cachedData.pincode || '',
+                    district: cachedData.district || undefined,
+                    stateCode: cachedData.stateCode || 'MH',
+                }));
+
+                const result = await checkServiceability(cachedData.pincode);
+                // Construct display location: District ONLY
+                const displayLoc = result.district || result.location || cachedData.pincode;
+                setServiceability({
+                    status: result.isServiceable ? 'serviceable' : 'unserviceable',
+                    location: displayLoc,
+                    district: result.district || undefined,
+                    stateCode: result.stateCode,
+                });
+                // Allow silent update of details (District/State)
+                const updated = {
+                    pincode: cachedData.pincode,
+                    taluka: result.location || cachedData.taluka || cachedData.city,
+                    district: result.district,
+                    state: result.state,
+                    stateCode: result.stateCode,
+                    manuallySet: Boolean(cachedData.manuallySet),
+                };
+                localStorage.setItem('bkmb_user_pincode', JSON.stringify(updated));
+                try {
+                    await setLocationCookie({
+                        pincode: updated.pincode,
+                        taluka: updated.taluka,
+                        district: updated.district,
+                        state: updated.state,
+                        stateCode: updated.stateCode,
+                        lat: cachedData.lat,
+                        lng: cachedData.lng,
+                    });
+                } catch (err) {
+                    console.error('[Location] Cookie set failed:', err);
+                }
+                window.dispatchEvent(new Event('locationChanged'));
+                return; // STOP HERE - don't ask for geolocation
             }
             // Tier 3: Browser Geolocation
             if (navigator.geolocation) {
@@ -337,6 +322,35 @@ export const DesktopCatalog = ({
                                         stateCode: result.stateCode || stateCode,
                                         userDistrict: userDist,
                                     });
+                                    const payload = {
+                                        pincode,
+                                        taluka: nearest.taluka || '',
+                                        district: userDist,
+                                        state: result.state || null,
+                                        stateCode: result.stateCode || stateCode,
+                                        lat: latitude,
+                                        lng: longitude,
+                                        manuallySet: false,
+                                    };
+                                    localStorage.setItem('bkmb_user_pincode', JSON.stringify(payload));
+                                    try {
+                                        await setLocationCookie(payload);
+                                    } catch (err) {
+                                        console.error('[Location] Cookie set failed:', err);
+                                    }
+                                    window.dispatchEvent(new Event('locationChanged'));
+                                    try {
+                                        await updateSelfMemberLocation({
+                                            pincode,
+                                            district: userDist || null,
+                                            taluka: nearest.taluka || null,
+                                            state: result.state || null,
+                                            latitude,
+                                            longitude,
+                                        });
+                                    } catch (err) {
+                                        console.error('[Location] Profile update failed:', err);
+                                    }
                                 } else {
                                     // User in non-serviceable district - find nearest serviceable
                                     console.log('[Location] District not serviceable, finding nearest...');
@@ -356,6 +370,35 @@ export const DesktopCatalog = ({
                                             userDistrict: userDist,
                                             fallbackDistrict: fallback.district,
                                         });
+                                        const payload = {
+                                            pincode,
+                                            taluka: nearest.taluka || '',
+                                            district: userDist,
+                                            state: result.state || null,
+                                            stateCode: result.stateCode || stateCode,
+                                            lat: latitude,
+                                            lng: longitude,
+                                            manuallySet: false,
+                                        };
+                                        localStorage.setItem('bkmb_user_pincode', JSON.stringify(payload));
+                                        try {
+                                            await setLocationCookie(payload);
+                                        } catch (err) {
+                                            console.error('[Location] Cookie set failed:', err);
+                                        }
+                                        window.dispatchEvent(new Event('locationChanged'));
+                                        try {
+                                            await updateSelfMemberLocation({
+                                                pincode,
+                                                district: userDist || null,
+                                                taluka: nearest.taluka || null,
+                                                state: result.state || null,
+                                                latitude,
+                                                longitude,
+                                            });
+                                        } catch (err) {
+                                            console.error('[Location] Profile update failed:', err);
+                                        }
                                     } else {
                                         // No serviceable district found - use Maharashtra fallback
                                         setServiceability({
@@ -368,17 +411,6 @@ export const DesktopCatalog = ({
                                         });
                                     }
                                 }
-                                localStorage.setItem(
-                                    'bkmb_user_pincode',
-                                    JSON.stringify({
-                                        pincode,
-                                        taluka: result.taluka || nearest.taluka,
-                                        district: result.district || nearest.district,
-                                        state: result.state || nearest.state,
-                                        stateCode: result.stateCode || stateCode,
-                                        manuallySet: false,
-                                    })
-                                );
                                 return;
                             }
 
@@ -516,10 +548,11 @@ export const DesktopCatalog = ({
                                 <button
                                     key={opt}
                                     onClick={() => onToggle(opt)}
-                                    className={`group relative flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${selectedValues.includes(opt)
-                                        ? 'bg-brand-primary/10 border-brand-primary/50 shadow-sm'
-                                        : 'bg-white dark:bg-white/[0.02] border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/20'
-                                        }`}
+                                    className={`group relative flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${
+                                        selectedValues.includes(opt)
+                                            ? 'bg-brand-primary/10 border-brand-primary/50 shadow-sm'
+                                            : 'bg-white dark:bg-white/[0.02] border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/20'
+                                    }`}
                                 >
                                     <span
                                         className={`text-[10px] font-black uppercase tracking-widest italic transition-colors ${selectedValues.includes(opt) ? 'text-slate-900 dark:text-brand-primary' : 'text-slate-500 dark:text-slate-300 group-hover:text-slate-800 dark:hover:text-slate-100'}`}
@@ -561,75 +594,24 @@ export const DesktopCatalog = ({
         return vehicles;
     }, [filteredVehicles, sortBy, downpayment]);
 
-    // Location Gate - Block catalog until location is fetched
-    if (serviceability.status === 'loading' || serviceability.status === 'unset') {
-        return (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/90 backdrop-blur-md">
-                <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 max-w-md mx-4 text-center shadow-2xl">
-                    <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-brand-primary to-orange-500 flex items-center justify-center">
-                        <MapPin size={40} className="text-white" />
-                    </div>
-                    <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-3">Enable Location</h2>
-                    <p className="text-slate-500 dark:text-slate-400 mb-6 text-sm leading-relaxed">
-                        We need your location to show accurate prices from dealers in your area. Please allow location
-                        access when prompted.
-                    </p>
-                    {serviceability.status === 'loading' && (
-                        <>
-                            <div className="flex items-center justify-center gap-2 text-brand-primary">
-                                <div className="w-4 h-4 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
-                                <span className="text-sm font-bold">Detecting location...</span>
-                            </div>
-                            <button
-                                onClick={() =>
-                                    setServiceability({
-                                        status: 'serviceable',
-                                        location: 'MAHARASHTRA',
-                                        district: 'ALL',
-                                        stateCode: 'MH',
-                                    })
-                                }
-                                className="mt-4 px-4 py-2 text-sm text-slate-500 hover:text-slate-900 dark:hover:text-white underline"
-                            >
-                                Skip → Use Maharashtra
-                            </button>
-                        </>
-                    )}
-                    {serviceability.status === 'unset' && (
-                        <button
-                            onClick={() =>
-                                setServiceability({
-                                    status: 'serviceable',
-                                    location: 'MAHARASHTRA',
-                                    district: 'ALL',
-                                    stateCode: 'MH',
-                                })
-                            }
-                            className="px-6 py-3 bg-brand-primary text-white font-bold rounded-full hover:bg-brand-primary/90 transition-colors"
-                        >
-                            Continue with Maharashtra
-                        </button>
-                    )}
-                </div>
-            </div>
-        );
-    }
+    // Location gate removed: location resolves silently in background
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-[#0b0d10] transition-colors duration-500 font-sans">
-            <main className="flex-1 mx-auto w-full max-w-[1440px] px-6 pt-8 md:pt-40 pb-10 md:pb-16">
-                <header className="hidden md:block sticky top-[var(--header-h)] z-40 mb-12 transition-all duration-300">
+            <div className="flex-1 page-container pt-0 pb-10 md:pb-16">
+                <header className="hidden md:block sticky top-[var(--header-h)] z-[90] py-0 mb-4 mt-[calc(var(--header-h)+16px)] transition-all duration-300">
                     <div className="w-full">
-                        <div className="rounded-3xl bg-slate-50/50 dark:bg-[#0b0d10]/50 backdrop-blur-xl border border-slate-200 dark:border-white/5 shadow-sm px-6 py-4">
+                        <div className="rounded-full bg-slate-50/50 dark:bg-[#0b0d10]/60 backdrop-blur-3xl border border-slate-200 dark:border-white/10 shadow-2xl h-[var(--header-h)] px-8 flex items-center">
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                 {/* Desktop Category Chips */}
                                 <div className="flex items-center gap-2 overflow-x-auto no-scrollbar mask-gradient-right">
                                     <button
                                         onClick={() => setSelectedBodyTypes([])}
-                                        className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeCategory === 'ALL'
-                                            ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-md'
-                                            : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10'
-                                            }`}
+                                        className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                                            activeCategory === 'ALL'
+                                                ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-md'
+                                                : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10'
+                                        }`}
                                     >
                                         All Types
                                     </button>
@@ -639,10 +621,11 @@ export const DesktopCatalog = ({
                                             onClick={() =>
                                                 setSelectedBodyTypes(activeCategory === option ? [] : [option])
                                             }
-                                            className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeCategory === option
-                                                ? 'bg-[#F4B000] text-black shadow-lg shadow-[#F4B000]/20 scale-105'
-                                                : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10'
-                                                }`}
+                                            className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                                                activeCategory === option
+                                                    ? 'bg-[#F4B000] text-black shadow-lg shadow-[#F4B000]/20 scale-105'
+                                                    : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10'
+                                            }`}
                                         >
                                             {option}
                                         </button>
@@ -671,10 +654,11 @@ export const DesktopCatalog = ({
 
                                     <button
                                         onClick={() => setIsFilterOpen(true)}
-                                        className={`relative flex items-center gap-2 px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all ${activeFilterCount > 0
-                                            ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-md'
-                                            : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/10 hover:text-slate-900 dark:hover:text-white'
-                                            }`}
+                                        className={`relative flex items-center gap-2 px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all ${
+                                            activeFilterCount > 0
+                                                ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-md'
+                                                : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/10 hover:text-slate-900 dark:hover:text-white'
+                                        }`}
                                     >
                                         <SlidersHorizontal size={12} strokeWidth={2.5} />
                                         <span className="hidden sm:inline">Filters</span>
@@ -822,10 +806,11 @@ export const DesktopCatalog = ({
                                                             <button
                                                                 key={t}
                                                                 onClick={() => setTenure(t)}
-                                                                className={`py-3 rounded-2xl text-[10px] font-black transition-all duration-300 ${tenure === t
-                                                                    ? 'bg-slate-900 dark:bg-brand-primary text-white dark:text-black shadow-lg scale-105 ring-2 ring-brand-primary/20'
-                                                                    : 'bg-white/50 dark:bg-slate-800/30 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-white dark:hover:bg-slate-800 shadow-sm'
-                                                                    }`}
+                                                                className={`py-3 rounded-2xl text-[10px] font-black transition-all duration-300 ${
+                                                                    tenure === t
+                                                                        ? 'bg-slate-900 dark:bg-brand-primary text-white dark:text-black shadow-lg scale-105 ring-2 ring-brand-primary/20'
+                                                                        : 'bg-white/50 dark:bg-slate-800/30 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-white dark:hover:bg-slate-800 shadow-sm'
+                                                                }`}
                                                             >
                                                                 {t.toString().padStart(2, '0')}
                                                             </button>
@@ -947,7 +932,7 @@ export const DesktopCatalog = ({
                     )}
 
                     {/* Main Content Area */}
-                    <div className="flex-1 space-y-8">
+                    <div className="flex-1 space-y-6">
                         {/* Active Filter Chips */}
                         {(searchQuery ||
                             selectedCC.length > 0 ||
@@ -955,138 +940,124 @@ export const DesktopCatalog = ({
                             selectedWheels.length > 0 ||
                             selectedFinishes.length > 0 ||
                             selectedSeatHeight.length > 0) && (
-                                <div className="flex flex-wrap items-center gap-2">
-                                    {searchQuery && (
-                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full">
-                                            <span className="text-[9px] font-black uppercase text-slate-400">Search</span>
-                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                                {searchQuery}
-                                            </span>
-                                            <button
-                                                onClick={() => setSearchQuery('')}
-                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                            >
-                                                <X size={10} />
-                                            </button>
-                                        </div>
-                                    )}
-                                    {selectedCC.map((cc: string) => (
-                                        <div
-                                            key={cc}
-                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
+                            <div className="flex flex-wrap items-center gap-2">
+                                {searchQuery && (
+                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full">
+                                        <span className="text-[9px] font-black uppercase text-slate-400">Search</span>
+                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                            {searchQuery}
+                                        </span>
+                                        <button
+                                            onClick={() => setSearchQuery('')}
+                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
                                         >
-                                            <span className="text-[9px] font-black uppercase text-slate-400">CC</span>
-                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                                {cc}
-                                            </span>
-                                            <button
-                                                onClick={() => toggleFilter(setSelectedCC, cc)}
-                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                            >
-                                                <X size={10} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                    {selectedFinishes.map((finish: string) => (
-                                        <div
-                                            key={finish}
-                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
-                                        >
-                                            <span className="text-[9px] font-black uppercase text-slate-400">Finish</span>
-                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                                {finish}
-                                            </span>
-                                            <button
-                                                onClick={() => toggleFilter(setSelectedFinishes, finish)}
-                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                            >
-                                                <X size={10} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                    {selectedSeatHeight.map((sh: string) => (
-                                        <div
-                                            key={sh}
-                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
-                                        >
-                                            <span className="text-[9px] font-black uppercase text-slate-400">Seat</span>
-                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                                {sh}
-                                            </span>
-                                            <button
-                                                onClick={() => toggleFilter(setSelectedSeatHeight, sh)}
-                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                            >
-                                                <X size={10} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                    {selectedBrakes.map((brake: string) => (
-                                        <div
-                                            key={brake}
-                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
-                                        >
-                                            <span className="text-[9px] font-black uppercase text-slate-400">Brakes</span>
-                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                                {brake}
-                                            </span>
-                                            <button
-                                                onClick={() => toggleFilter(setSelectedBrakes, brake)}
-                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                            >
-                                                <X size={10} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                    {selectedWheels.map((wheel: string) => (
-                                        <div
-                                            key={wheel}
-                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
-                                        >
-                                            <span className="text-[9px] font-black uppercase text-slate-400">Wheels</span>
-                                            <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                                {wheel}
-                                            </span>
-                                            <button
-                                                onClick={() => toggleFilter(setSelectedWheels, wheel)}
-                                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                            >
-                                                <X size={10} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                    <button
-                                        onClick={clearAll}
-                                        className="text-[9px] font-black uppercase tracking-widest text-brand-primary hover:text-slate-900 dark:hover:text-white transition-colors px-3 ml-2"
+                                            <X size={10} />
+                                        </button>
+                                    </div>
+                                )}
+                                {selectedCC.map((cc: string) => (
+                                    <div
+                                        key={cc}
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
                                     >
-                                        Clear all filters
-                                    </button>
-                                </div>
-                            )}
+                                        <span className="text-[9px] font-black uppercase text-slate-400">CC</span>
+                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                            {cc}
+                                        </span>
+                                        <button
+                                            onClick={() => toggleFilter(setSelectedCC, cc)}
+                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                        >
+                                            <X size={10} />
+                                        </button>
+                                    </div>
+                                ))}
+                                {selectedFinishes.map((finish: string) => (
+                                    <div
+                                        key={finish}
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
+                                    >
+                                        <span className="text-[9px] font-black uppercase text-slate-400">Finish</span>
+                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                            {finish}
+                                        </span>
+                                        <button
+                                            onClick={() => toggleFilter(setSelectedFinishes, finish)}
+                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                        >
+                                            <X size={10} />
+                                        </button>
+                                    </div>
+                                ))}
+                                {selectedSeatHeight.map((sh: string) => (
+                                    <div
+                                        key={sh}
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
+                                    >
+                                        <span className="text-[9px] font-black uppercase text-slate-400">Seat</span>
+                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                            {sh}
+                                        </span>
+                                        <button
+                                            onClick={() => toggleFilter(setSelectedSeatHeight, sh)}
+                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                        >
+                                            <X size={10} />
+                                        </button>
+                                    </div>
+                                ))}
+                                {selectedBrakes.map((brake: string) => (
+                                    <div
+                                        key={brake}
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
+                                    >
+                                        <span className="text-[9px] font-black uppercase text-slate-400">Brakes</span>
+                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                            {brake}
+                                        </span>
+                                        <button
+                                            onClick={() => toggleFilter(setSelectedBrakes, brake)}
+                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                        >
+                                            <X size={10} />
+                                        </button>
+                                    </div>
+                                ))}
+                                {selectedWheels.map((wheel: string) => (
+                                    <div
+                                        key={wheel}
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
+                                    >
+                                        <span className="text-[9px] font-black uppercase text-slate-400">Wheels</span>
+                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                            {wheel}
+                                        </span>
+                                        <button
+                                            onClick={() => toggleFilter(setSelectedWheels, wheel)}
+                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                        >
+                                            <X size={10} />
+                                        </button>
+                                    </div>
+                                ))}
+                                <button
+                                    onClick={clearAll}
+                                    className="text-[9px] font-black uppercase tracking-widest text-brand-primary hover:text-slate-900 dark:hover:text-white transition-colors px-3 ml-2"
+                                >
+                                    Clear all filters
+                                </button>
+                            </div>
+                        )}
 
                         <div
-                            className={`grid ${viewMode === 'list'
-                                ? 'grid-cols-1 w-full gap-6'
-                                : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full'
-                                }`}
+                            className={`grid ${
+                                viewMode === 'list'
+                                    ? 'grid-cols-1 w-full gap-6'
+                                    : 'grid-cols-1 md:grid-cols-3 gap-6 w-full'
+                            }`}
                         >
                             {/* Results Grid */}
                             {results.map(v => {
-                                // Aggregate best offer from all SKUs in this variant (exclude AUMS)
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                const bestVariantOffer = v.skuIds?.reduce((best: any, skuId: string) => {
-                                    const offer = marketOffers[skuId];
-                                    if (!offer) return best;
-                                    if (offer.dealerId === AUMS_DEALER_ID || offer.dealer?.toUpperCase() === 'AUMS') {
-                                        return best;
-                                    }
-                                    const offerDelta = offer.price + (offer.bundlePrice || 0);
-                                    const bestDelta = best ? best.price + (best.bundlePrice || 0) : null;
-                                    if (!best || (bestDelta !== null && offerDelta < bestDelta)) return offer;
-                                    if (!best && offerDelta !== null) return offer;
-                                    return best;
-                                }, null);
-
                                 return (
                                     <ProductCard
                                         key={v.id}
@@ -1097,7 +1068,6 @@ export const DesktopCatalog = ({
                                         serviceability={serviceability}
                                         onLocationClick={() => setIsLocationPickerOpen(true)}
                                         isTv={isTv}
-                                        bestOffer={bestVariantOffer || undefined}
                                         leadId={leadId}
                                     />
                                 );
@@ -1109,7 +1079,7 @@ export const DesktopCatalog = ({
                 {/* Mega Filter Overlay (Grid View Only) */}
                 {isFilterOpen && viewMode === 'grid' ? (
                     <div className="fixed top-[76px] inset-x-0 bottom-0 z-[100] bg-white/95 dark:bg-[#0b0d10]/95 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 flex flex-col animate-in fade-in duration-300">
-                        <div className="max-w-[1440px] mx-auto w-full px-20 flex flex-col h-full">
+                        <div className="page-container flex flex-col h-full">
                             {/* Overlay Header */}
                             <div className="flex-shrink-0 py-8 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
                                 <div>
@@ -1276,7 +1246,7 @@ export const DesktopCatalog = ({
                         </div>
                     </div>
                 ) : null}
-            </main>
+            </div>
 
             <LocationPicker
                 isOpen={isLocationPickerOpen}
@@ -1295,9 +1265,9 @@ export const DesktopCatalog = ({
 
                     setServiceability({
                         status: isServiceable ? 'serviceable' : 'unserviceable',
-                        location: result.district || result.location || taluka,
-                        district: result.district,
-                        stateCode: result.stateCode,
+                        location: result.district || result.location || taluka || '',
+                        district: result.district || undefined,
+                        stateCode: result.stateCode || undefined,
                     });
 
                     localStorage.setItem(
@@ -1305,11 +1275,40 @@ export const DesktopCatalog = ({
                         JSON.stringify({
                             pincode,
                             taluka: result.location || taluka,
+                            district: result.district || undefined,
+                            state: result.state || undefined,
+                            stateCode: result.stateCode || undefined,
                             lat,
                             lng,
                             manuallySet: true,
                         })
                     );
+                    try {
+                        await setLocationCookie({
+                            pincode,
+                            taluka: result.location || taluka,
+                            district: result.district || undefined,
+                            state: result.state || undefined,
+                            stateCode: result.stateCode || undefined,
+                            lat,
+                            lng,
+                        });
+                    } catch (err) {
+                        console.error('[Location] Cookie set failed:', err);
+                    }
+                    window.dispatchEvent(new Event('locationChanged'));
+                    try {
+                        await updateSelfMemberLocation({
+                            pincode,
+                            district: result.district || null,
+                            taluka: result.location || taluka,
+                            state: result.state || null,
+                            latitude: lat ?? null,
+                            longitude: lng ?? null,
+                        });
+                    } catch (err) {
+                        console.error('[Location] Profile update failed:', err);
+                    }
 
                     toast.success(
                         `Prices updated for ${result.location || taluka}${dist ? ` (${Math.round(dist)}km)` : ''}`
