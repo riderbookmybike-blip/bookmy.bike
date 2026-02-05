@@ -1,6 +1,6 @@
 import { withCache, generateFilterKey } from '../cache/cache';
 import { CACHE_TAGS, districtTag, tenantTag } from '../cache/tags';
-import { createClient } from '../supabase/server';
+import { adminClient } from '../supabase/admin';
 import { cookies } from 'next/headers';
 import { mapCatalogItems } from '@/utils/catalogMapper';
 import { ProductVariant } from '@/types/productMaster';
@@ -16,8 +16,8 @@ import { resolvePricingContext } from '@/lib/server/pricingContext';
 // async function getRawInsuranceRules(stateCode: string) { ... }
 
 async function getRawDealerOffers(dealerId: string, stateCode: string) {
-    const supabase = await createClient();
-    const { data } = await supabase.rpc('get_dealer_offers', {
+    // Use adminClient (no cookies) for cached operations
+    const { data } = await adminClient.rpc('get_dealer_offers', {
         p_tenant_id: dealerId,
         p_state_code: stateCode,
     });
@@ -25,8 +25,8 @@ async function getRawDealerOffers(dealerId: string, stateCode: string) {
 }
 
 async function getRawCatalog() {
-    const supabase = await createClient();
-    const { data, error } = await supabase
+    // Use adminClient (no cookies) for cached operations
+    const { data, error } = await adminClient
         .from('cat_items')
         .select(
             `
