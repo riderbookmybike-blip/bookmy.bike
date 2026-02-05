@@ -1,4 +1,5 @@
 import { createClient } from '../supabase/server';
+import { adminClient } from '../supabase/admin';
 import { cookies } from 'next/headers';
 import { withCache } from '../cache/cache';
 import { CACHE_TAGS, districtTag } from '../cache/tags';
@@ -36,8 +37,8 @@ const normalizeStateCode = (state?: string | null, stateCode?: string | null) =>
  */
 
 async function getRawPrimaryDealer(stateCode: string, district: string) {
-    const supabase = await createClient();
-    const { data } = await (supabase as any)
+    // Use adminClient (no cookies) for cached operations
+    const { data } = await (adminClient as any)
         .from('id_primary_dealer_districts')
         .select('tenant_id, district')
         .eq('state_code', stateCode)
@@ -48,8 +49,8 @@ async function getRawPrimaryDealer(stateCode: string, district: string) {
 }
 
 async function getDealerLocation(tenantId: string) {
-    const supabase = await createClient();
-    const { data } = await (supabase as any)
+    // Use adminClient (no cookies) for cached operations
+    const { data } = await (adminClient as any)
         .from('id_locations')
         .select('district, state')
         .eq('tenant_id', tenantId)
@@ -61,8 +62,8 @@ async function getDealerLocation(tenantId: string) {
 }
 
 async function getDealerIdByStudioId(studioId: string) {
-    const supabase = await createClient();
-    const { data } = await (supabase as any)
+    // Use adminClient (no cookies) for cached operations
+    const { data } = await (adminClient as any)
         .from('id_tenants')
         .select('id')
         .ilike('studio_id', studioId)
