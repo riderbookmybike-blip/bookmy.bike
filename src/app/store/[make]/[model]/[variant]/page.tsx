@@ -2,7 +2,7 @@ import React from 'react';
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { resolveLocation, resolveLocationByDistrict } from '@/utils/locationResolver';
-import { createClient } from '@/lib/supabase/server';
+import { adminClient } from '@/lib/supabase/admin';
 import { slugify } from '@/utils/slugs';
 import ProductClient from './ProductClient';
 import { cookies } from 'next/headers';
@@ -269,7 +269,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 export default async function Page({ params, searchParams }: Props) {
     const resolvedParams = await params;
     const resolvedSearchParams = await searchParams;
-    const supabase = await createClient();
+    const supabase = adminClient;
     const cookieStore = await cookies(); // Access cookies
     // 0. Redirect if pincode is present (Standardizing on district parameter)
     if ((resolvedSearchParams as any).pincode) {

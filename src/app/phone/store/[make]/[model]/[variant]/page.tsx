@@ -2,7 +2,7 @@ import React from 'react';
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { resolveLocation, resolveLocationByDistrict } from '@/utils/locationResolver';
-import { createClient } from '@/lib/supabase/server';
+import { adminClient } from '@/lib/supabase/admin';
 import { slugify } from '@/utils/slugs';
 // import ProductClient from './ProductClient';
 import SystemPDPRouter from './SystemPDPRouter'; // USE THE NEW FORCED-DESKTOP CLIENT
@@ -244,7 +244,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 export default async function Page({ params, searchParams }: Props) {
     const resolvedParams = await params;
     const resolvedSearchParams = await searchParams;
-    const supabase = await createClient();
+    const supabase = adminClient;
     const cookieStore = await cookies(); // Access cookies
     console.log('PDP Debug: Page Load Start', { params: resolvedParams, search: resolvedSearchParams });
 

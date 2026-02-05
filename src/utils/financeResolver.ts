@@ -1,8 +1,8 @@
-import { createClient } from '@/lib/supabase/server';
+import { adminClient } from '@/lib/supabase/admin';
 import { BankScheme, FinanceRoutingTable, DayOfWeek } from '@/types/bankPartner';
 
 export async function resolveFinanceScheme(make: string, model: string, leadId?: string) {
-    const supabase = await createClient();
+    const supabase = adminClient;
     const dayNames: DayOfWeek[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const today = dayNames[new Date().getDay()];
 
@@ -89,16 +89,18 @@ function findBestSchemeForBank(bank: any, make: string, model: string) {
     const activeSchemes = schemes.filter(s => s.isActive);
 
     // a. Try Targeted (Model exact match)
-    const modelTargeted = activeSchemes.find(s =>
-        Array.isArray(s.applicability?.models) &&
-        s.applicability.models.some(m => m.toLowerCase() === model.toLowerCase())
+    const modelTargeted = activeSchemes.find(
+        s =>
+            Array.isArray(s.applicability?.models) &&
+            s.applicability.models.some(m => m.toLowerCase() === model.toLowerCase())
     );
     if (modelTargeted) return modelTargeted;
 
     // b. Try Targeted (Brand exact match)
-    const brandTargeted = activeSchemes.find(s =>
-        Array.isArray(s.applicability?.brands) &&
-        s.applicability.brands.some(b => b.toLowerCase() === make.toLowerCase())
+    const brandTargeted = activeSchemes.find(
+        s =>
+            Array.isArray(s.applicability?.brands) &&
+            s.applicability.brands.some(b => b.toLowerCase() === make.toLowerCase())
     );
     if (brandTargeted) return brandTargeted;
 

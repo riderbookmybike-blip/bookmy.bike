@@ -1,7 +1,7 @@
-import { createClient } from '../supabase/server';
+import { adminClient } from '../supabase/admin';
 
 export async function getSitemapData() {
-    const supabase = await createClient();
+    const supabase = adminClient;
 
     // 1. Fetch Brands
     const { data: brands } = await supabase.from('cat_brands').select('name');
