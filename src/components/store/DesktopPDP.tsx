@@ -694,7 +694,7 @@ export function DesktopPDP({
 
                             {/* CTA Button */}
                             <button
-                                onClick={handleShareQuote}
+                                onClick={handleBookingRequest}
                                 className="h-10 px-6 bg-[#FFD700] hover:bg-[#FFD700]/90 text-slate-900 font-black text-xs uppercase tracking-widest rounded-full shadow-xl shadow-[#FFD700]/20 hover:shadow-[#FFD700]/40 hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-2 group relative overflow-hidden"
                             >
                                 <span className="relative z-10">Get Quote</span>
