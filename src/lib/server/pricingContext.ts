@@ -85,7 +85,8 @@ export async function resolvePricingContext({
     state?: string | null;
     studio?: string | null;
 }): Promise<PricingContext> {
-    const supabase = await createClient();
+    // Use adminClient for all DB operations to prevent Dynamic Server Usage errors
+    const supabase = adminClient;
     const cookieStore = await cookies();
 
     const hasExplicitState = Boolean(state);
