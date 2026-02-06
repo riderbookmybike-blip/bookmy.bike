@@ -1061,41 +1061,49 @@ export async function getQuoteById(
             leadSource: q.lead?.utm_data?.utm_source || 'WEBSITE',
         },
         vehicle: {
-            brand: commercials.brand || 'N/A',
-            model: commercials.model || commercials.label?.split('/')[1]?.trim() || 'N/A',
-            variant: commercials.variant || commercials.label?.split('/')[2]?.trim() || 'N/A',
+            // Parse label format: "brand-model Variant (Color)" or "TVS Jupiter Drum (Titanium Grey Matte)"
+            brand: commercials.brand || commercials.label?.split('-')[0]?.split(' ')[0] || 'N/A',
+            model:
+                commercials.model ||
+                commercials.label?.split(' ')[0]?.split('-')[1] ||
+                commercials.label?.split(' ')[0] ||
+                'N/A',
+            variant: commercials.variant || commercials.label?.match(/\s([^\(]+)/)?.[1]?.trim() || 'N/A',
             color: commercials.color_name || 'N/A',
             colorHex: commercials.color_hex || '#000000',
             imageUrl: q.vehicle_image || commercials.image_url || null,
             skuId: q.vehicle_sku_id || q.color_id || q.variant_id || '',
         },
         pricing: {
-            exShowroom: q.ex_showroom_price || commercials.ex_showroom || 0,
+            exShowroom: parseInt(q.ex_showroom_price) || commercials.ex_showroom || 0,
             rtoType: pricingSnapshot.rto_type || 'STATE',
             rtoBreakdown: pricingSnapshot.rto_breakdown || [],
-            rtoTotal: q.rto_amount || pricingSnapshot.rto_total || 0,
+            rtoTotal: parseInt(q.rto_amount) || pricingSnapshot.rto_total || 0,
             insuranceOD: pricingSnapshot.insurance?.od || 0,
             insuranceTP: pricingSnapshot.insurance?.tp || 0,
-            insuranceAddons: (pricingSnapshot.insurance_addons || []).map((a: any) => ({
-                id: a.id || a,
-                name: a.name || a,
-                amount: a.amount || 0,
-                selected: true,
-            })),
+            insuranceAddons: (pricingSnapshot.insurance_addon_items || pricingSnapshot.insurance_addons || []).map(
+                (a: any) => ({
+                    id: a.id || a,
+                    name: a.name || a,
+                    amount: a.price || a.amount || 0,
+                    selected: true,
+                })
+            ),
             insuranceGST: pricingSnapshot.insurance?.gst || 0,
-            insuranceTotal: q.insurance_amount || pricingSnapshot.insurance_total || 0,
-            accessories: (pricingSnapshot.accessories || []).map((a: any) => ({
+            insuranceTotal: parseInt(q.insurance_amount) || pricingSnapshot.insurance_total || 0,
+            accessories: (pricingSnapshot.accessory_items || pricingSnapshot.accessories || []).map((a: any) => ({
                 id: a.id || a,
                 name: a.name || 'Accessory',
-                price: a.price || 0,
+                price: a.discountPrice || a.price || 0,
                 selected: true,
             })),
-            accessoriesTotal: q.accessories_amount || 0,
-            dealerDiscount: q.discount_amount || commercials.dealer_discount || 0,
-            managerDiscount: q.manager_discount || 0,
+            accessoriesTotal: parseInt(q.accessories_amount) || 0,
+            dealerDiscount: parseInt(q.discount_amount) || commercials.dealer_discount || 0,
+            managerDiscount: parseInt(q.manager_discount) || 0,
             managerDiscountNote: q.manager_discount_note || null,
-            onRoadTotal: q.on_road_price || commercials.grand_total || 0,
-            finalTotal: (q.on_road_price || commercials.grand_total || 0) + (q.manager_discount || 0),
+            onRoadTotal: parseInt(q.on_road_price) || commercials.grand_total || 0,
+            finalTotal:
+                (parseInt(q.on_road_price) || commercials.grand_total || 0) + (parseInt(q.manager_discount) || 0),
         },
         timeline,
     };
