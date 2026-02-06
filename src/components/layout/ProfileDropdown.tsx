@@ -336,7 +336,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                 className={`h-10 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 flex items-center gap-3 group z-[101] ${triggerClass}`}
             >
                 <div
-                    className={`w-8 h-8 rounded-full overflow-hidden bg-brand-primary flex items-center justify-center text-slate-900 dark:text-white font-bold text-xs ring-2 transition-all ${
+                    className={`w-8 h-8 rounded-full overflow-hidden bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-900 dark:text-white font-black text-xs ring-2 transition-all ${
                         scrolled || theme === 'dark'
                             ? 'ring-white/20 group-hover:ring-transparent'
                             : 'ring-slate-100 group-hover:ring-brand-primary/20'
@@ -491,30 +491,32 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                                             </motion.div>
 
                                             {/* Tabs Toggle */}
-                                            <div className="flex p-1 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/5 mx-1">
-                                                <button
-                                                    onClick={() => setActiveTab('account')}
-                                                    className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
-                                                        activeTab === 'account'
-                                                            ? 'bg-white dark:bg-brand-primary text-black shadow-md shadow-black/5 dark:shadow-none'
-                                                            : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-white/50 dark:hover:bg-white/5'
-                                                    }`}
-                                                >
-                                                    <UserIcon size={12} strokeWidth={3} />
-                                                    The O' Circle
-                                                </button>
-                                                <button
-                                                    onClick={() => setActiveTab('workspace')}
-                                                    className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
-                                                        activeTab === 'workspace'
-                                                            ? 'bg-white dark:bg-brand-primary text-black shadow-md shadow-black/5 dark:shadow-none'
-                                                            : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-white/50 dark:hover:bg-white/5'
-                                                    }`}
-                                                >
-                                                    <Building2 size={12} strokeWidth={3} />
-                                                    My Workspace
-                                                </button>
-                                            </div>
+                                            {memberships.length > 0 && (
+                                                <div className="flex p-1 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/5 mx-1">
+                                                    <button
+                                                        onClick={() => setActiveTab('account')}
+                                                        className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
+                                                            activeTab === 'account'
+                                                                ? 'bg-white dark:bg-brand-primary text-black shadow-md shadow-black/5 dark:shadow-none'
+                                                                : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-white/50 dark:hover:bg-white/5'
+                                                        }`}
+                                                    >
+                                                        <UserIcon size={12} strokeWidth={3} />
+                                                        The O' Circle
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setActiveTab('workspace')}
+                                                        className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
+                                                            activeTab === 'workspace'
+                                                                ? 'bg-white dark:bg-brand-primary text-black shadow-md shadow-black/5 dark:shadow-none'
+                                                                : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-white/50 dark:hover:bg-white/5'
+                                                        }`}
+                                                    >
+                                                        <Building2 size={12} strokeWidth={3} />
+                                                        My Workspace
+                                                    </button>
+                                                </div>
+                                            )}
 
                                             {/* Compact Quick Actions List */}
                                             {activeTab === 'account' && (
