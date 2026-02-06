@@ -531,6 +531,19 @@ export default function PricingPage() {
                 alert(
                     `Calculated ${result.totalPublished} SKUs. RTO and Insurance values updated.\n\nSKU IDs: ${publishedIds}`
                 );
+                // AUMS: Force publish_stage to UNDER_REVIEW for recalculated SKUs (manual publish required)
+                setSkus(prev =>
+                    prev.map(s =>
+                        selectedIds.includes(s.id)
+                            ? {
+                                  ...s,
+                                  publishStage: 'UNDER_REVIEW',
+                                  originalPublishStage: 'UNDER_REVIEW',
+                                  displayState: 'In Review',
+                              }
+                            : s
+                    )
+                );
                 // Refresh data to show updated RTO/Insurance
                 await fetchSKUsAndPrices();
             } else {
