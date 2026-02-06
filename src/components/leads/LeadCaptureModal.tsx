@@ -43,7 +43,7 @@ export function LeadCaptureModal({
     const [quoteId, setQuoteId] = useState<string | null>(null);
 
     // Detect if current user is a staff member of any dealership
-    const isStaff = userRole && userRole !== 'MEMBER';
+    const isStaff = userRole && userRole !== 'MEMBER' && userRole !== 'BMB_USER';
     const primaryMembership = memberships?.find(m => m.tenant_id === tenantId);
 
     // Reset state when modal opens/closes

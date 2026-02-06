@@ -750,6 +750,9 @@ export function DesktopPDP({
                             emiTenure={emiTenure}
                             setEmiTenure={setEmiTenure}
                             downPayment={userDownPayment || 0}
+                            setUserDownPayment={setUserDownPayment}
+                            minDownPayment={minDownPayment}
+                            maxDownPayment={maxDownPayment}
                             totalOnRoad={totalOnRoad}
                             loanAmount={loanAmount}
                             annualInterest={annualInterest}

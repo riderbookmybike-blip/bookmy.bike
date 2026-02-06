@@ -431,7 +431,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
 
                                                 {/* Smaller Avatar */}
                                                 <div className="relative shrink-0 group/avatar">
-                                                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-brand-primary to-[#F4B000] flex items-center justify-center text-white text-xl font-black shadow-lg shadow-brand-primary/20 overflow-hidden relative z-10 ring-2 ring-white dark:ring-[#0F172A]">
+                                                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-brand-primary to-[#F4B000] flex items-center justify-center text-black text-xl font-black shadow-lg shadow-brand-primary/20 overflow-hidden relative z-10 ring-2 ring-white dark:ring-[#0F172A]">
                                                         {user.user_metadata?.avatar_url ? (
                                                             <img
                                                                 src={user.user_metadata.avatar_url}

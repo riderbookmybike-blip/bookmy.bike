@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import React from 'react';
-import { HelpCircle, Zap, Clock, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { HelpCircle, Zap, Clock, CheckCircle2, SlidersHorizontal } from 'lucide-react';
 import { formatDisplayIdForUI, unformatDisplayId } from '@/lib/displayId';
 
 interface FinanceCardProps {
@@ -10,6 +10,9 @@ interface FinanceCardProps {
     emiTenure: number;
     setEmiTenure?: (tenure: number) => void;
     downPayment: number;
+    setUserDownPayment?: (amount: number) => void; // Added setter
+    minDownPayment?: number; // Added min
+    maxDownPayment?: number; // Added max
     totalOnRoad: number;
     loanAmount: number;
     annualInterest: number;
@@ -23,6 +26,9 @@ export default function FinanceCard({
     emiTenure,
     setEmiTenure,
     downPayment,
+    setUserDownPayment,
+    minDownPayment = 0,
+    maxDownPayment = 0,
     totalOnRoad,
     loanAmount,
     annualInterest,
@@ -32,12 +38,34 @@ export default function FinanceCard({
 }: FinanceCardProps) {
     const displayDownPayment = downPayment < 1 ? 0 : downPayment;
 
+    // Local state for slider to prevent lag
+    const [localDP, setLocalDP] = useState(displayDownPayment);
+
+    // Sync local state when prop changes (debounce handling)
+    useEffect(() => {
+        setLocalDP(displayDownPayment);
+    }, [displayDownPayment]);
+
+    const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = parseInt(e.target.value);
+        setLocalDP(val);
+        if (setUserDownPayment) {
+            setUserDownPayment(val);
+        }
+    };
+
     // Standard tenures for display comparison
     const tenures = [12, 24, 36, 48, 60];
 
     // Helper to calculate approximate EMI for other tenures for comparison
     const calculateEMI = (t: number) => {
         const monthlyRate = annualInterest / 12;
+        // Dynamically calculate loan amount based on current down payment
+        // We use the PROP downPayment (or localDP if we want live slider update)
+        // Ideally we use the prop which should update fast enough,
+        // but if we want instant feedback we might need to recalc loanAmount locally.
+        // For now, let's assume parent updates loanAmount relative to downPayment prop.
+        // Wait, calculateEMI uses `loanAmount` prop. If `downPayment` changes, `loanAmount` changes in parent.
         if (monthlyRate === 0) return loanAmount / t;
         return (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, t)) / (Math.pow(1 + monthlyRate, t) - 1);
     };
@@ -97,6 +125,36 @@ export default function FinanceCard({
                         </div>
                     </div>
                 </div>
+
+                {/* Down Payment Slider Section */}
+                {setUserDownPayment && maxDownPayment > minDownPayment && (
+                    <div className="mb-6 bg-white/5 rounded-2xl p-4 border border-white/5">
+                        <div className="flex justify-between items-center mb-3">
+                            <div className="flex items-center gap-2">
+                                <span className="p-1.5 bg-brand-primary/20 rounded-lg text-brand-primary">
+                                    <SlidersHorizontal size={12} />
+                                </span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                    Adjust Down Payment
+                                </span>
+                            </div>
+                            <span className="text-xs font-black font-mono text-white">₹{localDP.toLocaleString()}</span>
+                        </div>
+                        <input
+                            type="range"
+                            min={minDownPayment}
+                            max={maxDownPayment}
+                            step={100}
+                            value={localDP}
+                            onChange={handleSliderChange}
+                            className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-brand-primary [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-black"
+                        />
+                        <div className="flex justify-between mt-2 text-[8px] font-bold text-slate-600 uppercase tracking-wider">
+                            <span>₹{minDownPayment.toLocaleString()}</span>
+                            <span>Max: ₹{maxDownPayment.toLocaleString()}</span>
+                        </div>
+                    </div>
+                )}
 
                 {/* Tenure Selection - Vertical List matching User Image */}
                 <div className="flex-1 space-y-2 overflow-y-auto pr-1 custom-scrollbar">
