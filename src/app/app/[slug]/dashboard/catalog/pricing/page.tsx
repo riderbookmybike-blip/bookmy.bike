@@ -293,10 +293,12 @@ export default function PricingPage() {
                 if (tenantSlug !== 'aums') {
                     displayState = resolvedStatus === 'ACTIVE' && localIsActive ? 'Live' : 'Inactive';
                 } else {
-                    if (resolvedStatus === 'INACTIVE') displayState = 'Inactive';
-                    else if (publishStage === 'PUBLISHED') displayState = 'Published';
+                    // AUMS uses publish_stage from cat_price_state, not sku.status from cat_items
+                    if (publishStage === 'PUBLISHED') displayState = 'Published';
                     else if (publishStage === 'UNDER_REVIEW') displayState = 'In Review';
-                    else displayState = 'Draft';
+                    else if (publishStage === 'LIVE') displayState = 'Live';
+                    else if (publishStage === 'INACTIVE') displayState = 'Inactive';
+                    else displayState = 'Draft'; // Default for DRAFT or null
                 }
 
                 const finalPrice =
