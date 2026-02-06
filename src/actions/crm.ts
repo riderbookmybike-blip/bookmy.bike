@@ -946,3 +946,361 @@ export async function getQuotePdpUrl(quoteId: string) {
     const url = `/store/${brandSlug}/${modelSlug}/${cleanVariantSlug}?quoteId=${quoteId}&leadId=${quote.lead_id}`;
     return { success: true, url };
 }
+
+// --- QUOTE EDITOR DASHBOARD ACTIONS ---
+
+export interface QuoteEditorData {
+    id: string;
+    displayId: string;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+    validUntil: string | null;
+    reviewedBy: string | null;
+    reviewedAt: string | null;
+    expectedDelivery: string | null;
+    studioId: string | null;
+    studioName: string | null;
+    customer: {
+        name: string;
+        phone: string;
+        email: string | null;
+        leadSource: string | null;
+    };
+    vehicle: {
+        brand: string;
+        model: string;
+        variant: string;
+        color: string;
+        colorHex: string;
+        imageUrl: string | null;
+        skuId: string;
+    };
+    pricing: {
+        exShowroom: number;
+        rtoType: 'STATE' | 'BH' | 'COMPANY';
+        rtoBreakdown: { label: string; amount: number }[];
+        rtoTotal: number;
+        insuranceOD: number;
+        insuranceTP: number;
+        insuranceAddons: { id: string; name: string; amount: number; selected: boolean }[];
+        insuranceGST: number;
+        insuranceTotal: number;
+        accessories: { id: string; name: string; price: number; selected: boolean }[];
+        accessoriesTotal: number;
+        dealerDiscount: number;
+        managerDiscount: number;
+        managerDiscountNote: string | null;
+        onRoadTotal: number;
+        finalTotal: number;
+    };
+    timeline: { event: string; timestamp: string; actor: string | null }[];
+}
+
+export async function getQuoteById(
+    quoteId: string
+): Promise<{ success: boolean; data?: QuoteEditorData; error?: string }> {
+    const supabase = await createClient();
+
+    // Fetch quote with related data
+    const { data: quote, error } = await supabase
+        .from('crm_quotes')
+        .select(
+            `
+            *,
+            lead:crm_leads(customer_name, customer_phone, utm_data, events_log),
+            studio:studios(name)
+        `
+        )
+        .eq('id', quoteId)
+        .single();
+
+    if (error || !quote) {
+        console.error('getQuoteById Error:', error);
+        return { success: false, error: error?.message || 'Quote not found' };
+    }
+
+    // Cast to any since we just added new columns that aren't in generated types yet
+    const q = quote as any;
+
+    const commercials = q.commercials || {};
+    const pricingSnapshot = commercials.pricing_snapshot || {};
+
+    // Build timeline from lead events + quote events
+    const timeline: { event: string; timestamp: string; actor: string | null }[] = [];
+
+    timeline.push({
+        event: 'Quote Created',
+        timestamp: q.created_at || new Date().toISOString(),
+        actor: null,
+    });
+
+    if (q.reviewed_at) {
+        timeline.push({
+            event: 'Manager Reviewed',
+            timestamp: q.reviewed_at,
+            actor: q.reviewed_by,
+        });
+    }
+
+    const result: QuoteEditorData = {
+        id: q.id,
+        displayId: q.display_id || `QT-${q.id.slice(0, 8).toUpperCase()}`,
+        status: q.status || 'DRAFT',
+        createdAt: q.created_at || new Date().toISOString(),
+        updatedAt: q.updated_at || new Date().toISOString(),
+        validUntil: q.valid_until,
+        reviewedBy: q.reviewed_by,
+        reviewedAt: q.reviewed_at,
+        expectedDelivery: q.expected_delivery,
+        studioId: q.studio_id,
+        studioName: q.studio?.name || null,
+        customer: {
+            name: q.lead?.customer_name || 'N/A',
+            phone: q.lead?.customer_phone || 'N/A',
+            email: null,
+            leadSource: q.lead?.utm_data?.utm_source || 'WEBSITE',
+        },
+        vehicle: {
+            brand: commercials.brand || 'N/A',
+            model: commercials.model || commercials.label?.split('/')[1]?.trim() || 'N/A',
+            variant: commercials.variant || commercials.label?.split('/')[2]?.trim() || 'N/A',
+            color: commercials.color_name || 'N/A',
+            colorHex: commercials.color_hex || '#000000',
+            imageUrl: q.vehicle_image || commercials.image_url || null,
+            skuId: q.vehicle_sku_id || q.color_id || q.variant_id || '',
+        },
+        pricing: {
+            exShowroom: q.ex_showroom_price || commercials.ex_showroom || 0,
+            rtoType: pricingSnapshot.rto_type || 'STATE',
+            rtoBreakdown: pricingSnapshot.rto_breakdown || [],
+            rtoTotal: q.rto_amount || pricingSnapshot.rto_total || 0,
+            insuranceOD: pricingSnapshot.insurance?.od || 0,
+            insuranceTP: pricingSnapshot.insurance?.tp || 0,
+            insuranceAddons: (pricingSnapshot.insurance_addons || []).map((a: any) => ({
+                id: a.id || a,
+                name: a.name || a,
+                amount: a.amount || 0,
+                selected: true,
+            })),
+            insuranceGST: pricingSnapshot.insurance?.gst || 0,
+            insuranceTotal: q.insurance_amount || pricingSnapshot.insurance_total || 0,
+            accessories: (pricingSnapshot.accessories || []).map((a: any) => ({
+                id: a.id || a,
+                name: a.name || 'Accessory',
+                price: a.price || 0,
+                selected: true,
+            })),
+            accessoriesTotal: q.accessories_amount || 0,
+            dealerDiscount: q.discount_amount || commercials.dealer_discount || 0,
+            managerDiscount: q.manager_discount || 0,
+            managerDiscountNote: q.manager_discount_note || null,
+            onRoadTotal: q.on_road_price || commercials.grand_total || 0,
+            finalTotal: (q.on_road_price || commercials.grand_total || 0) + (q.manager_discount || 0),
+        },
+        timeline,
+    };
+
+    return { success: true, data: result };
+}
+
+export async function updateQuoteManagerDiscount(
+    quoteId: string,
+    managerDiscount: number,
+    note?: string
+): Promise<{ success: boolean; error?: string }> {
+    const user = await getAuthUser();
+    const supabase = await createClient();
+
+    // Get current quote
+    const { data: quote, error: fetchError } = await supabase
+        .from('crm_quotes')
+        .select('on_road_price, commercials')
+        .eq('id', quoteId)
+        .single();
+
+    if (fetchError || !quote) {
+        return { success: false, error: 'Quote not found' };
+    }
+
+    // Update with manager discount
+    const { error } = await supabase
+        .from('crm_quotes')
+        .update({
+            manager_discount: managerDiscount,
+            manager_discount_note: note || null,
+            reviewed_by: user?.id || null,
+            reviewed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        })
+        .eq('id', quoteId);
+
+    if (error) {
+        console.error('updateQuoteManagerDiscount Error:', error);
+        return { success: false, error: error.message };
+    }
+
+    revalidatePath('/app/[slug]/quotes');
+    return { success: true };
+}
+
+export async function updateQuotePricing(
+    quoteId: string,
+    updates: {
+        rtoType?: 'STATE' | 'BH' | 'COMPANY';
+        insuranceAddons?: string[];
+        accessories?: string[];
+        managerDiscount?: number;
+        managerDiscountNote?: string;
+    }
+): Promise<{ success: boolean; error?: string }> {
+    const user = await getAuthUser();
+    const supabase = await createClient();
+
+    // Get current quote
+    const { data: quote, error: fetchError } = await supabase
+        .from('crm_quotes')
+        .select('commercials')
+        .eq('id', quoteId)
+        .single();
+
+    if (fetchError || !quote) {
+        return { success: false, error: 'Quote not found' };
+    }
+
+    const commercials = (quote.commercials as any) || {};
+    const pricingSnapshot = commercials.pricing_snapshot || {};
+
+    // Update pricing snapshot with new selections
+    const updatedPricingSnapshot = {
+        ...pricingSnapshot,
+        rto_type: updates.rtoType || pricingSnapshot.rto_type,
+        insurance_addons: updates.insuranceAddons || pricingSnapshot.insurance_addons,
+        accessories: updates.accessories || pricingSnapshot.accessories,
+    };
+
+    const updatedCommercials = {
+        ...commercials,
+        pricing_snapshot: updatedPricingSnapshot,
+    };
+
+    const updatePayload: any = {
+        commercials: updatedCommercials,
+        updated_at: new Date().toISOString(),
+    };
+
+    if (updates.managerDiscount !== undefined) {
+        updatePayload.manager_discount = updates.managerDiscount;
+        updatePayload.manager_discount_note = updates.managerDiscountNote || null;
+        updatePayload.reviewed_by = user?.id || null;
+        updatePayload.reviewed_at = new Date().toISOString();
+    }
+
+    const { error } = await supabase.from('crm_quotes').update(updatePayload).eq('id', quoteId);
+
+    if (error) {
+        console.error('updateQuotePricing Error:', error);
+        return { success: false, error: error.message };
+    }
+
+    revalidatePath('/app/[slug]/quotes');
+    return { success: true };
+}
+
+export async function sendQuoteToCustomer(quoteId: string): Promise<{ success: boolean; error?: string }> {
+    const supabase = await createClient();
+
+    const { error } = await supabase
+        .from('crm_quotes')
+        .update({
+            status: 'SENT',
+            updated_at: new Date().toISOString(),
+        })
+        .eq('id', quoteId);
+
+    if (error) {
+        console.error('sendQuoteToCustomer Error:', error);
+        return { success: false, error: error.message };
+    }
+
+    revalidatePath('/app/[slug]/quotes');
+    return { success: true };
+}
+
+export async function getQuoteMarketplaceUrl(
+    quoteId: string
+): Promise<{ success: boolean; url?: string; error?: string }> {
+    const supabase = await createClient();
+
+    // Fetch quote with vehicle details
+    const { data: quoteData, error } = await supabase.from('crm_quotes').select('*').eq('id', quoteId).single();
+
+    if (error || !quoteData) {
+        return { success: false, error: 'Quote not found' };
+    }
+
+    // Cast to any since studio_id is a new column
+    const quote = quoteData as any;
+
+    // Get variant details for URL
+    const skuId = quote.color_id || quote.variant_id;
+    if (!skuId) {
+        return { success: false, error: 'No SKU ID found' };
+    }
+
+    const { data: sku, error: skuError } = await supabase
+        .from('cat_items')
+        .select('slug, parent_id')
+        .eq('id', skuId)
+        .single();
+
+    if (skuError || !sku || !sku.parent_id) {
+        return { success: false, error: 'SKU not found' };
+    }
+
+    // Get variant
+    const { data: variant, error: variantError } = await supabase
+        .from('cat_items')
+        .select('slug, parent_id')
+        .eq('id', sku.parent_id)
+        .single();
+
+    if (variantError || !variant || !variant.parent_id) {
+        return { success: false, error: 'Variant not found' };
+    }
+
+    // Get model
+    const { data: model, error: modelError } = await supabase
+        .from('cat_items')
+        .select('slug, brand_id')
+        .eq('id', variant.parent_id)
+        .single();
+
+    if (modelError || !model || !model.brand_id) {
+        return { success: false, error: 'Model not found' };
+    }
+
+    // Get brand
+    const { data: brand, error: brandError } = await supabase
+        .from('cat_brands')
+        .select('slug')
+        .eq('id', model.brand_id)
+        .single();
+
+    if (brandError || !brand) {
+        return { success: false, error: 'Brand not found' };
+    }
+
+    const commercials = quote.commercials || {};
+    const colorSlug = commercials.color_name?.toLowerCase().replace(/\s+/g, '-') || '';
+
+    // Build URL with studioId (required)
+    const params = new URLSearchParams({
+        quoteId,
+        color: colorSlug,
+        studioId: quote.studio_id || '',
+    });
+
+    const url = `/store/${brand.slug}/${model.slug}/${variant.slug}?${params.toString()}`;
+    return { success: true, url };
+}
