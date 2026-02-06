@@ -13,7 +13,7 @@ import {
     Check,
     Plus,
     FileText,
-    Edit2
+    Edit2,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
@@ -66,9 +66,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
             toast.error(`${l2Label} name is required`);
             return;
         }
-        const isDuplicate = existingColors.some((c: any) =>
-            c.id !== id && c.name.toUpperCase() === normalizedName
-        );
+        const isDuplicate = existingColors.some((c: any) => c.id !== id && c.name.toUpperCase() === normalizedName);
         if (isDuplicate) {
             toast.error(`${l2Label} already exists`);
             return;
@@ -77,17 +75,27 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
         try {
             const supabase = createClient();
             const updatedList = existingColors.map((c: any) =>
-                c.id === id ? { ...c, name: normalizedName, status: newStatus, specs: { ...c.specs, [l2Label]: normalizedName } } : c
+                c.id === id
+                    ? {
+                          ...c,
+                          name: normalizedName,
+                          status: newStatus,
+                          specs: { ...c.specs, [l2Label]: normalizedName },
+                      }
+                    : c
             );
             onUpdate(updatedList);
 
             const newSlug = `${family.slug}-color-${normalizedName.toLowerCase()}`.replace(/ /g, '-');
-            const { error } = await supabase.from('cat_items').update({
-                name: normalizedName,
-                slug: newSlug,
-                status: newStatus,
-                specs: { ...existingColors.find((c: any) => c.id === id).specs, [l2Label]: normalizedName }
-            }).eq('id', id);
+            const { error } = await supabase
+                .from('cat_items')
+                .update({
+                    name: normalizedName,
+                    slug: newSlug,
+                    status: newStatus,
+                    specs: { ...existingColors.find((c: any) => c.id === id).specs, [l2Label]: normalizedName },
+                })
+                .eq('id', id);
 
             if (error) throw error;
             toast.success('Color updated successfully');
@@ -119,14 +127,21 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
 
             const payload = {
                 name: normalizedName,
-                specs: { [l2Label]: normalizedName, gallery: [], video_urls: [], primary_image: null, hex_primary: '#000000', hex_secondary: null },
+                specs: {
+                    [l2Label]: normalizedName,
+                    gallery: [],
+                    video_urls: [],
+                    primary_image: null,
+                    hex_primary: '#000000',
+                    hex_secondary: null,
+                },
                 type: 'COLOR_DEF',
-                status: 'INACTIVE',  // NEW: Default to INACTIVE - admin must explicitly activate
+                status: 'INACTIVE', // NEW: Default to INACTIVE - admin must explicitly activate
                 brand_id: family.brand_id,
                 template_id: family.template_id,
                 parent_id: family.id,
                 slug: `${family.slug}-color-${normalizedName.toLowerCase()}`.replace(/ /g, '-'),
-                position: nextPosition
+                position: nextPosition,
             };
 
             const { data, error: dbError } = await supabase
@@ -141,7 +156,11 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
             if (!isDuplicate) {
                 onUpdate([...existingColors, data].sort((a: any, b: any) => a.position - b.position));
             } else {
-                onUpdate(existingColors.map((c: any) => c.slug === data.slug ? data : c).sort((a: any, b: any) => a.position - b.position));
+                onUpdate(
+                    existingColors
+                        .map((c: any) => (c.slug === data.slug ? data : c))
+                        .sort((a: any, b: any) => a.position - b.position)
+                );
             }
             toast.success('Color added successfully');
         } catch (error: unknown) {
@@ -170,7 +189,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
 
         const updatedList = sorted.map((c: any, idx: number) => ({
             ...c,
-            position: idx + 1
+            position: idx + 1,
         }));
 
         onUpdate(updatedList);
@@ -270,7 +289,17 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
         offsetY?: number
     ) => {
         window.alert('DEBUG: handleSaveMedia reached in ColorStep.tsx');
-        console.error('DEBUG: handleSaveMedia called', { images, videos, pdfs, primary, applyVideosToAll, zoomFactor, isFlipped, offsetX, offsetY });
+        console.error('DEBUG: handleSaveMedia called', {
+            images,
+            videos,
+            pdfs,
+            primary,
+            applyVideosToAll,
+            zoomFactor,
+            isFlipped,
+            offsetX,
+            offsetY,
+        });
         if (!activeColorId) {
             console.error('DEBUG: No activeColorId found');
             return;
@@ -280,7 +309,16 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
             console.log('DEBUG: Proceeding with save for ID:', activeColorId);
             const updatedList = existingColors.map((c: any) => {
                 if (c.id === activeColorId) {
-                    return { ...c, specs: { ...c.specs, gallery: images, video_urls: videos, pdf_urls: pdfs, primary_image: primary } };
+                    return {
+                        ...c,
+                        specs: {
+                            ...c.specs,
+                            gallery: images,
+                            video_urls: videos,
+                            pdf_urls: pdfs,
+                            primary_image: primary,
+                        },
+                    };
                 }
                 if (applyVideosToAll) {
                     return { ...c, specs: { ...c.specs, video_urls: videos, pdf_urls: pdfs } };
@@ -302,7 +340,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                     url,
                     is_primary: url === primary,
                     zoom_factor: zoomFactor || 1.1,
-                    position: idx
+                    position: idx,
                 });
             });
 
@@ -312,7 +350,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                     item_id: activeColorId,
                     type: 'VIDEO',
                     url,
-                    position: idx
+                    position: idx,
                 });
             });
 
@@ -322,7 +360,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                     item_id: activeColorId,
                     type: 'PDF',
                     url,
-                    position: idx
+                    position: idx,
                 });
             });
 
@@ -343,10 +381,13 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                 const updatedColor = updatedList.find((c: any) => c.id === activeColorId);
 
                 // Update cat_items
-                const { error: itemError } = await supabase.from('cat_items').update({
-                    specs: updatedColor.specs,
-                    zoom_factor: zoomFactor
-                }).eq('id', activeColorId);
+                const { error: itemError } = await supabase
+                    .from('cat_items')
+                    .update({
+                        specs: updatedColor.specs,
+                        zoom_factor: zoomFactor,
+                    })
+                    .eq('id', activeColorId);
                 if (itemError) throw itemError;
 
                 // Update cat_assets
@@ -366,7 +407,6 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700 text-left">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-4">
-
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2 p-1 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/10">
                         <button
@@ -404,7 +444,9 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                 {existingColors.map((color: any, index: number) => (
                     <div
                         key={color.id}
-                        ref={(el) => { cardRefs.current[index] = el; }}
+                        ref={el => {
+                            cardRefs.current[index] = el;
+                        }}
                         tabIndex={0}
                         onFocus={() => setFocusedIndex(index)}
                         className="group relative bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-white/5 rounded-[2.5rem] p-6 hover:border-indigo-500/20 transition-all shadow-xl shadow-slate-200/5 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
@@ -415,7 +457,10 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                             <div className="space-y-4 flex-1">
                                 <div className="flex items-center gap-4">
                                     <div className="relative">
-                                        <div className="w-16 h-16 rounded-2xl border-2 border-slate-100 dark:border-white/10 overflow-hidden bg-slate-50 dark:bg-black/40 flex items-center justify-center group-hover:border-indigo-500/30 transition-all" title={`Primary Image: ${color.specs.primary_image || 'None'}\nGallery Count: ${color.specs.gallery?.length || 0}`}>
+                                        <div
+                                            className="w-16 h-16 rounded-2xl border-2 border-slate-100 dark:border-white/10 overflow-hidden bg-slate-50 dark:bg-black/40 flex items-center justify-center group-hover:border-indigo-500/30 transition-all"
+                                            title={`Primary Image: ${color.specs.primary_image || 'None'}\nGallery Count: ${color.specs.gallery?.length || 0}`}
+                                        >
                                             {color.specs.primary_image || color.specs.gallery?.[0] ? (
                                                 <img
                                                     src={color.specs.primary_image || color.specs.gallery?.[0]}
@@ -431,37 +476,39 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                                         </div>
                                     </div>
                                     <div>
-                                        <h4 className="font-black text-xl text-slate-900 dark:text-white uppercase italic leading-none cursor-help" title={`Name: ${color.name}\nSlug: ${color.slug}`}>{color.name}</h4>
+                                        <h4
+                                            className="font-black text-xl text-slate-900 dark:text-white uppercase italic leading-none cursor-help"
+                                            title={`Name: ${color.name}\nSlug: ${color.slug}`}
+                                        >
+                                            {color.name}
+                                        </h4>
                                         <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                            {/* Status Badge */}
-                                            <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${
-                                                color.status === 'ACTIVE' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                                color.status === 'NEW_LAUNCHED' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                                color.status === 'DISCONTINUED' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                                                'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                                            }`}>
-                                                {color.status === 'ACTIVE' && '✅ Active'}
-                                                {color.status === 'NEW_LAUNCHED' && '🚀 New'}
-                                                {color.status === 'DISCONTINUED' && '⛔ Discontinued'}
-                                                {color.status === 'INACTIVE' && '🔒 Inactive'}
-                                                {!color.status && '🔒 Inactive'}
-                                            </span>
-                                            
                                             <input
                                                 type="number"
                                                 value={color.position}
-                                                onChange={(e) => handleUpdatePosition(color.id, parseInt(e.target.value))}
+                                                onChange={e => handleUpdatePosition(color.id, parseInt(e.target.value))}
                                                 className="w-10 bg-slate-100 dark:bg-black/20 rounded-md text-[10px] font-black text-center py-0.5 outline-none border border-transparent focus:border-indigo-500/30"
                                             />
-                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest cursor-help dashed-underline decoration-slate-300" title="Field: position (Sort Order)">SEQ</span>
-                                            <span className="text-[9px] font-mono font-black text-slate-300 uppercase tracking-widest pl-2 border-l border-slate-200 dark:border-white/10 cursor-help" title={`Full ID: ${color.id}`}>
+                                            <span
+                                                className="text-[9px] font-bold text-slate-400 uppercase tracking-widest cursor-help dashed-underline decoration-slate-300"
+                                                title="Field: position (Sort Order)"
+                                            >
+                                                SEQ
+                                            </span>
+                                            <span
+                                                className="text-[9px] font-mono font-black text-slate-300 uppercase tracking-widest pl-2 border-l border-slate-200 dark:border-white/10 cursor-help"
+                                                title={`Full ID: ${color.id}`}
+                                            >
                                                 {color.id.split('-').pop().slice(0, 9)}
                                             </span>
                                         </div>
                                     </div>
                                     <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button
-                                            onClick={() => { setEditingColor(color); setEditModalOpen(true); }}
+                                            onClick={() => {
+                                                setEditingColor(color);
+                                                setEditModalOpen(true);
+                                            }}
                                             className="p-2 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-xl transition-all"
                                             title="Edit Name"
                                         >
@@ -493,7 +540,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                                             style={{
                                                 background: color.specs.hex_secondary
                                                     ? `linear-gradient(135deg, ${color.specs.hex_primary || '#000000'} 50%, ${color.specs.hex_secondary} 50%)`
-                                                    : color.specs.hex_primary || '#000000'
+                                                    : color.specs.hex_primary || '#000000',
                                             }}
                                         />
                                     </button>
@@ -502,32 +549,50 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                                     <div className="w-3/4 flex gap-2">
                                         {/* Image Slot */}
                                         <button
-                                            onClick={() => { setActiveColorId(color.id); setMediaModalOpen(true); }}
+                                            onClick={() => {
+                                                setActiveColorId(color.id);
+                                                setMediaModalOpen(true);
+                                            }}
                                             className={`flex-1 flex flex-col items-center justify-center gap-1 rounded-2xl border-2 transition-all ${color.specs.gallery?.length > 0 ? 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/10' : 'border-dashed border-slate-100 dark:border-white/10 hover:border-indigo-300 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10'}`}
                                             aria-label={`Manage images for ${color.name}`}
                                         >
                                             {color.specs.gallery?.length > 0 ? (
                                                 <>
                                                     <div className="flex -space-x-2">
-                                                        {color.specs.gallery.slice(0, 1).map((img: string, i: number) => (
-                                                            <div key={i} className="w-5 h-5 rounded-md border border-white dark:border-white/10 overflow-hidden bg-white dark:bg-slate-900">
-                                                                <img src={img} className="w-full h-full object-cover" />
-                                                            </div>
-                                                        ))}
+                                                        {color.specs.gallery
+                                                            .slice(0, 1)
+                                                            .map((img: string, i: number) => (
+                                                                <div
+                                                                    key={i}
+                                                                    className="w-5 h-5 rounded-md border border-white dark:border-white/10 overflow-hidden bg-white dark:bg-slate-900"
+                                                                >
+                                                                    <img
+                                                                        src={img}
+                                                                        className="w-full h-full object-cover"
+                                                                    />
+                                                                </div>
+                                                            ))}
                                                     </div>
-                                                    <span className="text-[8px] font-black text-slate-400 uppercase">{color.specs.gallery.length} Imgs</span>
+                                                    <span className="text-[8px] font-black text-slate-400 uppercase">
+                                                        {color.specs.gallery.length} Imgs
+                                                    </span>
                                                 </>
                                             ) : (
                                                 <>
                                                     <ImageIcon size={14} className="text-slate-300" />
-                                                    <span className="text-[7px] font-bold text-slate-400 uppercase">Add</span>
+                                                    <span className="text-[7px] font-bold text-slate-400 uppercase">
+                                                        Add
+                                                    </span>
                                                 </>
                                             )}
                                         </button>
 
                                         {/* Video Slot */}
                                         <button
-                                            onClick={() => { setActiveColorId(color.id); setMediaModalOpen(true); }}
+                                            onClick={() => {
+                                                setActiveColorId(color.id);
+                                                setMediaModalOpen(true);
+                                            }}
                                             className={`flex-1 flex flex-col items-center justify-center gap-1 rounded-2xl border-2 transition-all ${color.specs.video_urls?.length > 0 || family.specs?.video_urls?.length > 0 ? 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/10' : 'border-dashed border-slate-100 dark:border-white/10 hover:border-indigo-300 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10'}`}
                                             aria-label={`Manage videos for ${color.name}`}
                                         >
@@ -539,28 +604,45 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                                                 // But visually, if I explicitly selected them, they are "Specific" in the DB.
                                                 // However, user wants to see "Shared" if they are the SAME as the model's.
                                                 // So: isShared = (hasOwn && allOwnAreInInherited) OR (!hasOwn && hasInherited)
-                                                const allOwnAreInInherited = hasOwn && color.specs.video_urls.every((u: string) => family.specs?.video_urls?.includes(u));
-                                                const isShared = (hasOwn && allOwnAreInInherited) || (!hasOwn && hasInherited);
+                                                const allOwnAreInInherited =
+                                                    hasOwn &&
+                                                    color.specs.video_urls.every((u: string) =>
+                                                        family.specs?.video_urls?.includes(u)
+                                                    );
+                                                const isShared =
+                                                    (hasOwn && allOwnAreInInherited) || (!hasOwn && hasInherited);
 
                                                 if (isShared) {
                                                     return (
                                                         <>
                                                             <Video size={16} className="text-emerald-500" />
-                                                            <span className="text-[7px] font-black bg-emerald-100 text-emerald-600 px-1.5 rounded-full uppercase cursor-help" title="Source: Inherited from Family specs.video_urls">Shared</span>
+                                                            <span
+                                                                className="text-[7px] font-black bg-emerald-100 text-emerald-600 px-1.5 rounded-full uppercase cursor-help"
+                                                                title="Source: Inherited from Family specs.video_urls"
+                                                            >
+                                                                Shared
+                                                            </span>
                                                         </>
                                                     );
                                                 } else if (hasOwn) {
                                                     return (
                                                         <>
                                                             <Video size={16} className="text-indigo-500" />
-                                                            <span className="text-[7px] font-black bg-indigo-100 text-indigo-600 px-1.5 rounded-full uppercase cursor-help" title="Source: Custom video_urls on this color">Specific</span>
+                                                            <span
+                                                                className="text-[7px] font-black bg-indigo-100 text-indigo-600 px-1.5 rounded-full uppercase cursor-help"
+                                                                title="Source: Custom video_urls on this color"
+                                                            >
+                                                                Specific
+                                                            </span>
                                                         </>
                                                     );
                                                 } else {
                                                     return (
                                                         <>
                                                             <Video size={14} className="text-slate-300" />
-                                                            <span className="text-[7px] font-bold text-slate-400 uppercase">Add</span>
+                                                            <span className="text-[7px] font-bold text-slate-400 uppercase">
+                                                                Add
+                                                            </span>
                                                         </>
                                                     );
                                                 }
@@ -569,35 +651,55 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
 
                                         {/* PDF Slot */}
                                         <button
-                                            onClick={() => { setActiveColorId(color.id); setMediaModalOpen(true); }}
+                                            onClick={() => {
+                                                setActiveColorId(color.id);
+                                                setMediaModalOpen(true);
+                                            }}
                                             className={`flex-1 flex flex-col items-center justify-center gap-1 rounded-2xl border-2 transition-all ${color.specs.pdf_urls?.length > 0 || family.specs?.pdf_urls?.length > 0 ? 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/10' : 'border-dashed border-slate-100 dark:border-white/10 hover:border-indigo-300 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10'}`}
                                             aria-label={`Manage PDFs for ${color.name}`}
                                         >
                                             {(() => {
                                                 const hasOwn = color.specs.pdf_urls?.length > 0;
                                                 const hasInherited = family.specs?.pdf_urls?.length > 0;
-                                                const allOwnAreInInherited = hasOwn && color.specs.pdf_urls.every((u: string) => family.specs?.pdf_urls?.includes(u));
-                                                const isShared = (hasOwn && allOwnAreInInherited) || (!hasOwn && hasInherited);
+                                                const allOwnAreInInherited =
+                                                    hasOwn &&
+                                                    color.specs.pdf_urls.every((u: string) =>
+                                                        family.specs?.pdf_urls?.includes(u)
+                                                    );
+                                                const isShared =
+                                                    (hasOwn && allOwnAreInInherited) || (!hasOwn && hasInherited);
 
                                                 if (isShared) {
                                                     return (
                                                         <>
                                                             <FileText size={16} className="text-emerald-500" />
-                                                            <span className="text-[7px] font-black bg-emerald-100 text-emerald-600 px-1.5 rounded-full uppercase cursor-help" title="Source: Inherited from Family specs.pdf_urls">Shared</span>
+                                                            <span
+                                                                className="text-[7px] font-black bg-emerald-100 text-emerald-600 px-1.5 rounded-full uppercase cursor-help"
+                                                                title="Source: Inherited from Family specs.pdf_urls"
+                                                            >
+                                                                Shared
+                                                            </span>
                                                         </>
                                                     );
                                                 } else if (hasOwn) {
                                                     return (
                                                         <>
                                                             <FileText size={16} className="text-orange-500" />
-                                                            <span className="text-[8px] font-black text-slate-400 uppercase cursor-help" title="Source: Custom pdf_urls on this color">{color.specs.pdf_urls.length} PDF</span>
+                                                            <span
+                                                                className="text-[8px] font-black text-slate-400 uppercase cursor-help"
+                                                                title="Source: Custom pdf_urls on this color"
+                                                            >
+                                                                {color.specs.pdf_urls.length} PDF
+                                                            </span>
                                                         </>
                                                     );
                                                 } else {
                                                     return (
                                                         <>
                                                             <FileText size={14} className="text-slate-300" />
-                                                            <span className="text-[7px] font-bold text-slate-400 uppercase">Add</span>
+                                                            <span className="text-[7px] font-bold text-slate-400 uppercase">
+                                                                Add
+                                                            </span>
                                                         </>
                                                     );
                                                 }
@@ -625,7 +727,10 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
             {/* Smart Picker Modal */}
             {pickerOpen && activeColor && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 text-left">
-                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-3xl animate-in fade-in" onClick={() => setPickerOpen(false)} />
+                    <div
+                        className="absolute inset-0 bg-slate-900/60 backdrop-blur-3xl animate-in fade-in"
+                        onClick={() => setPickerOpen(false)}
+                    />
 
                     <div className="relative w-full max-w-6xl bg-white dark:bg-slate-900 rounded-[3rem] shadow-2xl border border-slate-200 dark:border-white/5 overflow-hidden flex flex-col md:flex-row h-[80vh] animate-in zoom-in-95">
                         {/* Canvas Section */}
@@ -635,18 +740,30 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                                     <Palette className="text-indigo-600" size={24} />
                                 </div>
                                 <div>
-                                    <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase italic leading-none">Pixel Color Picker</h3>
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Accurate Selection Mode</p>
+                                    <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase italic leading-none">
+                                        Pixel Color Picker
+                                    </h3>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">
+                                        Accurate Selection Mode
+                                    </p>
                                 </div>
                             </div>
 
                             <div className="absolute top-8 right-8 flex flex-col items-end gap-2 z-20">
-                                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-2 transition-all ${pickerTarget === 'primary' ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white text-slate-400 border-slate-100'}`}>Target: Primary</span>
+                                <span
+                                    className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-2 transition-all ${pickerTarget === 'primary' ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white text-slate-400 border-slate-100'}`}
+                                >
+                                    Target: Primary
+                                </span>
                             </div>
 
                             <ImageColorPicker
-                                imageUrl={activeColor.specs.primary_image || activeColor.specs.gallery?.[0] || family.image_url}
-                                onPick={(hex) => {
+                                imageUrl={
+                                    activeColor.specs.primary_image ||
+                                    activeColor.specs.gallery?.[0] ||
+                                    family.image_url
+                                }
+                                onPick={hex => {
                                     if (pickerTarget === 'primary') setTempPrimary(hex);
                                     else setTempSecondary(hex);
                                 }}
@@ -656,53 +773,89 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
 
                         {/* Sidebar Section */}
                         <div className="w-full md:w-[400px] flex flex-col h-full relative z-30 bg-white dark:bg-slate-900">
-
                             {/* Scrollable Content Area */}
                             <div className="flex-1 overflow-y-auto p-10">
                                 <div className="space-y-10">
                                     <div className="flex justify-between items-center">
                                         <div className="space-y-1">
-                                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{l2Label} Definition</h4>
-                                            <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase italic font-display leading-none">{activeColor.name}</h2>
+                                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                                                {l2Label} Definition
+                                            </h4>
+                                            <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase italic font-display leading-none">
+                                                {activeColor.name}
+                                            </h2>
                                         </div>
-                                        <button onClick={() => setPickerOpen(false)} className="p-4 hover:bg-slate-50 dark:hover:bg-white/5 rounded-2xl transition-all">
+                                        <button
+                                            onClick={() => setPickerOpen(false)}
+                                            className="p-4 hover:bg-slate-50 dark:hover:bg-white/5 rounded-2xl transition-all"
+                                        >
                                             <X size={24} className="text-slate-400" />
                                         </button>
                                     </div>
 
-                                    <div className="space-y-6 pb-20"> {/* pb-20 for footer clearance if needed, though footer is outside now */}
+                                    <div className="space-y-6 pb-20">
+                                        {' '}
+                                        {/* pb-20 for footer clearance if needed, though footer is outside now */}
                                         {/* Primary Color Box */}
                                         <div
                                             onClick={() => setPickerTarget('primary')}
                                             className={`relative group p-8 rounded-[2.5rem] border-2 transition-all cursor-pointer ${pickerTarget === 'primary' ? 'border-emerald-500 bg-emerald-50/10' : 'border-slate-50 hover:border-slate-200'}`}
                                         >
                                             <div className="flex items-center justify-between mb-6">
-                                                <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest cursor-help dashed-underline decoration-emerald-300" title="Field: specs.hex_primary">Primary Color</span>
-                                                <div className={`w-3 h-3 rounded-full ${pickerTarget === 'primary' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-200'}`} />
+                                                <span
+                                                    className="text-[10px] font-black text-emerald-600 uppercase tracking-widest cursor-help dashed-underline decoration-emerald-300"
+                                                    title="Field: specs.hex_primary"
+                                                >
+                                                    Primary Color
+                                                </span>
+                                                <div
+                                                    className={`w-3 h-3 rounded-full ${pickerTarget === 'primary' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-200'}`}
+                                                />
                                             </div>
                                             <div
                                                 className="w-full h-32 rounded-3xl shadow-inner border border-white/20 transition-all duration-300 relative overflow-hidden"
-                                                style={{ backgroundColor: (pickerTarget === 'primary' && hoveredColor) ? hoveredColor : (tempPrimary || '#000000') }}
+                                                style={{
+                                                    backgroundColor:
+                                                        pickerTarget === 'primary' && hoveredColor
+                                                            ? hoveredColor
+                                                            : tempPrimary || '#000000',
+                                                }}
                                             >
                                                 {/* Checkerboard pattern for transparency indication if needed, though mostly solid colors here */}
                                             </div>
                                             <div className="mt-6 flex flex-col items-start">
                                                 <span className="text-5xl font-black text-slate-900 dark:text-white italic tracking-tighter leading-none">
-                                                    {(pickerTarget === 'primary' && hoveredColor) ? hoveredColor : (tempPrimary || '#000000')}
+                                                    {pickerTarget === 'primary' && hoveredColor
+                                                        ? hoveredColor
+                                                        : tempPrimary || '#000000'}
                                                 </span>
-                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2">{pickerTarget === 'primary' && hoveredColor ? 'POINTER PREVIEW' : 'MAIN SURFACE COLOR'}</span>
+                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2">
+                                                    {pickerTarget === 'primary' && hoveredColor
+                                                        ? 'POINTER PREVIEW'
+                                                        : 'MAIN SURFACE COLOR'}
+                                                </span>
                                             </div>
                                         </div>
-
                                         {/* Secondary Color Box (Optional) */}
                                         <div
                                             onClick={() => setPickerTarget('secondary')}
                                             className={`relative group p-8 rounded-[2.5rem] border-2 transition-all cursor-pointer ${pickerTarget === 'secondary' ? 'border-indigo-500 bg-indigo-50/10' : 'border-slate-50 hover:border-slate-200'}`}
                                         >
                                             <div className="flex items-center justify-between mb-4">
-                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest cursor-help dashed-underline decoration-slate-300" title="Field: specs.hex_secondary">Secondary (Optional)</span>
+                                                <span
+                                                    className="text-[10px] font-black text-slate-400 uppercase tracking-widest cursor-help dashed-underline decoration-slate-300"
+                                                    title="Field: specs.hex_secondary"
+                                                >
+                                                    Secondary (Optional)
+                                                </span>
                                                 {tempSecondary && (
-                                                    <button onClick={(e) => { e.stopPropagation(); setTempSecondary(null); }} className="text-slate-400 hover:text-rose-500">
+                                                    <button
+                                                        onClick={e => {
+                                                            e.stopPropagation();
+                                                            setTempSecondary(null);
+                                                        }}
+                                                        className="text-slate-400 hover:text-rose-500"
+                                                    >
                                                         <X size={14} />
                                                     </button>
                                                 )}
@@ -711,26 +864,47 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                                                 <>
                                                     <div
                                                         className="w-full h-24 rounded-2xl shadow-inner border border-white/20 transition-all duration-300"
-                                                        style={{ backgroundColor: (pickerTarget === 'secondary' && hoveredColor) ? hoveredColor : tempSecondary }}
+                                                        style={{
+                                                            backgroundColor:
+                                                                pickerTarget === 'secondary' && hoveredColor
+                                                                    ? hoveredColor
+                                                                    : tempSecondary,
+                                                        }}
                                                     />
                                                     <div className="mt-4 flex flex-col items-start">
                                                         <span className="text-4xl font-black text-slate-900 dark:text-white italic tracking-tighter leading-none">
-                                                            {(pickerTarget === 'secondary' && hoveredColor) ? hoveredColor : tempSecondary}
+                                                            {pickerTarget === 'secondary' && hoveredColor
+                                                                ? hoveredColor
+                                                                : tempSecondary}
                                                         </span>
-                                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2">{pickerTarget === 'secondary' && hoveredColor ? 'POINTER PREVIEW' : 'ACCENT SURFACE COLOR'}</span>
+                                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2">
+                                                            {pickerTarget === 'secondary' && hoveredColor
+                                                                ? 'POINTER PREVIEW'
+                                                                : 'ACCENT SURFACE COLOR'}
+                                                        </span>
                                                     </div>
                                                 </>
                                             ) : (
                                                 <div className="w-full h-32 rounded-[2rem] bg-slate-50 dark:bg-black/20 border-2 border-dashed border-slate-100 flex flex-col items-center justify-center gap-2 group-hover:bg-indigo-50/30 transition-all">
                                                     {pickerTarget === 'secondary' && hoveredColor ? (
                                                         <div className="flex flex-col items-center gap-2">
-                                                            <div className="w-8 h-8 rounded-lg shadow-sm" style={{ backgroundColor: hoveredColor }} />
-                                                            <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">{hoveredColor}</span>
+                                                            <div
+                                                                className="w-8 h-8 rounded-lg shadow-sm"
+                                                                style={{ backgroundColor: hoveredColor }}
+                                                            />
+                                                            <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">
+                                                                {hoveredColor}
+                                                            </span>
                                                         </div>
                                                     ) : (
                                                         <>
-                                                            <Zap size={24} className="text-slate-200 group-hover:text-indigo-400 transition-colors" />
-                                                            <span className="text-[8px] font-black text-slate-300 uppercase tracking-[0.2em]">Click to define</span>
+                                                            <Zap
+                                                                size={24}
+                                                                className="text-slate-200 group-hover:text-indigo-400 transition-colors"
+                                                            />
+                                                            <span className="text-[8px] font-black text-slate-300 uppercase tracking-[0.2em]">
+                                                                Click to define
+                                                            </span>
                                                         </>
                                                     )}
                                                 </div>
@@ -759,28 +933,40 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                     skuName={activeColor.name}
                     initialImages={activeColor.specs.gallery || []}
                     // Default to family videos if not defined (New/Unconfigured), but respect empty array if explicitly set
-                    initialVideos={activeColor.specs.video_urls?.length > 0 ? activeColor.specs.video_urls : (family.specs?.video_urls ?? [])}
-                    initialPdfs={activeColor.specs.pdf_urls?.length > 0 ? activeColor.specs.pdf_urls : (family.specs?.pdf_urls ?? [])}
+                    initialVideos={
+                        activeColor.specs.video_urls?.length > 0
+                            ? activeColor.specs.video_urls
+                            : (family.specs?.video_urls ?? [])
+                    }
+                    initialPdfs={
+                        activeColor.specs.pdf_urls?.length > 0
+                            ? activeColor.specs.pdf_urls
+                            : (family.specs?.pdf_urls ?? [])
+                    }
                     initialPrimary={activeColor.specs.primary_image}
                     initialZoomFactor={activeColor.zoom_factor || 1.1}
                     initialIsFlipped={activeColor.is_flipped || false}
                     initialOffsetX={activeColor.offset_x || 0}
                     initialOffsetY={activeColor.offset_y || 0}
-
                     // Inheritance Source
                     inheritedVideos={family.specs?.video_urls || []}
                     inheritedPdfs={family.specs?.pdf_urls || []}
                     inheritedFrom={family.name}
-
                     onSave={handleSaveMedia}
-                    onClose={() => { setMediaModalOpen(false); setActiveColorId(null); }}
+                    onClose={() => {
+                        setMediaModalOpen(false);
+                        setActiveColorId(null);
+                    }}
                 />
             )}
             {/* Edit Color Modal */}
             {editModalOpen && editingColor && (
                 <EditColorModal
                     isOpen={editModalOpen}
-                    onClose={() => { setEditModalOpen(false); setEditingColor(null); }}
+                    onClose={() => {
+                        setEditModalOpen(false);
+                        setEditingColor(null);
+                    }}
                     onSave={(newName, newStatus) => handleEditColor(editingColor.id, newName, newStatus)}
                     initialName={editingColor.name}
                     initialStatus={editingColor.status}
@@ -801,7 +987,10 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
             {deleteModalOpen && colorToDelete && (
                 <DeleteConfirmationModal
                     isOpen={deleteModalOpen}
-                    onClose={() => { setDeleteModalOpen(false); setColorToDelete(null); }}
+                    onClose={() => {
+                        setDeleteModalOpen(false);
+                        setColorToDelete(null);
+                    }}
                     onConfirm={async () => {
                         const supabase = createClient();
                         const { error } = await supabase.from('cat_items').delete().eq('id', colorToDelete.id);
@@ -820,18 +1009,27 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
             {showDebug && (
                 <div className="mt-8 p-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 overflow-hidden">
                     <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Debug Console</h4>
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                            Debug Console
+                        </h4>
                         <span className="text-[9px] font-mono text-slate-300">{existingColors?.length || 0} ITEMS</span>
                     </div>
                     <div className="font-mono text-[10px] text-slate-400 space-y-1 overflow-x-auto">
                         <div>ACTIVE_ID: {activeColorId || 'NULL'}</div>
                         <div>VIEW_MODE: {viewMode}</div>
-                        <div>PICKER: {pickerOpen ? 'OPEN' : 'CLOSED'} (TARGET: {pickerTarget})</div>
-                        <div className="whitespace-pre">{JSON.stringify(existingColors?.map((c: any) => ({ id: c.id, pos: c.position, name: c.name })), null, 2)}</div>
+                        <div>
+                            PICKER: {pickerOpen ? 'OPEN' : 'CLOSED'} (TARGET: {pickerTarget})
+                        </div>
+                        <div className="whitespace-pre">
+                            {JSON.stringify(
+                                existingColors?.map((c: any) => ({ id: c.id, pos: c.position, name: c.name })),
+                                null,
+                                2
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
         </div>
-
     );
 }
