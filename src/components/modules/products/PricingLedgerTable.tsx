@@ -461,14 +461,14 @@ export default function PricingLedgerTable({
     return (
         <div className="w-full h-full flex flex-col animate-in fade-in duration-700 bg-white dark:bg-slate-950">
             {/* Soft Tricolor Toolbar */}
-            <div className="z-30 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-md px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
-                <div className="flex items-center gap-2 flex-1 overflow-x-auto">
+            <div className="z-30 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-md px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-4">
+                <div className="flex items-center gap-3 flex-1">
                     {/* Search Icon */}
                     <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl shrink-0">
                         <Search size={14} className="text-emerald-600" />
                     </div>
                     {/* State Filter */}
-                    <div className="relative group shrink-0">
+                    <div className="relative group flex-1 min-w-[140px]">
                         <Landmark
                             size={12}
                             className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10"
@@ -476,7 +476,7 @@ export default function PricingLedgerTable({
                         <select
                             value={selectedStateId}
                             onChange={e => onStateChange(e.target.value)}
-                            className="pl-8 pr-6 py-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-emerald-300 rounded-xl text-[10px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-2 focus:ring-emerald-500/10 outline-none appearance-none cursor-pointer transition-all w-[130px]"
+                            className="w-full pl-9 pr-8 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-400 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-2 focus:ring-emerald-500/20 outline-none appearance-none cursor-pointer transition-all"
                         >
                             {states.map((s: RegistrationRule) => (
                                 <option key={s.id} value={s.id}>
@@ -489,7 +489,7 @@ export default function PricingLedgerTable({
                         </div>
                     </div>
                     {/* Category Filter */}
-                    <div className="relative group shrink-0">
+                    <div className="relative group flex-1 min-w-[140px]">
                         <Activity
                             size={12}
                             className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10"
@@ -497,7 +497,7 @@ export default function PricingLedgerTable({
                         <select
                             value={selectedCategory}
                             onChange={e => onCategoryChange(e.target.value)}
-                            className="pl-8 pr-6 py-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-emerald-300 rounded-xl text-[10px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-2 focus:ring-emerald-500/10 outline-none appearance-none cursor-pointer transition-all w-[115px]"
+                            className="w-full pl-9 pr-8 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-400 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-2 focus:ring-emerald-500/20 outline-none appearance-none cursor-pointer transition-all"
                         >
                             <option value="ALL">All Categories</option>
                             {categories.map(c => (
@@ -511,12 +511,12 @@ export default function PricingLedgerTable({
                         </div>
                     </div>
                     {/* Sub Category Filter */}
-                    <div className="relative group shrink-0">
+                    <div className="relative group flex-1 min-w-[140px]">
                         <Info size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
                         <select
                             value={selectedSubCategory}
                             onChange={e => onSubCategoryChange(e.target.value)}
-                            className="pl-8 pr-6 py-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-emerald-300 rounded-xl text-[10px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-2 focus:ring-emerald-500/10 outline-none appearance-none cursor-pointer transition-all w-[130px]"
+                            className="w-full pl-9 pr-8 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-400 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-2 focus:ring-emerald-500/20 outline-none appearance-none cursor-pointer transition-all"
                         >
                             <option value="ALL">All Sub-Cat</option>
                             {subCategories.map(sc => (
@@ -530,12 +530,12 @@ export default function PricingLedgerTable({
                         </div>
                     </div>
                     {/* Brand Filter */}
-                    <div className="relative group shrink-0">
+                    <div className="relative group flex-1 min-w-[120px]">
                         <Car size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
                         <select
                             value={selectedBrand}
                             onChange={e => onBrandChange(e.target.value)}
-                            className="pl-8 pr-6 py-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-emerald-300 rounded-xl text-[10px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-2 focus:ring-emerald-500/10 outline-none appearance-none cursor-pointer transition-all w-[100px]"
+                            className="w-full pl-9 pr-8 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-400 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-2 focus:ring-emerald-500/20 outline-none appearance-none cursor-pointer transition-all"
                         >
                             <option value="ALL">All Brands</option>
                             {brands.map(b => (
@@ -549,12 +549,12 @@ export default function PricingLedgerTable({
                         </div>
                     </div>
                     {/* Model Filter */}
-                    <div className="relative group shrink-0">
+                    <div className="relative group flex-1 min-w-[120px]">
                         <Package size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
                         <select
                             value={selectedModel}
                             onChange={e => onModelChange(e.target.value)}
-                            className="pl-8 pr-6 py-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-emerald-300 rounded-xl text-[10px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-2 focus:ring-emerald-500/10 outline-none appearance-none cursor-pointer transition-all w-[100px]"
+                            className="w-full pl-9 pr-8 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-400 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-2 focus:ring-emerald-500/20 outline-none appearance-none cursor-pointer transition-all"
                         >
                             <option value="ALL">All Models</option>
                             {models.map(m => (
@@ -568,12 +568,12 @@ export default function PricingLedgerTable({
                         </div>
                     </div>
                     {/* Variant Filter */}
-                    <div className="relative group shrink-0">
+                    <div className="relative group flex-1 min-w-[120px]">
                         <Package size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
                         <select
                             value={selectedVariant}
                             onChange={e => onVariantChange(e.target.value)}
-                            className="pl-8 pr-6 py-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-emerald-300 rounded-xl text-[10px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-2 focus:ring-emerald-500/10 outline-none appearance-none cursor-pointer transition-all w-[100px]"
+                            className="w-full pl-9 pr-8 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-400 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-2 focus:ring-emerald-500/20 outline-none appearance-none cursor-pointer transition-all"
                         >
                             <option value="ALL">All Variants</option>
                             {variants.map(v => (

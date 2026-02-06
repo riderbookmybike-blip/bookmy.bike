@@ -362,6 +362,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                                 skus:cat_items!parent_id(
                                     id,
                                     type,
+                                    status,
                                     price_base,
                                     specs,
                                     is_primary,
