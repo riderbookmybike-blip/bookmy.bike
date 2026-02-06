@@ -181,6 +181,7 @@ export default function PricingLedgerTable({
     const [isSaving, setIsSaving] = useState(false);
     const [selectedSkuIds, setSelectedSkuIds] = useState<Set<string>>(new Set());
     const [isExporting, setIsExporting] = useState(false);
+    const [openStatusDropdownId, setOpenStatusDropdownId] = useState<string | null>(null);
 
     const handleExportPDF = async () => {
         setIsExporting(true);
@@ -1520,7 +1521,7 @@ export default function PricingLedgerTable({
                                                 </span>
                                             </td>
 
-                                            <td className="px-8 py-5 text-right w-[140px]">
+                                            <td className="px-8 py-5 text-right w-[140px] relative">
                                                 {(() => {
                                                     const state = sku.displayState || 'Draft';
                                                     const styleMap: Record<string, string> = {
@@ -1533,12 +1534,78 @@ export default function PricingLedgerTable({
                                                         Inactive:
                                                             'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-800',
                                                     };
+                                                    const isOpen = openStatusDropdownId === sku.id;
+                                                    const statusOptions = [
+                                                        'Draft',
+                                                        'In Review',
+                                                        'Published',
+                                                        'Live',
+                                                        'Inactive',
+                                                    ];
                                                     return (
-                                                        <span
-                                                            className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-sm border ${styleMap[state] || styleMap['Draft']}`}
-                                                        >
-                                                            {state}
-                                                        </span>
+                                                        <>
+                                                            <button
+                                                                onClick={e => {
+                                                                    e.stopPropagation();
+                                                                    setOpenStatusDropdownId(isOpen ? null : sku.id);
+                                                                }}
+                                                                className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-sm border cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-emerald-400/50 ${styleMap[state] || styleMap['Draft']}`}
+                                                            >
+                                                                {state}
+                                                            </button>
+                                                            {isOpen && (
+                                                                <>
+                                                                    <div
+                                                                        className="fixed inset-0 z-40"
+                                                                        onClick={() => setOpenStatusDropdownId(null)}
+                                                                    />
+                                                                    <div className="absolute right-0 top-full mt-1 z-50 w-36 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                                                                        <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                                                                Change Status
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="p-1">
+                                                                            {statusOptions.map(opt => (
+                                                                                <button
+                                                                                    key={opt}
+                                                                                    onClick={() => {
+                                                                                        const statusMap: Record<
+                                                                                            string,
+                                                                                            | 'ACTIVE'
+                                                                                            | 'INACTIVE'
+                                                                                            | 'DRAFT'
+                                                                                            | 'RELAUNCH'
+                                                                                        > = {
+                                                                                            Draft: 'DRAFT',
+                                                                                            'In Review': 'DRAFT',
+                                                                                            Published: 'ACTIVE',
+                                                                                            Live: 'ACTIVE',
+                                                                                            Inactive: 'INACTIVE',
+                                                                                        };
+                                                                                        onUpdateStatus(
+                                                                                            sku.id,
+                                                                                            statusMap[opt] || 'DRAFT'
+                                                                                        );
+                                                                                        setOpenStatusDropdownId(null);
+                                                                                    }}
+                                                                                    className={`w-full text-left px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all flex items-center justify-between ${
+                                                                                        state === opt
+                                                                                            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600'
+                                                                                            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                                                                    }`}
+                                                                                >
+                                                                                    {opt}
+                                                                                    {state === opt && (
+                                                                                        <CheckCircle2 size={12} />
+                                                                                    )}
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                </>
+                                                            )}
+                                                        </>
                                                     );
                                                 })()}
                                             </td>
