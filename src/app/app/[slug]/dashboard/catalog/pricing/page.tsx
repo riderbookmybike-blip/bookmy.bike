@@ -357,6 +357,7 @@ export default function PricingPage() {
                     insurance_data: priceRecord?.insurance_data,
                     onRoad: priceRecord?.onRoad || finalPrice,
                     publishStage: publishStage,
+                    originalPublishStage: publishStage,
                     displayState: displayState,
                 };
             });
