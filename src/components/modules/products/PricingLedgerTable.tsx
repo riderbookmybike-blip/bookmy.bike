@@ -78,6 +78,7 @@ interface PricingLedgerTableProps {
     onUpdateOffer: (skuId: string, offer: number) => void;
     onUpdateInclusion: (skuId: string, type: 'MANDATORY' | 'OPTIONAL' | 'BUNDLE') => void;
     onUpdateStatus: (skuId: string, status: 'ACTIVE' | 'INACTIVE' | 'DRAFT' | 'RELAUNCH') => void;
+    onUpdatePublishStage?: (skuId: string, stage: string) => void; // AUMS: update cat_price_state.publish_stage
     onUpdateLocalStatus?: (skuId: string, isActive: boolean) => void;
     onSaveAll?: () => void;
     states: RegistrationRule[];
@@ -147,6 +148,7 @@ export default function PricingLedgerTable({
     onUpdateOffer,
     onUpdateInclusion,
     onUpdateStatus,
+    onUpdatePublishStage,
     onUpdateLocalStatus,
     onSaveAll,
     states,
@@ -1574,23 +1576,47 @@ export default function PricingLedgerTable({
                                                                                 <button
                                                                                     key={opt}
                                                                                     onClick={() => {
-                                                                                        const statusMap: Record<
-                                                                                            string,
-                                                                                            | 'ACTIVE'
-                                                                                            | 'INACTIVE'
-                                                                                            | 'DRAFT'
-                                                                                            | 'RELAUNCH'
-                                                                                        > = {
-                                                                                            Draft: 'DRAFT',
-                                                                                            'In Review': 'DRAFT',
-                                                                                            Published: 'ACTIVE',
-                                                                                            Live: 'ACTIVE',
-                                                                                            Inactive: 'INACTIVE',
-                                                                                        };
-                                                                                        onUpdateStatus(
-                                                                                            sku.id,
-                                                                                            statusMap[opt] || 'DRAFT'
-                                                                                        );
+                                                                                        if (
+                                                                                            isAums &&
+                                                                                            onUpdatePublishStage
+                                                                                        ) {
+                                                                                            // AUMS: Update publish_stage in cat_price_state
+                                                                                            const stageMap: Record<
+                                                                                                string,
+                                                                                                string
+                                                                                            > = {
+                                                                                                Draft: 'DRAFT',
+                                                                                                'In Review':
+                                                                                                    'UNDER_REVIEW',
+                                                                                                Published: 'PUBLISHED',
+                                                                                                Live: 'LIVE',
+                                                                                                Inactive: 'INACTIVE',
+                                                                                            };
+                                                                                            onUpdatePublishStage(
+                                                                                                sku.id,
+                                                                                                stageMap[opt] || 'DRAFT'
+                                                                                            );
+                                                                                        } else {
+                                                                                            // Non-AUMS: Update status in cat_items
+                                                                                            const statusMap: Record<
+                                                                                                string,
+                                                                                                | 'ACTIVE'
+                                                                                                | 'INACTIVE'
+                                                                                                | 'DRAFT'
+                                                                                                | 'RELAUNCH'
+                                                                                            > = {
+                                                                                                Draft: 'DRAFT',
+                                                                                                'In Review': 'DRAFT',
+                                                                                                Published: 'ACTIVE',
+                                                                                                Live: 'ACTIVE',
+                                                                                                Inactive: 'INACTIVE',
+                                                                                            };
+                                                                                            onUpdateStatus(
+                                                                                                sku.id,
+                                                                                                statusMap[opt] ||
+                                                                                                    'DRAFT'
+                                                                                            );
+                                                                                        }
                                                                                         setOpenStatusDropdownId(null);
                                                                                     }}
                                                                                     className={`w-full text-left px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all flex items-center justify-between ${

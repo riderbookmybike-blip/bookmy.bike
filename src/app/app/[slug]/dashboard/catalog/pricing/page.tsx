@@ -65,6 +65,8 @@ interface SKUPriceRow {
     onRoad?: number; // On-Road from RPC
     publishedAt?: string; // Latest publish timestamp
     displayState?: 'Draft' | 'In Review' | 'Published' | 'Live' | 'Inactive';
+    publishStage?: string; // AUMS: publish_stage from cat_price_state
+    originalPublishStage?: string; // For diff detection
     insurance_data?: any;
 }
 
@@ -396,6 +398,30 @@ export default function PricingPage() {
         setLastEditTime(Date.now());
     };
 
+    // AUMS: Update publish_stage in cat_price_state
+    const handleUpdatePublishStage = (skuId: string, stage: string) => {
+        const displayStateMap: Record<string, SKUPriceRow['displayState']> = {
+            DRAFT: 'Draft',
+            UNDER_REVIEW: 'In Review',
+            PUBLISHED: 'Published',
+            LIVE: 'Live',
+            INACTIVE: 'Inactive',
+        };
+        setSkus(prev =>
+            prev.map(s =>
+                s.id === skuId
+                    ? {
+                          ...s,
+                          publishStage: stage,
+                          displayState: displayStateMap[stage] || 'Draft',
+                      }
+                    : s
+            )
+        );
+        setHasUnsavedChanges(true);
+        setLastEditTime(Date.now());
+    };
+
     const handleUpdateLocalStatus = (skuId: string, isActive: boolean) => {
         setSkus(prev => prev.map(s => (s.id === skuId ? { ...s, localIsActive: isActive } : s)));
         setHasUnsavedChanges(true);
@@ -421,6 +447,8 @@ export default function PricingPage() {
                 district: 'ALL',
                 ex_showroom_price: s.exShowroom,
                 is_active: true,
+                // Include publish_stage if it was modified
+                ...(s.publishStage !== s.originalPublishStage && { publish_stage: s.publishStage }),
             }));
 
             const modifiedStatusSkus = skus.filter(s => s.status !== s.originalStatus);
@@ -795,6 +823,7 @@ export default function PricingPage() {
                             onUpdateOffer={handleUpdateOffer}
                             onUpdateInclusion={handleUpdateInclusion}
                             onUpdateStatus={handleUpdateStatus}
+                            onUpdatePublishStage={handleUpdatePublishStage}
                             onUpdateLocalStatus={handleUpdateLocalStatus}
                             onBulkUpdate={handleBulkUpdate}
                             onSaveAll={handleSaveAll}

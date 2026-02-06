@@ -612,20 +612,26 @@ export const ProductCard = ({
                             {displayModel}
                         </h3>
                         {/* Swatches (Standardized) */}
-                        {v.availableColors && v.availableColors.length > 0 && (
-                            <div className="flex items-center flex-wrap min-h-[1.25rem]">
-                                <div
-                                    onClick={e => {
-                                        if (!isSwatchesExpanded) {
-                                            e.stopPropagation();
-                                            setIsSwatchesExpanded(true);
-                                        }
-                                    }}
-                                    className={`flex items-center transition-all duration-500 ${isSwatchesExpanded ? 'gap-2 px-1 cursor-default' : '-space-x-2 cursor-pointer'}`}
-                                >
-                                    {v.availableColors
-                                        .slice(0, isSwatchesExpanded ? v.availableColors.length : 3)
-                                        .map((c, i) => (
+                        {(() => {
+                            const swatches =
+                                (v.availableColors || []).filter(
+                                    c => typeof c?.hexCode === 'string' && c.hexCode.trim().length > 0
+                                ) || [];
+                            if (swatches.length === 0) return null;
+
+                            return (
+                                <div className="flex items-center min-h-[1.25rem] flex-nowrap">
+                                    <div
+                                        onClick={e => {
+                                            if (!isSwatchesExpanded) {
+                                                e.stopPropagation();
+                                                setIsSwatchesExpanded(true);
+                                            }
+                                        }}
+                                        onMouseLeave={() => setIsSwatchesExpanded(false)}
+                                        className={`flex items-center transition-all duration-500 ${isSwatchesExpanded ? 'gap-2 px-1 cursor-default' : '-space-x-2 cursor-pointer'}`}
+                                    >
+                                        {swatches.slice(0, isSwatchesExpanded ? swatches.length : 3).map((c, i) => (
                                             <div
                                                 key={i}
                                                 onClick={e => {
@@ -656,14 +662,15 @@ export const ProductCard = ({
                                                 title={c.name}
                                             />
                                         ))}
-                                    {v.availableColors.length > 3 && !isSwatchesExpanded && (
-                                        <div className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 border border-white dark:border-slate-900 flex items-center justify-center relative z-10 text-[9px] font-bold text-slate-500 hover:bg-slate-200">
-                                            +{v.availableColors.length - 3}
-                                        </div>
-                                    )}
+                                        {swatches.length > 3 && !isSwatchesExpanded && (
+                                            <div className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 border border-white dark:border-slate-900 flex items-center justify-center relative z-10 text-[9px] font-bold text-slate-500 hover:bg-slate-200">
+                                                +{swatches.length - 3}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            );
+                        })()}
                     </div>
 
                     <div className="flex flex-col mt-1">

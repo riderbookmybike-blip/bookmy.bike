@@ -12,6 +12,7 @@ interface PricePayload {
     district: string;
     ex_showroom_price: number;
     is_active: boolean;
+    publish_stage?: string; // AUMS status: DRAFT, UNDER_REVIEW, PUBLISHED, LIVE, INACTIVE
 }
 
 interface StatusPayload {
@@ -38,6 +39,7 @@ export async function savePrices(
                 district: p.district || 'ALL',
                 ex_showroom_price: p.ex_showroom_price,
                 is_active: p.is_active,
+                ...(p.publish_stage && { publish_stage: p.publish_stage }),
                 updated_at: new Date().toISOString(),
             }));
 
