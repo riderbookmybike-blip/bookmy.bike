@@ -231,11 +231,11 @@ export default function QuoteEditorTable({
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 p-6">
+        <div className="min-h-screen bg-slate-50 dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 p-6">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-4">
-                    <h1 className="text-2xl font-black text-white tracking-tight">
+                    <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
                         Quote <span className="text-brand-primary">#{quote.displayId}</span>
                     </h1>
                     <span
@@ -252,7 +252,7 @@ export default function QuoteEditorTable({
                         size="sm"
                         onClick={handleSave}
                         disabled={!hasChanges || isSaving}
-                        className="gap-2 bg-white/5 border-white/10 text-white hover:bg-white/10"
+                        className="gap-2 bg-white/5 border-slate-200 dark:border-white/10 text-white hover:bg-white/10"
                     >
                         <Save size={14} />
                         Save Draft
@@ -269,7 +269,7 @@ export default function QuoteEditorTable({
                     <Button
                         size="sm"
                         onClick={onConfirmBooking}
-                        className="gap-2 bg-green-600 hover:bg-green-700 text-white"
+                        className="gap-2 bg-green-600 hover:bg-green-700 text-slate-900 dark:text-white"
                     >
                         <CheckCircle2 size={14} />
                         Confirm Booking
@@ -281,8 +281,8 @@ export default function QuoteEditorTable({
                 {/* Left Column: Customer + Vehicle */}
                 <div className="col-span-3 space-y-4">
                     {/* Customer Card */}
-                    <div className="bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl p-5">
-                        <h3 className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-4">
+                    <div className="bg-white dark:bg-white/[0.03] backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-5">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/40 mb-4">
                             Customer Details
                         </h3>
                         <div className="space-y-3">
@@ -291,8 +291,12 @@ export default function QuoteEditorTable({
                                     <User size={14} className="text-indigo-400" />
                                 </div>
                                 <div>
-                                    <p className="text-[9px] text-white/40 uppercase tracking-wider">Name</p>
-                                    <p className="text-sm font-bold text-white">{quote.customer.name}</p>
+                                    <p className="text-[9px] text-slate-500 dark:text-white/40 uppercase tracking-wider">
+                                        Name
+                                    </p>
+                                    <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                        {quote.customer.name}
+                                    </p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
@@ -300,8 +304,12 @@ export default function QuoteEditorTable({
                                     <Phone size={14} className="text-green-400" />
                                 </div>
                                 <div>
-                                    <p className="text-[9px] text-white/40 uppercase tracking-wider">Phone</p>
-                                    <p className="text-sm font-bold text-white">{quote.customer.phone}</p>
+                                    <p className="text-[9px] text-slate-500 dark:text-white/40 uppercase tracking-wider">
+                                        Phone
+                                    </p>
+                                    <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                        {quote.customer.phone}
+                                    </p>
                                 </div>
                             </div>
                             {quote.customer.email && (
@@ -310,7 +318,9 @@ export default function QuoteEditorTable({
                                         <Mail size={14} className="text-blue-400" />
                                     </div>
                                     <div>
-                                        <p className="text-[9px] text-white/40 uppercase tracking-wider">Email</p>
+                                        <p className="text-[9px] text-slate-500 dark:text-white/40 uppercase tracking-wider">
+                                            Email
+                                        </p>
                                         <p className="text-sm font-bold text-white truncate">{quote.customer.email}</p>
                                     </div>
                                 </div>
@@ -320,8 +330,10 @@ export default function QuoteEditorTable({
                                     <Sparkles size={14} className="text-amber-400" />
                                 </div>
                                 <div>
-                                    <p className="text-[9px] text-white/40 uppercase tracking-wider">Lead Source</p>
-                                    <p className="text-sm font-bold text-white">
+                                    <p className="text-[9px] text-slate-500 dark:text-white/40 uppercase tracking-wider">
+                                        Lead Source
+                                    </p>
+                                    <p className="text-sm font-bold text-slate-900 dark:text-white">
                                         {quote.customer.leadSource || 'Website'}
                                     </p>
                                 </div>
@@ -330,8 +342,8 @@ export default function QuoteEditorTable({
                     </div>
 
                     {/* Vehicle Card */}
-                    <div className="bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl p-5">
-                        <h3 className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-4">
+                    <div className="bg-white dark:bg-white/[0.03] backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-5">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/40 mb-4">
                             Vehicle Details
                         </h3>
                         {quote.vehicle.imageUrl && (
@@ -369,26 +381,26 @@ export default function QuoteEditorTable({
 
                 {/* Center Column: Pricing Table */}
                 <div className="col-span-6">
-                    <div className="bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden">
+                    <div className="bg-white dark:bg-white/[0.03] backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden">
                         {/* Table Header */}
-                        <div className="grid grid-cols-4 gap-4 p-4 bg-white/[0.02] border-b border-white/10">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-white/40">
+                        <div className="grid grid-cols-4 gap-4 p-4 bg-white/[0.02] border-b border-slate-200 dark:border-white/10">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/40">
                                 Component
                             </span>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-white/40 text-right">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/40 text-right">
                                 Base
                             </span>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-white/40 text-center">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/40 text-center">
                                 Adjustment
                             </span>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-white/40 text-right">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/40 text-right">
                                 Final
                             </span>
                         </div>
 
                         {/* Ex-Showroom Row */}
                         <div className="grid grid-cols-4 gap-4 p-4 border-b border-white/5 items-center">
-                            <span className="text-sm font-medium text-white">Ex-Showroom</span>
+                            <span className="text-sm font-medium text-slate-900 dark:text-white">Ex-Showroom</span>
                             <span className="text-sm font-bold text-white text-right">
                                 {formatCurrency(localPricing.exShowroom)}
                             </span>
@@ -401,7 +413,7 @@ export default function QuoteEditorTable({
                         {/* RTO Row */}
                         <div className="grid grid-cols-4 gap-4 p-4 border-b border-white/5 items-center">
                             <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-white">RTO</span>
+                                <span className="text-sm font-medium text-slate-900 dark:text-white">RTO</span>
                                 <div className="group relative">
                                     <Info size={12} className="text-white/30 cursor-help" />
                                     <div className="absolute left-0 bottom-full mb-2 w-48 p-3 bg-slate-800 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 text-xs">
@@ -440,7 +452,7 @@ export default function QuoteEditorTable({
                         {/* Insurance Row */}
                         <div className="grid grid-cols-4 gap-4 p-4 border-b border-white/5 items-start">
                             <div>
-                                <span className="text-sm font-medium text-white">Insurance</span>
+                                <span className="text-sm font-medium text-slate-900 dark:text-white">Insurance</span>
                                 <div className="mt-2 space-y-1 text-xs text-white/50">
                                     <div className="flex justify-between">
                                         <span>OD</span>
@@ -467,7 +479,7 @@ export default function QuoteEditorTable({
                                         className={`px-2 py-1 rounded-full text-[9px] font-bold transition-colors flex items-center gap-1 ${
                                             addon.selected
                                                 ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                                : 'bg-white/10 text-white/40 border border-white/10'
+                                                : 'bg-white/10 text-slate-500 dark:text-white/40 border border-slate-200 dark:border-white/10'
                                         }`}
                                     >
                                         {addon.selected ? <CheckCircle2 size={10} /> : <Plus size={10} />}
@@ -482,7 +494,7 @@ export default function QuoteEditorTable({
 
                         {/* Accessories Row */}
                         <div className="grid grid-cols-4 gap-4 p-4 border-b border-white/5 items-start">
-                            <span className="text-sm font-medium text-white">Accessories</span>
+                            <span className="text-sm font-medium text-slate-900 dark:text-white">Accessories</span>
                             <span className="text-sm font-bold text-white text-right">
                                 {formatCurrency(localPricing.accessories.reduce((sum, a) => sum + a.price, 0))}
                             </span>
@@ -494,7 +506,7 @@ export default function QuoteEditorTable({
                                         className={`px-2 py-1 rounded-full text-[9px] font-bold transition-colors flex items-center gap-1 ${
                                             acc.selected
                                                 ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
-                                                : 'bg-white/10 text-white/40 border border-white/10'
+                                                : 'bg-white/10 text-slate-500 dark:text-white/40 border border-slate-200 dark:border-white/10'
                                         }`}
                                     >
                                         {acc.selected ? <CheckCircle2 size={10} /> : <Plus size={10} />}
@@ -553,7 +565,7 @@ export default function QuoteEditorTable({
 
                         {/* Total Row */}
                         <div className="grid grid-cols-4 gap-4 p-6 bg-brand-primary/10 items-center">
-                            <span className="text-lg font-black text-white">Total On-Road</span>
+                            <span className="text-lg font-black text-slate-900 dark:text-white">Total On-Road</span>
                             <span className="col-span-2"></span>
                             <span className="text-2xl font-black text-brand-primary text-right">
                                 {formatCurrency(localPricing.finalTotal)}
@@ -563,8 +575,8 @@ export default function QuoteEditorTable({
 
                     {/* Manager Note */}
                     {isEditable && (
-                        <div className="mt-4 bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl p-4">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-2 block">
+                        <div className="mt-4 bg-white dark:bg-white/[0.03] backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/40 mb-2 block">
                                 Manager Note (Internal)
                             </label>
                             <textarea
@@ -574,7 +586,7 @@ export default function QuoteEditorTable({
                                     setHasChanges(true);
                                 }}
                                 rows={2}
-                                className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 resize-none"
+                                className="w-full bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg p-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 resize-none"
                                 placeholder="Add a note about this discount..."
                             />
                         </div>
@@ -583,8 +595,8 @@ export default function QuoteEditorTable({
 
                 {/* Right Column: Timeline */}
                 <div className="col-span-3">
-                    <div className="bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl p-5">
-                        <h3 className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-4">
+                    <div className="bg-white dark:bg-white/[0.03] backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-5">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/40 mb-4">
                             Quote Timeline
                         </h3>
                         <div className="space-y-4">
@@ -597,8 +609,12 @@ export default function QuoteEditorTable({
                                         )}
                                     </div>
                                     <div className="flex-1 pb-4">
-                                        <p className="text-sm font-bold text-white">{event.event}</p>
-                                        <p className="text-xs text-white/40">{formatDate(event.timestamp)}</p>
+                                        <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                            {event.event}
+                                        </p>
+                                        <p className="text-xs text-slate-500 dark:text-white/40">
+                                            {formatDate(event.timestamp)}
+                                        </p>
                                         {event.actor && (
                                             <p className="text-xs text-white/30 mt-0.5">by {event.actor}</p>
                                         )}
@@ -609,33 +625,37 @@ export default function QuoteEditorTable({
                     </div>
 
                     {/* Studio Info */}
-                    <div className="mt-4 bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl p-5">
-                        <h3 className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-3">
+                    <div className="mt-4 bg-white dark:bg-white/[0.03] backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-5">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/40 mb-3">
                             Dealership
                         </h3>
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                                <MapPin size={18} className="text-white" />
+                                <MapPin size={18} className="text-slate-900 dark:text-white" />
                             </div>
                             <div>
-                                <p className="text-sm font-bold text-white">{quote.studioName || 'Studio'}</p>
-                                <p className="text-xs text-white/40">ID: {quote.studioId?.slice(0, 8) || 'N/A'}...</p>
+                                <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                    {quote.studioName || 'Studio'}
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-white/40">
+                                    ID: {quote.studioId?.slice(0, 8) || 'N/A'}...
+                                </p>
                             </div>
                         </div>
                     </div>
 
                     {/* Expected Delivery */}
                     {quote.expectedDelivery && (
-                        <div className="mt-4 bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl p-5">
-                            <h3 className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-3">
+                        <div className="mt-4 bg-white dark:bg-white/[0.03] backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-5">
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/40 mb-3">
                                 Expected Delivery
                             </h3>
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
-                                    <Truck size={18} className="text-white" />
+                                    <Truck size={18} className="text-slate-900 dark:text-white" />
                                 </div>
                                 <div>
-                                    <p className="text-sm font-bold text-white">
+                                    <p className="text-sm font-bold text-slate-900 dark:text-white">
                                         {new Date(quote.expectedDelivery).toLocaleDateString('en-IN', {
                                             weekday: 'long',
                                             day: 'numeric',

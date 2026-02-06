@@ -1008,8 +1008,7 @@ export async function getQuoteById(
         .select(
             `
             *,
-            lead:crm_leads(customer_name, customer_phone, utm_data, events_log),
-            studio:studios(name)
+            lead:crm_leads(customer_name, customer_phone, utm_data, events_log)
         `
         )
         .eq('id', quoteId)
@@ -1054,7 +1053,7 @@ export async function getQuoteById(
         reviewedAt: q.reviewed_at,
         expectedDelivery: q.expected_delivery,
         studioId: q.studio_id,
-        studioName: q.studio?.name || null,
+        studioName: null, // Studio join removed - no FK relationship
         customer: {
             name: q.lead?.customer_name || 'N/A',
             phone: q.lead?.customer_phone || 'N/A',
