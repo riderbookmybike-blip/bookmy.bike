@@ -85,14 +85,7 @@ export const ProductCard = ({
     const [selectedColorFlip, setSelectedColorFlip] = useState<boolean>(v.isFlipped || false);
     const [selectedColorOffsetX, setSelectedColorOffsetX] = useState<number>(v.offsetX || 0);
     const [selectedColorOffsetY, setSelectedColorOffsetY] = useState<number>(v.offsetY || 0);
-    const [isSwatchesExpanded, setIsSwatchesExpanded] = useState(false);
-
-    // Reset swarm expansion when parent card collapses
-    useEffect(() => {
-        if (isParentCompact) {
-            setIsSwatchesExpanded(false);
-        }
-    }, [isParentCompact]);
+    const isSwatchesExpanded = false;
     const [selectedHex, setSelectedHex] = useState<string | null>(() => {
         const match = v.availableColors?.find(c => c.imageUrl === v.imageUrl) || v.availableColors?.[0];
         return match?.hexCode || null;
@@ -621,27 +614,12 @@ export const ProductCard = ({
 
                             return (
                                 <div className="flex items-center min-h-[1.25rem] flex-nowrap">
-                                    <div
-                                        onClick={e => {
-                                            if (!isSwatchesExpanded) {
-                                                e.stopPropagation();
-                                                setIsSwatchesExpanded(true);
-                                            }
-                                        }}
-                                        onMouseLeave={() => setIsSwatchesExpanded(false)}
-                                        className={`flex items-center transition-all duration-500 ${isSwatchesExpanded ? 'gap-2 px-1 cursor-default' : '-space-x-2 cursor-pointer'}`}
-                                    >
-                                        {swatches.slice(0, isSwatchesExpanded ? swatches.length : 3).map((c, i) => (
+                                    <div className="flex items-center -space-x-2 cursor-pointer">
+                                        {swatches.slice(0, 3).map((c, i) => (
                                             <div
                                                 key={i}
                                                 onClick={e => {
                                                     e.stopPropagation();
-                                                    // If collapsed, clicking a swatch should expand first
-                                                    if (!isSwatchesExpanded) {
-                                                        setIsSwatchesExpanded(true);
-                                                        return;
-                                                    }
-
                                                     if (c.imageUrl) {
                                                         setSelectedColorImage(c.imageUrl);
                                                         setSelectedColorZoom(c.zoomFactor || null);
@@ -657,12 +635,12 @@ export const ProductCard = ({
                                                         onColorChange(c.id);
                                                     }
                                                 }}
-                                                className={`rounded-full border border-white dark:border-slate-900 shadow-sm relative hover:scale-110 transition-all duration-300 ${isSwatchesExpanded ? 'w-6 h-6 cursor-pointer' : 'w-5 h-5 cursor-pointer'} ${selectedHex === c.hexCode ? 'z-20 scale-105 ring-2 ring-brand-primary ring-offset-1 ring-offset-white dark:ring-offset-[#0f1115] border-transparent' : 'z-10'}`}
+                                                className={`w-5 h-5 rounded-full border border-white dark:border-slate-900 shadow-sm relative hover:scale-110 transition-all duration-300 cursor-pointer ${selectedHex === c.hexCode ? 'z-20 scale-105 ring-2 ring-brand-primary ring-offset-1 ring-offset-white dark:ring-offset-[#0f1115] border-transparent' : 'z-10'}`}
                                                 style={{ background: c.hexCode }}
                                                 title={c.name}
                                             />
                                         ))}
-                                        {swatches.length > 3 && !isSwatchesExpanded && (
+                                        {swatches.length > 3 && (
                                             <div className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 border border-white dark:border-slate-900 flex items-center justify-center relative z-10 text-[9px] font-bold text-slate-500 hover:bg-slate-200">
                                                 +{swatches.length - 3}
                                             </div>

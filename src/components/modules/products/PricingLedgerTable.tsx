@@ -933,7 +933,7 @@ export default function PricingLedgerTable({
                                                 onClick={() => handleSort('displayState')}
                                                 className="flex items-center gap-1 hover:text-emerald-600 transition-colors cursor-pointer"
                                             >
-                                                State{' '}
+                                                Status{' '}
                                                 <ArrowUpDown
                                                     size={12}
                                                     className={`opacity-30 ${sortConfig?.key === 'displayState' ? 'text-emerald-600 opacity-100' : ''}`}
@@ -970,7 +970,7 @@ export default function PricingLedgerTable({
                                                 <div className="absolute top-[80%] right-6 mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                                                     <div className="p-3 border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
                                                         <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                                                            Filter state
+                                                            Filter Status
                                                         </span>
                                                         {filters.displayState && (
                                                             <button
@@ -986,7 +986,7 @@ export default function PricingLedgerTable({
                                                             onClick={() => handleFilter('displayState', '')}
                                                             className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${!filters.displayState || filters.displayState === '' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                                                         >
-                                                            All States
+                                                            All Statuses
                                                             {(!filters.displayState || filters.displayState === '') && (
                                                                 <CheckCircle2 size={12} />
                                                             )}
