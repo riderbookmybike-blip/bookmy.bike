@@ -29,9 +29,11 @@ function slugify(text: string): string {
         .toString()
         .toLowerCase()
         .trim()
+        .replace(/\+/g, 'plus') // Convert + to plus (Splendor+ → splendor-plus)
         .replace(/\s+/g, '-') // Replace spaces with -
         .replace(/[^\w-]+/g, '') // Remove all non-word chars
-        .replace(/--+/g, '-'); // Replace multiple - with single -
+        .replace(/--+/g, '-') // Replace multiple - with single -
+        .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
 }
 
 /**

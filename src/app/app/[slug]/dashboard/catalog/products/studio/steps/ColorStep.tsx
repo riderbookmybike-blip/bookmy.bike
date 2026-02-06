@@ -136,7 +136,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                     hex_secondary: null,
                 },
                 type: 'COLOR_DEF',
-                status: 'INACTIVE', // NEW: Default to INACTIVE - admin must explicitly activate
+                status: 'ACTIVE', // SOT: Default to ACTIVE - AUMS needs active SKUs for pricing
                 brand_id: family.brand_id,
                 template_id: family.template_id,
                 parent_id: family.id,
@@ -288,25 +288,11 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
         offsetX?: number,
         offsetY?: number
     ) => {
-        window.alert('DEBUG: handleSaveMedia reached in ColorStep.tsx');
-        console.error('DEBUG: handleSaveMedia called', {
-            images,
-            videos,
-            pdfs,
-            primary,
-            applyVideosToAll,
-            zoomFactor,
-            isFlipped,
-            offsetX,
-            offsetY,
-        });
         if (!activeColorId) {
-            console.error('DEBUG: No activeColorId found');
             return;
         }
 
         try {
-            console.log('DEBUG: Proceeding with save for ID:', activeColorId);
             const updatedList = existingColors.map((c: any) => {
                 if (c.id === activeColorId) {
                     return {

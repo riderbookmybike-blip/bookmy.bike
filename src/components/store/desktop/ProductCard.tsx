@@ -85,6 +85,26 @@ export const ProductCard = ({
     const [selectedColorFlip, setSelectedColorFlip] = useState<boolean>(v.isFlipped || false);
     const [selectedColorOffsetX, setSelectedColorOffsetX] = useState<number>(v.offsetX || 0);
     const [selectedColorOffsetY, setSelectedColorOffsetY] = useState<number>(v.offsetY || 0);
+    const [cachedScheme, setCachedScheme] = useState<{
+        interestRate: number;
+        interestType?: 'FLAT' | 'REDUCING';
+    } | null>(null);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        try {
+            const raw = localStorage.getItem('bmb_finance_scheme_cache');
+            if (!raw) return;
+            const parsed = JSON.parse(raw);
+            if (parsed?.expiresAt && Date.now() > parsed.expiresAt) return;
+            if (parsed?.scheme?.interestRate) {
+                setCachedScheme({
+                    interestRate: parsed.scheme.interestRate,
+                    interestType: parsed.scheme.interestType,
+                });
+            }
+        } catch {}
+    }, []);
     const isSwatchesExpanded = false;
     const [selectedHex, setSelectedHex] = useState<string | null>(() => {
         const match = v.availableColors?.find(c => c.imageUrl === v.imageUrl) || v.availableColors?.[0];
@@ -181,7 +201,26 @@ export const ProductCard = ({
     // const TENURE_OPTIONS = [12, 24, 36, 48, 60];
     const EMI_FACTORS: Record<number, number> = { 12: 0.091, 24: 0.049, 36: 0.035, 48: 0.028, 60: 0.024 };
     const activeTenure = tenure || 36;
-    const emiValue = Math.max(0, Math.round((basePrice - downpayment) * (EMI_FACTORS[activeTenure] || 0.035)));
+    const loanAmount = Math.max(0, basePrice - downpayment);
+    const emiValue = (() => {
+        if (!cachedScheme?.interestRate) {
+            return null;
+        }
+        const annualRate = cachedScheme.interestRate / 100;
+        if (cachedScheme.interestType === 'FLAT') {
+            const totalInterest = loanAmount * annualRate * (activeTenure / 12);
+            return Math.max(0, Math.round((loanAmount + totalInterest) / activeTenure));
+        }
+        const monthlyRate = annualRate / 12;
+        if (monthlyRate === 0) return Math.max(0, Math.round(loanAmount / activeTenure));
+        return Math.max(
+            0,
+            Math.round(
+                (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, activeTenure)) /
+                    (Math.pow(1 + monthlyRate, activeTenure) - 1)
+            )
+        );
+    })();
 
     // Handle optional serviceability
     const safeServiceability = serviceability || { status: 'unset' };
@@ -397,10 +436,10 @@ export const ProductCard = ({
                                 <div className="h-10 relative">
                                     <div className="flex flex-col">
                                         <p className="text-3xl font-black text-brand-primary drop-shadow-[0_0_8px_rgba(244,176,0,0.2)] leading-none">
-                                            ₹{emiValue.toLocaleString('en-IN')}
+                                            {emiValue !== null ? `₹${emiValue.toLocaleString('en-IN')}` : '—'}
                                         </p>
                                         <p className="text-sm font-black text-slate-500 dark:text-slate-300 uppercase mt-2">
-                                            x{activeTenure}
+                                            {emiValue !== null ? `x${activeTenure}` : 'Finance unavailable'}
                                         </p>
                                     </div>
                                 </div>
@@ -485,12 +524,21 @@ export const ProductCard = ({
                 <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-white/10 dark:to-black/30 z-0" />
 
                 <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
-                    {/* Primary Discount Pill (from catalog data) */}
+                    {/* Primary Discount Pill (from catalog data) - SAVE for positive, SURGE for negative */}
                     {(v.price?.discount || 0) > 0 && !bestOffer && (
                         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 dark:bg-emerald-600 text-white rounded-xl shadow-[0_4px_12px_rgba(16,185,129,0.3)] border border-emerald-400/30 transition-all hover:scale-105">
-                            <Zap size={10} className="fill-white text-white" />
+                            <Sparkles size={10} className="fill-white text-white" />
                             <span className="text-[10px] font-black uppercase tracking-wider">
                                 Save ₹{v.price.discount?.toLocaleString('en-IN')}
+                            </span>
+                        </div>
+                    )}
+                    {/* SURGE Pill for negative discount (price increase) */}
+                    {(v.price?.discount || 0) < 0 && !bestOffer && (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500 dark:bg-rose-600 text-white rounded-xl shadow-[0_4px_12px_rgba(244,63,94,0.3)] border border-rose-400/30 transition-all hover:scale-105">
+                            <Zap size={10} className="fill-white text-white" />
+                            <span className="text-[10px] font-black uppercase tracking-wider">
+                                Surge ₹{Math.abs(v.price.discount || 0).toLocaleString('en-IN')}
                             </span>
                         </div>
                     )}
@@ -723,25 +771,26 @@ export const ProductCard = ({
                         </div>
                         <div className="flex items-baseline gap-1">
                             <span className="text-xl md:text-2xl font-black text-green-600 dark:text-green-500 italic">
-                                ₹{emiValue.toLocaleString('en-IN')}
+                                {emiValue !== null ? `₹${emiValue.toLocaleString('en-IN')}` : '—'}
                             </span>
                             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">/mo</span>
                         </div>
-                        {/* EMI Tooltip */}
-                        <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-slate-900 dark:bg-slate-800 text-white text-[10px] rounded-xl shadow-xl opacity-0 invisible group-hover/emi:opacity-100 group-hover/emi:visible transition-all duration-200 z-50 pointer-events-none">
-                            <p className="leading-relaxed">
-                                This EMI is calculated on{' '}
-                                <span className="font-bold text-green-400">
-                                    ₹{(downpayment || 0).toLocaleString('en-IN')}
-                                </span>{' '}
-                                downpayment at <span className="font-bold text-green-400">{tenure} months</span>.
-                            </p>
-                            <p className="mt-1.5 text-slate-300">
-                                Adjust your downpayment & tenure or set your budget from the{' '}
-                                <span className="font-bold text-brand-primary">Filters</span> above.
-                            </p>
-                            <div className="absolute bottom-0 right-4 translate-y-1/2 rotate-45 w-2 h-2 bg-slate-900 dark:bg-slate-800"></div>
-                        </div>
+                        {emiValue !== null && (
+                            <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-slate-900 dark:bg-slate-800 text-white text-[10px] rounded-xl shadow-xl opacity-0 invisible group-hover/emi:opacity-100 group-hover/emi:visible transition-all duration-200 z-50 pointer-events-none">
+                                <p className="leading-relaxed">
+                                    This EMI is calculated on{' '}
+                                    <span className="font-bold text-green-400">
+                                        ₹{(downpayment || 0).toLocaleString('en-IN')}
+                                    </span>{' '}
+                                    downpayment at <span className="font-bold text-green-400">{tenure} months</span>.
+                                </p>
+                                <p className="mt-1.5 text-slate-300">
+                                    Adjust your downpayment & tenure or set your budget from the{' '}
+                                    <span className="font-bold text-brand-primary">Filters</span> above.
+                                </p>
+                                <div className="absolute bottom-0 right-4 translate-y-1/2 rotate-45 w-2 h-2 bg-slate-900 dark:bg-slate-800"></div>
+                            </div>
+                        )}
                     </div>
                 </div>
 

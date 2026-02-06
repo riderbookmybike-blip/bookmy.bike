@@ -633,7 +633,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                                         exShowroom: pricing?.ex_showroom ?? item.price?.exShowroom,
                                         onRoad: pricing?.final_on_road ?? item.price?.onRoad,
                                         offerPrice: (pricing?.final_on_road ?? item.price?.offerPrice) + offerDelta,
-                                        discount: offerDelta < 0 ? Math.abs(offerDelta) : 0,
+                                        discount: -offerDelta, // Negative = surge, Positive = savings
                                         pricingSource: pricingSource || item.price?.pricingSource,
                                         isEstimate: false,
                                     },

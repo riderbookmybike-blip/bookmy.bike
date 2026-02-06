@@ -17,6 +17,10 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
     const router = useRouter();
     const { setActiveColorHex } = useActiveColor();
     const { isFavorite, toggleFavorite } = useFavorites();
+    const [cachedScheme, setCachedScheme] = useState<{
+        interestRate: number;
+        interestType?: 'FLAT' | 'REDUCING';
+    } | null>(null);
 
     // Adapt database structure to component needs
     const rawColors = product.availableColors || [];
@@ -46,16 +50,47 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
     const [isColorSelectorOpen, setIsColorSelectorOpen] = useState(false);
     const [isInfoOpen, setIsInfoOpen] = useState(false);
 
-    const activeColor = colors[activeColorIdx] || colors[0] || { hexCode: '#E8E8E8', imageUrl: product.imageUrl, name: 'Default' };
+    const activeColor = colors[activeColorIdx] ||
+        colors[0] || { hexCode: '#E8E8E8', imageUrl: product.imageUrl, name: 'Default' };
 
     // Sync active color with context for header adaptation (on mount and color change)
     useEffect(() => {
         setActiveColorHex(activeColor.hexCode || '#E8E8E8');
     }, [activeColor.hexCode, setActiveColorHex, isActive]);
 
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        try {
+            const raw = localStorage.getItem('bmb_finance_scheme_cache');
+            if (!raw) return;
+            const parsed = JSON.parse(raw);
+            if (parsed?.expiresAt && Date.now() > parsed.expiresAt) return;
+            if (parsed?.scheme?.interestRate) {
+                setCachedScheme({
+                    interestRate: parsed.scheme.interestRate,
+                    interestType: parsed.scheme.interestType,
+                });
+            }
+        } catch {}
+    }, []);
+
     const basePrice = product.price?.onRoad || 0;
-    const emi = Math.round(basePrice * 0.035);
-    const location = "PALGHAR";
+    const emi = (() => {
+        if (!cachedScheme?.interestRate) return null;
+        const annualRate = cachedScheme.interestRate / 100;
+        const tenure = 36;
+        const loanAmount = basePrice;
+        if (cachedScheme.interestType === 'FLAT') {
+            const totalInterest = loanAmount * annualRate * (tenure / 12);
+            return Math.round((loanAmount + totalInterest) / tenure);
+        }
+        const monthlyRate = annualRate / 12;
+        if (monthlyRate === 0) return Math.round(loanAmount / tenure);
+        return Math.round(
+            (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, tenure)) / (Math.pow(1 + monthlyRate, tenure) - 1)
+        );
+    })();
+    const location = 'PALGHAR';
 
     // Use discount as offer (negative for surge, positive for save)
     const offerAmount = product.price?.discount || 0;
@@ -64,9 +99,11 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
     const offerValue = Math.abs(offerAmount).toLocaleString('en-IN');
 
     // Extract specs
-    const engine = product.specifications?.engine?.displacement || product.displacement + ' ' + product.powerUnit || 'N/A';
+    const engine =
+        product.specifications?.engine?.displacement || product.displacement + ' ' + product.powerUnit || 'N/A';
     const mileage = product.specifications?.battery?.range || 'N/A';
-    const weight = product.specifications?.dimensions?.kerbWeight || product.specifications?.dimensions?.curbWeight || 'N/A';
+    const weight =
+        product.specifications?.dimensions?.kerbWeight || product.specifications?.dimensions?.curbWeight || 'N/A';
 
     // Function to create a lighter shade of the hex color
     const getLighterShade = (hexColor: string, amount: number = 0.85): string => {
@@ -109,7 +146,7 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                 height: '100dvh',
                 maxHeight: '100dvh',
                 // Full flood of color
-                background: lightShade
+                background: lightShade,
             }}
         >
             {/* Texture Overlay (Noise) */}
@@ -147,7 +184,7 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
 
                 {/* Favorite Heart Icon */}
                 <motion.button
-                    onClick={(e) => {
+                    onClick={e => {
                         e.stopPropagation();
                         toggleFavorite({
                             id: product.id,
@@ -156,7 +193,7 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                             variant: product.variant,
                             imageUrl: activeColor.imageUrl || product.imageUrl,
                             price: product.price?.onRoad || 0,
-                            slug: product.slug
+                            slug: product.slug,
                         });
                     }}
                     whileTap={{ scale: 0.85 }}
@@ -165,15 +202,14 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                     <motion.div
                         initial={false}
                         animate={{
-                            scale: isFavorite(product.id) ? [1, 1.3, 1] : 1
+                            scale: isFavorite(product.id) ? [1, 1.3, 1] : 1,
                         }}
                         transition={{ duration: 0.3 }}
                     >
                         <Heart
-                            className={`size-5 transition-colors ${isFavorite(product.id)
-                                ? 'fill-red-500 stroke-red-500'
-                                : 'fill-none stroke-white'
-                                }`}
+                            className={`size-5 transition-colors ${
+                                isFavorite(product.id) ? 'fill-red-500 stroke-red-500' : 'fill-none stroke-white'
+                            }`}
                         />
                     </motion.div>
                 </motion.button>
@@ -192,7 +228,7 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                                 initial={{ y: 20 }}
                                 animate={{ y: 0 }}
                                 className="bg-white rounded-3xl p-6 w-[90%] max-w-md shadow-2xl"
-                                onClick={(e) => e.stopPropagation()}
+                                onClick={e => e.stopPropagation()}
                             >
                                 <div className="flex justify-between items-center mb-6">
                                     <h3 className="text-lg font-black uppercase tracking-tight">Choose Color</h3>
@@ -209,10 +245,11 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                                         <button
                                             key={color.id}
                                             onClick={() => handleColorSelect(idx)}
-                                            className={`flex flex-col items-center gap-2 p-3 rounded-2xl transition-all active:scale-95 ${idx === activeColorIdx
-                                                ? 'bg-zinc-100 ring-2 ring-black'
-                                                : 'hover:bg-zinc-50'
-                                                }`}
+                                            className={`flex flex-col items-center gap-2 p-3 rounded-2xl transition-all active:scale-95 ${
+                                                idx === activeColorIdx
+                                                    ? 'bg-zinc-100 ring-2 ring-black'
+                                                    : 'hover:bg-zinc-50'
+                                            }`}
                                         >
                                             <div
                                                 className="w-16 h-16 rounded-full shadow-lg"
@@ -274,9 +311,7 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                         </p>
 
                         {/* Active Color Name - Secondary - Dark Black */}
-                        <div
-                            className="text-[10px] font-black text-zinc-900 uppercase tracking-widest mt-0.5"
-                        >
+                        <div className="text-[10px] font-black text-zinc-900 uppercase tracking-widest mt-0.5">
                             {activeColor.name}
                         </div>
 
@@ -284,16 +319,20 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                         <div className="flex items-center gap-3 mt-1 h-10 overflow-x-auto no-scrollbar mask-gradient pr-4">
                             {colors.length > 0 ? (
                                 colors.map((color: any, idx: number) => (
-                                    <div key={color.id || idx} className="relative flex items-center justify-center shrink-0 w-7 h-7">
+                                    <div
+                                        key={color.id || idx}
+                                        className="relative flex items-center justify-center shrink-0 w-7 h-7"
+                                    >
                                         <button
-                                            onClick={(e) => {
+                                            onClick={e => {
                                                 e.stopPropagation();
                                                 setActiveColorIdx(idx);
                                             }}
-                                            className={`w-6 h-6 rounded-full shadow-sm transition-all duration-300 ${activeColorIdx === idx
-                                                ? 'border-2 border-white ring-2 ring-zinc-900 z-10' // Static selection ring
-                                                : 'border border-white/50 opacity-80 hover:opacity-100'
-                                                }`}
+                                            className={`w-6 h-6 rounded-full shadow-sm transition-all duration-300 ${
+                                                activeColorIdx === idx
+                                                    ? 'border-2 border-white ring-2 ring-zinc-900 z-10' // Static selection ring
+                                                    : 'border border-white/50 opacity-80 hover:opacity-100'
+                                            }`}
                                             style={{ backgroundColor: color.hexCode }}
                                             title={color.name}
                                         />
@@ -311,10 +350,15 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                 <div className="flex justify-between items-end mb-3 translate-y-1">
                     <div className="flex flex-col items-start gap-1">
                         <button
-                            onClick={(e) => { e.stopPropagation(); setIsInfoOpen(true); }}
+                            onClick={e => {
+                                e.stopPropagation();
+                                setIsInfoOpen(true);
+                            }}
                             className="flex items-center gap-1.5 active:opacity-70 group"
                         >
-                            <span className="text-[10px] font-black italic text-zinc-900 uppercase tracking-widest group-hover:text-black transition-colors">On-Road Price</span>
+                            <span className="text-[10px] font-black italic text-zinc-900 uppercase tracking-widest group-hover:text-black transition-colors">
+                                On-Road Price
+                            </span>
                             <div className="w-3.5 h-3.5 rounded-full border border-zinc-300 flex items-center justify-center bg-white/50">
                                 <Info size={9} className="text-zinc-400" />
                             </div>
@@ -328,17 +372,22 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
 
                     <div className="flex flex-col items-end gap-1 text-right">
                         <button
-                            onClick={(e) => { e.stopPropagation(); setIsInfoOpen(true); }}
+                            onClick={e => {
+                                e.stopPropagation();
+                                setIsInfoOpen(true);
+                            }}
                             className="flex items-center gap-1.5 active:opacity-70 group"
                         >
-                            <span className="text-[10px] font-black italic text-[#138808] uppercase tracking-widest">Lowest EMI</span>
+                            <span className="text-[10px] font-black italic text-[#138808] uppercase tracking-widest">
+                                Lowest EMI
+                            </span>
                             <div className="w-3.5 h-3.5 rounded-full border border-[#138808]/20 flex items-center justify-center bg-[#138808]/5">
                                 <Info size={9} className="text-[#138808]/60" />
                             </div>
                         </button>
                         <div className="flex items-baseline justify-end gap-1">
                             <span className="text-3xl font-black text-[#138808] tracking-tighter italic">
-                                ₹{emi.toLocaleString('en-IN')}
+                                {emi !== null ? `₹${emi.toLocaleString('en-IN')}` : '—'}
                             </span>
                             <span className="text-[10px] font-black text-zinc-400 uppercase">/mo</span>
                         </div>
@@ -353,18 +402,23 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             className="absolute inset-x-0 bottom-0 top-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-[2px] p-4"
-                            onClick={(e) => { e.stopPropagation(); setIsInfoOpen(false); }}
+                            onClick={e => {
+                                e.stopPropagation();
+                                setIsInfoOpen(false);
+                            }}
                         >
                             <motion.div
-                                initial={{ y: "100%" }}
+                                initial={{ y: '100%' }}
                                 animate={{ y: 0 }}
-                                exit={{ y: "100%" }}
-                                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                                exit={{ y: '100%' }}
+                                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                                 className="w-full bg-white rounded-3xl p-6 shadow-2xl"
-                                onClick={(e) => e.stopPropagation()}
+                                onClick={e => e.stopPropagation()}
                             >
                                 <div className="flex justify-between items-center mb-6">
-                                    <h3 className="text-lg font-black uppercase tracking-tight text-zinc-900">Pricing Breakdown</h3>
+                                    <h3 className="text-lg font-black uppercase tracking-tight text-zinc-900">
+                                        Pricing Breakdown
+                                    </h3>
                                     <button
                                         onClick={() => setIsInfoOpen(false)}
                                         className="w-8 h-8 bg-zinc-100 rounded-full flex items-center justify-center active:scale-95"
@@ -379,11 +433,16 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                                             <span className="text-white font-black text-sm">₹</span>
                                         </div>
                                         <div>
-                                            <h4 className="font-black text-sm uppercase text-zinc-900 mb-1">On-Road Price</h4>
+                                            <h4 className="font-black text-sm uppercase text-zinc-900 mb-1">
+                                                On-Road Price
+                                            </h4>
                                             <p className="text-[11px] font-medium text-zinc-500 leading-relaxed">
-                                                Includes Ex-Showroom Price + Lifetime RTO Registration + 5-Year Comprehensive Insurance.
+                                                Includes Ex-Showroom Price + Lifetime RTO Registration + 5-Year
+                                                Comprehensive Insurance.
                                                 <br />
-                                                <span className="text-black font-bold mt-1 block">No hidden charges.</span>
+                                                <span className="text-black font-bold mt-1 block">
+                                                    No hidden charges.
+                                                </span>
                                             </p>
                                         </div>
                                     </div>
@@ -393,11 +452,15 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                                             <span className="text-white font-black text-sm">%</span>
                                         </div>
                                         <div>
-                                            <h4 className="font-black text-sm uppercase text-[#138808] mb-1">Lowest EMI</h4>
+                                            <h4 className="font-black text-sm uppercase text-[#138808] mb-1">
+                                                Lowest EMI
+                                            </h4>
                                             <p className="text-[11px] font-medium text-zinc-500 leading-relaxed">
                                                 Calculated on 8.5% Interest for 60 Months tenure.
                                                 <br />
-                                                <span className="text-[#138808] font-bold mt-1 block">Downpayment starts at ₹0.</span>
+                                                <span className="text-[#138808] font-bold mt-1 block">
+                                                    Downpayment starts at ₹0.
+                                                </span>
                                             </p>
                                         </div>
                                     </div>
@@ -424,7 +487,9 @@ export const FullPageDeal = ({ product, isActive }: DealProps) => {
                             ))}
                             <StarHalf size={10} className="fill-[#F4B000] text-[#F4B000]" />
                         </div>
-                        <span className="text-[10px] font-black text-zinc-900 uppercase tracking-widest leading-none">• 947K+ RATINGS</span>
+                        <span className="text-[10px] font-black text-zinc-900 uppercase tracking-widest leading-none">
+                            • 947K+ RATINGS
+                        </span>
                     </div>
                 </div>
 

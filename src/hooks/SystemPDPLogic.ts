@@ -564,6 +564,25 @@ export function useSystemPDPLogic({
 
     // Dynamic Finance Logic
     const financeScheme = initialFinance?.scheme;
+    useEffect(() => {
+        if (typeof window === 'undefined' || !financeScheme) return;
+        try {
+            const payload = {
+                scheme: {
+                    id: financeScheme.id,
+                    name: financeScheme.name,
+                    interestRate: financeScheme.interestRate,
+                    interestType: financeScheme.interestType,
+                    maxLTV: financeScheme.maxLTV,
+                    maxLoanAmount: financeScheme.maxLoanAmount,
+                    charges: financeScheme.charges || [],
+                },
+                cachedAt: Date.now(),
+                expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+            };
+            localStorage.setItem('bmb_finance_scheme_cache', JSON.stringify(payload));
+        } catch {}
+    }, [financeScheme]);
 
     // Calculate Max Allowed Loan based on Scheme Criteria (Lower of LTV or Amount)
     const ltvMaxLoan = (totalOnRoad * (financeScheme?.maxLTV ?? 100)) / 100;

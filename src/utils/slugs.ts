@@ -3,15 +3,14 @@ export const slugify = (text: string): string => {
         .toString()
         .toLowerCase()
         .trim()
-        .replace(/\s+/g, '-')        // Replace spaces with -
-        .replace(/[^\w\-]+/g, '')    // Remove all non-word chars
-        .replace(/\-\-+/g, '-')      // Replace multiple - with single -
-        .replace(/^-+/, '')          // Trim - from start of text
-        .replace(/-+$/, '');         // Trim - from end of text
+        .replace(/\+/g, 'plus') // Convert + to plus (Splendor+ → splendor-plus)
+        .replace(/\s+/g, '-') // Replace spaces with -
+        .replace(/[^\w\-]+/g, '') // Remove all non-word chars
+        .replace(/\-\-+/g, '-') // Replace multiple - with single -
+        .replace(/^-+/, '') // Trim - from start of text
+        .replace(/-+$/, ''); // Trim - from end of text
 };
 
 export const unslugify = (slug: string): string => {
-    return slug
-        .replace(/-/g, ' ')
-        .replace(/\b\w/g, c => c.toUpperCase()); // Simple title case
+    return slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()); // Simple title case
 };

@@ -21,6 +21,8 @@ interface SKU {
     onRoadBase: number;
     hasRule: boolean;
     ruleId?: string;
+    isActive: boolean;
+    originalIsActive: boolean;
     isDirty?: boolean; // For UI tracking
     pricingReady?: boolean;
 }
@@ -38,6 +40,7 @@ export const DealerPricelist = ({
     const [searchTerm, setSearchTerm] = useState('');
     const [brandFilter, setBrandFilter] = useState('ALL');
     const [pricingDistrict, setPricingDistrict] = useState('');
+    const [activeFilter, setActiveFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
 
     const supabase = createClient();
 
@@ -70,7 +73,7 @@ export const DealerPricelist = ({
             // 2. Fetch Rules
             const { data: rulesData, error: rulesError } = await supabase
                 .from('cat_price_dealer')
-                .select('id, vehicle_color_id, offer_amount')
+                .select('id, vehicle_color_id, offer_amount, is_active')
                 .eq('tenant_id', tenantId);
 
             if (rulesError) throw rulesError;
@@ -144,6 +147,7 @@ export const DealerPricelist = ({
                 const insurance = priceRecord?.insurance || 0;
                 const onRoadBase = priceRecord?.onRoad || statePrice + rto + insurance;
                 const currentOffer = rule ? (rule as any).offer_amount : 0;
+                const isActive = rule ? Boolean((rule as any).is_active ?? true) : true;
 
                 return {
                     id: item.id,
@@ -160,6 +164,8 @@ export const DealerPricelist = ({
                     inputOffer: currentOffer !== 0 ? currentOffer.toString() : '',
                     hasRule: !!rule,
                     ruleId: rule?.id,
+                    isActive,
+                    originalIsActive: isActive,
                     isDirty: false,
                     pricingReady,
                 };
@@ -197,6 +203,20 @@ export const DealerPricelist = ({
         );
     };
 
+    const handleToggleActive = (skuId: string) => {
+        setSkus(prev => prev.map(s => (s.id === skuId ? { ...s, isActive: !s.isActive, isDirty: true } : s)));
+    };
+
+    const setActiveForFiltered = (nextState: boolean) => {
+        setSkus(prev =>
+            prev.map(s => {
+                const isInFilter = filteredSkus.some(f => f.id === s.id);
+                if (!isInFilter) return s;
+                return { ...s, isActive: nextState, isDirty: true };
+            })
+        );
+    };
+
     const saveChanges = async () => {
         const dirtySkus = skus.filter(s => s.isDirty);
         if (dirtySkus.length === 0) return;
@@ -208,32 +228,45 @@ export const DealerPricelist = ({
 
             for (const sku of dirtySkus) {
                 const amount = Number(sku.offerAmount);
+                const payload = {
+                    tenant_id: tenantId,
+                    vehicle_color_id: sku.id,
+                    offer_amount: amount,
+                    state_code: defaultStateCode,
+                    is_active: sku.isActive,
+                    updated_at: new Date().toISOString(),
+                };
 
-                if (amount === 0 && sku.hasRule && sku.ruleId) {
-                    // Delete
-                    await supabase.from('cat_price_dealer').delete().eq('id', sku.ruleId);
-                } else if (amount !== 0) {
-                    // Upsert
-                    if (sku.hasRule && sku.ruleId) {
-                        await supabase
-                            .from('cat_price_dealer')
-                            .update({ offer_amount: amount, updated_at: new Date().toISOString() })
-                            .eq('id', sku.ruleId);
-                    } else {
-                        await supabase.from('cat_price_dealer').insert({
-                            tenant_id: tenantId,
-                            vehicle_color_id: sku.id,
-                            offer_amount: amount,
-                            state_code: defaultStateCode,
-                            is_active: true,
-                        });
-                    }
+                if (sku.hasRule && sku.ruleId) {
+                    await supabase.from('cat_price_dealer').update(payload).eq('id', sku.ruleId);
+                } else {
+                    await supabase.from('cat_price_dealer').insert(payload);
                 }
                 successCount++;
             }
 
             toast.success(`Updated ${successCount} prices successfully`);
             await fetchPricelist(); // Refresh
+            try {
+                const {
+                    data: { user },
+                } = await supabase.auth.getUser();
+                if (user?.id && tenantId) {
+                    await supabase.from('audit_logs').insert({
+                        tenant_id: tenantId,
+                        actor_id: user.id,
+                        action: 'DEALER_PRICING_UPDATED',
+                        entity_type: 'DEALER_PRICELIST',
+                        entity_id: defaultStateCode,
+                        metadata: {
+                            updated_rows: successCount,
+                            state_code: defaultStateCode,
+                        },
+                    });
+                }
+            } catch (e) {
+                console.warn('Audit log failed:', e);
+            }
         } catch (err) {
             console.error(err);
             toast.error('Some updates failed');
@@ -256,14 +289,18 @@ export const DealerPricelist = ({
         if (brandFilter !== 'ALL') {
             result = result.filter(s => s.brandName === brandFilter);
         }
+        if (activeFilter !== 'ALL') {
+            result = result.filter(s => (activeFilter === 'ACTIVE' ? s.isActive : !s.isActive));
+        }
         return result;
-    }, [skus, searchTerm, brandFilter]);
+    }, [skus, searchTerm, brandFilter, activeFilter]);
 
     const stats = useMemo(() => {
         const total = skus.length;
         const activeOffers = skus.filter(s => s.offerAmount !== 0).length;
         const dirtyCount = skus.filter(s => s.isDirty).length;
-        return { total, activeOffers, dirtyCount };
+        const activeRows = skus.filter(s => s.isActive).length;
+        return { total, activeOffers, dirtyCount, activeRows };
     }, [skus]);
 
     return (
@@ -293,6 +330,12 @@ export const DealerPricelist = ({
                             <span className="text-2xl font-black text-slate-900 dark:text-white">{stats.total}</span>
                             <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                                 Tracked SKUs
+                            </span>
+                        </div>
+                        <div className="flex flex-col items-center px-4 md:border-r border-slate-100 dark:border-white/5 last:border-0">
+                            <span className="text-2xl font-black text-emerald-500">{stats.activeRows}</span>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                                Active Rows
                             </span>
                         </div>
                         <div className="flex flex-col items-center px-4 border-r border-slate-100 dark:border-white/5 last:border-0">
@@ -357,6 +400,22 @@ export const DealerPricelist = ({
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
                             />
                         </div>
+
+                        <div className="flex items-center gap-1 bg-slate-100 dark:bg-white/5 rounded-xl p-1">
+                            {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map(key => (
+                                <button
+                                    key={key}
+                                    onClick={() => setActiveFilter(key)}
+                                    className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-lg transition-colors ${
+                                        activeFilter === key
+                                            ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+                                            : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                                    }`}
+                                >
+                                    {key}
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     {/* Right: Actions */}
@@ -368,6 +427,19 @@ export const DealerPricelist = ({
                                 {defaultStateCode} Zone
                             </span>
                         </div>
+
+                        <button
+                            onClick={() => setActiveForFiltered(true)}
+                            className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm transition-all"
+                        >
+                            Activate Filtered
+                        </button>
+                        <button
+                            onClick={() => setActiveForFiltered(false)}
+                            className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm transition-all"
+                        >
+                            Deactivate Filtered
+                        </button>
 
                         {stats.dirtyCount > 0 ? (
                             <button
@@ -407,6 +479,9 @@ export const DealerPricelist = ({
                                 </th>
                                 <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">
                                     On-Road
+                                </th>
+                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center w-24">
+                                    Active
                                 </th>
                                 <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center w-40">
                                     Offer
@@ -490,6 +565,23 @@ export const DealerPricelist = ({
                                             <span className="text-sm font-bold text-slate-900 dark:text-white">
                                                 {sku.pricingReady ? `₹${sku.onRoadBase.toLocaleString('en-IN')}` : '—'}
                                             </span>
+                                        </td>
+                                        <td className="p-4 text-center">
+                                            <button
+                                                onClick={() => handleToggleActive(sku.id)}
+                                                className={`w-10 h-6 rounded-full flex items-center px-1 transition-colors ${
+                                                    sku.isActive
+                                                        ? 'bg-emerald-500/80'
+                                                        : 'bg-slate-200 dark:bg-slate-700'
+                                                }`}
+                                                title={sku.isActive ? 'Active' : 'Inactive'}
+                                            >
+                                                <span
+                                                    className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
+                                                        sku.isActive ? 'translate-x-4' : 'translate-x-0'
+                                                    }`}
+                                                />
+                                            </button>
                                         </td>
                                         <td className="p-4">
                                             <div className="flex items-center justify-center">

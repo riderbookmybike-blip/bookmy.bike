@@ -472,6 +472,26 @@ export default function PricingPage() {
                         originalStatus: s.status,
                     }))
                 );
+                try {
+                    const {
+                        data: { user },
+                    } = await supabase.auth.getUser();
+                    if (user?.id && tenantId) {
+                        await supabase.from('audit_logs').insert({
+                            tenant_id: tenantId,
+                            actor_id: user.id,
+                            action: 'PRICING_PUBLISH_STAGE_UPDATED',
+                            entity_type: 'PRICING_LEDGER',
+                            entity_id: activeStateCode,
+                            metadata: {
+                                state_code: activeStateCode,
+                                updated_rows: skus.length,
+                            },
+                        });
+                    }
+                } catch (e) {
+                    console.warn('Audit log failed:', e);
+                }
             }
         } else {
             const offerPayload = skus.map(s => ({
@@ -497,6 +517,26 @@ export default function PricingPage() {
                         originalStatus: s.status,
                     }))
                 );
+                try {
+                    const {
+                        data: { user },
+                    } = await supabase.auth.getUser();
+                    if (user?.id && tenantId) {
+                        await supabase.from('audit_logs').insert({
+                            tenant_id: tenantId,
+                            actor_id: user.id,
+                            action: 'DEALER_PRICING_UPDATED',
+                            entity_type: 'PRICING_LEDGER',
+                            entity_id: activeStateCode,
+                            metadata: {
+                                state_code: activeStateCode,
+                                updated_rows: skus.length,
+                            },
+                        });
+                    }
+                } catch (e) {
+                    console.warn('Audit log failed:', e);
+                }
             }
         }
     };
@@ -546,6 +586,26 @@ export default function PricingPage() {
                 );
                 // Refresh data to show updated RTO/Insurance
                 await fetchSKUsAndPrices();
+                try {
+                    const {
+                        data: { user },
+                    } = await supabase.auth.getUser();
+                    if (user?.id && tenantId) {
+                        await supabase.from('audit_logs').insert({
+                            tenant_id: tenantId,
+                            actor_id: user.id,
+                            action: 'PRICING_RECALCULATED',
+                            entity_type: 'PRICING_LEDGER',
+                            entity_id: activeStateCode,
+                            metadata: {
+                                state_code: activeStateCode,
+                                sku_ids: vehicleSkuIds,
+                            },
+                        });
+                    }
+                } catch (e) {
+                    console.warn('Audit log failed:', e);
+                }
             } else {
                 alert(`Calculate failed: ${result.errors.join(', ')}`);
             }

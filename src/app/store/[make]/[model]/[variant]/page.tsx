@@ -753,12 +753,11 @@ export default async function Page({ params, searchParams }: Props) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const accessories = (accessoriesData || [])
         .filter((a: any) => {
-            const dealerRule = accessoryRules.get(a.id);
-
-            // HYBRID LOGIC:
-            // 1. If dealer has an ACTIVE rule for this accessory -> INCLUDE
-            // 2. Otherwise, fall back to suitable_for compatibility check
-            const hasDealerRule = dealerRule && dealerRule.isActive !== false;
+            // STRICT LOGIC: Accessories MUST pass suitability check.
+            // Dealer rules only enhance pricing/bundling, not visibility.
+            // An accessory shows if:
+            // 1. It matches suitable_for for this vehicle (brand/model/variant)
+            // 2. OR it's tagged as Universal
             const matchesSuitability = matchesAccessoryCompatibility(
                 a.specs?.suitable_for,
                 productMake,
@@ -766,7 +765,7 @@ export default async function Page({ params, searchParams }: Props) {
                 productVariant
             );
 
-            return hasDealerRule || matchesSuitability;
+            return matchesSuitability;
         })
         .map((a: any) => {
             const rule = accessoryRules.get(a.id);

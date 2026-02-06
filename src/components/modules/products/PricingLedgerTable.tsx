@@ -423,6 +423,9 @@ export default function PricingLedgerTable({
     }, [summary, onSummaryChange]);
 
     // Selection Logic
+    const getSkuById = (id: string) => processedSkus.find(s => s.id === id);
+    const getModelForId = (id: string) => getSkuById(id)?.model || null;
+
     const toggleSelection = (id: string) => {
         setSelectedSkuIds(prev => {
             const next = new Set(prev);
@@ -430,16 +433,22 @@ export default function PricingLedgerTable({
                 next.delete(id);
                 return next;
             }
-            if (activeCategory === 'vehicles' && selectedVariant === 'ALL') {
-                return new Set([id]);
+
+            const incomingModel = getModelForId(id);
+            if (incomingModel && next.size > 0) {
+                const firstId = next.values().next().value as string | undefined;
+                const existingModel = firstId ? getModelForId(firstId) : null;
+                if (existingModel && existingModel !== incomingModel) {
+                    return new Set([id]);
+                }
             }
+
             next.add(id);
             return next;
         });
     };
 
     const toggleAll = () => {
-        if (activeCategory === 'vehicles' && selectedVariant === 'ALL') return;
         // Check if all VISIBLE/FILTERED rows are currently selected
         // We use tableSkus (locally filtered) instead of processedSkus (parent filtered only)
         // This ensures we don't accidentally select hidden rows when a column filter is active.
@@ -447,12 +456,19 @@ export default function PricingLedgerTable({
 
         const newSet = new Set(selectedSkuIds);
 
+        const targetModel =
+            selectedSkuIds.size > 0
+                ? getModelForId(selectedSkuIds.values().next().value as string)
+                : tableSkus[0]?.model || null;
+
+        const sameModelRows = targetModel ? tableSkus.filter(s => s.model === targetModel) : tableSkus;
+
         if (allVisibleSelected) {
             // Deselect visible rows
-            tableSkus.forEach(s => newSet.delete(s.id));
+            sameModelRows.forEach(s => newSet.delete(s.id));
         } else {
             // Select visible rows
-            tableSkus.forEach(s => newSet.add(s.id));
+            sameModelRows.forEach(s => newSet.add(s.id));
         }
         setSelectedSkuIds(newSet);
     };
@@ -461,6 +477,36 @@ export default function PricingLedgerTable({
         setIsSaving(true);
         if (onSaveAll) await onSaveAll();
         setIsSaving(false);
+    };
+
+    const canPublish = (sku: SKUPriceRow) => {
+        return Number(sku.rto || 0) > 0 && Number(sku.insurance || 0) > 0;
+    };
+
+    const applyPublishStage = (stage: 'DRAFT' | 'UNDER_REVIEW' | 'PUBLISHED' | 'LIVE' | 'INACTIVE') => {
+        if (!onUpdatePublishStage) return;
+        const ids = Array.from(selectedSkuIds);
+        if (ids.length === 0) return;
+        const invalid = ids
+            .map(id => processedSkus.find(s => s.id === id))
+            .filter(sku => sku && !canPublish(sku)) as SKUPriceRow[];
+        if (invalid.length > 0 && (stage === 'PUBLISHED' || stage === 'LIVE')) {
+            alert('Some selected SKUs are missing RTO/Insurance. Please calculate first.');
+            return;
+        }
+        ids.forEach(id => onUpdatePublishStage(id, stage));
+    };
+
+    const selectAllForModel = () => {
+        const baseModel =
+            (selectedSkuIds.size > 0
+                ? getModelForId(selectedSkuIds.values().next().value as string)
+                : selectedModel && selectedModel !== 'ALL'
+                  ? selectedModel
+                  : tableSkus[0]?.model) || null;
+        if (!baseModel) return;
+        const modelRows = tableSkus.filter(s => s.model === baseModel);
+        setSelectedSkuIds(new Set(modelRows.map(s => s.id)));
     };
 
     return (
@@ -695,6 +741,32 @@ export default function PricingLedgerTable({
                     )}
 
                     {isAums && selectedSkuIds.size > 0 && (
+                        <>
+                            <button
+                                onClick={selectAllForModel}
+                                className="bg-white hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm border border-slate-200"
+                                title="Select all SKUs for this model"
+                            >
+                                Select Model
+                            </button>
+                            <button
+                                onClick={() => applyPublishStage('PUBLISHED')}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-200/50 flex items-center gap-1.5 active:scale-95"
+                                title="Mark Selected as Published"
+                            >
+                                Publish
+                            </button>
+                            <button
+                                onClick={() => applyPublishStage('LIVE')}
+                                className="bg-slate-900 hover:bg-black text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-slate-300/50 flex items-center gap-1.5 active:scale-95"
+                                title="Activate Selected"
+                            >
+                                Activate
+                            </button>
+                        </>
+                    )}
+
+                    {isAums && selectedSkuIds.size > 0 && (
                         <button
                             onClick={() => onCalculate?.(Array.from(selectedSkuIds))}
                             disabled={isCalculating}
@@ -734,8 +806,7 @@ export default function PricingLedgerTable({
                                                 tableSkus.length > 0 && tableSkus.every(s => selectedSkuIds.has(s.id))
                                             }
                                             onChange={toggleAll}
-                                            disabled={activeCategory === 'vehicles' && selectedVariant === 'ALL'}
-                                            className="rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500/20 cursor-pointer w-4 h-4 disabled:opacity-30 disabled:cursor-not-allowed"
+                                            className="rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500/20 cursor-pointer w-4 h-4"
                                         />
                                     </th>
                                     {/* DYAMIC COLUMNS based on Category */}
@@ -1021,11 +1092,7 @@ export default function PricingLedgerTable({
                                         sku.originalExShowroom !== undefined &&
                                         sku.exShowroom !== sku.originalExShowroom;
                                     const isSelected = selectedSkuIds.has(sku.id);
-                                    const canEdit =
-                                        isSelected &&
-                                        (activeCategory !== 'vehicles' ||
-                                            selectedVariant !== 'ALL' ||
-                                            selectedSkuIds.size <= 1);
+                                    const canEdit = isSelected;
                                     const updatedAt = sku.updatedAt || sku.publishedAt;
                                     const updatedLabel = updatedAt ? new Date(updatedAt).toLocaleString() : '—';
 
@@ -1541,13 +1608,20 @@ export default function PricingLedgerTable({
                                                             'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-800',
                                                     };
                                                     const isOpen = openStatusDropdownId === sku.id;
-                                                    const statusOptions = [
+                                                    const baseOptions = [
                                                         'Draft',
                                                         'In Review',
                                                         'Published',
                                                         'Live',
                                                         'Inactive',
                                                     ];
+                                                    const statusOptions = isAums
+                                                        ? state === 'In Review'
+                                                            ? ['Published']
+                                                            : state === 'Published'
+                                                              ? ['Live']
+                                                              : baseOptions
+                                                        : ['Active', 'Inactive'];
                                                     return (
                                                         <>
                                                             <button
@@ -1557,8 +1631,13 @@ export default function PricingLedgerTable({
                                                                 }}
                                                                 className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-sm border cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-emerald-400/50 ${styleMap[state] || styleMap['Draft']}`}
                                                             >
-                                                                {state}
+                                                                {!isAums && state === 'Live' ? 'Active' : state}
                                                             </button>
+                                                            {isAums && !canPublish(sku) && (
+                                                                <span className="ml-2 text-[9px] font-black uppercase tracking-widest text-rose-500">
+                                                                    Needs Calc
+                                                                </span>
+                                                            )}
                                                             {isOpen && (
                                                                 <>
                                                                     <div
@@ -1592,6 +1671,18 @@ export default function PricingLedgerTable({
                                                                                                 Live: 'LIVE',
                                                                                                 Inactive: 'INACTIVE',
                                                                                             };
+                                                                                            if (
+                                                                                                (stageMap[opt] ===
+                                                                                                    'PUBLISHED' ||
+                                                                                                    stageMap[opt] ===
+                                                                                                        'LIVE') &&
+                                                                                                !canPublish(sku)
+                                                                                            ) {
+                                                                                                alert(
+                                                                                                    'RTO/Insurance missing. Please calculate before publish.'
+                                                                                                );
+                                                                                                return;
+                                                                                            }
                                                                                             onUpdatePublishStage(
                                                                                                 sku.id,
                                                                                                 stageMap[opt] || 'DRAFT'
@@ -1605,10 +1696,7 @@ export default function PricingLedgerTable({
                                                                                                 | 'DRAFT'
                                                                                                 | 'RELAUNCH'
                                                                                             > = {
-                                                                                                Draft: 'DRAFT',
-                                                                                                'In Review': 'DRAFT',
-                                                                                                Published: 'ACTIVE',
-                                                                                                Live: 'ACTIVE',
+                                                                                                Active: 'ACTIVE',
                                                                                                 Inactive: 'INACTIVE',
                                                                                             };
                                                                                             onUpdateStatus(
@@ -1625,8 +1713,13 @@ export default function PricingLedgerTable({
                                                                                             : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                                                                                     }`}
                                                                                 >
-                                                                                    {opt}
-                                                                                    {state === opt && (
+                                                                                    {isAums && opt === 'Live'
+                                                                                        ? 'Active'
+                                                                                        : opt}
+                                                                                    {(state === opt ||
+                                                                                        (!isAums &&
+                                                                                            state === 'Live' &&
+                                                                                            opt === 'Active')) && (
                                                                                         <CheckCircle2 size={12} />
                                                                                     )}
                                                                                 </button>

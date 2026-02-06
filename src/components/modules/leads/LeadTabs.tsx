@@ -671,19 +671,6 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                                                     <span className="text-slate-500">{pricing.pricing_source}</span>
                                                 </div>
                                             )}
-                                            {!isColorDefault &&
-                                                (quote.color?.name || quote.commercials?.color_name) && (
-                                                    <div className="flex justify-between text-xs font-bold text-slate-500">
-                                                        <span>
-                                                            Color: {quote.color?.name || quote.commercials?.color_name}
-                                                        </span>
-                                                        <span className="text-slate-500">
-                                                            {pricing?.color_delta
-                                                                ? `₹${Math.abs(pricing.color_delta).toLocaleString()}`
-                                                                : 'Included'}
-                                                        </span>
-                                                    </div>
-                                                )}
                                             <div className="flex justify-between text-xs font-bold text-slate-500">
                                                 <span>RTO & Registration ({pricing.rto_type || 'STATE'})</span>
                                                 <span className="text-slate-900 dark:text-white">

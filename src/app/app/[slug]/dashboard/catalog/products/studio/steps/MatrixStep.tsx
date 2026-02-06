@@ -1,7 +1,22 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Info, Copy, Check, Star, Image as ImageIcon, Upload, Play, AlertCircle, X, Loader2, CheckCircle2, Edit2, Box, Gauge } from 'lucide-react';
+import {
+    Info,
+    Copy,
+    Check,
+    Star,
+    Image as ImageIcon,
+    Upload,
+    Play,
+    AlertCircle,
+    X,
+    Loader2,
+    CheckCircle2,
+    Edit2,
+    Box,
+    Gauge,
+} from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
@@ -13,7 +28,7 @@ const getYoutubeThumbnail = (url: string) => {
     if (!url) return null;
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = url.match(regExp);
-    return (match && match[2].length === 11) ? `https://img.youtube.com/vi/${match[2]}/mqdefault.jpg` : null;
+    return match && match[2].length === 11 ? `https://img.youtube.com/vi/${match[2]}/mqdefault.jpg` : null;
 };
 
 export default function MatrixStep({ family, template, variants, colors, existingSkus, onUpdate }: any) {
@@ -24,7 +39,11 @@ export default function MatrixStep({ family, template, variants, colors, existin
     const [activeMediaSku, setActiveMediaSku] = useState<any>(null);
     const [focusedSkuId, setFocusedSkuId] = useState<string | null>(null);
     const [notifications, setNotifications] = useState<any[]>([]);
-    const [pendingAction, setPendingAction] = useState<{ id: string, type: 'TOGGLE_SKU' | 'TOGGLE_PRIMARY', data: any } | null>(null);
+    const [pendingAction, setPendingAction] = useState<{
+        id: string;
+        type: 'TOGGLE_SKU' | 'TOGGLE_PRIMARY';
+        data: any;
+    } | null>(null);
 
     // Edit SKU Specs State
     const [editingSku, setEditingSku] = useState<any>(null);
@@ -96,7 +115,7 @@ export default function MatrixStep({ family, template, variants, colors, existin
             const next = [...current, tag];
             setEditingSku({
                 ...editingSku,
-                specs: { ...editingSku.specs, suitable_for: next.join(',') }
+                specs: { ...editingSku.specs, suitable_for: next.join(',') },
             });
         }
         // Reset local selection after adding
@@ -120,7 +139,7 @@ export default function MatrixStep({ family, template, variants, colors, existin
             videos: Array.from(new Set([...familyVideos, ...variantVideos, ...colorVideos])),
             pdfs: Array.from(new Set([...familyPdfs, ...variantPdfs, ...colorPdfs])),
             primary: color?.specs?.primary_image || color?.specs?.image_url,
-            gallery: color?.specs?.gallery || []
+            gallery: color?.specs?.gallery || [],
         };
     };
 
@@ -144,8 +163,8 @@ export default function MatrixStep({ family, template, variants, colors, existin
                     specs: {
                         ...sku.specs,
                         video_urls: newVideos,
-                        pdf_urls: newPdfs
-                    }
+                        pdf_urls: newPdfs,
+                    },
                 };
 
                 const { error } = await supabase.from('cat_items').update(payload).eq('id', sku.id);
@@ -176,9 +195,8 @@ export default function MatrixStep({ family, template, variants, colors, existin
     const toggleSku = async (variant: any, color: any) => {
         try {
             const colorNameUpper = color.name?.toUpperCase() || '';
-            const exists = existingSkus.find((s: any) =>
-                s.parent_id === variant.id &&
-                s.specs[l2Label]?.toUpperCase() === colorNameUpper
+            const exists = existingSkus.find(
+                (s: any) => s.parent_id === variant.id && s.specs[l2Label]?.toUpperCase() === colorNameUpper
             );
             const supabase = createClient();
 
@@ -189,15 +207,19 @@ export default function MatrixStep({ family, template, variants, colors, existin
                 toast.success('SKU removed');
             } else {
                 const inherited = getInheritedAssets(variant.id, color.name);
-                const { data: { user } } = await supabase.auth.getUser();
+                const {
+                    data: { user },
+                } = await supabase.auth.getUser();
                 const payload = {
                     name: `${variant.name} ${color.name}`.toUpperCase(),
-                    history: [{
-                        at: new Date().toISOString(),
-                        by: user?.id,
-                        action: 'generated',
-                        field: 'SKU'
-                    }],
+                    history: [
+                        {
+                            at: new Date().toISOString(),
+                            by: user?.id,
+                            action: 'generated',
+                            field: 'SKU',
+                        },
+                    ],
                     specs: {
                         ...variant.specs,
                         [l2Label]: color.name?.toUpperCase() || '',
@@ -206,10 +228,10 @@ export default function MatrixStep({ family, template, variants, colors, existin
                         primary_image: inherited.primary,
                         pdf_urls: inherited.pdfs,
                         hex_primary: color.specs?.hex_primary,
-                        hex_secondary: color.specs?.hex_secondary
+                        hex_secondary: color.specs?.hex_secondary,
                     },
                     type: 'SKU',
-                    status: 'INACTIVE',
+                    status: 'ACTIVE', // SOT: SKUs should be ACTIVE for AUMS pricing
                     brand_id: family.brand_id,
                     template_id: family.template_id,
                     parent_id: variant.id,
@@ -218,7 +240,7 @@ export default function MatrixStep({ family, template, variants, colors, existin
                     hsn_code: variant.hsn_code || family.hsn_code || '',
                     image_url: inherited.primary,
                     gallery_urls: inherited.gallery,
-                    video_url: inherited.videos[0] || null
+                    video_url: inherited.videos[0] || null,
                 };
                 const { data, error } = await supabase
                     .from('cat_items')
@@ -242,8 +264,8 @@ export default function MatrixStep({ family, template, variants, colors, existin
         toast('Set as Primary SKU?', {
             action: {
                 label: 'Confirm',
-                onClick: () => executeTogglePrimary(sku)
-            }
+                onClick: () => executeTogglePrimary(sku),
+            },
         });
     };
 
@@ -251,13 +273,26 @@ export default function MatrixStep({ family, template, variants, colors, existin
         try {
             const supabase = createClient();
             // Rule: Only one SKU can be primary for this specific variant row
-            await supabase.from('cat_items').update({ is_primary: false }).eq('parent_id', sku.parent_id).eq('type', 'SKU');
-            const { data, error } = await supabase.from('cat_items').update({ is_primary: true }).eq('id', sku.id).select().single();
+            await supabase
+                .from('cat_items')
+                .update({ is_primary: false })
+                .eq('parent_id', sku.parent_id)
+                .eq('type', 'SKU');
+            const { data, error } = await supabase
+                .from('cat_items')
+                .update({ is_primary: true })
+                .eq('id', sku.id)
+                .select()
+                .single();
 
             if (error) throw error;
 
             if (data) {
-                onUpdate(existingSkus.map((s: any) => s.parent_id === sku.parent_id ? { ...s, is_primary: s.id === sku.id } : s));
+                onUpdate(
+                    existingSkus.map((s: any) =>
+                        s.parent_id === sku.parent_id ? { ...s, is_primary: s.id === sku.id } : s
+                    )
+                );
                 toast.success(`${sku.name} is now primary`);
             }
         } catch (err: any) {
@@ -265,8 +300,28 @@ export default function MatrixStep({ family, template, variants, colors, existin
         }
     };
 
-    const handleMediaSave = async (images: string[], videos: string[], pdfs: string[], primary: string | null, applyVideosToAll?: boolean, zoomFactor?: number, isFlipped?: boolean, offsetX?: number, offsetY?: number) => {
-        console.log('DEBUG: MatrixStep handleMediaSave called', { images, videos, pdfs, primary, applyVideosToAll, zoomFactor, isFlipped, offsetX, offsetY });
+    const handleMediaSave = async (
+        images: string[],
+        videos: string[],
+        pdfs: string[],
+        primary: string | null,
+        applyVideosToAll?: boolean,
+        zoomFactor?: number,
+        isFlipped?: boolean,
+        offsetX?: number,
+        offsetY?: number
+    ) => {
+        console.log('DEBUG: MatrixStep handleMediaSave called', {
+            images,
+            videos,
+            pdfs,
+            primary,
+            applyVideosToAll,
+            zoomFactor,
+            isFlipped,
+            offsetX,
+            offsetY,
+        });
         if (!activeMediaSku) return;
 
         try {
@@ -284,7 +339,7 @@ export default function MatrixStep({ family, template, variants, colors, existin
                     is_flipped: isFlipped || false,
                     offset_x: offsetX || 0,
                     offset_y: offsetY || 0,
-                    position: idx
+                    position: idx,
                 });
             });
             videos.forEach((url, idx) => {
@@ -300,7 +355,7 @@ export default function MatrixStep({ family, template, variants, colors, existin
                 gallery: images,
                 primary_image: primary,
                 video_urls: videos,
-                pdf_urls: pdfs
+                pdf_urls: pdfs,
             };
 
             const payload: any = {
@@ -308,10 +363,15 @@ export default function MatrixStep({ family, template, variants, colors, existin
                 image_url: primary,
                 video_url: videos[0] || null,
                 specs: updatedSpecs,
-                zoom_factor: zoomFactor || 1.1
+                zoom_factor: zoomFactor || 1.1,
             };
 
-            const { data, error } = await supabase.from('cat_items').update(payload).eq('id', activeMediaSku.id).select().single();
+            const { data, error } = await supabase
+                .from('cat_items')
+                .update(payload)
+                .eq('id', activeMediaSku.id)
+                .select()
+                .single();
             if (error) throw error;
 
             // Update assets table
@@ -322,30 +382,42 @@ export default function MatrixStep({ family, template, variants, colors, existin
             }
 
             if (data) {
-                onUpdate(existingSkus.map((s: any) => s.id === activeMediaSku.id ? data : s));
+                onUpdate(existingSkus.map((s: any) => (s.id === activeMediaSku.id ? data : s)));
             }
 
             // Handle bulk update if needed
             if (applyVideosToAll && (videos.length > 0 || pdfs.length > 0)) {
-                const otherSkus = existingSkus.filter((s: any) => s.parent_id === activeMediaSku.parent_id && s.id !== activeMediaSku.id);
+                const otherSkus = existingSkus.filter(
+                    (s: any) => s.parent_id === activeMediaSku.parent_id && s.id !== activeMediaSku.id
+                );
                 if (otherSkus.length > 0) {
                     const updatePromises = otherSkus.map(async (s: any) => {
                         const newSpecs = { ...s.specs, video_urls: videos, pdf_urls: pdfs };
-                        await supabase.from('cat_items').update({
-                            video_url: videos[0] || null,
-                            specs: newSpecs
-                        }).eq('id', s.id);
+                        await supabase
+                            .from('cat_items')
+                            .update({
+                                video_url: videos[0] || null,
+                                specs: newSpecs,
+                            })
+                            .eq('id', s.id);
 
                         // Also update assets for other SKUs in same variant (Wait, usually assets are per color. Matrix handles SKUs which are Variant x Color)
                         // This logic seems specific to propagation. For now let's keep it simple.
                     });
                     await Promise.all(updatePromises);
-                    onUpdate(existingSkus.map((s: any) => {
-                        if (s.parent_id === activeMediaSku.parent_id) {
-                            return { ...s, video_url: videos[0] || null, specs: { ...s.specs, video_urls: videos, pdf_urls: pdfs }, ...(s.id === activeMediaSku.id ? data : {}) };
-                        }
-                        return s;
-                    }));
+                    onUpdate(
+                        existingSkus.map((s: any) => {
+                            if (s.parent_id === activeMediaSku.parent_id) {
+                                return {
+                                    ...s,
+                                    video_url: videos[0] || null,
+                                    specs: { ...s.specs, video_urls: videos, pdf_urls: pdfs },
+                                    ...(s.id === activeMediaSku.id ? data : {}),
+                                };
+                            }
+                            return s;
+                        })
+                    );
                 }
             }
 
@@ -359,15 +431,17 @@ export default function MatrixStep({ family, template, variants, colors, existin
     const updatePrice = async (skuId: string, price: number) => {
         const supabase = createClient();
         await supabase.from('cat_items').update({ price_base: price }).eq('id', skuId);
-        onUpdate(existingSkus.map((s: any) => s.id === skuId ? { ...s, price_base: price } : s));
+        onUpdate(existingSkus.map((s: any) => (s.id === skuId ? { ...s, price_base: price } : s)));
     };
 
     const handleCopyPriceToRow = async (variantId: string, price: number) => {
         const skusToUpdate = existingSkus.filter((s: any) => s.parent_id === variantId);
         if (skusToUpdate.length === 0) return;
         const supabase = createClient();
-        await Promise.all(skusToUpdate.map((sku: any) => supabase.from('cat_items').update({ price_base: price }).eq('id', sku.id)));
-        onUpdate(existingSkus.map((s: any) => s.parent_id === variantId ? { ...s, price_base: price } : s));
+        await Promise.all(
+            skusToUpdate.map((sku: any) => supabase.from('cat_items').update({ price_base: price }).eq('id', sku.id))
+        );
+        onUpdate(existingSkus.map((s: any) => (s.parent_id === variantId ? { ...s, price_base: price } : s)));
         setFocusedSkuId(null);
     };
 
@@ -400,12 +474,22 @@ export default function MatrixStep({ family, template, variants, colors, existin
                                 {l1Label} <span className="mx-2 opacity-30">×</span> {l2Label}
                             </th>
                             {colors.map((color: any) => (
-                                <th key={color.id} className="p-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl min-w-[140px] h-16">
+                                <th
+                                    key={color.id}
+                                    className="p-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl min-w-[140px] h-16"
+                                >
                                     <div className="flex flex-col items-center gap-2">
-                                        <div className="w-8 h-8 rounded-xl shadow-inner border border-black/5" style={{ backgroundColor: color.specs?.hex_primary || '#000000' }} />
+                                        <div
+                                            className="w-8 h-8 rounded-xl shadow-inner border border-black/5"
+                                            style={{ backgroundColor: color.specs?.hex_primary || '#000000' }}
+                                        />
                                         <div className="text-center">
-                                            <span className="text-[9px] font-black text-slate-900 dark:text-white uppercase italic block leading-none truncate max-w-[120px]">{color.name}</span>
-                                            <span className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-1 block">Style</span>
+                                            <span className="text-[9px] font-black text-slate-900 dark:text-white uppercase italic block leading-none truncate max-w-[120px]">
+                                                {color.name}
+                                            </span>
+                                            <span className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-1 block">
+                                                Style
+                                            </span>
                                         </div>
                                     </div>
                                 </th>
@@ -417,9 +501,13 @@ export default function MatrixStep({ family, template, variants, colors, existin
                             <tr key={variant.id}>
                                 <td className="p-4 bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-white/10 rounded-2xl h-64 sticky left-0 z-40 shadow-xl shadow-slate-200/40 dark:shadow-none min-w-[240px]">
                                     <div className="text-center">
-                                        <h4 className="font-black text-slate-900 dark:text-white uppercase italic leading-tight text-base tracking-tighter">{variant.name}</h4>
+                                        <h4 className="font-black text-slate-900 dark:text-white uppercase italic leading-tight text-base tracking-tighter">
+                                            {variant.name}
+                                        </h4>
                                         <div className="inline-block px-3 py-1 bg-slate-100 dark:bg-white/5 rounded-full mt-2">
-                                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{l1Label}</p>
+                                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                                                {l1Label}
+                                            </p>
                                         </div>
                                         <div className="mt-3 text-[9px] font-mono text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest bg-slate-100 dark:bg-white/10 px-3 py-1 rounded-lg inline-block border border-slate-200 dark:border-white/5">
                                             ID: {variant.id.toString().slice(-9)}
@@ -438,34 +526,56 @@ export default function MatrixStep({ family, template, variants, colors, existin
                                             specs.Style?.toUpperCase() === targetColor
                                         );
                                     });
-                                    const isColorOccupiedByOtherVariant = !sku?.is_primary && primaryColorsOccupancy[color.name?.toUpperCase()];
+                                    const isColorOccupiedByOtherVariant =
+                                        !sku?.is_primary && primaryColorsOccupancy[color.name?.toUpperCase()];
                                     const isPendingSku = pendingAction?.id === `sku-${variant.id}-${color.name}`;
                                     const isPendingPrimary = sku && pendingAction?.id === `primary-${sku.id}`;
 
                                     return (
                                         <td key={color.id} className="p-1">
-                                            <div className={`h-64 w-full min-w-[160px] p-3 rounded-2xl border-2 transition-all flex flex-col items-center gap-4 relative ${sku ? 'border-indigo-600/20 bg-white dark:bg-slate-900 shadow-2xl shadow-indigo-500/10' : 'border-slate-50/50 opacity-10 hover:opacity-100 dark:border-white/5'}`}>
+                                            <div
+                                                className={`h-64 w-full min-w-[160px] p-3 rounded-2xl border-2 transition-all flex flex-col items-center gap-4 relative ${sku ? 'border-indigo-600/20 bg-white dark:bg-slate-900 shadow-2xl shadow-indigo-500/10' : 'border-slate-50/50 opacity-10 hover:opacity-100 dark:border-white/5'}`}
+                                            >
                                                 <div className="w-full flex items-center justify-between gap-1.5 z-20">
                                                     <div className="flex items-center gap-1.5">
                                                         <button
                                                             onClick={() => toggleSku(variant, color)}
                                                             className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${sku ? 'text-white shadow-lg' : 'bg-slate-100 dark:bg-white/10 text-slate-300'} ${isPendingSku ? 'ring-4 ring-indigo-500 animate-pulse' : ''}`}
-                                                            style={sku ? { backgroundColor: color.specs?.hex_primary || '#4f46e5' } : {}}
+                                                            style={
+                                                                sku
+                                                                    ? {
+                                                                          backgroundColor:
+                                                                              color.specs?.hex_primary || '#4f46e5',
+                                                                      }
+                                                                    : {}
+                                                            }
                                                         >
-                                                            {sku ? <Check size={12} strokeWidth={4} /> : <div className="w-2 h-2 rounded-full bg-slate-300" />}
+                                                            {sku ? (
+                                                                <Check size={12} strokeWidth={4} />
+                                                            ) : (
+                                                                <div className="w-2 h-2 rounded-full bg-slate-300" />
+                                                            )}
                                                         </button>
 
                                                         {sku && (
                                                             <button
-                                                                onClick={(e) => {
+                                                                onClick={e => {
                                                                     e.stopPropagation();
-                                                                    if (!isColorOccupiedByOtherVariant) togglePrimary(sku);
+                                                                    if (!isColorOccupiedByOtherVariant)
+                                                                        togglePrimary(sku);
                                                                 }}
                                                                 disabled={!!isColorOccupiedByOtherVariant}
                                                                 className={`w-6 h-6 rounded-full flex items-center justify-center transition-all border ${sku.is_primary ? 'bg-yellow-400 border-yellow-500 text-white shadow-lg' : isColorOccupiedByOtherVariant ? 'bg-slate-100 dark:bg-slate-800 border-slate-100 dark:border-white/5 text-slate-200 cursor-not-allowed opacity-50' : 'bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-white/20 dark:border-white/5 text-slate-300 hover:text-yellow-400'} ${isPendingPrimary ? 'ring-4 ring-yellow-400 animate-pulse' : ''}`}
-                                                                title={isColorOccupiedByOtherVariant ? `Color already primary in ${primaryColorsOccupancy[color.name?.toUpperCase()]}` : "Mark as Primary SKU"}
+                                                                title={
+                                                                    isColorOccupiedByOtherVariant
+                                                                        ? `Color already primary in ${primaryColorsOccupancy[color.name?.toUpperCase()]}`
+                                                                        : 'Mark as Primary SKU'
+                                                                }
                                                             >
-                                                                <Star size={10} fill={sku.is_primary ? 'currentColor' : 'none'} />
+                                                                <Star
+                                                                    size={10}
+                                                                    fill={sku.is_primary ? 'currentColor' : 'none'}
+                                                                />
                                                             </button>
                                                         )}
                                                     </div>
@@ -481,29 +591,44 @@ export default function MatrixStep({ family, template, variants, colors, existin
                                                 </div>
 
                                                 <div className="text-center w-full">
-                                                    <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase italic leading-none truncate max-w-[140px] block font-display">{color.name}</span>
-                                                    <span className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-1 block">Selected Style</span>
+                                                    <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase italic leading-none truncate max-w-[140px] block font-display">
+                                                        {color.name}
+                                                    </span>
+                                                    <span className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-1 block">
+                                                        Selected Style
+                                                    </span>
                                                 </div>
 
                                                 {sku && (
                                                     <div className="flex flex-col items-center gap-1 flex-1 justify-center w-full">
                                                         <button
                                                             onClick={() => setActiveMediaSku(sku)}
-                                                            className={`w-14 h-14 rounded-xl border-2 transition-all overflow-hidden flex items-center justify-center group/media relative ${(sku.image_url || sku.specs?.primary_image || (sku.video_url || sku.specs?.video_urls?.[0])) ? 'border-indigo-600/30' : 'bg-slate-50 dark:bg-black/40 border-dashed border-slate-200 dark:border-white/10 text-slate-400 hover:text-indigo-600 hover:border-indigo-600/50'}`}
+                                                            className={`w-14 h-14 rounded-xl border-2 transition-all overflow-hidden flex items-center justify-center group/media relative ${sku.image_url || sku.specs?.primary_image || sku.video_url || sku.specs?.video_urls?.[0] ? 'border-indigo-600/30' : 'bg-slate-50 dark:bg-black/40 border-dashed border-slate-200 dark:border-white/10 text-slate-400 hover:text-indigo-600 hover:border-indigo-600/50'}`}
                                                             title="Manage Media"
                                                         >
                                                             {(() => {
-                                                                const imgUrl = sku.image_url || sku.specs?.primary_image;
-                                                                const vidUrl = sku.video_url || sku.specs?.video_urls?.[0];
-                                                                const vidThumb = vidUrl ? getYoutubeThumbnail(vidUrl) : null;
+                                                                const imgUrl =
+                                                                    sku.image_url || sku.specs?.primary_image;
+                                                                const vidUrl =
+                                                                    sku.video_url || sku.specs?.video_urls?.[0];
+                                                                const vidThumb = vidUrl
+                                                                    ? getYoutubeThumbnail(vidUrl)
+                                                                    : null;
 
                                                                 if (imgUrl) {
                                                                     return (
                                                                         <>
-                                                                            <img src={imgUrl} className="w-full h-full object-contain p-1 group-hover/media:scale-110 transition-transform duration-500" alt={sku.name} />
+                                                                            <img
+                                                                                src={imgUrl}
+                                                                                className="w-full h-full object-contain p-1 group-hover/media:scale-110 transition-transform duration-500"
+                                                                                alt={sku.name}
+                                                                            />
                                                                             {vidUrl && (
                                                                                 <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white border border-white/20">
-                                                                                    <Play size={8} fill="currentColor" />
+                                                                                    <Play
+                                                                                        size={8}
+                                                                                        fill="currentColor"
+                                                                                    />
                                                                                 </div>
                                                                             )}
                                                                             <div className="absolute inset-0 bg-indigo-600/60 opacity-0 group-hover/media:opacity-100 transition-opacity flex items-center justify-center text-white">
@@ -514,7 +639,20 @@ export default function MatrixStep({ family, template, variants, colors, existin
                                                                 } else if (vidUrl) {
                                                                     return (
                                                                         <>
-                                                                            {vidThumb ? <img src={vidThumb} className="w-full h-full object-cover group-hover/media:scale-110 transition-transform duration-500 opacity-80" alt="Thumbnail" /> : <div className="w-full h-full flex items-center justify-center bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500"><Play size={24} fill="currentColor" /></div>}
+                                                                            {vidThumb ? (
+                                                                                <img
+                                                                                    src={vidThumb}
+                                                                                    className="w-full h-full object-cover group-hover/media:scale-110 transition-transform duration-500 opacity-80"
+                                                                                    alt="Thumbnail"
+                                                                                />
+                                                                            ) : (
+                                                                                <div className="w-full h-full flex items-center justify-center bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500">
+                                                                                    <Play
+                                                                                        size={24}
+                                                                                        fill="currentColor"
+                                                                                    />
+                                                                                </div>
+                                                                            )}
                                                                             <div className="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-red-600 flex items-center justify-center text-white shadow-sm z-10">
                                                                                 <Play size={10} fill="currentColor" />
                                                                             </div>
@@ -524,13 +662,20 @@ export default function MatrixStep({ family, template, variants, colors, existin
                                                                         </>
                                                                     );
                                                                 } else {
-                                                                    return <div className="flex flex-col items-center gap-0.5"><Upload size={18} strokeWidth={2} /><span className="text-[6px] font-black uppercase tracking-widest">Upload</span></div>;
+                                                                    return (
+                                                                        <div className="flex flex-col items-center gap-0.5">
+                                                                            <Upload size={18} strokeWidth={2} />
+                                                                            <span className="text-[6px] font-black uppercase tracking-widest">
+                                                                                Upload
+                                                                            </span>
+                                                                        </div>
+                                                                    );
                                                                 }
                                                             })()}
                                                         </button>
 
                                                         <button
-                                                            onClick={(e) => {
+                                                            onClick={e => {
                                                                 e.stopPropagation();
                                                                 setEditingSku(sku);
                                                                 setIsEditModalOpen(true);
@@ -542,8 +687,14 @@ export default function MatrixStep({ family, template, variants, colors, existin
                                                         </button>
 
                                                         {focusedSkuId === sku.id && (
-                                                            <button onClick={() => handleCopyPriceToRow(variant.id, sku.price_base)} className="px-4 py-2 text-[9px] font-black text-slate-400 hover:text-indigo-600 bg-white dark:bg-slate-800 border border-slate-100 dark:border-white/10 rounded-xl flex items-center gap-2 transition-all shadow-sm animate-in fade-in zoom-in duration-200">
-                                                                <Copy size={12} /><span>COPY TO ROW</span>
+                                                            <button
+                                                                onClick={() =>
+                                                                    handleCopyPriceToRow(variant.id, sku.price_base)
+                                                                }
+                                                                className="px-4 py-2 text-[9px] font-black text-slate-400 hover:text-indigo-600 bg-white dark:bg-slate-800 border border-slate-100 dark:border-white/10 rounded-xl flex items-center gap-2 transition-all shadow-sm animate-in fade-in zoom-in duration-200"
+                                                            >
+                                                                <Copy size={12} />
+                                                                <span>COPY TO ROW</span>
                                                             </button>
                                                         )}
                                                     </div>
@@ -562,26 +713,26 @@ export default function MatrixStep({ family, template, variants, colors, existin
                 {/* Replaced custom notifications with sonner */}
             </div>
 
-            {
-                activeMediaSku && (
-                    <SKUMediaManager
-                        skuName={activeMediaSku.name}
-                        initialImages={activeMediaSku.gallery_urls || activeMediaSku.specs?.gallery || []}
-                        initialVideos={activeMediaSku.specs?.video_urls || (activeMediaSku.video_url ? [activeMediaSku.video_url] : [])}
-                        inheritedVideos={getInheritedAssets(activeMediaSku.parent_id, activeMediaSku.specs[l2Label]).videos}
-                        initialPdfs={activeMediaSku.specs?.pdf_urls || []}
-                        inheritedPdfs={getInheritedAssets(activeMediaSku.parent_id, activeMediaSku.specs[l2Label]).pdfs}
-                        inheritedFrom={`${family.brand?.name || 'Brand'} / ${family.name} / ${variants.find((v: any) => v.id === activeMediaSku.parent_id)?.name || 'Variant'}`}
-                        initialPrimary={activeMediaSku.image_url || activeMediaSku.specs?.primary_image}
-                        initialZoomFactor={activeMediaSku.zoom_factor || 1.0}
-                        initialIsFlipped={activeMediaSku.is_flipped || false}
-                        initialOffsetX={activeMediaSku.offset_x || 0}
-                        initialOffsetY={activeMediaSku.offset_y || 0}
-                        onSave={handleMediaSave}
-                        onClose={() => setActiveMediaSku(null)}
-                    />
-                )
-            }
+            {activeMediaSku && (
+                <SKUMediaManager
+                    skuName={activeMediaSku.name}
+                    initialImages={activeMediaSku.gallery_urls || activeMediaSku.specs?.gallery || []}
+                    initialVideos={
+                        activeMediaSku.specs?.video_urls || (activeMediaSku.video_url ? [activeMediaSku.video_url] : [])
+                    }
+                    inheritedVideos={getInheritedAssets(activeMediaSku.parent_id, activeMediaSku.specs[l2Label]).videos}
+                    initialPdfs={activeMediaSku.specs?.pdf_urls || []}
+                    inheritedPdfs={getInheritedAssets(activeMediaSku.parent_id, activeMediaSku.specs[l2Label]).pdfs}
+                    inheritedFrom={`${family.brand?.name || 'Brand'} / ${family.name} / ${variants.find((v: any) => v.id === activeMediaSku.parent_id)?.name || 'Variant'}`}
+                    initialPrimary={activeMediaSku.image_url || activeMediaSku.specs?.primary_image}
+                    initialZoomFactor={activeMediaSku.zoom_factor || 1.0}
+                    initialIsFlipped={activeMediaSku.is_flipped || false}
+                    initialOffsetX={activeMediaSku.offset_x || 0}
+                    initialOffsetY={activeMediaSku.offset_y || 0}
+                    onSave={handleMediaSave}
+                    onClose={() => setActiveMediaSku(null)}
+                />
+            )}
 
             {/* Edit SKU Modal */}
             <Modal
@@ -601,8 +752,12 @@ export default function MatrixStep({ family, template, variants, colors, existin
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {(() => {
-                                const modelAttrs = Array.isArray(template?.attribute_config) ? template.attribute_config : (template?.attribute_config?.model || []);
-                                const variantAttrs = Array.isArray(template?.attribute_config) ? [] : (template?.attribute_config?.variant || []);
+                                const modelAttrs = Array.isArray(template?.attribute_config)
+                                    ? template.attribute_config
+                                    : template?.attribute_config?.model || [];
+                                const variantAttrs = Array.isArray(template?.attribute_config)
+                                    ? []
+                                    : template?.attribute_config?.variant || [];
                                 return [...modelAttrs, ...variantAttrs];
                             })().map((attr: any) => {
                                 // Resolve inherited value from Variant or Family
@@ -621,24 +776,31 @@ export default function MatrixStep({ family, template, variants, colors, existin
                                             <AttributeInput
                                                 attr={attr}
                                                 value={editingSku.specs?.[attr.key]}
-                                                onChange={(val: any) => setEditingSku({
-                                                    ...editingSku,
-                                                    specs: { ...editingSku.specs, [attr.key]: val }
-                                                })}
+                                                onChange={(val: any) =>
+                                                    setEditingSku({
+                                                        ...editingSku,
+                                                        specs: { ...editingSku.specs, [attr.key]: val },
+                                                    })
+                                                }
                                                 placeholder={String(inheritedValue)}
                                                 className="bg-transparent font-bold text-lg outline-none w-full border-b border-gray-200 dark:border-gray-700 focus:border-indigo-500 py-1"
                                             />
-                                            {attr.suffix && !attr.label?.toLowerCase().includes('material') && !(attr.key === 'weight' && attr.type === 'select') && (
-                                                <span className="text-xs font-bold text-indigo-400 text-[10px] uppercase tracking-wider">{attr.suffix}</span>
-                                            )}
+                                            {attr.suffix &&
+                                                !attr.label?.toLowerCase().includes('material') &&
+                                                !(attr.key === 'weight' && attr.type === 'select') && (
+                                                    <span className="text-xs font-bold text-indigo-400 text-[10px] uppercase tracking-wider">
+                                                        {attr.suffix}
+                                                    </span>
+                                                )}
                                         </div>
                                         <div className="text-[9px] text-slate-300 flex items-center gap-1">
-                                            Inherited: <span className="font-bold text-slate-500">
+                                            Inherited:{' '}
+                                            <span className="font-bold text-slate-500">
                                                 {typeof inheritedValue === 'object' ? 'Complex Data' : inheritedValue}
                                             </span>
                                         </div>
                                     </div>
-                                )
+                                );
                             })}
                         </div>
 
@@ -649,26 +811,39 @@ export default function MatrixStep({ family, template, variants, colors, existin
                                 </label>
                                 <div className="space-y-3">
                                     <div className="flex flex-wrap gap-2 min-h-[40px] p-2 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/10">
-                                        {(editingSku.specs?.suitable_for || '').split(',').filter(Boolean).map((v: string) => (
-                                            <div key={v} className="flex items-center gap-1.5 px-2 py-1 bg-indigo-500 text-white rounded-lg text-[9px] font-black uppercase tracking-wider shadow-sm">
-                                                {v}
-                                                <button
-                                                    onClick={() => {
-                                                        const current = (editingSku.specs?.suitable_for || '').split(',').filter(Boolean);
-                                                        const next = current.filter((x: string) => x !== v);
-                                                        setEditingSku({
-                                                            ...editingSku,
-                                                            specs: { ...editingSku.specs, suitable_for: next.join(',') }
-                                                        });
-                                                    }}
-                                                    className="hover:scale-125 transition-transform"
+                                        {(editingSku.specs?.suitable_for || '')
+                                            .split(',')
+                                            .filter(Boolean)
+                                            .map((v: string) => (
+                                                <div
+                                                    key={v}
+                                                    className="flex items-center gap-1.5 px-2 py-1 bg-indigo-500 text-white rounded-lg text-[9px] font-black uppercase tracking-wider shadow-sm"
                                                 >
-                                                    <X size={10} />
-                                                </button>
-                                            </div>
-                                        ))}
-                                        {!(editingSku.specs?.suitable_for) && (
-                                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest px-2 py-1">No Compatibility Fixed</span>
+                                                    {v}
+                                                    <button
+                                                        onClick={() => {
+                                                            const current = (editingSku.specs?.suitable_for || '')
+                                                                .split(',')
+                                                                .filter(Boolean);
+                                                            const next = current.filter((x: string) => x !== v);
+                                                            setEditingSku({
+                                                                ...editingSku,
+                                                                specs: {
+                                                                    ...editingSku.specs,
+                                                                    suitable_for: next.join(','),
+                                                                },
+                                                            });
+                                                        }}
+                                                        className="hover:scale-125 transition-transform"
+                                                    >
+                                                        <X size={10} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        {!editingSku.specs?.suitable_for && (
+                                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest px-2 py-1">
+                                                No Compatibility Fixed
+                                            </span>
                                         )}
                                     </div>
                                     <div className="flex flex-col gap-3">
@@ -676,7 +851,7 @@ export default function MatrixStep({ family, template, variants, colors, existin
                                         <select
                                             className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-xs font-bold outline-none focus:border-indigo-500 shadow-sm"
                                             value={selectedBrandId}
-                                            onChange={(e) => {
+                                            onChange={e => {
                                                 const val = e.target.value;
                                                 setSelectedBrandId(val);
                                                 setSelectedModelId('');
@@ -687,7 +862,9 @@ export default function MatrixStep({ family, template, variants, colors, existin
                                             <option value="">Select Brand...</option>
                                             <option value="UNIVERSAL">UNIVERSAL / ALL MODELS</option>
                                             {brands.map(b => (
-                                                <option key={b.id} value={b.id}>{b.name}</option>
+                                                <option key={b.id} value={b.id}>
+                                                    {b.name}
+                                                </option>
                                             ))}
                                         </select>
 
@@ -696,20 +873,26 @@ export default function MatrixStep({ family, template, variants, colors, existin
                                             <select
                                                 className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-xs font-bold outline-none focus:border-indigo-500 shadow-sm"
                                                 value={selectedModelId}
-                                                onChange={(e) => {
+                                                onChange={e => {
                                                     const val = e.target.value;
                                                     setSelectedModelId(val);
                                                     setSelectedVariantId('');
                                                     if (val === 'ALL_MODELS') {
-                                                        const brandName = brands.find(b => b.id === selectedBrandId)?.name;
+                                                        const brandName = brands.find(
+                                                            b => b.id === selectedBrandId
+                                                        )?.name;
                                                         addCompatibilityTag(`${brandName} (All Models)`);
                                                     }
                                                 }}
                                             >
                                                 <option value="">Select Model...</option>
-                                                <option value="ALL_MODELS">All {brands.find(b => b.id === selectedBrandId)?.name} Models</option>
+                                                <option value="ALL_MODELS">
+                                                    All {brands.find(b => b.id === selectedBrandId)?.name} Models
+                                                </option>
                                                 {models.map(m => (
-                                                    <option key={m.id} value={m.id}>{m.name}</option>
+                                                    <option key={m.id} value={m.id}>
+                                                        {m.name}
+                                                    </option>
                                                 ))}
                                             </select>
                                         )}
@@ -719,7 +902,7 @@ export default function MatrixStep({ family, template, variants, colors, existin
                                             <select
                                                 className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-xs font-bold outline-none focus:border-indigo-500 shadow-sm"
                                                 value={selectedVariantId}
-                                                onChange={(e) => {
+                                                onChange={e => {
                                                     const val = e.target.value;
                                                     setSelectedVariantId(val);
                                                     const brandName = brands.find(b => b.id === selectedBrandId)?.name;
@@ -734,9 +917,13 @@ export default function MatrixStep({ family, template, variants, colors, existin
                                                 }}
                                             >
                                                 <option value="">Select Variant...</option>
-                                                <option value="ALL_VARIANTS">All {models.find(m => m.id === selectedModelId)?.name} Variants</option>
+                                                <option value="ALL_VARIANTS">
+                                                    All {models.find(m => m.id === selectedModelId)?.name} Variants
+                                                </option>
                                                 {variantsList.map(v => (
-                                                    <option key={v.id} value={v.id}>{v.name}</option>
+                                                    <option key={v.id} value={v.id}>
+                                                        {v.name}
+                                                    </option>
                                                 ))}
                                             </select>
                                         )}
@@ -744,14 +931,18 @@ export default function MatrixStep({ family, template, variants, colors, existin
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Related Keywords (Tags)</label>
+                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                                    Related Keywords (Tags)
+                                </label>
                                 <input
                                     type="text"
                                     value={editingSku.specs?.related_keywords || ''}
-                                    onChange={(e) => setEditingSku({
-                                        ...editingSku,
-                                        specs: { ...editingSku.specs, related_keywords: e.target.value }
-                                    })}
+                                    onChange={e =>
+                                        setEditingSku({
+                                            ...editingSku,
+                                            specs: { ...editingSku.specs, related_keywords: e.target.value },
+                                        })
+                                    }
                                     className="bg-transparent font-bold text-sm outline-none w-full border-b border-gray-200 dark:border-gray-700 focus:border-indigo-500"
                                     placeholder="Comma separated tags e.g. sport, taluka, budget"
                                 />
@@ -763,14 +954,19 @@ export default function MatrixStep({ family, template, variants, colors, existin
                                     try {
                                         // Save Logic
                                         const supabase = createClient();
-                                        const { error } = await supabase.from('cat_items').update({
-                                            specs: editingSku.specs
-                                        }).eq('id', editingSku.id);
+                                        const { error } = await supabase
+                                            .from('cat_items')
+                                            .update({
+                                                specs: editingSku.specs,
+                                            })
+                                            .eq('id', editingSku.id);
 
                                         if (error) throw error;
 
                                         // Update Local State
-                                        onUpdate(existingSkus.map((s: any) => s.id === editingSku.id ? editingSku : s));
+                                        onUpdate(
+                                            existingSkus.map((s: any) => (s.id === editingSku.id ? editingSku : s))
+                                        );
                                         setIsEditModalOpen(false);
                                         toast.success('SKU updated');
                                     } catch (err: any) {
@@ -785,6 +981,6 @@ export default function MatrixStep({ family, template, variants, colors, existin
                     </div>
                 )}
             </Modal>
-        </div >
+        </div>
     );
 }
