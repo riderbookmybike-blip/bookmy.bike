@@ -4,7 +4,6 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
-
 export type TenantType = 'DEALER' | 'MARKETPLACE' | 'AUMS' | 'BANK';
 
 // Enhanced TenantContext with Status props
@@ -75,18 +74,18 @@ const TenantContext = createContext<TenantContextType>({
     tenantConfig: null,
     userName: '',
     memberships: [],
-    setTenantType: () => { },
-    setTenantName: () => { },
-    setTenantConfig: () => { },
-    setUserName: () => { },
-    setTenantId: () => { },
-    setUserRole: () => { },
-    setActiveRole: () => { },
-    setReferralCode: () => { },
-    setMemberships: () => { },
-    switchRole: () => { },
+    setTenantType: () => {},
+    setTenantName: () => {},
+    setTenantConfig: () => {},
+    setUserName: () => {},
+    setTenantId: () => {},
+    setUserRole: () => {},
+    setActiveRole: () => {},
+    setReferralCode: () => {},
+    setMemberships: () => {},
+    switchRole: () => {},
     isSidebarExpanded: false,
-    setIsSidebarExpanded: () => { },
+    setIsSidebarExpanded: () => {},
     isReadOnly: false,
     status: 'ACTIVE',
 });
@@ -142,7 +141,9 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
             if (savedMems) {
                 try {
                     setMembershipsState(JSON.parse(savedMems) as Membership[]);
-                } catch { /* ignore */ }
+                } catch {
+                    /* ignore */
+                }
             }
 
             const pathMatch = window.location.pathname.match(/^\/app\/([^/]+)/);
@@ -153,7 +154,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                 (async () => {
                     try {
                         const { data } = await supabase
-                            .from('tenants')
+                            .from('id_tenants')
                             .select('id, name, slug, type, config')
                             .eq('slug', slug)
                             .maybeSingle();
@@ -201,8 +202,6 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
     // /app/* role sync now handled server-side in dashboard layout.
 
-
-
     const switchRole = (role: string) => {
         setActiveRole(role);
         localStorage.setItem('active_role', role);
@@ -223,11 +222,34 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     };
 
     return (
-        <TenantContext.Provider value={{
-            tenantType, tenantName, tenantConfig, userName, tenantId, tenantSlug, userRole, activeRole, referralCode, memberships,
-            setTenantType, setTenantName, setTenantConfig, setUserName, setTenantId, setUserRole, setActiveRole, setReferralCode, setMemberships,
-            switchRole, isSidebarExpanded, setIsSidebarExpanded, isReadOnly, status
-        }}>
+        <TenantContext.Provider
+            value={{
+                tenantType,
+                tenantName,
+                tenantConfig,
+                userName,
+                tenantId,
+                tenantSlug,
+                userRole,
+                activeRole,
+                referralCode,
+                memberships,
+                setTenantType,
+                setTenantName,
+                setTenantConfig,
+                setUserName,
+                setTenantId,
+                setUserRole,
+                setActiveRole,
+                setReferralCode,
+                setMemberships,
+                switchRole,
+                isSidebarExpanded,
+                setIsSidebarExpanded,
+                isReadOnly,
+                status,
+            }}
+        >
             {children}
         </TenantContext.Provider>
     );

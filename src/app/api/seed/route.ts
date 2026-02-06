@@ -53,12 +53,16 @@ export async function GET(request: NextRequest) {
 
         for (const t of tenantsData) {
             // Check if exists (by phone)
-            const { data: existing } = await supabaseAdmin.from('tenants').select('id').eq('phone', t.phone).single();
+            const { data: existing } = await supabaseAdmin
+                .from('id_tenants')
+                .select('id')
+                .eq('phone', t.phone)
+                .single();
 
             let tenantId = existing?.id;
 
             if (!tenantId) {
-                const { data, error } = await supabaseAdmin.from('tenants').insert(t).select().single();
+                const { data, error } = await supabaseAdmin.from('id_tenants').insert(t).select().single();
                 if (error) throw error;
                 tenantId = data.id;
             }
@@ -69,8 +73,8 @@ export async function GET(request: NextRequest) {
 
         // 2. Set Global App Settings
         if (marketplaceTenantId) {
-            await supabaseAdmin.from('app_settings').delete().neq('id', '00000000-0000-0000-0000-000000000000'); // Clear old
-            await supabaseAdmin.from('app_settings').insert({ default_owner_tenant_id: marketplaceTenantId });
+            await supabaseAdmin.from('sys_settings').delete().neq('id', '00000000-0000-0000-0000-000000000000'); // Clear old
+            await supabaseAdmin.from('sys_settings').insert({ default_owner_tenant_id: marketplaceTenantId });
         }
 
         // 3. Create Users (Map Phone -> Email)
@@ -115,7 +119,7 @@ export async function GET(request: NextRequest) {
 
             if (authUser?.user) {
                 // Upsert Profile
-                await supabaseAdmin.from('profiles').upsert({
+                await supabaseAdmin.from('id_members').upsert({
                     id: authUser.user.id,
                     tenant_id: tenantId,
                     role: u.role,

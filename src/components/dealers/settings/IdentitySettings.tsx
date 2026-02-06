@@ -64,14 +64,14 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
             const filePath = `${fileName}`;
 
             const { error: uploadError } = await supabase.storage
-                .from('tenants')
+                .from('id_tenants')
                 .upload(filePath, blob, { upsert: true, contentType: blob.type || 'image/png' });
 
             if (uploadError) throw uploadError;
 
             const {
                 data: { publicUrl },
-            } = supabase.storage.from('tenants').getPublicUrl(filePath);
+            } = supabase.storage.from('id_tenants').getPublicUrl(filePath);
 
             const { error: updateError } = await supabase
                 .from('id_tenants')

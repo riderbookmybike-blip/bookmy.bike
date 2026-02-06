@@ -6,11 +6,7 @@ import * as path from 'path';
 // Load environment variables
 dotenv.config({ path: '.env.local' });
 
-const {
-    NEXT_PUBLIC_SUPABASE_URL,
-    SUPABASE_SERVICE_ROLE_KEY,
-    FIREBASE_SERVICE_ACCOUNT_PATH
-} = process.env;
+const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, FIREBASE_SERVICE_ACCOUNT_PATH } = process.env;
 
 if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !FIREBASE_SERVICE_ACCOUNT_PATH) {
     console.error('Missing required environment variables in .env.local');
@@ -23,7 +19,7 @@ const supabase = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KE
 // Initialize Firebase
 const serviceAccount = require(FIREBASE_SERVICE_ACCOUNT_PATH);
 admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
+    credential: admin.credential.cert(serviceAccount),
 });
 
 const db = admin.firestore();
@@ -39,7 +35,7 @@ async function migratePincodes() {
             const data = doc.data();
 
             // Per user request: pricing "Standard" ko ignore karo
-            const pricing = data.pricing === 'Standard' ? null : (data.pricing || null);
+            const pricing = data.pricing === 'Standard' ? null : data.pricing || null;
 
             // Better city mapping: data.city may be missing, fallback to zone
             const city = data.city || data.zone || null;
@@ -55,7 +51,7 @@ async function migratePincodes() {
                 status: data.status || null,
                 zone: data.zone || null,
                 country: 'India',
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
             };
         });
 
@@ -65,9 +61,7 @@ async function migratePincodes() {
             const batch = pincodes.slice(i, i + BATCH_SIZE);
             console.log(`Upserting batch ${i / BATCH_SIZE + 1} (${batch.length} items)...`);
 
-            const { error } = await supabase
-                .from('pincodes')
-                .upsert(batch, { onConflict: 'pincode' });
+            const { error } = await supabase.from('loc_pincodes').upsert(batch, { onConflict: 'pincode' });
 
             if (error) {
                 console.error(`Error in batch ${i / BATCH_SIZE + 1}:`, error);

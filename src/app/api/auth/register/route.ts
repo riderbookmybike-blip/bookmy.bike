@@ -9,43 +9,40 @@ export async function POST() {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
             cookies: {
-                getAll() { return cookieStore.getAll() },
+                getAll() {
+                    return cookieStore.getAll();
+                },
                 setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
+                    cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
                 },
             },
         }
     );
 
-    const { data: { user } } = await supabase.auth.getUser();
-
-
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // 4. Determine Tenant (MARKETPLACE OWNER from DB)
-    const { data: settings } = await supabase
-        .from('app_settings')
-        .select('default_owner_tenant_id')
-        .single();
+    const { data: settings } = await supabase.from('sys_settings').select('default_owner_tenant_id').single();
 
     const MARKETPLACE_TENANT_ID = settings?.default_owner_tenant_id || '5371fa81-a58a-4a39-aef2-2821268c96c8';
 
     // Explicitly create profile with required Marketplace context
     // Using 'STAFF' as 'MEMBER' is not in the DB enum 'app_role'
-    const { error } = await supabase
-        .from('profiles')
-        .insert({
-            id: user.id,
-            email: user.email,
-            phone: user.phone || user.user_metadata?.phone || '',
-            full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || '',
-            avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
-            tenant_id: MARKETPLACE_TENANT_ID,
-            role: 'STAFF'
-        });
+    const { error } = await supabase.from('id_members').insert({
+        id: user.id,
+        email: user.email,
+        phone: user.phone || user.user_metadata?.phone || '',
+        full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || '',
+        avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
+        tenant_id: MARKETPLACE_TENANT_ID,
+        role: 'STAFF',
+    });
 
     if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });

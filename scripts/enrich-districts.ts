@@ -4,11 +4,7 @@ import * as dotenv from 'dotenv';
 // Load environment variables
 dotenv.config({ path: '.env.local' });
 
-const {
-    NEXT_PUBLIC_SUPABASE_URL,
-    SUPABASE_SERVICE_ROLE_KEY,
-    NEXT_PUBLIC_GOOGLE_MAPS_KEY
-} = process.env;
+const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_GOOGLE_MAPS_KEY } = process.env;
 
 if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     console.error('Missing required Supabase environment variables');
@@ -50,7 +46,7 @@ function extractLocationDetails(components: any[]): GeocodeResult {
         if (comp.types.includes('administrative_area_level_3')) {
             district = comp.long_name;
         }
-        // Fallback: If no Level 3, checking Level 2? 
+        // Fallback: If no Level 3, checking Level 2?
         // User disliked "Konkan Division", so we ignore Division-level names if possible.
 
         if (comp.types.includes('locality')) {
@@ -89,7 +85,7 @@ async function enrichDistricts() {
 
     // First, let's check count of NULL districts
     const { count, error: countError } = await supabase
-        .from('pincodes')
+        .from('loc_pincodes')
         .select('*', { count: 'exact', head: true })
         .not('latitude', 'is', null) // Must have coords to reverse lookup
         .is('district', null);
@@ -100,7 +96,7 @@ async function enrichDistricts() {
     if (targetRecordsCount === 0) {
         console.log("No NULL districts found. Checking for 'Unknown'...");
         const { data: unknownData } = await supabase
-            .from('pincodes')
+            .from('loc_pincodes')
             .select('pincode, latitude, longitude')
             .eq('district', 'Unknown')
             .not('latitude', 'is', null);
@@ -123,7 +119,8 @@ async function enrichDistricts() {
     // Pagination loop
     const PAGE_SIZE = 50;
 
-    while (true) { // We'll break when no more data
+    while (true) {
+        // We'll break when no more data
         // Build query: (district is null OR district = 'Unknown') AND lat is not null
         // To simplify, let's just grab records that look incomplete.
         // Or even better: check 'district' column specifically.
@@ -131,7 +128,7 @@ async function enrichDistricts() {
         // Since Supabase .or() syntax can be complex for mixed types, let's just do NULL first, then 'Unknown'
 
         let { data: batch, error: fetchError } = await supabase
-            .from('pincodes')
+            .from('loc_pincodes')
             .select('pincode, latitude, longitude, district, city')
             .is('district', null)
             .not('latitude', 'is', null)
@@ -140,7 +137,7 @@ async function enrichDistricts() {
         // If we ran out of NULLs, try 'Unknown'
         if (!batch || batch.length === 0) {
             const { data: unknownBatch, error: unknownError } = await supabase
-                .from('pincodes')
+                .from('loc_pincodes')
                 .select('pincode, latitude, longitude, district, city')
                 .eq('district', 'Unknown')
                 .not('latitude', 'is', null)
@@ -191,7 +188,7 @@ async function enrichDistricts() {
                         updates.updated_at = new Date().toISOString();
 
                         const { error: updateError } = await supabase
-                            .from('pincodes')
+                            .from('loc_pincodes')
                             .update(updates)
                             .eq('pincode', pincode);
 
@@ -199,7 +196,9 @@ async function enrichDistricts() {
                             console.error(`Failed update db for ${pincode}:`, updateError.message);
                             failCount++;
                         } else {
-                            console.log(`✅ ${pincode}: District=${updates.district || record.district}, City=${updates.city || record.city}`);
+                            console.log(
+                                `✅ ${pincode}: District=${updates.district || record.district}, City=${updates.city || record.city}`
+                            );
                             successCount++;
                         }
                     } else {
@@ -211,7 +210,6 @@ async function enrichDistricts() {
                     console.error(`❌ API Error for ${pincode}: ${data.status}`);
                     failCount++;
                 }
-
             } catch (e) {
                 console.error(`❌ Exception for ${pincode}:`, e);
                 failCount++;

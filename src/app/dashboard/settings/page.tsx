@@ -51,10 +51,7 @@ export default function SettingsPage() {
             const currentConfig = tenantConfig || {};
             const nextConfig = { ...currentConfig, ...newUpdates };
 
-            const { error } = await supabase
-                .from('tenants')
-                .update({ config: nextConfig })
-                .eq('id', tenantId);
+            const { error } = await supabase.from('id_tenants').update({ config: nextConfig }).eq('id', tenantId);
 
             if (error) throw error;
             // Success feedback?
@@ -71,8 +68,8 @@ export default function SettingsPage() {
             brand: {
                 ...tenantConfig?.brand,
                 primaryColor: tenantConfig?.brand?.primaryColor || '#4F46E5', // Default Indigo
-                displayName: orgData.displayName
-            }
+                displayName: orgData.displayName,
+            },
         });
     };
 
@@ -82,8 +79,8 @@ export default function SettingsPage() {
                 ...tenantConfig?.brand,
                 displayName: orgData.displayName, // Ensure name persists if changed in other tab
                 primaryColor: brandData.primaryColor,
-                logoUrl: brandData.logoUrl
-            }
+                logoUrl: brandData.logoUrl,
+            },
         });
     };
 
@@ -96,7 +93,9 @@ export default function SettingsPage() {
                 </div>
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Settings</h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm">Configure your organization and portal.</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm">
+                        Configure your organization and portal.
+                    </p>
                 </div>
             </div>
 
@@ -144,7 +143,9 @@ export default function SettingsPage() {
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">Display Name</label>
+                                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+                                        Display Name
+                                    </label>
                                     <input
                                         type="text"
                                         value={orgData.displayName}
@@ -153,7 +154,9 @@ export default function SettingsPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">Location</label>
+                                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+                                        Location
+                                    </label>
                                     <input
                                         type="text"
                                         value={orgData.location}
@@ -170,7 +173,13 @@ export default function SettingsPage() {
                                     disabled={saving}
                                     className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-[0.2em] flex items-center gap-2 transition-all"
                                 >
-                                    {saving ? <Loader2 className="animate-spin" size={16} /> : <><CheckCircle2 size={16} /> Save Changes</>}
+                                    {saving ? (
+                                        <Loader2 className="animate-spin" size={16} />
+                                    ) : (
+                                        <>
+                                            <CheckCircle2 size={16} /> Save Changes
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </div>
@@ -183,7 +192,9 @@ export default function SettingsPage() {
 
                             <div className="space-y-6">
                                 <div>
-                                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-4 block">Primary Brand Color</label>
+                                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-4 block">
+                                        Primary Brand Color
+                                    </label>
                                     <div className="flex gap-4 flex-wrap">
                                         {['#4F46E5', '#DC2626', '#059669', '#2563EB', '#D946EF', '#EA580C'].map(c => (
                                             <div
@@ -192,7 +203,9 @@ export default function SettingsPage() {
                                                 className={`w-12 h-12 rounded-full cursor-pointer transition-transform hover:scale-110 flex items-center justify-center ${brandData.primaryColor === c ? 'ring-4 ring-offset-2 ring-indigo-500/50' : ''}`}
                                                 style={{ backgroundColor: c }}
                                             >
-                                                {brandData.primaryColor === c && <CheckCircle2 className="text-white" size={20} />}
+                                                {brandData.primaryColor === c && (
+                                                    <CheckCircle2 className="text-white" size={20} />
+                                                )}
                                             </div>
                                         ))}
                                     </div>
@@ -205,7 +218,13 @@ export default function SettingsPage() {
                                     disabled={saving}
                                     className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-[0.2em] flex items-center gap-2 transition-all"
                                 >
-                                    {saving ? <Loader2 className="animate-spin" size={16} /> : <><CheckCircle2 size={16} /> Update Brand</>}
+                                    {saving ? (
+                                        <Loader2 className="animate-spin" size={16} />
+                                    ) : (
+                                        <>
+                                            <CheckCircle2 size={16} /> Update Brand
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </div>

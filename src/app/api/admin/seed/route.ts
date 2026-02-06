@@ -3,16 +3,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import tenantsConfig from '../../../../../seed/tenants.json';
 
 // Use SERVICE_ROLE_KEY to bypass RLS for seeding
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-        auth: {
-            autoRefreshToken: false,
-            persistSession: false
-        }
-    }
-);
+const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+    auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+    },
+});
 
 export async function GET(_request: NextRequest) {
     return handleSeed(_request);
@@ -36,7 +32,6 @@ async function handleSeed(_request: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-
     // 2. Resolve Admin User
     // Use the Phone Number provided by the user
     const ownerPhoneInput = '9820760596';
@@ -44,12 +39,18 @@ async function handleSeed(_request: NextRequest) {
     const ownerEmail = `${ownerPhoneInput}@bookmy.bike`;
 
     // List users to find ID (Admin API)
-    const { data: { users }, error: userError } = await supabaseAdmin.auth.admin.listUsers();
+    const {
+        data: { users },
+        error: userError,
+    } = await supabaseAdmin.auth.admin.listUsers();
     if (userError) return NextResponse.json({ error: 'Failed to list users', details: userError }, { status: 500 });
 
     const adminUser = users.find(u => u.phone === formattedPhone || u.email === ownerEmail);
     if (!adminUser) {
-        return NextResponse.json({ error: `User with phone ${ownerPhoneInput} not found in Auth. Please sign up first.` }, { status: 404 });
+        return NextResponse.json(
+            { error: `User with phone ${ownerPhoneInput} not found in Auth. Please sign up first.` },
+            { status: 404 }
+        );
     }
 
     const results = [];
@@ -58,20 +59,21 @@ async function handleSeed(_request: NextRequest) {
     let tenantsUpserted = 0;
     let membershipsUpserted = 0;
 
-
-
     for (const tConfig of tenantsConfig) {
         // A. Upsert Tenant
         const { data: tenant, error: tenantError } = await supabaseAdmin
-            .from('tenants')
-            .upsert({
-                slug: tConfig.slug,
-                name: tConfig.name,
-                type: tConfig.type,
-                pincode: tConfig.pincode,
-                config: tConfig.config,
-                status: 'ACTIVE'
-            }, { onConflict: 'slug' })
+            .from('id_tenants')
+            .upsert(
+                {
+                    slug: tConfig.slug,
+                    name: tConfig.name,
+                    type: tConfig.type,
+                    pincode: tConfig.pincode,
+                    config: tConfig.config,
+                    status: 'ACTIVE',
+                },
+                { onConflict: 'slug' }
+            )
             .select()
             .single();
 
@@ -83,14 +85,15 @@ async function handleSeed(_request: NextRequest) {
         tenantsUpserted++;
 
         // B. Ensure Profile Exists (Match Auth ID)
-        const { error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .upsert({
+        const { error: profileError } = await supabaseAdmin.from('id_members').upsert(
+            {
                 id: adminUser.id,
                 full_name: 'Ajit M Singh Rathore (Owner)',
                 phone: ownerPhoneInput,
                 role: tConfig.type === 'SUPER_ADMIN' ? 'SUPER_ADMIN' : 'DEALER_OWNER', // Default base role
-            }, { onConflict: 'id' });
+            },
+            { onConflict: 'id' }
+        );
 
         if (profileError) {
             console.error(`[SEED] Failed profile ${tConfig.slug}:`, profileError);
@@ -102,33 +105,31 @@ async function handleSeed(_request: NextRequest) {
         // For 'aums', role is SUPER_ADMIN. For others, it is TENANT_OWNER/DEALER_OWNER.
         const membershipRole = tConfig.type === 'SUPER_ADMIN' ? 'SUPER_ADMIN' : 'OWNER';
 
-        const { error: memberError } = await supabaseAdmin
-            .from('memberships')
-            .upsert({
+        const { error: memberError } = await supabaseAdmin.from('memberships').upsert(
+            {
                 user_id: adminUser.id,
                 tenant_id: tenant.id,
                 role: membershipRole,
                 status: 'ACTIVE',
-                is_default: tConfig.slug === 'aums' // Make aums the default for this user
-            }, { onConflict: 'user_id, tenant_id' });
+                is_default: tConfig.slug === 'aums', // Make aums the default for this user
+            },
+            { onConflict: 'user_id, tenant_id' }
+        );
 
         if (memberError) {
             console.error(`[SEED] Failed membership ${tConfig.slug}:`, memberError);
             results.push({ slug: tConfig.slug, status: 'membership_error', error: memberError.message });
         } else {
-
             membershipsUpserted++;
             results.push({ slug: tConfig.slug, status: 'success', tenantId: tenant.id });
         }
     }
-
-
 
     return NextResponse.json({
         ok: true,
         tenantsUpserted,
         ownerPhone: ownerPhoneInput,
         membershipsUpserted,
-        details: results
+        details: results,
     });
 }

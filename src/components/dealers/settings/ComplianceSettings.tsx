@@ -49,23 +49,19 @@ export default function ComplianceSettings({ dealerId }: ComplianceSettingsProps
             const filePath = `${fileName}`;
 
             // Upload to 'documents' bucket (Private)
-            const { error: uploadError } = await supabase.storage
-                .from('documents')
-                .upload(filePath, file);
+            const { error: uploadError } = await supabase.storage.from('id_documents').upload(filePath, file);
 
             if (uploadError) throw uploadError;
 
             // Insert Metadata
-            const { error: dbError } = await supabase
-                .from('id_documents')
-                .insert({
-                    tenant_id: dealerId,
-                    title: `${selectedType} Certificate`,
-                    type: selectedType,
-                    file_path: filePath,
-                    file_url: filePath, // Stores path actually, URL generated on fly for private
-                    status: 'PENDING'
-                });
+            const { error: dbError } = await supabase.from('id_documents').insert({
+                tenant_id: dealerId,
+                title: `${selectedType} Certificate`,
+                type: selectedType,
+                file_path: filePath,
+                file_url: filePath, // Stores path actually, URL generated on fly for private
+                status: 'PENDING',
+            });
 
             if (dbError) throw dbError;
 
@@ -81,9 +77,12 @@ export default function ComplianceSettings({ dealerId }: ComplianceSettingsProps
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'VERIFIED': return 'text-emerald-500 bg-emerald-50 border-emerald-100';
-            case 'REJECTED': return 'text-rose-500 bg-rose-50 border-rose-100';
-            default: return 'text-amber-500 bg-amber-50 border-amber-100';
+            case 'VERIFIED':
+                return 'text-emerald-500 bg-emerald-50 border-emerald-100';
+            case 'REJECTED':
+                return 'text-rose-500 bg-rose-50 border-rose-100';
+            default:
+                return 'text-amber-500 bg-amber-50 border-amber-100';
         }
     };
 
@@ -101,7 +100,7 @@ export default function ComplianceSettings({ dealerId }: ComplianceSettingsProps
                                 <label className="text-xs font-bold text-slate-500 uppercase">Document Type</label>
                                 <select
                                     value={selectedType}
-                                    onChange={(e) => setSelectedType(e.target.value)}
+                                    onChange={e => setSelectedType(e.target.value)}
                                     className="w-full px-4 py-3 bg-slate-50 dark:bg-black/20 border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 outline-none"
                                 >
                                     <option value="GST">GST Certificate</option>
@@ -112,7 +111,9 @@ export default function ComplianceSettings({ dealerId }: ComplianceSettingsProps
                                 </select>
                             </div>
 
-                            <label className={`block w-full border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-colors ${uploading ? 'bg-indigo-50 border-indigo-200' : 'border-slate-200 hover:border-indigo-500 hover:bg-slate-50'}`}>
+                            <label
+                                className={`block w-full border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-colors ${uploading ? 'bg-indigo-50 border-indigo-200' : 'border-slate-200 hover:border-indigo-500 hover:bg-slate-50'}`}
+                            >
                                 <input
                                     type="file"
                                     className="hidden"
@@ -125,7 +126,9 @@ export default function ComplianceSettings({ dealerId }: ComplianceSettingsProps
                                 ) : (
                                     <>
                                         <Upload className="mx-auto text-slate-400 mb-2" />
-                                        <p className="text-sm font-bold text-slate-900 dark:text-white">Click to Upload</p>
+                                        <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                            Click to Upload
+                                        </p>
                                         <p className="text-xs text-slate-400 mt-1">PDF or Images up to 5MB</p>
                                     </>
                                 )}
@@ -146,21 +149,30 @@ export default function ComplianceSettings({ dealerId }: ComplianceSettingsProps
                         </div>
                     ) : (
                         <div className="space-y-3">
-                            {docs.map((doc) => (
-                                <div key={doc.id} className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl">
+                            {docs.map(doc => (
+                                <div
+                                    key={doc.id}
+                                    className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl"
+                                >
                                     <div className="flex items-center gap-4">
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${getStatusColor(doc.status).replace('border', '')}`}>
+                                        <div
+                                            className={`w-10 h-10 rounded-xl flex items-center justify-center ${getStatusColor(doc.status).replace('border', '')}`}
+                                        >
                                             <FileText size={20} />
                                         </div>
                                         <div>
-                                            <h4 className="text-sm font-bold text-slate-900 dark:text-white">{doc.title}</h4>
+                                            <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                                                {doc.title}
+                                            </h4>
                                             <p className="text-xs text-slate-500 flex items-center gap-1">
                                                 Uploaded {new Date(doc.created_at).toLocaleDateString()}
                                             </p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-4">
-                                        <div className={`px-3 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wider ${getStatusColor(doc.status)}`}>
+                                        <div
+                                            className={`px-3 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wider ${getStatusColor(doc.status)}`}
+                                        >
                                             {doc.status}
                                         </div>
                                         {/* View mechanism to be implemented with Signed URLs later */}

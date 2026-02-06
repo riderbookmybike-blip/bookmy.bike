@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
             // 2. JIT: Check profiles table if not in Auth
             console.log(`[Login Debug] User not in Auth. Checking profiles for ${phone}...`);
             const { data: profile } = await adminClient
-                .from('profiles')
+                .from('id_members')
                 .select('id, full_name, email')
                 .or(`phone.eq.${phone},phone.eq.${tenDigitPhone},phone.eq.${mobile},phone.eq.${e164Phone}`)
                 .maybeSingle();
@@ -300,7 +300,11 @@ export async function POST(req: NextRequest) {
             } else {
             }
 
-            const { data: profile } = await adminClient.from('profiles').select('full_name').eq('id', userId).single();
+            const { data: profile } = await adminClient
+                .from('id_members')
+                .select('full_name')
+                .eq('id', userId)
+                .single();
 
             const payload = {
                 success: true,

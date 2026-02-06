@@ -4,11 +4,7 @@ import * as dotenv from 'dotenv';
 // Load environment variables
 dotenv.config({ path: '.env.local' });
 
-const {
-    NEXT_PUBLIC_SUPABASE_URL,
-    SUPABASE_SERVICE_ROLE_KEY,
-    NEXT_PUBLIC_GOOGLE_MAPS_KEY
-} = process.env;
+const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_GOOGLE_MAPS_KEY } = process.env;
 
 if (!NEXT_PUBLIC_SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     console.error('Missing required Supabase environment variables in .env.local');
@@ -34,7 +30,7 @@ async function enrichWithGoogle() {
 
     // 1. Fetch total count of missing records
     const { count: totalMissing, error: countError } = await supabase
-        .from('pincodes')
+        .from('loc_pincodes')
         .select('*', { count: 'exact', head: true })
         .is('latitude', null);
 
@@ -61,7 +57,7 @@ async function enrichWithGoogle() {
     // TEST MODE: Only run 10 records
     while (processedCount < (totalMissing || 0)) {
         const { data: batch, error: fetchError } = await supabase
-            .from('pincodes')
+            .from('loc_pincodes')
             .select('pincode, state, city, district')
             .is('latitude', null)
             .limit(PAGE_SIZE);
@@ -91,11 +87,11 @@ async function enrichWithGoogle() {
 
                     // Update Supabase
                     const { error: updateError } = await supabase
-                        .from('pincodes')
+                        .from('loc_pincodes')
                         .update({
                             latitude: lat,
                             longitude: lng,
-                            updated_at: new Date().toISOString()
+                            updated_at: new Date().toISOString(),
                         })
                         .eq('pincode', pincode);
 
@@ -108,7 +104,7 @@ async function enrichWithGoogle() {
                     }
                 } else if (data.status === 'ZERO_RESULTS') {
                     console.warn(`⚠️ No results found for ${pincode}`);
-                    // We might want to mark it so we don't keep trying forever, 
+                    // We might want to mark it so we don't keep trying forever,
                     // but for now, we'll just increment failCount
                     failCount++;
                 } else if (data.status === 'OVER_QUERY_LIMIT') {

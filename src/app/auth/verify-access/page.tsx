@@ -4,11 +4,7 @@ import { redirect } from 'next/navigation';
 import { AccessDenied } from '@/components/auth/AccessDenied';
 import { RegistrationConsent } from '@/components/auth/RegistrationConsent';
 
-export default async function VerifyAccessPage({
-    searchParams,
-}: {
-    searchParams?: { next?: string };
-}) {
+export default async function VerifyAccessPage({ searchParams }: { searchParams?: { next?: string } }) {
     const cookieStore = await cookies();
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -53,20 +49,20 @@ export default async function VerifyAccessPage({
     }
 
     // Marketplace flow
-    const { data: profile } = await supabase.from('profiles').select('id').eq('id', user.id).single();
+    const { data: profile } = await supabase.from('id_members').select('id').eq('id', user.id).single();
 
     if (profile) {
         redirect('/');
     }
 
     // AUTO-REGISTRATION for Marketplace
-    const { data: settings } = await supabase.from('app_settings').select('default_owner_tenant_id').single();
+    const { data: settings } = await supabase.from('sys_settings').select('default_owner_tenant_id').single();
 
     const MARKETPLACE_TENANT_ID = settings?.default_owner_tenant_id || '5371fa81-a58a-4a39-aef2-2821268c96c8';
 
     // 1. Ensure Profile Exists
     if (!profile) {
-        await supabase.from('profiles').insert({
+        await supabase.from('id_members').insert({
             id: user.id,
             email: user.email,
             phone: user.phone || user.user_metadata?.phone || '',
@@ -79,15 +75,16 @@ export default async function VerifyAccessPage({
 
     // 2. Ensure Lead Entry Exists (Marketplace Hub)
     const { data: existingLead } = await supabase
-        .from('leads')
+        .from('crm_leads')
         .select('id')
         .eq('customer_phone', user.phone || user.user_metadata?.phone || user.email)
         .eq('owner_tenant_id', MARKETPLACE_TENANT_ID)
         .single();
 
     if (!existingLead) {
-        await supabase.from('leads').insert({
-            customer_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Member',
+        await supabase.from('crm_leads').insert({
+            customer_name:
+                user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Member',
             customer_phone: user.phone || user.user_metadata?.phone || user.email || '',
             owner_tenant_id: MARKETPLACE_TENANT_ID,
             status: 'NEW',

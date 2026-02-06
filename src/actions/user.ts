@@ -33,7 +33,7 @@ export async function updateUserEmail(newEmail: string) {
 
         // Also update the public profile
         const { error: profileError } = await adminClient
-            .from('profiles')
+            .from('id_members')
             .update({ email: newEmail }) // Assuming we add/have an email column in profiles or rely on auth
             .eq('id', user.id);
 

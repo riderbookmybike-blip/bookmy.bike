@@ -289,7 +289,7 @@ export async function createLeadAction(data: {
         let effectiveOwnerId = data.owner_tenant_id;
         if (!effectiveOwnerId) {
             const { data: settings } = await (adminClient
-                .from('app_settings' as any)
+                .from('sys_settings' as any)
                 .select('default_owner_tenant_id')
                 .single() as any);
             effectiveOwnerId = settings?.default_owner_tenant_id;
@@ -854,7 +854,7 @@ export async function updateMemberDocumentAction(
 
 export async function getSignedUrlAction(path: string) {
     const supabase = await createClient();
-    const { data, error } = await supabase.storage.from('documents').createSignedUrl(path, 60); // 60 seconds expiry
+    const { data, error } = await supabase.storage.from('id_documents').createSignedUrl(path, 60); // 60 seconds expiry
 
     if (error) {
         console.error('Error creating signed URL:', error);

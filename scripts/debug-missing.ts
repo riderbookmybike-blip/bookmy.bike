@@ -17,7 +17,7 @@ async function debugSpecificPincodes() {
     for (const pincode of targets) {
         // Fetch current lat/lng from DB
         const { data } = await supabase
-            .from('pincodes')
+            .from('loc_pincodes')
             .select('latitude, longitude')
             .eq('pincode', pincode)
             .single();

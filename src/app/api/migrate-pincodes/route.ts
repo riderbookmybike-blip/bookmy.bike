@@ -17,12 +17,7 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
-
-
+        const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
         // Insert in batches of 100 to avoid request size limits
         const batchSize = 100;
@@ -39,10 +34,12 @@ export async function GET(request: NextRequest) {
                 rto_code: p.rtoCode,
                 latitude: p.latitude,
                 longitude: p.longitude,
-                country: 'India'
+                country: 'India',
             }));
 
-            const { error } = await supabase.from('pincodes').upsert(batch, { onConflict: 'pincode', ignoreDuplicates: true });
+            const { error } = await supabase
+                .from('loc_pincodes')
+                .upsert(batch, { onConflict: 'pincode', ignoreDuplicates: true });
 
             if (error) {
                 console.error('Batch error:', error);
@@ -54,9 +51,8 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({
             success: true,
-            message: `Migration Complete. Processed: ${MAHARASHTRA_PINCODES.length}, Success: ${successCount}, Errors: ${errorCount}`
+            message: `Migration Complete. Processed: ${MAHARASHTRA_PINCODES.length}, Success: ${successCount}, Errors: ${errorCount}`,
         });
-
     } catch (e: any) {
         return NextResponse.json({ success: false, error: e.message }, { status: 500 });
     }

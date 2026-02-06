@@ -6,21 +6,21 @@ import { headers } from 'next/headers';
 
 // --- Validation Key ---
 const leadSchema = z.object({
-    name: z.string().min(2, "Name is too short"),
-    phone: z.string().regex(/^[6-9]\d{9}$/, "Invalid Indian mobile number"),
-    pincode: z.string().regex(/^\d{6}$/, "Invalid Pincode"), // Mandatory
+    name: z.string().min(2, 'Name is too short'),
+    phone: z.string().regex(/^[6-9]\d{9}$/, 'Invalid Indian mobile number'),
+    pincode: z.string().regex(/^\d{6}$/, 'Invalid Pincode'), // Mandatory
     taluka: z.string().optional(),
     dob: z.string().optional(), // Added DOB
     model: z.string().optional(), // Optional
     variant: z.string().optional(),
     color: z.string().optional(),
-    honeypot: z.string().max(0, "Spam detected"), // Must be empty
+    honeypot: z.string().max(0, 'Spam detected'), // Must be empty
     priceSnapshot: z.any().optional(),
     utm: z.any().optional(),
 });
 
 // --- P0 Rate Limiter (In-Memory) ---
-// Note: for serverless, this is ephemeral, but efficient for minimizing bursts. 
+// Note: for serverless, this is ephemeral, but efficient for minimizing bursts.
 // For production scale, move to Redis/Upstash.
 const rateLimit = new Map<string, number>();
 
@@ -46,9 +46,13 @@ export async function submitLead(formData: FormData) {
     // Helper to format text as Title Case
     function toTitleCase(str: string): string {
         if (!str) return '';
-        return str.toLowerCase().split(' ').map(word => {
-            return word.charAt(0).toUpperCase() + word.slice(1);
-        }).join(' ');
+        return str
+            .toLowerCase()
+            .split(' ')
+            .map(word => {
+                return word.charAt(0).toUpperCase() + word.slice(1);
+            })
+            .join(' ');
     }
 
     // ... existing code ...
@@ -66,7 +70,7 @@ export async function submitLead(formData: FormData) {
         selectedDealerId: formData.get('selectedDealerId') as string | null, // Optional
         honeypot: '',
         priceSnapshot: formData.get('priceSnapshot') ? JSON.parse(formData.get('priceSnapshot') as string) : null,
-        utm: formData.get('utm') ? JSON.parse(formData.get('utm') as string) : null
+        utm: formData.get('utm') ? JSON.parse(formData.get('utm') as string) : null,
     };
 
     const validation = leadSchema.safeParse(rawData);
@@ -81,10 +85,7 @@ export async function submitLead(formData: FormData) {
     try {
         // 4. Determine Tenant (MARKETPLACE OWNER from DB)
         // using Service Role Client (adminClient) because Public (Anon) user cannot read app_settings/tenants securely via RLS
-        const { data: settings } = await adminClient
-            .from('app_settings')
-            .select('default_owner_tenant_id')
-            .single();
+        const { data: settings } = await adminClient.from('sys_settings').select('default_owner_tenant_id').single();
 
         const ownerTenantId = settings?.default_owner_tenant_id;
 
@@ -95,7 +96,7 @@ export async function submitLead(formData: FormData) {
 
         // 5. Insert Lead (Owned by Marketplace)
         const { data: lead, error: insertError } = await adminClient
-            .from('leads')
+            .from('crm_leads')
             .insert({
                 owner_tenant_id: ownerTenantId,
                 selected_dealer_tenant_id: rawData.selectedDealerId || null,
@@ -114,11 +115,13 @@ export async function submitLead(formData: FormData) {
                     utm_campaign: data.utm?.utm_campaign,
                 },
                 status: 'NEW',
-                referral_data: referrerUserId ? {
-                    referred_by_user_id: referrerUserId,
-                    source_tenant_id: referrerTenantId
-                } : null,
-                meta_data: referrerTenantId ? { source_tenant_id: referrerTenantId } : null
+                referral_data: referrerUserId
+                    ? {
+                          referred_by_user_id: referrerUserId,
+                          source_tenant_id: referrerTenantId,
+                      }
+                    : null,
+                meta_data: referrerTenantId ? { source_tenant_id: referrerTenantId } : null,
             })
             .select('id')
             .single();
@@ -131,28 +134,23 @@ export async function submitLead(formData: FormData) {
         // 6. AUTO-SHARE Logic
         // A. If Dealer explicitly Selected by customer
         if (rawData.selectedDealerId && lead) {
-            await adminClient
-                .from('lead_dealer_shares')
-                .insert({
-                    lead_id: lead.id,
-                    dealer_tenant_id: rawData.selectedDealerId,
-                    is_primary: true
-                });
+            await adminClient.from('crm_dealer_shares').insert({
+                lead_id: lead.id,
+                dealer_tenant_id: rawData.selectedDealerId,
+                is_primary: true,
+            });
         }
 
         // B. If referred by a Staff Member (Share with their dealership)
         if (referrerTenantId && lead && referrerTenantId !== rawData.selectedDealerId) {
-            await adminClient
-                .from('lead_dealer_shares')
-                .insert({
-                    lead_id: lead.id,
-                    dealer_tenant_id: referrerTenantId,
-                    is_primary: false // Secondary share (referrer)
-                });
+            await adminClient.from('crm_dealer_shares').insert({
+                lead_id: lead.id,
+                dealer_tenant_id: referrerTenantId,
+                is_primary: false, // Secondary share (referrer)
+            });
         }
 
         return { success: true, message: 'Callback requested successfully!' };
-
     } catch (err) {
         console.error('Unexpected lead sub error:', err);
         return { success: false, message: 'Unexpected system error.' };

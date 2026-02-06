@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
         }
 
         // 5. Fetch Profile Name for Header Display
-        const { data: profile } = await adminClient.from('profiles').select('full_name').eq('id', userId).single();
+        const { data: profile } = await adminClient.from('id_members').select('full_name').eq('id', userId).single();
 
         return NextResponse.json({
             success: true,

@@ -21,7 +21,10 @@ export default function ProfilePage() {
                 const supabase = createClient();
 
                 // 1. Get Auth User
-                const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+                const {
+                    data: { user: authUser },
+                    error: authError,
+                } = await supabase.auth.getUser();
 
                 if (authError || !authUser) {
                     console.warn('Supabase auth missing, falling back to local storage');
@@ -44,7 +47,7 @@ export default function ProfilePage() {
 
                 // 2. Get Profile & Tenant Details
                 const { data: profile, error: profileError } = await supabase
-                    .from('profiles')
+                    .from('id_members')
                     .select('*, tenants(name)')
                     .eq('id', authUser.id)
                     .single();
@@ -110,7 +113,9 @@ export default function ProfilePage() {
                         </div>
                         <div>
                             <h2 className="text-xl font-black text-slate-900 dark:text-white">{user.name}</h2>
-                            <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mt-1">{user.role.replace('_', ' ')}</p>
+                            <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mt-1">
+                                {user.role.replace('_', ' ')}
+                            </p>
                         </div>
                         <div className="pt-4 border-t border-slate-100 dark:border-white/5">
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[10px] font-black uppercase tracking-widest">
@@ -123,14 +128,18 @@ export default function ProfilePage() {
                 {/* Details Grid */}
                 <div className="md:col-span-2 space-y-6">
                     <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-white/5 shadow-sm">
-                        <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6">Contact Information</h3>
+                        <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6">
+                            Contact Information
+                        </h3>
                         <div className="space-y-6">
                             <div className="flex items-center gap-4">
                                 <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-400">
                                     <Mail size={18} />
                                 </div>
                                 <div>
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Email Address</p>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                        Email Address
+                                    </p>
                                     <p className="text-sm font-medium text-slate-900 dark:text-white">{user.email}</p>
                                 </div>
                             </div>
@@ -139,7 +148,9 @@ export default function ProfilePage() {
                                     <Phone size={18} />
                                 </div>
                                 <div>
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phone Number</p>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                        Phone Number
+                                    </p>
                                     <p className="text-sm font-medium text-slate-900 dark:text-white">{user.phone}</p>
                                 </div>
                             </div>
@@ -147,15 +158,21 @@ export default function ProfilePage() {
                     </div>
 
                     <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-white/5 shadow-sm">
-                        <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6">Organization Details</h3>
+                        <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6">
+                            Organization Details
+                        </h3>
                         <div className="space-y-6">
                             <div className="flex items-center gap-4">
                                 <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-400">
                                     <Building size={18} />
                                 </div>
                                 <div>
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Dealership Name</p>
-                                    <p className="text-sm font-medium text-slate-900 dark:text-white">{user.dealership}</p>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                        Dealership Name
+                                    </p>
+                                    <p className="text-sm font-medium text-slate-900 dark:text-white">
+                                        {user.dealership}
+                                    </p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-4">
@@ -163,8 +180,12 @@ export default function ProfilePage() {
                                     <MapPin size={18} />
                                 </div>
                                 <div>
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Location</p>
-                                    <p className="text-sm font-medium text-slate-900 dark:text-white">{user.location}</p>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                        Location
+                                    </p>
+                                    <p className="text-sm font-medium text-slate-900 dark:text-white">
+                                        {user.location}
+                                    </p>
                                 </div>
                             </div>
                         </div>

@@ -112,7 +112,7 @@ export default function MembersHome() {
             }
 
             const { data: profile } = await supabase
-                .from('profiles')
+                .from('id_members')
                 .select('referral_code, id')
                 .eq('id', user.id)
                 .single();

@@ -8,10 +8,13 @@ export async function POST(req: NextRequest) {
         const { phone, displayName, pincode } = await req.json();
 
         if (!phone || !displayName) {
-            return NextResponse.json({
-                success: false,
-                message: 'Phone and Name are required'
-            }, { status: 400 });
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: 'Phone and Name are required',
+                },
+                { status: 400 }
+            );
         }
 
         const formattedPhone = `+91${phone}`;
@@ -23,11 +26,14 @@ export async function POST(req: NextRequest) {
         const userExists = existingUsers?.users.some(u => u.phone === formattedPhone || u.email === email);
 
         if (userExists) {
-            return NextResponse.json({
-                success: false,
-                message: 'User already exists. Please login.',
-                code: 'USER_EXISTS'
-            }, { status: 409 });
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: 'User already exists. Please login.',
+                    code: 'USER_EXISTS',
+                },
+                { status: 409 }
+            );
         }
 
         // 2. Create Auth User
@@ -37,31 +43,32 @@ export async function POST(req: NextRequest) {
             email_confirm: true,
             phone_confirm: true,
             user_metadata: { full_name: displayName, phone: phone },
-            password: password
+            password: password,
         });
 
         if (createError) {
             console.error('Signup Auth Error:', createError);
-            return NextResponse.json({
-                success: false,
-                message: 'Failed to create account.'
-            }, { status: 500 });
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: 'Failed to create account.',
+                },
+                { status: 500 }
+            );
         }
 
         const userId = newUser.user.id;
         const referralCode = generateDisplayId();
 
         // 3. Create Profile (BMB_USER role by default)
-        const { error: profileError } = await adminClient
-            .from('profiles')
-            .insert({
-                id: userId,
-                full_name: displayName,
-                phone: phone,
-                role: 'BMB_USER',
-                referral_code: referralCode,
-                pincode: pincode || null,
-            });
+        const { error: profileError } = await adminClient.from('id_members').insert({
+            id: userId,
+            full_name: displayName,
+            phone: phone,
+            role: 'BMB_USER',
+            referral_code: referralCode,
+            pincode: pincode || null,
+        });
 
         if (profileError) {
             console.error('Signup Profile Error:', profileError);
@@ -84,14 +91,16 @@ export async function POST(req: NextRequest) {
             userId,
             session: signInData?.session,
             user: signInData?.user,
-            message: 'Account created successfully'
+            message: 'Account created successfully',
         });
-
     } catch (error) {
         console.error('Signup API Error:', error);
-        return NextResponse.json({
-            success: false,
-            message: 'Internal Server Error'
-        }, { status: 500 });
+        return NextResponse.json(
+            {
+                success: false,
+                message: 'Internal Server Error',
+            },
+            { status: 500 }
+        );
     }
 }
