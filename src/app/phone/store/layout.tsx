@@ -1,6 +1,5 @@
 import React from 'react';
 import { PhoneHeader } from '@/components/phone/layout/PhoneHeader';
-import { Footer } from '@/components/store/Footer';
 import { PhoneBottomNav } from '@/components/phone/layout/PhoneBottomNav';
 import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
 
@@ -13,7 +12,6 @@ export default function M2StoreLayout({ children }: { children: React.ReactNode 
             >
                 <PhoneHeader />
                 <main className="flex-1 pt-[var(--header-h)] pb-24 md:pb-0">{children}</main>
-                <Footer />
                 <div className="block md:hidden">
                     <PhoneBottomNav />
                 </div>
