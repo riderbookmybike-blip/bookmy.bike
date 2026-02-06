@@ -111,6 +111,16 @@ export const ProductCard = ({
         return match?.hexCode || null;
     });
 
+    useEffect(() => {
+        const primaryColor = v.availableColors?.find(c => c.imageUrl) || v.availableColors?.[0];
+        setSelectedColorImage(primaryColor?.imageUrl || v.imageUrl || null);
+        setSelectedColorZoom(primaryColor?.zoomFactor ?? v.zoomFactor ?? null);
+        setSelectedColorFlip(primaryColor?.isFlipped ?? v.isFlipped ?? false);
+        setSelectedColorOffsetX(primaryColor?.offsetX ?? v.offsetX ?? 0);
+        setSelectedColorOffsetY(primaryColor?.offsetY ?? v.offsetY ?? 0);
+        setSelectedHex(primaryColor?.hexCode || null);
+    }, [v.id, v.imageUrl, v.availableColors, v.zoomFactor, v.isFlipped, v.offsetX, v.offsetY]);
+
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [ratingCount, setRatingCount] = useState(() => {
         // Initialize with random count between 500-999 * 100

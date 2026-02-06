@@ -78,7 +78,14 @@ export function LeadCaptureModal({
                 .eq('id', user.id)
                 .maybeSingle();
 
-            const candidate = (member?.primary_phone || member?.whatsapp || user.phone || '').replace(/\D/g, '');
+            const candidate = (
+                member?.primary_phone ||
+                member?.whatsapp ||
+                user.phone ||
+                (user.user_metadata as any)?.phone ||
+                (user.user_metadata as any)?.mobile ||
+                ''
+            ).replace(/\D/g, '');
             if (candidate.length === 10) {
                 setPhone(candidate);
                 await processPhoneNumber(candidate);

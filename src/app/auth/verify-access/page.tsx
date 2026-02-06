@@ -62,14 +62,17 @@ export default async function VerifyAccessPage({ searchParams }: { searchParams?
 
     // 1. Ensure Profile Exists
     if (!profile) {
+        const resolvedPhone = user.phone || user.user_metadata?.phone || '';
         await supabase.from('id_members').insert({
             id: user.id,
             email: user.email,
-            phone: user.phone || user.user_metadata?.phone || '',
+            primary_email: user.email,
+            primary_phone: resolvedPhone || null,
+            whatsapp: resolvedPhone || null,
             full_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
             avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
             tenant_id: MARKETPLACE_TENANT_ID,
-            role: 'STAFF',
+            role: 'MEMBER',
         });
     }
 
@@ -77,7 +80,7 @@ export default async function VerifyAccessPage({ searchParams }: { searchParams?
     const { data: existingLead } = await supabase
         .from('crm_leads')
         .select('id')
-        .eq('customer_phone', user.phone || user.user_metadata?.phone || user.email)
+        .eq('customer_phone', user.phone || user.user_metadata?.phone || user.email || '')
         .eq('owner_tenant_id', MARKETPLACE_TENANT_ID)
         .single();
 

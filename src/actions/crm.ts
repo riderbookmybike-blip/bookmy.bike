@@ -1378,7 +1378,19 @@ export async function getQuoteById(
     // Fetch Member Profile (single query to avoid slow duplicate fetches)
     let customerProfile: any = null;
     const leadPhoneRaw = q.lead?.customer_phone || '';
-    const leadPhone = leadPhoneRaw.replace(/\D/g, '');
+    const leadPhoneDigits = leadPhoneRaw.replace(/\D/g, '');
+    const leadPhone = leadPhoneDigits; // Keep for conditional checks
+
+    // Construct robust search variations
+    const phoneSearchVariations = new Set<string>();
+    if (leadPhoneRaw) phoneSearchVariations.add(leadPhoneRaw.trim());
+    if (leadPhoneDigits) phoneSearchVariations.add(leadPhoneDigits);
+    if (leadPhoneDigits.length > 10) phoneSearchVariations.add(leadPhoneDigits.slice(-10));
+    // Add common formatted versions if we have a clean 10-digit number
+    if (leadPhoneDigits.length === 10) {
+        phoneSearchVariations.add(`+91${leadPhoneDigits}`);
+        phoneSearchVariations.add(`+91 ${leadPhoneDigits}`);
+    }
     const leadEmail = null;
 
     const resolvedMemberId = q.member_id || q.lead?.customer_id || null;
@@ -1426,7 +1438,7 @@ export async function getQuoteById(
 
         let resolvedMember = member;
 
-        if (!resolvedMember && leadPhone) {
+        if (!resolvedMember && phoneSearchVariations.size > 0) {
             const { data: memberByContact } = await supabase
                 .from('id_members')
                 .select(
@@ -1465,10 +1477,12 @@ export async function getQuoteById(
                     ].join(', ')
                 )
                 .or(
-                    [leadPhone ? `primary_phone.eq.${leadPhone}` : null, leadPhone ? `whatsapp.eq.${leadPhone}` : null]
-                        .filter(Boolean)
+                    Array.from(phoneSearchVariations)
+                        .flatMap(p => [`primary_phone.eq.${p}`, `whatsapp.eq.${p}`])
+                        // Escaping commas if necessary, though typical phone chars are safe
                         .join(',')
                 )
+                .limit(1)
                 .maybeSingle();
             resolvedMember = memberByContact || null;
 
