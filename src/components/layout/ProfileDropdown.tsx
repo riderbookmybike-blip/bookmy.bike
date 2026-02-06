@@ -336,7 +336,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                 className={`h-10 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 flex items-center gap-3 group z-[101] ${triggerClass}`}
             >
                 <div
-                    className={`w-8 h-8 rounded-full overflow-hidden bg-brand-primary flex items-center justify-center text-black font-bold text-xs ring-2 transition-all ${
+                    className={`w-8 h-8 rounded-full overflow-hidden bg-brand-primary flex items-center justify-center text-slate-900 dark:text-white font-bold text-xs ring-2 transition-all ${
                         scrolled || theme === 'dark'
                             ? 'ring-white/20 group-hover:ring-transparent'
                             : 'ring-slate-100 group-hover:ring-brand-primary/20'

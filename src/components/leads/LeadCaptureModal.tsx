@@ -45,6 +45,7 @@ export function LeadCaptureModal({
     // Detect if current user is a staff member of any dealership
     const isStaff = userRole && userRole !== 'MEMBER' && userRole !== 'BMB_USER';
     const primaryMembership = memberships?.find(m => m.tenant_id === tenantId);
+    const [autoPhoneLoaded, setAutoPhoneLoaded] = useState(false);
 
     // Reset state when modal opens/closes
     useEffect(() => {
@@ -57,29 +58,55 @@ export function LeadCaptureModal({
             setMemberId(null);
             setSuccess(false);
             setQuoteId(null);
+            setAutoPhoneLoaded(false);
         }
     }, [isOpen]);
 
+    useEffect(() => {
+        if (!isOpen || autoPhoneLoaded || isStaff) return;
+        const supabase = createClient();
+        const hydratePhone = async () => {
+            const { data: auth } = await supabase.auth.getUser();
+            const user = auth?.user;
+            if (!user?.id) {
+                setAutoPhoneLoaded(true);
+                return;
+            }
+            const { data: member } = await supabase
+                .from('id_members')
+                .select('primary_phone, whatsapp')
+                .eq('id', user.id)
+                .maybeSingle();
+
+            const candidate = (member?.primary_phone || member?.whatsapp || user.phone || '').replace(/\D/g, '');
+            if (candidate.length === 10) {
+                setPhone(candidate);
+                await processPhoneNumber(candidate);
+            }
+            setAutoPhoneLoaded(true);
+        };
+        hydratePhone();
+    }, [isOpen, autoPhoneLoaded, isStaff]);
+
     if (!isOpen) return null;
 
-    async function handlePhoneSubmit(e: React.FormEvent) {
-        e.preventDefault();
+    async function processPhoneNumber(rawPhone: string) {
         setError(null);
 
-        if (phone.length !== 10) {
+        if (rawPhone.length !== 10) {
             setError('Please enter a valid 10-digit mobile number');
             return;
         }
 
         setIsSubmitting(true);
         try {
-            const { data: existingUser, memberId: existingMemberId } = await checkExistingCustomer(phone);
+            const { data: existingUser, memberId: existingMemberId } = await checkExistingCustomer(rawPhone);
 
             if (existingUser && existingMemberId) {
                 // User exists, create a lead for them first to link the quote
                 const leadResult = await createLeadAction({
                     customer_name: existingUser.name || 'Unknown',
-                    customer_phone: phone,
+                    customer_phone: rawPhone,
                     customer_pincode: existingUser.pincode || undefined,
                     customer_dob: existingUser.dob || undefined,
                     model: model,
@@ -102,6 +129,11 @@ export function LeadCaptureModal({
         } finally {
             setIsSubmitting(false);
         }
+    }
+
+    async function handlePhoneSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        await processPhoneNumber(phone);
     }
 
     async function handleDetailSubmit(e: React.FormEvent) {
