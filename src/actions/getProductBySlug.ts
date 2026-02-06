@@ -49,6 +49,7 @@ export async function getProductBySlug(
                 skus:cat_items!parent_id(
                     id,
                     type,
+                    status,
                     price_base,
                     specs,
                     is_primary,

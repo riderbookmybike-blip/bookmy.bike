@@ -51,10 +51,12 @@ export interface CatalogItemDB {
         skus?: {
             id: string;
             type: string;
+            status?: string;
             price_base: number;
             specs?: any;
             prices?: {
                 ex_showroom_price: number;
+                is_active?: boolean;
                 rto_total?: number;
                 insurance_total?: number;
                 rto?: any; // New JSON SOT
@@ -78,6 +80,7 @@ interface MapOptions {
     userLng?: number | null;
     userDistrict?: string | null;
     offers?: any[];
+    requireEligibility?: boolean;
 }
 
 export function mapCatalogItems(
@@ -88,6 +91,7 @@ export function mapCatalogItems(
 ): ProductVariant[] {
     const { stateCode, userLat, userLng, userDistrict } = options;
     const offers = Array.isArray(options?.offers) ? options!.offers : [];
+    const requireEligibility = Boolean(options?.requireEligibility);
 
     const effectiveRule: any = ruleData?.[0] || {
         id: 'default',
@@ -133,18 +137,37 @@ export function mapCatalogItems(
                     Array.isArray(variantSkus) && variantSkus.length > 0 ? variantSkus : isSkuItem ? [variantItem] : []
                 ) as any[];
 
-                // If a variant has no SKUs, it should not be surfaced as a product.
-                if ((variantItem as any).type === 'VARIANT' && allSkus.length === 0) {
+                const hasOfferForSku = (skuId: string) =>
+                    offers && Array.isArray(offers) ? offers.some((o: any) => o?.vehicle_color_id === skuId) : false;
+                const hasActivePrice = (sku: any) =>
+                    Array.isArray(sku?.prices) ? sku.prices.some((p: any) => p?.is_active === true) : false;
+                const isSkuActive = (sku: any) => (sku?.status ? sku.status === 'ACTIVE' : true);
+
+                const activeSkus = allSkus.filter(isSkuActive);
+                const eligibleSkus = requireEligibility
+                    ? activeSkus.filter(sku => hasActivePrice(sku) && hasOfferForSku(sku.id))
+                    : activeSkus;
+
+                // If a variant has no eligible SKUs, it should not be surfaced as a product.
+                if ((variantItem as any).type === 'VARIANT' && eligibleSkus.length === 0) {
                     return null as any;
                 }
 
                 // Only fallback to family-level SKUs when rendering the FAMILY card (no variants with SKUs).
-                if (allSkus.length === 0 && variantItem.id === family.id && Array.isArray(familyChildren)) {
-                    allSkus.push(
-                        ...familyChildren.flatMap(c =>
-                            c.type === 'SKU' ? [{ ...c, price_base: c.price_base ?? 0 }] : c.skus || []
-                        )
+                if (activeSkus.length === 0 && variantItem.id === family.id && Array.isArray(familyChildren)) {
+                    const familySkus = familyChildren.flatMap(c =>
+                        c.type === 'SKU' ? [{ ...c, price_base: c.price_base ?? 0 }] : c.skus || []
                     );
+                    const familyActive = familySkus.filter(isSkuActive);
+                    const familyEligible = requireEligibility
+                        ? familyActive.filter(sku => hasActivePrice(sku) && hasOfferForSku(sku.id))
+                        : familyActive;
+
+                    eligibleSkus.push(...familyEligible);
+                }
+
+                if (eligibleSkus.length === 0) {
+                    return null as any;
                 }
 
                 // Extract dealer/studio info from best offer match
@@ -153,7 +176,7 @@ export function mapCatalogItems(
                 let studioId: string | undefined = undefined;
                 let dealerDistrict: string | undefined = undefined;
                 if (offers && Array.isArray(offers)) {
-                    const skuIds = allSkus.map((s: any) => s.id);
+                    const skuIds = eligibleSkus.map((s: any) => s.id);
                     const dealerMatch = offers
                         .filter((o: any) => skuIds.includes(o.vehicle_color_id))
                         .sort((a: any, b: any) => Number(a.best_offer) - Number(b.best_offer))[0];
@@ -187,7 +210,9 @@ export function mapCatalogItems(
                     rating: 4.5,
 
                     price: (() => {
-                        const allSkuPrices = allSkus.flatMap((sku: any) => sku.prices || []);
+                        const allSkuPrices = eligibleSkus.flatMap((sku: any) =>
+                            (sku.prices || []).filter((p: any) => (requireEligibility ? p?.is_active === true : true))
+                        );
                         const skuPrices = allSkuPrices.filter((p: any) => !p.district || p.district === 'ALL');
                         const effectivePrices = skuPrices.length > 0 ? skuPrices : allSkuPrices;
                         let activePriceObj = null;
@@ -201,7 +226,7 @@ export function mapCatalogItems(
                         let bundleValueAmount = 0;
                         let bundlePriceAmount = 0;
                         if (offers && Array.isArray(offers)) {
-                            const skuIds = allSkus.map((s: any) => s.id);
+                            const skuIds = eligibleSkus.map((s: any) => s.id);
                             const match = offers
                                 .filter((o: any) => skuIds.includes(o.vehicle_color_id))
                                 .sort((a: any, b: any) => Number(a.best_offer) - Number(b.best_offer))[0];
@@ -281,7 +306,7 @@ export function mapCatalogItems(
                             onRoadTotal = activePriceObj.on_road_price || activePriceObj.ex_showroom_price;
                         } else {
                             // Fallback: Use price_base from SKU/Variant/Family hierarchy
-                            const firstSku = allSkus.length > 0 ? allSkus[0] : null;
+                            const firstSku = eligibleSkus.length > 0 ? eligibleSkus[0] : null;
                             baseExShowroom =
                                 firstSku?.price_base || (variantItem as any).price_base || family.price_base || 0;
                             onRoadTotal = baseExShowroom;
@@ -319,7 +344,7 @@ export function mapCatalogItems(
                         };
                     })(),
 
-                    skuIds: Array.from(new Set(allSkus.map((sku: any) => sku.id).filter(Boolean))),
+                    skuIds: Array.from(new Set(eligibleSkus.map((sku: any) => sku.id).filter(Boolean))),
 
                     specifications: (() => {
                         const vs = variantItem.specs || {};
@@ -378,8 +403,8 @@ export function mapCatalogItems(
                     })(),
 
                     imageUrl: (() => {
-                        const primarySku = allSkus.find((s: any) => s.is_primary);
-                        const firstSku = allSkus[0];
+                        const primarySku = eligibleSkus.find((s: any) => s.is_primary);
+                        const firstSku = eligibleSkus[0];
                         const targetSku = primarySku || firstSku;
 
                         const assets = (targetSku?.assets || []) as any[];
@@ -400,7 +425,7 @@ export function mapCatalogItems(
 
                     availableColors: (() => {
                         const colorsMap = new Map();
-                        allSkus.forEach((sku: any) => {
+                        eligibleSkus.forEach((sku: any) => {
                             const hex = sku.specs?.hex_primary;
                             if (hex && !colorsMap.has(hex)) {
                                 const assets = (sku.assets || []) as any[];
@@ -428,8 +453,8 @@ export function mapCatalogItems(
 
                     // Zoom factor for image normalization (from primary SKU)
                     zoomFactor: (() => {
-                        const primarySku = allSkus.find((s: any) => s.is_primary);
-                        const firstSku = allSkus[0];
+                        const primarySku = eligibleSkus.find((s: any) => s.is_primary);
+                        const firstSku = eligibleSkus[0];
                         const targetSku = primarySku || firstSku;
 
                         const assets = (targetSku?.assets || []) as any[];
@@ -440,8 +465,7 @@ export function mapCatalogItems(
                         return Number(primaryAsset?.zoom_factor || targetSku?.zoom_factor || 1.0);
                     })(),
                     isFlipped: (() => {
-                        const allSkus = (variantItem as any).skus || [];
-                        const targetSku = allSkus.find((s: any) => s.is_primary) || allSkus[0];
+                        const targetSku = eligibleSkus.find((s: any) => s.is_primary) || eligibleSkus[0];
                         const assets = (targetSku?.assets || []) as any[];
                         const primaryAsset =
                             assets.find(a => a.type === 'IMAGE' && a.is_primary) ||
@@ -450,8 +474,7 @@ export function mapCatalogItems(
                         return Boolean(primaryAsset?.is_flipped || targetSku?.is_flipped || false);
                     })(),
                     offsetX: (() => {
-                        const allSkus = (variantItem as any).skus || [];
-                        const targetSku = allSkus.find((s: any) => s.is_primary) || allSkus[0];
+                        const targetSku = eligibleSkus.find((s: any) => s.is_primary) || eligibleSkus[0];
                         const assets = (targetSku?.assets || []) as any[];
                         const primaryAsset =
                             assets.find(a => a.type === 'IMAGE' && a.is_primary) ||
@@ -460,8 +483,7 @@ export function mapCatalogItems(
                         return Number(primaryAsset?.offset_x || targetSku?.offset_x || 0);
                     })(),
                     offsetY: (() => {
-                        const allSkus = (variantItem as any).skus || [];
-                        const targetSku = allSkus.find((s: any) => s.is_primary) || allSkus[0];
+                        const targetSku = eligibleSkus.find((s: any) => s.is_primary) || eligibleSkus[0];
                         const assets = (targetSku?.assets || []) as any[];
                         const primaryAsset =
                             assets.find(a => a.type === 'IMAGE' && a.is_primary) ||
@@ -470,8 +492,8 @@ export function mapCatalogItems(
                         return Number(primaryAsset?.offset_y || targetSku?.offset_y || 0);
                     })(),
                     suitableFor: (() => {
-                        const primarySku = allSkus.find((s: any) => s.is_primary);
-                        const firstSku = allSkus[0];
+                        const primarySku = eligibleSkus.find((s: any) => s.is_primary);
+                        const firstSku = eligibleSkus[0];
                         const targetSku = primarySku || firstSku;
                         return (
                             targetSku?.specs?.suitable_for ||
@@ -483,7 +505,9 @@ export function mapCatalogItems(
                     studioName,
                     dealerId,
                     serverPricing: (() => {
-                        const skuPrices = allSkus.flatMap((sku: any) => sku.prices || []);
+                        const skuPrices = eligibleSkus.flatMap((sku: any) =>
+                            (sku.prices || []).filter((p: any) => (requireEligibility ? p?.is_active === true : true))
+                        );
                         // Re-finding simplified for serverPricing population
                         let activeP = null;
                         if (userLat && userLng) {

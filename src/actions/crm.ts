@@ -460,6 +460,11 @@ export async function createQuoteAction(data: {
     const comms: any = data.commercials;
     const onRoadPrice = Math.round(comms.grand_total || comms.onRoad || 0);
     const exShowroom = Math.round(comms.base_price || comms.exShowroom || comms.ex_showroom || 0);
+    const pricingSnapshot = comms?.pricing_snapshot || {};
+    const rtoAmount = Math.round(Number(pricingSnapshot?.rto_total ?? pricingSnapshot?.rto?.total ?? comms.rto ?? 0));
+    const insuranceAmount = Math.round(
+        Number(pricingSnapshot?.insurance_total ?? pricingSnapshot?.insurance?.total ?? comms.insurance ?? 0)
+    );
 
     let nextVersion = 1;
     const vehicleSkuId = data.color_id || data.variant_id;
@@ -499,8 +504,8 @@ export async function createQuoteAction(data: {
             // New Flat Columns
             on_road_price: onRoadPrice,
             ex_showroom_price: exShowroom,
-            insurance_amount: data.commercials.insurance || 0,
-            rto_amount: data.commercials.rto || 0,
+            insurance_amount: insuranceAmount,
+            rto_amount: rtoAmount,
             // vehicle_color removed to fix 42703 error
 
             status: 'DRAFT',
@@ -563,6 +568,13 @@ export async function createQuoteVersion(
     if (!parent) throw new Error('Parent quote not found');
 
     const onRoadPrice = commercials.grand_total || 0;
+    const pricingSnapshot = commercials?.pricing_snapshot || {};
+    const rtoAmount = Math.round(
+        Number(pricingSnapshot?.rto_total ?? pricingSnapshot?.rto?.total ?? commercials.rto ?? 0)
+    );
+    const insuranceAmount = Math.round(
+        Number(pricingSnapshot?.insurance_total ?? pricingSnapshot?.insurance?.total ?? commercials.insurance ?? 0)
+    );
 
     await supabase.from('crm_quotes').update({ is_latest: false }).eq('id', parentQuoteId);
 
@@ -581,8 +593,8 @@ export async function createQuoteVersion(
             // New Flat Columns
             on_road_price: onRoadPrice,
             ex_showroom_price: commercials.base_price || 0,
-            insurance_amount: commercials.insurance || 0,
-            rto_amount: commercials.rto || 0,
+            insurance_amount: insuranceAmount,
+            rto_amount: rtoAmount,
             // vehicle_color removed to fix 42703 error
 
             status: 'DRAFT',

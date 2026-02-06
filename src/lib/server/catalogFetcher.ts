@@ -45,6 +45,7 @@ async function getRawCatalog() {
                 skus:cat_items!parent_id(
                     id,
                     type,
+                    status,
                     price_base,
                     is_primary,
                     image_url,
@@ -144,6 +145,6 @@ export async function fetchCatalogServerSide(leadId?: string): Promise<ProductVa
         filteredData,
         [], // ruleData deprecated
         [], // insuranceRuleData deprecated
-        { stateCode, userLat, userLng, userDistrict, offers: offerData || [] }
+        { stateCode, userLat, userLng, userDistrict, offers: offerData || [], requireEligibility: true }
     );
 }

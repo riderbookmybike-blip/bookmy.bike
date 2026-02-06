@@ -41,6 +41,7 @@ interface CatalogItemDB {
         skus?: {
             id: string;
             type: string;
+            status?: string;
             price_base: number;
             specs?: any;
             prices?: {
@@ -49,6 +50,7 @@ interface CatalogItemDB {
                 district?: string;
                 latitude?: number;
                 longitude?: number;
+                is_active?: boolean;
                 rto?: any;
                 insurance?: any;
                 rto_breakdown?: any;
@@ -568,6 +570,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                         userLng,
                         userDistrict: resolvedUserDistrict,
                         offers: offerData || [],
+                        requireEligibility: true,
                     });
 
                     let enrichedItems = mappedItems;

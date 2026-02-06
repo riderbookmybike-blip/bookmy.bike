@@ -230,7 +230,9 @@ export default function PricingLedgerTable({
 
     const formatMoney = (value: number | null | undefined) => {
         if (value === null || value === undefined) return '—';
-        return `₹${Number(value).toLocaleString()}`;
+        const num = Number(value);
+        if (isNaN(num)) return '—';
+        return `₹${num.toLocaleString()}`;
     };
 
     const getRtoTypeDetail = (rtoData: any, type: 'STATE' | 'BH' | 'COMPANY') => {
