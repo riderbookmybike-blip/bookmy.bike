@@ -18,10 +18,16 @@ import {
     RefreshCw,
     Maximize2,
     RotateCcw,
-    Move
+    Move,
+    Eraser,
+    AlertTriangle,
+    ExternalLink,
+    Crop,
+    Ruler,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
+import { toast } from 'sonner';
 
 interface SKUMediaManagerProps {
     skuName: string;
@@ -66,14 +72,18 @@ export default function SKUMediaManager({
     initialOffsetX = 0,
     initialOffsetY = 0,
     onSave,
-    onClose
+    onClose,
 }: SKUMediaManagerProps) {
     const [images, setImages] = useState<string[]>(initialImages);
     const [skuVideos, setSkuVideos] = useState<string[]>(initialVideos.filter(v => !inheritedVideos.includes(v)));
-    const [selectedInheritedVideos, setSelectedInheritedVideos] = useState<string[]>(inheritedVideos.filter(v => initialVideos.includes(v)));
+    const [selectedInheritedVideos, setSelectedInheritedVideos] = useState<string[]>(
+        inheritedVideos.filter(v => initialVideos.includes(v))
+    );
     const [skuPdfs, setSkuPdfs] = useState<string[]>(initialPdfs.filter(p => !inheritedPdfs.includes(p)));
 
-    const [primaryImage, setPrimaryImage] = useState<string | null>(initialPrimary || (initialImages.length > 0 ? initialImages[0] : null));
+    const [primaryImage, setPrimaryImage] = useState<string | null>(
+        initialPrimary || (initialImages.length > 0 ? initialImages[0] : null)
+    );
     const [applyVideosToAll, setApplyVideosToAll] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [videoInput, setVideoInput] = useState('');
@@ -86,6 +96,9 @@ export default function SKUMediaManager({
     const [offsetY, setOffsetY] = useState(initialOffsetY);
     const [isEditorOpen, setIsEditorOpen] = useState(false);
 
+    // Remove BG State
+    const [isRemovingBg, setIsRemovingBg] = useState(false);
+
     // Delete/Replace Confirmation State
     const [confirmation, setConfirmation] = useState<{
         isOpen: boolean;
@@ -95,13 +108,208 @@ export default function SKUMediaManager({
         message: React.ReactNode;
     }>({ isOpen: false, type: 'DELETE', title: '', message: '' });
 
+    // Image Dimensions State
+    const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
+    const [isCropping, setIsCropping] = useState(false);
+    const [contentPadding, setContentPadding] = useState(8); // Internal padding percentage
+
+    // Load image dimensions when primary image changes
+    useEffect(() => {
+        if (primaryImage) {
+            const img = new Image();
+            img.onload = () => {
+                setImageDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+            };
+            img.src = primaryImage;
+        } else {
+            setImageDimensions(null);
+        }
+    }, [primaryImage]);
+
+    // Smart Crop: Auto-trim transparent pixels and optionally fit to aspect ratio
+    const handleSmartCrop = async (targetAspectRatio?: number) => {
+        if (!primaryImage) return;
+        setIsCropping(true);
+
+        try {
+            // Load image into canvas
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            await new Promise<void>((resolve, reject) => {
+                img.onload = () => resolve();
+                img.onerror = reject;
+                img.src = primaryImage;
+            });
+
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext('2d')!;
+            ctx.drawImage(img, 0, 0);
+
+            // Get image data to find content bounds
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const { data, width, height } = imageData;
+
+            // Find content bounds (non-transparent pixels)
+            let minX = width,
+                minY = height,
+                maxX = 0,
+                maxY = 0;
+            const alphaThreshold = 10; // Pixels with alpha < this are considered transparent
+
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const alpha = data[(y * width + x) * 4 + 3];
+                    if (alpha > alphaThreshold) {
+                        minX = Math.min(minX, x);
+                        minY = Math.min(minY, y);
+                        maxX = Math.max(maxX, x);
+                        maxY = Math.max(maxY, y);
+                    }
+                }
+            }
+
+            // If no content found, use full image
+            if (minX > maxX || minY > maxY) {
+                minX = 0;
+                minY = 0;
+                maxX = width - 1;
+                maxY = height - 1;
+            }
+
+            // Add content padding (percentage)
+            const paddingPx = Math.max(maxX - minX, maxY - minY) * (contentPadding / 100);
+            minX = Math.max(0, minX - paddingPx);
+            minY = Math.max(0, minY - paddingPx);
+            maxX = Math.min(width - 1, maxX + paddingPx);
+            maxY = Math.min(height - 1, maxY + paddingPx);
+
+            let cropWidth = maxX - minX + 1;
+            let cropHeight = maxY - minY + 1;
+            let cropX = minX;
+            let cropY = minY;
+
+            // Adjust for target aspect ratio if provided
+            if (targetAspectRatio) {
+                const currentRatio = cropWidth / cropHeight;
+                if (currentRatio > targetAspectRatio) {
+                    // Wider than target, need more height
+                    const newHeight = cropWidth / targetAspectRatio;
+                    const heightDiff = newHeight - cropHeight;
+                    cropY = Math.max(0, cropY - heightDiff / 2);
+                    cropHeight = Math.min(height - cropY, newHeight);
+                } else {
+                    // Taller than target, need more width
+                    const newWidth = cropHeight * targetAspectRatio;
+                    const widthDiff = newWidth - cropWidth;
+                    cropX = Math.max(0, cropX - widthDiff / 2);
+                    cropWidth = Math.min(width - cropX, newWidth);
+                }
+            }
+
+            // Create cropped canvas
+            const croppedCanvas = document.createElement('canvas');
+            croppedCanvas.width = Math.round(cropWidth);
+            croppedCanvas.height = Math.round(cropHeight);
+            const croppedCtx = croppedCanvas.getContext('2d')!;
+            croppedCtx.drawImage(
+                canvas,
+                cropX,
+                cropY,
+                cropWidth,
+                cropHeight,
+                0,
+                0,
+                croppedCanvas.width,
+                croppedCanvas.height
+            );
+
+            // Convert to blob and upload
+            const blob = await new Promise<Blob>(resolve => {
+                croppedCanvas.toBlob(b => resolve(b!), 'image/png', 1.0);
+            });
+
+            const supabase = createClient();
+            const fileName = `catalog/cropped_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.png`;
+
+            const { error: uploadError } = await supabase.storage.from('vehicles').upload(fileName, blob, {
+                contentType: 'image/png',
+                upsert: false,
+            });
+
+            if (uploadError) throw uploadError;
+
+            const {
+                data: { publicUrl },
+            } = supabase.storage.from('vehicles').getPublicUrl(fileName);
+
+            // Replace current image with the cropped one
+            const newImages = images.map(img => (img === primaryImage ? publicUrl : img));
+            setImages(newImages);
+            setPrimaryImage(publicUrl);
+            toast.success(`Cropped to ${croppedCanvas.width}×${croppedCanvas.height}px`);
+        } catch (err) {
+            console.error('[Smart Crop] Error:', err);
+            toast.error('Crop failed. Please try again.');
+        } finally {
+            setIsCropping(false);
+        }
+    };
+
+    const handleRemoveBg = async () => {
+        if (!primaryImage) return;
+        setIsRemovingBg(true);
+        try {
+            // Dynamically import to avoid SSR issues
+            const { removeBackground } = await import('@imgly/background-removal');
+
+            // Fetch the image and convert to blob
+            const imageResponse = await fetch(primaryImage);
+            const imageBlob = await imageResponse.blob();
+
+            // Remove background (runs in browser via WebAssembly - FREE!)
+            const resultBlob = await removeBackground(imageBlob, {
+                progress: (key, current, total) => {
+                    console.log(`[BG Removal] ${key}: ${Math.round((current / total) * 100)}%`);
+                },
+            });
+
+            // Upload the result to Supabase
+            const supabase = createClient();
+            const fileName = `catalog/nobg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.png`;
+            const arrayBuffer = await resultBlob.arrayBuffer();
+
+            const { error: uploadError } = await supabase.storage.from('vehicles').upload(fileName, arrayBuffer, {
+                contentType: 'image/png',
+                upsert: false,
+            });
+
+            if (uploadError) throw uploadError;
+
+            const {
+                data: { publicUrl },
+            } = supabase.storage.from('vehicles').getPublicUrl(fileName);
+
+            // Replace current image with the processed one
+            const newImages = images.map(img => (img === primaryImage ? publicUrl : img));
+            setImages(newImages);
+            setPrimaryImage(publicUrl);
+        } catch (err) {
+            console.error('[BG Removal] Error:', err);
+            setUploadError('Background removal failed. Try again.');
+        } finally {
+            setIsRemovingBg(false);
+        }
+    };
+
     const initiateDelete = () => {
         if (!primaryImage) return;
         setConfirmation({
             isOpen: true,
             type: 'DELETE',
             title: 'Delete Image',
-            message: 'Are you sure you want to delete this image? This action cannot be undone.'
+            message: 'Are you sure you want to delete this image? This action cannot be undone.',
         });
     };
 
@@ -115,9 +323,10 @@ export default function SKUMediaManager({
             title: 'Replace Image',
             message: (
                 <span>
-                    Are you sure you want to replace the current image with <span className="font-bold text-indigo-600">{file.name}</span>?
+                    Are you sure you want to replace the current image with{' '}
+                    <span className="font-bold text-indigo-600">{file.name}</span>?
                 </span>
-            )
+            ),
         });
         // Reset input value
         e.target.value = '';
@@ -126,8 +335,22 @@ export default function SKUMediaManager({
     const confirmAction = async () => {
         if (confirmation.type === 'DELETE') {
             const newImages = images.filter(img => img !== primaryImage);
+            const newPrimary = newImages.length > 0 ? newImages[0] : null;
             setImages(newImages);
-            setPrimaryImage(newImages.length > 0 ? newImages[0] : null);
+            setPrimaryImage(newPrimary);
+            // Persist to database
+            await onSave(
+                newImages,
+                skuVideos,
+                skuPdfs,
+                newPrimary,
+                applyVideosToAll,
+                zoomFactor,
+                isFlipped,
+                offsetX,
+                offsetY
+            );
+            toast.success('Image deleted and saved');
         } else if (confirmation.type === 'REPLACE' && confirmation.file) {
             setIsUploading(true);
             const supabase = createClient();
@@ -138,13 +361,29 @@ export default function SKUMediaManager({
                 const filePath = `catalog/${fileName}`;
                 const { error } = await supabase.storage.from('vehicles').upload(filePath, file);
                 if (error) throw error;
-                const { data: { publicUrl } } = supabase.storage.from('vehicles').getPublicUrl(filePath);
+                const {
+                    data: { publicUrl },
+                } = supabase.storage.from('vehicles').getPublicUrl(filePath);
 
-                const newImages = images.map(img => img === primaryImage ? publicUrl : img);
+                const newImages = images.map(img => (img === primaryImage ? publicUrl : img));
                 setImages(newImages);
                 setPrimaryImage(publicUrl);
+                // Persist to database
+                await onSave(
+                    newImages,
+                    skuVideos,
+                    skuPdfs,
+                    publicUrl,
+                    applyVideosToAll,
+                    zoomFactor,
+                    isFlipped,
+                    offsetX,
+                    offsetY
+                );
+                toast.success('Image replaced and saved');
             } catch (err) {
-                setUploadError("Replacement failed. Try again.");
+                toast.error('Replacement failed. Try again.');
+                setUploadError('Replacement failed. Try again.');
             } finally {
                 setIsUploading(false);
             }
@@ -166,7 +405,9 @@ export default function SKUMediaManager({
                 const filePath = `catalog/${fileName}`;
                 const { error } = await supabase.storage.from('vehicles').upload(filePath, file);
                 if (error) throw error;
-                const { data: { publicUrl } } = supabase.storage.from('vehicles').getPublicUrl(filePath);
+                const {
+                    data: { publicUrl },
+                } = supabase.storage.from('vehicles').getPublicUrl(filePath);
                 newUrls.push(publicUrl);
             }
             if (type === 'image') {
@@ -177,7 +418,7 @@ export default function SKUMediaManager({
                 setSkuPdfs([...skuPdfs, ...newUrls]);
             }
         } catch (err: any) {
-            setUploadError("Upload failed. Try again.");
+            setUploadError('Upload failed. Try again.');
         } finally {
             setIsUploading(false);
         }
@@ -188,7 +429,17 @@ export default function SKUMediaManager({
             const allVideos = [...skuVideos, ...selectedInheritedVideos];
             const allPdfs = [...skuPdfs];
             if (typeof onSave === 'function') {
-                await onSave(images, allVideos, allPdfs, primaryImage, applyVideosToAll, zoomFactor, isFlipped, offsetX, offsetY);
+                await onSave(
+                    images,
+                    allVideos,
+                    allPdfs,
+                    primaryImage,
+                    applyVideosToAll,
+                    zoomFactor,
+                    isFlipped,
+                    offsetX,
+                    offsetY
+                );
             }
             onClose();
         } catch (err) {
@@ -199,7 +450,8 @@ export default function SKUMediaManager({
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8">
             <motion.div
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 className="absolute inset-0 bg-slate-950/90 backdrop-blur-xl"
                 onClick={onClose}
             />
@@ -216,23 +468,36 @@ export default function SKUMediaManager({
                             <Maximize2 size={24} />
                         </div>
                         <div>
-                            <h2 className="text-xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white leading-none">Catalog Studio</h2>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Refining {skuName}</p>
+                            <h2 className="text-xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white leading-none">
+                                Catalog Studio
+                            </h2>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                Refining {skuName}
+                            </p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-3 hover:bg-slate-200 dark:hover:bg-white/10 rounded-2xl transition-colors group">
-                        <X size={24} className="text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors" />
+                    <button
+                        onClick={onClose}
+                        className="p-3 hover:bg-slate-200 dark:hover:bg-white/10 rounded-2xl transition-colors group"
+                    >
+                        <X
+                            size={24}
+                            className="text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors"
+                        />
                     </button>
                 </div>
 
                 {/* Sub-Header Tabs (Optional but keeps it clean) */}
                 <div className="flex px-8 border-b border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900">
-                    <button className="px-6 py-4 text-[11px] font-black uppercase tracking-widest border-b-2 border-indigo-600 text-indigo-600">Visual Alignment</button>
-                    <button className="px-6 py-4 text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600">Media Assets</button>
+                    <button className="px-6 py-4 text-[11px] font-black uppercase tracking-widest border-b-2 border-indigo-600 text-indigo-600">
+                        Visual Alignment
+                    </button>
+                    <button className="px-6 py-4 text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600">
+                        Media Assets
+                    </button>
                 </div>
 
                 <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
-
                     {/* LEFT: Alignment Workspace */}
                     <div className="flex-[1.5] bg-slate-50 dark:bg-black/40 p-8 flex flex-col gap-6 border-r border-slate-100 dark:border-white/5 overflow-y-auto">
                         <div className="flex items-center justify-between">
@@ -240,11 +505,18 @@ export default function SKUMediaManager({
                                 <div className="p-1.5 bg-amber-100 text-amber-600 rounded-lg">
                                     <Move size={16} />
                                 </div>
-                                <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">Alignment Workspace</h3>
+                                <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">
+                                    Alignment Workspace
+                                </h3>
                             </div>
                             <div className="flex gap-2">
                                 <button
-                                    onClick={() => { setZoomFactor(1.0); setOffsetX(0); setOffsetY(0); setIsFlipped(false); }}
+                                    onClick={() => {
+                                        setZoomFactor(1.0);
+                                        setOffsetX(0);
+                                        setOffsetY(0);
+                                        setIsFlipped(false);
+                                    }}
                                     className="p-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-400 hover:text-indigo-600 transition-colors"
                                     title="Reset Alignment"
                                 >
@@ -253,78 +525,131 @@ export default function SKUMediaManager({
                             </div>
                         </div>
 
-                        {/* LARGE VIEWPORT */}
-                        <div className="relative aspect-[16/9] bg-slate-200 dark:bg-slate-800 rounded-[2rem] border-4 border-white dark:border-slate-800 overflow-hidden shadow-inner group">
-                            {/* Industrial Grid Background */}
-                            <div className="absolute inset-0 opacity-20 pointer-events-none"
+                        {/* ALIGNMENT WORKSPACE - Exact Card Replica */}
+                        {/* Using exact card image container dimensions: 300×344px (aspect ratio 300:344 ≈ 0.87:1) */}
+                        <div className="relative flex items-center justify-center py-8">
+                            {/* Outer container with checkerboard background */}
+                            <div
+                                className="relative rounded-[2rem] border-4 border-white dark:border-slate-800 overflow-hidden shadow-inner group"
                                 style={{
-                                    backgroundImage: `radial-gradient(circle, #000 1px, transparent 1px), linear-gradient(to right, #ccc 1px, transparent 1px), linear-gradient(to bottom, #ccc 1px, transparent 1px)`,
-                                    backgroundSize: '4px 4px, 40px 40px, 40px 40px'
+                                    width: '400px',
+                                    height: `${400 * (344 / 300)}px`, // Maintain exact card aspect ratio
+                                    background: `repeating-conic-gradient(#e5e7eb 0% 25%, #f3f4f6 0% 50%) 50% / 20px 20px`,
                                 }}
-                            />
-
-                            {/* Center Crosshair / Smart Alignment Guides */}
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                {/* Vertical Guide */}
+                            >
+                                {/* Dark mode checkerboard */}
                                 <div
-                                    className={`absolute w-[1px] h-full transition-colors duration-300 ${Math.abs(offsetX) < 5 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] z-20' : 'bg-rose-500/30'}`}
-                                    style={{ opacity: Math.abs(offsetX) < 20 ? 1 : 0.2 }}
-                                />
-                                {/* Horizontal Guide */}
-                                <div
-                                    className={`absolute h-[1px] w-full transition-colors duration-300 ${Math.abs(offsetY) < 5 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] z-20' : 'bg-rose-500/30'}`}
-                                    style={{ opacity: Math.abs(offsetY) < 20 ? 1 : 0.2 }}
-                                />
-
-                                {/* Center Snap Indicator */}
-                                {Math.abs(offsetX) < 5 && Math.abs(offsetY) < 5 && (
-                                    <motion.div
-                                        initial={{ scale: 0 }} animate={{ scale: 1 }}
-                                        className="w-4 h-4 rounded-full border-2 border-emerald-500 bg-emerald-500/20 backdrop-blur-sm z-30"
-                                    />
-                                )}
-                            </div>
-
-                            {/* The Draggable Image */}
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <motion.div
-                                    drag
-                                    dragMomentum={false}
-                                    onDrag={(e, info) => {
-                                        setOffsetX(prev => prev + info.delta.x);
-                                        setOffsetY(prev => prev + info.delta.y);
+                                    className="absolute inset-0 hidden dark:block pointer-events-none"
+                                    style={{
+                                        background: `repeating-conic-gradient(#374151 0% 25%, #1f2937 0% 50%) 50% / 20px 20px`,
                                     }}
-                                    style={{ x: offsetX, y: offsetY }}
-                                    className="cursor-move relative"
-                                >
-                                    {primaryImage ? (
-                                        <motion.img
-                                            src={primaryImage}
-                                            alt="Alignment Preview"
-                                            className="max-w-none transition-transform duration-100"
-                                            style={{
-                                                height: '400px', // Fixed height reference for alignment
-                                                transform: `scale(${zoomFactor}) ${isFlipped ? 'scaleX(-1)' : 'scaleX(1)'}`,
-                                                pointerEvents: 'none'
-                                            }}
-                                        />
-                                    ) : (
-                                        <div className="flex flex-col items-center gap-4 text-slate-400">
-                                            <ImageIcon size={64} strokeWidth={1} />
-                                            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Drop or Select Image</span>
-                                        </div>
-                                    )}
-                                </motion.div>
-                            </div>
+                                />
 
-                            {/* Scale Indicator Overlay */}
-                            <div className="absolute bottom-6 left-6 flex items-center gap-3">
-                                <div className="px-4 py-2 bg-black/80 backdrop-blur-xl rounded-2xl border border-white/10 text-white flex items-center gap-3 shadow-2xl">
-                                    <span className="text-[10px] font-black tracking-widest uppercase opacity-60">Scale</span>
-                                    <span className="text-xs font-black italic">{(zoomFactor * 100).toFixed(0)}%</span>
-                                    <div className="w-[1px] h-3 bg-white/20" />
-                                    <span className="text-[10px] font-black tracking-widest uppercase opacity-60">Pos</span>
-                                    <span className="text-[10px] font-mono opacity-80">{offsetX.toFixed(0)}, {offsetY.toFixed(0)}</span>
+                                {/* GREEN SAFE ZONE - Exact Card Image Container Boundary */}
+                                {/* Card uses w-[92%] h-[92%] for internal padding, so this is the visible area */}
+                                <div
+                                    className="absolute border-2 border-dashed border-emerald-500 rounded-xl pointer-events-none z-30"
+                                    style={{
+                                        left: '4%',
+                                        top: '4%',
+                                        width: '92%',
+                                        height: '92%',
+                                    }}
+                                >
+                                    {/* Corner indicators */}
+                                    <div className="absolute -top-1 -left-1 w-3 h-3 border-t-2 border-l-2 border-emerald-500 rounded-tl" />
+                                    <div className="absolute -top-1 -right-1 w-3 h-3 border-t-2 border-r-2 border-emerald-500 rounded-tr" />
+                                    <div className="absolute -bottom-1 -left-1 w-3 h-3 border-b-2 border-l-2 border-emerald-500 rounded-bl" />
+                                    <div className="absolute -bottom-1 -right-1 w-3 h-3 border-b-2 border-r-2 border-emerald-500 rounded-br" />
+
+                                    {/* Safe Zone Label */}
+                                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-emerald-500 rounded text-[8px] font-black text-white uppercase tracking-widest whitespace-nowrap">
+                                        Card Safe Zone (92%)
+                                    </div>
+                                </div>
+
+                                {/* Center Crosshair / Smart Alignment Guides */}
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    {/* Vertical Guide */}
+                                    <div
+                                        className={`absolute w-[1px] h-full transition-colors duration-300 ${Math.abs(offsetX) < 5 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] z-20' : 'bg-rose-500/30'}`}
+                                        style={{ opacity: Math.abs(offsetX) < 20 ? 1 : 0.2 }}
+                                    />
+                                    {/* Horizontal Guide */}
+                                    <div
+                                        className={`absolute h-[1px] w-full transition-colors duration-300 ${Math.abs(offsetY) < 5 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] z-20' : 'bg-rose-500/30'}`}
+                                        style={{ opacity: Math.abs(offsetY) < 20 ? 1 : 0.2 }}
+                                    />
+
+                                    {/* Center Snap Indicator */}
+                                    {Math.abs(offsetX) < 5 && Math.abs(offsetY) < 5 && (
+                                        <motion.div
+                                            initial={{ scale: 0 }}
+                                            animate={{ scale: 1 }}
+                                            className="w-4 h-4 rounded-full border-2 border-emerald-500 bg-emerald-500/20 backdrop-blur-sm z-30"
+                                        />
+                                    )}
+                                </div>
+
+                                {/* The Draggable Image - positioned exactly like card preview */}
+                                <div className="absolute inset-0 flex items-end justify-center pb-2 overflow-hidden">
+                                    <motion.div
+                                        drag
+                                        dragMomentum={false}
+                                        onDrag={(e, info) => {
+                                            setOffsetX(prev => prev + info.delta.x);
+                                            setOffsetY(prev => prev + info.delta.y);
+                                        }}
+                                        style={{ x: offsetX, y: offsetY }}
+                                        className="cursor-move relative w-[92%] h-[92%] flex items-center justify-center"
+                                    >
+                                        {primaryImage ? (
+                                            <motion.img
+                                                src={primaryImage}
+                                                alt="Alignment Preview"
+                                                className="max-w-full max-h-full object-contain transition-transform duration-100"
+                                                style={{
+                                                    transform: `scale(${zoomFactor}) ${isFlipped ? 'scaleX(-1)' : 'scaleX(1)'}`,
+                                                    pointerEvents: 'none',
+                                                }}
+                                            />
+                                        ) : (
+                                            <div className="flex flex-col items-center gap-4 text-slate-400">
+                                                <ImageIcon size={64} strokeWidth={1} />
+                                                <span className="text-[10px] font-black uppercase tracking-[0.2em]">
+                                                    Drop or Select Image
+                                                </span>
+                                            </div>
+                                        )}
+                                    </motion.div>
+                                </div>
+
+                                {/* Scale Indicator Overlay */}
+                                <div className="absolute bottom-4 left-4 flex items-center gap-3 z-40">
+                                    <div className="px-3 py-1.5 bg-black/80 backdrop-blur-xl rounded-xl border border-white/10 text-white flex items-center gap-2 shadow-2xl">
+                                        <span className="text-[9px] font-black tracking-widest uppercase opacity-60">
+                                            Scale
+                                        </span>
+                                        <span className="text-[10px] font-black italic">
+                                            {(zoomFactor * 100).toFixed(0)}%
+                                        </span>
+                                        <div className="w-[1px] h-2.5 bg-white/20" />
+                                        <span className="text-[9px] font-black tracking-widest uppercase opacity-60">
+                                            Pos
+                                        </span>
+                                        <span className="text-[9px] font-mono opacity-80">
+                                            {offsetX.toFixed(0)}, {offsetY.toFixed(0)}
+                                        </span>
+                                        {imageDimensions && (
+                                            <>
+                                                <div className="w-[1px] h-2.5 bg-white/20" />
+                                                <Ruler size={10} className="opacity-60" />
+                                                <span className="text-[9px] font-mono opacity-80">
+                                                    {imageDimensions.width}×{imageDimensions.height}
+                                                </span>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -333,23 +658,33 @@ export default function SKUMediaManager({
                         <div className="grid grid-cols-2 gap-6">
                             <div className="space-y-4 p-6 bg-white dark:bg-white/5 rounded-3xl border border-slate-100 dark:border-white/5">
                                 <div className="flex justify-between items-center">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Precise Zoom</label>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Precise Zoom
+                                    </label>
                                     <div className="flex gap-1">
                                         {[0.8, 1.0, 1.2].map(v => (
-                                            <button key={v} onClick={() => setZoomFactor(v)} className={`px-2 py-1 rounded-md text-[9px] font-bold ${zoomFactor === v ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-black/20 text-slate-400'}`}>
+                                            <button
+                                                key={v}
+                                                onClick={() => setZoomFactor(v)}
+                                                className={`px-2 py-1 rounded-md text-[9px] font-bold ${zoomFactor === v ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-black/20 text-slate-400'}`}
+                                            >
                                                 {v.toFixed(1)}x
                                             </button>
                                         ))}
                                     </div>
                                 </div>
                                 <input
-                                    type="range" min="0.5" max="2.0" step="0.01" value={zoomFactor}
-                                    onChange={(e) => setZoomFactor(parseFloat(e.target.value))}
+                                    type="range"
+                                    min="0.5"
+                                    max="2.0"
+                                    step="0.01"
+                                    value={zoomFactor}
+                                    onChange={e => setZoomFactor(parseFloat(e.target.value))}
                                     className="w-full h-1.5 bg-slate-100 dark:bg-white/10 rounded-full appearance-none accent-indigo-600 cursor-pointer"
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-3 gap-4">
                                 <button
                                     onClick={() => setIsFlipped(!isFlipped)}
                                     className={`flex flex-col items-center justify-center p-4 rounded-3xl border-2 transition-all ${isFlipped ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-600/10 text-indigo-600' : 'border-slate-100 dark:border-white/5 bg-white dark:bg-white/5 text-slate-400 hover:border-slate-200'}`}
@@ -361,8 +696,78 @@ export default function SKUMediaManager({
                                 <label className="flex flex-col items-center justify-center p-4 rounded-3xl border-2 border-slate-100 dark:border-white/5 bg-white dark:bg-white/5 text-slate-400 hover:border-indigo-400 hover:text-indigo-600 transition-all cursor-pointer">
                                     <RefreshCw size={20} className="mb-2" />
                                     <span className="text-[9px] font-black uppercase tracking-widest">Replace</span>
-                                    <input type="file" hidden accept="image/*" onChange={initiateReplace} disabled={!primaryImage} />
+                                    <input
+                                        type="file"
+                                        hidden
+                                        accept="image/*"
+                                        onChange={initiateReplace}
+                                        disabled={!primaryImage}
+                                    />
                                 </label>
+
+                                <button
+                                    onClick={handleRemoveBg}
+                                    disabled={!primaryImage || isRemovingBg}
+                                    className={`flex flex-col items-center justify-center p-4 rounded-3xl border-2 transition-all ${isRemovingBg ? 'border-violet-600 bg-violet-50 dark:bg-violet-600/10 text-violet-600' : 'border-slate-100 dark:border-white/5 bg-white dark:bg-white/5 text-slate-400 hover:border-violet-400 hover:text-violet-600'} disabled:opacity-50 disabled:cursor-not-allowed`}
+                                >
+                                    {isRemovingBg ? (
+                                        <Loader2 size={20} className="mb-2 animate-spin" />
+                                    ) : (
+                                        <Eraser size={20} className="mb-2" />
+                                    )}
+                                    <span className="text-[9px] font-black uppercase tracking-widest">Remove BG</span>
+                                </button>
+
+                                {/* Smart Crop Button */}
+                                <div className="relative group">
+                                    <button
+                                        onClick={() => handleSmartCrop()}
+                                        disabled={!primaryImage || isCropping}
+                                        className={`w-full flex flex-col items-center justify-center p-4 rounded-3xl border-2 transition-all ${isCropping ? 'border-amber-600 bg-amber-50 dark:bg-amber-600/10 text-amber-600' : 'border-slate-100 dark:border-white/5 bg-white dark:bg-white/5 text-slate-400 hover:border-amber-400 hover:text-amber-600'} disabled:opacity-50 disabled:cursor-not-allowed`}
+                                    >
+                                        {isCropping ? (
+                                            <Loader2 size={20} className="mb-2 animate-spin" />
+                                        ) : (
+                                            <Crop size={20} className="mb-2" />
+                                        )}
+                                        <span className="text-[9px] font-black uppercase tracking-widest">
+                                            Smart Crop
+                                        </span>
+                                    </button>
+                                    {/* Aspect Ratio Dropdown */}
+                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-white/10 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 py-2">
+                                        <button
+                                            onClick={() => handleSmartCrop()}
+                                            className="w-full px-4 py-2 text-left text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10"
+                                        >
+                                            Auto Trim (Keep Ratio)
+                                        </button>
+                                        <button
+                                            onClick={() => handleSmartCrop(1)}
+                                            className="w-full px-4 py-2 text-left text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10"
+                                        >
+                                            1:1 (Square)
+                                        </button>
+                                        <button
+                                            onClick={() => handleSmartCrop(4 / 3)}
+                                            className="w-full px-4 py-2 text-left text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10"
+                                        >
+                                            4:3 (Standard)
+                                        </button>
+                                        <button
+                                            onClick={() => handleSmartCrop(16 / 9)}
+                                            className="w-full px-4 py-2 text-left text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10"
+                                        >
+                                            16:9 (Wide)
+                                        </button>
+                                        <button
+                                            onClick={() => handleSmartCrop(300 / 344)}
+                                            className="w-full px-4 py-2 text-left text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10"
+                                        >
+                                            Card (300×344)
+                                        </button>
+                                    </div>
+                                </div>
 
                                 <button
                                     onClick={initiateDelete}
@@ -376,7 +781,12 @@ export default function SKUMediaManager({
                                 <label className="flex flex-col items-center justify-center p-4 rounded-3xl border-2 border-dashed border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-400 hover:border-indigo-400 hover:text-indigo-600 transition-all cursor-pointer">
                                     <Plus size={20} className="mb-2" />
                                     <span className="text-[9px] font-black uppercase tracking-widest">Add New</span>
-                                    <input type="file" hidden accept="image/*" onChange={(e) => handleFileUpload(e, 'image')} />
+                                    <input
+                                        type="file"
+                                        hidden
+                                        accept="image/*"
+                                        onChange={e => handleFileUpload(e, 'image')}
+                                    />
                                 </label>
                             </div>
                         </div>
@@ -389,16 +799,36 @@ export default function SKUMediaManager({
                                 <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg">
                                     <Maximize2 size={14} />
                                 </div>
-                                <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">Live Preview</h3>
+                                <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">
+                                    Live Preview
+                                </h3>
                             </div>
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Real-time card simulation</p>
+                            <div className="flex items-center gap-4">
+                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                    Real-time card simulation
+                                </p>
+                                {primaryImage && (
+                                    <a
+                                        href={primaryImage}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
+                                        title="Open saved image in new tab"
+                                    >
+                                        <ExternalLink size={10} />
+                                        Verify in DB
+                                    </a>
+                                )}
+                            </div>
                         </div>
 
                         {/* Mobile Card Preview */}
                         <div className="space-y-3">
                             <div className="flex items-center gap-2">
                                 <div className="w-2 h-2 rounded-full bg-indigo-500" />
-                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Mobile View</span>
+                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                                    Mobile View
+                                </span>
                             </div>
                             <div className="scale-[0.7] origin-top-left" style={{ width: '300px', height: '450px' }}>
                                 <div className="bg-white dark:bg-[#0f1115] border border-black/[0.04] dark:border-white/10 rounded-[2rem] overflow-hidden flex flex-col shadow-[0_1px_2px_rgba(0,0,0,0.02),0_4px_12px_rgba(0,0,0,0.03),0_12px_24px_-4px_rgba(0,0,0,0.08)] min-h-[520px]">
@@ -410,38 +840,52 @@ export default function SKUMediaManager({
                                                 scale: zoomFactor,
                                                 scaleX: isFlipped ? -zoomFactor : zoomFactor,
                                                 x: offsetX,
-                                                y: offsetY
+                                                y: offsetY,
                                             }}
                                             transition={{ duration: 0.3 }}
                                             src={primaryImage || '/images/categories/motorcycle_nobg.png'}
                                             alt={skuName}
                                             className="absolute bottom-2 left-1/2 -translate-x-1/2 w-[92%] h-[92%] object-contain z-10"
                                         />
-                                        <span className="absolute font-black text-[70px] uppercase tracking-[0.2em] opacity-[0.06] italic text-slate-900 dark:text-white select-none z-0">MOCK</span>
+                                        <span className="absolute font-black text-[70px] uppercase tracking-[0.2em] opacity-[0.06] italic text-slate-900 dark:text-white select-none z-0">
+                                            MOCK
+                                        </span>
                                     </div>
 
                                     {/* Content Section */}
                                     <div className="p-6 flex-1 flex flex-col justify-between bg-[#FAFAFA] dark:bg-[#0f1115]">
                                         <div>
                                             <div className="flex items-center justify-between">
-                                                <h3 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white leading-none">{skuName}</h3>
+                                                <h3 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white leading-none">
+                                                    {skuName}
+                                                </h3>
                                                 <div className="flex -space-x-2">
                                                     <div className="w-5 h-5 rounded-full border border-white dark:border-slate-900 bg-red-500" />
                                                     <div className="w-5 h-5 rounded-full border border-white dark:border-slate-900 bg-black" />
                                                 </div>
                                             </div>
-                                            <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest mt-1">STANDARD</p>
+                                            <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                                STANDARD
+                                            </p>
                                         </div>
 
                                         <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/5 grid grid-cols-2 gap-4">
                                             <div>
-                                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-0.5 italic">On-Road</p>
-                                                <span className="text-2xl font-black italic text-slate-900 dark:text-white">₹1,50,000</span>
+                                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-0.5 italic">
+                                                    On-Road
+                                                </p>
+                                                <span className="text-2xl font-black italic text-slate-900 dark:text-white">
+                                                    ₹1,50,000
+                                                </span>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-[10px] font-black text-green-600 uppercase tracking-widest mb-0.5 italic">Lowest EMI</p>
+                                                <p className="text-[10px] font-black text-green-600 uppercase tracking-widest mb-0.5 italic">
+                                                    Lowest EMI
+                                                </p>
                                                 <span className="text-2xl font-black text-green-600">₹5,250</span>
-                                                <span className="text-[10px] text-slate-400 font-bold uppercase">/mo</span>
+                                                <span className="text-[10px] text-slate-400 font-bold uppercase">
+                                                    /mo
+                                                </span>
                                             </div>
                                         </div>
 
@@ -457,7 +901,9 @@ export default function SKUMediaManager({
                         <div className="space-y-3 pt-6">
                             <div className="flex items-center gap-2">
                                 <div className="w-2 h-2 rounded-full bg-amber-500" />
-                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Desktop View</span>
+                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                                    Desktop View
+                                </span>
                             </div>
                             <div className="scale-[0.5] origin-top-left" style={{ width: '900px', height: '350px' }}>
                                 <div className="bg-white dark:bg-[#0f1115] border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden flex shadow-sm min-h-[22rem]">
@@ -469,45 +915,91 @@ export default function SKUMediaManager({
                                                 scale: zoomFactor,
                                                 scaleX: isFlipped ? -zoomFactor : zoomFactor,
                                                 x: offsetX,
-                                                y: offsetY
+                                                y: offsetY,
                                             }}
                                             transition={{ duration: 0.3 }}
                                             src={primaryImage || '/images/categories/motorcycle_nobg.png'}
                                             alt={skuName}
                                             className="w-[85%] h-[85%] object-contain z-10"
                                         />
-                                        <span className="absolute font-black text-[120px] uppercase tracking-[0.2em] opacity-[0.06] italic text-slate-900 dark:text-white select-none z-0">MOCK</span>
+                                        <span className="absolute font-black text-[120px] uppercase tracking-[0.2em] opacity-[0.06] italic text-slate-900 dark:text-white select-none z-0">
+                                            MOCK
+                                        </span>
                                     </div>
 
                                     {/* Content Section */}
                                     <div className="flex-1 p-10 flex flex-col justify-between">
                                         <div>
                                             <div className="flex items-center gap-4">
-                                                <h3 className="text-3xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white leading-none">{skuName}</h3>
+                                                <h3 className="text-3xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white leading-none">
+                                                    {skuName}
+                                                </h3>
                                             </div>
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">STANDARD • MOCK COLOR</p>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">
+                                                STANDARD • MOCK COLOR
+                                            </p>
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-y-4 gap-x-12 py-6 border-y border-slate-100 dark:border-white/10 bg-slate-50/30 dark:bg-white/[0.02] -mx-10 px-10 mt-4">
-                                            <div><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Engine</p><p className="text-sm font-black text-slate-900 dark:text-white">125CC</p></div>
-                                            <div><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Seat Height</p><p className="text-sm font-black text-slate-900 dark:text-white">780mm</p></div>
-                                            <div><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Weight</p><p className="text-sm font-black text-slate-900 dark:text-white italic">115kg</p></div>
-                                            <div><p className="text-[8px] font-black text-emerald-500/80 uppercase tracking-widest">Total Savings</p><p className="text-sm font-black text-emerald-600 dark:text-emerald-400">₹15,000</p></div>
+                                            <div>
+                                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                                                    Engine
+                                                </p>
+                                                <p className="text-sm font-black text-slate-900 dark:text-white">
+                                                    125CC
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                                                    Seat Height
+                                                </p>
+                                                <p className="text-sm font-black text-slate-900 dark:text-white">
+                                                    780mm
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                                                    Weight
+                                                </p>
+                                                <p className="text-sm font-black text-slate-900 dark:text-white italic">
+                                                    115kg
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[8px] font-black text-emerald-500/80 uppercase tracking-widest">
+                                                    Total Savings
+                                                </p>
+                                                <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                                                    ₹15,000
+                                                </p>
+                                            </div>
                                         </div>
 
                                         <div className="flex items-center justify-between pt-6">
                                             <div className="flex gap-16">
                                                 <div>
-                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">On-Road price</p>
-                                                    <span className="text-3xl font-black text-slate-900 dark:text-white leading-none tracking-tight">₹1,50,000</span>
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                                        On-Road price
+                                                    </p>
+                                                    <span className="text-3xl font-black text-slate-900 dark:text-white leading-none tracking-tight">
+                                                        ₹1,50,000
+                                                    </span>
                                                 </div>
                                                 <div>
-                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">EMI</p>
-                                                    <p className="text-3xl font-black text-brand-primary leading-none">₹5,250</p>
-                                                    <p className="text-sm font-black text-slate-500 dark:text-slate-300 uppercase mt-2">x36</p>
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                                        EMI
+                                                    </p>
+                                                    <p className="text-3xl font-black text-brand-primary leading-none">
+                                                        ₹5,250
+                                                    </p>
+                                                    <p className="text-sm font-black text-slate-500 dark:text-slate-300 uppercase mt-2">
+                                                        x36
+                                                    </p>
                                                 </div>
                                             </div>
-                                            <button className="px-10 py-4 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(244,176,0,0.3)]">Know More</button>
+                                            <button className="px-10 py-4 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(244,176,0,0.3)]">
+                                                Know More
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -517,11 +1009,22 @@ export default function SKUMediaManager({
                         {/* Config Toggle */}
                         <div className="pt-6 border-t border-slate-100 dark:border-white/5">
                             <label className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-black/20 rounded-2xl cursor-pointer group">
-                                <div className={`w-10 h-6 border-2 rounded-full relative transition-all ${applyVideosToAll ? 'bg-indigo-600 border-indigo-600' : 'border-slate-200 dark:border-white/10'}`}>
-                                    <div className={`absolute top-1 w-3 h-3 rounded-full transition-all ${applyVideosToAll ? 'right-1 bg-white' : 'left-1 bg-slate-300'}`} />
+                                <div
+                                    className={`w-10 h-6 border-2 rounded-full relative transition-all ${applyVideosToAll ? 'bg-indigo-600 border-indigo-600' : 'border-slate-200 dark:border-white/10'}`}
+                                >
+                                    <div
+                                        className={`absolute top-1 w-3 h-3 rounded-full transition-all ${applyVideosToAll ? 'right-1 bg-white' : 'left-1 bg-slate-300'}`}
+                                    />
                                 </div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Apply to all variants</span>
-                                <input type="checkbox" hidden checked={applyVideosToAll} onChange={e => setApplyVideosToAll(e.target.checked)} />
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+                                    Apply to all variants
+                                </span>
+                                <input
+                                    type="checkbox"
+                                    hidden
+                                    checked={applyVideosToAll}
+                                    onChange={e => setApplyVideosToAll(e.target.checked)}
+                                />
                             </label>
                         </div>
                     </div>
@@ -531,7 +1034,9 @@ export default function SKUMediaManager({
                 <div className="p-8 border-t border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/[0.02] flex items-center justify-between shrink-0">
                     <div className="hidden md:flex items-center gap-2 text-slate-400">
                         <Check size={14} className="text-emerald-500" />
-                        <span className="text-[9px] font-bold uppercase tracking-widest">All changes live-previewed</span>
+                        <span className="text-[9px] font-bold uppercase tracking-widest">
+                            All changes live-previewed
+                        </span>
                     </div>
                     <div className="flex gap-4">
                         <button
@@ -549,6 +1054,66 @@ export default function SKUMediaManager({
                     </div>
                 </div>
             </motion.div>
+
+            {/* Confirmation Modal */}
+            <AnimatePresence>
+                {confirmation.isOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[150] flex items-center justify-center p-4"
+                    >
+                        <div
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                            onClick={() => setConfirmation({ ...confirmation, isOpen: false })}
+                        />
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="relative bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-2xl max-w-md w-full border border-slate-200 dark:border-white/10"
+                        >
+                            <div className="flex items-center gap-4 mb-6">
+                                <div
+                                    className={`p-3 rounded-2xl ${confirmation.type === 'DELETE' ? 'bg-red-100 text-red-600' : 'bg-indigo-100 text-indigo-600'}`}
+                                >
+                                    <AlertTriangle size={24} />
+                                </div>
+                                <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                    {confirmation.title}
+                                </h3>
+                            </div>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-8">{confirmation.message}</p>
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={() => setConfirmation({ ...confirmation, isOpen: false })}
+                                    className="flex-1 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={confirmAction}
+                                    disabled={isUploading}
+                                    className={`flex-1 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest text-white transition-all ${
+                                        confirmation.type === 'DELETE'
+                                            ? 'bg-red-600 hover:bg-red-700'
+                                            : 'bg-indigo-600 hover:bg-indigo-700'
+                                    } disabled:opacity-50`}
+                                >
+                                    {isUploading ? (
+                                        <Loader2 className="animate-spin mx-auto" size={16} />
+                                    ) : confirmation.type === 'DELETE' ? (
+                                        'Delete'
+                                    ) : (
+                                        'Replace'
+                                    )}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
