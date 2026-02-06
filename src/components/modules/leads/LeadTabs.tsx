@@ -17,7 +17,7 @@ import {
     ChevronRight,
     Bike,
     Loader2,
-    AlertCircle
+    AlertCircle,
 } from 'lucide-react';
 import { Lead } from './LeadList';
 import { getCustomerHistory } from '@/actions/crm';
@@ -34,25 +34,43 @@ export function LeadOverview({ lead }: { lead: Lead }) {
                 <div className="md:col-span-2 bg-white dark:bg-slate-900/40 backdrop-blur-sm border border-slate-200 dark:border-white/5 rounded-2xl p-6 shadow-sm">
                     <div className="flex items-center gap-2 mb-6 text-indigo-600">
                         <User size={18} />
-                        <h3 className="text-[10px] font-black uppercase tracking-widest leading-none">Contextual Identity</h3>
+                        <h3 className="text-[10px] font-black uppercase tracking-widest leading-none">
+                            Contextual Identity
+                        </h3>
                     </div>
 
                     <div className="grid grid-cols-2 gap-8">
                         <div className="space-y-1">
-                            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Full Name</p>
-                            <p className="text-xl font-bold text-slate-900 dark:text-white uppercase">{lead.customerName}</p>
+                            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                Full Name
+                            </p>
+                            <p className="text-xl font-bold text-slate-900 dark:text-white uppercase">
+                                {lead.customerName}
+                            </p>
                         </div>
                         <div className="space-y-1">
-                            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Contact Node</p>
-                            <p className="text-xl font-bold text-slate-900 dark:text-white font-mono tracking-tight">{lead.phone}</p>
+                            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                Contact Node
+                            </p>
+                            <p className="text-xl font-bold text-slate-900 dark:text-white font-mono tracking-tight">
+                                {lead.phone}
+                            </p>
                         </div>
                         <div className="space-y-1">
-                            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Zone Pincode</p>
-                            <p className="text-base font-bold text-slate-600 dark:text-slate-300">{lead.pincode || 'UPDATING...'}</p>
+                            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                Zone Pincode
+                            </p>
+                            <p className="text-base font-bold text-slate-600 dark:text-slate-300">
+                                {lead.pincode || 'UPDATING...'}
+                            </p>
                         </div>
                         <div className="space-y-1">
-                            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Temporal Signature (DOB)</p>
-                            <p className="text-base font-bold text-slate-600 dark:text-slate-300">{lead.dob || 'NOT_SYNCED'}</p>
+                            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                Temporal Signature (DOB)
+                            </p>
+                            <p className="text-base font-bold text-slate-600 dark:text-slate-300">
+                                {lead.dob || 'NOT_SYNCED'}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -65,15 +83,23 @@ export function LeadOverview({ lead }: { lead: Lead }) {
                     </div>
                     <div className="space-y-6">
                         <div>
-                            <p className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-60">Acquisition Source</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-60">
+                                Acquisition Source
+                            </p>
                             <div className="text-lg font-black italic">{lead.source}</div>
                         </div>
                         <div className="pt-4 border-t border-white/10 dark:border-indigo-600/20">
-                            <p className="text-[10px] font-black uppercase tracking-widest mb-4 opacity-60">Intent Intensity</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest mb-4 opacity-60">
+                                Intent Intensity
+                            </p>
                             <div className="h-2 w-full bg-white/20 dark:bg-white/5 rounded-full overflow-hidden mb-2">
-                                <div className={`h-full bg-white dark:bg-indigo-500 transition-all duration-1000 ${lead.intentScore === 'HOT' ? 'w-full shadow-[0_0_12px_rgba(255,255,255,0.5)]' : lead.intentScore === 'WARM' ? 'w-2/3' : 'w-1/3'}`} />
+                                <div
+                                    className={`h-full bg-white dark:bg-indigo-500 transition-all duration-1000 ${lead.intentScore === 'HOT' ? 'w-full shadow-[0_0_12px_rgba(255,255,255,0.5)]' : lead.intentScore === 'WARM' ? 'w-2/3' : 'w-1/3'}`}
+                                />
                             </div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-right">{lead.intentScore || 'ANALYZING...'}</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-right">
+                                {lead.intentScore || 'ANALYZING...'}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -86,8 +112,12 @@ export function LeadOverview({ lead }: { lead: Lead }) {
                         <Bike size={28} strokeWidth={1.5} />
                     </div>
                     <div>
-                        <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Target Model</p>
-                        <p className="text-lg font-black text-slate-900 dark:text-white tracking-tight">{lead.interestModel || 'GENERIC_INTEREST'}</p>
+                        <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">
+                            Target Model
+                        </p>
+                        <p className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                            {lead.interestModel || 'GENERIC_INTEREST'}
+                        </p>
                     </div>
                 </div>
 
@@ -96,8 +126,12 @@ export function LeadOverview({ lead }: { lead: Lead }) {
                         <Share2 size={28} strokeWidth={1.5} />
                     </div>
                     <div>
-                        <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Network Referral</p>
-                        <p className="text-lg font-black text-slate-900 dark:text-white tracking-tight italic">{lead.referralSource || 'DIRECT_CHANNEL'}</p>
+                        <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">
+                            Network Referral
+                        </p>
+                        <p className="text-lg font-black text-slate-900 dark:text-white tracking-tight italic">
+                            {lead.referralSource || 'DIRECT_CHANNEL'}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -107,9 +141,13 @@ export function LeadOverview({ lead }: { lead: Lead }) {
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500">
                         <FileText size={18} />
-                        <h3 className="text-[10px] font-black uppercase tracking-widest leading-none">Internal Intelligence Notes</h3>
+                        <h3 className="text-[10px] font-black uppercase tracking-widest leading-none">
+                            Internal Intelligence Notes
+                        </h3>
                     </div>
-                    <span className="text-[9px] font-black px-2 py-0.5 bg-indigo-600/10 text-indigo-600 rounded uppercase tracking-tighter">Private_Record</span>
+                    <span className="text-[9px] font-black px-2 py-0.5 bg-indigo-600/10 text-indigo-600 rounded uppercase tracking-tighter">
+                        Private_Record
+                    </span>
                 </div>
 
                 <div className="relative group">
@@ -149,19 +187,25 @@ export function LeadHistory({ customerId }: { customerId?: string }) {
         });
     }, [customerId]);
 
-    if (loading) return (
-        <div className="py-20 text-center space-y-4 opacity-40">
-            <Loader2 size={32} className="mx-auto text-indigo-500 animate-spin" />
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Retrieving Historical Clusters...</p>
-        </div>
-    );
+    if (loading)
+        return (
+            <div className="py-20 text-center space-y-4 opacity-40">
+                <Loader2 size={32} className="mx-auto text-indigo-500 animate-spin" />
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                    Retrieving Historical Clusters...
+                </p>
+            </div>
+        );
 
-    if (!history) return (
-        <div className="py-20 text-center space-y-4 opacity-40">
-            <History size={40} className="mx-auto text-slate-400" />
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">No Historical Footprint Found</p>
-        </div>
-    );
+    if (!history)
+        return (
+            <div className="py-20 text-center space-y-4 opacity-40">
+                <History size={40} className="mx-auto text-slate-400" />
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                    No Historical Footprint Found
+                </p>
+            </div>
+        );
 
     const allEvents = [
         ...(history.leads || []).map((l: any) => ({ ...l, type: 'LEAD', icon: User })),
@@ -174,18 +218,30 @@ export function LeadHistory({ customerId }: { customerId?: string }) {
             <div className="bg-slate-900 dark:bg-white/5 rounded-3xl p-8 border border-white/10 flex flex-col md:flex-row justify-between items-center gap-6">
                 <div>
                     <h3 className="text-3xl font-black text-white italic tracking-tighter">Lifetime Activity</h3>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Cross-system interaction log</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                        Cross-system interaction log
+                    </p>
                 </div>
                 <div className="text-center md:text-right bg-white/5 p-4 rounded-2xl border border-white/5">
-                    <p className="text-3xl font-black text-indigo-400 tabular-nums">₹{history.quotes.reduce((acc: number, q: any) => acc + (q.commercials?.grand_total || 0), 0).toLocaleString()}</p>
-                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Total Transactional Value</p>
+                    <p className="text-3xl font-black text-indigo-400 tabular-nums">
+                        ₹
+                        {history.quotes
+                            .reduce((acc: number, q: any) => acc + (q.commercials?.grand_total || 0), 0)
+                            .toLocaleString()}
+                    </p>
+                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                        Total Transactional Value
+                    </p>
                 </div>
             </div>
 
             {/* Event Timeline */}
             <div className="space-y-3">
                 {allEvents.map((event, idx) => (
-                    <div key={idx} className="group p-4 bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-2xl flex items-center justify-between hover:border-indigo-500/30 transition-all cursor-pointer">
+                    <div
+                        key={idx}
+                        className="group p-4 bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-2xl flex items-center justify-between hover:border-indigo-500/30 transition-all cursor-pointer"
+                    >
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/5 flex items-center justify-center text-slate-400 group-hover:text-indigo-500 transition-colors">
                                 <event.icon size={20} strokeWidth={2} />
@@ -195,9 +251,17 @@ export function LeadHistory({ customerId }: { customerId?: string }) {
                                     {event.type === 'LEAD' ? 'New Interest Captured' : 'Proposal Generated'}
                                 </h4>
                                 <div className="flex items-center gap-2 mt-0.5">
-                                    <span className="text-[9px] font-bold text-indigo-500 uppercase">{event.interest_model || event.commercials?.label || 'Direct Context'}</span>
+                                    <span className="text-[9px] font-bold text-indigo-500 uppercase">
+                                        {event.interest_model || event.commercials?.label || 'Direct Context'}
+                                    </span>
                                     <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
-                                    <span className="text-[9px] font-bold text-slate-400">{new Date(event.created_at).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                                    <span className="text-[9px] font-bold text-slate-400">
+                                        {new Date(event.created_at).toLocaleDateString([], {
+                                            day: '2-digit',
+                                            month: 'short',
+                                            year: 'numeric',
+                                        })}
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -205,7 +269,10 @@ export function LeadHistory({ customerId }: { customerId?: string }) {
                             <div className="px-3 py-1 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase">
                                 {event.status}
                             </div>
-                            <ChevronRight size={16} className="text-slate-300 group-hover:text-indigo-500 transition-all" />
+                            <ChevronRight
+                                size={16}
+                                className="text-slate-300 group-hover:text-indigo-500 transition-all"
+                            />
                         </div>
                     </div>
                 ))}
@@ -220,8 +287,13 @@ export function LeadTransactions() {
         <div className="py-20 text-center opacity-40 space-y-6 bg-slate-50 dark:bg-white/[0.02] rounded-3xl border border-dashed border-slate-200 dark:border-white/10">
             <Zap className="mx-auto text-slate-400 dark:text-slate-600" size={48} strokeWidth={1} />
             <div className="space-y-2">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Live Interaction Pulse Inactive</p>
-                <p className="text-xs text-slate-400 max-w-sm mx-auto">Real-time telephonic and physical interaction monitoring for this node is currently pending synchronization.</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                    Live Interaction Pulse Inactive
+                </p>
+                <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                    Real-time telephonic and physical interaction monitoring for this node is currently pending
+                    synchronization.
+                </p>
             </div>
         </div>
     );
@@ -231,12 +303,15 @@ import DocumentManager from './DocumentManager';
 
 // Tab: Documents
 export function LeadDocuments({ memberId, tenantId }: { memberId?: string; tenantId?: string }) {
-    if (!memberId || !tenantId) return (
-        <div className="py-20 text-center opacity-40">
-            <AlertCircle className="mx-auto text-slate-400 mb-4" size={48} />
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Member Identity Not Linked</p>
-        </div>
-    );
+    if (!memberId || !tenantId)
+        return (
+            <div className="py-20 text-center opacity-40">
+                <AlertCircle className="mx-auto text-slate-400 mb-4" size={48} />
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    Member Identity Not Linked
+                </p>
+            </div>
+        );
 
     return <DocumentManager memberId={memberId} tenantId={tenantId} />;
 }
@@ -249,7 +324,9 @@ export function LeadActivity({ lead }: { lead: Lead }) {
         return (
             <div className="py-20 text-center opacity-40 bg-slate-50 dark:bg-white/[0.02] rounded-3xl border border-dashed border-slate-200 dark:border-white/10">
                 <Clock className="mx-auto text-slate-400" size={48} strokeWidth={1} />
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-4">Zero Event Clusters Detected</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-4">
+                    Zero Event Clusters Detected
+                </p>
             </div>
         );
     }
@@ -271,7 +348,14 @@ export function LeadActivity({ lead }: { lead: Lead }) {
                             </h4>
                             <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase bg-slate-50 dark:bg-white/5 px-3 py-1 rounded-full border border-slate-100 dark:border-white/5">
                                 <Clock size={12} className="text-indigo-500" />
-                                {event.timestamp ? new Date(event.timestamp).toLocaleString([], { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }) : 'Real-time'}
+                                {event.timestamp
+                                    ? new Date(event.timestamp).toLocaleString([], {
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                          day: '2-digit',
+                                          month: 'short',
+                                      })
+                                    : 'Real-time'}
                             </div>
                         </div>
                         <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
@@ -332,26 +416,32 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
         }
     };
 
-    if (loading) return (
-        <div className="py-20 text-center opacity-40">
-            <Loader2 size={32} className="mx-auto text-indigo-500 animate-spin" />
-            <p className="text-[10px] font-black uppercase tracking-widest mt-4">Retrieving Commercial Proposals...</p>
-        </div>
-    );
+    if (loading)
+        return (
+            <div className="py-20 text-center opacity-40">
+                <Loader2 size={32} className="mx-auto text-indigo-500 animate-spin" />
+                <p className="text-[10px] font-black uppercase tracking-widest mt-4">
+                    Retrieving Commercial Proposals...
+                </p>
+            </div>
+        );
 
-    if (quotes.length === 0) return (
-        <div className="py-20 text-center opacity-40 bg-slate-50 dark:bg-white/[0.02] rounded-3xl border border-dashed border-slate-200 dark:border-white/10">
-            <FileText className="mx-auto text-slate-400" size={48} strokeWidth={1} />
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-4">No Quotes Generated</p>
-        </div>
-    );
+    if (quotes.length === 0)
+        return (
+            <div className="py-20 text-center opacity-40 bg-slate-50 dark:bg-white/[0.02] rounded-3xl border border-dashed border-slate-200 dark:border-white/10">
+                <FileText className="mx-auto text-slate-400" size={48} strokeWidth={1} />
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-4">
+                    No Quotes Generated
+                </p>
+            </div>
+        );
 
     const prettifyLabel = (value?: string) => {
         if (!value) return '';
         const withSpaces = value.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
         return withSpaces
             .split(' ')
-            .map(word => word ? word[0].toUpperCase() + word.slice(1) : '')
+            .map(word => (word ? word[0].toUpperCase() + word.slice(1) : ''))
             .join(' ');
     };
 
@@ -362,7 +452,7 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
             month: 'short',
             year: 'numeric',
             hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
         });
     };
 
@@ -371,13 +461,13 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
         if (Array.isArray(snapshot[itemsKey]) && snapshot[itemsKey].length > 0) {
             return snapshot[itemsKey].map((item: any) => ({
                 id: item.id || item.name,
-                name: item.name || item.label || item.id
+                name: item.name || item.label || item.id,
             }));
         }
         if (Array.isArray(snapshot[key]) && snapshot[key].length > 0) {
             return snapshot[key].map((id: string) => ({
                 id,
-                name: prettifyLabel(id)
+                name: prettifyLabel(id),
             }));
         }
         return [];
@@ -385,16 +475,18 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
 
     const groupQuotes = () => {
         const grouped = new Map<string, any[]>();
-        quotes.forEach((quote) => {
+        quotes.forEach(quote => {
             const key = quote.color_id || quote.vehicle_sku_id || quote.variant_id || quote.id;
             if (!grouped.has(key)) grouped.set(key, []);
             grouped.get(key)?.push(quote);
         });
 
-        return Array.from(grouped.values()).map((group) => {
-            const sorted = [...group].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-            const latest = sorted.find((q) => q.is_latest) || sorted[0];
-            const history = sorted.filter((q) => q.id !== latest.id);
+        return Array.from(grouped.values()).map(group => {
+            const sorted = [...group].sort(
+                (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            );
+            const latest = sorted.find(q => q.is_latest) || sorted[0];
+            const history = sorted.filter(q => q.id !== latest.id);
             return { latest, history, all: sorted };
         });
     };
@@ -407,12 +499,20 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                 const quote = latest;
                 const isExpanded = expandedQuoteId === quote.id;
                 const pricing = quote.commercials?.pricing_snapshot || {};
-                const label = prettifyLabel(quote.commercials?.label || quote.variant?.name || quote.variant_name || quote.commercials?.product_name || '');
+                const label = prettifyLabel(
+                    quote.commercials?.label ||
+                        quote.variant?.name ||
+                        quote.variant_name ||
+                        quote.commercials?.product_name ||
+                        ''
+                );
                 const accessoryItems = getSnapshotItems(pricing, 'accessories', 'accessory_items');
                 const serviceItems = getSnapshotItems(pricing, 'services', 'service_items');
                 const insuranceItems = getSnapshotItems(pricing, 'insurance_addons', 'insurance_addon_items');
 
-                const chronological = [...all].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+                const chronological = [...all].sort(
+                    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                );
                 const historyRows = chronological.map((current, idx) => {
                     if (idx === 0) return { current, added: [], removed: [] };
                     const prev = chronological[idx - 1];
@@ -422,19 +522,19 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                     const currItems = [
                         ...getSnapshotItems(currSnap, 'accessories', 'accessory_items'),
                         ...getSnapshotItems(currSnap, 'services', 'service_items'),
-                        ...getSnapshotItems(currSnap, 'insurance_addons', 'insurance_addon_items')
+                        ...getSnapshotItems(currSnap, 'insurance_addons', 'insurance_addon_items'),
                     ];
                     const prevItems = [
                         ...getSnapshotItems(prevSnap, 'accessories', 'accessory_items'),
                         ...getSnapshotItems(prevSnap, 'services', 'service_items'),
-                        ...getSnapshotItems(prevSnap, 'insurance_addons', 'insurance_addon_items')
+                        ...getSnapshotItems(prevSnap, 'insurance_addons', 'insurance_addon_items'),
                     ];
 
-                    const currSet = new Set(currItems.map((i) => i.id));
-                    const prevSet = new Set(prevItems.map((i) => i.id));
+                    const currSet = new Set(currItems.map(i => i.id));
+                    const prevSet = new Set(prevItems.map(i => i.id));
 
-                    const added = currItems.filter((i) => !prevSet.has(i.id));
-                    const removed = prevItems.filter((i) => !currSet.has(i.id));
+                    const added = currItems.filter(i => !prevSet.has(i.id));
+                    const removed = prevItems.filter(i => !currSet.has(i.id));
 
                     return { current, added, removed };
                 });
@@ -442,15 +542,20 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                 return (
                     <div
                         key={quote.id}
-                        className={`bg-white dark:bg-slate-900/40 border transition-all duration-300 overflow-hidden ${isExpanded ? 'rounded-[2rem] border-indigo-500/30' : 'rounded-2xl border-slate-200 dark:border-white/5 hover:border-indigo-500/20'
-                            }`}
+                        className={`bg-white dark:bg-slate-900/40 border transition-all duration-300 overflow-hidden ${
+                            isExpanded
+                                ? 'rounded-[2rem] border-indigo-500/30'
+                                : 'rounded-2xl border-slate-200 dark:border-white/5 hover:border-indigo-500/20'
+                        }`}
                     >
                         <div
                             className="p-6 flex items-center justify-between group cursor-pointer"
                             onClick={() => setExpandedQuoteId(isExpanded ? null : quote.id)}
                         >
                             <div className="flex items-center gap-4">
-                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${isExpanded ? 'bg-indigo-600 text-white' : 'bg-indigo-600/10 text-indigo-600'}`}>
+                                <div
+                                    className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${isExpanded ? 'bg-indigo-600 text-white' : 'bg-indigo-600/10 text-indigo-600'}`}
+                                >
                                     <FileText size={20} />
                                 </div>
                                 <div>
@@ -458,23 +563,38 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                                         <h4 className="font-bold text-slate-900 dark:text-white uppercase tracking-tight">
                                             {quote.display_id || `QT-${quote.id.slice(0, 4).toUpperCase()}`}
                                         </h4>
-                                        {quote.is_latest && <span className="text-[9px] font-black px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded uppercase tracking-tighter border border-emerald-500/20">Latest</span>}
-                                        <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter border ${quote.status === 'ACCEPTED' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                            quote.status === 'CONFIRMED' ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' :
-                                                quote.status === 'LOCKED' ? 'bg-slate-900 text-white' :
-                                                    'bg-slate-500/10 text-slate-500 border-slate-500/20'
-                                            }`}>
+                                        {quote.is_latest && (
+                                            <span className="text-[9px] font-black px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded uppercase tracking-tighter border border-emerald-500/20">
+                                                Latest
+                                            </span>
+                                        )}
+                                        <span
+                                            className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter border ${
+                                                quote.status === 'ACCEPTED'
+                                                    ? 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                                                    : quote.status === 'CONFIRMED'
+                                                      ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20'
+                                                      : quote.status === 'LOCKED'
+                                                        ? 'bg-slate-900 text-white'
+                                                        : 'bg-slate-500/10 text-slate-500 border-slate-500/20'
+                                            }`}
+                                        >
                                             {quote.status}
                                         </span>
                                     </div>
                                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                                         {label || 'Standard Quote'} • {formatDateTime(quote.created_at)}
                                     </p>
-                                    {(accessoryItems.length > 0 || serviceItems.length > 0 || insuranceItems.length > 0) && (
+                                    {(accessoryItems.length > 0 ||
+                                        serviceItems.length > 0 ||
+                                        insuranceItems.length > 0) && (
                                         <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 uppercase tracking-widest">
-                                            {accessoryItems.length > 0 && `Accessories: ${accessoryItems.map((i) => i.name).join(', ')}`}
-                                            {serviceItems.length > 0 && `${accessoryItems.length > 0 ? ' • ' : ''}Services: ${serviceItems.map((i) => i.name).join(', ')}`}
-                                            {insuranceItems.length > 0 && `${(accessoryItems.length > 0 || serviceItems.length > 0) ? ' • ' : ''}Insurance: ${insuranceItems.map((i) => i.name).join(', ')}`}
+                                            {accessoryItems.length > 0 &&
+                                                `Accessories: ${accessoryItems.map(i => i.name).join(', ')}`}
+                                            {serviceItems.length > 0 &&
+                                                `${accessoryItems.length > 0 ? ' • ' : ''}Services: ${serviceItems.map(i => i.name).join(', ')}`}
+                                            {insuranceItems.length > 0 &&
+                                                `${accessoryItems.length > 0 || serviceItems.length > 0 ? ' • ' : ''}Insurance: ${insuranceItems.map(i => i.name).join(', ')}`}
                                         </p>
                                     )}
                                 </div>
@@ -482,11 +602,17 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                             <div className="flex items-center gap-6">
                                 <div className="text-right">
                                     <p className="text-xl font-black text-slate-900 dark:text-white italic tracking-tighter">
-                                        ₹{quote.commercials?.grand_total?.toLocaleString() || quote.on_road_price?.toLocaleString()}
+                                        ₹
+                                        {quote.commercials?.grand_total?.toLocaleString() ||
+                                            quote.on_road_price?.toLocaleString()}
                                     </p>
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Grand Total</p>
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                        Grand Total
+                                    </p>
                                 </div>
-                                <div className={`p-2 rounded-lg transition-transform duration-300 ${isExpanded ? 'rotate-90 bg-slate-100 dark:bg-white/5' : 'text-slate-300'}`}>
+                                <div
+                                    className={`p-2 rounded-lg transition-transform duration-300 ${isExpanded ? 'rotate-90 bg-slate-100 dark:bg-white/5' : 'text-slate-300'}`}
+                                >
                                     <ChevronRight size={18} />
                                 </div>
                             </div>
@@ -500,55 +626,81 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                                     <div className="space-y-4">
                                         <div className="flex items-center gap-2 text-indigo-500 mb-2">
                                             <Zap size={14} />
-                                            <h5 className="text-[10px] font-black uppercase tracking-widest">Commercial Breakdown</h5>
+                                            <h5 className="text-[10px] font-black uppercase tracking-widest">
+                                                Commercial Breakdown
+                                            </h5>
                                         </div>
                                         <div className="space-y-2">
                                             <div className="flex justify-between text-xs font-bold text-slate-600 dark:text-slate-400">
                                                 <span>{label || quote.variant?.name || 'Base Variant'}</span>
-                                                <span className="text-slate-900 dark:text-white">₹{quote.commercials?.ex_showroom?.toLocaleString() || quote.ex_showroom_price?.toLocaleString() || '0'}</span>
+                                                <span className="text-slate-900 dark:text-white">
+                                                    ₹
+                                                    {quote.commercials?.ex_showroom?.toLocaleString() ||
+                                                        quote.ex_showroom_price?.toLocaleString() ||
+                                                        '0'}
+                                                </span>
                                             </div>
-                                            <div className="flex justify-between text-xs font-bold text-slate-500">
-                                                <span>Color: {quote.color?.name || quote.commercials?.color_name || 'Standard'}</span>
-                                                <span className="text-slate-500">Included</span>
-                                            </div>
+                                            {!(quote.commercials as any)?.color_is_default &&
+                                                (quote.color?.name || quote.commercials?.color_name) && (
+                                                    <div className="flex justify-between text-xs font-bold text-slate-500">
+                                                        <span>
+                                                            Color: {quote.color?.name || quote.commercials?.color_name}
+                                                        </span>
+                                                        <span className="text-slate-500">Included</span>
+                                                    </div>
+                                                )}
                                             <div className="flex justify-between text-xs font-bold text-slate-500">
                                                 <span>RTO & Registration ({pricing.rto_type || 'STATE'})</span>
-                                                <span className="text-slate-900 dark:text-white">₹{quote.rto_amount?.toLocaleString() || '0'}</span>
+                                                <span className="text-slate-900 dark:text-white">
+                                                    ₹{quote.rto_amount?.toLocaleString() || '0'}
+                                                </span>
                                             </div>
                                             <div className="flex justify-between text-xs font-bold text-slate-500">
                                                 <span>Insurance Portfolio</span>
-                                                <span className="text-slate-900 dark:text-white">₹{quote.insurance_amount?.toLocaleString() || '0'}</span>
+                                                <span className="text-slate-900 dark:text-white">
+                                                    ₹{quote.insurance_amount?.toLocaleString() || '0'}
+                                                </span>
                                             </div>
                                             {quote.commercials?.accessories_total > 0 && (
                                                 <div className="flex justify-between text-xs font-bold text-slate-500 border-t border-slate-50 dark:border-white/5 pt-2">
                                                     <span>Accessories Matrix</span>
-                                                    <span className="text-slate-900 dark:text-white">₹{quote.commercials.accessories_total.toLocaleString()}</span>
+                                                    <span className="text-slate-900 dark:text-white">
+                                                        ₹{quote.commercials.accessories_total.toLocaleString()}
+                                                    </span>
                                                 </div>
                                             )}
                                         </div>
-                                        {(accessoryItems.length > 0 || serviceItems.length > 0 || insuranceItems.length > 0) && (
+                                        {(accessoryItems.length > 0 ||
+                                            serviceItems.length > 0 ||
+                                            insuranceItems.length > 0) && (
                                             <div className="pt-4 border-t border-slate-100 dark:border-white/5 space-y-2">
                                                 {accessoryItems.length > 0 && (
                                                     <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                                                        <span className="font-black uppercase tracking-widest text-[10px]">Accessories</span>
+                                                        <span className="font-black uppercase tracking-widest text-[10px]">
+                                                            Accessories
+                                                        </span>
                                                         <div className="mt-1 text-slate-600 dark:text-slate-300 font-semibold">
-                                                            {accessoryItems.map((i) => i.name).join(', ')}
+                                                            {accessoryItems.map(i => i.name).join(', ')}
                                                         </div>
                                                     </div>
                                                 )}
                                                 {serviceItems.length > 0 && (
                                                     <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                                                        <span className="font-black uppercase tracking-widest text-[10px]">Services</span>
+                                                        <span className="font-black uppercase tracking-widest text-[10px]">
+                                                            Services
+                                                        </span>
                                                         <div className="mt-1 text-slate-600 dark:text-slate-300 font-semibold">
-                                                            {serviceItems.map((i) => i.name).join(', ')}
+                                                            {serviceItems.map(i => i.name).join(', ')}
                                                         </div>
                                                     </div>
                                                 )}
                                                 {insuranceItems.length > 0 && (
                                                     <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                                                        <span className="font-black uppercase tracking-widest text-[10px]">Insurance Add-ons</span>
+                                                        <span className="font-black uppercase tracking-widest text-[10px]">
+                                                            Insurance Add-ons
+                                                        </span>
                                                         <div className="mt-1 text-slate-600 dark:text-slate-300 font-semibold">
-                                                            {insuranceItems.map((i) => i.name).join(', ')}
+                                                            {insuranceItems.map(i => i.name).join(', ')}
                                                         </div>
                                                     </div>
                                                 )}
@@ -558,7 +710,9 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
 
                                     {/* Action Hub */}
                                     <div className="bg-slate-50 dark:bg-white/5 rounded-3xl p-6 border border-slate-100 dark:border-white/5">
-                                        <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Workflow Actions</h5>
+                                        <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">
+                                            Workflow Actions
+                                        </h5>
                                         <div className="grid grid-cols-2 gap-3">
                                             {quote.status === 'DRAFT' && (
                                                 <button
@@ -566,7 +720,11 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                                                     disabled={!!isUpdating}
                                                     className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50"
                                                 >
-                                                    {isUpdating === quote.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
+                                                    {isUpdating === quote.id ? (
+                                                        <Loader2 size={12} className="animate-spin" />
+                                                    ) : (
+                                                        <CheckCircle2 size={12} />
+                                                    )}
                                                     Accept
                                                 </button>
                                             )}
@@ -576,7 +734,11 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                                                     disabled={!!isUpdating}
                                                     className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50"
                                                 >
-                                                    {isUpdating === quote.id ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
+                                                    {isUpdating === quote.id ? (
+                                                        <Loader2 size={12} className="animate-spin" />
+                                                    ) : (
+                                                        <Zap size={12} />
+                                                    )}
                                                     Confirm
                                                 </button>
                                             )}
@@ -605,12 +767,14 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                                                 disabled={!!isUpdating}
                                                 className="flex items-center justify-center gap-2 border border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-white/5 text-slate-600 dark:text-slate-400 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50"
                                             >
-                                                {isUpdating === quote.id ? <Loader2 size={12} className="animate-spin" /> : <History size={12} />}
+                                                {isUpdating === quote.id ? (
+                                                    <Loader2 size={12} className="animate-spin" />
+                                                ) : (
+                                                    <History size={12} />
+                                                )}
                                                 Edit Config
                                             </button>
-                                            <button
-                                                className="flex items-center justify-center gap-2 border border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-white/5 text-slate-600 dark:text-slate-400 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95"
-                                            >
+                                            <button className="flex items-center justify-center gap-2 border border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-white/5 text-slate-600 dark:text-slate-400 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95">
                                                 <Share2 size={12} />
                                                 Share
                                             </button>
@@ -621,38 +785,61 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                                 <div className="space-y-4">
                                     <div className="flex items-center gap-2 text-indigo-500 mb-2">
                                         <History size={14} />
-                                        <h5 className="text-[10px] font-black uppercase tracking-widest">Revision History</h5>
+                                        <h5 className="text-[10px] font-black uppercase tracking-widest">
+                                            Revision History
+                                        </h5>
                                     </div>
                                     {historyRows.length <= 1 && (
                                         <div className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl p-4">
-                                            No revisions yet for this vehicle. First quote generated on {formatDateTime(quote.created_at)}.
+                                            No revisions yet for this vehicle. First quote generated on{' '}
+                                            {formatDateTime(quote.created_at)}.
                                         </div>
                                     )}
                                     {historyRows.length > 1 && (
                                         <div className="space-y-3">
-                                            {historyRows.slice(1).reverse().map((row: any) => (
-                                                <div key={row.current.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4">
-                                                    <div>
-                                                        <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest">
-                                                            Version {row.current.version || '—'} • {formatDateTime(row.current.created_at)}
-                                                        </p>
-                                                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                                                            Saved by {row.current.created_by ? row.current.created_by.slice(0, 6).toUpperCase() : 'System'}
-                                                        </p>
+                                            {historyRows
+                                                .slice(1)
+                                                .reverse()
+                                                .map((row: any) => (
+                                                    <div
+                                                        key={row.current.id}
+                                                        className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4"
+                                                    >
+                                                        <div>
+                                                            <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest">
+                                                                Version {row.current.version || '—'} •{' '}
+                                                                {formatDateTime(row.current.created_at)}
+                                                            </p>
+                                                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                                                                Saved by{' '}
+                                                                {row.current.created_by
+                                                                    ? row.current.created_by.slice(0, 6).toUpperCase()
+                                                                    : 'System'}
+                                                            </p>
+                                                        </div>
+                                                        <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                                            {row.added.length > 0 && (
+                                                                <div>
+                                                                    Added:{' '}
+                                                                    <span className="text-emerald-500 font-semibold">
+                                                                        {row.added.map((i: any) => i.name).join(', ')}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            {row.removed.length > 0 && (
+                                                                <div>
+                                                                    Removed:{' '}
+                                                                    <span className="text-rose-500 font-semibold">
+                                                                        {row.removed.map((i: any) => i.name).join(', ')}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            {row.added.length === 0 && row.removed.length === 0 && (
+                                                                <div>No item changes</div>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                                                        {row.added.length > 0 && (
-                                                            <div>Added: <span className="text-emerald-500 font-semibold">{row.added.map((i: any) => i.name).join(', ')}</span></div>
-                                                        )}
-                                                        {row.removed.length > 0 && (
-                                                            <div>Removed: <span className="text-rose-500 font-semibold">{row.removed.map((i: any) => i.name).join(', ')}</span></div>
-                                                        )}
-                                                        {row.added.length === 0 && row.removed.length === 0 && (
-                                                            <div>No item changes</div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
+                                                ))}
                                         </div>
                                     )}
                                 </div>
@@ -679,27 +866,35 @@ export function LeadBookings({ leadId }: { leadId: string }) {
         });
     }, [leadId]);
 
-    if (loading) return (
-        <div className="py-20 text-center opacity-40">
-            <Loader2 size={32} className="mx-auto text-indigo-500 animate-spin" />
-            <p className="text-[10px] font-black uppercase tracking-widest mt-4">Syncing Booking Ledger...</p>
-        </div>
-    );
+    if (loading)
+        return (
+            <div className="py-20 text-center opacity-40">
+                <Loader2 size={32} className="mx-auto text-indigo-500 animate-spin" />
+                <p className="text-[10px] font-black uppercase tracking-widest mt-4">Syncing Booking Ledger...</p>
+            </div>
+        );
 
-    if (!booking) return (
-        <div className="py-20 text-center opacity-40 bg-slate-50 dark:bg-white/[0.02] rounded-3xl border border-dashed border-slate-200 dark:border-white/10">
-            <CheckCircle2 className="mx-auto text-slate-400" size={48} strokeWidth={1} />
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-4">Awaiting Conversion to Booking</p>
-        </div>
-    );
+    if (!booking)
+        return (
+            <div className="py-20 text-center opacity-40 bg-slate-50 dark:bg-white/[0.02] rounded-3xl border border-dashed border-slate-200 dark:border-white/10">
+                <CheckCircle2 className="mx-auto text-slate-400" size={48} strokeWidth={1} />
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-4">
+                    Awaiting Conversion to Booking
+                </p>
+            </div>
+        );
 
     return (
         <div className="animate-in fade-in slide-in-from-bottom-4">
             <div className="glass-panel p-8 border-l-4 border-l-indigo-600">
                 <div className="flex justify-between items-start mb-8">
                     <div>
-                        <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-1">Active Sales Order</p>
-                        <h3 className="text-3xl font-black text-slate-900 dark:text-white italic tracking-tighter">SO-{booking.id.slice(0, 4).toUpperCase()}</h3>
+                        <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-1">
+                            Active Sales Order
+                        </p>
+                        <h3 className="text-3xl font-black text-slate-900 dark:text-white italic tracking-tighter">
+                            SO-{booking.id.slice(0, 4).toUpperCase()}
+                        </h3>
                     </div>
                     <div className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20">
                         {booking.current_stage || 'Processing'}
@@ -709,19 +904,27 @@ export function LeadBookings({ leadId }: { leadId: string }) {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                     <div className="space-y-1">
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Booking Date</p>
-                        <p className="font-bold text-slate-900 dark:text-white">{new Date(booking.created_at).toLocaleDateString()}</p>
+                        <p className="font-bold text-slate-900 dark:text-white">
+                            {new Date(booking.created_at).toLocaleDateString()}
+                        </p>
                     </div>
                     <div className="space-y-1">
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">VIN Status</p>
-                        <p className="font-bold text-slate-900 dark:text-white font-mono">{booking.vin || 'PENDING_ALLOCATION'}</p>
+                        <p className="font-bold text-slate-900 dark:text-white font-mono">
+                            {booking.vin || 'PENDING_ALLOCATION'}
+                        </p>
                     </div>
                     <div className="space-y-1">
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Payment Mode</p>
-                        <p className="font-bold text-slate-900 dark:text-white uppercase">{booking.payment_method || 'RESERVED'}</p>
+                        <p className="font-bold text-slate-900 dark:text-white uppercase">
+                            {booking.payment_method || 'RESERVED'}
+                        </p>
                     </div>
                     <div className="space-y-1">
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Delivery Node</p>
-                        <p className="font-bold text-slate-900 dark:text-white">{booking.delivery_status || 'SCHEDULED'}</p>
+                        <p className="font-bold text-slate-900 dark:text-white">
+                            {booking.delivery_status || 'SCHEDULED'}
+                        </p>
                     </div>
                 </div>
 

@@ -236,7 +236,10 @@ export default function SystemPDPRouter({
             const commercials = {
                 label: displayLabel,
                 color_name: colorName,
+                color_is_default: (data.colors || []).length <= 1,
                 ex_showroom: baseExShowroom,
+                rto: data.rtoEstimates || 0,
+                insurance: (data.baseInsurance || 0) + (data.insuranceAddonsPrice || 0),
                 grand_total: totalOnRoad,
                 pricing_snapshot: {
                     accessories: selectedAccessories,
