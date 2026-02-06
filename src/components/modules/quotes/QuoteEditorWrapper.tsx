@@ -8,9 +8,11 @@ import { Loader2 } from 'lucide-react';
 
 interface QuoteEditorWrapperProps {
     quoteId: string;
+    onClose?: () => void;
+    onRefresh?: () => void;
 }
 
-export default function QuoteEditorWrapper({ quoteId }: QuoteEditorWrapperProps) {
+export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: QuoteEditorWrapperProps) {
     const [quote, setQuote] = useState<QuoteData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -48,6 +50,7 @@ export default function QuoteEditorWrapper({ quoteId }: QuoteEditorWrapperProps)
 
         if (result.success) {
             await loadQuote(); // Reload to get updated data
+            onRefresh?.();
         } else {
             throw new Error(result.error);
         }
@@ -59,6 +62,7 @@ export default function QuoteEditorWrapper({ quoteId }: QuoteEditorWrapperProps)
         if (result.success) {
             toast.success('Quote sent to customer');
             await loadQuote();
+            onRefresh?.();
         } else {
             toast.error(result.error || 'Failed to send quote');
         }
@@ -70,6 +74,7 @@ export default function QuoteEditorWrapper({ quoteId }: QuoteEditorWrapperProps)
         if (result.success) {
             toast.success('Booking confirmed!');
             await loadQuote();
+            onRefresh?.();
         } else {
             toast.error(result.message || 'Failed to confirm booking');
         }
