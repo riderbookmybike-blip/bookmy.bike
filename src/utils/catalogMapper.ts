@@ -140,11 +140,16 @@ export function mapCatalogItems(
                 const hasOfferForSku = (skuId: string) =>
                     offers && Array.isArray(offers) ? offers.some((o: any) => o?.vehicle_color_id === skuId) : false;
                 const hasActivePrice = (sku: any) =>
-                    Array.isArray(sku?.prices) ? sku.prices.some((p: any) => p?.is_active === true) : false;
+                    Array.isArray(sku?.prices)
+                        ? sku.prices.some(
+                              (p: any) =>
+                                  p?.is_active === true && (p?.state_code === stateCode || p?.state_code === 'ALL')
+                          )
+                        : false;
                 const isSkuActive = (sku: any) => (sku?.status ? sku.status === 'ACTIVE' : true);
 
                 const activeSkus = allSkus.filter(isSkuActive);
-                const eligibleSkus = requireEligibility
+                let eligibleSkus = requireEligibility
                     ? activeSkus.filter(sku => hasActivePrice(sku) && hasOfferForSku(sku.id))
                     : activeSkus;
 

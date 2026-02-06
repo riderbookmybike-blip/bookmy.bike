@@ -1275,7 +1275,9 @@ export default function PricingLedgerTable({
                                                                                 OD Premium
                                                                             </span>
                                                                             <span className="text-slate-300 font-mono">
-                                                                                {formatMoney(sku.insurance_data.od)}
+                                                                                {formatMoney(
+                                                                                    sku.insurance_data.od?.base
+                                                                                )}
                                                                             </span>
                                                                         </div>
                                                                         <div className="flex justify-between items-center text-[9px]">
@@ -1283,7 +1285,9 @@ export default function PricingLedgerTable({
                                                                                 TP Premium
                                                                             </span>
                                                                             <span className="text-slate-300 font-mono">
-                                                                                {formatMoney(sku.insurance_data.tp)}
+                                                                                {formatMoney(
+                                                                                    sku.insurance_data.tp?.base
+                                                                                )}
                                                                             </span>
                                                                         </div>
                                                                         <div className="flex justify-between items-center text-[9px]">
@@ -1293,11 +1297,9 @@ export default function PricingLedgerTable({
                                                                             </span>
                                                                             <span className="text-slate-300 font-mono">
                                                                                 {formatMoney(
-                                                                                    (sku.insurance_data.base_total ||
-                                                                                        0) -
-                                                                                        ((sku.insurance_data.od || 0) +
-                                                                                            (sku.insurance_data.tp ||
-                                                                                                0))
+                                                                                    (sku.insurance_data.od?.gst || 0) +
+                                                                                        (sku.insurance_data.tp?.gst ||
+                                                                                            0)
                                                                                 )}
                                                                             </span>
                                                                         </div>

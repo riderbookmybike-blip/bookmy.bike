@@ -462,6 +462,9 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
             return snapshot[itemsKey].map((item: any) => ({
                 id: item.id || item.name,
                 name: item.name || item.label || item.id,
+                price: item.price,
+                discountPrice: item.discountPrice,
+                inclusionType: item.inclusionType,
             }));
         }
         if (Array.isArray(snapshot[key]) && snapshot[key].length > 0) {
@@ -499,6 +502,12 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                 const quote = latest;
                 const isExpanded = expandedQuoteId === quote.id;
                 const pricing = quote.commercials?.pricing_snapshot || {};
+                const isColorDefault =
+                    pricing?.color_is_default !== undefined
+                        ? pricing.color_is_default
+                        : (quote.commercials as any)?.color_is_default;
+                const rtoAmount = pricing.rto_total ?? quote.rto_amount ?? 0;
+                const insuranceAmount = pricing.insurance_total ?? quote.insurance_amount ?? 0;
                 const label = prettifyLabel(
                     quote.commercials?.label ||
                         quote.variant?.name ||
@@ -509,6 +518,13 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                 const accessoryItems = getSnapshotItems(pricing, 'accessories', 'accessory_items');
                 const serviceItems = getSnapshotItems(pricing, 'services', 'service_items');
                 const insuranceItems = getSnapshotItems(pricing, 'insurance_addons', 'insurance_addon_items');
+                const dealerLabel =
+                    pricing?.dealer?.name ||
+                    pricing?.dealer?.dealer ||
+                    pricing?.dealer?.studio_id ||
+                    pricing?.dealer?.dealerId ||
+                    null;
+                const studioLabel = pricing?.dealer?.studio_id || pricing?.dealer?.studioId || null;
 
                 const chronological = [...all].sort(
                     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
@@ -640,32 +656,85 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                                                         '0'}
                                                 </span>
                                             </div>
-                                            {!(quote.commercials as any)?.color_is_default &&
+                                            {(dealerLabel || studioLabel) && (
+                                                <div className="flex justify-between text-xs font-bold text-slate-500">
+                                                    <span>
+                                                        Dealer{studioLabel ? ' / Studio' : ''}{' '}
+                                                        {studioLabel ? `(${studioLabel})` : ''}
+                                                    </span>
+                                                    <span className="text-slate-500">{dealerLabel || studioLabel}</span>
+                                                </div>
+                                            )}
+                                            {pricing?.pricing_source && (
+                                                <div className="flex justify-between text-xs font-bold text-slate-500">
+                                                    <span>Pricing Source</span>
+                                                    <span className="text-slate-500">{pricing.pricing_source}</span>
+                                                </div>
+                                            )}
+                                            {!isColorDefault &&
                                                 (quote.color?.name || quote.commercials?.color_name) && (
                                                     <div className="flex justify-between text-xs font-bold text-slate-500">
                                                         <span>
                                                             Color: {quote.color?.name || quote.commercials?.color_name}
                                                         </span>
-                                                        <span className="text-slate-500">Included</span>
+                                                        <span className="text-slate-500">
+                                                            {pricing?.color_delta
+                                                                ? `₹${Math.abs(pricing.color_delta).toLocaleString()}`
+                                                                : 'Included'}
+                                                        </span>
                                                     </div>
                                                 )}
                                             <div className="flex justify-between text-xs font-bold text-slate-500">
                                                 <span>RTO & Registration ({pricing.rto_type || 'STATE'})</span>
                                                 <span className="text-slate-900 dark:text-white">
-                                                    ₹{quote.rto_amount?.toLocaleString() || '0'}
+                                                    ₹{Number(rtoAmount).toLocaleString()}
                                                 </span>
                                             </div>
+                                            {Array.isArray(pricing.rto_breakdown) &&
+                                                pricing.rto_breakdown.length > 0 && (
+                                                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                                        {pricing.rto_breakdown.map((row: any) => (
+                                                            <div
+                                                                key={row.label || row.id}
+                                                                className="flex justify-between"
+                                                            >
+                                                                <span>{row.label || row.name}</span>
+                                                                <span>₹{Number(row.amount || 0).toLocaleString()}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             <div className="flex justify-between text-xs font-bold text-slate-500">
                                                 <span>Insurance Portfolio</span>
                                                 <span className="text-slate-900 dark:text-white">
-                                                    ₹{quote.insurance_amount?.toLocaleString() || '0'}
+                                                    ₹{Number(insuranceAmount).toLocaleString()}
                                                 </span>
                                             </div>
-                                            {quote.commercials?.accessories_total > 0 && (
+                                            {Array.isArray(pricing.insurance_breakdown) &&
+                                                pricing.insurance_breakdown.length > 0 && (
+                                                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                                        {pricing.insurance_breakdown.map((row: any) => (
+                                                            <div
+                                                                key={row.label || row.id}
+                                                                className="flex justify-between"
+                                                            >
+                                                                <span>{row.label || row.name}</span>
+                                                                <span>₹{Number(row.amount || 0).toLocaleString()}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            {(pricing.accessories_total || quote.commercials?.accessories_total) >
+                                                0 && (
                                                 <div className="flex justify-between text-xs font-bold text-slate-500 border-t border-slate-50 dark:border-white/5 pt-2">
                                                     <span>Accessories Matrix</span>
                                                     <span className="text-slate-900 dark:text-white">
-                                                        ₹{quote.commercials.accessories_total.toLocaleString()}
+                                                        ₹
+                                                        {Number(
+                                                            pricing.accessories_total ||
+                                                                quote.commercials?.accessories_total ||
+                                                                0
+                                                        ).toLocaleString()}
                                                     </span>
                                                 </div>
                                             )}
@@ -680,7 +749,15 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                                                             Accessories
                                                         </span>
                                                         <div className="mt-1 text-slate-600 dark:text-slate-300 font-semibold">
-                                                            {accessoryItems.map(i => i.name).join(', ')}
+                                                            {accessoryItems
+                                                                .map(i =>
+                                                                    i.discountPrice
+                                                                        ? `${i.name} (₹${Number(i.discountPrice).toLocaleString()})`
+                                                                        : i.price
+                                                                          ? `${i.name} (₹${Number(i.price).toLocaleString()})`
+                                                                          : i.name
+                                                                )
+                                                                .join(', ')}
                                                         </div>
                                                     </div>
                                                 )}
@@ -690,7 +767,15 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                                                             Services
                                                         </span>
                                                         <div className="mt-1 text-slate-600 dark:text-slate-300 font-semibold">
-                                                            {serviceItems.map(i => i.name).join(', ')}
+                                                            {serviceItems
+                                                                .map(i =>
+                                                                    i.discountPrice
+                                                                        ? `${i.name} (₹${Number(i.discountPrice).toLocaleString()})`
+                                                                        : i.price
+                                                                          ? `${i.name} (₹${Number(i.price).toLocaleString()})`
+                                                                          : i.name
+                                                                )
+                                                                .join(', ')}
                                                         </div>
                                                     </div>
                                                 )}
@@ -700,7 +785,15 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                                                             Insurance Add-ons
                                                         </span>
                                                         <div className="mt-1 text-slate-600 dark:text-slate-300 font-semibold">
-                                                            {insuranceItems.map(i => i.name).join(', ')}
+                                                            {insuranceItems
+                                                                .map(i =>
+                                                                    i.discountPrice
+                                                                        ? `${i.name} (₹${Number(i.discountPrice).toLocaleString()})`
+                                                                        : i.price
+                                                                          ? `${i.name} (₹${Number(i.price).toLocaleString()})`
+                                                                          : i.name
+                                                                )
+                                                                .join(', ')}
                                                         </div>
                                                     </div>
                                                 )}

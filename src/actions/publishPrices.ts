@@ -541,7 +541,7 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
                 published_by: user.id,
                 is_active: true,
                 district: 'ALL',
-                publish_stage: 'PUBLISHED',
+                publish_stage: 'UNDER_REVIEW',
             };
 
             const { error: upsertError } = await adminClient.from('cat_price_state').upsert(pricePayload as any, {
