@@ -614,8 +614,8 @@ export const ProductCard = ({
 
                             return (
                                 <div className="flex items-center min-h-[1.25rem] flex-nowrap">
-                                    <div className="flex items-center -space-x-2 cursor-pointer">
-                                        {swatches.slice(0, 3).map((c, i) => (
+                                    <div className="flex items-center gap-2 cursor-default">
+                                        {swatches.map((c, i) => (
                                             <div
                                                 key={i}
                                                 onClick={e => {
@@ -635,16 +635,11 @@ export const ProductCard = ({
                                                         onColorChange(c.id);
                                                     }
                                                 }}
-                                                className={`w-5 h-5 rounded-full border border-white dark:border-slate-900 shadow-sm relative hover:scale-110 transition-all duration-300 cursor-pointer ${selectedHex === c.hexCode ? 'z-20 scale-105 ring-2 ring-brand-primary ring-offset-1 ring-offset-white dark:ring-offset-[#0f1115] border-transparent' : 'z-10'}`}
+                                                className="w-5 h-5 rounded-full border border-white dark:border-slate-900 shadow-sm relative hover:scale-110 transition-all duration-300 cursor-pointer"
                                                 style={{ background: c.hexCode }}
                                                 title={c.name}
                                             />
                                         ))}
-                                        {swatches.length > 3 && (
-                                            <div className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 border border-white dark:border-slate-900 flex items-center justify-center relative z-10 text-[9px] font-bold text-slate-500 hover:bg-slate-200">
-                                                +{swatches.length - 3}
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
                             );
