@@ -5,7 +5,13 @@ import { X } from 'lucide-react';
 import ActivityTimeline from './ActivityTimeline';
 
 const TABS = ['Overview', 'Details', 'Settings', 'Activity'];
-type TabName = typeof TABS[number];
+type TabName = (typeof TABS)[number];
+
+export interface SnapshotItem {
+    label: string;
+    value: React.ReactNode;
+    icon?: React.ElementType;
+}
 
 interface DetailPanelProps {
     title: string;
@@ -13,9 +19,10 @@ interface DetailPanelProps {
     onClose?: () => void;
     renderContent?: (activeTab: string) => React.ReactNode;
     rightPanelContent?: (activeTab: string) => React.ReactNode;
-    onTabChange?: (tab: string) => void; // NEW: Callback for tab change
+    onTabChange?: (tab: string) => void;
     actionButton?: React.ReactNode;
     tabs?: string[];
+    snapshotItems?: SnapshotItem[]; // NEW: Snapshot grid items
     isLoading?: boolean;
     hideHeader?: boolean;
     showTabs?: boolean;
@@ -32,6 +39,7 @@ export default function DetailPanel({
     onTabChange,
     actionButton,
     tabs = TABS as unknown as string[],
+    snapshotItems,
     isLoading = false,
     hideHeader = false,
     showTabs = true,
@@ -66,20 +74,49 @@ export default function DetailPanel({
             {/* Header */}
             {!hideHeader && (
                 <div className="px-6 lg:px-8 py-5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between shrink-0">
-                    <div>
-                        <div className="flex items-center gap-3">
-                            <h1 className="text-xl lg:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{title}</h1>
-                            <span className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold border ${getStatusBadgeClass(status)}`}>
-                                {status}
-                            </span>
+                    <div className="flex items-center gap-12">
+                        <div>
+                            <div className="flex items-center gap-3">
+                                <h1 className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">
+                                    {title}
+                                </h1>
+                                {!snapshotItems && (
+                                    <span
+                                        className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold border ${getStatusBadgeClass(status)}`}
+                                    >
+                                        {status}
+                                    </span>
+                                )}
+                            </div>
                         </div>
+
+                        {snapshotItems && snapshotItems.length > 0 && (
+                            <div className="hidden xl:flex items-center gap-8 bg-slate-50 dark:bg-white/5 p-3 rounded-2xl border border-slate-100 dark:border-white/5 shadow-inner">
+                                {snapshotItems.map((item, i) => (
+                                    <React.Fragment key={i}>
+                                        <div className="flex flex-col gap-0.5">
+                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                                {item.label}
+                                            </span>
+                                            <div className="flex items-center gap-1.5">
+                                                {item.icon && <item.icon size={10} className="text-slate-400" />}
+                                                <div className="text-[10px] font-bold dark:text-white uppercase tracking-tight">
+                                                    {item.value}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {i < snapshotItems.length - 1 && (
+                                            <div className="w-px h-6 bg-slate-200 dark:bg-white/10" />
+                                        )}
+                                    </React.Fragment>
+                                ))}
+                            </div>
+                        )}
                     </div>
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => {
-
                                 if (onEdit) onEdit();
-
                             }}
                             className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                         >
@@ -87,9 +124,7 @@ export default function DetailPanel({
                         </button>
                         <button
                             onClick={() => {
-
                                 if (onAction) onAction();
-
                             }}
                             className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm hover:bg-indigo-700 font-semibold shadow-lg shadow-indigo-500/20 transition-all hover:shadow-xl hover:shadow-indigo-500/30"
                         >
@@ -112,15 +147,16 @@ export default function DetailPanel({
                 <div className="px-6 lg:px-8 py-3 border-b border-slate-100 dark:border-white/5 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md shrink-0 flex items-center justify-between">
                     <div className="flex bg-slate-100/50 dark:bg-white/5 p-1 rounded-2xl border border-slate-200/50 dark:border-white/5">
                         <nav className="flex space-x-1 overflow-x-auto scrollbar-none">
-                            {effectiveTabs.map((tab) => (
+                            {effectiveTabs.map(tab => (
                                 <button
                                     key={tab}
                                     onClick={() => handleTabClick(tab)}
                                     className={`
                                         min-w-[100px] py-2 px-6 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all duration-300
-                                        ${activeTab === tab
-                                            ? 'bg-white dark:bg-white/10 text-blue-600 dark:text-blue-400 shadow-sm scale-[1.02] border border-slate-200/50 dark:border-white/10'
-                                            : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/5'
+                                        ${
+                                            activeTab === tab
+                                                ? 'bg-white dark:bg-white/10 text-blue-600 dark:text-blue-400 shadow-sm scale-[1.02] border border-slate-200/50 dark:border-white/10'
+                                                : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/5'
                                         }
                                     `}
                                 >
@@ -130,9 +166,7 @@ export default function DetailPanel({
                         </nav>
                     </div>
 
-                    <div className="flex items-center">
-                        {actionButton}
-                    </div>
+                    <div className="flex items-center">{actionButton}</div>
                 </div>
             )}
 
@@ -153,9 +187,7 @@ export default function DetailPanel({
                                 renderContent && renderContent(activeTab)
                             )}
                         </div>
-                        <div className="flex-[2] min-w-0 overflow-auto">
-                            {rightPanelContent(activeTab)}
-                        </div>
+                        <div className="flex-[2] min-w-0 overflow-auto">{rightPanelContent(activeTab)}</div>
                     </div>
                 ) : (
                     // Original single-column layout - FULL WIDTH
@@ -173,6 +205,6 @@ export default function DetailPanel({
                     </div>
                 )}
             </div>
-        </div >
+        </div>
     );
 }

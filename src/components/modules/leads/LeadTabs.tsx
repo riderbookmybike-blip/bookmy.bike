@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Lead } from './LeadList';
 import { getCustomerHistory } from '@/actions/crm';
+import { formatDisplayId } from '@/utils/displayId';
 
 // Tab 1: Overview
 export function LeadOverview({ lead }: { lead: Lead }) {
@@ -577,7 +578,7 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                                 <div>
                                     <div className="flex items-center gap-2">
                                         <h4 className="font-bold text-slate-900 dark:text-white uppercase tracking-tight">
-                                            {quote.display_id || `QT-${quote.id.slice(0, 4).toUpperCase()}`}
+                                            {formatDisplayId(quote.display_id || quote.id)}
                                         </h4>
                                         {quote.is_latest && (
                                             <span className="text-[9px] font-black px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded uppercase tracking-tighter border border-emerald-500/20">

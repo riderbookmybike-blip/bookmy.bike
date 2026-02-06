@@ -21,9 +21,7 @@ export default function MasterListDetailLayout({
     if (mode === 'list-only') {
         return (
             <div className="flex h-full overflow-hidden" style={{ height: '100%' }}>
-                <div className="flex-1 h-full min-h-0">
-                    {listChild}
-                </div>
+                <div className="flex-1 h-full min-h-0">{listChild}</div>
             </div>
         );
     }
@@ -32,9 +30,7 @@ export default function MasterListDetailLayout({
     if (mode === 'detail-only') {
         return (
             <div className="flex h-full overflow-hidden bg-white dark:bg-slate-950">
-                <div className="flex-1 h-full min-w-0">
-                    {detailChild}
-                </div>
+                <div className="flex-1 h-full min-w-0">{detailChild}</div>
             </div>
         );
     }
@@ -44,11 +40,13 @@ export default function MasterListDetailLayout({
 
     return (
         <div
-            className={`flex h-full overflow-hidden bg-white dark:bg-slate-950 transition-colors duration-500 ${isRight ? 'flex-row-reverse' : 'flex-row'}`}
+            className={`w-full flex h-full overflow-hidden bg-white dark:bg-slate-950 transition-colors duration-500 ${isRight ? 'flex-row-reverse' : 'flex-row'}`}
             style={{ height: '100%' }}
         >
             {/* List Panel - Fixed width */}
-            <div className={`w-[320px] min-w-[280px] max-w-[360px] h-full flex-shrink-0 relative z-10 ${isRight ? 'border-l' : 'border-r'} border-slate-200/60 dark:border-white/5`}>
+            <div
+                className={`w-[320px] min-w-[280px] max-w-[360px] h-full flex-shrink-0 relative z-10 ${isRight ? 'border-l' : 'border-r'} border-slate-200/60 dark:border-white/5`}
+            >
                 {listChild}
             </div>
 

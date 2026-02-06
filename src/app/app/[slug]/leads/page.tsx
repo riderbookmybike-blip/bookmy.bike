@@ -3,7 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import LeadList, { Lead } from '@/components/modules/leads/LeadList';
-import { LeadOverview, LeadHistory, LeadActivity, LeadQuotes, LeadBookings, LeadDocuments } from '@/components/modules/leads/LeadTabs';
+import {
+    LeadOverview,
+    LeadHistory,
+    LeadActivity,
+    LeadQuotes,
+    LeadBookings,
+    LeadDocuments,
+} from '@/components/modules/leads/LeadTabs';
 import { Button } from '@/components/ui/button';
 import LeadForm from '@/components/modules/leads/LeadForm';
 import { useTenant } from '@/lib/tenant/tenantContext';
@@ -29,10 +36,11 @@ import {
     Clock,
     LayoutGrid,
     Search as SearchIcon,
-    Shield
+    Shield,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCelebration } from '@/components/providers/CelebrationProvider';
+import { formatDisplayId } from '@/utils/displayId';
 
 // The formatLeadId function is moved inside the component in the new code.
 // const formatLeadId = (id: string) => {
@@ -74,23 +82,35 @@ export default function LeadsPage() {
 
     const handleNewLead = () => setIsFormOpen(true);
 
-    const filteredLeads = leads.filter(l =>
-        l.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        l.phone.includes(searchQuery)
+    const filteredLeads = leads.filter(
+        l => l.customerName.toLowerCase().includes(searchQuery.toLowerCase()) || l.phone.includes(searchQuery)
     );
 
     const stats = [
         { label: 'Total Leads', value: leads.length, icon: Users, color: 'indigo' as const, trend: '+12.5%' },
-        { label: 'Hot Leads', value: leads.filter(l => l.intentScore === 'HOT').length, icon: Flame, color: 'rose' as const, trend: 'Priority' },
-        { label: 'Qualified', value: leads.filter(l => l.status !== 'NEW' && l.status !== 'JUNK').length, icon: Target, color: 'emerald' as const },
-        { label: 'In Pipeline', value: leads.filter(l => ['QUOTE', 'BOOKING'].includes(l.status)).length, icon: TrendingUp, color: 'amber' as const },
+        {
+            label: 'Hot Leads',
+            value: leads.filter(l => l.intentScore === 'HOT').length,
+            icon: Flame,
+            color: 'rose' as const,
+            trend: 'Priority',
+        },
+        {
+            label: 'Qualified',
+            value: leads.filter(l => l.status !== 'NEW' && l.status !== 'JUNK').length,
+            icon: Target,
+            color: 'emerald' as const,
+        },
+        {
+            label: 'In Pipeline',
+            value: leads.filter(l => ['QUOTE', 'BOOKING'].includes(l.status)).length,
+            icon: TrendingUp,
+            color: 'amber' as const,
+        },
         { label: 'Avg Speed', value: '4.2h', icon: Clock, color: 'blue' as const, trend: '-15m' },
     ];
 
-    const formatLeadId = (id: string) => {
-        const cleanId = id.replace(/-/g, '').toUpperCase();
-        return `${cleanId.slice(0, 3)}-${cleanId.slice(3, 6)}-${cleanId.slice(6, 9)}`;
-    };
+    const formatLeadId = (id: string) => formatDisplayId(id);
 
     const handleFormSubmit = async (data: {
         customerName: string;
@@ -108,7 +128,7 @@ export default function LeadsPage() {
                 customer_pincode: data.pincode,
                 customer_dob: data.dob, // Fixed mapping
                 owner_tenant_id: tenantId,
-                source: 'MANUAL'
+                source: 'MANUAL',
             });
             toast.success('Lead created successfully');
             triggerCelebration('LEAD_CREATED');
@@ -138,8 +158,8 @@ export default function LeadsPage() {
                     label: data.product.label,
                     grand_total: data.price,
                     variant_sku: data.product.sku,
-                    color_name: data.color
-                }
+                    color_name: data.color,
+                },
             });
 
             if (result.success) {
@@ -168,13 +188,20 @@ export default function LeadsPage() {
     const renderTabContent = () => {
         if (!selectedLead) return null;
         switch (activeTab) {
-            case 'overview': return <LeadOverview lead={selectedLead} />;
-            case 'quotes': return <LeadQuotes leadId={selectedLead.id} />;
-            case 'booking': return <LeadBookings leadId={selectedLead.id} />;
-            case 'documents': return <LeadDocuments memberId={selectedLead.customerId} tenantId={tenantId as string} />;
-            case 'history': return <LeadHistory customerId={selectedLead.customerId} />;
-            case 'activity': return <LeadActivity lead={selectedLead} />;
-            default: return <LeadOverview lead={selectedLead} />;
+            case 'overview':
+                return <LeadOverview lead={selectedLead} />;
+            case 'quotes':
+                return <LeadQuotes leadId={selectedLead.id} />;
+            case 'booking':
+                return <LeadBookings leadId={selectedLead.id} />;
+            case 'documents':
+                return <LeadDocuments memberId={selectedLead.customerId} tenantId={tenantId as string} />;
+            case 'history':
+                return <LeadHistory customerId={selectedLead.customerId} />;
+            case 'activity':
+                return <LeadActivity lead={selectedLead} />;
+            default:
+                return <LeadOverview lead={selectedLead} />;
         }
     };
 
@@ -194,7 +221,7 @@ export default function LeadsPage() {
                 >
                     {view === 'grid' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
-                            {filteredLeads.map((lead) => (
+                            {filteredLeads.map(lead => (
                                 <div
                                     key={lead.id}
                                     onClick={() => setSelectedLead(lead)}
@@ -208,9 +235,15 @@ export default function LeadsPage() {
                                             <div className="text-[10px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">
                                                 ID: {formatLeadId(lead.id)}
                                             </div>
-                                            <div className={`w-2.5 h-2.5 rounded-full ${lead.intentScore === 'HOT' ? 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,1)] animate-pulse' :
-                                                lead.intentScore === 'WARM' ? 'bg-amber-500' : 'bg-slate-300'
-                                                }`} />
+                                            <div
+                                                className={`w-2.5 h-2.5 rounded-full ${
+                                                    lead.intentScore === 'HOT'
+                                                        ? 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,1)] animate-pulse'
+                                                        : lead.intentScore === 'WARM'
+                                                          ? 'bg-amber-500'
+                                                          : 'bg-slate-300'
+                                                }`}
+                                            />
                                         </div>
 
                                         <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter italic uppercase mb-2 truncate group-hover:text-indigo-600 transition-colors">
@@ -218,7 +251,9 @@ export default function LeadsPage() {
                                         </h3>
 
                                         <div className="flex flex-col gap-1 mb-6">
-                                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{lead.phone}</div>
+                                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                {lead.phone}
+                                            </div>
                                             <div className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter truncate">
                                                 {lead.interestModel || 'General Inquiry'}
                                             </div>
@@ -241,29 +276,43 @@ export default function LeadsPage() {
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="border-b border-slate-100 dark:border-white/5">
-                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Lead Identifier</th>
-                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Customer Persona</th>
-                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Product Interest</th>
-                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Status Node</th>
-                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Created</th>
+                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            Lead Identifier
+                                        </th>
+                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            Customer Persona
+                                        </th>
+                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            Product Interest
+                                        </th>
+                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            Status Node
+                                        </th>
+                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            Created
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredLeads.map((lead) => (
+                                    {filteredLeads.map(lead => (
                                         <tr
                                             key={lead.id}
                                             onClick={() => setSelectedLead(lead)}
                                             className="group hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer border-b border-slate-50 dark:border-white/5 last:border-0"
                                         >
                                             <td className="p-6">
-                                                <div className="text-xs font-black text-indigo-500 uppercase tracking-widest">{formatLeadId(lead.id)}</div>
+                                                <div className="text-xs font-black text-indigo-500 uppercase tracking-widest">
+                                                    {formatLeadId(lead.id)}
+                                                </div>
                                             </td>
                                             <td className="p-6">
                                                 <div>
                                                     <div className="text-sm font-black italic uppercase tracking-tighter text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">
                                                         {lead.customerName}
                                                     </div>
-                                                    <div className="text-[10px] font-bold text-slate-400">{lead.phone}</div>
+                                                    <div className="text-[10px] font-bold text-slate-400">
+                                                        {lead.phone}
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td className="p-6">
@@ -282,7 +331,9 @@ export default function LeadsPage() {
                                                 </div>
                                             </td>
                                             <td className="p-6">
-                                                <div className="text-[10px] font-bold text-slate-400 uppercase">{lead.created_at?.split('T')[0] || 'N/A'}</div>
+                                                <div className="text-[10px] font-bold text-slate-400 uppercase">
+                                                    {lead.created_at?.split('T')[0] || 'N/A'}
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -313,7 +364,10 @@ export default function LeadsPage() {
                                     className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/10 active:scale-95 group"
                                     title="Add New Lead"
                                 >
-                                    <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" />
+                                    <Plus
+                                        size={18}
+                                        className="group-hover:rotate-90 transition-transform duration-300"
+                                    />
                                 </button>
                                 <button
                                     onClick={() => setSelectedLead(null)}
@@ -329,7 +383,7 @@ export default function LeadsPage() {
                             <input
                                 type="text"
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onChange={e => setSearchQuery(e.target.value)}
                                 className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl py-2 pl-9 pr-4 text-xs font-bold focus:outline-none focus:border-indigo-500/50"
                                 placeholder="Search index..."
                             />
@@ -337,14 +391,15 @@ export default function LeadsPage() {
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
-                        {filteredLeads.map((lead) => (
+                        {filteredLeads.map(lead => (
                             <button
                                 key={lead.id}
                                 onClick={() => setSelectedLead(lead)}
-                                className={`w-full text-left p-4 rounded-2xl border transition-all duration-300 group ${selectedLead?.id === lead.id
-                                    ? 'bg-indigo-600 border-indigo-500 shadow-xl shadow-indigo-500/20 text-white translate-x-2'
-                                    : 'bg-white dark:bg-white/5 border-slate-100 dark:border-white/10 hover:border-indigo-500/30 text-slate-900 dark:text-white shadow-sm'
-                                    }`}
+                                className={`w-full text-left p-4 rounded-2xl border transition-all duration-300 group ${
+                                    selectedLead?.id === lead.id
+                                        ? 'bg-indigo-600 border-indigo-500 shadow-xl shadow-indigo-500/20 text-white translate-x-2'
+                                        : 'bg-white dark:bg-white/5 border-slate-100 dark:border-white/10 hover:border-indigo-500/30 text-slate-900 dark:text-white shadow-sm'
+                                }`}
                             >
                                 <div className="text-[9px] font-black uppercase opacity-60 mb-1">
                                     {formatLeadId(lead.id)}
@@ -352,8 +407,12 @@ export default function LeadsPage() {
                                 <div className="text-sm font-black italic tracking-tighter uppercase mb-1 truncate">
                                     {lead.customerName}
                                 </div>
-                                <div className={`text-[9px] font-bold ${selectedLead?.id === lead.id ? 'text-white/80' : 'text-slate-500'} flex items-center gap-2`}>
-                                    <span className={`w-1.5 h-1.5 rounded-full ${lead.status === 'JUNK' ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+                                <div
+                                    className={`text-[9px] font-bold ${selectedLead?.id === lead.id ? 'text-white/80' : 'text-slate-500'} flex items-center gap-2`}
+                                >
+                                    <span
+                                        className={`w-1.5 h-1.5 rounded-full ${lead.status === 'JUNK' ? 'bg-rose-500' : 'bg-emerald-500'}`}
+                                    />
                                     {lead.status}
                                 </div>
                             </button>
@@ -365,32 +424,73 @@ export default function LeadsPage() {
                 <div className="h-full flex flex-col overflow-y-auto no-scrollbar bg-slate-50 dark:bg-[#08090b]">
                     <div className="p-10">
                         {/* Detail Header */}
-                        <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between items-start gap-8">
+                        <div className="mb-12 flex flex-col xl:flex-row xl:items-end justify-between items-start gap-8 bg-white dark:bg-[#0b0d10] p-8 rounded-[2.5rem] border border-slate-200 dark:border-white/10 shadow-sm relative overflow-hidden">
                             <div className="flex items-center gap-6">
-                                <div className="w-20 h-20 rounded-[2rem] bg-indigo-600 flex items-center justify-center shadow-2xl shadow-indigo-600/20">
-                                    <Zap size={40} className="text-white" />
+                                <div className="w-16 h-16 rounded-[1.5rem] bg-indigo-600 flex items-center justify-center shadow-2xl shadow-indigo-600/20">
+                                    <Zap size={32} className="text-white" />
                                 </div>
                                 <div>
                                     <div className="text-indigo-500 text-[10px] font-black uppercase tracking-[0.4em] mb-2 flex items-center gap-2">
                                         <span className="w-4 h-[2px] bg-indigo-500 rounded-full" />
                                         Profile Overview
                                     </div>
-                                    <h1 className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter italic uppercase leading-none">
+                                    <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter italic uppercase leading-none">
                                         {selectedLead.customerName}
                                     </h1>
                                 </div>
                             </div>
+
+                            {/* Snapshot Grid */}
+                            <div className="flex items-center gap-8 bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-white/5 shadow-inner">
+                                <div className="flex flex-col gap-0.5">
+                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                        Identifier
+                                    </span>
+                                    <span className="text-sm font-black text-indigo-600 italic uppercase tabular-nums">
+                                        {formatLeadId(selectedLead.id)}
+                                    </span>
+                                </div>
+
+                                <div className="w-px h-6 bg-slate-200 dark:bg-white/10" />
+
+                                <div className="flex flex-col gap-0.5">
+                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                        Capture Node
+                                    </span>
+                                    <span className="text-[10px] font-bold text-slate-900 dark:text-white uppercase tabular-nums">
+                                        {selectedLead.created_at?.split('T')[0] || 'N/A'}
+                                    </span>
+                                </div>
+
+                                <div className="w-px h-6 bg-slate-200 dark:bg-white/10" />
+
+                                <div className="flex flex-col gap-0.5">
+                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                        Pipeline Node
+                                    </span>
+                                    <div className="px-2 py-0.5 bg-indigo-500/10 rounded text-indigo-600 dark:text-indigo-400 text-[9px] font-black uppercase tracking-widest">
+                                        {selectedLead.status}
+                                    </div>
+                                </div>
+                            </div>
+
                             <div className="flex items-center gap-3">
                                 <div className="flex bg-white dark:bg-white/5 p-1.5 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm">
-                                    <a href={`tel:${selectedLead.phone}`} className="p-3 hover:bg-slate-50 dark:hover:bg-indigo-600/10 text-slate-400 hover:text-indigo-600 transition-all rounded-xl">
+                                    <a
+                                        href={`tel:${selectedLead.phone}`}
+                                        className="p-3 hover:bg-slate-50 dark:hover:bg-indigo-600/10 text-slate-400 hover:text-indigo-600 transition-all rounded-xl"
+                                    >
                                         <Phone size={20} />
                                     </a>
-                                    <a href={`mailto:?subject=Booking inquiry`} className="p-3 hover:bg-slate-50 dark:hover:bg-purple-600/10 text-slate-400 hover:text-purple-600 transition-all rounded-xl">
+                                    <a
+                                        href={`mailto:?subject=Booking inquiry`}
+                                        className="p-3 hover:bg-slate-50 dark:hover:bg-purple-600/10 text-slate-400 hover:text-purple-600 transition-all rounded-xl"
+                                    >
                                         <Mail size={20} />
                                     </a>
                                 </div>
                                 <Button
-                                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10px] uppercase tracking-widest px-8 rounded-2xl shadow-xl shadow-indigo-600/20 active:scale-95 transition-all"
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10px] uppercase tracking-widest px-8 rounded-2xl shadow-xl shadow-indigo-600/20 active:scale-95 transition-all h-12"
                                     onClick={() => {
                                         if (selectedLead) {
                                             window.open(`/store/catalog?leadId=${selectedLead.id}`, '_blank');
@@ -411,15 +511,26 @@ export default function LeadsPage() {
                             <div className="relative z-10">
                                 <div className="flex items-center justify-between mb-12">
                                     {['NEW', 'QUOTE', 'BOOKING', 'FINANCE', 'DELIVERED'].map((st, i) => {
-                                        const isDone = ['NEW', 'QUOTE', 'BOOKING', 'FINANCE', 'DELIVERED'].indexOf(selectedLead.status) >= i;
+                                        const isDone =
+                                            ['NEW', 'QUOTE', 'BOOKING', 'FINANCE', 'DELIVERED'].indexOf(
+                                                selectedLead.status
+                                            ) >= i;
                                         return (
                                             <div key={st} className="flex flex-col items-center gap-4 flex-1">
                                                 <div className="w-full flex items-center gap-2 px-2">
-                                                    <div className={`h-1 flex-1 rounded-full transition-all duration-1000 ${i === 0 ? 'bg-transparent' : isDone ? 'bg-indigo-500' : 'bg-slate-100 dark:bg-white/10'}`} />
-                                                    <div className={`w-4 h-4 rounded-full border-2 transition-all duration-700 ${isDone ? 'bg-indigo-500 border-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.5)]' : 'bg-slate-200 dark:bg-white/10 border-transparent'}`} />
-                                                    <div className={`h-1 flex-1 rounded-full transition-all duration-1000 ${i === 4 ? 'bg-transparent' : isDone && ['NEW', 'QUOTE', 'BOOKING', 'FINANCE', 'DELIVERED'].indexOf(selectedLead.status) > i ? 'bg-indigo-500' : 'bg-slate-100 dark:bg-white/10'}`} />
+                                                    <div
+                                                        className={`h-1 flex-1 rounded-full transition-all duration-1000 ${i === 0 ? 'bg-transparent' : isDone ? 'bg-indigo-500' : 'bg-slate-100 dark:bg-white/10'}`}
+                                                    />
+                                                    <div
+                                                        className={`w-4 h-4 rounded-full border-2 transition-all duration-700 ${isDone ? 'bg-indigo-500 border-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.5)]' : 'bg-slate-200 dark:bg-white/10 border-transparent'}`}
+                                                    />
+                                                    <div
+                                                        className={`h-1 flex-1 rounded-full transition-all duration-1000 ${i === 4 ? 'bg-transparent' : isDone && ['NEW', 'QUOTE', 'BOOKING', 'FINANCE', 'DELIVERED'].indexOf(selectedLead.status) > i ? 'bg-indigo-500' : 'bg-slate-100 dark:bg-white/10'}`}
+                                                    />
                                                 </div>
-                                                <span className={`text-[10px] font-black tracking-widest uppercase ${isDone ? 'text-indigo-500' : 'text-slate-400'}`}>
+                                                <span
+                                                    className={`text-[10px] font-black tracking-widest uppercase ${isDone ? 'text-indigo-500' : 'text-slate-400'}`}
+                                                >
                                                     {st}
                                                 </span>
                                             </div>
@@ -431,14 +542,15 @@ export default function LeadsPage() {
 
                         {/* Detail Navigation */}
                         <div className="flex gap-8 mb-12 border-b border-slate-200 dark:border-white/10">
-                            {tabs.map((tab) => (
+                            {tabs.map(tab => (
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`flex items-center gap-3 py-6 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative ${activeTab === tab.id
-                                        ? 'text-indigo-600'
-                                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-white'
-                                        }`}
+                                    className={`flex items-center gap-3 py-6 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative ${
+                                        activeTab === tab.id
+                                            ? 'text-indigo-600'
+                                            : 'text-slate-400 hover:text-slate-600 dark:hover:text-white'
+                                    }`}
                                 >
                                     {tab.icon}
                                     {tab.label}

@@ -5,110 +5,88 @@ import { adminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
 import { checkServiceability } from './serviceArea';
 import { serverLog } from '@/lib/debug/logger';
+import { createOrLinkMember } from './members';
 
 // --- CUSTOMER PROFILES ---
 
-async function getOrCreateCustomerProfile(data: {
-    name: string;
-    phone: string;
-    pincode?: string;
-    dob?: string;
-    taluka?: string;
-}) {
-    console.log('[DEBUG] getOrCreateCustomerProfile starting for:', data.phone);
-    // Normalize optional fields
-    const dob = data.dob || null;
-    const pincode = data.pincode || null;
+// function getOrCreateCustomerProfile removed - using createOrLinkMember from members.ts instead
 
-    // 1. Search for existing profile by WhatsApp/Phone
-    console.log('[DEBUG] Searching id_members for existing profile...');
-    const { data: existingProfile, error: searchError } = await adminClient
-        .from('id_members')
-        .select('id')
-        .or(`whatsapp.eq.${data.phone},primary_phone.eq.${data.phone}`)
-        .maybeSingle();
+export async function updateMemberProfile(
+    memberId: string,
+    updates: {
+        fullName?: string;
+        primaryPhone?: string;
+        whatsapp?: string;
+        primaryEmail?: string;
+        email?: string;
+        dob?: string;
+        pincode?: string;
+        taluka?: string;
+        district?: string;
+        state?: string;
+        currentAddress1?: string;
+        currentAddress2?: string;
+        currentAddress3?: string;
+        aadhaarAddress1?: string;
+        aadhaarAddress2?: string;
+        aadhaarAddress3?: string;
+        workAddress1?: string;
+        workAddress2?: string;
+        workAddress3?: string;
+        workCompany?: string;
+        workDesignation?: string;
+        workEmail?: string;
+        workPhone?: string;
+        phonesJson?: any[];
+        emailsJson?: any[];
+        addressesJson?: any[];
+    }
+) {
+    const supabase = await createClient();
+    const payload: any = {
+        updated_at: new Date().toISOString(),
+    };
 
-    if (searchError) {
-        console.error('[DEBUG] Search error in id_members:', searchError);
+    if (updates.fullName) payload.full_name = updates.fullName;
+    if (updates.primaryPhone) payload.primary_phone = updates.primaryPhone;
+    if (updates.whatsapp) payload.whatsapp = updates.whatsapp;
+    if (updates.primaryEmail) payload.primary_email = updates.primaryEmail;
+    if (updates.email) payload.email = updates.email;
+    if (updates.dob) payload.date_of_birth = updates.dob;
+    if (updates.pincode) payload.pincode = updates.pincode;
+    if (updates.taluka) payload.taluka = updates.taluka;
+    if (updates.district) payload.district = updates.district;
+    if (updates.state) payload.state = updates.state;
+
+    if (updates.currentAddress1) payload.current_address1 = updates.currentAddress1;
+    if (updates.currentAddress2) payload.current_address2 = updates.currentAddress2;
+    if (updates.currentAddress3) payload.current_address3 = updates.currentAddress3;
+
+    if (updates.aadhaarAddress1) payload.aadhaar_address1 = updates.aadhaarAddress1;
+    if (updates.aadhaarAddress2) payload.aadhaar_address2 = updates.aadhaarAddress2;
+    if (updates.aadhaarAddress3) payload.aadhaar_address3 = updates.aadhaarAddress3;
+
+    if (updates.workAddress1) payload.work_address1 = updates.workAddress1;
+    if (updates.workAddress2) payload.work_address2 = updates.workAddress2;
+    if (updates.workAddress3) payload.work_address3 = updates.workAddress3;
+
+    if (updates.workCompany) payload.work_company = updates.workCompany;
+    if (updates.workDesignation) payload.work_designation = updates.workDesignation;
+    if (updates.workEmail) payload.work_email = updates.workEmail;
+    if (updates.workPhone) payload.work_phone = updates.workPhone;
+
+    if (updates.phonesJson) payload.phones_json = updates.phonesJson;
+    if (updates.emailsJson) payload.emails_json = updates.emailsJson;
+    if (updates.addressesJson) payload.addresses_json = updates.addressesJson;
+
+    const { error } = await supabase.from('id_members').update(payload).eq('id', memberId);
+
+    if (error) {
+        console.error('updateMemberProfile Error:', error);
+        return { success: false, error: error.message };
     }
 
-    if (existingProfile) {
-        console.log('[DEBUG] Existing profile found:', existingProfile.id);
-        // Update existing profile with latest metadata if provided
-        const { error: updateError } = await adminClient
-            .from('id_members')
-            .update({
-                full_name: toTitleCase(data.name),
-                whatsapp: data.phone,
-                date_of_birth: dob,
-                aadhaar_pincode: pincode,
-                taluka: data.taluka || null,
-            })
-            .eq('id', existingProfile.id);
-
-        if (updateError) {
-            console.error('[DEBUG] Profile update failed:', updateError);
-            throw updateError;
-        }
-
-        console.log('[DEBUG] Profile updated successfully');
-        return existingProfile.id;
-    }
-
-    console.log('[DEBUG] No existing profile. Creating Auth User...');
-    // 2. Create Auth User (Passwordless/Phone-based)
-    // We create a disabled-password user to act as a placeholder for the contact
-    const { data: authUser, error: authError } = await adminClient.auth.admin.createUser({
-        phone: data.phone,
-        phone_confirm: true,
-        user_metadata: {
-            full_name: toTitleCase(data.name),
-        },
-    });
-
-    if (authError) {
-        console.error('[DEBUG] Auth User Creation failed:', authError.message);
-        // If user already exists in auth but not profile (rare), use that ID
-        if (authError.message.includes('already exists')) {
-            console.log('[DEBUG] User already exists in Auth. Fetching ID...');
-            // Fetch more users to increase chances of finding the existing one
-            const { data: list } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
-            const user = list.users.find(u => u.phone === data.phone || u.phone === `+91${data.phone}`);
-            if (user) {
-                console.log('[DEBUG] Found existing Auth user ID:', user.id);
-                return user.id;
-            }
-            console.error('User exists in Auth but not found in listUsers (checked 1000)', data.phone);
-        }
-        throw authError;
-    }
-
-    console.log('[DEBUG] Auth User created:', authUser.user.id);
-
-    // 3. Profiles are now id_members
-    console.log('[DEBUG] Upserting id_members profile for new user...');
-    const { data: newProfile, error: profileError } = await adminClient
-        .from('id_members')
-        .upsert({
-            id: authUser.user.id,
-            full_name: toTitleCase(data.name),
-            whatsapp: data.phone,
-            primary_phone: data.phone,
-            date_of_birth: dob,
-            aadhaar_pincode: pincode,
-            taluka: data.taluka || null,
-            role: 'customer', // Corrected from 'dealer_staff' to 'customer'
-        })
-        .select('id')
-        .single();
-
-    if (profileError) {
-        console.error('[DEBUG] id_members upsert failed:', profileError);
-        throw profileError;
-    }
-
-    console.log('[DEBUG] id_members profile created successfully');
-    return newProfile.id;
+    return { success: true };
 }
 
 export async function checkExistingCustomer(phone: string) {
@@ -302,13 +280,29 @@ export async function createLeadAction(data: {
 
         // 1. Check/Create Customer Profile
         console.log('[DEBUG] Step 1: getOrCreateCustomerProfile...');
-        const customerId = await getOrCreateCustomerProfile({
-            name: data.customer_name,
+        // 1. Check/Create Customer Profile & Link to Tenant
+        console.log('[DEBUG] Step 1: createOrLinkMember...');
+        const { member } = await createOrLinkMember({
+            tenantId: effectiveOwnerId,
+            fullName: data.customer_name,
             phone: data.customer_phone,
-            pincode: data.customer_pincode,
-            dob: data.customer_dob,
-            taluka: data.customer_taluka,
+            // Pass other details if createOrLinkMember supports them, otherwise they might be lost or need separate update
+            // createOrLinkMember only takes basic input.
+            // We might need to update extra fields if they are critical.
         });
+        const customerId = member.id;
+
+        // update extra fields that createOrLinkMember might not handle (like dob, taluka)
+        if (data.customer_dob || data.customer_pincode || data.customer_taluka) {
+            await adminClient
+                .from('id_members')
+                .update({
+                    date_of_birth: data.customer_dob || null,
+                    aadhaar_pincode: data.customer_pincode || null,
+                    taluka: data.customer_taluka || null,
+                })
+                .eq('id', customerId);
+        }
 
         console.log('[DEBUG] Step 1 Complete. CustomerId:', customerId);
 
@@ -451,13 +445,65 @@ export async function createQuoteAction(data: {
     color_id?: string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     commercials: Record<string, any>;
+    source?: 'STORE_PDP' | 'LEADS';
 }): Promise<{ success: boolean; data?: any; message?: string }> {
     const user = await getAuthUser();
     const supabase = await createClient();
     const createdBy = user?.id;
+    let memberId: string | null = null;
+    let leadReferrerId: string | null = null;
+
+    const comms: any = data.commercials || {};
+    const snap = comms.pricing_snapshot || {};
+
+    if (!comms.dealer && data.tenant_id) {
+        const { data: tenant } = await supabase
+            .from('id_tenants')
+            .select('id, name, studio_id')
+            .eq('id', data.tenant_id)
+            .maybeSingle();
+        if (tenant) {
+            comms.dealer = {
+                dealer_id: tenant.id,
+                dealer_name: tenant.name,
+                studio_id: tenant.studio_id,
+            };
+        }
+    }
+
+    const dealer = snap.dealer || comms.dealer || null;
+    const missing: string[] = [];
+    if (!comms.label && (!comms.brand || !comms.model || !comms.variant)) missing.push('vehicle_label');
+    if (!snap || Object.keys(snap).length === 0) missing.push('pricing_snapshot');
+    if (!(snap.ex_showroom || comms.ex_showroom || comms.base_price)) missing.push('ex_showroom');
+    if (snap.rto_total === undefined || snap.rto_total === null) missing.push('rto_total');
+    if (snap.insurance_total === undefined || snap.insurance_total === null) missing.push('insurance_total');
+    if (!dealer?.dealer_id && !dealer?.studio_id && !dealer?.id) missing.push('dealer');
+    if (!comms.color_name && !comms.color && !data.color_id) missing.push('color');
+
+    if (missing.length > 0) {
+        return {
+            success: false,
+            message: `Quote creation blocked: missing ${missing.join(', ')}.`,
+        };
+    }
+
+    data.commercials = comms;
+
+    if (data.lead_id) {
+        const { data: lead } = await supabase
+            .from('crm_leads')
+            .select('customer_id, referred_by_id')
+            .eq('id', data.lead_id)
+            .maybeSingle();
+        if (lead) {
+            memberId = lead.customer_id || null;
+            leadReferrerId = lead.referred_by_id || null;
+        }
+    }
 
     // Extract flat fields for analytics - handling Multiple naming conventions
-    const comms: any = data.commercials;
+    // Note: comms is already defined above
     const onRoadPrice = Math.round(comms.grand_total || comms.onRoad || 0);
     const exShowroom = Math.round(comms.base_price || comms.exShowroom || comms.ex_showroom || 0);
     const pricingSnapshot = comms?.pricing_snapshot || {};
@@ -495,6 +541,9 @@ export async function createQuoteAction(data: {
         .insert({
             tenant_id: data.tenant_id,
             lead_id: data.lead_id,
+            member_id: memberId,
+            lead_referrer_id: leadReferrerId,
+            quote_owner_id: createdBy || null,
             variant_id: data.variant_id,
             color_id: data.color_id,
             vehicle_sku_id: vehicleSkuId, // Use SKU (color) when available
@@ -525,6 +574,54 @@ export async function createQuoteAction(data: {
             context: { tenant_id: data.tenant_id, lead_id: data.lead_id, sku: data.variant_id },
         });
         return { success: false, message: error.message };
+    }
+
+    const finance = (data.commercials as any)?.finance || null;
+    if (finance?.scheme_id || finance?.bank_id) {
+        const { data: attempt, error: financeError } = await supabase
+            .from('crm_quote_finance_attempts')
+            .insert({
+                quote_id: quote.id,
+                tenant_id: data.tenant_id,
+                bank_id: finance.bank_id || null,
+                bank_name: finance.bank_name || null,
+                scheme_id: finance.scheme_id || null,
+                scheme_code: finance.scheme_code || null,
+                ltv: finance.ltv || null,
+                roi: finance.roi || null,
+                tenure_months: finance.tenure_months || null,
+                down_payment: finance.down_payment || null,
+                loan_amount: finance.loan_amount || null,
+                loan_addons: finance.loan_addons || null,
+                processing_fee: finance.processing_fee || null,
+                charges_breakup: finance.charges_breakup || [],
+                emi: finance.emi || null,
+                status: finance.status || 'IN_PROCESS',
+                created_by: createdBy || null,
+            })
+            .select('id')
+            .single();
+
+        if (financeError) {
+            console.error('Finance attempt create failed:', financeError);
+        } else if (attempt?.id) {
+            await supabase
+                .from('crm_quotes')
+                .update({
+                    finance_mode: 'LOAN',
+                    active_finance_id: attempt.id,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', quote.id);
+        }
+    } else {
+        await supabase
+            .from('crm_quotes')
+            .update({
+                finance_mode: 'CASH',
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', quote.id);
     }
 
     // 2. Sync Lead Status to 'QUOTE'
@@ -561,7 +658,7 @@ export async function createQuoteVersion(
     // Get parent version
     const { data: parent } = await supabase
         .from('crm_quotes')
-        .select('version, tenant_id, lead_id, variant_id, color_id')
+        .select('version, tenant_id, lead_id, variant_id, color_id, member_id, lead_referrer_id, quote_owner_id')
         .eq('id', parentQuoteId)
         .single();
 
@@ -583,6 +680,9 @@ export async function createQuoteVersion(
         .insert({
             tenant_id: parent.tenant_id,
             lead_id: parent.lead_id,
+            member_id: parent.member_id || null,
+            lead_referrer_id: parent.lead_referrer_id || null,
+            quote_owner_id: parent.quote_owner_id || createdBy || null,
             variant_id: parent.variant_id,
             color_id: parent.color_id,
             vehicle_sku_id: parent.color_id || parent.variant_id, // Prefer SKU (color) when present
@@ -623,6 +723,10 @@ export async function acceptQuoteAction(id: string): Promise<{ success: boolean;
         console.error('Accept Quote Error:', error);
         return { success: false, message: error.message };
     }
+
+    // Log timeline event
+    await logQuoteEvent(id, 'Quote Accepted', 'Customer', 'customer', { source: 'CUSTOMER' });
+
     revalidatePath('/app/[slug]/quotes');
     revalidatePath('/profile');
     return { success: true };
@@ -640,6 +744,10 @@ export async function confirmQuoteAction(id: string): Promise<{ success: boolean
         console.error('Confirm Quote Error:', error);
         return { success: false, message: error.message };
     }
+
+    // Log timeline event
+    await logQuoteEvent(id, 'Quote Confirmed', 'Team Member', 'team', { source: 'CRM' });
+
     revalidatePath('/app/[slug]/quotes');
     revalidatePath('/profile');
     return { success: true };
@@ -827,6 +935,84 @@ export async function uploadMemberDocumentAction(data: {
     return asset;
 }
 
+export async function uploadMemberDocument(data: {
+    memberId: string;
+    name: string;
+    filePath: string;
+    fileType: string;
+    category: string;
+}) {
+    const supabase = await createClient();
+    const { data: doc, error } = await supabase
+        .from('crm_member_documents')
+        .insert({
+            member_id: data.memberId,
+            name: data.name,
+            file_path: data.filePath,
+            file_type: data.fileType,
+            category: data.category,
+            updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+    if (error) {
+        console.error('uploadMemberDocument Error:', error);
+        throw error;
+    }
+
+    return doc;
+}
+
+export async function getCrmMemberDocuments(memberId: string) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('crm_member_documents')
+        .select('*')
+        .eq('member_id', memberId)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('getCrmMemberDocuments Error:', error);
+        return [];
+    }
+
+    return data || [];
+}
+
+export async function deleteCrmMemberDocument(documentId: string) {
+    const supabase = await createClient();
+
+    // Get the file path first
+    const { data: doc, error: fetchError } = await supabase
+        .from('crm_member_documents')
+        .select('file_path')
+        .eq('id', documentId)
+        .single();
+
+    if (fetchError) {
+        console.error('Error fetching document for deletion:', fetchError);
+        throw fetchError;
+    }
+
+    // Delete from storage
+    if (doc?.file_path) {
+        const { error: storageError } = await supabase.storage.from('member-documents').remove([doc.file_path]);
+
+        if (storageError) {
+            console.error('Error removing file from storage:', storageError);
+            // We continue to delete from DB even if storage delete fails (maybe it was already gone)
+        }
+    }
+
+    const { error } = await supabase.from('crm_member_documents').delete().eq('id', documentId);
+
+    if (error) {
+        console.error('deleteCrmMemberDocument Error:', error);
+        throw error;
+    }
+}
+
 export async function deleteMemberDocumentAction(documentId: string) {
     const supabase = await createClient();
     const { error } = await supabase.from('id_member_assets').delete().eq('id', documentId);
@@ -871,6 +1057,18 @@ export async function getSignedUrlAction(path: string) {
     if (error) {
         console.error('Error creating signed URL:', error);
         throw error;
+    }
+
+    return data.signedUrl;
+}
+
+export async function getMemberDocumentUrl(path: string) {
+    const supabase = await createClient();
+    const { data, error } = await supabase.storage.from('member-documents').createSignedUrl(path, 3600); // 1 hour expiry
+
+    if (error) {
+        console.error('Error creating signed URL:', error);
+        return null;
     }
 
     return data.signedUrl;
@@ -956,17 +1154,58 @@ export interface QuoteEditorData {
     createdAt: string;
     updatedAt: string;
     validUntil: string | null;
+    leadId?: string | null;
     reviewedBy: string | null;
     reviewedAt: string | null;
     expectedDelivery: string | null;
     studioId: string | null;
     studioName: string | null;
+    district: string | null;
     customer: {
         name: string;
         phone: string;
         email: string | null;
         leadSource: string | null;
     };
+    customerProfile?: {
+        memberId?: string | null;
+        fullName?: string | null;
+        primaryPhone?: string | null;
+        whatsapp?: string | null;
+        primaryEmail?: string | null;
+        email?: string | null;
+        currentAddress?: string | null;
+        currentAddress1?: string | null;
+        currentAddress2?: string | null;
+        currentAddress3?: string | null;
+        aadhaarAddress?: string | null;
+        workAddress?: string | null;
+        workCompany?: string | null;
+        workDesignation?: string | null;
+        workIndustry?: string | null;
+        workProfile?: string | null;
+        workPincode?: string | null;
+        workTaluka?: string | null;
+        workDistrict?: string | null;
+        workState?: string | null;
+        aadhaarAddress1?: string | null;
+        aadhaarAddress2?: string | null;
+        aadhaarAddress3?: string | null;
+        workAddress1?: string | null;
+        workAddress2?: string | null;
+        workAddress3?: string | null;
+        taluka?: string | null;
+        district?: string | null;
+        state?: string | null;
+        pincode?: string | null;
+        dob?: string | null;
+        ownershipType?: string | null;
+    } | null;
+    referral?: {
+        referredByName?: string | null;
+        referredById?: string | null;
+        referralData?: any;
+    } | null;
     vehicle: {
         brand: string;
         model: string;
@@ -994,7 +1233,25 @@ export interface QuoteEditorData {
         onRoadTotal: number;
         finalTotal: number;
     };
-    timeline: { event: string; timestamp: string; actor: string | null }[];
+    financeMode?: 'CASH' | 'LOAN';
+    finance?: {
+        id?: string | null;
+        status?: 'IN_PROCESS' | 'UNDERWRITING' | 'DOC_PENDING' | 'APPROVED' | 'REJECTED';
+        bankId?: string | null;
+        bankName?: string | null;
+        schemeId?: string | null;
+        schemeCode?: string | null;
+        ltv?: number | null;
+        roi?: number | null;
+        tenureMonths?: number | null;
+        downPayment?: number | null;
+        loanAmount?: number | null;
+        loanAddons?: number | null;
+        processingFee?: number | null;
+        chargesBreakup?: any[] | null;
+        emi?: number | null;
+    } | null;
+    timeline: { event: string; timestamp: string; actor: string | null; actorType: 'customer' | 'team' }[];
 }
 
 export async function getQuoteById(
@@ -1008,7 +1265,7 @@ export async function getQuoteById(
         .select(
             `
             *,
-            lead:crm_leads(customer_name, customer_phone, utm_data, events_log)
+            lead:crm_leads(id, customer_name, customer_phone, utm_data, events_log, customer_id, referral_data, referred_by_name, referred_by_id)
         `
         )
         .eq('id', quoteId)
@@ -1024,61 +1281,298 @@ export async function getQuoteById(
 
     const commercials = q.commercials || {};
     const pricingSnapshot = commercials.pricing_snapshot || {};
+    const dealerFromPricing = pricingSnapshot?.dealer || commercials?.dealer || null;
+
+    const missing: string[] = [];
+    if (!commercials.label && (!commercials.brand || !commercials.model || !commercials.variant)) {
+        missing.push('vehicle_label');
+    }
+    if (!commercials.color_name && !commercials.color && !q.color_id && !q.vehicle_sku_id) {
+        missing.push('color');
+    }
+    if (!pricingSnapshot || Object.keys(pricingSnapshot).length === 0) {
+        missing.push('pricing_snapshot');
+    }
+    if (!(pricingSnapshot?.ex_showroom || commercials.ex_showroom || commercials.base_price)) {
+        missing.push('ex_showroom');
+    }
+    if (pricingSnapshot?.rto_total === undefined || pricingSnapshot?.rto_total === null) {
+        missing.push('rto_total');
+    }
+    if (pricingSnapshot?.insurance_total === undefined || pricingSnapshot?.insurance_total === null) {
+        missing.push('insurance_total');
+    }
+    if (!dealerFromPricing?.dealer_id && !dealerFromPricing?.studio_id && !dealerFromPricing?.id && !q.studio_id) {
+        missing.push('dealer');
+    }
+
+    if (missing.length > 0) {
+        return {
+            success: false,
+            error: `Quote data incomplete: ${missing.join(', ')}. Please re-create this quote.`,
+        };
+    }
 
     // Build timeline from lead events + quote events
-    const timeline: { event: string; timestamp: string; actor: string | null }[] = [];
+    const timeline: {
+        event: string;
+        timestamp: string;
+        actor: string | null;
+        actorType: 'customer' | 'team';
+        source?: string | null;
+        reason?: string | null;
+    }[] = [];
 
     timeline.push({
         event: 'Quote Created',
         timestamp: q.created_at || new Date().toISOString(),
         actor: null,
+        actorType: 'team',
+        source: 'SYSTEM',
     });
 
     if (q.reviewed_at) {
         timeline.push({
-            event: 'Manager Reviewed',
+            event: q.status === 'PENDING_REVIEW' ? 'In Review' : 'Manager Reviewed',
             timestamp: q.reviewed_at,
             actor: q.reviewed_by,
+            actorType: 'team',
+            source: 'CRM',
         });
     }
 
-    const result: QuoteEditorData = {
+    // Add stored timeline events from commercials
+    if (commercials.timeline && Array.isArray(commercials.timeline)) {
+        commercials.timeline.forEach((ev: any) => {
+            timeline.push({
+                event: ev.event,
+                timestamp: ev.timestamp,
+                actor: ev.actor,
+                actorType: ev.actorType || 'team',
+                source: ev.source || null,
+                reason: ev.reason || null,
+            });
+        });
+    }
+
+    // Sort timeline by timestamp
+    timeline.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    const baseData = {
         id: q.id,
         displayId: q.display_id || `QT-${q.id.slice(0, 8).toUpperCase()}`,
         status: q.status || 'DRAFT',
         createdAt: q.created_at || new Date().toISOString(),
         updatedAt: q.updated_at || new Date().toISOString(),
         validUntil: q.valid_until,
+        leadId: q.lead_id || null,
         reviewedBy: q.reviewed_by,
         reviewedAt: q.reviewed_at,
         expectedDelivery: q.expected_delivery,
-        studioId: q.studio_id,
-        studioName: null, // Studio join removed - no FK relationship
+        studioId: q.studio_id || dealerFromPricing?.studio_id || dealerFromPricing?.dealer_id || null,
+        studioName: dealerFromPricing?.dealer_name || dealerFromPricing?.name || null,
+        district: pricingSnapshot?.location?.district || null,
+        financeMode: q.finance_mode || (commercials.finance?.mode as any) || 'CASH',
+    };
+
+    // Fetch Member Profile (single query to avoid slow duplicate fetches)
+    let customerProfile: any = null;
+    const leadPhoneRaw = q.lead?.customer_phone || '';
+    const leadPhone = leadPhoneRaw.replace(/\D/g, '');
+    const leadEmail = null;
+
+    const resolvedMemberId = q.member_id || q.lead?.customer_id || null;
+
+    if (resolvedMemberId || leadPhone) {
+        const { data: member } = await supabase
+            .from('id_members')
+            .select(
+                [
+                    'id',
+                    'full_name',
+                    'primary_phone',
+                    'whatsapp',
+                    'primary_email',
+                    'email',
+                    'current_address1',
+                    'current_address2',
+                    'current_address3',
+                    'aadhaar_address1',
+                    'aadhaar_address2',
+                    'aadhaar_address3',
+                    'work_address1',
+                    'work_address2',
+                    'work_address3',
+                    'work_company',
+                    'work_designation',
+                    'work_email',
+                    'work_phone',
+                    'work_pincode',
+                    'work_taluka',
+                    'work_district',
+                    'work_state',
+                    'work_industry',
+                    'work_profile',
+                    'taluka',
+                    'district',
+                    'state',
+                    'pincode',
+                    'date_of_birth',
+                    'ownership_type',
+                ].join(', ')
+            )
+            .eq('id', resolvedMemberId || '')
+            .maybeSingle();
+
+        let resolvedMember = member;
+
+        if (!resolvedMember && leadPhone) {
+            const { data: memberByContact } = await supabase
+                .from('id_members')
+                .select(
+                    [
+                        'id',
+                        'full_name',
+                        'primary_phone',
+                        'whatsapp',
+                        'primary_email',
+                        'email',
+                        'current_address1',
+                        'current_address2',
+                        'current_address3',
+                        'aadhaar_address1',
+                        'aadhaar_address2',
+                        'aadhaar_address3',
+                        'work_address1',
+                        'work_address2',
+                        'work_address3',
+                        'work_company',
+                        'work_designation',
+                        'work_email',
+                        'work_phone',
+                        'work_pincode',
+                        'work_taluka',
+                        'work_district',
+                        'work_state',
+                        'work_industry',
+                        'work_profile',
+                        'taluka',
+                        'district',
+                        'state',
+                        'pincode',
+                        'date_of_birth',
+                        'ownership_type',
+                    ].join(', ')
+                )
+                .or(
+                    [leadPhone ? `primary_phone.eq.${leadPhone}` : null, leadPhone ? `whatsapp.eq.${leadPhone}` : null]
+                        .filter(Boolean)
+                        .join(',')
+                )
+                .maybeSingle();
+            resolvedMember = memberByContact || null;
+
+            if (resolvedMember && q.lead?.id && !q.lead?.customer_id) {
+                await supabase.from('crm_leads').update({ customer_id: resolvedMember.id }).eq('id', q.lead.id);
+            }
+
+            if (resolvedMember && q.id && !q.member_id) {
+                await supabase.from('crm_quotes').update({ member_id: resolvedMember.id }).eq('id', q.id);
+            }
+        }
+
+        if (resolvedMember) {
+            const currentAddress = [
+                resolvedMember.current_address1,
+                resolvedMember.current_address2,
+                resolvedMember.current_address3,
+            ]
+                .filter(Boolean)
+                .join(', ');
+            const aadhaarAddress = [
+                resolvedMember.aadhaar_address1,
+                resolvedMember.aadhaar_address2,
+                resolvedMember.aadhaar_address3,
+            ]
+                .filter(Boolean)
+                .join(', ');
+            const workAddress = [
+                resolvedMember.work_address1,
+                resolvedMember.work_address2,
+                resolvedMember.work_address3,
+            ]
+                .filter(Boolean)
+                .join(', ');
+
+            customerProfile = {
+                memberId: resolvedMember.id,
+                fullName: resolvedMember.full_name,
+                primaryPhone: resolvedMember.primary_phone,
+                whatsapp: resolvedMember.whatsapp,
+                primaryEmail: resolvedMember.primary_email,
+                email: resolvedMember.email,
+                dob: resolvedMember.date_of_birth,
+                pincode: resolvedMember.pincode,
+                taluka: resolvedMember.taluka,
+                district: resolvedMember.district,
+                state: resolvedMember.state,
+                currentAddress: currentAddress || null,
+                aadhaarAddress: aadhaarAddress || null,
+                workAddress: workAddress || null,
+                currentAddress1: resolvedMember.current_address1,
+                currentAddress2: resolvedMember.current_address2,
+                currentAddress3: resolvedMember.current_address3,
+                aadhaarAddress1: resolvedMember.aadhaar_address1,
+                aadhaarAddress2: resolvedMember.aadhaar_address2,
+                aadhaarAddress3: resolvedMember.aadhaar_address3,
+                workAddress1: resolvedMember.work_address1,
+                workAddress2: resolvedMember.work_address2,
+                workAddress3: resolvedMember.work_address3,
+                workCompany: resolvedMember.work_company,
+                workDesignation: resolvedMember.work_designation,
+                workEmail: resolvedMember.work_email,
+                workPhone: resolvedMember.work_phone,
+                workPincode: resolvedMember.work_pincode,
+                workTaluka: resolvedMember.work_taluka,
+                workDistrict: resolvedMember.work_district,
+                workState: resolvedMember.work_state,
+                workIndustry: resolvedMember.work_industry,
+                workProfile: resolvedMember.work_profile,
+                ownershipType: resolvedMember.ownership_type,
+            };
+        }
+    }
+
+    const result: QuoteEditorData = {
+        ...baseData,
         customer: {
             name: q.lead?.customer_name || 'N/A',
             phone: q.lead?.customer_phone || 'N/A',
             email: null,
             leadSource: q.lead?.utm_data?.utm_source || 'WEBSITE',
         },
+        customerProfile,
+        referral: q.lead
+            ? {
+                  referredByName: q.lead?.referred_by_name || null,
+                  referredById: q.lead?.referred_by_id || null,
+                  referralData: q.lead?.referral_data || null,
+              }
+            : null,
         vehicle: {
-            // Parse label format: "brand-model Variant (Color)" or "TVS Jupiter Drum (Titanium Grey Matte)"
-            brand: commercials.brand || commercials.label?.split('-')[0]?.split(' ')[0] || 'N/A',
-            model:
-                commercials.model ||
-                commercials.label?.split(' ')[0]?.split('-')[1] ||
-                commercials.label?.split(' ')[0] ||
-                'N/A',
-            variant: commercials.variant || commercials.label?.match(/\s([^\(]+)/)?.[1]?.trim() || 'N/A',
-            color: commercials.color_name || 'N/A',
+            brand: commercials.brand || 'N/A',
+            model: commercials.model || 'N/A',
+            variant: commercials.variant || 'N/A',
+            color: commercials.color_name || commercials.color || 'N/A',
             colorHex: commercials.color_hex || '#000000',
             imageUrl: q.vehicle_image || commercials.image_url || null,
             skuId: q.vehicle_sku_id || q.color_id || q.variant_id || '',
         },
         pricing: {
-            exShowroom: parseInt(q.ex_showroom_price) || commercials.ex_showroom || 0,
-            rtoType: pricingSnapshot.rto_type || 'STATE',
+            exShowroom: parseInt(q.ex_showroom_price) || commercials.ex_showroom || commercials.base_price || 0,
+            rtoType: pricingSnapshot.rto_type || commercials.rto_type || 'STATE',
             rtoBreakdown: pricingSnapshot.rto_breakdown || [],
-            rtoTotal: parseInt(q.rto_amount) || pricingSnapshot.rto_total || 0,
+            rtoTotal: pricingSnapshot.rto_total || 0,
             insuranceOD: pricingSnapshot.insurance?.od || 0,
             insuranceTP: pricingSnapshot.insurance?.tp || 0,
             insuranceAddons: (pricingSnapshot.insurance_addon_items || pricingSnapshot.insurance_addons || []).map(
@@ -1090,23 +1584,73 @@ export async function getQuoteById(
                 })
             ),
             insuranceGST: pricingSnapshot.insurance?.gst || 0,
-            insuranceTotal: parseInt(q.insurance_amount) || pricingSnapshot.insurance_total || 0,
+            insuranceTotal: pricingSnapshot.insurance_total || 0,
             accessories: (pricingSnapshot.accessory_items || pricingSnapshot.accessories || []).map((a: any) => ({
                 id: a.id || a,
                 name: a.name || 'Accessory',
                 price: a.discountPrice || a.price || 0,
                 selected: true,
             })),
-            accessoriesTotal: parseInt(q.accessories_amount) || 0,
-            dealerDiscount: parseInt(q.discount_amount) || commercials.dealer_discount || 0,
+            accessoriesTotal: pricingSnapshot.accessories_total || 0,
+            dealerDiscount:
+                parseInt(q.discount_amount) ||
+                commercials.dealer_discount ||
+                (pricingSnapshot.offers_delta || 0) + (pricingSnapshot.color_delta || 0) ||
+                pricingSnapshot?.dealer?.offer ||
+                0,
             managerDiscount: parseInt(q.manager_discount) || 0,
             managerDiscountNote: q.manager_discount_note || null,
-            onRoadTotal: parseInt(q.on_road_price) || commercials.grand_total || 0,
+            onRoadTotal: pricingSnapshot.grand_total || parseInt(q.on_road_price) || commercials.grand_total || 0,
             finalTotal:
-                (parseInt(q.on_road_price) || commercials.grand_total || 0) + (parseInt(q.manager_discount) || 0),
+                (pricingSnapshot.grand_total || parseInt(q.on_road_price) || commercials.grand_total || 0) +
+                (parseInt(q.manager_discount) || 0),
         },
+        finance: null,
         timeline,
     };
+
+    if (q.active_finance_id) {
+        const { data: attempt } = await supabase
+            .from('crm_quote_finance_attempts')
+            .select('*')
+            .eq('id', q.active_finance_id)
+            .maybeSingle();
+        if (attempt) {
+            result.finance = {
+                id: attempt.id,
+                status: attempt.status,
+                bankId: attempt.bank_id,
+                bankName: attempt.bank_name || null,
+                schemeId: attempt.scheme_id,
+                schemeCode: attempt.scheme_code,
+                ltv: attempt.ltv,
+                roi: attempt.roi,
+                tenureMonths: attempt.tenure_months,
+                downPayment: attempt.down_payment,
+                loanAmount: attempt.loan_amount,
+                loanAddons: attempt.loan_addons,
+                processingFee: attempt.processing_fee,
+                chargesBreakup: attempt.charges_breakup,
+                emi: attempt.emi,
+            };
+        }
+    } else if (commercials.finance) {
+        result.finance = {
+            bankId: commercials.finance?.bank_id || null,
+            bankName: commercials.finance?.bank_name || null,
+            schemeId: commercials.finance?.scheme_id || null,
+            schemeCode: commercials.finance?.scheme_code || null,
+            ltv: commercials.finance?.ltv ?? null,
+            roi: commercials.finance?.roi ?? null,
+            tenureMonths: commercials.finance?.tenure_months ?? null,
+            downPayment: commercials.finance?.down_payment ?? null,
+            loanAmount: commercials.finance?.loan_amount ?? null,
+            loanAddons: commercials.finance?.loan_addons ?? null,
+            processingFee: commercials.finance?.processing_fee ?? null,
+            chargesBreakup: commercials.finance?.charges_breakup ?? null,
+            emi: commercials.finance?.emi ?? null,
+        };
+    }
 
     return { success: true, data: result };
 }
@@ -1147,7 +1691,250 @@ export async function updateQuoteManagerDiscount(
         return { success: false, error: error.message };
     }
 
+    // Log timeline event
+    await logQuoteEvent(quoteId, `Manager Discount Updated: ₹${managerDiscount}`, 'Manager', 'team', { source: 'CRM' });
+
     revalidatePath('/app/[slug]/quotes');
+    return { success: true };
+}
+
+export async function markQuoteInReview(quoteId: string): Promise<{ success: boolean; error?: string }> {
+    const user = await getAuthUser();
+    const supabase = await createClient();
+
+    const { data: quote, error: fetchError } = await supabase
+        .from('crm_quotes')
+        .select('status, quote_owner_id')
+        .eq('id', quoteId)
+        .single();
+
+    if (fetchError || !quote) {
+        return { success: false, error: 'Quote not found' };
+    }
+
+    if (quote.status !== 'DRAFT') {
+        return { success: true };
+    }
+
+    const updatePayload: Record<string, any> = {
+        status: 'PENDING_REVIEW',
+        reviewed_by: user?.id || null,
+        reviewed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    };
+
+    if (!quote.quote_owner_id && user?.id) {
+        updatePayload.quote_owner_id = user.id;
+    }
+
+    const { error } = await supabase.from('crm_quotes').update(updatePayload).eq('id', quoteId);
+
+    if (error) {
+        console.error('markQuoteInReview Error:', error);
+        return { success: false, error: error.message };
+    }
+
+    await logQuoteEvent(quoteId, 'Quote Opened - In Review', 'Team Member', 'team', { source: 'CRM' });
+
+    revalidatePath('/app/[slug]/quotes');
+    return { success: true };
+}
+
+export async function setQuoteFinanceMode(
+    quoteId: string,
+    mode: 'CASH' | 'LOAN'
+): Promise<{ success: boolean; error?: string }> {
+    const supabase = await createClient();
+    const { error } = await supabase
+        .from('crm_quotes')
+        .update({ finance_mode: mode, updated_at: new Date().toISOString() })
+        .eq('id', quoteId);
+    if (error) {
+        console.error('setQuoteFinanceMode Error:', error);
+        return { success: false, error: error.message };
+    }
+    await logQuoteEvent(quoteId, `Finance Mode Set: ${mode}`, 'Team Member', 'team', { source: 'CRM' });
+    revalidatePath('/app/[slug]/quotes');
+    return { success: true };
+}
+
+export async function getQuoteFinanceAttempts(quoteId: string) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('crm_quote_finance_attempts')
+        .select('*')
+        .eq('quote_id', quoteId)
+        .order('created_at', { ascending: false });
+    if (error) {
+        console.error('getQuoteFinanceAttempts Error:', error);
+        return [];
+    }
+    return data || [];
+}
+
+export async function createQuoteFinanceAttempt(
+    quoteId: string,
+    payload: {
+        bankId?: string | null;
+        bankName?: string | null;
+        schemeId?: string | null;
+        schemeCode?: string | null;
+        ltv?: number | null;
+        roi?: number | null;
+        tenureMonths?: number | null;
+        downPayment?: number | null;
+        loanAmount?: number | null;
+        loanAddons?: number | null;
+        processingFee?: number | null;
+        chargesBreakup?: any[];
+        emi?: number | null;
+    }
+) {
+    const user = await getAuthUser();
+    const supabase = await createClient();
+    const { data: quote } = await supabase.from('crm_quotes').select('tenant_id').eq('id', quoteId).single();
+
+    const { data, error } = await supabase
+        .from('crm_quote_finance_attempts')
+        .insert({
+            quote_id: quoteId,
+            tenant_id: quote?.tenant_id || null,
+            bank_id: payload.bankId || null,
+            bank_name: payload.bankName || null,
+            scheme_id: payload.schemeId || null,
+            scheme_code: payload.schemeCode || null,
+            ltv: payload.ltv || null,
+            roi: payload.roi || null,
+            tenure_months: payload.tenureMonths || null,
+            down_payment: payload.downPayment || null,
+            loan_amount: payload.loanAmount || null,
+            loan_addons: payload.loanAddons || null,
+            processing_fee: payload.processingFee || null,
+            charges_breakup: payload.chargesBreakup || [],
+            emi: payload.emi || null,
+            status: 'IN_PROCESS',
+            created_by: user?.id || null,
+        })
+        .select('id')
+        .single();
+
+    if (error) {
+        console.error('createQuoteFinanceAttempt Error:', error);
+        return { success: false, error: error.message };
+    }
+
+    await supabase
+        .from('crm_quotes')
+        .update({ active_finance_id: data.id, finance_mode: 'LOAN', updated_at: new Date().toISOString() })
+        .eq('id', quoteId);
+
+    await logQuoteEvent(quoteId, 'New Finance Attempt Created', 'Team Member', 'team', { source: 'CRM' });
+    revalidatePath('/app/[slug]/quotes');
+    return { success: true, id: data.id };
+}
+
+export async function updateQuoteFinanceStatus(
+    attemptId: string,
+    status: 'IN_PROCESS' | 'UNDERWRITING' | 'DOC_PENDING' | 'APPROVED' | 'REJECTED'
+) {
+    const supabase = await createClient();
+    const { data: attempt, error: fetchError } = await supabase
+        .from('crm_quote_finance_attempts')
+        .select('id, quote_id')
+        .eq('id', attemptId)
+        .single();
+    if (fetchError || !attempt) {
+        return { success: false, error: 'Attempt not found' };
+    }
+
+    const { error } = await supabase
+        .from('crm_quote_finance_attempts')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', attemptId);
+    if (error) {
+        console.error('updateQuoteFinanceStatus Error:', error);
+        return { success: false, error: error.message };
+    }
+
+    await logQuoteEvent(attempt.quote_id, `Finance Status: ${status}`, 'Team Member', 'team', { source: 'CRM' });
+
+    if (status === 'DOC_PENDING') {
+        await createTask({
+            tenantId: null,
+            linkedType: 'QUOTE',
+            linkedId: attempt.quote_id,
+            title: 'Collect Finance Documents',
+            description: 'Document collection required for finance processing.',
+        });
+    }
+
+    revalidatePath('/app/[slug]/quotes');
+    return { success: true };
+}
+
+export async function createTask(input: {
+    tenantId: string | null;
+    linkedType: 'LEAD' | 'QUOTE' | 'BOOKING';
+    linkedId: string;
+    title: string;
+    description?: string | null;
+    assigneeIds?: string[];
+    primaryAssigneeId?: string | null;
+}) {
+    const user = await getAuthUser();
+    const supabase = await createClient();
+    const primaryAssigneeId = input.primaryAssigneeId || user?.id || null;
+    const assigneeIds =
+        input.assigneeIds && input.assigneeIds.length > 0
+            ? input.assigneeIds
+            : primaryAssigneeId
+              ? [primaryAssigneeId]
+              : [];
+
+    const { error } = await supabase.from('crm_tasks').insert({
+        tenant_id: input.tenantId || null,
+        linked_type: input.linkedType,
+        linked_id: input.linkedId,
+        title: input.title,
+        description: input.description || null,
+        status: 'OPEN',
+        primary_assignee_id: primaryAssigneeId,
+        assignee_ids: assigneeIds,
+        created_by: user?.id || null,
+    });
+
+    if (error) {
+        console.error('createTask Error:', error);
+        return { success: false, error: error.message };
+    }
+    return { success: true };
+}
+
+export async function getTasksForEntity(linkedType: 'LEAD' | 'QUOTE' | 'BOOKING', linkedId: string) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('crm_tasks')
+        .select('*')
+        .eq('linked_type', linkedType)
+        .eq('linked_id', linkedId)
+        .order('created_at', { ascending: false });
+    if (error) {
+        console.error('getTasksForEntity Error:', error);
+        return [];
+    }
+    return data || [];
+}
+
+export async function updateTaskStatus(taskId: string, status: 'OPEN' | 'IN_PROGRESS' | 'DONE') {
+    const supabase = await createClient();
+    const { error } = await supabase
+        .from('crm_tasks')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', taskId);
+    if (error) {
+        console.error('updateTaskStatus Error:', error);
+        return { success: false, error: error.message };
+    }
     return { success: true };
 }
 
@@ -1210,6 +1997,13 @@ export async function updateQuotePricing(
         return { success: false, error: error.message };
     }
 
+    // Log timeline event if manager discount changed
+    if (updates.managerDiscount !== undefined) {
+        await logQuoteEvent(quoteId, `Manager Discount Adjusted to ₹${updates.managerDiscount}`, 'Manager', 'team', {
+            source: 'CRM',
+        });
+    }
+
     revalidatePath('/app/[slug]/quotes');
     return { success: true };
 }
@@ -1229,6 +2023,9 @@ export async function sendQuoteToCustomer(quoteId: string): Promise<{ success: b
         console.error('sendQuoteToCustomer Error:', error);
         return { success: false, error: error.message };
     }
+
+    // Log timeline event
+    await logQuoteEvent(quoteId, 'Quote Sent to Customer', 'Team Member', 'team', { source: 'CRM' });
 
     revalidatePath('/app/[slug]/quotes');
     return { success: true };
@@ -1310,4 +2107,56 @@ export async function getQuoteMarketplaceUrl(
 
     const url = `/store/${brand.slug}/${model.slug}/${variant.slug}?${params.toString()}`;
     return { success: true, url };
+}
+
+export async function logQuoteEvent(
+    quoteId: string,
+    event: string,
+    actor?: string | null,
+    actorType: 'customer' | 'team' = 'team',
+    details?: { source?: string; reason?: string }
+) {
+    const supabase = await createClient(); // Use createClient for RLS compliance if possible
+
+    // Fetch current commercials to get timeline
+    const { data: quote, error: fetchError } = await supabase
+        .from('crm_quotes')
+        .select('commercials')
+        .eq('id', quoteId)
+        .single();
+
+    if (fetchError || !quote) {
+        console.error('logQuoteEvent Error: Quote not found', fetchError);
+        return { success: false, error: 'Quote not found' };
+    }
+
+    const commercials = (quote.commercials as any) || {};
+    const timeline = commercials.timeline || [];
+
+    // Add new event
+    const newEvent = {
+        event,
+        timestamp: new Date().toISOString(),
+        actor: actor || 'System',
+        actorType,
+        source: details?.source || null,
+        reason: details?.reason || null,
+    };
+
+    const updatedCommercials = {
+        ...commercials,
+        timeline: [...timeline, newEvent],
+    };
+
+    const { error: updateError } = await supabase
+        .from('crm_quotes')
+        .update({ commercials: updatedCommercials })
+        .eq('id', quoteId);
+
+    if (updateError) {
+        console.error('logQuoteEvent Error: Update failed', updateError);
+        return { success: false, error: updateError.message };
+    }
+
+    return { success: true };
 }

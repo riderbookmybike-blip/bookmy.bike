@@ -14,9 +14,10 @@ interface LeadCaptureModalProps {
     productName: string;
     model: string;
     variant?: string;
-    color?: string;
-    priceSnapshot?: any;
     variantId?: string;
+    colorId?: string;
+    commercials?: any;
+    source?: 'STORE_PDP' | 'LEADS';
 }
 
 export function LeadCaptureModal({
@@ -25,9 +26,10 @@ export function LeadCaptureModal({
     productName,
     model,
     variant,
-    color,
-    priceSnapshot,
-    variantId
+    variantId,
+    colorId,
+    commercials,
+    source = 'LEADS',
 }: LeadCaptureModalProps) {
     const { tenantId, userRole, memberships } = useTenant();
     const [step, setStep] = useState<0 | 1>(0); // 0: Phone entry, 1: Name/Pincode entry
@@ -38,6 +40,7 @@ export function LeadCaptureModal({
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [memberId, setMemberId] = useState<string | null>(null);
+    const [quoteId, setQuoteId] = useState<string | null>(null);
 
     // Detect if current user is a staff member of any dealership
     const isStaff = userRole && userRole !== 'MEMBER';
@@ -53,6 +56,7 @@ export function LeadCaptureModal({
             setError(null);
             setMemberId(null);
             setSuccess(false);
+            setQuoteId(null);
         }
     }, [isOpen]);
 
@@ -80,14 +84,13 @@ export function LeadCaptureModal({
                     customer_dob: existingUser.dob || undefined,
                     model: model,
                     owner_tenant_id: tenantId || undefined,
-                    source: 'PDP_QUICK_QUOTE'
+                    source: 'PDP_QUICK_QUOTE',
                 });
 
                 if (leadResult.success && leadResult.leadId) {
                     await handleCreateQuote(leadResult.leadId);
                 } else {
-                    // Fallback to basic success if lead fails but user exists
-                    setSuccess(true);
+                    setError(leadResult.message || 'Failed to create lead. Please try again.');
                 }
             } else {
                 // New user, move to step 1
@@ -123,7 +126,7 @@ export function LeadCaptureModal({
                 customer_pincode: pincode,
                 model: model,
                 owner_tenant_id: tenantId || undefined,
-                source: isStaff ? 'DEALER_REFERRAL' : 'WEBSITE_PDP'
+                source: isStaff ? 'DEALER_REFERRAL' : 'WEBSITE_PDP',
             });
 
             if (leadResult.success && leadResult.leadId) {
@@ -141,8 +144,8 @@ export function LeadCaptureModal({
     }
 
     async function handleCreateQuote(lId: string) {
-        if (!variantId || !tenantId) {
-            setSuccess(true); // Fallback if IDs missing but lead identified
+        if (!variantId || !tenantId || !commercials) {
+            setError('Quote creation blocked: missing required product or pricing data.');
             return;
         }
 
@@ -151,27 +154,29 @@ export function LeadCaptureModal({
                 tenant_id: tenantId,
                 lead_id: lId,
                 variant_id: variantId,
-                color_id: color,
-                commercials: priceSnapshot,
+                color_id: colorId,
+                commercials,
+                source,
             });
 
             if (result.success) {
+                const displayId = result.data?.display_id || result.data?.displayId || result.data?.id || null;
+                setQuoteId(displayId);
+                setError(null);
                 setSuccess(true);
             } else {
                 console.error('Server reported failure creating quote in modal:', result);
-                setError(result.message || 'Details saved, but quote generation failed. Our team will contact you.');
-                setSuccess(true); // Still show success as the lead is captured
+                setError(result.message || 'Quote generation failed. Please try again.');
             }
         } catch (err) {
             console.error('Quote creation error:', err);
-            setSuccess(true);
+            setError('Quote generation failed due to a system error. Please try again.');
         }
     }
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
             <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-white/10 p-8 relative overflow-hidden">
-
                 {/* Close Button */}
                 <button
                     onClick={onClose}
@@ -190,15 +195,23 @@ export function LeadCaptureModal({
                         </div>
                         <div className="space-y-3">
                             <h3 className="text-4xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white leading-tight">
-                                EXCLUSIVE DEAL<br />LOCKED!
+                                EXCLUSIVE DEAL
+                                <br />
+                                LOCKED!
                             </h3>
                             <p className="inline-block px-4 py-1 bg-emerald-100 dark:bg-emerald-900/40 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-500 rounded-full">
                                 Priority Callback Initiated
                             </p>
+                            {quoteId && (
+                                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300">
+                                    Quote ID: <span className="text-slate-900 dark:text-white">{quoteId}</span>
+                                </p>
+                            )}
                         </div>
                         <p className="text-sm font-medium text-slate-600 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
-                            Our dealer partner has received your configuration for the <span className="text-slate-900 dark:text-white font-bold">{productName}</span>.
-                            You'll receive a VIP call within 30 minutes.
+                            Our dealer partner has received your configuration for the{' '}
+                            <span className="text-slate-900 dark:text-white font-bold">{productName}</span>. You'll
+                            receive a VIP call within 30 minutes.
                         </p>
                         <button
                             onClick={onClose}
@@ -215,9 +228,14 @@ export function LeadCaptureModal({
                                     <Briefcase size={24} />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 mb-1 leading-none">Staff Referral Mode</p>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 mb-1 leading-none">
+                                        Staff Referral Mode
+                                    </p>
                                     <p className="text-xs font-bold text-slate-600 dark:text-slate-400 truncate">
-                                        Booking for a customer from <span className="text-blue-600 dark:text-blue-400">{primaryMembership?.tenants?.name || 'your dealership'}</span>
+                                        Booking for a customer from{' '}
+                                        <span className="text-blue-600 dark:text-blue-400">
+                                            {primaryMembership?.tenants?.name || 'your dealership'}
+                                        </span>
                                     </p>
                                 </div>
                             </div>
@@ -226,9 +244,10 @@ export function LeadCaptureModal({
                         <div className="text-center space-y-2">
                             <h3 className="text-2xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white leading-none">
                                 {step === 0
-                                    ? (isStaff ? 'Identify Customer' : 'Get Personal Quote')
-                                    : 'Complete Profile'
-                                }
+                                    ? isStaff
+                                        ? 'Identify Customer'
+                                        : 'Get Personal Quote'
+                                    : 'Complete Profile'}
                             </h3>
                             <p className="text-[10px] font-black uppercase tracking-[0.25em] text-brand-primary">
                                 {productName}
@@ -246,17 +265,19 @@ export function LeadCaptureModal({
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between px-1">
                                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                                            {isStaff ? "Customer's Mobile" : "Confirm Mobile"}
+                                            {isStaff ? "Customer's Mobile" : 'Confirm Mobile'}
                                         </label>
                                         <Phone className="w-3 h-3 text-slate-400" />
                                     </div>
                                     <div className="relative group">
-                                        <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-600 font-black tracking-tighter text-lg select-none">+91</span>
+                                        <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-600 font-black tracking-tighter text-lg select-none">
+                                            +91
+                                        </span>
                                         <input
                                             type="tel"
                                             required
                                             value={phone}
-                                            onChange={(e) => setPhone(normalizeIndianPhone(e.target.value))}
+                                            onChange={e => setPhone(normalizeIndianPhone(e.target.value))}
                                             placeholder="00000 00000"
                                             maxLength={10}
                                             className="w-full pl-16 pr-6 py-5 bg-slate-50 dark:bg-black/20 border-2 border-transparent focus:border-brand-primary/50 dark:focus:border-brand-primary/30 rounded-3xl outline-none font-black text-xl text-slate-900 dark:text-white tracking-[0.1em] transition-all placeholder:text-slate-200 dark:placeholder:text-slate-800"
@@ -281,18 +302,23 @@ export function LeadCaptureModal({
                                 </button>
                             </form>
                         ) : (
-                            <form onSubmit={handleDetailSubmit} className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                            <form
+                                onSubmit={handleDetailSubmit}
+                                className="space-y-6 animate-in slide-in-from-right-4 duration-300"
+                            >
                                 <div className="space-y-6">
                                     <div className="space-y-2">
                                         <div className="flex items-center justify-between px-1">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Full Name</label>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                                Full Name
+                                            </label>
                                             <User className="w-3 h-3 text-slate-400" />
                                         </div>
                                         <input
                                             type="text"
                                             required
                                             value={name}
-                                            onChange={(e) => setName(e.target.value)}
+                                            onChange={e => setName(e.target.value)}
                                             placeholder="Enter full name"
                                             className="w-full px-6 py-4 bg-slate-50 dark:bg-black/20 border-2 border-transparent focus:border-brand-primary/50 rounded-3xl outline-none font-bold text-slate-900 dark:text-white transition-all"
                                             autoFocus
@@ -301,14 +327,16 @@ export function LeadCaptureModal({
 
                                     <div className="space-y-2">
                                         <div className="flex items-center justify-between px-1">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pincode</label>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                                Pincode
+                                            </label>
                                             <MapPin className="w-3 h-3 text-slate-400" />
                                         </div>
                                         <input
                                             type="tel"
                                             required
                                             value={pincode}
-                                            onChange={(e) => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                            onChange={e => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                                             placeholder="6-digit Pincode"
                                             className="w-full px-6 py-4 bg-slate-50 dark:bg-black/20 border-2 border-transparent focus:border-brand-primary/50 rounded-3xl outline-none font-bold text-slate-900 dark:text-white transition-all tracking-[0.2em]"
                                         />
@@ -328,11 +356,7 @@ export function LeadCaptureModal({
                                         disabled={isSubmitting}
                                         className="flex-1 py-5 bg-brand-primary hover:bg-[#E0A200] text-black font-black uppercase italic tracking-widest rounded-3xl transition-all shadow-xl shadow-brand-primary/20 active:scale-[0.98] flex items-center justify-center gap-3"
                                     >
-                                        {isSubmitting ? (
-                                            <Loader2 className="w-6 h-6 animate-spin" />
-                                        ) : (
-                                            'Create Quote'
-                                        )}
+                                        {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Create Quote'}
                                     </button>
                                 </div>
                             </form>

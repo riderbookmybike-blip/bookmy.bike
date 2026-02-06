@@ -14,30 +14,58 @@ export async function checkServiceability(pincode: string) {
 
     try {
         // Query the correct table 'loc_pincodes'
-        const { data, error } = await supabase
+        let { data, error } = await supabase
             .from('loc_pincodes')
             .select('status, taluka, area, district, state, rto_code')
             .eq('pincode', pincode)
-            .single();
+            .maybeSingle();
 
-        if (error || !data) {
+        // 1. If not found or missing critical data, try Google Maps
+        if (error || !data || !data.taluka || !data.district) {
+            console.log(`[GEO] Local resolution failed for ${pincode}, trying Google Maps...`);
+            const googleData = await fetchFromGoogleMaps(pincode);
+            if (googleData) {
+                // Upsert to local DB for future use
+                await upsertLocation({
+                    pincode,
+                    taluka: googleData.taluka,
+                    district: googleData.district,
+                    state: googleData.state,
+                    area: googleData.area,
+                    latitude: googleData.latitude,
+                    longitude: googleData.longitude,
+                });
+
+                // Use the newly fetched data
+                data = {
+                    status: data?.status || 'Deliverable',
+                    taluka: googleData.taluka || data?.taluka,
+                    district: googleData.district || data?.district,
+                    state: googleData.state || data?.state,
+                    area: googleData.area || data?.area,
+                    rto_code: data?.rto_code || null,
+                };
+            }
+        }
+
+        if (!data) {
             return {
                 isServiceable: false,
                 location: null,
-                error: 'Pincode not found',
+                error: 'Pincode not found even with external resolution',
             };
         }
 
-        // 1. Check strict Status (Deliverable/Not Deliverable)
+        // 2. Check strict Status (Deliverable/Not Deliverable)
         let isServiceable = data.status === 'Deliverable';
 
-        // 2. Override: if District is in whitelist, force TRUE
+        // 3. Override: if District is in whitelist, force TRUE
         const districtUpper = data.district?.toUpperCase();
         if (districtUpper && SERVICEABLE_DISTRICTS.includes(districtUpper)) {
             isServiceable = true;
         }
 
-        // 3. Fallback: if Taluka is Mumbai (covers edge cases)
+        // 4. Fallback: if Taluka is Mumbai (covers edge cases)
         if (data.taluka?.toUpperCase().includes('MUMBAI')) {
             isServiceable = true;
         }
@@ -58,6 +86,40 @@ export async function checkServiceability(pincode: string) {
         console.error('Serviceability Check Failed:', err);
         return { isServiceable: false, error: 'Check failed' };
     }
+}
+
+async function fetchFromGoogleMaps(pincode: string) {
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
+    if (!apiKey) {
+        console.warn('[GEO] No Google Maps API key found in environment');
+        return null;
+    }
+
+    try {
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${pincode}&components=country:IN&key=${apiKey}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.status === 'OK' && data.results.length > 0) {
+            const result = data.results[0];
+            const components = result.address_components;
+
+            const findType = (type: string) => components.find((c: any) => c.types.includes(type))?.long_name;
+
+            return {
+                taluka: findType('administrative_area_level_3') || findType('locality') || findType('postal_town'),
+                district: findType('administrative_area_level_2'),
+                state: findType('administrative_area_level_1'),
+                area: findType('sublocality_level_1') || findType('neighborhood') || findType('sublocality'),
+                latitude: result.geometry.location.lat,
+                longitude: result.geometry.location.lng,
+            };
+        }
+        console.log(`[GEO] Google Maps status: ${data.status}`);
+    } catch (e) {
+        console.error('[GEO] Google Maps Geocoding failed:', e);
+    }
+    return null;
 }
 
 export async function bulkUpdateServiceability(pincodes: string[], isServiceable: boolean) {

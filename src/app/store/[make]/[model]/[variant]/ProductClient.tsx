@@ -255,99 +255,132 @@ export default function ProductClient({
     const colorSkuId =
         clientColors?.find((c: any) => c.id === selectedColor || c.name === selectedColor)?.skuId || selectedColor;
 
+    const buildCommercials = () => {
+        const resolvedColor =
+            data.colors?.find(
+                (c: any) => c.id === selectedColor || c.skuId === selectedColor || c.name === selectedColor
+            ) ||
+            clientColors?.find(
+                (c: any) => c.id === selectedColor || c.skuId === selectedColor || c.name === selectedColor
+            );
+        const colorName = resolvedColor?.name || selectedColor;
+        const variantName = product.variant || variantParam;
+        const labelBase = [product.model, variantName].filter(Boolean).join(' ');
+        const displayLabel = `${labelBase}${colorName ? ` (${colorName})` : ''}`;
+
+        const selectedAccessoryItems = (data.activeAccessories || [])
+            .filter((a: any) => selectedAccessories.includes(a.id))
+            .map((a: any) => ({
+                id: a.id,
+                name: a.description || a.displayName || a.name,
+                price: a.price,
+                discountPrice: a.discountPrice,
+                inclusionType: a.inclusionType,
+            }));
+
+        const selectedServiceItems = (data.activeServices || [])
+            .filter((s: any) => selectedServices.includes(s.id))
+            .map((s: any) => ({
+                id: s.id,
+                name: s.name,
+                price: s.price,
+                discountPrice: s.discountPrice,
+            }));
+
+        const selectedInsuranceAddonItems = (data.availableInsuranceAddons || [])
+            .filter((i: any) => selectedInsuranceAddons.includes(i.id))
+            .map((i: any) => ({
+                id: i.id,
+                name: i.name,
+                price: i.price,
+                discountPrice: i.discountPrice,
+                inclusionType: i.inclusionType,
+            }));
+
+        const insuranceTotal = (data.baseInsurance || 0) + (data.insuranceAddonsPrice || 0);
+        const colorDelta = (data.colorSurge || 0) - (data.colorDiscount || 0);
+        const offersDelta = data.offersDiscount || 0;
+
+        return {
+            brand: product.make,
+            model: product.model,
+            variant: variantName,
+            label: displayLabel,
+            color_name: colorName,
+            color_hex: resolvedColor?.hexCode || resolvedColor?.hex || resolvedColor?.hex_primary,
+            color_is_default: (data.colors || []).length <= 1,
+            image_url: resolvedColor?.imageUrl || resolvedColor?.image_url || product.imageUrl,
+            ex_showroom: baseExShowroom,
+            grand_total: totalOnRoad,
+            finance: {
+                bank_id: data.initialFinance?.bank?.id || null,
+                bank_name: data.initialFinance?.bank?.name || null,
+                scheme_id: data.initialFinance?.scheme?.id || null,
+                scheme_code: data.initialFinance?.scheme?.name || null,
+                ltv: data.initialFinance?.scheme?.maxLTV || null,
+                roi: (data.annualInterest || 0) * 100,
+                tenure_months: data.emiTenure || null,
+                down_payment: data.userDownPayment || data.downPayment || 0,
+                loan_amount: data.loanAmount || 0,
+                loan_addons: 0,
+                processing_fee: data.financeCharges?.reduce((sum: number, c: any) => sum + (c.value || 0), 0) || 0,
+                charges_breakup: data.financeCharges || [],
+                emi: data.emi || 0,
+                status: 'IN_PROCESS',
+            },
+            pricing_snapshot: {
+                pricing_source: data.pricingSource,
+                location: serverPricing?.location || resolvedLocation || null,
+                dealer: serverPricing?.dealer || bestOffer || null,
+                sku_id: colorSkuId,
+                color_name: colorName,
+                color_is_default: (data.colors || []).length <= 1,
+                color_delta: colorDelta,
+                ex_showroom: baseExShowroom,
+                rto_type: data.regType,
+                rto_total: data.rtoEstimates || 0,
+                rto_breakdown: data.rtoBreakdown || [],
+                insurance_base: data.baseInsurance || 0,
+                insurance_addons_total: data.insuranceAddonsPrice || 0,
+                insurance_total: insuranceTotal,
+                insurance_breakdown: data.insuranceBreakdown || [],
+                offers: selectedOffers,
+                offers_delta: offersDelta,
+                accessories_total: data.accessoriesPrice || 0,
+                accessories_discount: data.accessoriesDiscount || 0,
+                accessories_surge: data.accessoriesSurge || 0,
+                services_total: data.servicesPrice || 0,
+                services_discount: data.servicesDiscount || 0,
+                services_surge: data.servicesSurge || 0,
+                insurance_addons_discount: data.insuranceAddonsDiscount || 0,
+                insurance_addons_surge: data.insuranceAddonsSurge || 0,
+                total_savings: data.totalSavings || 0,
+                total_surge: data.totalSurge || 0,
+                accessories: selectedAccessories,
+                accessory_items: selectedAccessoryItems,
+                services: selectedServices,
+                service_items: selectedServiceItems,
+                insurance_addons: selectedInsuranceAddons,
+                insurance_addon_items: selectedInsuranceAddonItems,
+                emi_tenure: data.emiTenure,
+                down_payment: data.userDownPayment || data.downPayment, // Use calculated downPayment if user hasn't explicitly set it
+                // Finance Integration
+                finance_scheme_id: data.initialFinance?.scheme?.id || null,
+                finance_bank_name: data.initialFinance?.bank?.name || null,
+                finance_emi: data.emi || 0,
+                finance_roi: (data.annualInterest || 0) * 100,
+                finance_loan_amount: data.loanAmount || 0,
+                finance_processing_fees:
+                    data.financeCharges?.reduce((sum: number, c: any) => sum + (c.value || 0), 0) || 0,
+            },
+        };
+    };
+
     const handleConfirmQuote = async () => {
         if (!leadContext) return;
 
         try {
-            const resolvedColor =
-                data.colors?.find(
-                    (c: any) => c.id === selectedColor || c.skuId === selectedColor || c.name === selectedColor
-                ) ||
-                clientColors?.find(
-                    (c: any) => c.id === selectedColor || c.skuId === selectedColor || c.name === selectedColor
-                );
-            const colorName = resolvedColor?.name || selectedColor;
-            const variantName = product.variant || variantParam;
-            const labelBase = [product.model, variantName].filter(Boolean).join(' ');
-            const displayLabel = `${labelBase}${colorName ? ` (${colorName})` : ''}`;
-
-            const selectedAccessoryItems = (data.activeAccessories || [])
-                .filter((a: any) => selectedAccessories.includes(a.id))
-                .map((a: any) => ({
-                    id: a.id,
-                    name: a.description || a.displayName || a.name,
-                    price: a.price,
-                    discountPrice: a.discountPrice,
-                    inclusionType: a.inclusionType,
-                }));
-
-            const selectedServiceItems = (data.activeServices || [])
-                .filter((s: any) => selectedServices.includes(s.id))
-                .map((s: any) => ({
-                    id: s.id,
-                    name: s.name,
-                    price: s.price,
-                    discountPrice: s.discountPrice,
-                }));
-
-            const selectedInsuranceAddonItems = (data.availableInsuranceAddons || [])
-                .filter((i: any) => selectedInsuranceAddons.includes(i.id))
-                .map((i: any) => ({
-                    id: i.id,
-                    name: i.name,
-                    price: i.price,
-                    discountPrice: i.discountPrice,
-                    inclusionType: i.inclusionType,
-                }));
-
-            const insuranceTotal = (data.baseInsurance || 0) + (data.insuranceAddonsPrice || 0);
-            const colorDelta = (data.colorSurge || 0) - (data.colorDiscount || 0);
-            const offersDelta = data.offersDiscount || 0;
-
-            const commercials = {
-                label: displayLabel,
-                color_name: colorName,
-                color_is_default: (data.colors || []).length <= 1,
-                ex_showroom: baseExShowroom,
-                grand_total: totalOnRoad,
-                pricing_snapshot: {
-                    pricing_source: data.pricingSource,
-                    location: serverPricing?.location || resolvedLocation || null,
-                    dealer: serverPricing?.dealer || bestOffer || null,
-                    sku_id: colorSkuId,
-                    color_name: colorName,
-                    color_is_default: (data.colors || []).length <= 1,
-                    color_delta: colorDelta,
-                    ex_showroom: baseExShowroom,
-                    rto_type: data.regType,
-                    rto_total: data.rtoEstimates || 0,
-                    rto_breakdown: data.rtoBreakdown || [],
-                    insurance_base: data.baseInsurance || 0,
-                    insurance_addons_total: data.insuranceAddonsPrice || 0,
-                    insurance_total: insuranceTotal,
-                    insurance_breakdown: data.insuranceBreakdown || [],
-                    offers: selectedOffers,
-                    offers_delta: offersDelta,
-                    accessories_total: data.accessoriesPrice || 0,
-                    accessories_discount: data.accessoriesDiscount || 0,
-                    accessories_surge: data.accessoriesSurge || 0,
-                    services_total: data.servicesPrice || 0,
-                    services_discount: data.servicesDiscount || 0,
-                    services_surge: data.servicesSurge || 0,
-                    insurance_addons_discount: data.insuranceAddonsDiscount || 0,
-                    insurance_addons_surge: data.insuranceAddonsSurge || 0,
-                    total_savings: data.totalSavings || 0,
-                    total_surge: data.totalSurge || 0,
-                    accessories: selectedAccessories,
-                    accessory_items: selectedAccessoryItems,
-                    services: selectedServices,
-                    service_items: selectedServiceItems,
-                    insurance_addons: selectedInsuranceAddons,
-                    insurance_addon_items: selectedInsuranceAddonItems,
-                    emi_tenure: data.emiTenure,
-                    down_payment: data.userDownPayment,
-                },
-            };
+            const commercials = buildCommercials();
 
             const result: any = await createQuoteAction({
                 tenant_id: product.tenant_id, // Ensure tenant_id is available
@@ -355,6 +388,7 @@ export default function ProductClient({
                 variant_id: product.id,
                 color_id: colorSkuId,
                 commercials,
+                source: 'STORE_PDP',
             });
 
             if (result?.success) {
@@ -457,13 +491,9 @@ export default function ProductClient({
                 model={product.model}
                 variant={variantParam}
                 variantId={product.id}
-                color={colorSkuId}
-                priceSnapshot={{
-                    exShowroom: data.baseExShowroom,
-                    onRoad: data.totalOnRoad,
-                    taluka: resolvedLocation?.taluka || initialLocation?.taluka || initialLocation?.city,
-                    schemeId: initialFinance?.scheme?.id,
-                }}
+                colorId={colorSkuId}
+                commercials={buildCommercials()}
+                source="STORE_PDP"
             />
 
             <EmailUpdateModal
