@@ -3,6 +3,8 @@
 import { adminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 
+import { toAppStorageFormat, isValidPhone } from '@/lib/utils/phoneUtils';
+
 const toTitleCase = (str: string) =>
     str
         .toLowerCase()
@@ -56,8 +58,11 @@ export type MemberContactInput = {
 const buildOrFilter = (filters: Array<string | null>) => filters.filter(Boolean).join(',');
 
 export async function findMemberMatch(input: { phone?: string; panNumber?: string; aadhaarNumber?: string }) {
+    const cleanPhone = input.phone ? toAppStorageFormat(input.phone) : undefined;
+    const validPhone = cleanPhone && isValidPhone(cleanPhone) ? cleanPhone : undefined;
+
     const orFilter = buildOrFilter([
-        input.phone ? `primary_phone.eq.${input.phone}` : null,
+        validPhone ? `primary_phone.eq.${validPhone}` : null,
         input.panNumber ? `pan_number.eq.${input.panNumber}` : null,
         input.aadhaarNumber ? `aadhaar_number.eq.${input.aadhaarNumber}` : null,
     ]);
@@ -73,11 +78,11 @@ export async function findMemberMatch(input: { phone?: string; panNumber?: strin
         if (member) return member;
     }
 
-    if (input.phone) {
+    if (validPhone) {
         const { data: contact, error: contactError } = await adminClient
             .from('id_member_contacts')
             .select('member_id')
-            .eq('value', input.phone)
+            .eq('value', validPhone)
             .in('contact_type', ['PHONE', 'WHATSAPP'])
             .maybeSingle();
 
@@ -98,13 +103,17 @@ export async function findMemberMatch(input: { phone?: string; panNumber?: strin
 
 async function ensureAuthUser(phone?: string, fullName?: string) {
     if (!phone) return null;
+    const cleanPhone = toAppStorageFormat(phone);
+    if (!isValidPhone(cleanPhone)) {
+        throw new Error('Invalid phone number');
+    }
 
     const { data: list } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
-    const existing = list.users.find(u => u.phone === phone || u.phone === `+91${phone}`);
+    const existing = list.users.find(u => u.phone === cleanPhone || u.phone?.replace(/\D/g, '').endsWith(cleanPhone));
     if (existing) return existing.id;
 
     const { data: authUser, error } = await adminClient.auth.admin.createUser({
-        phone,
+        phone: `+91${cleanPhone}`, // Supabase Auth requires E.164
         phone_confirm: true,
         user_metadata: {
             full_name: fullName ? toTitleCase(fullName) : undefined,
@@ -114,7 +123,9 @@ async function ensureAuthUser(phone?: string, fullName?: string) {
     if (error) {
         if (error.message.includes('already exists')) {
             const { data: secondList } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
-            const fallback = secondList.users.find(u => u.phone === phone || u.phone === `+91${phone}`);
+            const fallback = secondList.users.find(
+                u => u.phone === cleanPhone || u.phone?.replace(/\D/g, '').endsWith(cleanPhone)
+            );
             return fallback?.id ?? null;
         }
         throw error;
@@ -124,6 +135,9 @@ async function ensureAuthUser(phone?: string, fullName?: string) {
 }
 
 export async function createOrLinkMember(input: MemberCreateInput) {
+    if (input.phone && !isValidPhone(input.phone)) {
+        throw new Error('Invalid phone number');
+    }
     const match = await findMemberMatch({
         phone: input.phone,
         panNumber: input.panNumber,
@@ -132,32 +146,80 @@ export async function createOrLinkMember(input: MemberCreateInput) {
 
     let memberId = match?.id ?? null;
 
+    // Also check if auth user exists and a member with that ID exists
+    if (!memberId && input.phone) {
+        const authId = await ensureAuthUser(input.phone, input.fullName);
+        if (authId) {
+            // Check if member already exists with this auth ID
+            const { data: existingMember } = await adminClient
+                .from('id_members')
+                .select('id')
+                .eq('id', authId)
+                .maybeSingle();
+
+            if (existingMember) {
+                memberId = existingMember.id;
+            }
+        }
+    }
+
     if (!memberId) {
         const authId = await ensureAuthUser(input.phone, input.fullName);
+
+        // Use upsert instead of insert to handle cases where auth user exists but member match failed
         const { data: member, error } = await adminClient
             .from('id_members')
-            .insert({
-                id: authId ?? undefined,
-                full_name: toTitleCase(input.fullName),
-                primary_phone: input.phone,
-                primary_email: input.email,
-                pan_number: input.panNumber,
-                aadhaar_number: input.aadhaarNumber,
-                tenant_id: input.tenantId,
-                role: 'BMB_USER',
-            })
+            .upsert(
+                {
+                    id: authId ?? undefined,
+                    full_name: toTitleCase(input.fullName),
+                    primary_phone: input.phone ? toAppStorageFormat(input.phone) : undefined,
+                    primary_email: input.email,
+                    pan_number: input.panNumber,
+                    aadhaar_number: input.aadhaarNumber,
+                    tenant_id: input.tenantId,
+                    role: 'BMB_USER',
+                },
+                {
+                    onConflict: 'id', // Primary key conflict handler
+                    ignoreDuplicates: false, // Update if exists
+                }
+            )
             .select('id, display_id, full_name')
             .single();
 
-        if (error) throw error;
-        memberId = member.id;
+        if (error) {
+            console.error('[createOrLinkMember] Upsert error:', error);
+            throw error;
+        }
+
+        if (!member?.id) {
+            // Fallback: If upsert didn't return data, query by authId
+            if (authId) {
+                const { data: existingMember } = await adminClient
+                    .from('id_members')
+                    .select('id, display_id, full_name')
+                    .eq('id', authId)
+                    .single();
+
+                if (existingMember) {
+                    memberId = existingMember.id;
+                } else {
+                    throw new Error('Member creation failed and fallback query returned no results');
+                }
+            } else {
+                throw new Error('Member creation failed: no member ID returned from upsert');
+            }
+        } else {
+            memberId = member.id;
+        }
 
         if (input.phone) {
             await adminClient.from('id_member_contacts').insert({
                 member_id: memberId,
                 contact_type: 'PHONE',
                 label: 'Primary',
-                value: input.phone,
+                value: toAppStorageFormat(input.phone),
                 is_primary: true,
             });
         }
@@ -174,7 +236,7 @@ export async function createOrLinkMember(input: MemberCreateInput) {
     } else {
         const updates: Record<string, string | undefined> = {};
         if (input.fullName) updates.full_name = toTitleCase(input.fullName);
-        if (input.phone) updates.primary_phone = input.phone;
+        if (input.phone) updates.primary_phone = toAppStorageFormat(input.phone);
         if (input.email) updates.primary_email = input.email;
         if (input.panNumber) updates.pan_number = input.panNumber;
         if (input.aadhaarNumber) updates.aadhaar_number = input.aadhaarNumber;
@@ -201,13 +263,18 @@ export async function createOrLinkMember(input: MemberCreateInput) {
         },
     });
 
-    const { data: member } = await adminClient
+    const { data: member, error: memberError } = await adminClient
         .from('id_members')
-        .select(
-            'id, display_id, full_name, primary_phone, primary_email, pan_number, aadhaar_number, member_status, joined_at, last_visit_at'
-        )
+        .select('id, display_id, full_name, primary_phone, primary_email, pan_number, aadhaar_number')
         .eq('id', memberId)
         .single();
+
+    if (memberError || !member) {
+        console.error('[createOrLinkMember] Final member query failed:', memberError);
+        throw new Error(
+            'Failed to retrieve member after creation/link: ' + (memberError?.message || 'No data returned')
+        );
+    }
 
     return {
         member,
@@ -473,7 +540,13 @@ export async function getMemberAnalytics(tenantId: string, timeframe: '7d' | '30
 }
 
 export async function getMemberFullProfile(memberId: string) {
-    const { data: member, error } = await adminClient.from('id_members').select('*').eq('id', memberId).single();
+    const { data: member, error } = await adminClient
+        .from('id_members')
+        .select(
+            'id, display_id, full_name, primary_phone, primary_email, pan_number, aadhaar_number, member_status, created_at, updated_at'
+        )
+        .eq('id', memberId)
+        .single();
 
     if (error) throw error;
 
@@ -531,8 +604,16 @@ export async function getMemberFullProfile(memberId: string) {
                   .order('created_at', { ascending: false })
             : { data: [] };
 
+    const mappedMember = member
+        ? {
+              ...member,
+              phone: member.primary_phone,
+              email: member.primary_email,
+          }
+        : member;
+
     return {
-        member,
+        member: mappedMember,
         contacts: contacts || [],
         addresses: addresses || [],
         events: events || [],
@@ -551,7 +632,10 @@ export async function addMemberContact(input: MemberContactInput) {
             member_id: input.memberId,
             contact_type: input.contactType,
             label: input.label,
-            value: input.value,
+            value:
+                input.contactType === 'PHONE' || input.contactType === 'WHATSAPP'
+                    ? toAppStorageFormat(input.value)
+                    : input.value,
             is_primary: input.isPrimary ?? false,
         })
         .select()
@@ -606,7 +690,13 @@ export async function getSelfMemberProfile() {
     const supabase = await createClient();
     if (!user) return null;
 
-    const { data: member } = await supabase.from('id_members').select('*').eq('id', user.id).maybeSingle();
+    const { data: member } = await supabase
+        .from('id_members')
+        .select(
+            'id, display_id, full_name, primary_phone, primary_email, pan_number, aadhaar_number, member_status, created_at, updated_at'
+        )
+        .eq('id', user.id)
+        .maybeSingle();
 
     if (!member) return null;
 

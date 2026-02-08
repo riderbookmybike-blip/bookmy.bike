@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { formatLocationName, mergeAreas, normalizeLocationKey } from '@/lib/location/locationNormalizer';
 
 // Hardcoded Serviceable Districts for now
 const SERVICEABLE_DISTRICTS = ['MUMBAI', 'MUMBAI SUBURBAN', 'THANE', 'PALGHAR', 'RAIGAD', 'PUNE', 'NASHIK'];
@@ -153,13 +154,32 @@ export async function upsertLocation(data: {
     const supabase = await createClient();
 
     try {
+        const formattedState = formatLocationName(data.state);
+        const formattedDistrict = formatLocationName(data.district);
+        const formattedTaluka = formatLocationName(data.taluka);
+        const formattedArea = formatLocationName(data.area);
+
+        const { data: existing } = await supabase
+            .from('loc_pincodes')
+            .select('areas, area')
+            .eq('pincode', data.pincode)
+            .maybeSingle();
+
+        const existingAreas = Array.isArray(existing?.areas) ? (existing?.areas as string[]) : [];
+        const mergedAreas = mergeAreas(existingAreas, formattedArea || existing?.area || undefined);
+
         const { error } = await supabase.from('loc_pincodes').upsert(
             {
                 pincode: data.pincode,
-                area: data.area,
-                taluka: data.taluka,
-                district: data.district,
-                state: data.state,
+                area: formattedArea || existing?.area || null,
+                areas: mergedAreas.areas.length > 0 ? mergedAreas.areas : null,
+                area_keys: mergedAreas.areaKeys.length > 0 ? mergedAreas.areaKeys : null,
+                taluka: formattedTaluka || null,
+                district: formattedDistrict || null,
+                state: formattedState || null,
+                state_key: formattedState ? normalizeLocationKey(formattedState) : null,
+                district_key: formattedDistrict ? normalizeLocationKey(formattedDistrict) : null,
+                taluka_key: formattedTaluka ? normalizeLocationKey(formattedTaluka) : null,
                 state_code: data.stateCode,
                 latitude: data.latitude,
                 longitude: data.longitude,

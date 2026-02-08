@@ -13,6 +13,7 @@ interface PricePayload {
     ex_showroom_price: number;
     is_active: boolean;
     publish_stage?: string; // AUMS status: DRAFT, UNDER_REVIEW, PUBLISHED, LIVE, INACTIVE
+    is_popular?: boolean;
 }
 
 interface StatusPayload {
@@ -40,6 +41,7 @@ export async function savePrices(
                 ex_showroom_price: p.ex_showroom_price,
                 is_active: p.is_active,
                 ...(p.publish_stage && { publish_stage: p.publish_stage }),
+                ...(p.is_popular !== undefined && { is_popular: p.is_popular }),
                 updated_at: new Date().toISOString(),
             }));
 

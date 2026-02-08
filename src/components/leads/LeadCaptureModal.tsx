@@ -5,6 +5,7 @@ import { X, CheckCircle, Loader2, Briefcase, ChevronRight, Phone, User, MapPin }
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { createClient } from '@/lib/supabase/client';
 import { normalizeIndianPhone } from '@/lib/utils/inputFormatters';
+import { normalizePhone, formatPhone, isValidPhone } from '@/lib/utils/phoneUtils';
 import { checkExistingCustomer, createQuoteAction, createLeadAction } from '@/actions/crm';
 import { toast } from 'sonner';
 
@@ -74,22 +75,33 @@ export function LeadCaptureModal({
             }
             const { data: member } = await supabase
                 .from('id_members')
-                .select('primary_phone, whatsapp')
+                .select('primary_phone, whatsapp, full_name, pincode, aadhaar_pincode, latitude, longitude')
                 .eq('id', user.id)
                 .maybeSingle();
 
-            const candidate = (
+            const candidate =
                 member?.primary_phone ||
                 member?.whatsapp ||
                 user.phone ||
                 (user.user_metadata as any)?.phone ||
                 (user.user_metadata as any)?.mobile ||
-                ''
-            ).replace(/\D/g, '');
-            if (candidate.length === 10) {
-                setPhone(candidate);
-                await processPhoneNumber(candidate);
+                '';
+            if (isValidPhone(candidate)) {
+                setPhone(normalizePhone(candidate));
+                await processPhoneNumber(normalizePhone(candidate));
             }
+
+            // Auto-populate name and pincode if available
+            if (member?.full_name) setName(member.full_name);
+            // Priority: pincode > aadhaar_pincode (GPS-captured pincode should be in 'pincode' field)
+            const availablePincode = member?.pincode || member?.aadhaar_pincode || '';
+            if (availablePincode) {
+                setPincode(availablePincode);
+            } else if (member?.latitude && member?.longitude) {
+                // If GPS coordinates exist but no pincode, try to reverse geocode
+                toast.info('Fetching location details from GPS coordinates...');
+            }
+
             setAutoPhoneLoaded(true);
         };
         hydratePhone();
@@ -100,20 +112,21 @@ export function LeadCaptureModal({
     async function processPhoneNumber(rawPhone: string) {
         setError(null);
 
-        if (rawPhone.length !== 10) {
+        if (!isValidPhone(rawPhone)) {
             setError('Please enter a valid 10-digit mobile number');
             return;
         }
 
         setIsSubmitting(true);
         try {
-            const { data: existingUser, memberId: existingMemberId } = await checkExistingCustomer(rawPhone);
+            const cleanPhone = normalizePhone(rawPhone);
+            const { data: existingUser, memberId: existingMemberId } = await checkExistingCustomer(cleanPhone);
 
             if (existingUser && existingMemberId) {
                 // User exists, create a lead for them first to link the quote
                 const leadResult = await createLeadAction({
                     customer_name: existingUser.name || 'Unknown',
-                    customer_phone: rawPhone,
+                    customer_phone: cleanPhone,
                     customer_pincode: existingUser.pincode || undefined,
                     customer_dob: existingUser.dob || undefined,
                     model: model,
@@ -327,7 +340,7 @@ export function LeadCaptureModal({
 
                                 <button
                                     type="submit"
-                                    disabled={isSubmitting || phone.length !== 10}
+                                    disabled={isSubmitting || !isValidPhone(phone)}
                                     className="w-full group py-5 bg-brand-primary hover:bg-[#E0A200] disabled:bg-slate-100 dark:disabled:bg-slate-800 text-black disabled:text-slate-400 font-black uppercase italic tracking-widest rounded-3xl transition-all shadow-xl shadow-brand-primary/20 disabled:shadow-none flex items-center justify-center gap-4 active:scale-[0.98]"
                                 >
                                     {isSubmitting ? (

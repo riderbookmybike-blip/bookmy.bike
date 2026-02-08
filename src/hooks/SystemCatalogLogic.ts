@@ -69,6 +69,14 @@ export function useSystemCatalogLogic(leadId?: string) {
     const [userDistrict, setUserDistrict] = useState<string | null>(null);
     const [locationVersion, setLocationVersion] = useState(0);
     const disableOffersRef = useRef(false);
+    const allowDebug = process.env.NEXT_PUBLIC_DEBUG_TOOLS === 'true';
+    const updateDebug = (data: Record<string, any>) => {
+        if (!allowDebug || typeof window === 'undefined') return;
+        (window as any).__BMB_DEBUG__ = {
+            ...(window as any).__BMB_DEBUG__,
+            ...data,
+        };
+    };
     const isValidUuid = (value: unknown) =>
         typeof value === 'string' &&
         /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
@@ -134,15 +142,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                             userId: user?.email || user?.id || 'GUEST',
                         };
 
-                        if ((window as any).__BMB_DEBUG__) {
-                            (window as any).__BMB_DEBUG__ = {
-                                ...(window as any).__BMB_DEBUG__,
-                                ...debugData,
-                            };
-                        } else {
-                            // Initialize if missing
-                            (window as any).__BMB_DEBUG__ = debugData as any;
-                        }
+                        updateDebug(debugData);
                     })();
                 }
             }
@@ -329,13 +329,10 @@ export function useSystemCatalogLogic(leadId?: string) {
                         setItems(merged as any[]);
                         setIsLoading(false);
 
-                        if (typeof window !== 'undefined') {
-                            window.__BMB_DEBUG__ = {
-                                ...window.__BMB_DEBUG__,
-                                pricingSource: 'MAT_VIEW_FAST_LANE',
-                                marketOffersCount: summaryData!.length,
-                            };
-                        }
+                        updateDebug({
+                            pricingSource: 'MAT_VIEW_FAST_LANE',
+                            marketOffersCount: summaryData!.length,
+                        });
                         return; // EXIT EARLY - SUCCESS
                     }
                 }
@@ -456,16 +453,13 @@ export function useSystemCatalogLogic(leadId?: string) {
                             setUserDistrict(resolvedUserDistrict || '');
                             setStateCode(resolvedStateCode || '');
 
-                            if (typeof window !== 'undefined') {
-                                window.__BMB_DEBUG__ = {
-                                    ...window.__BMB_DEBUG__,
-                                    pricingSource: 'PRIMARY (Lead District)',
-                                    district: resolvedUserDistrict || '',
-                                    stateCode: resolvedStateCode || '',
-                                    locSource: 'LEAD_PINCODE',
-                                    pincode: lead.customer_pincode || '',
-                                };
-                            }
+                            updateDebug({
+                                pricingSource: 'PRIMARY (Lead District)',
+                                district: resolvedUserDistrict || '',
+                                stateCode: resolvedStateCode || '',
+                                locSource: 'LEAD_PINCODE',
+                                pincode: lead.customer_pincode || '',
+                            });
                         }
                     }
                 }
@@ -538,17 +532,16 @@ export function useSystemCatalogLogic(leadId?: string) {
                         );
 
                         // Update Debugger with Real Primary Dealer Context
-                        if (typeof window !== 'undefined' && resolvedDealerId && dealerMap[resolvedDealerId]) {
+                        if (resolvedDealerId && dealerMap[resolvedDealerId]) {
                             const activeDealer = dealerMap[resolvedDealerId];
-                            window.__BMB_DEBUG__ = {
-                                ...window.__BMB_DEBUG__,
+                            updateDebug({
                                 dealerId: resolvedDealerId,
                                 studioName: activeDealer.code
                                     ? `${activeDealer.name} (${activeDealer.code})`
                                     : activeDealer.name,
                                 marketOffersCount: offerData?.length || 0,
                                 pricingSource: 'PRIMARY_DEALER_RESOLVED',
-                            };
+                            });
                         }
 
                         offerData = offerData.map((offer: any) => ({
@@ -651,12 +644,9 @@ export function useSystemCatalogLogic(leadId?: string) {
 
                     setItems(enrichedItems);
 
-                    if (typeof window !== 'undefined') {
-                        window.__BMB_DEBUG__ = {
-                            ...window.__BMB_DEBUG__,
-                            marketOffersCount: (offerData as any[])?.length || 0,
-                        };
-                    }
+                    updateDebug({
+                        marketOffersCount: (offerData as any[])?.length || 0,
+                    });
 
                     const { count: skuTotal, error: skuError } = await supabase
                         .from('cat_items')

@@ -22,6 +22,7 @@ import AddColorModal from '../components/AddColorModal';
 import EditColorModal from '../components/EditColorModal';
 import ImageColorPicker from '../components/ImageColorPicker';
 import SKUMediaManager from '@/components/catalog/SKUMediaManager';
+import { getProxiedUrl } from '@/lib/utils/urlHelper';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 
 export default function ColorStep({ family, template, existingColors, onUpdate }: any) {
@@ -60,7 +61,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
         };
     }, []);
 
-    const handleEditColor = async (id: string, newName: string, newStatus: string) => {
+    const handleEditColor = async (id: string, newName: string, newStatus: string, newFinish: string) => {
         const normalizedName = newName.trim().toUpperCase();
         if (!normalizedName) {
             toast.error(`${l2Label} name is required`);
@@ -80,7 +81,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                           ...c,
                           name: normalizedName,
                           status: newStatus,
-                          specs: { ...c.specs, [l2Label]: normalizedName },
+                          specs: { ...c.specs, [l2Label]: normalizedName, Finish: newFinish },
                       }
                     : c
             );
@@ -93,7 +94,11 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                     name: normalizedName,
                     slug: newSlug,
                     status: newStatus,
-                    specs: { ...existingColors.find((c: any) => c.id === id).specs, [l2Label]: normalizedName },
+                    specs: {
+                        ...existingColors.find((c: any) => c.id === id).specs,
+                        [l2Label]: normalizedName,
+                        Finish: newFinish,
+                    },
                 })
                 .eq('id', id);
 
@@ -108,7 +113,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
         }
     };
 
-    const handleAddColor = async (name: string) => {
+    const handleAddColor = async (name: string, finish: string) => {
         const normalizedName = name.trim().toUpperCase();
         if (!normalizedName) {
             toast.error(`${l2Label} name is required`);
@@ -129,6 +134,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                 name: normalizedName,
                 specs: {
                     [l2Label]: normalizedName,
+                    Finish: finish,
                     gallery: [],
                     video_urls: [],
                     primary_image: null,
@@ -449,7 +455,9 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                                         >
                                             {color.specs.primary_image || color.specs.gallery?.[0] ? (
                                                 <img
-                                                    src={color.specs.primary_image || color.specs.gallery?.[0]}
+                                                    src={getProxiedUrl(
+                                                        color.specs.primary_image || color.specs.gallery?.[0]
+                                                    )}
                                                     className="w-full h-full object-cover animate-in fade-in duration-500"
                                                     alt={color.name}
                                                 />
@@ -468,6 +476,13 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                                         >
                                             {color.name}
                                         </h4>
+                                        {color.specs?.Finish && (
+                                            <div className="mt-1">
+                                                <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/5 text-[8px] font-black uppercase text-slate-500 tracking-wider">
+                                                    {color.specs.Finish}
+                                                </span>
+                                            </div>
+                                        )}
                                         <div className="flex items-center gap-2 mt-2 flex-wrap">
                                             <input
                                                 type="number"
@@ -553,7 +568,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                                                                     className="w-5 h-5 rounded-md border border-white dark:border-white/10 overflow-hidden bg-white dark:bg-slate-900"
                                                                 >
                                                                     <img
-                                                                        src={img}
+                                                                        src={getProxiedUrl(img)}
                                                                         className="w-full h-full object-cover"
                                                                     />
                                                                 </div>
@@ -953,9 +968,12 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                         setEditModalOpen(false);
                         setEditingColor(null);
                     }}
-                    onSave={(newName, newStatus) => handleEditColor(editingColor.id, newName, newStatus)}
+                    onSave={(newName, newStatus, newFinish) =>
+                        handleEditColor(editingColor.id, newName, newStatus, newFinish)
+                    }
                     initialName={editingColor.name}
                     initialStatus={editingColor.status}
+                    initialFinish={editingColor.specs?.Finish}
                     existingNames={existingColors.filter((c: any) => c.id !== editingColor.id).map((c: any) => c.name)}
                     l2Label={l2Label}
                 />

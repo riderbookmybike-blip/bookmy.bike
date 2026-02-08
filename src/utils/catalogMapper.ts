@@ -104,6 +104,7 @@ export function mapCatalogItems(
         const templateName = family.template?.name?.toLowerCase() || '';
         let bodyType: any = 'MOTORCYCLE';
         if (templateName.includes('scooter')) bodyType = 'SCOOTER';
+        if (templateName.includes('moped')) bodyType = 'MOPED';
         if (templateName.includes('helmet')) bodyType = 'ACCESSORY';
 
         const familyChildren = family.children || [];
@@ -450,6 +451,7 @@ export function mapCatalogItems(
                                     isFlipped: Boolean(primaryAsset?.is_flipped || sku.is_flipped || false),
                                     offsetX: Number(primaryAsset?.offset_x || sku.offset_x || 0),
                                     offsetY: Number(primaryAsset?.offset_y || sku.offset_y || 0),
+                                    finish: (sku.specs?.Finish || sku.specs?.finish)?.toUpperCase(),
                                 });
                             }
                         });

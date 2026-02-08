@@ -12,6 +12,8 @@ import {
     Copy,
     ArrowRight,
     ArrowUpDown,
+    ArrowUp,
+    ArrowDown,
     Search,
     Filter,
     Package,
@@ -26,12 +28,16 @@ import {
     Download,
     X,
     FileText,
+    Send,
+    Layers,
+    Rocket,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { RegistrationRule } from '@/types/registration';
+import { sanitizeSvg } from '@/lib/utils/sanitizeSvg';
 // Helper Component for Robust Brand Logo/Avatar
 interface SKUPriceRow {
     id: string;
@@ -50,6 +56,7 @@ interface SKUPriceRow {
     hsnCode?: string;
     gstRate?: number;
     updatedAt?: string;
+    publishedAt?: string;
     brandLogo?: string;
     stockCount?: number;
     inclusionType?: 'MANDATORY' | 'OPTIONAL' | 'BUNDLE';
@@ -64,10 +71,14 @@ interface SKUPriceRow {
     onRoad?: number;
     originalStatus?: 'ACTIVE' | 'INACTIVE' | 'DRAFT' | 'RELAUNCH';
     originalLocalIsActive?: boolean;
-    publishStage?: 'DRAFT' | 'UNDER_REVIEW' | 'PUBLISHED';
+    publishStage?: 'DRAFT' | 'UNDER_REVIEW' | 'PUBLISHED' | 'LIVE' | 'INACTIVE';
     rto_data?: any;
     insurance_data?: any;
     displayState?: 'Draft' | 'In Review' | 'Published' | 'Live' | 'Inactive';
+    position?: number;
+    variantPosition?: number;
+    isPopular?: boolean;
+    originalIsPopular?: boolean;
 }
 
 interface PricingLedgerTableProps {
@@ -80,6 +91,7 @@ interface PricingLedgerTableProps {
     onUpdateStatus: (skuId: string, status: 'ACTIVE' | 'INACTIVE' | 'DRAFT' | 'RELAUNCH') => void;
     onUpdatePublishStage?: (skuId: string, stage: string) => void; // AUMS: update cat_price_state.publish_stage
     onUpdateLocalStatus?: (skuId: string, isActive: boolean) => void;
+    onUpdatePopular?: (skuId: string, isPopular: boolean) => void;
     onSaveAll?: () => void;
     states: RegistrationRule[];
     selectedStateId: string;
@@ -127,7 +139,7 @@ const BrandAvatar = ({ name, logo }: { name: string; logo?: string }) => {
             <div className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 flex items-center justify-center shrink-0 overflow-hidden p-1.5">
                 <div
                     className="w-full h-full text-slate-900 dark:text-white [&>svg]:w-full [&>svg]:h-full object-contain"
-                    dangerouslySetInnerHTML={{ __html: logo }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeSvg(logo) }}
                 />
             </div>
         );
@@ -150,6 +162,7 @@ export default function PricingLedgerTable({
     onUpdateStatus,
     onUpdatePublishStage,
     onUpdateLocalStatus,
+    onUpdatePopular,
     onSaveAll,
     states,
     selectedStateId,
@@ -222,6 +235,7 @@ export default function PricingLedgerTable({
     };
     type CategoryType = 'vehicles' | 'accessories' | 'service';
     const [activeFilterColumn, setActiveFilterColumn] = useState<string | null>(null);
+    const [activeToolbarFilter, setActiveToolbarFilter] = useState<string | null>(null);
     const [activeCategory, setActiveCategory] = useState<CategoryType>('vehicles');
     const ITEMS_PER_PAGE = 50;
     const [currentPage, setCurrentPage] = useState(1);
@@ -390,6 +404,20 @@ export default function PricingLedgerTable({
                 if (aVal === null || aVal === undefined) return 1;
                 if (bVal === null || bVal === undefined) return -1;
 
+                // Handle Sequential Sorting for Variant and Color
+                if (
+                    sortConfig.key === 'variant' &&
+                    a.variantPosition !== undefined &&
+                    b.variantPosition !== undefined
+                ) {
+                    return sortConfig.direction === 'asc'
+                        ? a.variantPosition - b.variantPosition
+                        : b.variantPosition - a.variantPosition;
+                }
+                if (sortConfig.key === 'color' && a.position !== undefined && b.position !== undefined) {
+                    return sortConfig.direction === 'asc' ? a.position - b.position : b.position - a.position;
+                }
+
                 if (typeof aVal === 'number' && typeof bVal === 'number') {
                     return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
                 }
@@ -520,122 +548,363 @@ export default function PricingLedgerTable({
                     </div>
                     {/* State Filter */}
                     <div className="relative group flex-1 min-w-[140px]">
-                        <Landmark
-                            size={12}
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10"
-                        />
-                        <select
-                            value={selectedStateId}
-                            onChange={e => onStateChange(e.target.value)}
-                            className="w-full pl-9 pr-8 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-400 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-2 focus:ring-emerald-500/20 outline-none appearance-none cursor-pointer transition-all"
+                        <button
+                            onClick={() => setActiveToolbarFilter(activeToolbarFilter === 'state' ? null : 'state')}
+                            className={`w-full flex items-center justify-between pl-9 pr-4 py-2.5 bg-white dark:bg-slate-900 border ${activeToolbarFilter === 'state' ? 'border-emerald-500 ring-4 ring-emerald-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-emerald-400'} rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide transition-all`}
                         >
-                            {states.map((s: RegistrationRule) => (
-                                <option key={s.id} value={s.id}>
-                                    {s.ruleName}
-                                </option>
-                            ))}
-                        </select>
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
-                            <div className="w-0 h-0 border-l-[3px] border-r-[3px] border-t-[4px] border-l-transparent border-r-transparent border-t-slate-500" />
-                        </div>
+                            <Landmark
+                                size={12}
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10"
+                            />
+                            <span className="truncate">
+                                {states.find((s: RegistrationRule) => s.id === selectedStateId)?.ruleName ||
+                                    'Select State'}
+                            </span>
+                            <Filter size={10} className="opacity-50 text-emerald-600" />
+                        </button>
+
+                        {activeToolbarFilter === 'state' && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setActiveToolbarFilter(null)} />
+                                <div className="absolute top-full mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="p-3 border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
+                                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                            Select State
+                                        </span>
+                                    </div>
+                                    <div className="max-h-64 overflow-y-auto p-2 scrollbar-thin">
+                                        {states.map((s: RegistrationRule) => (
+                                            <button
+                                                key={s.id}
+                                                onClick={() => {
+                                                    onStateChange(s.id);
+                                                    setActiveToolbarFilter(null);
+                                                }}
+                                                className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${selectedStateId === s.id ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                            >
+                                                {s.ruleName}
+                                                {selectedStateId === s.id && <CheckCircle2 size={12} />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
                     {/* Category Filter */}
                     <div className="relative group flex-1 min-w-[140px]">
-                        <Activity
-                            size={12}
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10"
-                        />
-                        <select
-                            value={selectedCategory}
-                            onChange={e => onCategoryChange(e.target.value)}
-                            className="w-full pl-9 pr-8 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-400 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-2 focus:ring-emerald-500/20 outline-none appearance-none cursor-pointer transition-all"
+                        <button
+                            onClick={() =>
+                                setActiveToolbarFilter(activeToolbarFilter === 'category' ? null : 'category')
+                            }
+                            className={`w-full flex items-center justify-between pl-9 pr-4 py-2.5 bg-white dark:bg-slate-900 border ${activeToolbarFilter === 'category' ? 'border-emerald-500 ring-4 ring-emerald-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-emerald-400'} rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide transition-all`}
                         >
-                            <option value="ALL">All Categories</option>
-                            {categories.map(c => (
-                                <option key={c} value={c}>
-                                    {c}
-                                </option>
-                            ))}
-                        </select>
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
-                            <div className="w-0 h-0 border-l-[3px] border-r-[3px] border-t-[4px] border-l-transparent border-r-transparent border-t-slate-500" />
-                        </div>
+                            <Activity
+                                size={12}
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10"
+                            />
+                            <span className="truncate">
+                                {selectedCategory === 'ALL' ? 'All Categories' : selectedCategory}
+                            </span>
+                            <Filter
+                                size={10}
+                                className={`opacity-50 ${selectedCategory !== 'ALL' ? 'text-emerald-600 opacity-100' : ''}`}
+                            />
+                        </button>
+
+                        {activeToolbarFilter === 'category' && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setActiveToolbarFilter(null)} />
+                                <div className="absolute top-full mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="p-3 border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
+                                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                            Sort & Filter Category
+                                        </span>
+                                    </div>
+                                    <div className="p-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/20">
+                                        <div className="grid grid-cols-2 gap-1">
+                                            <button
+                                                onClick={() => {
+                                                    setSortConfig({ key: 'category', direction: 'asc' });
+                                                    setActiveToolbarFilter(null);
+                                                }}
+                                                className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${sortConfig?.key === 'category' && sortConfig?.direction === 'asc' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100'}`}
+                                            >
+                                                <ArrowUp size={12} /> ASC
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setSortConfig({ key: 'category', direction: 'desc' });
+                                                    setActiveToolbarFilter(null);
+                                                }}
+                                                className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${sortConfig?.key === 'category' && sortConfig?.direction === 'desc' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100'}`}
+                                            >
+                                                <ArrowDown size={12} /> DESC
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="max-h-64 overflow-y-auto p-2 scrollbar-thin">
+                                        <button
+                                            onClick={() => {
+                                                onCategoryChange('ALL');
+                                                setActiveToolbarFilter(null);
+                                            }}
+                                            className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${selectedCategory === 'ALL' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                        >
+                                            All Categories
+                                            {selectedCategory === 'ALL' && <CheckCircle2 size={12} />}
+                                        </button>
+                                        {categories.map(c => (
+                                            <button
+                                                key={c}
+                                                onClick={() => {
+                                                    onCategoryChange(c);
+                                                    setActiveToolbarFilter(null);
+                                                }}
+                                                className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${selectedCategory === c ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                            >
+                                                {c}
+                                                {selectedCategory === c && <CheckCircle2 size={12} />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
+
                     {/* Sub Category Filter */}
                     <div className="relative group flex-1 min-w-[140px]">
-                        <Info size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
-                        <select
-                            value={selectedSubCategory}
-                            onChange={e => onSubCategoryChange(e.target.value)}
-                            className="w-full pl-9 pr-8 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-400 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-2 focus:ring-emerald-500/20 outline-none appearance-none cursor-pointer transition-all"
+                        <button
+                            onClick={() =>
+                                setActiveToolbarFilter(activeToolbarFilter === 'subCategory' ? null : 'subCategory')
+                            }
+                            className={`w-full flex items-center justify-between pl-9 pr-4 py-2.5 bg-white dark:bg-slate-900 border ${activeToolbarFilter === 'subCategory' ? 'border-emerald-500 ring-4 ring-emerald-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-emerald-400'} rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide transition-all`}
                         >
-                            <option value="ALL">All Sub-Cat</option>
-                            {subCategories.map(sc => (
-                                <option key={sc} value={sc}>
-                                    {sc}
-                                </option>
-                            ))}
-                        </select>
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
-                            <div className="w-0 h-0 border-l-[3px] border-r-[3px] border-t-[4px] border-l-transparent border-r-transparent border-t-slate-500" />
-                        </div>
+                            <Info
+                                size={12}
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10"
+                            />
+                            <span className="truncate">
+                                {selectedSubCategory === 'ALL' ? 'All Sub-Cat' : selectedSubCategory}
+                            </span>
+                            <Filter
+                                size={10}
+                                className={`opacity-50 ${selectedSubCategory !== 'ALL' ? 'text-emerald-600 opacity-100' : ''}`}
+                            />
+                        </button>
+
+                        {activeToolbarFilter === 'subCategory' && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setActiveToolbarFilter(null)} />
+                                <div className="absolute top-full mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="p-3 border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
+                                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                            Sort & Filter Sub-Cat
+                                        </span>
+                                    </div>
+                                    <div className="p-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/20">
+                                        <div className="grid grid-cols-2 gap-1">
+                                            <button
+                                                onClick={() => {
+                                                    setSortConfig({ key: 'subCategory', direction: 'asc' });
+                                                    setActiveToolbarFilter(null);
+                                                }}
+                                                className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${sortConfig?.key === 'subCategory' && sortConfig?.direction === 'asc' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100'}`}
+                                            >
+                                                <ArrowUp size={12} /> ASC
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setSortConfig({ key: 'subCategory', direction: 'desc' });
+                                                    setActiveToolbarFilter(null);
+                                                }}
+                                                className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${sortConfig?.key === 'subCategory' && sortConfig?.direction === 'desc' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100'}`}
+                                            >
+                                                <ArrowDown size={12} /> DESC
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="max-h-64 overflow-y-auto p-2 scrollbar-thin">
+                                        <button
+                                            onClick={() => {
+                                                onSubCategoryChange('ALL');
+                                                setActiveToolbarFilter(null);
+                                            }}
+                                            className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${selectedSubCategory === 'ALL' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                        >
+                                            All Sub-Cat
+                                            {selectedSubCategory === 'ALL' && <CheckCircle2 size={12} />}
+                                        </button>
+                                        {subCategories.map(sc => (
+                                            <button
+                                                key={sc}
+                                                onClick={() => {
+                                                    onSubCategoryChange(sc);
+                                                    setActiveToolbarFilter(null);
+                                                }}
+                                                className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${selectedSubCategory === sc ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                            >
+                                                {sc}
+                                                {selectedSubCategory === sc && <CheckCircle2 size={12} />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
                     {/* Brand Filter */}
                     <div className="relative group flex-1 min-w-[120px]">
-                        <Car size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
-                        <select
-                            value={selectedBrand}
-                            onChange={e => onBrandChange(e.target.value)}
-                            className="w-full pl-9 pr-8 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-400 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-2 focus:ring-emerald-500/20 outline-none appearance-none cursor-pointer transition-all"
+                        <button
+                            onClick={() => setActiveToolbarFilter(activeToolbarFilter === 'brand' ? null : 'brand')}
+                            className={`w-full flex items-center justify-between pl-9 pr-4 py-2.5 bg-white dark:bg-slate-900 border ${activeToolbarFilter === 'brand' ? 'border-emerald-500 ring-4 ring-emerald-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-emerald-400'} rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide transition-all`}
                         >
-                            <option value="ALL">All Brands</option>
-                            {brands.map(b => (
-                                <option key={b} value={b}>
-                                    {b}
-                                </option>
-                            ))}
-                        </select>
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
-                            <div className="w-0 h-0 border-l-[3px] border-r-[3px] border-t-[4px] border-l-transparent border-r-transparent border-t-slate-500" />
-                        </div>
+                            <Car size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
+                            <span className="truncate">{selectedBrand === 'ALL' ? 'All Brands' : selectedBrand}</span>
+                            <Filter
+                                size={10}
+                                className={`opacity-50 ${selectedBrand !== 'ALL' ? 'text-emerald-600 opacity-100' : ''}`}
+                            />
+                        </button>
+
+                        {activeToolbarFilter === 'brand' && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setActiveToolbarFilter(null)} />
+                                <div className="absolute top-full mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="p-3 border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
+                                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                            Sort & Filter Brand
+                                        </span>
+                                    </div>
+                                    <div className="p-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/20">
+                                        <div className="grid grid-cols-2 gap-1">
+                                            <button
+                                                onClick={() => {
+                                                    setSortConfig({ key: 'brand', direction: 'asc' });
+                                                    setActiveToolbarFilter(null);
+                                                }}
+                                                className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${sortConfig?.key === 'brand' && sortConfig?.direction === 'asc' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100'}`}
+                                            >
+                                                <ArrowUp size={12} /> ASC
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setSortConfig({ key: 'brand', direction: 'desc' });
+                                                    setActiveToolbarFilter(null);
+                                                }}
+                                                className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${sortConfig?.key === 'brand' && sortConfig?.direction === 'desc' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100'}`}
+                                            >
+                                                <ArrowDown size={12} /> DESC
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="max-h-64 overflow-y-auto p-2 scrollbar-thin">
+                                        <button
+                                            onClick={() => {
+                                                onBrandChange('ALL');
+                                                setActiveToolbarFilter(null);
+                                            }}
+                                            className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${selectedBrand === 'ALL' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                        >
+                                            All Brands
+                                            {selectedBrand === 'ALL' && <CheckCircle2 size={12} />}
+                                        </button>
+                                        {brands.map(b => (
+                                            <button
+                                                key={b}
+                                                onClick={() => {
+                                                    onBrandChange(b);
+                                                    setActiveToolbarFilter(null);
+                                                }}
+                                                className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${selectedBrand === b ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                            >
+                                                {b}
+                                                {selectedBrand === b && <CheckCircle2 size={12} />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
+
                     {/* Model Filter */}
                     <div className="relative group flex-1 min-w-[120px]">
-                        <Package size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
-                        <select
-                            value={selectedModel}
-                            onChange={e => onModelChange(e.target.value)}
-                            className="w-full pl-9 pr-8 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-400 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-2 focus:ring-emerald-500/20 outline-none appearance-none cursor-pointer transition-all"
+                        <button
+                            onClick={() => setActiveToolbarFilter(activeToolbarFilter === 'model' ? null : 'model')}
+                            className={`w-full flex items-center justify-between pl-9 pr-4 py-2.5 bg-white dark:bg-slate-900 border ${activeToolbarFilter === 'model' ? 'border-emerald-500 ring-4 ring-emerald-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-emerald-400'} rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide transition-all`}
                         >
-                            <option value="ALL">All Models</option>
-                            {models.map(m => (
-                                <option key={m} value={m}>
-                                    {m}
-                                </option>
-                            ))}
-                        </select>
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
-                            <div className="w-0 h-0 border-l-[3px] border-r-[3px] border-t-[4px] border-l-transparent border-r-transparent border-t-slate-500" />
-                        </div>
-                    </div>
-                    {/* Variant Filter */}
-                    <div className="relative group flex-1 min-w-[120px]">
-                        <Package size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
-                        <select
-                            value={selectedVariant}
-                            onChange={e => onVariantChange(e.target.value)}
-                            className="w-full pl-9 pr-8 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-400 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:ring-2 focus:ring-emerald-500/20 outline-none appearance-none cursor-pointer transition-all"
-                        >
-                            <option value="ALL">All Variants</option>
-                            {variants.map(v => (
-                                <option key={v} value={v}>
-                                    {v}
-                                </option>
-                            ))}
-                        </select>
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
-                            <div className="w-0 h-0 border-l-[3px] border-r-[3px] border-t-[4px] border-l-transparent border-r-transparent border-t-slate-500" />
-                        </div>
+                            <Package
+                                size={12}
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10"
+                            />
+                            <span className="truncate">{selectedModel === 'ALL' ? 'All Models' : selectedModel}</span>
+                            <Filter
+                                size={10}
+                                className={`opacity-50 ${selectedModel !== 'ALL' ? 'text-emerald-600 opacity-100' : ''}`}
+                            />
+                        </button>
+
+                        {activeToolbarFilter === 'model' && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setActiveToolbarFilter(null)} />
+                                <div className="absolute top-full mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="p-3 border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
+                                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                            Sort & Filter Model
+                                        </span>
+                                    </div>
+                                    <div className="p-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/20">
+                                        <div className="grid grid-cols-2 gap-1">
+                                            <button
+                                                onClick={() => {
+                                                    setSortConfig({ key: 'model', direction: 'asc' });
+                                                    setActiveToolbarFilter(null);
+                                                }}
+                                                className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${sortConfig?.key === 'model' && sortConfig?.direction === 'asc' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100'}`}
+                                            >
+                                                <ArrowUp size={12} /> ASC
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setSortConfig({ key: 'model', direction: 'desc' });
+                                                    setActiveToolbarFilter(null);
+                                                }}
+                                                className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${sortConfig?.key === 'model' && sortConfig?.direction === 'desc' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100'}`}
+                                            >
+                                                <ArrowDown size={12} /> DESC
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="max-h-64 overflow-y-auto p-2 scrollbar-thin">
+                                        <button
+                                            onClick={() => {
+                                                onModelChange('ALL');
+                                                setActiveToolbarFilter(null);
+                                            }}
+                                            className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${selectedModel === 'ALL' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                        >
+                                            All Models
+                                            {selectedModel === 'ALL' && <CheckCircle2 size={12} />}
+                                        </button>
+                                        {models.map(m => (
+                                            <button
+                                                key={m}
+                                                onClick={() => {
+                                                    onModelChange(m);
+                                                    setActiveToolbarFilter(null);
+                                                }}
+                                                className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${selectedModel === m ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                            >
+                                                {m}
+                                                {selectedModel === m && <CheckCircle2 size={12} />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     {/* Individual active filters with reset icons */}
@@ -709,83 +978,98 @@ export default function PricingLedgerTable({
                             </button>
                         </div>
                     )}
-
-                    {selectedVariant !== 'ALL' && (
-                        <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-slate-900/20 border border-slate-100 dark:border-slate-800 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 group animate-in fade-in zoom-in duration-200">
-                            <span className="opacity-50">Variant:</span>
-                            <span>{selectedVariant}</span>
-                            <button
-                                onClick={() => onVariantChange('ALL')}
-                                className="ml-1 hover:text-rose-500 transition-colors"
-                            >
-                                <X size={12} />
-                            </button>
-                        </div>
-                    )}
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                    {hasUnsavedChanges && (
+                    {/* Permanent Action Icons with Tooltips */}
+                    <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-1 gap-1 shadow-sm">
+                        {/* Save Button */}
                         <button
                             onClick={handleSave}
-                            disabled={isSaving || isParentSaving}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-200/50 flex items-center gap-2 active:scale-95"
+                            disabled={!hasUnsavedChanges || isSaving || isParentSaving}
+                            className={`p-2 rounded-lg transition-all relative group/btn ${hasUnsavedChanges ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200/50 hover:bg-emerald-700' : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'}`}
                         >
                             {isSaving || isParentSaving ? (
-                                <Loader2 size={14} className="animate-spin" />
+                                <Loader2 size={16} className="animate-spin" />
                             ) : (
-                                <Save size={14} />
+                                <Save size={16} />
                             )}
-                            Save
+                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
+                                Save All Changes
+                            </div>
                         </button>
-                    )}
 
-                    {isAums && selectedSkuIds.size > 0 && (
-                        <>
-                            <button
-                                onClick={selectAllForModel}
-                                className="bg-white hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm border border-slate-200"
-                                title="Select all SKUs for this model"
-                            >
-                                Select Model
-                            </button>
-                            <button
-                                onClick={() => applyPublishStage('PUBLISHED')}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-200/50 flex items-center gap-1.5 active:scale-95"
-                                title="Mark Selected as Published"
-                            >
-                                Publish
-                            </button>
-                            <button
-                                onClick={() => applyPublishStage('LIVE')}
-                                className="bg-slate-900 hover:bg-black text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-slate-300/50 flex items-center gap-1.5 active:scale-95"
-                                title="Activate Selected"
-                            >
-                                Activate
-                            </button>
-                        </>
-                    )}
+                        {isAums && (
+                            <>
+                                <div className="w-px h-4 bg-slate-100 dark:bg-slate-800 mx-1" />
 
-                    {isAums && selectedSkuIds.size > 0 && (
+                                {/* Select Model */}
+                                <button
+                                    onClick={selectAllForModel}
+                                    className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-all relative group/btn"
+                                >
+                                    <Layers size={16} />
+                                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
+                                        Select All for Model
+                                    </div>
+                                </button>
+
+                                {/* Publish */}
+                                <button
+                                    onClick={() => applyPublishStage('PUBLISHED')}
+                                    disabled={selectedSkuIds.size === 0}
+                                    className={`p-2 rounded-lg transition-all relative group/btn ${selectedSkuIds.size > 0 ? 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20' : 'text-slate-200 dark:text-slate-800 cursor-not-allowed'}`}
+                                >
+                                    <Send size={16} />
+                                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
+                                        Mark Selected Published
+                                    </div>
+                                </button>
+
+                                {/* Activate */}
+                                <button
+                                    onClick={() => applyPublishStage('LIVE')}
+                                    disabled={selectedSkuIds.size === 0}
+                                    className={`p-2 rounded-lg transition-all relative group/btn ${selectedSkuIds.size > 0 ? 'text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20' : 'text-slate-200 dark:text-slate-800 cursor-not-allowed'}`}
+                                >
+                                    <Rocket size={16} />
+                                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
+                                        Activate Selected (Live)
+                                    </div>
+                                </button>
+
+                                {/* Calculate */}
+                                <button
+                                    onClick={() => onCalculate?.(Array.from(selectedSkuIds))}
+                                    disabled={selectedSkuIds.size === 0 || isCalculating}
+                                    className={`p-2 rounded-lg transition-all relative group/btn ${selectedSkuIds.size > 0 && !isCalculating ? 'bg-amber-500 text-white shadow-lg shadow-amber-200/50 hover:bg-amber-600 animate-pulse' : 'text-slate-200 dark:text-slate-800 cursor-not-allowed'}`}
+                                >
+                                    {isCalculating ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
+                                    {selectedSkuIds.size > 0 && (
+                                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[8px] font-black text-white ring-2 ring-white dark:ring-slate-900">
+                                            {selectedSkuIds.size}
+                                        </span>
+                                    )}
+                                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
+                                        Calculate RTO & Insurance
+                                    </div>
+                                </button>
+                            </>
+                        )}
+
+                        <div className="w-px h-4 bg-slate-100 dark:bg-slate-800 mx-1" />
+
                         <button
-                            onClick={() => onCalculate?.(Array.from(selectedSkuIds))}
-                            disabled={isCalculating}
-                            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-200/50 flex items-center gap-1.5 active:scale-95"
-                            title="Calculate RTO & Insurance"
+                            onClick={handleExportPDF}
+                            disabled={isExporting}
+                            className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-all relative group/btn"
                         >
-                            {isCalculating ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
-                            {selectedSkuIds.size}
+                            {isExporting ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
+                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
+                                Export PDF
+                            </div>
                         </button>
-                    )}
-
-                    <button
-                        onClick={handleExportPDF}
-                        disabled={isExporting}
-                        className="p-2 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-xl hover:border-emerald-400 hover:text-emerald-600 transition-all"
-                        title="Export PDF"
-                    >
-                        {isExporting ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
-                    </button>
+                    </div>
                 </div>
             </div>
 
@@ -810,127 +1094,168 @@ export default function PricingLedgerTable({
                                         />
                                     </th>
                                     {/* DYAMIC COLUMNS based on Category */}
-                                    {(activeCategory === 'vehicles' ? ['color', 'engineCc'] : ['product', 'color']).map(
-                                        key => {
-                                            // MAPPING: 'product' maps to 'model' for data operations
-                                            const dataKey = key === 'product' ? 'model' : (key as keyof SKUPriceRow);
-                                            const values = getUniqueValues(dataKey);
-                                            const currentFilter = filters[dataKey];
-                                            const isActive = activeFilterColumn === key; // Use visual key for UI state
-                                            const statusLabels: Record<string, string> = {
-                                                ACTIVE: 'Live',
-                                                DRAFT: 'New',
-                                                INACTIVE: 'Inactive',
-                                                RELAUNCH: 'Relaunch',
-                                            };
+                                    {(activeCategory === 'vehicles'
+                                        ? ['variant', 'color', 'engineCc']
+                                        : ['product', 'color']
+                                    ).map(key => {
+                                        // MAPPING: 'product' maps to 'model' for data operations
+                                        const dataKey = key === 'product' ? 'model' : (key as keyof SKUPriceRow);
+                                        const values = getUniqueValues(dataKey);
+                                        const currentFilter = filters[dataKey];
+                                        const isActive = activeFilterColumn === key; // Use visual key for UI state
+                                        const statusLabels: Record<string, string> = {
+                                            ACTIVE: 'Live',
+                                            DRAFT: 'New',
+                                            INACTIVE: 'Inactive',
+                                            RELAUNCH: 'Relaunch',
+                                        };
 
-                                            return (
-                                                <th
-                                                    key={key}
-                                                    className={`relative px-6 py-5 text-[10px] font-black uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 group/header ${key === 'status' ? 'text-right' : 'text-slate-500 dark:text-slate-400'} ${key === 'color' ? 'min-w-[160px]' : 'whitespace-nowrap'}`}
+                                        return (
+                                            <th
+                                                key={key}
+                                                className={`relative px-6 py-5 text-[10px] font-black uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 group/header ${key === 'status' ? 'text-right' : 'text-slate-500 dark:text-slate-400'} ${key === 'color' ? 'min-w-[160px]' : 'whitespace-nowrap'}`}
+                                            >
+                                                <div
+                                                    className={`flex items-center gap-1 ${key === 'status' ? 'justify-end' : 'justify-between'}`}
                                                 >
                                                     <div
-                                                        className={`flex items-center gap-1 ${key === 'status' ? 'justify-end' : 'justify-between'}`}
+                                                        onClick={() => handleSort(dataKey)}
+                                                        className={`flex items-center gap-1 hover:text-emerald-600 transition-colors cursor-pointer ${key === 'status' ? 'text-slate-500' : ''}`}
                                                     >
-                                                        <div
-                                                            onClick={() => handleSort(dataKey)}
-                                                            className={`flex items-center gap-1 hover:text-emerald-600 transition-colors cursor-pointer ${key === 'status' ? 'text-slate-500' : ''}`}
-                                                        >
-                                                            {key === 'engineCc'
-                                                                ? 'Power'
-                                                                : key === 'product'
-                                                                  ? 'Product'
-                                                                  : key}{' '}
-                                                            <ArrowUpDown
-                                                                size={12}
-                                                                className={`opacity-30 ${sortConfig?.key === dataKey ? 'text-emerald-600 opacity-100' : ''}`}
-                                                            />
-                                                        </div>
-
-                                                        <button
-                                                            onClick={e => {
-                                                                e.stopPropagation();
-                                                                setActiveFilterColumn(isActive ? null : key);
-                                                            }}
-                                                            className={`p-1 rounded-lg transition-all ${currentFilter && currentFilter !== 'ALL' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'text-slate-300 hover:bg-white hover:text-slate-600 hover:shadow-sm'}`}
-                                                        >
-                                                            <Filter
-                                                                size={12}
-                                                                className={
-                                                                    currentFilter && currentFilter !== 'ALL'
-                                                                        ? 'fill-current'
-                                                                        : ''
-                                                                }
-                                                            />
-                                                        </button>
+                                                        {key === 'engineCc'
+                                                            ? 'Power'
+                                                            : key === 'product'
+                                                              ? 'Product'
+                                                              : key}{' '}
+                                                        <ArrowUpDown
+                                                            size={12}
+                                                            className={`opacity-30 ${sortConfig?.key === dataKey ? 'text-emerald-600 opacity-100' : ''}`}
+                                                        />
                                                     </div>
 
-                                                    {/* Filter Dropdown Popover */}
-                                                    {isActive && (
-                                                        <>
-                                                            <div
-                                                                className="fixed inset-0 z-40 bg-transparent"
-                                                                onClick={() => setActiveFilterColumn(null)}
-                                                            />
-                                                            <div
-                                                                className={`absolute top-[80%] mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 ${key === 'status' ? 'right-6' : 'left-6'}`}
-                                                            >
-                                                                <div className="p-3 border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
-                                                                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                                                                        Filter {key}
-                                                                    </span>
-                                                                    {currentFilter && (
-                                                                        <button
-                                                                            onClick={() => handleFilter(dataKey, '')}
-                                                                            className="text-[9px] font-black text-emerald-600 uppercase tracking-tighter hover:underline"
-                                                                        >
-                                                                            Clear
-                                                                        </button>
-                                                                    )}
-                                                                </div>
-                                                                <div className="max-h-64 overflow-y-auto p-2 scrollbar-thin">
+                                                    <button
+                                                        onClick={e => {
+                                                            e.stopPropagation();
+                                                            setActiveFilterColumn(isActive ? null : key);
+                                                        }}
+                                                        className={`p-1 rounded-lg transition-all ${currentFilter && currentFilter !== 'ALL' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'text-slate-300 hover:bg-white hover:text-slate-600 hover:shadow-sm'}`}
+                                                    >
+                                                        <Filter
+                                                            size={12}
+                                                            className={
+                                                                currentFilter && currentFilter !== 'ALL'
+                                                                    ? 'fill-current'
+                                                                    : ''
+                                                            }
+                                                        />
+                                                    </button>
+                                                </div>
+
+                                                {/* Filter Dropdown Popover */}
+                                                {isActive && (
+                                                    <>
+                                                        <div
+                                                            className="fixed inset-0 z-40 bg-transparent"
+                                                            onClick={() => setActiveFilterColumn(null)}
+                                                        />
+                                                        <div
+                                                            className={`absolute top-[80%] mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 ${key === 'status' ? 'right-6' : 'left-6'}`}
+                                                        >
+                                                            <div className="p-3 border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
+                                                                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                                                    Sort & Filter {key}
+                                                                </span>
+                                                                {currentFilter && (
                                                                     <button
                                                                         onClick={() => handleFilter(dataKey, '')}
-                                                                        className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${!currentFilter || currentFilter === '' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                                                        className="text-[9px] font-black text-emerald-600 uppercase tracking-tighter hover:underline"
                                                                     >
-                                                                        All {key}s
-                                                                        {(!currentFilter || currentFilter === '') && (
-                                                                            <CheckCircle2 size={12} />
-                                                                        )}
+                                                                        Clear
                                                                     </button>
-                                                                    <div className="h-px bg-slate-100 dark:bg-slate-800 my-2 mx-2" />
-                                                                    {values.length > 0 ? (
-                                                                        values.map(val => (
-                                                                            <button
-                                                                                key={val}
-                                                                                onClick={() =>
-                                                                                    handleFilter(dataKey, val)
-                                                                                }
-                                                                                className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${currentFilter === val ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-                                                                            >
-                                                                                {key === 'status'
-                                                                                    ? statusLabels[val] || val
-                                                                                    : val}
-                                                                                {currentFilter === val && (
-                                                                                    <CheckCircle2 size={12} />
-                                                                                )}
-                                                                            </button>
-                                                                        ))
-                                                                    ) : (
-                                                                        <div className="px-4 py-8 text-center">
-                                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                                                                No options available
-                                                                            </p>
-                                                                        </div>
-                                                                    )}
+                                                                )}
+                                                            </div>
+                                                            <div className="p-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/20">
+                                                                <div className="grid grid-cols-2 gap-1">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            if (
+                                                                                sortConfig?.key !== dataKey ||
+                                                                                sortConfig?.direction !== 'asc'
+                                                                            ) {
+                                                                                setSortConfig({
+                                                                                    key: dataKey,
+                                                                                    direction: 'asc',
+                                                                                });
+                                                                            } else {
+                                                                                setSortConfig(null);
+                                                                            }
+                                                                            setActiveFilterColumn(null);
+                                                                        }}
+                                                                        className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${sortConfig?.key === dataKey && sortConfig?.direction === 'asc' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100'}`}
+                                                                    >
+                                                                        <ArrowUp size={12} /> ASC
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            if (
+                                                                                sortConfig?.key !== dataKey ||
+                                                                                sortConfig?.direction !== 'desc'
+                                                                            ) {
+                                                                                setSortConfig({
+                                                                                    key: dataKey,
+                                                                                    direction: 'desc',
+                                                                                });
+                                                                            } else {
+                                                                                setSortConfig(null);
+                                                                            }
+                                                                            setActiveFilterColumn(null);
+                                                                        }}
+                                                                        className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${sortConfig?.key === dataKey && sortConfig?.direction === 'desc' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100'}`}
+                                                                    >
+                                                                        <ArrowDown size={12} /> DESC
+                                                                    </button>
                                                                 </div>
                                                             </div>
-                                                        </>
-                                                    )}
-                                                </th>
-                                            );
-                                        }
-                                    )}
+                                                            <div className="max-h-64 overflow-y-auto p-2 scrollbar-thin">
+                                                                <button
+                                                                    onClick={() => handleFilter(dataKey, '')}
+                                                                    className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${!currentFilter || currentFilter === '' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                                                >
+                                                                    All {key}s
+                                                                    {(!currentFilter || currentFilter === '') && (
+                                                                        <CheckCircle2 size={12} />
+                                                                    )}
+                                                                </button>
+                                                                <div className="h-px bg-slate-100 dark:bg-slate-800 my-2 mx-2" />
+                                                                {values.length > 0 ? (
+                                                                    values.map(val => (
+                                                                        <button
+                                                                            key={val}
+                                                                            onClick={() => handleFilter(dataKey, val)}
+                                                                            className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${currentFilter === val ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                                                        >
+                                                                            {key === 'status'
+                                                                                ? statusLabels[val] || val
+                                                                                : val}
+                                                                            {currentFilter === val && (
+                                                                                <CheckCircle2 size={12} />
+                                                                            )}
+                                                                        </button>
+                                                                    ))
+                                                                ) : (
+                                                                    <div className="px-4 py-8 text-center">
+                                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                                            No options available
+                                                                        </p>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </th>
+                                        );
+                                    })}
 
                                     <th className="px-6 py-5 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border-b border-emerald-100 dark:border-emerald-900/30 text-right whitespace-nowrap">
                                         <div
@@ -1041,7 +1366,7 @@ export default function PricingLedgerTable({
                                                 <div className="absolute top-[80%] right-6 mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                                                     <div className="p-3 border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
                                                         <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                                                            Filter Status
+                                                            Sort & Filter Status
                                                         </span>
                                                         {filters.displayState && (
                                                             <button
@@ -1051,6 +1376,48 @@ export default function PricingLedgerTable({
                                                                 Clear
                                                             </button>
                                                         )}
+                                                    </div>
+                                                    <div className="p-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/20">
+                                                        <div className="grid grid-cols-2 gap-1">
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (
+                                                                        sortConfig?.key !== 'displayState' ||
+                                                                        sortConfig?.direction !== 'asc'
+                                                                    ) {
+                                                                        setSortConfig({
+                                                                            key: 'displayState',
+                                                                            direction: 'asc',
+                                                                        });
+                                                                    } else {
+                                                                        setSortConfig(null);
+                                                                    }
+                                                                    setActiveFilterColumn(null);
+                                                                }}
+                                                                className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${sortConfig?.key === 'displayState' && sortConfig?.direction === 'asc' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100'}`}
+                                                            >
+                                                                <ArrowUp size={12} /> ASC
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (
+                                                                        sortConfig?.key !== 'displayState' ||
+                                                                        sortConfig?.direction !== 'desc'
+                                                                    ) {
+                                                                        setSortConfig({
+                                                                            key: 'displayState',
+                                                                            direction: 'desc',
+                                                                        });
+                                                                    } else {
+                                                                        setSortConfig(null);
+                                                                    }
+                                                                    setActiveFilterColumn(null);
+                                                                }}
+                                                                className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${sortConfig?.key === 'displayState' && sortConfig?.direction === 'desc' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100'}`}
+                                                            >
+                                                                <ArrowDown size={12} /> DESC
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                     <div className="max-h-64 overflow-y-auto p-2 scrollbar-thin">
                                                         <button
@@ -1079,6 +1446,11 @@ export default function PricingLedgerTable({
                                                 </div>
                                             </>
                                         )}
+                                    </th>
+
+                                    {/* Popular Header */}
+                                    <th className="sticky top-0 z-20 bg-emerald-50 dark:bg-emerald-950/20 p-4 text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-widest border-r border-emerald-100 dark:border-white/10 w-24">
+                                        Popular
                                     </th>
                                 </tr>
                             </thead>
@@ -1111,7 +1483,13 @@ export default function PricingLedgerTable({
                                             </td>
 
                                             {/* VEHICLE COLUMNS */}
-                                            {activeCategory === 'vehicles' && null}
+                                            {activeCategory === 'vehicles' && (
+                                                <td className="px-6 py-5">
+                                                    <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight">
+                                                        {sku.variant}
+                                                    </span>
+                                                </td>
+                                            )}
 
                                             {/* ACCESSORY COLUMNS - Composite Product */}
                                             {activeCategory !== 'vehicles' && (
@@ -1594,6 +1972,31 @@ export default function PricingLedgerTable({
                                                 </span>
                                             </td>
 
+                                            <td className="px-6 py-5 border-r border-slate-100 dark:border-slate-800">
+                                                <div className="flex justify-center">
+                                                    <button
+                                                        onClick={e => {
+                                                            e.stopPropagation();
+                                                            if (onUpdatePopular)
+                                                                onUpdatePopular(sku.id, !sku.isPopular);
+                                                        }}
+                                                        className={`p-2 rounded-xl transition-all ${
+                                                            sku.isPopular
+                                                                ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 scale-110 shadow-lg shadow-amber-500/10'
+                                                                : 'bg-slate-50 text-slate-400 dark:bg-slate-800 dark:text-slate-500 hover:bg-slate-100'
+                                                        }`}
+                                                        title={
+                                                            sku.isPopular ? 'Remove Popular Badge' : 'Mark as Popular'
+                                                        }
+                                                    >
+                                                        <Rocket
+                                                            size={14}
+                                                            className={sku.isPopular ? 'fill-current' : ''}
+                                                        />
+                                                    </button>
+                                                </div>
+                                            </td>
+
                                             <td className="px-8 py-5 text-right w-[140px] relative">
                                                 {(() => {
                                                     const state = sku.displayState || 'Draft';
@@ -1634,9 +2037,22 @@ export default function PricingLedgerTable({
                                                                 {!isAums && state === 'Live' ? 'Active' : state}
                                                             </button>
                                                             {isAums && !canPublish(sku) && (
-                                                                <span className="ml-2 text-[9px] font-black uppercase tracking-widest text-rose-500">
+                                                                <button
+                                                                    onClick={e => {
+                                                                        e.stopPropagation();
+                                                                        onCalculate?.([sku.id]);
+                                                                    }}
+                                                                    disabled={isCalculating}
+                                                                    className="ml-2 px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-1 active:scale-95 disabled:opacity-50 no-export"
+                                                                    title="Calculate RTO & Insurance for this item"
+                                                                >
+                                                                    {isCalculating ? (
+                                                                        <Loader2 size={10} className="animate-spin" />
+                                                                    ) : (
+                                                                        <Zap size={10} />
+                                                                    )}
                                                                     Needs Calc
-                                                                </span>
+                                                                </button>
                                                             )}
                                                             {isOpen && (
                                                                 <>

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { X, Loader2, ShoppingBag, Globe, ChevronRight, Settings2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import AttributeInput from '@/components/catalog/AttributeInput';
+import { sanitizeSvg } from '@/lib/utils/sanitizeSvg';
 
 interface AddBrandModalProps {
     isOpen: boolean;
@@ -20,7 +21,7 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData,
         landingUrl: '',
         logo_svg: '', // Keep for backward compat
         brand_logos: { original: '', dark: '', light: '', icon: '' } as Record<string, string>,
-        specifications: {} as Record<string, any>
+        specifications: {} as Record<string, any>,
     });
 
     const [activeTheme, setActiveTheme] = useState<'original' | 'dark' | 'light' | 'icon'>('original');
@@ -34,8 +35,13 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData,
                 name: initialData.name || '',
                 landingUrl: initialData.website_url || '',
                 logo_svg: initialData.logo_svg || '',
-                brand_logos: initialData.brand_logos || { original: initialData.logo_svg || '', dark: '', light: '', icon: '' },
-                specifications: initialData.specifications || {}
+                brand_logos: initialData.brand_logos || {
+                    original: initialData.logo_svg || '',
+                    dark: '',
+                    light: '',
+                    icon: '',
+                },
+                specifications: initialData.specifications || {},
             });
             setIsAdaptive(false);
         } else {
@@ -44,7 +50,7 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData,
                 landingUrl: '',
                 logo_svg: '',
                 brand_logos: { original: '', dark: '', light: '', icon: '' },
-                specifications: {}
+                specifications: {},
             });
             setIsAdaptive(false);
         }
@@ -54,7 +60,7 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData,
         const file = e.target.files?.[0];
         if (file) {
             const reader = new FileReader();
-            reader.onload = (event) => {
+            reader.onload = event => {
                 let svgCode = event.target?.result as string;
 
                 // --- SVG Scaling Fix ---
@@ -81,10 +87,10 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData,
                     ...prev,
                     brand_logos: {
                         ...prev.brand_logos,
-                        [activeTheme]: svgCode
+                        [activeTheme]: svgCode,
                     },
                     // Sync original to legacy field if editing original
-                    logo_svg: activeTheme === 'original' ? svgCode : prev.logo_svg
+                    logo_svg: activeTheme === 'original' ? svgCode : prev.logo_svg,
                 }));
             };
             reader.readAsText(file);
@@ -108,20 +114,26 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData,
                         website_url: formData.landingUrl,
                         logo_svg: formData.brand_logos.original, // Sync original
                         brand_logos: formData.brand_logos,
-                        specifications: formData.specifications
+                        specifications: formData.specifications,
                     })
                     .eq('id', initialData.id);
                 if (error) throw error;
             } else {
-                const { data, error } = await supabase.from('cat_brands').insert([{
-                    name: formData.name,
-                    slug: formData.name.toLowerCase().replace(/\s+/g, '-'),
-                    website_url: formData.landingUrl,
-                    logo_svg: formData.brand_logos.original,
-                    brand_logos: formData.brand_logos,
-                    specifications: formData.specifications,
-                    is_active: true
-                }]).select('id').single();
+                const { data, error } = await supabase
+                    .from('cat_brands')
+                    .insert([
+                        {
+                            name: formData.name,
+                            slug: formData.name.toLowerCase().replace(/\s+/g, '-'),
+                            website_url: formData.landingUrl,
+                            logo_svg: formData.brand_logos.original,
+                            brand_logos: formData.brand_logos,
+                            specifications: formData.specifications,
+                            is_active: true,
+                        },
+                    ])
+                    .select('id')
+                    .single();
                 if (error) throw error;
                 if (data) brandId = data.id;
             }
@@ -132,10 +144,9 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData,
                 name: '',
                 landingUrl: '',
                 logo_svg: '',
-                brand_logos: { original: '', dark: '', 'light': '' },
-                specifications: {}
+                brand_logos: { original: '', dark: '', light: '' },
+                specifications: {},
             });
-
         } catch (error: any) {
             console.error('Error adding brand:', error);
             alert('Failed to add brand: ' + error.message);
@@ -158,11 +169,15 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData,
                         <ShoppingBag className="text-indigo-600" size={32} />
                     </div>
                     <div className="space-y-1">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] italic mb-2">Structural Inventory</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] italic mb-2">
+                            Structural Inventory
+                        </p>
                         <h2 className="text-4xl font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
                             {initialData ? 'Modify Brand' : 'Register Brand'}
                         </h2>
-                        <p className="text-slate-500 font-bold uppercase tracking-widest text-[9px] max-w-xs mx-auto">Establish a new manufacturer branch in the master catalog system</p>
+                        <p className="text-slate-500 font-bold uppercase tracking-widest text-[9px] max-w-xs mx-auto">
+                            Establish a new manufacturer branch in the master catalog system
+                        </p>
                     </div>
                 </div>
 
@@ -170,7 +185,9 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData,
                 <form onSubmit={handleSubmit} className="p-12 pt-8 space-y-8">
                     <div className="space-y-6">
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Manufacturer Identity (Make)</label>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">
+                                Manufacturer Identity (Make)
+                            </label>
                             <input
                                 required
                                 autoFocus
@@ -182,9 +199,14 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData,
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Official Landing URL</label>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">
+                                Official Landing URL
+                            </label>
                             <div className="relative group">
-                                <Globe size={20} className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" />
+                                <Globe
+                                    size={20}
+                                    className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors"
+                                />
                                 <input
                                     placeholder="https://www.honda2wheelers.com"
                                     value={formData.landingUrl}
@@ -212,10 +234,12 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData,
                                             key={attr.name}
                                             attr={attr}
                                             value={formData.specifications[attr.name]}
-                                            onChange={(val) => setFormData(prev => ({
-                                                ...prev,
-                                                specifications: { ...prev.specifications, [attr.name]: val }
-                                            }))}
+                                            onChange={val =>
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    specifications: { ...prev.specifications, [attr.name]: val },
+                                                }))
+                                            }
                                         />
                                     ))}
                                 </div>
@@ -224,7 +248,9 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData,
 
                         <div className="space-y-4">
                             <div className="flex items-center justify-between ml-4">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Brand Logo Identity</label>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                    Brand Logo Identity
+                                </label>
 
                                 <div className="flex bg-slate-100 dark:bg-white/5 rounded-full p-1 border border-slate-200 dark:border-white/5">
                                     {(['original', 'dark', 'light', 'icon'] as const).map(theme => (
@@ -236,10 +262,11 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData,
                                                 // Auto-toggle adaptive depending on theme
                                                 setIsAdaptive(theme !== 'original');
                                             }}
-                                            className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all ${activeTheme === theme
-                                                ? 'bg-white dark:bg-indigo-500 text-indigo-600 dark:text-white shadow-md'
-                                                : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                                                }`}
+                                            className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all ${
+                                                activeTheme === theme
+                                                    ? 'bg-white dark:bg-indigo-500 text-indigo-600 dark:text-white shadow-md'
+                                                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                                            }`}
                                         >
                                             {theme}
                                         </button>
@@ -270,34 +297,47 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData,
                                             <Globe size={18} />
                                         </div>
                                         <span className="text-[9px] font-black uppercase tracking-widest text-center">
-                                            Click to Upload<br />
+                                            Click to Upload
+                                            <br />
                                             <span className="text-indigo-500">{activeTheme.toUpperCase()}</span> SVG
                                         </span>
                                     </div>
                                 </div>
 
-                                <div className={`h-40 rounded-[3rem] border-2 border-transparent p-6 flex items-center justify-center overflow-hidden relative group shadow-inner transition-colors duration-500 ${activeTheme === 'dark' ? 'bg-slate-900 border-indigo-500/30' :
-                                    activeTheme === 'light' ? 'bg-white border-slate-200' :
-                                        'bg-slate-50 dark:bg-black/20'
-                                    }`}>
+                                <div
+                                    className={`h-40 rounded-[3rem] border-2 border-transparent p-6 flex items-center justify-center overflow-hidden relative group shadow-inner transition-colors duration-500 ${
+                                        activeTheme === 'dark'
+                                            ? 'bg-slate-900 border-indigo-500/30'
+                                            : activeTheme === 'light'
+                                              ? 'bg-white border-slate-200'
+                                              : 'bg-slate-50 dark:bg-black/20'
+                                    }`}
+                                >
                                     {formData.brand_logos[activeTheme] ? (
                                         <>
                                             <div
                                                 className={`w-full h-full flex items-center justify-center 
                                                     [&>svg]:w-full [&>svg]:h-full [&>svg]:max-w-full [&>svg]:max-h-full 
                                                     ${isAdaptive ? '[&>svg]:fill-current' : ''} 
-                                                    ${activeTheme === 'dark' ? 'text-white' :
-                                                        activeTheme === 'light' ? 'text-slate-900' :
-                                                            'text-slate-900 dark:text-white'
+                                                    ${
+                                                        activeTheme === 'dark'
+                                                            ? 'text-white'
+                                                            : activeTheme === 'light'
+                                                              ? 'text-slate-900'
+                                                              : 'text-slate-900 dark:text-white'
                                                     }`}
-                                                dangerouslySetInnerHTML={{ __html: formData.brand_logos[activeTheme] }}
+                                                dangerouslySetInnerHTML={{
+                                                    __html: sanitizeSvg(formData.brand_logos[activeTheme]),
+                                                }}
                                             />
                                             <button
                                                 type="button"
-                                                onClick={() => setFormData(prev => ({
-                                                    ...prev,
-                                                    brand_logos: { ...prev.brand_logos, [activeTheme]: '' }
-                                                }))}
+                                                onClick={() =>
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        brand_logos: { ...prev.brand_logos, [activeTheme]: '' },
+                                                    }))
+                                                }
                                                 className="absolute top-4 right-4 w-8 h-8 bg-rose-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
                                             >
                                                 <X size={14} />
@@ -305,8 +345,13 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData,
                                         </>
                                     ) : (
                                         <div className="flex flex-col items-center gap-2 opacity-30">
-                                            <Globe size={24} className={activeTheme === 'dark' ? 'text-slate-600' : 'text-slate-400'} />
-                                            <span className={`text-[10px] font-black uppercase tracking-widest italic ${activeTheme === 'dark' ? 'text-slate-600' : 'text-slate-400'}`}>
+                                            <Globe
+                                                size={24}
+                                                className={activeTheme === 'dark' ? 'text-slate-600' : 'text-slate-400'}
+                                            />
+                                            <span
+                                                className={`text-[10px] font-black uppercase tracking-widest italic ${activeTheme === 'dark' ? 'text-slate-600' : 'text-slate-400'}`}
+                                            >
                                                 {activeTheme} Preview
                                             </span>
                                         </div>
@@ -317,10 +362,12 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData,
                             <textarea
                                 placeholder={`Edit raw SVG code for ${activeTheme} theme`}
                                 value={formData.brand_logos[activeTheme]}
-                                onChange={e => setFormData(prev => ({
-                                    ...prev,
-                                    brand_logos: { ...prev.brand_logos, [activeTheme]: e.target.value }
-                                }))}
+                                onChange={e =>
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        brand_logos: { ...prev.brand_logos, [activeTheme]: e.target.value },
+                                    }))
+                                }
                                 className="w-full px-8 py-5 bg-slate-50 dark:bg-black/20 border-2 border-transparent focus:border-indigo-600 rounded-[2rem] text-[9px] font-mono text-slate-900 dark:text-white outline-none transition-all h-24 resize-none"
                             />
                         </div>
@@ -339,9 +386,12 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData,
                             disabled={loading || !formData.name}
                             className="flex-[2] px-8 py-5 rounded-[2rem] bg-indigo-600 text-white font-black uppercase tracking-widest text-[11px] hover:scale-105 transition-all shadow-xl shadow-indigo-500/20 active:scale-95 flex items-center justify-center gap-3 italic disabled:opacity-50"
                         >
-                            {loading ? <Loader2 className="animate-spin" size={18} /> : (
+                            {loading ? (
+                                <Loader2 className="animate-spin" size={18} />
+                            ) : (
                                 <>
-                                    {initialData ? 'Apply Updates' : 'Initialize Brand Identity'} <ChevronRight size={18} />
+                                    {initialData ? 'Apply Updates' : 'Initialize Brand Identity'}{' '}
+                                    <ChevronRight size={18} />
                                 </>
                             )}
                         </button>

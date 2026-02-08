@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 import QuoteEditorTable, { QuoteData } from './QuoteEditorTable';
 import {
     getQuoteById,
@@ -9,9 +10,11 @@ import {
     confirmQuoteAction,
     markQuoteInReview,
     getTasksForEntity,
+    getQuotesForLead,
 } from '@/actions/crm';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { formatDisplayId } from '@/utils/displayId';
 
 interface QuoteEditorWrapperProps {
     quoteId: string;
@@ -22,8 +25,20 @@ interface QuoteEditorWrapperProps {
 export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: QuoteEditorWrapperProps) {
     const [quote, setQuote] = useState<QuoteData | null>(null);
     const [tasks, setTasks] = useState<any[]>([]);
+    const [relatedQuotes, setRelatedQuotes] = useState<
+        {
+            id: string;
+            displayId: string;
+            status?: string | null;
+            createdAt?: string | null;
+            isLatest?: boolean | null;
+            version?: number | null;
+        }[]
+    >([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const params = useParams();
+    const slug = typeof params?.slug === 'string' ? params.slug : Array.isArray(params?.slug) ? params.slug[0] : '';
 
     useEffect(() => {
         loadQuote();
@@ -57,6 +72,22 @@ export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: Quot
 
             const taskData = await getTasksForEntity('QUOTE', quoteId);
             setTasks(taskData || []);
+
+            if (result.data.leadId) {
+                const leadQuotes = await getQuotesForLead(result.data.leadId);
+                setRelatedQuotes(
+                    (leadQuotes || []).map((q: any) => ({
+                        id: q.id,
+                        displayId: q.display_id || q.displayId || formatDisplayId(q.id),
+                        status: q.status,
+                        createdAt: q.created_at || q.createdAt,
+                        isLatest: q.is_latest ?? q.isLatest ?? false,
+                        version: q.version ?? 1,
+                    }))
+                );
+            } else {
+                setRelatedQuotes([]);
+            }
         } else {
             setError(result.error || 'Failed to load quote');
         }
@@ -69,13 +100,24 @@ export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: Quot
 
         const result = await updateQuotePricing(quoteId, {
             rtoType: data.pricing?.rtoType,
-            insuranceAddons: data.pricing?.insuranceAddons?.filter(a => a.selected).map(a => a.id),
-            accessories: data.pricing?.accessories?.filter(a => a.selected).map(a => a.id),
+            // Pass full objects for insurance addons to persist amounts
+            insuranceAddons: data.pricing?.insuranceAddons?.filter(a => a.selected) as any,
+            insuranceTotal: data.pricing?.insuranceTotal,
+            accessories: data.pricing?.accessories?.filter(a => a.selected) as any,
+            accessoriesTotal: data.pricing?.accessoriesTotal,
+            grandTotal: data.pricing?.finalTotal,
             managerDiscount: data.pricing?.managerDiscount,
             managerDiscountNote: data.pricing?.managerDiscountNote || undefined,
         });
 
         if (result.success) {
+            if (result.newQuoteId && result.newQuoteId !== quoteId) {
+                onRefresh?.();
+                if (slug) {
+                    window.location.href = `/app/${slug}/quotes/${result.newQuoteId}`;
+                }
+                return;
+            }
             await loadQuote(); // Reload to get updated data
             onRefresh?.();
         } else {
@@ -109,9 +151,9 @@ export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: Quot
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-screen bg-slate-50 dark:bg-slate-900">
+            <div className="flex items-center justify-center h-screen bg-slate-50 dark:bg-[#0b0d10]">
                 <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
+                    <Loader2 className="w-8 h-8 animate-spin text-brand-primary dark:text-white" />
                     <p className="text-slate-500 dark:text-white/60 text-sm">Loading quote...</p>
                 </div>
             </div>
@@ -120,7 +162,7 @@ export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: Quot
 
     if (error || !quote) {
         return (
-            <div className="flex items-center justify-center h-screen bg-slate-50 dark:bg-slate-900">
+            <div className="flex items-center justify-center h-screen bg-slate-50 dark:bg-[#0b0d10]">
                 <div className="text-center">
                     <p className="text-red-500 dark:text-red-400 text-lg font-medium">Error Loading Quote</p>
                     <p className="text-slate-500 dark:text-white/40 text-sm mt-2">{error || 'Quote not found'}</p>
@@ -139,6 +181,7 @@ export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: Quot
         <QuoteEditorTable
             quote={quote}
             tasks={tasks}
+            relatedQuotes={relatedQuotes}
             onSave={handleSave}
             onSendToCustomer={handleSendToCustomer}
             onConfirmBooking={handleConfirmBooking}

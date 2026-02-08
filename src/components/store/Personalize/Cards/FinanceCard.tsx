@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { HelpCircle, Zap, Clock, CheckCircle2, SlidersHorizontal } from 'lucide-react';
+import { HelpCircle, Zap, Clock, CheckCircle2, SlidersHorizontal, Edit2 } from 'lucide-react';
 import { formatDisplayIdForUI, unformatDisplayId } from '@/lib/displayId';
 
 interface FinanceCardProps {
@@ -39,7 +39,7 @@ export default function FinanceCard({
     const displayDownPayment = downPayment < 1 ? 0 : downPayment;
 
     // Local state for slider to prevent lag
-    const [localDP, setLocalDP] = useState(displayDownPayment);
+    const [localDP, setLocalDP] = useState<number | string>(displayDownPayment);
 
     // Sync local state when prop changes (debounce handling)
     useEffect(() => {
@@ -47,7 +47,14 @@ export default function FinanceCard({
     }, [displayDownPayment]);
 
     const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = parseInt(e.target.value);
+        const valStr = e.target.value;
+        if (valStr === '') {
+            setLocalDP('');
+            return;
+        }
+        const val = parseInt(valStr);
+        if (isNaN(val)) return;
+
         setLocalDP(val);
         if (setUserDownPayment) {
             setUserDownPayment(val);
@@ -103,7 +110,7 @@ export default function FinanceCard({
                     </div>
                     {/* Tooltip trigger for Snapshot */}
                     <div className="relative group/snapshot">
-                        <HelpCircle size={14} className="text-slate-500 cursor-help" />
+                        <HelpCircle size={14} className="text-slate-500 dark:text-slate-400 cursor-help" />
                         <div className="absolute top-full right-0 mt-2 w-64 p-4 glass-panel dark:bg-black/90 rounded-2xl shadow-2xl opacity-0 group-hover/snapshot:opacity-100 transition-all pointer-events-none z-50 translate-y-2 group-hover/snapshot:translate-y-0">
                             <p className="text-[10px] font-black uppercase tracking-widest text-brand-primary mb-3">
                                 Finance Snapshot
@@ -111,11 +118,11 @@ export default function FinanceCard({
                             <div className="space-y-2">
                                 {financeItems.map((item, idx) => (
                                     <div key={idx} className="flex justify-between items-center text-[10px]">
-                                        <span className="font-bold text-slate-500 uppercase tracking-widest">
+                                        <span className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
                                             {item.label}
                                         </span>
                                         <span
-                                            className={`font-mono font-black ${(item as any).isHighlight ? (item as any).colorClass || 'text-brand-primary' : 'text-white'}`}
+                                            className={`font-mono font-black ${(item as any).isHighlight ? (item as any).colorClass || 'text-brand-primary' : 'text-slate-900 dark:text-white'}`}
                                         >
                                             {item.value}
                                         </span>
@@ -127,31 +134,41 @@ export default function FinanceCard({
                 </div>
 
                 {/* Down Payment Slider Section */}
+                {/* Down Payment Card (Styled like EMI) */}
                 {setUserDownPayment && maxDownPayment > minDownPayment && (
-                    <div className="mb-6 bg-white/5 rounded-2xl p-4 border border-white/5">
-                        <div className="flex justify-between items-center mb-3">
-                            <div className="flex items-center gap-2">
-                                <span className="p-1.5 bg-brand-primary/20 rounded-lg text-brand-primary">
-                                    <SlidersHorizontal size={12} />
-                                </span>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                    Adjust Down Payment
+                    <div className="mb-6 w-full flex items-center justify-between group/dp transition-all p-3 rounded-2xl hover:bg-white/5">
+                        <div className="flex flex-col items-start gap-0.5">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-brand-primary">
+                                Down Payment
+                            </span>
+                            <span className="text-[8px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-500">
+                                Adjustable
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="text-right">
+                                <div className="flex items-center justify-end gap-0.5">
+                                    <span className="text-xs font-black font-mono tracking-tight text-brand-primary">
+                                        ₹
+                                    </span>
+                                    <input
+                                        type="number"
+                                        value={localDP}
+                                        onChange={handleSliderChange}
+                                        className="w-16 bg-transparent text-xs font-black font-mono tracking-tight text-slate-900 dark:text-white text-right outline-none border-b border-brand-primary/20 focus:border-brand-primary transition-all p-0"
+                                    />
+                                </div>
+                                <span className="block text-[7px] font-bold text-slate-600 dark:text-slate-500 uppercase">
+                                    One-time Pay
                                 </span>
                             </div>
-                            <span className="text-xs font-black font-mono text-white">₹{localDP.toLocaleString()}</span>
-                        </div>
-                        <input
-                            type="range"
-                            min={minDownPayment}
-                            max={maxDownPayment}
-                            step={100}
-                            value={localDP}
-                            onChange={handleSliderChange}
-                            className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-brand-primary [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-black"
-                        />
-                        <div className="flex justify-between mt-2 text-[8px] font-bold text-slate-600 uppercase tracking-wider">
-                            <span>₹{minDownPayment.toLocaleString()}</span>
-                            <span>Max: ₹{maxDownPayment.toLocaleString()}</span>
+                            <div className="w-4 h-4 rounded-full border border-white/10 flex items-center justify-center transition-all group-hover/dp:border-brand-primary group-hover/dp:bg-brand-primary">
+                                <Edit2
+                                    size={10}
+                                    className="text-slate-400 group-hover/dp:text-black transition-colors"
+                                    strokeWidth={3}
+                                />
+                            </div>
                         </div>
                     </div>
                 )}
@@ -174,12 +191,12 @@ export default function FinanceCard({
                             >
                                 <div className="flex flex-col items-start gap-0.5">
                                     <span
-                                        className={`text-[10px] font-black uppercase tracking-widest ${isSelected ? 'text-brand-primary' : 'text-slate-400'}`}
+                                        className={`text-[10px] font-black uppercase tracking-widest ${isSelected ? 'text-brand-primary' : 'text-slate-600 dark:text-slate-400'}`}
                                     >
                                         {t} Months
                                     </span>
                                     <span
-                                        className={`text-[8px] font-bold uppercase tracking-widest ${isSelected ? 'text-slate-300' : 'text-slate-600'}`}
+                                        className={`text-[8px] font-bold uppercase tracking-widest ${isSelected ? 'text-slate-700 dark:text-slate-300' : 'text-slate-600 dark:text-slate-500'}`}
                                     >
                                         EMI TENURE
                                     </span>
@@ -187,11 +204,11 @@ export default function FinanceCard({
                                 <div className="flex items-center gap-3">
                                     <div className="text-right">
                                         <span
-                                            className={`block text-xs font-black font-mono tracking-tight ${isSelected ? 'text-brand-primary' : 'text-white/60'}`}
+                                            className={`block text-xs font-black font-mono tracking-tight ${isSelected ? 'text-brand-primary' : 'text-slate-700 dark:text-white/60'}`}
                                         >
                                             ₹{calculatedEmiForT.toLocaleString()}
                                         </span>
-                                        <span className="block text-[7px] font-bold text-slate-500 uppercase">
+                                        <span className="block text-[7px] font-bold text-slate-600 dark:text-slate-500 uppercase">
                                             MONTHLY EMI
                                         </span>
                                     </div>
@@ -212,10 +229,10 @@ export default function FinanceCard({
             <div className="p-4 pt-4 border-t border-white/5 bg-slate-50/50 dark:bg-white/[0.02] mt-auto">
                 <div className="flex justify-between items-center px-2">
                     <div className="flex flex-col">
-                        <span className="text-[9px] font-black uppercase italic tracking-widest text-slate-400">
+                        <span className="text-[9px] font-black uppercase italic tracking-widest text-slate-600 dark:text-slate-400">
                             Selected EMI
                         </span>
-                        <div className="flex items-center gap-1 text-[8px] font-bold text-slate-500 uppercase tracking-widest">
+                        <div className="flex items-center gap-1 text-[8px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest">
                             <Clock size={10} className="text-brand-primary" />
                             <span>{emiTenure} Months Plan</span>
                         </div>

@@ -10,7 +10,7 @@ interface QuoteDetailProps {
 
 export default function QuoteDetail({ quote, onBack }: QuoteDetailProps) {
     return (
-        <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950/50">
+        <div className="h-full flex flex-col bg-slate-50 dark:bg-[#0b0d10]">
             {/* Header */}
             <div className="p-8 border-b border-slate-200 dark:border-white/5 bg-white dark:bg-white/[0.02] backdrop-blur-3xl sticky top-0 z-30">
                 <div className="flex items-center justify-between mb-8">
@@ -24,8 +24,8 @@ export default function QuoteDetail({ quote, onBack }: QuoteDetailProps) {
                             </button>
                         )}
                         <div>
-                            <div className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.3em] mb-1.5 flex items-center gap-2">
-                                <span className="w-1 h-1 rounded-full bg-indigo-500" />
+                            <div className="text-[10px] font-black text-indigo-500 dark:text-white uppercase tracking-[0.3em] mb-1.5 flex items-center gap-2">
+                                <span className="w-1 h-1 rounded-full bg-indigo-500 dark:bg-white" />
                                 {quote.displayId}
                             </div>
                             <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">
@@ -41,7 +41,7 @@ export default function QuoteDetail({ quote, onBack }: QuoteDetailProps) {
                         <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl">
                             <Download size={16} />
                         </Button>
-                        <Button className="h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs">
+                        <Button className="h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-white dark:text-black dark:hover:bg-slate-200 text-white font-bold text-xs">
                             Convert to Booking
                         </Button>
                     </div>
@@ -49,7 +49,9 @@ export default function QuoteDetail({ quote, onBack }: QuoteDetailProps) {
 
                 <div className="flex items-center gap-8">
                     <div className="flex flex-col">
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-1">Status</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                            Status
+                        </span>
                         <span className="text-sm font-bold text-slate-900 dark:text-white">{quote.status}</span>
                     </div>
                     <div className="flex flex-col">
@@ -57,8 +59,12 @@ export default function QuoteDetail({ quote, onBack }: QuoteDetailProps) {
                         <span className="text-sm font-bold text-slate-900 dark:text-white">{quote.date}</span>
                     </div>
                     <div className="flex flex-col">
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-1">Amount</span>
-                        <span className="text-sm font-bold text-slate-900 dark:text-white">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(quote.price)}</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                            Amount
+                        </span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-white">
+                            {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(quote.price)}
+                        </span>
                     </div>
                 </div>
             </div>
@@ -77,11 +83,15 @@ export default function QuoteDetail({ quote, onBack }: QuoteDetailProps) {
 
                     <div className="grid grid-cols-2 gap-12 mb-16">
                         <div>
-                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Bill To</h3>
+                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">
+                                Bill To
+                            </h3>
                             <p className="text-lg font-bold text-slate-900 dark:text-white">{quote.customerName}</p>
                         </div>
                         <div className="text-right">
-                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Vehicle Details</h3>
+                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">
+                                Vehicle Details
+                            </h3>
                             <p className="text-lg font-bold text-slate-900 dark:text-white">{quote.productName}</p>
                             <p className="text-sm text-slate-500">{quote.productSku}</p>
                         </div>
@@ -96,7 +106,9 @@ export default function QuoteDetail({ quote, onBack }: QuoteDetailProps) {
 
                     <div className="space-y-4 mb-8">
                         <div className="flex justify-between items-center">
-                            <span className="text-sm font-medium text-slate-900 dark:text-white">Ex-Showroom Price</span>
+                            <span className="text-sm font-medium text-slate-900 dark:text-white">
+                                Ex-Showroom Price
+                            </span>
                             <span className="text-sm font-bold text-slate-900 dark:text-white">₹ ---</span>
                         </div>
                         <div className="flex justify-between items-center">
@@ -104,7 +116,9 @@ export default function QuoteDetail({ quote, onBack }: QuoteDetailProps) {
                             <span className="text-sm font-bold text-slate-900 dark:text-white">₹ ---</span>
                         </div>
                         <div className="flex justify-between items-center">
-                            <span className="text-sm font-medium text-slate-900 dark:text-white">RTO / Registration</span>
+                            <span className="text-sm font-medium text-slate-900 dark:text-white">
+                                RTO / Registration
+                            </span>
                             <span className="text-sm font-bold text-slate-900 dark:text-white">₹ ---</span>
                         </div>
                     </div>
@@ -112,7 +126,11 @@ export default function QuoteDetail({ quote, onBack }: QuoteDetailProps) {
                     <div className="border-t border-slate-200 dark:border-white/10 pt-4">
                         <div className="flex justify-between items-center text-xl font-black text-slate-900 dark:text-white">
                             <span>Total</span>
-                            <span>{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(quote.price)}</span>
+                            <span>
+                                {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(
+                                    quote.price
+                                )}
+                            </span>
                         </div>
                     </div>
                 </div>

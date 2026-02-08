@@ -85,6 +85,7 @@ export const ProductCard = ({
     const [selectedColorFlip, setSelectedColorFlip] = useState<boolean>(v.isFlipped || false);
     const [selectedColorOffsetX, setSelectedColorOffsetX] = useState<number>(v.offsetX || 0);
     const [selectedColorOffsetY, setSelectedColorOffsetY] = useState<number>(v.offsetY || 0);
+    const [selectedColorFinish, setSelectedColorFinish] = useState<string | null>(null);
     const [cachedScheme, setCachedScheme] = useState<{
         interestRate: number;
         interestType?: 'FLAT' | 'REDUCING';
@@ -118,6 +119,7 @@ export const ProductCard = ({
         setSelectedColorFlip(primaryColor?.isFlipped ?? v.isFlipped ?? false);
         setSelectedColorOffsetX(primaryColor?.offsetX ?? v.offsetX ?? 0);
         setSelectedColorOffsetY(primaryColor?.offsetY ?? v.offsetY ?? 0);
+        setSelectedColorFinish(primaryColor?.finish || null);
         setSelectedHex(primaryColor?.hexCode || null);
     }, [v.id, v.imageUrl, v.availableColors, v.zoomFactor, v.isFlipped, v.offsetX, v.offsetY]);
 
@@ -175,6 +177,7 @@ export const ProductCard = ({
     const dealerLabelDisplay = dealerLabel || 'UNASSIGNED';
     const districtLabelDisplay = districtLabel || null;
     const studioDisplayLabel = v.studioCode || null;
+    const studioIdLabel = studioDisplayLabel || bestOffer?.studio_id || null;
 
     // Combine District and Studio Code
     const combinedLocationLabel = districtLabelDisplay
@@ -212,9 +215,11 @@ export const ProductCard = ({
     const EMI_FACTORS: Record<number, number> = { 12: 0.091, 24: 0.049, 36: 0.035, 48: 0.028, 60: 0.024 };
     const activeTenure = tenure || 36;
     const loanAmount = Math.max(0, basePrice - downpayment);
+    const emiIsApprox = !cachedScheme?.interestRate;
     const emiValue = (() => {
         if (!cachedScheme?.interestRate) {
-            return null;
+            const factor = EMI_FACTORS[activeTenure] ?? EMI_FACTORS[36];
+            return Math.max(0, Math.round(loanAmount * factor));
         }
         const annualRate = cachedScheme.interestRate / 100;
         if (cachedScheme.interestType === 'FLAT') {
@@ -470,7 +475,7 @@ export const ProductCard = ({
                                                     <p className="font-bold uppercase tracking-widest text-slate-500">
                                                         Studio ID:{' '}
                                                         <span className="text-slate-900 dark:text-white">
-                                                            {dealerLabelDisplay}
+                                                            {studioIdLabel || 'UNASSIGNED'}
                                                         </span>
                                                     </p>
                                                     <p className="font-bold uppercase tracking-widest text-slate-500">
@@ -684,6 +689,7 @@ export const ProductCard = ({
                                                         setSelectedColorFlip(c.isFlipped || false);
                                                         setSelectedColorOffsetX(c.offsetX || 0);
                                                         setSelectedColorOffsetY(c.offsetY || 0);
+                                                        setSelectedColorFinish(c.finish || null);
                                                     }
                                                     if (c.hexCode) {
                                                         setSelectedHex(c.hexCode);
@@ -693,10 +699,17 @@ export const ProductCard = ({
                                                         onColorChange(c.id);
                                                     }
                                                 }}
-                                                className="w-5 h-5 rounded-full border border-white dark:border-slate-900 shadow-sm relative hover:scale-110 transition-all duration-300 cursor-pointer"
+                                                className="w-5 h-5 rounded-full border border-white dark:border-slate-900 shadow-sm relative hover:scale-110 transition-all duration-300 cursor-pointer overflow-hidden"
                                                 style={{ background: c.hexCode }}
-                                                title={c.name}
-                                            />
+                                                title={`${c.name}${c.finish ? ` (${c.finish})` : ''}`}
+                                            >
+                                                {c.finish?.toUpperCase() === 'GLOSS' && (
+                                                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/60 to-white/20 pointer-events-none" />
+                                                )}
+                                                {c.finish?.toUpperCase() === 'MATTE' && (
+                                                    <div className="absolute inset-0 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] pointer-events-none" />
+                                                )}
+                                            </div>
                                         ))}
                                     </div>
                                 </div>
@@ -705,9 +718,11 @@ export const ProductCard = ({
                     </div>
 
                     <div className="flex flex-col mt-1">
-                        <p className="text-[12px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate max-w-full text-left">
-                            {displayVariant}
-                        </p>
+                        <div className="flex items-center gap-2">
+                            <p className="text-[12px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate max-w-full text-left">
+                                {displayVariant}
+                            </p>
+                        </div>
                         {v.suitableFor && (
                             <div className="flex flex-wrap gap-1 mt-2">
                                 {v.suitableFor
@@ -748,7 +763,7 @@ export const ProductCard = ({
                                             <p className="font-bold uppercase tracking-widest text-slate-500">
                                                 Studio ID:{' '}
                                                 <span className="text-slate-900 dark:text-white">
-                                                    {dealerLabelDisplay}
+                                                    {studioIdLabel || 'UNASSIGNED'}
                                                 </span>
                                             </p>
                                             <p className="font-bold uppercase tracking-widest text-slate-500">
@@ -792,7 +807,8 @@ export const ProductCard = ({
                                     <span className="font-bold text-green-400">
                                         ₹{(downpayment || 0).toLocaleString('en-IN')}
                                     </span>{' '}
-                                    downpayment at <span className="font-bold text-green-400">{tenure} months</span>.
+                                    downpayment at <span className="font-bold text-green-400">{tenure} months</span>
+                                    {emiIsApprox ? ' (approx)' : ''}.
                                 </p>
                                 <p className="mt-1.5 text-slate-300">
                                     Adjust your downpayment & tenure or set your budget from the{' '}

@@ -61,7 +61,7 @@ function cn(...inputs: any[]) {
 export interface QuoteData {
     id: string;
     displayId: string;
-    status: 'DRAFT' | 'PENDING_REVIEW' | 'REVIEWED' | 'SENT' | 'ACCEPTED' | 'CONFIRMED' | 'DELIVERED';
+    status: 'DRAFT' | 'PENDING_REVIEW' | 'REVIEWED' | 'SENT' | 'ACCEPTED' | 'CONFIRMED' | 'DELIVERED' | 'VOID';
     createdAt: string;
     updatedAt: string;
     validUntil: string | null;
@@ -172,11 +172,27 @@ export interface QuoteData {
 interface QuoteEditorTableProps {
     quote: QuoteData;
     tasks?: any[];
+    relatedQuotes?: {
+        id: string;
+        displayId: string;
+        status?: string | null;
+        createdAt?: string | null;
+        isLatest?: boolean | null;
+        version?: number | null;
+    }[];
     onSave: (data: Partial<QuoteData>) => Promise<void>;
     onSendToCustomer: () => Promise<void>;
     onConfirmBooking: () => Promise<void>;
     isEditable?: boolean;
 }
+
+type QuoteChange = {
+    key: string;
+    label: string;
+    oldValue: string;
+    newValue: string;
+    isManagerOnly?: boolean;
+};
 
 // ============================================================================
 // STATUS CONFIG
@@ -205,6 +221,7 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string; label: string; 
         icon: CheckCircle2,
     },
     DELIVERED: { color: 'text-teal-600', bg: 'bg-teal-100 dark:bg-teal-900/30', label: 'Delivered', icon: Bike },
+    VOID: { color: 'text-slate-500', bg: 'bg-slate-100 dark:bg-slate-800', label: 'Void', icon: X },
 };
 
 // ============================================================================
@@ -323,6 +340,7 @@ function PricingGroup({
 export default function QuoteEditorTable({
     quote,
     tasks = [],
+    relatedQuotes = [],
     onSave,
     onSendToCustomer,
     onConfirmBooking,
@@ -335,6 +353,9 @@ export default function QuoteEditorTable({
     const [managerNote, setManagerNote] = useState(quote.pricing.managerDiscountNote || '');
     const [isSaving, setIsSaving] = useState(false);
     const [hasChanges, setHasChanges] = useState(false);
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [pendingChanges, setPendingChanges] = useState<QuoteChange[]>([]);
+    const [pendingPayload, setPendingPayload] = useState<Partial<QuoteData> | null>(null);
     const [activeTab, setActiveTab] = useState<
         'DYNAMIC' | 'MEMBER' | 'TASKS' | 'DOCUMENTS' | 'EVENTS' | 'NOTES' | 'TRANSACTIONS'
     >('DYNAMIC');
@@ -607,10 +628,145 @@ export default function QuoteEditorTable({
         });
     };
 
-    const handleSaveLocal = async () => {
+    const formatList = (items: string[]) => (items.length > 0 ? items.join(', ') : 'None');
+
+    const getSelectedItems = (items?: { selected: boolean; name?: string; id?: string }[]) =>
+        (items || []).filter(item => item.selected).map(item => item.name || item.id || 'Item');
+
+    const buildChangeSet = (): QuoteChange[] => {
+        const changes: QuoteChange[] = [];
+        const nextPricing = {
+            ...localPricing,
+            managerDiscountNote: managerNote || '',
+        };
+
+        if (quote.pricing.rtoType !== nextPricing.rtoType) {
+            changes.push({
+                key: 'rtoType',
+                label: 'Registration Type',
+                oldValue: quote.pricing.rtoType,
+                newValue: nextPricing.rtoType,
+            });
+        }
+
+        const oldAccessories = getSelectedItems(quote.pricing.accessories);
+        const newAccessories = getSelectedItems(nextPricing.accessories);
+        if (oldAccessories.join('|') !== newAccessories.join('|')) {
+            changes.push({
+                key: 'accessories',
+                label: 'Accessories',
+                oldValue: formatList(oldAccessories),
+                newValue: formatList(newAccessories),
+            });
+        }
+
+        const oldInsuranceAddons = getSelectedItems(quote.pricing.insuranceAddons);
+        const newInsuranceAddons = getSelectedItems(nextPricing.insuranceAddons);
+        if (oldInsuranceAddons.join('|') !== newInsuranceAddons.join('|')) {
+            changes.push({
+                key: 'insuranceAddons',
+                label: 'Insurance Add-ons',
+                oldValue: formatList(oldInsuranceAddons),
+                newValue: formatList(newInsuranceAddons),
+            });
+        }
+
+        if (quote.pricing.insuranceTotal !== nextPricing.insuranceTotal) {
+            changes.push({
+                key: 'insuranceTotal',
+                label: 'Insurance Total',
+                oldValue: formatCurrency(quote.pricing.insuranceTotal),
+                newValue: formatCurrency(nextPricing.insuranceTotal),
+            });
+        }
+
+        if (quote.pricing.accessoriesTotal !== nextPricing.accessoriesTotal) {
+            changes.push({
+                key: 'accessoriesTotal',
+                label: 'Accessories Total',
+                oldValue: formatCurrency(quote.pricing.accessoriesTotal),
+                newValue: formatCurrency(nextPricing.accessoriesTotal),
+            });
+        }
+
+        if (quote.pricing.onRoadTotal !== nextPricing.onRoadTotal) {
+            changes.push({
+                key: 'onRoadTotal',
+                label: 'On-road Total',
+                oldValue: formatCurrency(quote.pricing.onRoadTotal),
+                newValue: formatCurrency(nextPricing.onRoadTotal),
+            });
+        }
+
+        if (quote.pricing.finalTotal !== nextPricing.finalTotal) {
+            changes.push({
+                key: 'finalTotal',
+                label: 'Final Total',
+                oldValue: formatCurrency(quote.pricing.finalTotal),
+                newValue: formatCurrency(nextPricing.finalTotal),
+            });
+        }
+
+        if (quote.pricing.managerDiscount !== nextPricing.managerDiscount) {
+            changes.push({
+                key: 'managerDiscount',
+                label: 'Manager Discount',
+                oldValue: formatCurrency(quote.pricing.managerDiscount),
+                newValue: formatCurrency(nextPricing.managerDiscount),
+                isManagerOnly: true,
+            });
+        }
+
+        if ((quote.pricing.managerDiscountNote || '') !== (nextPricing.managerDiscountNote || '')) {
+            changes.push({
+                key: 'managerDiscountNote',
+                label: 'Manager Note',
+                oldValue: quote.pricing.managerDiscountNote || 'None',
+                newValue: nextPricing.managerDiscountNote || 'None',
+                isManagerOnly: true,
+            });
+        }
+
+        return changes;
+    };
+
+    const handleConfirmSave = async () => {
+        if (!pendingPayload) return;
         setIsSaving(true);
         try {
-            await onSave({ pricing: { ...localPricing, managerDiscountNote: managerNote } });
+            await onSave(pendingPayload);
+            setHasChanges(false);
+            toast.success('New quote created');
+        } catch {
+            toast.error('Failed to update');
+        } finally {
+            setIsSaving(false);
+            setConfirmOpen(false);
+            setPendingChanges([]);
+            setPendingPayload(null);
+        }
+    };
+
+    const handleSaveLocal = async () => {
+        const payload = { pricing: { ...localPricing, managerDiscountNote: managerNote } };
+        const changes = buildChangeSet();
+        const nonManagerChanges = changes.filter(change => !change.isManagerOnly);
+
+        if (changes.length === 0) {
+            toast.info('No changes to save');
+            return;
+        }
+
+        if (nonManagerChanges.length > 0) {
+            setPendingChanges(changes);
+            setPendingPayload(payload);
+            setConfirmOpen(true);
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            await onSave(payload);
             setHasChanges(false);
             toast.success('Quote updated');
         } catch {
@@ -621,11 +777,63 @@ export default function QuoteEditorTable({
     };
 
     return (
-        <div className="w-full flex flex-col h-full bg-slate-50 dark:bg-[#08090b] overflow-hidden antialiased">
+        <div className="w-full flex flex-col h-full bg-slate-50 dark:bg-[#0b0d10] overflow-hidden antialiased">
+            {confirmOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6">
+                    <div className="w-full max-w-3xl rounded-2xl bg-white dark:bg-[#0b0d10] border border-slate-200 dark:border-white/10 shadow-2xl p-6 space-y-6">
+                        <div className="space-y-1">
+                            <h3 className="text-lg font-black text-slate-900 dark:text-white">Confirm Quote Changes</h3>
+                            <p className="text-xs text-slate-500 dark:text-white/60">
+                                A new quote will be created and the previous quote for this SKU will be voided.
+                            </p>
+                        </div>
+                        <div className="max-h-[50vh] overflow-y-auto rounded-xl border border-slate-100 dark:border-white/5">
+                            {pendingChanges.map(change => (
+                                <div
+                                    key={change.key}
+                                    className="flex flex-col gap-2 px-4 py-3 border-b border-slate-100 dark:border-white/5 last:border-b-0"
+                                >
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-white/40">
+                                        {change.label}
+                                    </span>
+                                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                                        <span className="text-rose-600 dark:text-rose-400 font-semibold">
+                                            {change.oldValue}
+                                        </span>
+                                        <span className="text-slate-400 dark:text-white/40">→</span>
+                                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                                            {change.newValue}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="flex items-center justify-end gap-3">
+                            <button
+                                onClick={() => {
+                                    setConfirmOpen(false);
+                                    setPendingChanges([]);
+                                    setPendingPayload(null);
+                                }}
+                                className="px-4 py-2 rounded-lg text-xs font-bold text-slate-600 dark:text-white/70 hover:bg-slate-100 dark:hover:bg-white/5"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleConfirmSave}
+                                disabled={isSaving}
+                                className="px-5 py-2 rounded-lg text-xs font-black uppercase tracking-widest bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60"
+                            >
+                                Confirm & Create New Quote
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* MODULE HEADER LABEL - Above main container */}
-            <div className="px-8 pt-4 pb-2 bg-slate-50 dark:bg-[#08090b]">
+            <div className="px-8 pt-4 pb-2 bg-slate-50 dark:bg-[#0b0d10]">
                 <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-white shadow-[0_0_8px_rgba(99,102,241,0.5)] dark:shadow-none" />
                     <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.4em]">
                         Quote
                     </span>
@@ -643,7 +851,7 @@ export default function QuoteEditorTable({
                                 Identifier
                             </span>
                             <div className="flex items-center gap-2">
-                                <h1 className="text-sm font-black text-indigo-600 dark:text-indigo-400 uppercase italic tracking-tight">
+                                <h1 className="text-sm font-black text-indigo-600 dark:text-white uppercase italic tracking-tight">
                                     {formatDisplayId(quote.displayId)}
                                 </h1>
                             </div>
@@ -699,7 +907,7 @@ export default function QuoteEditorTable({
                         <Button
                             onClick={handleSaveLocal}
                             disabled={isSaving}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-6 h-10 text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20 transition-all active:scale-95"
+                            className="bg-indigo-600 hover:bg-indigo-700 dark:bg-white dark:text-black dark:hover:bg-slate-200 text-white rounded-xl px-6 h-10 text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20 dark:shadow-white/10 transition-all active:scale-95"
                         >
                             <Save size={16} className="mr-2" />
                             {isSaving ? 'Updating...' : 'Save'}
@@ -752,7 +960,7 @@ export default function QuoteEditorTable({
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-px bg-slate-100 dark:bg-white/5 border-b border-slate-100 dark:border-white/5">
                         {/* Customer Info */}
                         <div className="bg-white dark:bg-[#0b0d10] p-6 flex items-center gap-4 group hover:bg-slate-50 dark:hover:bg-white/[0.01] transition-colors">
-                            <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 shrink-0 shadow-inner group-hover:scale-110 transition-transform">
+                            <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-white/5 flex items-center justify-center text-indigo-600 dark:text-white shrink-0 shadow-inner group-hover:scale-110 transition-transform">
                                 <User size={20} />
                             </div>
                             <div className="flex flex-col min-w-0">
@@ -798,9 +1006,33 @@ export default function QuoteEditorTable({
                                 <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tighter truncate leading-tight">
                                     {quote.vehicle.brand} {quote.vehicle.model}
                                 </h2>
-                                <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest opacity-80">
-                                    {quote.vehicle.variant}
-                                </p>
+                                <div className="flex flex-col gap-1 mt-1">
+                                    <div className="flex items-center gap-2">
+                                        <div
+                                            className="w-3 h-3 rounded-full shadow-sm border border-slate-200 dark:border-white/10"
+                                            style={{ backgroundColor: quote.vehicle.colorHex || '#000' }}
+                                        />
+                                        <p className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+                                            {quote.vehicle.variant} • {quote.vehicle.color}
+                                        </p>
+                                    </div>
+                                    <p className="text-[9px] font-bold text-slate-400 font-mono">
+                                        SKU: {quote.vehicle.skuId}
+                                    </p>
+                                    {quote.studioName && (
+                                        <div className="flex items-center gap-1.5 mt-1 pt-1 border-t border-slate-100 dark:border-white/5">
+                                            <Building2 size={10} className="text-indigo-500 dark:text-white" />
+                                            <span className="text-[9px] font-bold text-indigo-600 dark:text-white uppercase tracking-tight">
+                                                {quote.studioName}
+                                                {quote.studioId && (
+                                                    <span className="opacity-50 ml-1">
+                                                        #{quote.studioId.slice(0, 6)}
+                                                    </span>
+                                                )}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -843,7 +1075,7 @@ export default function QuoteEditorTable({
                                     <div className="text-xs font-black uppercase tracking-widest text-slate-500">
                                         Member Profile
                                     </div>
-                                    <div className="text-[10px] font-bold text-indigo-500 bg-indigo-500/10 px-3 py-1 rounded-full uppercase tracking-widest cursor-default">
+                                    <div className="text-[10px] font-bold text-indigo-500 dark:text-white bg-indigo-500/10 dark:bg-white/10 px-3 py-1 rounded-full uppercase tracking-widest cursor-default">
                                         Member ID: {quote.customerProfile?.memberId || 'Missing'}
                                     </div>
                                 </div>
@@ -982,7 +1214,7 @@ export default function QuoteEditorTable({
                                                         Full Name
                                                     </label>
                                                     <input
-                                                        className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:ring-1 focus:ring-indigo-500"
+                                                        className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-white/20"
                                                         value={profileDraft.fullName || ''}
                                                         onChange={e =>
                                                             setProfileDraft({
@@ -998,7 +1230,7 @@ export default function QuoteEditorTable({
                                                     </label>
                                                     <input
                                                         type="date"
-                                                        className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500"
+                                                        className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-white/20"
                                                         value={profileDraft.dob || ''}
                                                         onChange={e =>
                                                             setProfileDraft({ ...profileDraft, dob: e.target.value })
@@ -1011,7 +1243,7 @@ export default function QuoteEditorTable({
                                                             Pincode
                                                         </label>
                                                         <input
-                                                            className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm tabular-nums outline-none focus:ring-1 focus:ring-indigo-500"
+                                                            className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm tabular-nums outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-white/20"
                                                             value={profileDraft.pincode || ''}
                                                             onChange={e =>
                                                                 setProfileDraft({
@@ -1026,7 +1258,7 @@ export default function QuoteEditorTable({
                                                             Taluka
                                                         </label>
                                                         <input
-                                                            className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500"
+                                                            className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-white/20"
                                                             value={profileDraft.taluka || ''}
                                                             onChange={e =>
                                                                 setProfileDraft({
@@ -1106,7 +1338,7 @@ export default function QuoteEditorTable({
                                                             Pincode
                                                         </label>
                                                         <input
-                                                            className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500"
+                                                            className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-white/20"
                                                             value={profileDraft.pincode || ''}
                                                             maxLength={6}
                                                             onChange={e => {
@@ -1123,7 +1355,7 @@ export default function QuoteEditorTable({
                                                             Ownership
                                                         </label>
                                                         <select
-                                                            className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 appearance-none"
+                                                            className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-white/20 appearance-none"
                                                             value={profileDraft.ownershipType || 'OWNED'}
                                                             onChange={e =>
                                                                 setProfileDraft({
@@ -1151,7 +1383,7 @@ export default function QuoteEditorTable({
                                                             {isResolvingPincode && (
                                                                 <Loader2
                                                                     size={10}
-                                                                    className="animate-spin text-indigo-500"
+                                                                    className="animate-spin text-indigo-500 dark:text-white"
                                                                 />
                                                             )}
                                                         </div>
@@ -1174,7 +1406,7 @@ export default function QuoteEditorTable({
                                                             Address Line 1 (Building/Street)
                                                         </label>
                                                         <input
-                                                            className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500"
+                                                            className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-white/20"
                                                             value={profileDraft.currentAddress1 || ''}
                                                             onChange={e =>
                                                                 setProfileDraft({
@@ -1190,7 +1422,7 @@ export default function QuoteEditorTable({
                                                             Line 2 (Landmark)
                                                         </label>
                                                         <input
-                                                            className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500"
+                                                            className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-white/20"
                                                             value={profileDraft.currentAddress2 || ''}
                                                             onChange={e =>
                                                                 setProfileDraft({
@@ -1206,7 +1438,7 @@ export default function QuoteEditorTable({
                                                             Line 3 (Area/Road)
                                                         </label>
                                                         <input
-                                                            className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500"
+                                                            className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-white/20"
                                                             value={profileDraft.currentAddress3 || ''}
                                                             onChange={e =>
                                                                 setProfileDraft({
@@ -1231,7 +1463,7 @@ export default function QuoteEditorTable({
                                         ) : (
                                             <div className="space-y-4">
                                                 <div className="flex flex-col">
-                                                    <span className="text-[8px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-1">
+                                                    <span className="text-[8px] font-black text-indigo-500 dark:text-white uppercase tracking-[0.2em] mb-1">
                                                         {profileDraft.ownershipType || 'CURRENT'} RESIDENCE
                                                     </span>
                                                     <div className="space-y-0.5">
@@ -1300,7 +1532,7 @@ export default function QuoteEditorTable({
                                                             Employer / Company
                                                         </label>
                                                         <input
-                                                            className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500"
+                                                            className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-white/20"
                                                             value={profileDraft.workCompany || ''}
                                                             onChange={e =>
                                                                 setProfileDraft({
@@ -1316,7 +1548,7 @@ export default function QuoteEditorTable({
                                                             Designation
                                                         </label>
                                                         <input
-                                                            className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500"
+                                                            className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-white/20"
                                                             value={profileDraft.workDesignation || ''}
                                                             onChange={e =>
                                                                 setProfileDraft({
@@ -1335,7 +1567,7 @@ export default function QuoteEditorTable({
                                                             Industry
                                                         </label>
                                                         <select
-                                                            className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 appearance-none"
+                                                            className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-white/20 appearance-none"
                                                             value={profileDraft.workIndustry || 'IT'}
                                                             onChange={e =>
                                                                 setProfileDraft({
@@ -1358,7 +1590,7 @@ export default function QuoteEditorTable({
                                                             Work Profile / Type
                                                         </label>
                                                         <select
-                                                            className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 appearance-none"
+                                                            className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-white/20 appearance-none"
                                                             value={profileDraft.workProfile || 'SALARIED'}
                                                             onChange={e =>
                                                                 setProfileDraft({
@@ -1381,7 +1613,7 @@ export default function QuoteEditorTable({
                                                         Office Pincode
                                                     </label>
                                                     <input
-                                                        className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500"
+                                                        className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-white/20"
                                                         value={profileDraft.workPincode || ''}
                                                         maxLength={6}
                                                         onChange={e => {
@@ -1403,7 +1635,7 @@ export default function QuoteEditorTable({
                                                             {isResolvingPincode && (
                                                                 <Loader2
                                                                     size={10}
-                                                                    className="animate-spin text-indigo-500"
+                                                                    className="animate-spin text-indigo-500 dark:text-white"
                                                                 />
                                                             )}
                                                         </div>
@@ -1439,7 +1671,7 @@ export default function QuoteEditorTable({
                                                         {quote.customerProfile?.workDesignation || 'Unspecified'}
                                                     </span>
                                                     <div className="flex items-center gap-2 mt-0.5">
-                                                        <span className="text-[9px] font-bold text-indigo-500 uppercase tracking-[0.2em]">
+                                                        <span className="text-[9px] font-bold text-indigo-500 dark:text-white uppercase tracking-[0.2em]">
                                                             @ {quote.customerProfile?.workCompany || 'N/A'}
                                                         </span>
                                                         <span className="text-[8px] font-black text-slate-400 bg-slate-100 dark:bg-white/5 px-1.5 py-0.5 rounded uppercase">
@@ -1470,12 +1702,15 @@ export default function QuoteEditorTable({
                                     <div className="mt-8 bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[3rem] p-10 shadow-sm">
                                         <div className="mb-8 flex items-center justify-between">
                                             <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/30">
+                                                <div className="w-12 h-12 rounded-2xl bg-indigo-600 dark:bg-white flex items-center justify-center text-white dark:text-black shadow-lg shadow-indigo-600/30 dark:shadow-white/10">
                                                     <ImageIcon size={24} />
                                                 </div>
                                                 <div>
                                                     <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">
-                                                        Identity <span className="text-indigo-600 italic">Vault</span>
+                                                        Identity{' '}
+                                                        <span className="text-indigo-600 dark:text-white italic">
+                                                            Vault
+                                                        </span>
                                                     </h2>
                                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
                                                         Media Manager & Document Studio
@@ -1514,7 +1749,7 @@ export default function QuoteEditorTable({
                                         className="w-full px-8 py-5 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.01] flex items-center justify-between hover:bg-slate-100/50 dark:hover:bg-white/[0.02] transition-colors"
                                     >
                                         <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/30">
+                                            <div className="w-8 h-8 rounded-xl bg-indigo-600 dark:bg-white flex items-center justify-center text-white dark:text-black shadow-lg shadow-indigo-600/30 dark:shadow-white/10">
                                                 <FileText size={16} />
                                             </div>
                                             <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
@@ -1523,7 +1758,7 @@ export default function QuoteEditorTable({
                                         </div>
                                         <div className="flex items-center gap-4">
                                             <div className="flex items-center gap-2 px-3 py-1 bg-white dark:bg-white/5 rounded-full border border-slate-100 dark:border-white/10 shadow-sm">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                                                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-white animate-pulse" />
                                                 <span className="text-[8px] font-black text-slate-500 dark:text-white/40 uppercase tracking-widest">
                                                     Active session
                                                 </span>
@@ -1558,7 +1793,7 @@ export default function QuoteEditorTable({
                                                                     className={cn(
                                                                         'px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all opacity-60 cursor-not-allowed',
                                                                         localPricing.rtoType === type
-                                                                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                                                                            ? 'bg-indigo-600 dark:bg-white text-white dark:text-black shadow-md shadow-indigo-600/20 dark:shadow-white/10'
                                                                             : 'bg-slate-100 dark:bg-white/5 text-slate-400'
                                                                     )}
                                                                 >
@@ -1643,7 +1878,7 @@ export default function QuoteEditorTable({
                                                         extra={
                                                             <div className="flex items-center gap-2">
                                                                 {acc.selected ? (
-                                                                    <div className="flex items-center gap-1 px-2 py-0.5 bg-indigo-500/10 text-indigo-500 rounded text-[8px] font-black uppercase tracking-widest">
+                                                                    <div className="flex items-center gap-1 px-2 py-0.5 bg-indigo-500/10 dark:bg-white/10 text-indigo-500 dark:text-white rounded text-[8px] font-black uppercase tracking-widest">
                                                                         <CheckCircle2 size={10} /> Selected
                                                                     </div>
                                                                 ) : (
@@ -1743,7 +1978,8 @@ export default function QuoteEditorTable({
                                                     </div>
                                                     <div className="w-1 h-1 rounded-full bg-white/10" />
                                                     <div className="flex items-center gap-1 text-[9px] font-bold text-white/40 uppercase">
-                                                        <Clock size={10} className="text-indigo-500" /> 24h Validity
+                                                        <Clock size={10} className="text-indigo-500 dark:text-white" />{' '}
+                                                        24h Validity
                                                     </div>
                                                 </div>
                                             </div>
@@ -1877,6 +2113,74 @@ export default function QuoteEditorTable({
                     {activeTab === 'TRANSACTIONS' && (
                         <div className="p-6">
                             <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[2rem] p-6">
+                                {relatedQuotes.length > 0 && (
+                                    <div className="mb-6">
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
+                                            Lead & Quotes
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                                            <div className="bg-slate-50 dark:bg-white/[0.03] rounded-xl px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                                Lead ID: {quote.leadId ? formatDisplayId(quote.leadId) : 'Not Linked'}
+                                            </div>
+                                            <div className="bg-slate-50 dark:bg-white/[0.03] rounded-xl px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                                Total Quotes: {relatedQuotes.length}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            {relatedQuotes.map(q => (
+                                                <button
+                                                    key={q.id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        if (!slug) return;
+                                                        window.location.href = `/app/${slug}/quotes/${q.id}`;
+                                                    }}
+                                                    className={cn(
+                                                        'w-full flex items-center justify-between rounded-2xl border px-4 py-3 text-left transition',
+                                                        q.id === quote.id
+                                                            ? 'border-indigo-500/60 dark:border-white/20 bg-indigo-500/10 dark:bg-white/10'
+                                                            : 'border-slate-100 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02] hover:bg-slate-100/60 dark:hover:bg-white/[0.04]'
+                                                    )}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                            {q.isLatest ? 'Latest' : 'Quote'}
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                                                V{q.version ?? 1} • {formatDisplayId(q.displayId)}
+                                                            </div>
+                                                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                                {q.createdAt ? formatDate(q.createdAt) : '—'}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        {q.isLatest && (
+                                                            <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-indigo-500/10 text-indigo-600">
+                                                                Current
+                                                            </span>
+                                                        )}
+                                                        <span
+                                                            className={cn(
+                                                                'px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest',
+                                                                q.status === 'PENDING'
+                                                                    ? 'bg-slate-200 text-slate-500 dark:bg-white/10 dark:text-white/40'
+                                                                    : q.status === 'DRAFT' ||
+                                                                        q.status === 'PENDING_REVIEW'
+                                                                      ? 'bg-amber-500/10 text-amber-600'
+                                                                      : 'bg-emerald-500/10 text-emerald-600'
+                                                            )}
+                                                        >
+                                                            {q.status || 'UNKNOWN'}
+                                                        </span>
+                                                        <ArrowRight size={12} className="text-slate-400" />
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                                 <div className="flex items-center justify-between mb-6">
                                     <div className="text-xs font-black uppercase tracking-widest text-slate-500">
                                         Transactions Timeline
@@ -1897,7 +2201,7 @@ export default function QuoteEditorTable({
                                                 className={cn(
                                                     'w-full flex items-center justify-between px-5 py-4 transition-all',
                                                     expandedTransaction === item.key
-                                                        ? 'bg-indigo-500/5'
+                                                        ? 'bg-indigo-500/5 dark:bg-white/5'
                                                         : 'hover:bg-slate-100/60 dark:hover:bg-white/[0.03]'
                                                 )}
                                             >
@@ -1922,7 +2226,7 @@ export default function QuoteEditorTable({
                                                                 ? 'bg-slate-200 text-slate-500 dark:bg-white/10 dark:text-white/40'
                                                                 : item.key === 'QUOTE'
                                                                   ? 'bg-emerald-500/10 text-emerald-600'
-                                                                  : 'bg-indigo-500/10 text-indigo-600'
+                                                                  : 'bg-indigo-500/10 dark:bg-white/10 text-indigo-600 dark:text-white'
                                                         )}
                                                     >
                                                         {item.status}
@@ -1931,7 +2235,7 @@ export default function QuoteEditorTable({
                                                         className={cn(
                                                             'text-[10px] font-black uppercase tracking-widest transition-transform',
                                                             expandedTransaction === item.key
-                                                                ? 'text-indigo-600 rotate-90'
+                                                                ? 'text-indigo-600 dark:text-white rotate-90'
                                                                 : 'text-slate-300'
                                                         )}
                                                     >
@@ -1951,7 +2255,7 @@ export default function QuoteEditorTable({
                                                                 onClick={() => {
                                                                     window.location.href = item.href as string;
                                                                 }}
-                                                                className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700"
+                                                                className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 dark:text-white dark:hover:text-slate-200"
                                                             >
                                                                 Open {item.label}
                                                             </button>

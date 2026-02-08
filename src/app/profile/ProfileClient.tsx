@@ -626,7 +626,12 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                             <Shield size={12} className="text-emerald-500" />
                                         </div>
                                         <div className="bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-300">
-                                            {user?.phone || member?.primary_phone || 'NOT SET'}
+                                            {(() => {
+                                                const phone = user?.phone || member?.primary_phone || '';
+                                                // Extract only last 10 digits (remove +91, 91, etc.)
+                                                const digits = phone.replace(/\D/g, '');
+                                                return digits.length >= 10 ? digits.slice(-10) : phone || 'NOT SET';
+                                            })()}
                                         </div>
                                     </div>
 
@@ -675,6 +680,213 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                             </div>
                         </motion.div>
                     </div>
+
+                    {/* Location Matrix */}
+                    <motion.div
+                        variants={itemVariants}
+                        className="bg-white dark:bg-slate-900/40 rounded-[40px] p-8 md:p-12 border border-slate-200 dark:border-white/5 shadow-sm mb-12"
+                    >
+                        <div className="flex items-center justify-between mb-10">
+                            <div>
+                                <h3 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white flex items-center gap-3">
+                                    <MapPin size={24} className="text-emerald-600" />
+                                    Location <span className="text-emerald-600">Matrix</span>
+                                </h3>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                    GPS Coordinates & Service Area Details
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            {/* GPS Coordinates */}
+                            <div className="md:col-span-3 p-6 rounded-3xl bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/10 dark:to-green-900/10 border border-emerald-200 dark:border-emerald-500/20">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <MapPin size={20} className="text-emerald-600" />
+                                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">
+                                        GPS Coordinates (Signup Location)
+                                    </p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                            Latitude
+                                        </label>
+                                        <div className="bg-white dark:bg-slate-900/40 border border-emerald-100 dark:border-emerald-500/20 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white font-mono">
+                                            {localMember.latitude?.toFixed(6) || '—'}
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                            Longitude
+                                        </label>
+                                        <div className="bg-white dark:bg-slate-900/40 border border-emerald-100 dark:border-emerald-500/20 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white font-mono">
+                                            {localMember.longitude?.toFixed(6) || '—'}
+                                        </div>
+                                    </div>
+                                </div>
+                                {localMember.latitude && localMember.longitude && (
+                                    <a
+                                        href={`https://www.google.com/maps?q=${localMember.latitude},${localMember.longitude}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="mt-4 inline-flex items-center gap-2 text-[10px] font-black text-emerald-600 hover:text-emerald-700 uppercase tracking-widest transition-colors"
+                                    >
+                                        <MapIcon size={12} />
+                                        View on Google Maps →
+                                    </a>
+                                )}
+                            </div>
+
+                            {/* Pincode */}
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">
+                                    Pincode
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        value={localMember.pincode || ''}
+                                        onChange={e =>
+                                            handleUpdateField('pincode', e.target.value.replace(/\D/g, '').slice(0, 6))
+                                        }
+                                        disabled={!isEditMode}
+                                        placeholder="6-digit pincode"
+                                        className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-slate-300 disabled:opacity-50"
+                                    />
+                                    {localMember.pincode && (
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                                            <span className="text-[8px] font-black bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                                GPS
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* State */}
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">
+                                    State
+                                </label>
+                                <input
+                                    type="text"
+                                    value={localMember.state || ''}
+                                    onChange={e => handleUpdateField('state', e.target.value)}
+                                    disabled={!isEditMode}
+                                    placeholder="State"
+                                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-slate-300 disabled:opacity-50"
+                                />
+                            </div>
+
+                            {/* District */}
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">
+                                    District
+                                </label>
+                                <input
+                                    type="text"
+                                    value={localMember.district || ''}
+                                    onChange={e => handleUpdateField('district', e.target.value)}
+                                    disabled={!isEditMode}
+                                    placeholder="District"
+                                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-slate-300 disabled:opacity-50"
+                                />
+                            </div>
+
+                            {/* Taluka */}
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">
+                                    Taluka
+                                </label>
+                                <input
+                                    type="text"
+                                    value={localMember.taluka || ''}
+                                    onChange={e => handleUpdateField('taluka', e.target.value)}
+                                    disabled={!isEditMode}
+                                    placeholder="Taluka/Tehsil"
+                                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-slate-300 disabled:opacity-50"
+                                />
+                            </div>
+
+                            {/* Area (if captured) */}
+                            {localMember.area && (
+                                <div className="space-y-2 md:col-span-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">
+                                        Area/Locality
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={localMember.area || ''}
+                                        onChange={e => handleUpdateField('area', e.target.value)}
+                                        disabled={!isEditMode}
+                                        placeholder="Area/Locality"
+                                        className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-slate-300 disabled:opacity-50"
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Enrichment Button for Incomplete Data */}
+                        {localMember.pincode &&
+                            (!localMember.state || !localMember.district || !localMember.taluka) && (
+                                <div className="mt-6 p-6 rounded-3xl bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-500/20">
+                                    <div className="flex items-start gap-3">
+                                        <MapPin size={20} className="text-blue-600 flex-shrink-0 mt-0.5" />
+                                        <div className="flex-1">
+                                            <p className="text-sm font-bold text-blue-600">Incomplete Location Data</p>
+                                            <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1">
+                                                We have your pincode ({localMember.pincode}) but state/district/taluka
+                                                details are missing. Click below to auto-fill these details.
+                                            </p>
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        toast.loading('Fetching location details...', { id: 'enrich' });
+                                                        const { getPincodeDetails } = await import('@/actions/pincode');
+                                                        const result = await getPincodeDetails(localMember.pincode!);
+
+                                                        if (result.success && result.data) {
+                                                            handleUpdateField('state', result.data.state || '');
+                                                            handleUpdateField('district', result.data.district || '');
+                                                            handleUpdateField('taluka', result.data.taluka || '');
+                                                            handleUpdateField('area', result.data.area || '');
+                                                            toast.success('Location details updated!', {
+                                                                id: 'enrich',
+                                                            });
+                                                        } else {
+                                                            toast.error('Could not fetch location details', {
+                                                                id: 'enrich',
+                                                            });
+                                                        }
+                                                    } catch (err) {
+                                                        toast.error('Failed to enrich location data', { id: 'enrich' });
+                                                    }
+                                                }}
+                                                className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-widest rounded-xl transition-colors"
+                                            >
+                                                Enrich Location Data
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                        {!localMember.latitude && !localMember.longitude && (
+                            <div className="mt-6 p-6 rounded-3xl bg-amber-50 dark:bg-amber-900/10border border-amber-200 dark:border-amber-500/20">
+                                <div className="flex items-start gap-3">
+                                    <AlertCircle size={20} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-sm font-bold text-amber-600">GPS Location Not Captured</p>
+                                        <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1">
+                                            Your account was created before GPS capture was mandatory. Location data
+                                            will be collected on your next quote request.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </motion.div>
 
                     {/* Jan Kundali: Address & Vault Matrix */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">

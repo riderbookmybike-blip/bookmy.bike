@@ -11,6 +11,8 @@ function cn(...classes: (string | undefined | null | false)[]) {
 }
 
 export function SystemDebugger({ trigger }: { trigger?: React.ReactNode }) {
+    const allowDebugger = process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_DEBUG_TOOLS === 'true';
+
     const pathname = usePathname();
     const [info, setInfo] = useState<PageDebugInfo | null>(null);
     const [isOpen, setIsOpen] = useState(false);
@@ -62,6 +64,7 @@ Page ID: ${runtime.pageId}
         setTimeout(() => setCopied(false), 2000);
     };
 
+    if (!allowDebugger) return null;
     if (!info && !runtime && !trigger) return null;
 
     return (

@@ -14,6 +14,7 @@ import { RiderPulse } from '@/components/store/RiderPulse';
 import { EliteCircle } from './sections/EliteCircle';
 import { Footer } from './Footer';
 import { useI18n } from '@/components/providers/I18nProvider';
+import { sanitizeSvg } from '@/lib/utils/sanitizeSvg';
 
 interface StoreDesktopProps {
     variant?: 'default' | 'tv';
@@ -772,10 +773,11 @@ export function DesktopHome() {
                                                             <div
                                                                 className="w-48 h-48 flex items-center justify-center brightness-0 invert opacity-100 drop-shadow-[0_0_30px_rgba(255,255,255,0.3)] [&>svg]:w-full [&>svg]:h-full [&>svg]:block"
                                                                 dangerouslySetInnerHTML={{
-                                                                    __html:
+                                                                    __html: sanitizeSvg(
                                                                         dbBrand?.brand_logos?.icon ||
-                                                                        dbBrand?.logo_svg ||
-                                                                        '',
+                                                                            dbBrand?.logo_svg ||
+                                                                            ''
+                                                                    ),
                                                                 }}
                                                             />
                                                         ) : (

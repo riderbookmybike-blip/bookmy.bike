@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     ChevronLeft,
@@ -24,11 +24,12 @@ import {
     Search,
     Info,
     Landmark,
-    Rocket
+    Rocket,
 } from 'lucide-react';
 
 import { createClient } from '@/lib/supabase/client';
 import { useTenant } from '@/lib/tenant/tenantContext';
+import { toast } from 'sonner';
 import AddBrandModal from '@/components/catalog/AddBrandModal';
 import { CatalogItem, CatalogTemplate } from '@/types/store';
 
@@ -45,11 +46,16 @@ import PublishStep from './steps/PublishStep';
 
 const getTemplateIcon = (code: string) => {
     switch (code) {
-        case 'ice_bike': return Gauge;
-        case 'ice_scooter': return Wind;
-        case 'ev_scooter': return Zap;
-        case 'helmet': return HardHat;
-        default: return LayoutTemplate;
+        case 'ice_bike':
+            return Gauge;
+        case 'ice_scooter':
+            return Wind;
+        case 'ev_scooter':
+            return Zap;
+        case 'helmet':
+            return HardHat;
+        default:
+            return LayoutTemplate;
     }
 };
 
@@ -62,7 +68,7 @@ const STEPS = [
     { id: 'colors', title: 'Colors', icon: Palette, color: 'text-pink-500' },
     { id: 'sku', title: 'SKU', icon: Grid3X3, color: 'text-emerald-500' },
     { id: 'review', title: 'Review', icon: FileCheck, color: 'text-slate-500' },
-    { id: 'publish', title: 'Publish', icon: Rocket, color: 'text-orange-500' }
+    { id: 'publish', title: 'Publish', icon: Rocket, color: 'text-orange-500' },
 ];
 
 export default function UnifiedStudioPage() {
@@ -91,12 +97,17 @@ export default function UnifiedStudioPage() {
     const [familyData, setFamilyData] = useState<CatalogItem | null>(null);
     const [variants, setVariants] = useState<CatalogItem[]>([]);
     const [colors, setColors] = useState<CatalogItem[]>([]);
+    const [allColors, setAllColors] = useState<CatalogItem[]>([]); // Preserves local colors for SKU matching
     const [skus, setSkus] = useState<CatalogItem[]>([]);
 
     const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
     const [editingBrand, setEditingBrand] = useState<any>(null);
-    const [brandStats, setBrandStats] = useState<Record<string, { families: number, variants: number, skus: number }>>({});
-    const [familyStats, setFamilyStats] = useState<Record<string, { variants: number, colors: number, skus: number }>>({});
+    const [brandStats, setBrandStats] = useState<Record<string, { families: number; variants: number; skus: number }>>(
+        {}
+    );
+    const [familyStats, setFamilyStats] = useState<Record<string, { variants: number; colors: number; skus: number }>>(
+        {}
+    );
     const [catalogItems, setCatalogItems] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -113,38 +124,103 @@ export default function UnifiedStudioPage() {
         return () => window.removeEventListener('beforeunload', handleBeforeUnload);
     }, []);
 
+    const syncColors = (deduplicatedColors: CatalogItem[], fullColorList: CatalogItem[]) => {
+        // Create a map for quick lookup of deduplicated colors by ID
+        const deduplicatedMap = new Map(deduplicatedColors.map(c => [c.id, c]));
+
+        // Update the full color list to reflect any changes in the deduplicated list
+        // This ensures that if a color is removed from deduplicated, it's also removed from full,
+        // and if properties change, they are updated.
+        const newFullColorList = fullColorList.filter(c => deduplicatedMap.has(c.id));
+        deduplicatedColors.forEach(dedupColor => {
+            if (!newFullColorList.some(c => c.id === dedupColor.id)) {
+                newFullColorList.push(dedupColor);
+            } else {
+                // Update existing color in full list if its properties changed
+                const index = newFullColorList.findIndex(c => c.id === dedupColor.id);
+                if (index !== -1) {
+                    newFullColorList[index] = { ...newFullColorList[index], ...dedupColor };
+                }
+            }
+        });
+        return newFullColorList;
+    };
+
     const fetchFamilyData = async (fId: string) => {
         const supabase = createClient();
         setIsLoading(true);
-        // Fetch children (Variants & Colors) only for this family
-        const { data: children } = await supabase.from('cat_items').select('*').eq('parent_id', fId);
 
-        if (children) {
-            const variantItems = children
-                .filter(c => c.type === 'VARIANT')
-                .sort((a, b) => (a.position || 0) - (b.position || 0));
-            setVariants(variantItems);
-            setColors(children.filter(c => c.type === 'COLOR_DEF').sort((a, b) => (a.position || 0) - (b.position || 0)));
+        try {
+            // Fetch all descendants of the Family
+            const { data: descendants, error: treeError } = await (supabase.rpc as any)('get_item_descendants_tree', {
+                root_id: fId,
+                depth_limit: 5,
+            });
 
-            // Fetch SKUs that belong to these variants
-            if (variantItems.length > 0) {
-                const variantIds = variantItems.map(v => v.id);
-                const { data: skusData } = await supabase
-                    .from('cat_items')
-                    .select('*')
-                    .eq('type', 'SKU')
-                    .in('parent_id', variantIds);
+            // Simple recursive strategy using recursion in JS because Postgrest doesn't support recursive CTEs easily via standard API
+            // But we can fetch deeper by fetching all items belonging to this Family's tree.
+            // Authority: Model (Family) -> Variant -> Color -> SKU
 
-                if (skusData) setSkus(skusData);
-            } else {
-                setSkus([]);
+            const { data: items } = await supabase.rpc('get_item_descendants_tree', { root_id: fId });
+
+            // If RPC is not available, fallback to manual fetch of common levels
+            let finalItems = items;
+            if (!items) {
+                const { data: lvl1 } = await supabase.from('cat_items').select('*').eq('parent_id', fId);
+                const lvl1Ids = lvl1?.map(i => i.id) || [];
+                const { data: lvl2 } =
+                    lvl1Ids.length > 0
+                        ? await supabase.from('cat_items').select('*').in('parent_id', lvl1Ids)
+                        : { data: [] };
+                const lvl2Ids = lvl2?.map(i => i.id) || [];
+                const { data: lvl3 } =
+                    lvl2Ids.length > 0
+                        ? await supabase.from('cat_items').select('*').in('parent_id', lvl2Ids)
+                        : { data: [] };
+
+                finalItems = [...(lvl1 || []), ...(lvl2 || []), ...(lvl3 || [])] as any[];
             }
-        } else {
+
+            if (finalItems && (finalItems as any).length > 0) {
+                const variantItems = finalItems
+                    .filter((c: any) => c.type === 'VARIANT')
+                    .sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
+
+                const allColorItems = finalItems
+                    .filter((c: any) => c.type === 'COLOR_DEF')
+                    .sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
+
+                // Hierarchy-Aware Deduplication:
+                // Group colors by name and pick the highest-level one (parent_id === fId) as source
+                const colorMap = new Map<string, any>();
+                allColorItems.forEach((c: any) => {
+                    const nameKey = (c.name || 'UNNAMED').toUpperCase();
+                    const existing = colorMap.get(nameKey);
+                    // Keep existing if it's already global, or if current is global, replace it.
+                    if (!existing || (c.parent_id === fId && existing.parent_id !== fId)) {
+                        colorMap.set(nameKey, c);
+                    }
+                });
+                const colorItems = Array.from(colorMap.values());
+
+                setVariants(variantItems);
+                setColors(colorItems);
+                setAllColors(allColorItems);
+
+                const skuItems = (finalItems as any[])
+                    .filter((c: any) => c.type === 'SKU')
+                    .sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
+
+                setSkus(skuItems);
+            }
+        } catch (err) {
+            console.error('Failed to fetch hierarchy data:', err);
             setVariants([]);
             setColors([]);
             setSkus([]);
+        } finally {
+            setIsLoading(false);
         }
-        setIsLoading(false);
     };
 
     // Strict Data Isolation Effect
@@ -160,12 +236,12 @@ export default function UnifiedStudioPage() {
 
     // Reset when Step Back changes high level context
     useEffect(() => {
-        if (currentStep < 3) { // Category, Brand or Template Step
+        if (currentStep < 3) {
+            // Category, Brand or Template Step
             if (currentStep < 2) setTemplate(null);
             setFamilyData(null);
         }
     }, [currentStep]);
-
 
     const fetchInitialData = async () => {
         if (!tenantId) return;
@@ -186,8 +262,8 @@ export default function UnifiedStudioPage() {
             const { data: allItems } = await supabase.from('cat_items').select('*');
             if (allItems) {
                 setCatalogItems(allItems);
-                const stats: Record<string, { families: number, variants: number, skus: number }> = {};
-                const fStats: Record<string, { variants: number, colors: number, skus: number }> = {};
+                const stats: Record<string, { families: number; variants: number; skus: number }> = {};
+                const fStats: Record<string, { variants: number; colors: number; skus: number }> = {};
                 const itemMap = new Map(allItems.map(i => [i.id, i]));
 
                 // ... stats calculation code ...
@@ -262,7 +338,7 @@ export default function UnifiedStudioPage() {
         }
     };
 
-    const handleNext = () => {
+    const handleNext = async () => {
         if (currentStep < STEPS.length - 1) setCurrentStep(c => c + 1);
         else {
             const base = tenantSlug ? `/app/${tenantSlug}/dashboard/catalog/products` : '/dashboard/catalog/products';
@@ -284,8 +360,12 @@ export default function UnifiedStudioPage() {
                     </div>
                 </div>
                 <div className="text-center">
-                    <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">Initializing Studio</h2>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Booting unified engine engine...</p>
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
+                        Initializing Studio
+                    </h2>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                        Booting unified engine engine...
+                    </p>
                 </div>
             </div>
         );
@@ -299,11 +379,17 @@ export default function UnifiedStudioPage() {
                     {/* Branding Row */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black italic shadow-xl shadow-slate-900/10 text-lg">B</div>
+                            <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black italic shadow-xl shadow-slate-900/10 text-lg">
+                                B
+                            </div>
                             <div className="flex flex-col">
-                                <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest leading-none">Unified Engine</span>
+                                <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest leading-none">
+                                    Unified Engine
+                                </span>
                                 <div className="flex items-center gap-2 mt-1">
-                                    <h1 className="text-2xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter leading-none">Product Studio</h1>
+                                    <h1 className="text-2xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter leading-none">
+                                        Product Studio
+                                    </h1>
 
                                     {/* Context Breadcrumb */}
                                     {(selectedCategory || brand || template || familyData) && (
@@ -348,22 +434,33 @@ export default function UnifiedStudioPage() {
                                 <button
                                     key={step.id}
                                     onClick={() => isPast && setCurrentStep(idx)}
-                                    className={`relative flex flex-col xl:flex-row items-center justify-center gap-3 py-4 px-2 rounded-2xl transition-all duration-300 border-2 ${isActive
-                                        ? 'bg-slate-900 text-white border-slate-900 shadow-xl shadow-slate-900/10 scale-105 z-10'
-                                        : isPast
-                                            ? 'bg-emerald-50/50 text-emerald-600 border-emerald-100 hover:border-emerald-200 hover:bg-emerald-50'
-                                            : 'bg-transparent text-slate-300 border-transparent grayscale opacity-60 pointer-events-none'
-                                        }`}
+                                    className={`relative flex flex-col xl:flex-row items-center justify-center gap-3 py-4 px-2 rounded-2xl transition-all duration-300 border-2 ${
+                                        isActive
+                                            ? 'bg-slate-900 text-white border-slate-900 shadow-xl shadow-slate-900/10 scale-105 z-10'
+                                            : isPast
+                                              ? 'bg-emerald-50/50 text-emerald-600 border-emerald-100 hover:border-emerald-200 hover:bg-emerald-50'
+                                              : 'bg-transparent text-slate-300 border-transparent grayscale opacity-60 pointer-events-none'
+                                    }`}
                                 >
-                                    <div className={`p-1.5 rounded-lg ${isActive ? 'bg-white/10' : isPast ? 'bg-emerald-100' : 'bg-slate-100 dark:bg-white/5'} transition-colors`}>
-                                        {isPast ? <CheckCircle2 size={14} strokeWidth={3} /> : <Icon size={14} strokeWidth={2.5} />}
+                                    <div
+                                        className={`p-1.5 rounded-lg ${isActive ? 'bg-white/10' : isPast ? 'bg-emerald-100' : 'bg-slate-100 dark:bg-white/5'} transition-colors`}
+                                    >
+                                        {isPast ? (
+                                            <CheckCircle2 size={14} strokeWidth={3} />
+                                        ) : (
+                                            <Icon size={14} strokeWidth={2.5} />
+                                        )}
                                     </div>
-                                    <span className="text-[10px] font-black uppercase tracking-widest leading-none text-center xl:text-left hidden 2xl:block">{step.title}</span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest leading-none text-center xl:text-left hidden 2xl:block">
+                                        {step.title}
+                                    </span>
                                     {/* Mobile/Tablet Title fallback if needed, currently hiding on vertically constrained, showing on 2xl. 
                                         Actually user said "bada" (big). Let's show title always if possible or use responsive.
                                         I'll show title always but small.
                                     */}
-                                    <span className="text-[10px] font-black uppercase tracking-widest leading-none text-center xl:text-left 2xl:hidden">{step.title.slice(0, 3)}</span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest leading-none text-center xl:text-left 2xl:hidden">
+                                        {step.title.slice(0, 3)}
+                                    </span>
                                 </button>
                             );
                         })}
@@ -379,7 +476,6 @@ export default function UnifiedStudioPage() {
                             selectedCategory={selectedCategory}
                             onSelectCategory={(id: string) => {
                                 setSelectedCategory(id);
-                                setTimeout(() => handleNext(), 200);
                             }}
                         />
                     )}
@@ -390,17 +486,15 @@ export default function UnifiedStudioPage() {
                             selectedBrand={brand?.id ?? null}
                             onSelectBrand={(id: string) => {
                                 setBrand(brands.find(b => b.id === id));
-                                setTimeout(() => handleNext(), 200);
                             }}
                             onCreateBrand={() => {
                                 setEditingBrand(null);
                                 setIsBrandModalOpen(true);
                             }}
-                            onEditBrand={(brand) => {
+                            onEditBrand={brand => {
                                 setEditingBrand(brand);
                                 setIsBrandModalOpen(true);
                             }}
-                            template={template}
                         />
                     )}
                     {currentStep === 2 && (
@@ -409,7 +503,6 @@ export default function UnifiedStudioPage() {
                             selectedTemplate={template?.id ?? null}
                             onSelectTemplate={(id: string) => {
                                 setTemplate(templates.find(t => t.id === id) ?? null);
-                                setTimeout(() => handleNext(), 200);
                             }}
                         />
                     )}
@@ -418,13 +511,14 @@ export default function UnifiedStudioPage() {
                             brand={brand}
                             template={template}
                             familyData={familyData}
-                            families={catalogItems.filter(i => i.type === 'FAMILY' && i.brand_id === brand?.id && i.template_id === template?.id)}
+                            families={catalogItems.filter(
+                                i => i.type === 'FAMILY' && i.brand_id === brand?.id && i.template_id === template?.id
+                            )}
                             stats={familyStats}
-                            onSave={(updatedFamily: CatalogItem) => {
-                                if (!updatedFamily) return; // Prevent crash if null passed
+                            onSave={(updatedFamily: CatalogItem | null) => {
                                 setFamilyData(updatedFamily);
+                                if (!updatedFamily) return;
                                 setCatalogItems(prev => {
-                                    if (!updatedFamily?.id) return prev;
                                     const index = prev.findIndex(i => i?.id === updatedFamily.id);
                                     if (index >= 0) {
                                         const newItems = [...prev];
@@ -436,7 +530,11 @@ export default function UnifiedStudioPage() {
                                 });
                             }}
                             onDelete={async (id: string) => {
-                                if (confirm('Are you sure you want to delete this Model Family? This will delete all associated Variants and SKUs.')) {
+                                if (
+                                    confirm(
+                                        'Are you sure you want to delete this Model Family? This will delete all associated Variants and SKUs.'
+                                    )
+                                ) {
                                     const supabase = createClient();
                                     const { error } = await supabase.from('cat_items').delete().eq('id', id);
                                     if (!error) {
@@ -447,11 +545,48 @@ export default function UnifiedStudioPage() {
                                     }
                                 }
                             }}
+                            tenantId={tenantId}
                         />
                     )}
-                    {currentStep === 4 && familyData && template && <VariantStep family={familyData} template={template} existingVariants={variants} onUpdate={setVariants} />}
-                    {currentStep === 5 && familyData && template && <ColorStep family={familyData} template={template} existingColors={colors} onUpdate={setColors} />}
-                    {currentStep === 6 && familyData && template && <MatrixStep family={familyData} template={template} variants={variants} colors={colors} existingSkus={skus} onUpdate={setSkus} />}
+                    {currentStep === 4 && familyData && template && (
+                        <VariantStep
+                            family={familyData}
+                            template={template}
+                            existingVariants={variants}
+                            onUpdate={setVariants}
+                            tenantId={tenantId}
+                        />
+                    )}
+                    {currentStep === 5 && familyData && template && (
+                        <ColorStep
+                            family={familyData}
+                            template={template}
+                            existingColors={colors}
+                            onUpdate={(newDeduplicatedColors: any[]) => {
+                                setColors(newDeduplicatedColors);
+                                // Sync back to allColors: replace updated items in the full list
+                                setAllColors(prevAll => {
+                                    const nextAll = [...prevAll];
+                                    newDeduplicatedColors.forEach(updated => {
+                                        const idx = nextAll.findIndex(a => a.id === updated.id);
+                                        if (idx >= 0) nextAll[idx] = updated;
+                                    });
+                                    return nextAll;
+                                });
+                            }}
+                        />
+                    )}
+                    {currentStep === 6 && familyData && template && (
+                        <MatrixStep
+                            family={familyData}
+                            template={template}
+                            variants={variants}
+                            colors={colors}
+                            allColors={allColors}
+                            existingSkus={skus}
+                            onUpdate={setSkus}
+                        />
+                    )}
                     {currentStep === 7 && (
                         <ReviewStep
                             brand={brand}
@@ -463,11 +598,7 @@ export default function UnifiedStudioPage() {
                             onUpdate={setSkus}
                         />
                     )}
-                    {currentStep === 8 && (
-                        <PublishStep
-                            onFinish={handleNext}
-                        />
-                    )}
+                    {currentStep === 8 && <PublishStep onFinish={handleNext} />}
                 </div>
             </main>
 
@@ -492,10 +623,16 @@ export default function UnifiedStudioPage() {
 
                         <button
                             onClick={handleNext}
-                            disabled={(currentStep === 0 && !selectedCategory) || (currentStep === 1 && !brand) || (currentStep === 2 && !template)}
+                            disabled={
+                                (currentStep === 0 && !selectedCategory) ||
+                                (currentStep === 1 && !brand) ||
+                                (currentStep === 2 && !template)
+                            }
                             className="flex items-center gap-3 px-8 py-3 bg-slate-900 text-white rounded-[1.25rem] font-black uppercase text-[10px] tracking-[0.2em] shadow-2xl shadow-slate-900/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none"
                         >
-                            {currentStep === STEPS.length - 1 ? 'Go to Catalog' : (
+                            {currentStep === STEPS.length - 1 ? (
+                                'Go to Catalog'
+                            ) : (
                                 <>
                                     <span>Next: {STEPS[currentStep + 1]?.title}</span>
                                     <ChevronRight size={16} />

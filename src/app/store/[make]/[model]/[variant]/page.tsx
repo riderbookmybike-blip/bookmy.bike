@@ -743,6 +743,7 @@ export default async function Page({ params, searchParams }: Props) {
         basePrice: Number(baseExShowroom),
         colors: colors,
         specs: item.specs,
+        tenant_id: winningDealerId, // Dealer tenant for quote creation
     };
 
     // 6. Accessories & Services

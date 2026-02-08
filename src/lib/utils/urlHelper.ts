@@ -80,3 +80,18 @@ export function buildProductUrl(options: BuildUrlOptions): UrlResult {
         robots,
     };
 }
+/**
+ * getProxiedUrl
+ * Returns a proxied URL for external images to bypass CORS.
+ */
+export function getProxiedUrl(url: string | null | undefined): string {
+    if (!url) return '';
+    if (typeof url !== 'string') return '';
+
+    // Bypass proxy for Supabase storage (Cloud & Local Dev)
+    if (url.includes('supabase.co')) return url;
+    if (url.includes('localhost') || url.includes('127.0.0.1')) return url;
+
+    if (url.startsWith('/') && !url.startsWith('//')) return url; // Already local
+    return `/api/proxy-image?url=${encodeURIComponent(url)}`;
+}

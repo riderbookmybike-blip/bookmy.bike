@@ -17,6 +17,7 @@ import { EliteCircle } from '@/components/store/sections/EliteCircle';
 
 import { useTheme } from '@/components/providers/ThemeProvider';
 import { useI18n } from '@/components/providers/I18nProvider';
+import { sanitizeSvg } from '@/lib/utils/sanitizeSvg';
 
 /**
  * Mobile V2 Home Page
@@ -465,8 +466,9 @@ export function PhoneHome() {
                                                     <div
                                                         className="w-24 h-24 flex items-center justify-center dark:brightness-0 dark:invert opacity-60 group-hover:opacity-100 transition-opacity [&>svg]:w-full [&>svg]:h-full [&>svg]:block"
                                                         dangerouslySetInnerHTML={{
-                                                            __html:
-                                                                dbBrand?.brand_logos?.icon || dbBrand?.logo_svg || '',
+                                                            __html: sanitizeSvg(
+                                                                dbBrand?.brand_logos?.icon || dbBrand?.logo_svg || ''
+                                                            ),
                                                         }}
                                                     />
                                                 ) : (

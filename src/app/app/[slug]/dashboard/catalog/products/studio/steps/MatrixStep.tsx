@@ -16,10 +16,13 @@ import {
     Edit2,
     Box,
     Gauge,
+    ChevronDown,
+    Plus,
 } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
+import { getProxiedUrl } from '@/lib/utils/urlHelper';
 import SKUMediaManager from '@/components/catalog/SKUMediaManager';
 import AttributeInput from '@/components/catalog/AttributeInput';
 import { toast } from 'sonner';
@@ -31,7 +34,15 @@ const getYoutubeThumbnail = (url: string) => {
     return match && match[2].length === 11 ? `https://img.youtube.com/vi/${match[2]}/mqdefault.jpg` : null;
 };
 
-export default function MatrixStep({ family, template, variants, colors, existingSkus, onUpdate }: any) {
+export default function MatrixStep({
+    family,
+    template,
+    variants,
+    colors,
+    allColors = [],
+    existingSkus,
+    onUpdate,
+}: any) {
     const l1Label = template?.hierarchy_config?.l1 || 'Variant';
     const l2Label = template?.hierarchy_config?.l2 || 'Style';
 
@@ -192,12 +203,29 @@ export default function MatrixStep({ family, template, variants, colors, existin
         }
     };
 
-    const toggleSku = async (variant: any, color: any) => {
+    const toggleSku = async (variant: any, colorColumn: any) => {
         try {
-            const colorNameUpper = color.name?.toUpperCase() || '';
-            const exists = existingSkus.find(
-                (s: any) => s.parent_id === variant.id && s.specs[l2Label]?.toUpperCase() === colorNameUpper
+            const colorNameUpper = colorColumn.name?.toUpperCase() || '';
+
+            // Hierarchy-Aware Existence Check:
+            // 1. Find ANY COLOR_DEF in allColors whose name matches colorNameUpper and parent is current variant
+            const localColor = allColors.find(
+                (c: any) =>
+                    c.type === 'COLOR_DEF' &&
+                    c.parent_id === variant.id &&
+                    (c.name || '').toUpperCase() === colorNameUpper
             );
+
+            // 2. Find ANY SKU whose parent is either current variant OR localColor
+            const exists = existingSkus.find((s: any) => {
+                const parentMatch = s.parent_id === variant.id || (localColor && s.parent_id === localColor.id);
+                if (!parentMatch) return false;
+
+                // Color match: either specs match or parent is the localColor
+                const specsMatch = (s.specs[l2Label] || '').toUpperCase() === colorNameUpper;
+                return specsMatch || (localColor && s.parent_id === localColor.id);
+            });
+
             const supabase = createClient();
 
             if (exists) {
@@ -206,12 +234,16 @@ export default function MatrixStep({ family, template, variants, colors, existin
                 onUpdate(existingSkus.filter((s: any) => s.id !== exists.id));
                 toast.success('SKU removed');
             } else {
-                const inherited = getInheritedAssets(variant.id, color.name);
+                // Determine target parent: Local Color if exists, else Variant
+                const targetParentId = localColor ? localColor.id : variant.id;
+                const inherited = getInheritedAssets(variant.id, colorColumn.name);
+
                 const {
                     data: { user },
                 } = await supabase.auth.getUser();
+
                 const payload = {
-                    name: `${variant.name} ${color.name}`.toUpperCase(),
+                    name: `${variant.name} ${colorColumn.name}`.toUpperCase(),
                     history: [
                         {
                             at: new Date().toISOString(),
@@ -222,26 +254,29 @@ export default function MatrixStep({ family, template, variants, colors, existin
                     ],
                     specs: {
                         ...variant.specs,
-                        [l2Label]: color.name?.toUpperCase() || '',
+                        [l2Label]: colorColumn.name?.toUpperCase() || '',
                         gallery: inherited.gallery,
-                        video_urls: inherited.videos,
                         primary_image: inherited.primary,
+                        video_urls: inherited.videos,
                         pdf_urls: inherited.pdfs,
-                        hex_primary: color.specs?.hex_primary,
-                        hex_secondary: color.specs?.hex_secondary,
+                        hex_primary: colorColumn.specs?.hex_primary,
+                        hex_secondary: colorColumn.specs?.hex_secondary,
                     },
                     type: 'SKU',
-                    status: 'ACTIVE', // SOT: SKUs should be ACTIVE for AUMS pricing
+                    status: 'ACTIVE',
                     brand_id: family.brand_id,
                     template_id: family.template_id,
-                    parent_id: variant.id,
-                    slug: `${variant.slug}-${(color.name || '').toLowerCase()}`.replace(/ /g, '-'),
+                    parent_id: targetParentId,
+                    slug: `${variant.slug}-${(colorColumn.name || '').toLowerCase()}`
+                        .replace(/ /g, '-')
+                        .replace(/\//g, '-'),
                     price_base: family.price_base || 0,
                     hsn_code: variant.hsn_code || family.hsn_code || '',
                     image_url: inherited.primary,
                     gallery_urls: inherited.gallery,
                     video_url: inherited.videos[0] || null,
                 };
+
                 const { data, error } = await supabase
                     .from('cat_items')
                     .upsert(payload, { onConflict: 'slug' })
@@ -516,14 +551,28 @@ export default function MatrixStep({ family, template, variants, colors, existin
                                 </td>
                                 {colors.map((color: any) => {
                                     const sku = existingSkus.find((s: any) => {
-                                        if (s.parent_id !== variant.id) return false;
-                                        const targetColor = color.name?.toUpperCase();
+                                        const colorNameUpper = color.name?.toUpperCase();
+
+                                        // 1. Find if there's a local color for this variant matching the same name
+                                        const localColor = allColors.find(
+                                            (c: any) =>
+                                                c.type === 'COLOR_DEF' &&
+                                                c.parent_id === variant.id &&
+                                                (c.name || '').toUpperCase() === colorNameUpper
+                                        );
+
+                                        // 2. Check parentId match: either variantId or localColorId
+                                        const parentMatch =
+                                            s.parent_id === variant.id || (localColor && s.parent_id === localColor.id);
+                                        if (!parentMatch) return false;
+
+                                        // 3. Match by name in specs or parent link
                                         const specs = s.specs || {};
                                         return (
-                                            specs[l2Label]?.toUpperCase() === targetColor ||
-                                            specs.Color?.toUpperCase() === targetColor ||
-                                            specs.Colour?.toUpperCase() === targetColor ||
-                                            specs.Style?.toUpperCase() === targetColor
+                                            (specs[l2Label] || '').toUpperCase() === colorNameUpper ||
+                                            (specs.Color || '').toUpperCase() === colorNameUpper ||
+                                            (specs.Style || '').toUpperCase() === colorNameUpper ||
+                                            (localColor && s.parent_id === localColor.id)
                                         );
                                     });
                                     const isColorOccupiedByOtherVariant =
@@ -619,7 +668,7 @@ export default function MatrixStep({ family, template, variants, colors, existin
                                                                     return (
                                                                         <>
                                                                             <img
-                                                                                src={imgUrl}
+                                                                                src={getProxiedUrl(imgUrl)}
                                                                                 className="w-full h-full object-contain p-1 group-hover/media:scale-110 transition-transform duration-500"
                                                                                 alt={sku.name}
                                                                             />

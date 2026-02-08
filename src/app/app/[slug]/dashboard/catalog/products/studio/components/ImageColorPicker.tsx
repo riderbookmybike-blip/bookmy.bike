@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
+import { getProxiedUrl } from '@/lib/utils/urlHelper';
 
 interface ImageColorPickerProps {
     imageUrl: string;
@@ -12,7 +13,14 @@ interface ImageColorPickerProps {
 export default function ImageColorPicker({ imageUrl, onPick, onHover }: ImageColorPickerProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isLoaded, setIsLoaded] = useState(false);
-    const [magnifier, setMagnifier] = useState<{ x: number, y: number, color: string, imgX: number, imgY: number, locked: boolean } | null>(null);
+    const [magnifier, setMagnifier] = useState<{
+        x: number;
+        y: number;
+        color: string;
+        imgX: number;
+        imgY: number;
+        locked: boolean;
+    } | null>(null);
     const [zoom, setZoom] = useState(1);
 
     useEffect(() => {
@@ -23,7 +31,7 @@ export default function ImageColorPicker({ imageUrl, onPick, onHover }: ImageCol
 
         const img = new Image();
         img.crossOrigin = 'anonymous';
-        img.src = imageUrl;
+        img.src = getProxiedUrl(imageUrl);
         img.onload = () => {
             canvas.width = img.naturalWidth;
             canvas.height = img.naturalHeight;
@@ -62,7 +70,7 @@ export default function ImageColorPicker({ imageUrl, onPick, onHover }: ImageCol
             imgX: relX * 100,
             imgY: relY * 100,
             color: hex,
-            locked: false
+            locked: false,
         });
 
         if (onHover) onHover(hex);
@@ -86,7 +94,7 @@ export default function ImageColorPicker({ imageUrl, onPick, onHover }: ImageCol
         <div className="flex flex-col gap-6 items-center">
             {/* Zoom Controls */}
             <div className="flex items-center gap-2 p-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm z-20">
-                {[1, 2, 4].map((z) => (
+                {[1, 2, 4].map(z => (
                     <button
                         key={z}
                         onClick={() => setZoom(z)}
@@ -123,10 +131,10 @@ export default function ImageColorPicker({ imageUrl, onPick, onHover }: ImageCol
                             className="w-48 h-48 rounded-full border-[8px] border-white shadow-[0_0_50px_rgba(0,0,0,0.3)] overflow-hidden relative"
                             style={{
                                 backgroundColor: magnifier.color,
-                                backgroundImage: `url(${imageUrl})`,
+                                backgroundImage: `url(${getProxiedUrl(imageUrl)})`,
                                 backgroundRepeat: 'no-repeat',
                                 backgroundSize: `${400 * zoom}%`,
-                                backgroundPosition: `${magnifier.imgX}% ${magnifier.imgY}%`
+                                backgroundPosition: `${magnifier.imgX}% ${magnifier.imgY}%`,
                             }}
                         >
                             <div className="absolute inset-0 flex items-center justify-center">
@@ -136,9 +144,14 @@ export default function ImageColorPicker({ imageUrl, onPick, onHover }: ImageCol
                             </div>
                         </div>
                         <div className="flex items-center gap-4 px-6 py-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-lg font-black rounded-2xl uppercase shadow-[0_20px_50px_rgba(0,0,0,0.2)] border border-slate-100 dark:border-white/10 tracking-[0.1em] whitespace-nowrap animate-in zoom-in-95">
-                            <div className="w-5 h-5 rounded-full border-2 border-slate-200 dark:border-white/10" style={{ backgroundColor: magnifier.color }} />
+                            <div
+                                className="w-5 h-5 rounded-full border-2 border-slate-200 dark:border-white/10"
+                                style={{ backgroundColor: magnifier.color }}
+                            />
                             {magnifier.color}
-                            {magnifier.locked && <span className="text-[8px] ml-2 text-slate-400 font-bold">LOCKED</span>}
+                            {magnifier.locked && (
+                                <span className="text-[8px] ml-2 text-slate-400 font-bold">LOCKED</span>
+                            )}
                         </div>
                     </div>
                 )}
@@ -146,7 +159,9 @@ export default function ImageColorPicker({ imageUrl, onPick, onHover }: ImageCol
                 {!isLoaded && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
                         <Loader2 size={48} className="animate-spin text-indigo-500" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Loading Canvas...</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                            Loading Canvas...
+                        </span>
                     </div>
                 )}
             </div>

@@ -2,6 +2,8 @@
 
 import { z } from 'zod'; // Ensure zod is installed, if not we'll use regex
 import { adminClient } from '@/lib/supabase/admin';
+import { createOrLinkMember } from '@/actions/members';
+import { toAppStorageFormat } from '@/lib/utils/phoneUtils';
 import { headers } from 'next/headers';
 
 // --- Validation Key ---
@@ -94,14 +96,27 @@ export async function submitLead(formData: FormData) {
             return { success: false, message: 'System error. Please contact support.' };
         }
 
+        const cleanPhone = toAppStorageFormat(data.phone);
+        const { member } = await createOrLinkMember({
+            tenantId: ownerTenantId,
+            fullName: data.name,
+            phone: cleanPhone,
+        });
+
+        if (!member?.id) {
+            console.error('Member link failed during submitLead');
+            return { success: false, message: 'System error. Please contact support.' };
+        }
+
         // 5. Insert Lead (Owned by Marketplace)
         const { data: lead, error: insertError } = await adminClient
             .from('crm_leads')
             .insert({
                 owner_tenant_id: ownerTenantId,
                 selected_dealer_tenant_id: rawData.selectedDealerId || null,
+                customer_id: member.id,
                 customer_name: data.name,
-                customer_phone: data.phone,
+                customer_phone: cleanPhone,
                 customer_taluka: data.taluka,
                 customer_pincode: data.pincode,
                 customer_dob: data.dob,

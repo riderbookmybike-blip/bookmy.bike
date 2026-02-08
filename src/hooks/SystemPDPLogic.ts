@@ -74,6 +74,7 @@ export function useSystemPDPLogic({
 }) {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const allowDebug = process.env.NEXT_PUBLIC_DEBUG_TOOLS === 'true';
 
     const colorFromQuery = searchParams.get('color');
     const isValidColor = colorFromQuery && colors.some(c => c.id === colorFromQuery);
@@ -147,6 +148,7 @@ export function useSystemPDPLogic({
 
     // Runtime Debug Persistence
     useEffect(() => {
+        if (!allowDebug || typeof window === 'undefined') return;
         if (typeof window !== 'undefined') {
             window.__BMB_DEBUG__ = {
                 ...window.__BMB_DEBUG__,
@@ -311,7 +313,7 @@ export function useSystemPDPLogic({
     const baseInsurance = pricingReady ? Number(insuranceJson?.base_total || 0) : 0;
 
     // ⚠️ TEMP DIAGNOSTICS - Remove after debugging Financial Summary ₹0 bug
-    if (typeof window !== 'undefined' && pricingReady) {
+    if (allowDebug && typeof window !== 'undefined' && pricingReady) {
         console.log('[SystemPDPLogic DIAG]', {
             serverPricing: !!serverPricing,
             fallbackPricingSource: serverPricing ? 'serverPricing' : 'initialPrice.breakdown',

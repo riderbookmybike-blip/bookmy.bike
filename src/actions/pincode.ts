@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@supabase/supabase-js';
+import { formatLocationName, mergeAreas, normalizeLocationKey } from '@/lib/location/locationNormalizer';
 
 // Initialize Admin Client for Writes
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
@@ -19,6 +20,41 @@ export async function getPincodeDetails(pincode: string) {
             .maybeSingle();
 
         if (cached && !error) {
+            const formattedState = formatLocationName(cached.state);
+            const formattedDistrict = formatLocationName(cached.district);
+            const formattedTaluka = formatLocationName(cached.taluka);
+            const formattedArea = formatLocationName(cached.area);
+            const existingAreas = Array.isArray(cached.areas) ? (cached.areas as string[]) : [];
+            const mergedAreas = mergeAreas(existingAreas, formattedArea || undefined);
+
+            const needsUpdate =
+                formattedState !== cached.state ||
+                formattedDistrict !== cached.district ||
+                formattedTaluka !== cached.taluka ||
+                (mergedAreas.areas.length > 0 && JSON.stringify(mergedAreas.areas) !== JSON.stringify(existingAreas)) ||
+                (mergedAreas.areaKeys.length > 0 &&
+                    JSON.stringify(mergedAreas.areaKeys) !== JSON.stringify(cached.area_keys));
+
+            if (needsUpdate) {
+                await supabase.from('loc_pincodes').upsert(
+                    {
+                        pincode,
+                        state: formattedState || cached.state,
+                        district: formattedDistrict || cached.district,
+                        taluka: formattedTaluka || cached.taluka,
+                        area: formattedArea || cached.area,
+                        areas: mergedAreas.areas.length > 0 ? mergedAreas.areas : cached.areas || null,
+                        area_keys: mergedAreas.areaKeys.length > 0 ? mergedAreas.areaKeys : cached.area_keys || null,
+                        state_key: formattedState ? normalizeLocationKey(formattedState) : cached.state_key || null,
+                        district_key: formattedDistrict
+                            ? normalizeLocationKey(formattedDistrict)
+                            : cached.district_key || null,
+                        taluka_key: formattedTaluka ? normalizeLocationKey(formattedTaluka) : cached.taluka_key || null,
+                        updated_at: new Date().toISOString(),
+                    },
+                    { onConflict: 'pincode' }
+                );
+            }
             return { success: true, data: cached };
         }
 
@@ -35,13 +71,24 @@ export async function getPincodeDetails(pincode: string) {
             // Simple mapping for common states or just take the district code later
             // We'll leave state_code null or set it if we have a mapper.
 
+            const formattedState = formatLocationName(details.State);
+            const formattedDistrict = formatLocationName(details.District);
+            const formattedTaluka = formatLocationName(details.Block || details.District);
+            const formattedArea = formatLocationName(details.Name);
+            const mergedAreas = mergeAreas([], formattedArea);
+
             const newRecord = {
                 pincode: pincode,
-                taluka: details.Block || details.District,
-                district: details.District,
-                state: details.State,
+                taluka: formattedTaluka,
+                district: formattedDistrict,
+                state: formattedState,
                 country: 'India',
-                area: details.Name,
+                area: formattedArea,
+                areas: mergedAreas.areas.length > 0 ? mergedAreas.areas : null,
+                area_keys: mergedAreas.areaKeys.length > 0 ? mergedAreas.areaKeys : null,
+                state_key: formattedState ? normalizeLocationKey(formattedState) : null,
+                district_key: formattedDistrict ? normalizeLocationKey(formattedDistrict) : null,
+                taluka_key: formattedTaluka ? normalizeLocationKey(formattedTaluka) : null,
                 status: 'Deliverable', // Default to deliverable for new discoveries
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),

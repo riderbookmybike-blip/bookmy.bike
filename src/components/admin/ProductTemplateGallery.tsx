@@ -24,7 +24,7 @@ import {
     Palette,
     Wrench,
     ShieldCheck,
-    Eye
+    Eye,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -45,8 +45,16 @@ export interface CatalogTemplate {
 
 const TEMPLATE_CATEGORIES = [
     { value: 'VEHICLE', label: 'Vehicle', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
-    { value: 'ACCESSORY', label: 'Accessory', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
-    { value: 'SERVICE', label: 'Service', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' }
+    {
+        value: 'ACCESSORY',
+        label: 'Accessory',
+        color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+    },
+    {
+        value: 'SERVICE',
+        label: 'Service',
+        color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+    },
 ];
 
 interface ProductTemplateGalleryProps {
@@ -65,9 +73,27 @@ const FIELD_TYPES = [
 ];
 
 const ATTRIBUTE_LEVELS = [
-    { key: 'brand', label: 'Brand Level Attributes', description: 'Attributes that apply to the brand', icon: Building2, color: 'indigo' },
-    { key: 'model', label: 'Model Level Attributes', description: 'Attributes that apply to all variants of a model', icon: Car, color: 'emerald' },
-    { key: 'variant', label: 'Variant Level Attributes', description: 'Attributes specific to each variant', icon: Palette, color: 'purple' }
+    {
+        key: 'brand',
+        label: 'Brand Level Attributes',
+        description: 'Attributes that apply to the brand',
+        icon: Building2,
+        color: 'indigo',
+    },
+    {
+        key: 'model',
+        label: 'Model Level Attributes',
+        description: 'Attributes that apply to all variants of a model',
+        icon: Car,
+        color: 'emerald',
+    },
+    {
+        key: 'variant',
+        label: 'Variant Level Attributes',
+        description: 'Attributes specific to each variant',
+        icon: Palette,
+        color: 'purple',
+    },
 ];
 
 export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGalleryProps) {
@@ -87,13 +113,13 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
         attributes: {
             brand: [] as any[],
             model: [] as any[],
-            variant: [] as any[]
+            variant: [] as any[],
         },
         features: {
             suitable_for: false,
             related_products: false,
-            suitability_level: 'VARIANT' as 'BRAND' | 'MODEL' | 'VARIANT'
-        }
+            suitability_level: 'VARIANT' as 'BRAND' | 'MODEL' | 'VARIANT',
+        },
     });
 
     const refreshTemplates = async () => {
@@ -105,24 +131,32 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
     const openCreateModal = () => {
         setEditingTemplate(null);
         setStep(1);
+
+        // Auto-generate 9-char code (XXX-XXX-XXX)
+        const randomCode = formatUUIDToCode(
+            typeof crypto !== 'undefined' && crypto.randomUUID
+                ? crypto.randomUUID()
+                : Math.random().toString(36).substring(2, 11)
+        );
+
         setFormData({
             name: '',
-            code: '',
+            code: randomCode,
             category: 'VEHICLE',
             hierarchy: { l1: 'Variant', l2: 'Color', l1_input_type: 'text' },
             attributes: {
                 brand: [],
                 model: [
                     { key: 'item_code', label: 'Item Code', type: 'text' },
-                    { key: 'weight', label: 'Weight', type: 'number', suffix: 'kg' }
+                    { key: 'weight', label: 'Weight', type: 'number', suffix: 'kg' },
                 ],
-                variant: []
+                variant: [],
             },
             features: {
                 suitable_for: false,
                 related_products: false,
-                suitability_level: 'VARIANT'
-            }
+                suitability_level: 'VARIANT',
+            },
         });
         setIsModalOpen(true);
     };
@@ -143,7 +177,7 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
             attributes = {
                 brand: attrConfig.brand || [],
                 model: attrConfig.model || [],
-                variant: attrConfig.variant || []
+                variant: attrConfig.variant || [],
             };
         } else {
             attributes = { brand: [], model: [], variant: [] };
@@ -156,14 +190,14 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
             hierarchy: {
                 l1: tmpl.hierarchy_config?.l1 || 'Variant',
                 l2: tmpl.hierarchy_config?.l2 || 'Color',
-                l1_input_type: tmpl.hierarchy_config?.l1_input_type || 'text'
+                l1_input_type: tmpl.hierarchy_config?.l1_input_type || 'text',
             },
             attributes,
             features: {
                 suitable_for: tmpl.features_config?.suitable_for || false,
                 related_products: tmpl.features_config?.related_products || false,
-                suitability_level: tmpl.features_config?.suitability_level || 'VARIANT'
-            }
+                suitability_level: tmpl.features_config?.suitability_level || 'VARIANT',
+            },
         });
         setIsModalOpen(true);
     };
@@ -184,17 +218,18 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
             const supabase = createClient();
 
             // Clean attributes for each level (trim options)
-            const cleanLevel = (attrs: any[]) => attrs.map(attr => {
-                if (attr.type === 'select' && attr.options) {
-                    return { ...attr, options: attr.options.map((s: string) => s.trim()).filter(Boolean) };
-                }
-                return attr;
-            });
+            const cleanLevel = (attrs: any[]) =>
+                attrs.map(attr => {
+                    if (attr.type === 'select' && attr.options) {
+                        return { ...attr, options: attr.options.map((s: string) => s.trim()).filter(Boolean) };
+                    }
+                    return attr;
+                });
 
             const cleanAttributes = {
                 brand: cleanLevel(formData.attributes.brand),
                 model: cleanLevel(formData.attributes.model),
-                variant: cleanLevel(formData.attributes.variant)
+                variant: cleanLevel(formData.attributes.variant),
             };
 
             const payload = {
@@ -203,7 +238,7 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
                 category: formData.category,
                 hierarchy_config: formData.hierarchy,
                 attribute_config: cleanAttributes,
-                features_config: formData.features
+                features_config: formData.features,
             };
 
             if (editingTemplate) {
@@ -213,18 +248,15 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
                     .eq('id', editingTemplate.id);
                 if (updateError) throw updateError;
             } else {
-                const { error: insertError } = await supabase
-                    .from('cat_templates')
-                    .insert(payload);
+                const { error: insertError } = await supabase.from('cat_templates').insert(payload);
                 if (insertError) throw insertError;
             }
 
             setIsModalOpen(false);
             setEditingTemplate(null);
             refreshTemplates();
-
         } catch (err: any) {
-            setError(err.message || "Failed to save template");
+            setError(err.message || 'Failed to save template');
         } finally {
             setSaveLoading(false);
         }
@@ -236,14 +268,14 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
         const newAttr = {
             key: `field_${Date.now()}`,
             label: 'New Field',
-            type: 'text'
+            type: 'text',
         };
         setFormData({
             ...formData,
             attributes: {
                 ...formData.attributes,
-                [level]: [...formData.attributes[level], newAttr]
-            }
+                [level]: [...formData.attributes[level], newAttr],
+            },
         });
     };
 
@@ -260,8 +292,8 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
             ...formData,
             attributes: {
                 ...formData.attributes,
-                [level]: newAttrs
-            }
+                [level]: newAttrs,
+            },
         });
     };
 
@@ -271,8 +303,8 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
             ...formData,
             attributes: {
                 ...formData.attributes,
-                [level]: newAttrs
-            }
+                [level]: newAttrs,
+            },
         });
     };
 
@@ -290,7 +322,10 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {templates.map(t => (
-                    <div key={t.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-2xl p-6 hover:border-indigo-500/30 transition-all group hover:shadow-lg relative">
+                    <div
+                        key={t.id}
+                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-2xl p-6 hover:border-indigo-500/30 transition-all group hover:shadow-lg relative"
+                    >
                         <div className="flex items-start justify-between mb-4">
                             <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl text-indigo-600 dark:text-indigo-400">
                                 <LayoutDashboard size={24} />
@@ -318,11 +353,13 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
                             {t.code}
                         </span>
 
-                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
-                            {t.name}
-                        </h3>
-                        <span className={`inline-block text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg ${TEMPLATE_CATEGORIES.find(c => c.value === t.category)?.color || 'bg-slate-100 text-slate-500'
-                            }`}>
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{t.name}</h3>
+                        <span
+                            className={`inline-block text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg ${
+                                TEMPLATE_CATEGORIES.find(c => c.value === t.category)?.color ||
+                                'bg-slate-100 text-slate-500'
+                            }`}
+                        >
                             {t.category || 'VEHICLE'}
                         </span>
                         <div className="space-y-2 mt-4">
@@ -334,14 +371,21 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
                             </div>
                             <div className="pt-2">
                                 <div className="flex justify-between text-[10px] items-center mb-1">
-                                    <span className="text-slate-400 uppercase font-bold tracking-tight">Attributes Breakup</span>
+                                    <span className="text-slate-400 uppercase font-bold tracking-tight">
+                                        Attributes Breakup
+                                    </span>
                                     <span className="font-mono text-slate-900 dark:text-white font-bold">
                                         {(() => {
                                             const config = t.attribute_config;
                                             if (Array.isArray(config)) return config.length;
                                             if (!config || typeof config !== 'object') return 0;
-                                            return (config.brand?.length || 0) + (config.model?.length || 0) + (config.variant?.length || 0);
-                                        })()} Fields
+                                            return (
+                                                (config.brand?.length || 0) +
+                                                (config.model?.length || 0) +
+                                                (config.variant?.length || 0)
+                                            );
+                                        })()}{' '}
+                                        Fields
                                     </span>
                                 </div>
                                 <div className="grid grid-cols-3 gap-1">
@@ -350,24 +394,36 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
                                         const stats = Array.isArray(config)
                                             ? { b: 0, m: config.length, v: 0 }
                                             : {
-                                                b: config?.brand?.length || 0,
-                                                m: config?.model?.length || 0,
-                                                v: config?.variant?.length || 0
-                                            };
+                                                  b: config?.brand?.length || 0,
+                                                  m: config?.model?.length || 0,
+                                                  v: config?.variant?.length || 0,
+                                              };
 
                                         return (
                                             <>
                                                 <div className="bg-indigo-50 dark:bg-indigo-900/20 px-1.5 py-1 rounded text-[9px] text-center">
-                                                    <span className="block text-indigo-400 font-black uppercase">BR</span>
-                                                    <span className="font-bold text-indigo-600 dark:text-indigo-300">{stats.b}</span>
+                                                    <span className="block text-indigo-400 font-black uppercase">
+                                                        BR
+                                                    </span>
+                                                    <span className="font-bold text-indigo-600 dark:text-indigo-300">
+                                                        {stats.b}
+                                                    </span>
                                                 </div>
                                                 <div className="bg-emerald-50 dark:bg-emerald-900/20 px-1.5 py-1 rounded text-[9px] text-center">
-                                                    <span className="block text-emerald-400 font-black uppercase">MO</span>
-                                                    <span className="font-bold text-emerald-600 dark:text-emerald-300">{stats.m}</span>
+                                                    <span className="block text-emerald-400 font-black uppercase">
+                                                        MO
+                                                    </span>
+                                                    <span className="font-bold text-emerald-600 dark:text-emerald-300">
+                                                        {stats.m}
+                                                    </span>
                                                 </div>
                                                 <div className="bg-purple-50 dark:bg-purple-900/20 px-1.5 py-1 rounded text-[9px] text-center">
-                                                    <span className="block text-purple-400 font-black uppercase">VA</span>
-                                                    <span className="font-bold text-purple-600 dark:text-purple-300">{stats.v}</span>
+                                                    <span className="block text-purple-400 font-black uppercase">
+                                                        VA
+                                                    </span>
+                                                    <span className="font-bold text-purple-600 dark:text-purple-300">
+                                                        {stats.v}
+                                                    </span>
                                                 </div>
                                             </>
                                         );
@@ -403,9 +459,24 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
                                         {editingTemplate ? 'Edit Product Template' : 'Create Product Template'}
                                     </h2>
                                     <div className="flex gap-4 mt-2">
-                                        <button onClick={() => setStep(1)} className={`text-xs font-bold uppercase tracking-wider transition-colors ${step === 1 ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>1. Identity</button>
-                                        <button onClick={() => setStep(2)} className={`text-xs font-bold uppercase tracking-wider transition-colors ${step === 2 ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>2. Hierarchy</button>
-                                        <button onClick={() => setStep(3)} className={`text-xs font-bold uppercase tracking-wider transition-colors ${step === 3 ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>3. Attributes</button>
+                                        <button
+                                            onClick={() => setStep(1)}
+                                            className={`text-xs font-bold uppercase tracking-wider transition-colors ${step === 1 ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                                        >
+                                            1. Identity
+                                        </button>
+                                        <button
+                                            onClick={() => setStep(2)}
+                                            className={`text-xs font-bold uppercase tracking-wider transition-colors ${step === 2 ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                                        >
+                                            2. Hierarchy
+                                        </button>
+                                        <button
+                                            onClick={() => setStep(3)}
+                                            className={`text-xs font-bold uppercase tracking-wider transition-colors ${step === 3 ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                                        >
+                                            3. Attributes
+                                        </button>
                                     </div>
                                 </div>
                                 <button
@@ -428,11 +499,13 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
                                 {step === 1 && (
                                     <div className="space-y-6 max-w-lg mx-auto animate-in slide-in-from-right-8 duration-300">
                                         <div className="space-y-2">
-                                            <label className="text-xs font-bold uppercase text-slate-400">Template Name</label>
+                                            <label className="text-xs font-bold uppercase text-slate-400">
+                                                Template Name
+                                            </label>
                                             <input
                                                 type="text"
                                                 value={formData.name}
-                                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                                onChange={e => setFormData({ ...formData, name: e.target.value })}
                                                 placeholder="e.g. Engine Oil"
                                                 className="w-full h-14 px-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 font-black text-lg focus:outline-none focus:ring-4 focus:ring-indigo-500/10"
                                                 autoFocus
@@ -440,10 +513,17 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
                                         </div>
                                         <div className="space-y-2">
                                             <div className="flex justify-between items-end">
-                                                <label className="text-xs font-bold uppercase text-slate-400">Unique Code (System ID)</label>
+                                                <label className="text-xs font-bold uppercase text-slate-400">
+                                                    Unique Code (System ID)
+                                                </label>
                                                 {editingTemplate && (
                                                     <button
-                                                        onClick={() => setFormData({ ...formData, code: formatUUIDToCode(editingTemplate.id) })}
+                                                        onClick={() =>
+                                                            setFormData({
+                                                                ...formData,
+                                                                code: formatUUIDToCode(editingTemplate.id),
+                                                            })
+                                                        }
                                                         className="text-[10px] font-black uppercase text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded transition-colors"
                                                     >
                                                         Use UUID Format
@@ -453,23 +533,30 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
                                             <input
                                                 type="text"
                                                 value={formData.code}
-                                                onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                                                onChange={e =>
+                                                    setFormData({ ...formData, code: e.target.value.toUpperCase() })
+                                                }
                                                 placeholder="e.g. XXX-XXX-XXX"
                                                 className="w-full h-14 px-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 font-mono text-sm font-bold focus:outline-none focus:ring-4 focus:ring-indigo-500/10 placeholder:text-slate-300"
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-xs font-bold uppercase text-slate-400">Category</label>
+                                            <label className="text-xs font-bold uppercase text-slate-400">
+                                                Category
+                                            </label>
                                             <div className="grid grid-cols-3 gap-3">
                                                 {TEMPLATE_CATEGORIES.map(cat => (
                                                     <button
                                                         key={cat.value}
                                                         type="button"
-                                                        onClick={() => setFormData({ ...formData, category: cat.value as any })}
-                                                        className={`p-4 rounded-xl border-2 transition-all font-bold uppercase text-sm tracking-wide ${formData.category === cat.value
-                                                            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
-                                                            : 'border-slate-200 dark:border-white/10 hover:border-slate-300 text-slate-600 dark:text-slate-400'
-                                                            }`}
+                                                        onClick={() =>
+                                                            setFormData({ ...formData, category: cat.value as any })
+                                                        }
+                                                        className={`p-4 rounded-xl border-2 transition-all font-bold uppercase text-sm tracking-wide ${
+                                                            formData.category === cat.value
+                                                                ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
+                                                                : 'border-slate-200 dark:border-white/10 hover:border-slate-300 text-slate-600 dark:text-slate-400'
+                                                        }`}
                                                     >
                                                         {cat.label}
                                                     </button>
@@ -484,36 +571,64 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
                                     <div className="space-y-8 max-w-2xl mx-auto animate-in slide-in-from-right-8 duration-300">
                                         <div className="bg-white dark:bg-slate-800 p-8 rounded-[2rem] border border-slate-200 dark:border-white/5 space-y-6">
                                             <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 font-black text-xl">1</div>
+                                                <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 font-black text-xl">
+                                                    1
+                                                </div>
                                                 <div className="flex-1">
-                                                    <label className="text-xs font-bold uppercase text-slate-400">Level 1 (Grouping)</label>
+                                                    <label className="text-xs font-bold uppercase text-slate-400">
+                                                        Level 1 (Grouping)
+                                                    </label>
                                                     <input
                                                         value={formData.hierarchy.l1}
-                                                        onChange={(e) => setFormData({ ...formData, hierarchy: { ...formData.hierarchy, l1: e.target.value } })}
+                                                        onChange={e =>
+                                                            setFormData({
+                                                                ...formData,
+                                                                hierarchy: {
+                                                                    ...formData.hierarchy,
+                                                                    l1: e.target.value,
+                                                                },
+                                                            })
+                                                        }
                                                         className="w-full text-2xl font-black text-slate-900 dark:text-white bg-transparent outline-none placeholder:text-slate-200"
                                                         placeholder="Variant"
                                                     />
-                                                    <p className="text-[10px] text-slate-400">The parent container (e.g. 'Variant', 'Style', 'Type').</p>
+                                                    <p className="text-[10px] text-slate-400">
+                                                        The parent container (e.g. 'Variant', 'Style', 'Type').
+                                                    </p>
                                                 </div>
                                             </div>
 
                                             {/* L1 Input Type Toggle */}
                                             <div className="mt-6 pt-6 border-t border-slate-100 dark:border-white/5">
-                                                <label className="text-xs font-bold uppercase text-slate-400 mb-3 block">Input Mode for {formData.hierarchy.l1 || 'Level 1'}</label>
+                                                <label className="text-xs font-bold uppercase text-slate-400 mb-3 block">
+                                                    Input Mode for {formData.hierarchy.l1 || 'Level 1'}
+                                                </label>
                                                 <div className="flex gap-3">
                                                     <button
                                                         type="button"
-                                                        onClick={() => setFormData({ ...formData, hierarchy: { ...formData.hierarchy, l1_input_type: 'text' } })}
-                                                        className={`flex-1 p-4 rounded-xl border-2 transition-all ${formData.hierarchy.l1_input_type === 'text'
-                                                            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
-                                                            : 'border-slate-200 dark:border-white/10 hover:border-slate-300'
-                                                            }`}
+                                                        onClick={() =>
+                                                            setFormData({
+                                                                ...formData,
+                                                                hierarchy: {
+                                                                    ...formData.hierarchy,
+                                                                    l1_input_type: 'text',
+                                                                },
+                                                            })
+                                                        }
+                                                        className={`flex-1 p-4 rounded-xl border-2 transition-all ${
+                                                            formData.hierarchy.l1_input_type === 'text'
+                                                                ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                                                                : 'border-slate-200 dark:border-white/10 hover:border-slate-300'
+                                                        }`}
                                                     >
                                                         <div className="flex items-center gap-3">
-                                                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${formData.hierarchy.l1_input_type === 'text'
-                                                                ? 'border-indigo-500 bg-indigo-500'
-                                                                : 'border-slate-300'
-                                                                }`}>
+                                                            <div
+                                                                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                                                    formData.hierarchy.l1_input_type === 'text'
+                                                                        ? 'border-indigo-500 bg-indigo-500'
+                                                                        : 'border-slate-300'
+                                                                }`}
+                                                            >
                                                                 {formData.hierarchy.l1_input_type === 'text' && (
                                                                     <Check size={12} className="text-white" />
                                                                 )}
@@ -522,24 +637,38 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
                                                                 <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                                                     <Type size={14} /> Free Text
                                                                 </div>
-                                                                <p className="text-[10px] text-slate-400 mt-0.5">User types the name manually</p>
+                                                                <p className="text-[10px] text-slate-400 mt-0.5">
+                                                                    User types the name manually
+                                                                </p>
                                                             </div>
                                                         </div>
                                                     </button>
 
                                                     <button
                                                         type="button"
-                                                        onClick={() => setFormData({ ...formData, hierarchy: { ...formData.hierarchy, l1_input_type: 'lookup' } })}
-                                                        className={`flex-1 p-4 rounded-xl border-2 transition-all ${formData.hierarchy.l1_input_type === 'lookup'
-                                                            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
-                                                            : 'border-slate-200 dark:border-white/10 hover:border-slate-300'
-                                                            }`}
+                                                        onClick={() =>
+                                                            setFormData({
+                                                                ...formData,
+                                                                hierarchy: {
+                                                                    ...formData.hierarchy,
+                                                                    l1_input_type: 'lookup',
+                                                                },
+                                                            })
+                                                        }
+                                                        className={`flex-1 p-4 rounded-xl border-2 transition-all ${
+                                                            formData.hierarchy.l1_input_type === 'lookup'
+                                                                ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                                                                : 'border-slate-200 dark:border-white/10 hover:border-slate-300'
+                                                        }`}
                                                     >
                                                         <div className="flex items-center gap-3">
-                                                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${formData.hierarchy.l1_input_type === 'lookup'
-                                                                ? 'border-indigo-500 bg-indigo-500'
-                                                                : 'border-slate-300'
-                                                                }`}>
+                                                            <div
+                                                                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                                                    formData.hierarchy.l1_input_type === 'lookup'
+                                                                        ? 'border-indigo-500 bg-indigo-500'
+                                                                        : 'border-slate-300'
+                                                                }`}
+                                                            >
                                                                 {formData.hierarchy.l1_input_type === 'lookup' && (
                                                                     <Check size={12} className="text-white" />
                                                                 )}
@@ -548,7 +677,9 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
                                                                 <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                                                     <List size={14} /> Global Lookup
                                                                 </div>
-                                                                <p className="text-[10px] text-slate-400 mt-0.5">Select from the global catalog</p>
+                                                                <p className="text-[10px] text-slate-400 mt-0.5">
+                                                                    Select from the global catalog
+                                                                </p>
                                                             </div>
                                                         </div>
                                                     </button>
@@ -562,16 +693,30 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
 
                                         <div className="bg-white dark:bg-slate-800 p-8 rounded-[2rem] border border-slate-200 dark:border-white/5 space-y-6">
                                             <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 bg-pink-50 rounded-xl flex items-center justify-center text-pink-600 font-black text-xl">2</div>
+                                                <div className="w-12 h-12 bg-pink-50 rounded-xl flex items-center justify-center text-pink-600 font-black text-xl">
+                                                    2
+                                                </div>
                                                 <div className="flex-1">
-                                                    <label className="text-xs font-bold uppercase text-slate-400">Level 2 (Unit)</label>
+                                                    <label className="text-xs font-bold uppercase text-slate-400">
+                                                        Level 2 (Unit)
+                                                    </label>
                                                     <input
                                                         value={formData.hierarchy.l2}
-                                                        onChange={(e) => setFormData({ ...formData, hierarchy: { ...formData.hierarchy, l2: e.target.value } })}
+                                                        onChange={e =>
+                                                            setFormData({
+                                                                ...formData,
+                                                                hierarchy: {
+                                                                    ...formData.hierarchy,
+                                                                    l2: e.target.value,
+                                                                },
+                                                            })
+                                                        }
                                                         className="w-full text-2xl font-black text-slate-900 dark:text-white bg-transparent outline-none placeholder:text-slate-200"
                                                         placeholder="Color"
                                                     />
-                                                    <p className="text-[10px] text-slate-400">The individual sellable unit (e.g. 'Color', 'Size', 'Finish').</p>
+                                                    <p className="text-[10px] text-slate-400">
+                                                        The individual sellable unit (e.g. 'Color', 'Size', 'Finish').
+                                                    </p>
                                                 </div>
                                             </div>
                                         </div>
@@ -581,66 +726,99 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
                                 {/* STEP 3: ATTRIBUTES */}
                                 {step === 3 && (
                                     <div className="space-y-6 animate-in slide-in-from-right-8 duration-300">
-                                        {ATTRIBUTE_LEVELS.map((level) => {
+                                        {ATTRIBUTE_LEVELS.map(level => {
                                             const LevelIcon = level.icon;
                                             const levelKey = level.key as 'brand' | 'model' | 'variant';
                                             const attrs = formData.attributes[levelKey];
                                             const colorClasses = {
                                                 indigo: 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800/30',
-                                                emerald: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/30',
-                                                purple: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800/30'
+                                                emerald:
+                                                    'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/30',
+                                                purple: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800/30',
                                             };
                                             const iconColors = {
                                                 indigo: 'text-indigo-600 dark:text-indigo-400',
                                                 emerald: 'text-emerald-600 dark:text-emerald-400',
-                                                purple: 'text-purple-600 dark:text-purple-400'
+                                                purple: 'text-purple-600 dark:text-purple-400',
                                             };
                                             const buttonColors = {
                                                 indigo: 'hover:text-indigo-600 hover:border-indigo-600 hover:bg-indigo-50',
-                                                emerald: 'hover:text-emerald-600 hover:border-emerald-600 hover:bg-emerald-50',
-                                                purple: 'hover:text-purple-600 hover:border-purple-600 hover:bg-purple-50'
+                                                emerald:
+                                                    'hover:text-emerald-600 hover:border-emerald-600 hover:bg-emerald-50',
+                                                purple: 'hover:text-purple-600 hover:border-purple-600 hover:bg-purple-50',
                                             };
 
                                             return (
-                                                <div key={level.key} className={`rounded-2xl border ${colorClasses[level.color as keyof typeof colorClasses]} overflow-hidden`}>
+                                                <div
+                                                    key={level.key}
+                                                    className={`rounded-2xl border ${colorClasses[level.color as keyof typeof colorClasses]} overflow-hidden`}
+                                                >
                                                     {/* Section Header */}
                                                     <div className="px-6 py-4 flex items-center gap-3">
-                                                        <LevelIcon size={20} className={iconColors[level.color as keyof typeof iconColors]} />
+                                                        <LevelIcon
+                                                            size={20}
+                                                            className={
+                                                                iconColors[level.color as keyof typeof iconColors]
+                                                            }
+                                                        />
                                                         <div className="flex-1">
-                                                            <h4 className="font-bold text-slate-900 dark:text-white text-sm uppercase tracking-wide">{level.label}</h4>
-                                                            <p className="text-[10px] text-slate-500 dark:text-slate-400">{level.description}</p>
+                                                            <h4 className="font-bold text-slate-900 dark:text-white text-sm uppercase tracking-wide">
+                                                                {level.label}
+                                                            </h4>
+                                                            <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                                                                {level.description}
+                                                            </p>
                                                         </div>
-                                                        <span className="text-xs font-bold text-slate-400">{attrs.length} fields</span>
+                                                        <span className="text-xs font-bold text-slate-400">
+                                                            {attrs.length} fields
+                                                        </span>
                                                     </div>
 
                                                     {/* Attribute List */}
                                                     <div className="bg-white dark:bg-slate-900 px-4 py-2 space-y-3">
                                                         {attrs.map((attr: any, idx: number) => (
-                                                            <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800 group hover:ring-2 hover:ring-slate-200 transition-all">
+                                                            <div
+                                                                key={idx}
+                                                                className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800 group hover:ring-2 hover:ring-slate-200 transition-all"
+                                                            >
                                                                 <div className="grid grid-cols-12 gap-4 items-start">
                                                                     <div className="col-span-1 pt-2 text-slate-300 cursor-move">
                                                                         <GripVertical size={18} />
                                                                     </div>
 
                                                                     <div className="col-span-4 space-y-1">
-                                                                        <label className="text-[10px] uppercase font-bold text-slate-400">Label</label>
+                                                                        <label className="text-[10px] uppercase font-bold text-slate-400">
+                                                                            Label
+                                                                        </label>
                                                                         <input
                                                                             value={attr.label}
-                                                                            onChange={(e) => updateAttribute(levelKey, idx, { label: e.target.value })}
+                                                                            onChange={e =>
+                                                                                updateAttribute(levelKey, idx, {
+                                                                                    label: e.target.value,
+                                                                                })
+                                                                            }
                                                                             placeholder="Field Label"
                                                                             className="w-full font-bold text-slate-900 dark:text-white bg-transparent outline-none border-b border-transparent focus:border-indigo-500 transition-colors"
                                                                         />
                                                                     </div>
 
                                                                     <div className="col-span-3 space-y-1">
-                                                                        <label className="text-[10px] uppercase font-bold text-slate-400">Type</label>
+                                                                        <label className="text-[10px] uppercase font-bold text-slate-400">
+                                                                            Type
+                                                                        </label>
                                                                         <select
                                                                             value={attr.type}
-                                                                            onChange={(e) => updateAttribute(levelKey, idx, { type: e.target.value })}
+                                                                            onChange={e =>
+                                                                                updateAttribute(levelKey, idx, {
+                                                                                    type: e.target.value,
+                                                                                })
+                                                                            }
                                                                             className="w-full text-sm font-medium bg-white dark:bg-black/20 rounded-lg px-2 py-1 outline-none appearance-none"
                                                                         >
                                                                             {FIELD_TYPES.map(ft => (
-                                                                                <option key={ft.type} value={ft.type}>{ft.label}</option>
+                                                                                <option key={ft.type} value={ft.type}>
+                                                                                    {ft.label}
+                                                                                </option>
                                                                             ))}
                                                                         </select>
                                                                     </div>
@@ -648,10 +826,23 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
                                                                     <div className="col-span-3">
                                                                         {attr.type === 'select' && (
                                                                             <div className="space-y-1">
-                                                                                <label className="text-[10px] uppercase font-bold text-slate-400">Options</label>
+                                                                                <label className="text-[10px] uppercase font-bold text-slate-400">
+                                                                                    Options
+                                                                                </label>
                                                                                 <input
-                                                                                    value={attr.options ? attr.options.join(',') : ''}
-                                                                                    onChange={(e) => updateAttribute(levelKey, idx, { options: e.target.value.split(',') })}
+                                                                                    value={
+                                                                                        attr.options
+                                                                                            ? attr.options.join(',')
+                                                                                            : ''
+                                                                                    }
+                                                                                    onChange={e =>
+                                                                                        updateAttribute(levelKey, idx, {
+                                                                                            options:
+                                                                                                e.target.value.split(
+                                                                                                    ','
+                                                                                                ),
+                                                                                        })
+                                                                                    }
                                                                                     placeholder="Opt A, Opt B"
                                                                                     className="w-full text-sm bg-transparent border-b border-slate-200 focus:border-indigo-500 outline-none"
                                                                                 />
@@ -659,10 +850,16 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
                                                                         )}
                                                                         {attr.type === 'number' && (
                                                                             <div className="space-y-1">
-                                                                                <label className="text-[10px] uppercase font-bold text-slate-400">Unit Suffix</label>
+                                                                                <label className="text-[10px] uppercase font-bold text-slate-400">
+                                                                                    Unit Suffix
+                                                                                </label>
                                                                                 <input
                                                                                     value={attr.suffix || ''}
-                                                                                    onChange={(e) => updateAttribute(levelKey, idx, { suffix: e.target.value })}
+                                                                                    onChange={e =>
+                                                                                        updateAttribute(levelKey, idx, {
+                                                                                            suffix: e.target.value,
+                                                                                        })
+                                                                                    }
                                                                                     placeholder="kg, cc"
                                                                                     className="w-full text-sm bg-transparent border-b border-slate-200 focus:border-indigo-500 outline-none"
                                                                                 />
@@ -672,7 +869,9 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
 
                                                                     <div className="col-span-1 flex justify-end pt-1">
                                                                         <button
-                                                                            onClick={() => deleteAttribute(levelKey, idx)}
+                                                                            onClick={() =>
+                                                                                deleteAttribute(levelKey, idx)
+                                                                            }
                                                                             className="p-2 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                                                         >
                                                                             <Trash2 size={14} />
@@ -687,7 +886,9 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
                                                             onClick={() => addAttribute(levelKey)}
                                                             className={`w-full py-3 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-xl text-slate-400 ${buttonColors[level.color as keyof typeof buttonColors]} dark:hover:bg-opacity-10 transition-all font-bold uppercase tracking-widest text-[10px] flex items-center justify-center gap-2`}
                                                         >
-                                                            <Plus size={14} /> Add {level.key.charAt(0).toUpperCase() + level.key.slice(1)} Attribute
+                                                            <Plus size={14} /> Add{' '}
+                                                            {level.key.charAt(0).toUpperCase() + level.key.slice(1)}{' '}
+                                                            Attribute
                                                         </button>
                                                     </div>
                                                 </div>
@@ -695,13 +896,16 @@ export function ProductTemplateGallery({ initialTemplates }: ProductTemplateGall
                                         })}
                                     </div>
                                 )}
-
                             </div>
 
                             {/* Footer */}
                             <div className="p-6 border-t border-slate-100 dark:border-white/10 bg-white dark:bg-slate-900 flex justify-between items-center shrink-0">
                                 <div className="text-xs font-medium text-slate-400">
-                                    {step === 1 ? 'Start with the template name.' : step === 2 ? 'Define the 2-level structure.' : 'Add custom data fields.'}
+                                    {step === 1
+                                        ? 'Start with the template name.'
+                                        : step === 2
+                                          ? 'Define the 2-level structure.'
+                                          : 'Add custom data fields.'}
                                 </div>
                                 <div className="flex gap-3">
                                     {step > 1 && (

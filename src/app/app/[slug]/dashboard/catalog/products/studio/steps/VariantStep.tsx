@@ -11,12 +11,16 @@ import { toast } from 'sonner';
 // Helper to format text as Title Case
 function toTitleCase(str: string): string {
     if (!str) return '';
-    return str.toLowerCase().split(' ').map(word => {
-        return word.charAt(0).toUpperCase() + word.slice(1);
-    }).join(' ');
+    return str
+        .toLowerCase()
+        .split(' ')
+        .map(word => {
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        })
+        .join(' ');
 }
 
-export default function VariantStep({ family, template, existingVariants, onUpdate }: any) {
+export default function VariantStep({ family, template, existingVariants, onUpdate, tenantId }: any) {
     const [error, setError] = useState<string | null>(null);
     const [newVariantName, setNewVariantName] = useState('');
     const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -29,12 +33,12 @@ export default function VariantStep({ family, template, existingVariants, onUpda
     const [showReorderSaved, setShowReorderSaved] = useState(false);
     const reorderSavedTimeoutRef = useRef<number | null>(null);
 
+    const [editingVariant, setEditingVariant] = useState<any>(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
     // Media Manager State
     const [activeMediaVariant, setActiveMediaVariant] = useState<any>(null);
     const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
-
-    const [editingVariant, setEditingVariant] = useState<any>(null);
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
     // Lookup Constants & State
     const isLookupMode = template?.hierarchy_config?.l1_input_type === 'lookup';
@@ -45,7 +49,6 @@ export default function VariantStep({ family, template, existingVariants, onUpda
     const [selectedFamilyId, setSelectedFamilyId] = useState<string>('');
 
     const l1Label = template?.hierarchy_config?.l1 || 'Variant';
-
     // Mock/Common Suggestions if needed, or just unique existing ones
     const commonVariants = ['STANDARD', 'PRO', 'PLUS', 'SE', 'DISC', 'DRUM', 'BASE', 'TOP', 'LUXURY'];
 
@@ -57,10 +60,7 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                 .map((v: any) => ({ name: v.name.toUpperCase(), isExisting: true }));
 
             const commonMatches = commonVariants
-                .filter(v =>
-                    v.includes(query) &&
-                    !existingVariants.some((ev: any) => ev.name.toUpperCase() === v)
-                )
+                .filter(v => v.includes(query) && !existingVariants.some((ev: any) => ev.name.toUpperCase() === v))
                 .map(v => ({ name: v, isExisting: false }));
 
             const combined = [...existingMatches, ...commonMatches];
@@ -124,7 +124,7 @@ export default function VariantStep({ family, template, existingVariants, onUpda
         }
         if (event.key === 'ArrowDown') {
             event.preventDefault();
-            setHighlightedIndex((prev) => {
+            setHighlightedIndex(prev => {
                 const next = prev + 1;
                 return next >= suggestions.length ? 0 : next;
             });
@@ -132,7 +132,7 @@ export default function VariantStep({ family, template, existingVariants, onUpda
         }
         if (event.key === 'ArrowUp') {
             event.preventDefault();
-            setHighlightedIndex((prev) => {
+            setHighlightedIndex(prev => {
                 const next = prev - 1;
                 return next < 0 ? suggestions.length - 1 : next;
             });
@@ -250,12 +250,12 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                 slug: `${family.slug}-${name}`
                     .toLowerCase()
                     .trim()
-                    .replace(/[^a-z0-9\s-]/g, '')  // Remove special chars
-                    .replace(/\s+/g, '-')           // Spaces to dashes
-                    .replace(/-+/g, '-')            // Multiple dashes to single
-                    .replace(/^-|-$/g, ''),         // Trim leading/trailing dashes
+                    .replace(/[^a-z0-9\s-]/g, '') // Remove special chars
+                    .replace(/\s+/g, '-') // Spaces to dashes
+                    .replace(/-+/g, '-') // Multiple dashes to single
+                    .replace(/^-|-$/g, ''), // Trim leading/trailing dashes
                 position: nextPosition,
-                hsn_code: family.hsn_code || ''
+                hsn_code: family.hsn_code || '',
             };
 
             const { data, error: dbError } = await supabase
@@ -270,7 +270,11 @@ export default function VariantStep({ family, template, existingVariants, onUpda
             if (!isDuplicate) {
                 onUpdate([...existingVariants, data].sort((a: any, b: any) => (a.position || 0) - (b.position || 0)));
             } else {
-                onUpdate(existingVariants.map((v: any) => v.slug === data.slug ? data : v).sort((a: any, b: any) => (a.position || 0) - (b.position || 0)));
+                onUpdate(
+                    existingVariants
+                        .map((v: any) => (v.slug === data.slug ? data : v))
+                        .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
+                );
             }
             setNewVariantName('');
             setShowSuggestions(false);
@@ -298,7 +302,7 @@ export default function VariantStep({ family, template, existingVariants, onUpda
 
         const updatedList = sorted.map((v: any, idx: number) => ({
             ...v,
-            position: idx + 1
+            position: idx + 1,
         }));
 
         onUpdate(updatedList);
@@ -355,12 +359,17 @@ export default function VariantStep({ family, template, existingVariants, onUpda
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
+            <div className="flex items-center justify-between">
+                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                    Variant Specifications
+                </div>
+            </div>
+
             {existingVariants?.length === 0 && (
                 <div className="px-4 py-3 rounded-2xl border border-dashed border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-[10px] font-black uppercase tracking-widest text-slate-400">
                     No {l1Label.toLowerCase()} yet. Add your first one.
                 </div>
             )}
-
 
             <div className="flex items-center justify-between text-left">
                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Variants</span>
@@ -372,18 +381,28 @@ export default function VariantStep({ family, template, existingVariants, onUpda
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-left">
                 {existingVariants.map((v: any) => {
                     // Dynamic key specs derived from template attributes
-                    const keyAttributes = (template?.attribute_config?.variant || template?.attribute_config?.model || []).slice(0, 3);
+                    const keyAttributes = (
+                        template?.attribute_config?.variant ||
+                        template?.attribute_config?.model ||
+                        []
+                    ).slice(0, 3);
 
                     return (
-                        <div key={v.id} className="relative bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-white/5 flex flex-col justify-between group hover:border-indigo-500/20 transition-all shadow-xl shadow-slate-200/5 min-h-[200px]">
+                        <div
+                            key={v.id}
+                            className="relative bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-white/5 flex flex-col justify-between group hover:border-indigo-500/20 transition-all shadow-xl shadow-slate-200/5 min-h-[200px]"
+                        >
                             <div className="absolute -top-2 -left-2 w-7 h-7 bg-slate-900 border-2 border-white dark:border-slate-800 rounded-full flex items-center justify-center text-white font-black italic text-[10px] shadow-lg z-10">
                                 {v.position}
                             </div>
 
-                            {/* Edit Button */}
-                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {/* Action Buttons */}
+                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-2">
                                 <button
-                                    onClick={() => { setEditingVariant(v); setIsEditModalOpen(true); }}
+                                    onClick={() => {
+                                        setEditingVariant(v);
+                                        setIsEditModalOpen(true);
+                                    }}
                                     className="p-2 bg-slate-100 dark:bg-white/10 rounded-full text-slate-400 hover:text-indigo-600 transition-colors"
                                 >
                                     <Edit2 size={12} />
@@ -391,22 +410,31 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                             </div>
 
                             <div className="flex-1">
-                                <h4 className="font-black text-lg text-slate-900 dark:text-white uppercase italic leading-none">{v.name}</h4>
+                                <h4 className="font-black text-lg text-slate-900 dark:text-white uppercase italic leading-none">
+                                    {v.name}
+                                </h4>
                                 <div className="flex items-center gap-2 mt-2">
                                     <input
                                         type="number"
                                         value={v.position}
-                                        onChange={(e) => handleUpdatePosition(v.id, parseInt(e.target.value))}
+                                        onChange={e => handleUpdatePosition(v.id, parseInt(e.target.value))}
                                         className="w-10 bg-slate-100 dark:bg-black/20 rounded-md text-[10px] font-black text-center py-0.5 outline-none border border-transparent focus:border-indigo-500/30"
                                     />
-                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Sequence No.</span>
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                        Sequence No.
+                                    </span>
                                 </div>
-                                <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest mt-1 block opacity-30">{v.slug}</span>
+                                <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest mt-1 block opacity-30">
+                                    {v.slug}
+                                </span>
 
                                 {/* Variant Media Button */}
                                 <div className="mt-4">
                                     <button
-                                        onClick={() => { setActiveMediaVariant(v); setIsMediaModalOpen(true); }}
+                                        onClick={() => {
+                                            setActiveMediaVariant(v);
+                                            setIsMediaModalOpen(true);
+                                        }}
                                         className="flex items-center gap-2 group/media"
                                     >
                                         {(() => {
@@ -415,21 +443,48 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                                                 return (
                                                     <div className="grid grid-cols-3 gap-2 mb-4 mt-4 py-3 border-t border-slate-100 dark:border-white/5">
                                                         {keyAttributes.map((attr: any, i: number) => (
-                                                            <div key={attr.key} className={`text-center ${i < keyAttributes.length - 1 ? 'border-r border-slate-100 dark:border-white/5' : ''}`}>
+                                                            <div
+                                                                key={attr.key}
+                                                                className={`text-center ${i < keyAttributes.length - 1 ? 'border-r border-slate-100 dark:border-white/5' : ''}`}
+                                                            >
                                                                 <div className="flex items-center justify-center gap-1 text-[9px] uppercase text-slate-400 font-bold mb-0.5">
-                                                                    {attr.type === 'number' ? <Gauge size={10} /> : <Box size={10} />}
+                                                                    {attr.type === 'number' ? (
+                                                                        <Gauge size={10} />
+                                                                    ) : (
+                                                                        <Box size={10} />
+                                                                    )}
                                                                     {attr.label?.split(' ')[0] || attr.key}
                                                                 </div>
                                                                 <div className="text-xs font-black text-slate-700 dark:text-slate-200">
                                                                     {v.specs?.[attr.key] ? (
-                                                                        Array.isArray(v.specs[attr.key])
-                                                                            ? `${v.specs[attr.key].length} Items`
-                                                                            : `${v.specs[attr.key]}${(attr.suffix && !attr.label?.toLowerCase().includes('material') && !(attr.key === 'weight' && attr.type === 'select')) ? attr.suffix : ''}`
-                                                                    ) : (family?.specs?.[attr.key] ? (
-                                                                        Array.isArray(family.specs[attr.key])
-                                                                            ? <span className="text-slate-400">{family.specs[attr.key].length} Items</span>
-                                                                            : <span className="text-slate-400">{family.specs[attr.key]}{(attr.suffix && !attr.label?.toLowerCase().includes('material') && !(attr.key === 'weight' && attr.type === 'select')) ? attr.suffix : ''}</span>
-                                                                    ) : '-')}
+                                                                        Array.isArray(v.specs[attr.key]) ? (
+                                                                            `${v.specs[attr.key].length} Items`
+                                                                        ) : (
+                                                                            `${v.specs[attr.key]}${attr.suffix && !attr.label?.toLowerCase().includes('material') && !(attr.key === 'weight' && attr.type === 'select') ? attr.suffix : ''}`
+                                                                        )
+                                                                    ) : family?.specs?.[attr.key] ? (
+                                                                        Array.isArray(family.specs[attr.key]) ? (
+                                                                            <span className="text-slate-400">
+                                                                                {family.specs[attr.key].length} Items
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="text-slate-400">
+                                                                                {family.specs[attr.key]}
+                                                                                {attr.suffix &&
+                                                                                !attr.label
+                                                                                    ?.toLowerCase()
+                                                                                    .includes('material') &&
+                                                                                !(
+                                                                                    attr.key === 'weight' &&
+                                                                                    attr.type === 'select'
+                                                                                )
+                                                                                    ? attr.suffix
+                                                                                    : ''}
+                                                                            </span>
+                                                                        )
+                                                                    ) : (
+                                                                        '-'
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         ))}
@@ -445,13 +500,34 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                                             const inheritedPdfCount = family?.specs?.pdf_urls?.length || 0;
                                             const inheritedImageCount = family?.specs?.gallery?.length || 0;
 
-                                            const totalAssets = ownImageCount + ownVideoCount + ownPdfCount + inheritedVideoCount + inheritedPdfCount + inheritedImageCount;
+                                            const totalAssets =
+                                                ownImageCount +
+                                                ownVideoCount +
+                                                ownPdfCount +
+                                                inheritedVideoCount +
+                                                inheritedPdfCount +
+                                                inheritedImageCount;
 
                                             return totalAssets > 0 ? (
                                                 <div className="flex items-center gap-2">
-                                                    <AssetBadge icon={ImageIcon} specific={ownImageCount} shared={inheritedImageCount} color="bg-indigo-50 text-indigo-600" />
-                                                    <AssetBadge icon={Video} specific={ownVideoCount} shared={inheritedVideoCount} color="bg-rose-50 text-rose-600" />
-                                                    <AssetBadge icon={FileText} specific={ownPdfCount} shared={inheritedPdfCount} color="bg-emerald-50 text-emerald-600" />
+                                                    <AssetBadge
+                                                        icon={ImageIcon}
+                                                        specific={ownImageCount}
+                                                        shared={inheritedImageCount}
+                                                        color="bg-indigo-50 text-indigo-600"
+                                                    />
+                                                    <AssetBadge
+                                                        icon={Video}
+                                                        specific={ownVideoCount}
+                                                        shared={inheritedVideoCount}
+                                                        color="bg-rose-50 text-rose-600"
+                                                    />
+                                                    <AssetBadge
+                                                        icon={FileText}
+                                                        specific={ownPdfCount}
+                                                        shared={inheritedPdfCount}
+                                                        color="bg-emerald-50 text-emerald-600"
+                                                    />
                                                 </div>
                                             ) : (
                                                 <div className="px-4 py-2 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-xl flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 group-hover/media:text-indigo-600 group-hover/media:bg-slate-100 transition-all">
@@ -462,7 +538,10 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                                     </button>
                                 </div>
                             </div>
-                            <button onClick={() => handleDelete(v.id)} className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-2xl transition-all opacity-0 group-hover:opacity-100">
+                            <button
+                                onClick={() => handleDelete(v.id)}
+                                className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-2xl transition-all opacity-0 group-hover:opacity-100"
+                            >
                                 <Trash2 size={18} />
                             </button>
                         </div>
@@ -474,7 +553,12 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                     /* LOOKUP MODE: Same flow as normal - click to expand, then select */
                     !isAdding ? (
                         <button
-                            onClick={() => { setIsAdding(true); setSelectedBrandId(''); setSelectedFamilyId(''); setNewVariantName(''); }}
+                            onClick={() => {
+                                setIsAdding(true);
+                                setSelectedBrandId('');
+                                setSelectedFamilyId('');
+                                setNewVariantName('');
+                            }}
                             className="group relative h-40 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-[2rem] p-6 hover:border-indigo-500 hover:bg-indigo-50/10 transition-all flex flex-col items-center justify-center gap-3 text-slate-400 hover:text-indigo-600 shadow-sm"
                         >
                             <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-white/5 flex items-center justify-center group-hover:scale-110 transition-all shadow-sm">
@@ -489,20 +573,40 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                             onKeyDown={handleLookupKeyDown}
                         >
                             <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest leading-none">New {l1Label} Name</span>
-                                <button onClick={() => { setIsAdding(false); setSelectedBrandId(''); setSelectedFamilyId(''); setNewVariantName(''); }} className="text-slate-400 hover:text-slate-600"><Plus size={16} className="rotate-45" /></button>
+                                <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest leading-none">
+                                    New {l1Label} Name
+                                </span>
+                                <button
+                                    onClick={() => {
+                                        setIsAdding(false);
+                                        setSelectedBrandId('');
+                                        setSelectedFamilyId('');
+                                        setNewVariantName('');
+                                    }}
+                                    className="text-slate-400 hover:text-slate-600"
+                                >
+                                    <Plus size={16} className="rotate-45" />
+                                </button>
                             </div>
                             <div className="flex flex-col gap-4">
                                 <div className="flex items-center gap-3 flex-wrap">
                                     <select
                                         ref={lookupBrandRef}
                                         value={selectedBrandId}
-                                        onChange={(e) => { setSelectedBrandId(e.target.value); setSelectedFamilyId(''); setNewVariantName(''); }}
+                                        onChange={e => {
+                                            setSelectedBrandId(e.target.value);
+                                            setSelectedFamilyId('');
+                                            setNewVariantName('');
+                                        }}
                                         className="flex-1 min-w-[120px] bg-transparent border-none p-0 text-lg font-black uppercase italic text-slate-900 dark:text-white outline-none cursor-pointer"
                                     >
-                                        <option value="" className="text-slate-300">BRAND...</option>
+                                        <option value="" className="text-slate-300">
+                                            BRAND...
+                                        </option>
                                         {lookupBrands.map(b => (
-                                            <option key={b.id} value={b.id} className="text-lg font-bold">{b.name}</option>
+                                            <option key={b.id} value={b.id} className="text-lg font-bold">
+                                                {b.name}
+                                            </option>
                                         ))}
                                     </select>
                                     {selectedBrandId && (
@@ -510,12 +614,19 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                                             <span className="text-slate-300">→</span>
                                             <select
                                                 value={selectedFamilyId}
-                                                onChange={(e) => { setSelectedFamilyId(e.target.value); setNewVariantName(''); }}
+                                                onChange={e => {
+                                                    setSelectedFamilyId(e.target.value);
+                                                    setNewVariantName('');
+                                                }}
                                                 className="flex-1 min-w-[120px] bg-transparent border-none p-0 text-lg font-black uppercase italic text-slate-900 dark:text-white outline-none cursor-pointer"
                                             >
-                                                <option value="" className="text-slate-300">MODEL...</option>
+                                                <option value="" className="text-slate-300">
+                                                    MODEL...
+                                                </option>
                                                 {lookupFamilies.map(f => (
-                                                    <option key={f.id} value={f.id} className="text-lg font-bold">{f.name}</option>
+                                                    <option key={f.id} value={f.id} className="text-lg font-bold">
+                                                        {f.name}
+                                                    </option>
                                                 ))}
                                             </select>
                                         </>
@@ -525,15 +636,25 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                                             <span className="text-slate-300">→</span>
                                             <select
                                                 value={newVariantName}
-                                                onChange={(e) => setNewVariantName(e.target.value)}
+                                                onChange={e => setNewVariantName(e.target.value)}
                                                 className="flex-1 min-w-[120px] bg-transparent border-none p-0 text-2xl font-black uppercase italic text-slate-900 dark:text-white outline-none cursor-pointer"
                                             >
-                                                <option value="" className="text-slate-300">SELECT {l1Label}...</option>
+                                                <option value="" className="text-slate-300">
+                                                    SELECT {l1Label}...
+                                                </option>
                                                 {lookupVariants.map(v => {
-                                                    const isAlreadyAdded = existingVariants.some((ev: any) => ev.name.toUpperCase() === v.name.toUpperCase());
+                                                    const isAlreadyAdded = existingVariants.some(
+                                                        (ev: any) => ev.name.toUpperCase() === v.name.toUpperCase()
+                                                    );
                                                     return (
-                                                        <option key={v.id} value={v.name} disabled={isAlreadyAdded} className="text-lg font-bold">
-                                                            {v.name}{isAlreadyAdded ? ' ✓' : ''}
+                                                        <option
+                                                            key={v.id}
+                                                            value={v.name}
+                                                            disabled={isAlreadyAdded}
+                                                            className="text-lg font-bold"
+                                                        >
+                                                            {v.name}
+                                                            {isAlreadyAdded ? ' ✓' : ''}
                                                         </option>
                                                     );
                                                 })}
@@ -545,7 +666,8 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                                             // Derive name from: variant > model > brand
                                             const selectedBrand = lookupBrands.find(b => b.id === selectedBrandId);
                                             const selectedModel = lookupFamilies.find(f => f.id === selectedFamilyId);
-                                            const derivedName = newVariantName || selectedModel?.name || selectedBrand?.name || '';
+                                            const derivedName =
+                                                newVariantName || selectedModel?.name || selectedBrand?.name || '';
                                             if (derivedName) handleAddVariant(derivedName);
                                         }}
                                         disabled={!selectedBrandId}
@@ -559,7 +681,10 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                     )
                 ) : !isAdding ? (
                     <button
-                        onClick={() => { setIsAdding(true); setTimeout(() => document.getElementById('new-variant-input')?.focus(), 100); }}
+                        onClick={() => {
+                            setIsAdding(true);
+                            setTimeout(() => document.getElementById('new-variant-input')?.focus(), 100);
+                        }}
                         className="group relative h-40 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-[2rem] p-6 hover:border-indigo-500 hover:bg-indigo-50/10 transition-all flex flex-col items-center justify-center gap-3 text-slate-400 hover:text-indigo-600 shadow-sm"
                     >
                         <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-white/5 flex items-center justify-center group-hover:scale-110 transition-all shadow-sm">
@@ -573,22 +698,36 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                         className="relative bg-slate-50/50 dark:bg-white/5 p-8 rounded-[2.5rem] border-2 border-dashed border-indigo-500/40 flex flex-col justify-center gap-4 transition-all shadow-2xl shadow-indigo-500/5"
                     >
                         <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest leading-none">New {l1Label} Name</span>
-                            <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-600"><Plus size={16} className="rotate-45" /></button>
+                            <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest leading-none">
+                                New {l1Label} Name
+                            </span>
+                            <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-600">
+                                <Plus size={16} className="rotate-45" />
+                            </button>
                         </div>
                         <div className="flex flex-col gap-4">
                             <div className="flex items-center gap-4">
-                                {template?.hierarchy_config?.lookup && Array.isArray(template.hierarchy_config.lookup) && template.hierarchy_config.lookup.length > 0 ? (
+                                {template?.hierarchy_config?.lookup &&
+                                Array.isArray(template.hierarchy_config.lookup) &&
+                                template.hierarchy_config.lookup.length > 0 ? (
                                     <select
                                         id="new-variant-input"
                                         value={newVariantName}
-                                        onChange={(e) => setNewVariantName(e.target.value)}
+                                        onChange={e => setNewVariantName(e.target.value)}
                                         className="flex-1 bg-transparent border-none p-0 text-2xl font-black uppercase italic text-slate-900 dark:text-white outline-none cursor-pointer appearance-none"
                                         style={{ backgroundImage: 'none' }}
                                     >
-                                        <option value="" disabled className="text-slate-300">SELECT {l1Label}...</option>
+                                        <option value="" disabled className="text-slate-300">
+                                            SELECT {l1Label}...
+                                        </option>
                                         {template.hierarchy_config.lookup.map((opt: string) => (
-                                            <option key={opt} value={opt} className="text-lg font-bold text-slate-700 bg-white dark:bg-slate-900">{opt}</option>
+                                            <option
+                                                key={opt}
+                                                value={opt}
+                                                className="text-lg font-bold text-slate-700 bg-white dark:bg-slate-900"
+                                            >
+                                                {opt}
+                                            </option>
                                         ))}
                                     </select>
                                 ) : (
@@ -597,7 +736,7 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                                         type="text"
                                         autoComplete="off"
                                         value={newVariantName}
-                                        onChange={(e) => setNewVariantName(e.target.value)}
+                                        onChange={e => setNewVariantName(e.target.value)}
                                         placeholder={`e.g. STANDARD...`}
                                         onKeyDown={handleInputKeyDown}
                                         className="flex-1 bg-transparent border-none p-0 text-2xl font-black uppercase italic text-slate-900 dark:text-white placeholder:text-slate-200 dark:placeholder:text-white/10 outline-none"
@@ -610,7 +749,6 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                                     <Plus size={20} strokeWidth={3} />
                                 </button>
                             </div>
-
                         </div>
 
                         {/* Autocomplete Suggestions (Only for Text Mode) */}
@@ -618,20 +756,26 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                             <div className="absolute top-full left-0 right-0 mt-4 bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-2xl p-4 z-[100] animate-in zoom-in-95 fade-in duration-200">
                                 <div className="flex items-center gap-2 mb-3 px-2">
                                     <Search size={12} className="text-slate-400" />
-                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Suggestions</span>
+                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                                        Suggestions
+                                    </span>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                     {suggestions.map((s: any, i) => (
                                         <button
                                             key={i}
-                                            onClick={(e) => {
+                                            onClick={e => {
                                                 e.stopPropagation();
                                                 selectSuggestion(s);
                                             }}
-                                            className={`px-4 py-2 border flex items-center gap-2 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all ${i === highlightedIndex ? 'bg-indigo-600 text-white border-indigo-600' : (s.isExisting ? 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-400 cursor-not-allowed' : 'bg-white dark:bg-white/10 border-transparent hover:bg-indigo-600 hover:text-white')}`}
+                                            className={`px-4 py-2 border flex items-center gap-2 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all ${i === highlightedIndex ? 'bg-indigo-600 text-white border-indigo-600' : s.isExisting ? 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-400 cursor-not-allowed' : 'bg-white dark:bg-white/10 border-transparent hover:bg-indigo-600 hover:text-white'}`}
                                         >
                                             {s.name}
-                                            {s.isExisting && <span className="text-[7px] bg-slate-200 dark:bg-white/10 px-1 rounded">EXISTING</span>}
+                                            {s.isExisting && (
+                                                <span className="text-[7px] bg-slate-200 dark:bg-white/10 px-1 rounded">
+                                                    EXISTING
+                                                </span>
+                                            )}
                                         </button>
                                     ))}
                                 </div>
@@ -644,21 +788,28 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                     <SKUMediaManager
                         skuName={activeMediaVariant.name}
                         initialImages={activeMediaVariant.specs?.gallery || []}
-                        initialVideos={activeMediaVariant.specs?.video_urls?.length > 0 ? activeMediaVariant.specs.video_urls : (family?.specs?.video_urls ?? [])}
-                        initialPdfs={activeMediaVariant.specs?.pdf_urls?.length > 0 ? activeMediaVariant.specs.pdf_urls : (family?.specs?.pdf_urls ?? [])}
+                        initialVideos={
+                            activeMediaVariant.specs?.video_urls?.length > 0
+                                ? activeMediaVariant.specs.video_urls
+                                : (family?.specs?.video_urls ?? [])
+                        }
+                        initialPdfs={
+                            activeMediaVariant.specs?.pdf_urls?.length > 0
+                                ? activeMediaVariant.specs.pdf_urls
+                                : (family?.specs?.pdf_urls ?? [])
+                        }
                         initialPrimary={activeMediaVariant.specs?.primary_image}
                         // Pass family media as inherited
                         inheritedVideos={family?.specs?.video_urls || []}
                         inheritedPdfs={family?.specs?.pdf_urls || []}
                         inheritedFrom={family?.name}
-
                         onSave={async (images, videos, pdfs, primary) => {
                             const updatedSpecs = {
                                 ...activeMediaVariant.specs,
                                 gallery: images,
                                 video_urls: videos,
                                 pdf_urls: pdfs,
-                                primary_image: primary
+                                primary_image: primary,
                             };
 
                             const updatedList = existingVariants.map((v: any) =>
@@ -668,7 +819,10 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                             onUpdate(updatedList);
 
                             const supabase = createClient();
-                            await supabase.from('cat_items').update({ specs: updatedSpecs }).eq('id', activeMediaVariant.id);
+                            await supabase
+                                .from('cat_items')
+                                .update({ specs: updatedSpecs })
+                                .eq('id', activeMediaVariant.id);
                         }}
                         onClose={() => setIsMediaModalOpen(false)}
                     />
@@ -696,7 +850,9 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                                 <input
                                     type="text"
                                     value={editingVariant.name}
-                                    onChange={(e) => setEditingVariant({ ...editingVariant, name: e.target.value.toUpperCase() })}
+                                    onChange={e =>
+                                        setEditingVariant({ ...editingVariant, name: e.target.value.toUpperCase() })
+                                    }
                                     className="w-full bg-transparent font-black text-2xl outline-none border-b-2 border-slate-200 dark:border-white/10 focus:border-indigo-500 py-2 uppercase italic text-slate-900 dark:text-white"
                                     placeholder="e.g. STANDARD"
                                 />
@@ -707,8 +863,14 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {(Array.isArray(template?.attribute_config) ? [] : (template?.attribute_config?.variant || [])).map((attr: any) => (
-                                <div key={attr.key} className={`space-y-2 ${attr.type === 'service_schedule' || attr.type === 'warranty' ? 'md:col-span-2 lg:col-span-3' : ''}`}>
+                            {(Array.isArray(template?.attribute_config)
+                                ? []
+                                : template?.attribute_config?.variant || []
+                            ).map((attr: any) => (
+                                <div
+                                    key={attr.key}
+                                    className={`space-y-2 ${attr.type === 'service_schedule' || attr.type === 'warranty' ? 'md:col-span-2 lg:col-span-3' : ''}`}
+                                >
                                     <label
                                         className="text-[10px] font-black uppercase text-slate-400 tracking-widest cursor-help dashed-underline decoration-slate-300"
                                         title={`Key: ${attr.key} | Type: ${attr.type} | Suffix: ${attr.suffix || 'None'}`}
@@ -719,15 +881,21 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                                         <AttributeInput
                                             attr={attr}
                                             value={editingVariant.specs?.[attr.key]}
-                                            onChange={(val) => setEditingVariant({
-                                                ...editingVariant,
-                                                specs: { ...editingVariant.specs, [attr.key]: val }
-                                            })}
+                                            onChange={val =>
+                                                setEditingVariant({
+                                                    ...editingVariant,
+                                                    specs: { ...editingVariant.specs, [attr.key]: val },
+                                                })
+                                            }
                                             className="bg-transparent font-bold text-lg outline-none w-full border-b border-gray-200 dark:border-gray-700 focus:border-indigo-500 py-1"
                                         />
-                                        {attr.suffix && !attr.label?.toLowerCase().includes('material') && !(attr.key === 'weight' && attr.type === 'select') && (
-                                            <span className="text-xs font-bold text-indigo-400 text-[10px] uppercase tracking-wider">{attr.suffix}</span>
-                                        )}
+                                        {attr.suffix &&
+                                            !attr.label?.toLowerCase().includes('material') &&
+                                            !(attr.key === 'weight' && attr.type === 'select') && (
+                                                <span className="text-xs font-bold text-indigo-400 text-[10px] uppercase tracking-wider">
+                                                    {attr.suffix}
+                                                </span>
+                                            )}
                                     </div>
                                     <div className="text-[10px] text-slate-400">
                                         Inherited: <span className="font-bold">{family?.specs?.[attr.key] || '-'}</span>
@@ -755,15 +923,18 @@ export default function VariantStep({ family, template, existingVariants, onUpda
 
                                         const updatedSpecs = {
                                             ...editingVariant.specs,
-                                            [l1Label]: nameTitle // Sync the name spec too
+                                            [l1Label]: nameTitle, // Sync the name spec too
                                         };
 
                                         // 2. Update Database
-                                        const { error } = await supabase.from('cat_items').update({
-                                            name: nameTitle,
-                                            slug: newSlug,
-                                            specs: updatedSpecs
-                                        }).eq('id', editingVariant.id);
+                                        const { error } = await supabase
+                                            .from('cat_items')
+                                            .update({
+                                                name: nameTitle,
+                                                slug: newSlug,
+                                                specs: updatedSpecs,
+                                            })
+                                            .eq('id', editingVariant.id);
 
                                         if (error) throw error;
 
@@ -772,10 +943,14 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                                             ...editingVariant,
                                             name: nameTitle,
                                             slug: newSlug,
-                                            specs: updatedSpecs
+                                            specs: updatedSpecs,
                                         };
 
-                                        onUpdate(existingVariants.map((v: any) => v.id === editingVariant.id ? updatedVariant : v));
+                                        onUpdate(
+                                            existingVariants.map((v: any) =>
+                                                v.id === editingVariant.id ? updatedVariant : v
+                                            )
+                                        );
                                         setIsEditModalOpen(false);
                                         toast.success('Variant updated');
                                     } catch (err: any) {

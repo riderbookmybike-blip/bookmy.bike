@@ -10,7 +10,7 @@ export interface ProductVariant {
     modelSlug: string;
     sku: string;
     status: 'ACTIVE' | 'INACTIVE';
-    bodyType: 'MOTORCYCLE' | 'SCOOTER';
+    bodyType: 'MOTORCYCLE' | 'SCOOTER' | 'MOPED';
     fuelType: 'PETROL' | 'EV' | 'CNG';
     displacement?: number;
     powerUnit: 'CC' | 'KW';
@@ -40,6 +40,7 @@ export interface ProductVariant {
         isFlipped?: boolean;
         offsetX?: number;
         offsetY?: number;
+        finish?: string;
     }>;
     imageUrl: string;
     zoomFactor?: number;

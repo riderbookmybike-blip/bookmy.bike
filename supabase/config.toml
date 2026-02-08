@@ -1,0 +1,11 @@
+project_id = "aytdeqjxxjxbgiyslubx"
+
+[api]
+port = 54321
+external_url = "http://localhost:54321"
+
+[db]
+port = 54322
+
+[inbucket]
+port = 54326

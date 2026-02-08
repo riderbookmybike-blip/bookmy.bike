@@ -9,25 +9,29 @@ export default function EditColorModal({
     onSave,
     initialName,
     initialStatus,
+    initialFinish,
     existingNames,
     l2Label,
 }: {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (newName: string, newStatus: string) => void;
+    onSave: (newName: string, newStatus: string, newFinish: string) => void;
     initialName: string;
     initialStatus?: string;
+    initialFinish?: string;
     existingNames: string[];
     l2Label: string;
 }) {
     const [name, setName] = useState(initialName);
     const [status, setStatus] = useState(initialStatus || 'INACTIVE');
+    const [finish, setFinish] = useState(initialFinish || '');
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         setName(initialName);
         setStatus(initialStatus || 'INACTIVE');
-    }, [initialName, initialStatus]);
+        setFinish(initialFinish || '');
+    }, [initialName, initialStatus, initialFinish]);
 
     if (!isOpen) return null;
 
@@ -36,18 +40,25 @@ export default function EditColorModal({
         const trimmedName = name.trim();
         if (!trimmedName) return;
 
-        // If name hasn't changed, just close
-        if (trimmedName.toLowerCase() === initialName.toLowerCase()) {
+        // If nothing changed, just close
+        if (
+            trimmedName.toLowerCase() === initialName.toLowerCase() &&
+            status === initialStatus &&
+            finish.trim() === (initialFinish || '')
+        ) {
             onClose();
             return;
         }
 
-        if (existingNames.some(n => n.toLowerCase() === trimmedName.toLowerCase())) {
+        if (
+            trimmedName.toLowerCase() !== initialName.toLowerCase() &&
+            existingNames.some(n => n.toLowerCase() === trimmedName.toLowerCase())
+        ) {
             setError(`Color "${trimmedName}" already exists.`);
             return;
         }
 
-        onSave(trimmedName, status);
+        onSave(trimmedName, status, finish.trim());
         setError(null);
         onClose();
     };
@@ -90,6 +101,18 @@ export default function EditColorModal({
                                 <AlertCircle size={12} /> {error}
                             </p>
                         )}
+                    </div>
+
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">
+                            Finish (Matte, Gloss, etc.)
+                        </label>
+                        <input
+                            value={finish}
+                            onChange={e => setFinish(e.target.value)}
+                            placeholder="e.g. Matte, Glossy..."
+                            className="w-full px-6 py-4 bg-slate-50 dark:bg-black/20 border-2 border-slate-100 dark:border-white/10 rounded-2xl font-bold text-xl outline-none focus:border-indigo-500 transition-all placeholder:font-normal placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                        />
                     </div>
 
                     <div className="flex gap-4">

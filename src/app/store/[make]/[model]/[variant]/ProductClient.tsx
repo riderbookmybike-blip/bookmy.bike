@@ -415,8 +415,81 @@ export default function ProductClient({
             return;
         }
 
+        // Check if user is authenticated and has complete profile
+        if (user?.id) {
+            try {
+                const { data: member } = await supabase
+                    .from('id_members')
+                    .select('full_name, primary_phone, pincode, aadhaar_pincode, latitude, longitude, whatsapp')
+                    .eq('id', user.id)
+                    .maybeSingle();
+
+                // Profile is complete if: name exists + (phone OR GPS coordinates)
+                const hasPhone = member?.primary_phone || member?.whatsapp;
+                const hasLocation = member?.latitude && member?.longitude;
+                const hasName = member?.full_name;
+
+                // If user has required data, skip modal and create quote directly
+                if (hasName && (hasPhone || hasLocation)) {
+                    const { createLeadAction } = await import('@/actions/crm');
+
+                    toast.loading('Creating your quote...', { id: 'create-quote' });
+
+                    // Extract phone number (normalize if needed)
+                    let phoneForLead = member?.primary_phone || member?.whatsapp || '';
+                    if (!phoneForLead && user.phone) {
+                        // Fallback to auth phone, normalize to 10 digits
+                        const digits = user.phone.replace(/\D/g, '');
+                        phoneForLead = digits.length >= 10 ? digits.slice(-10) : user.phone;
+                    }
+
+                    const leadResult = await createLeadAction({
+                        customer_name: member.full_name,
+                        customer_phone: phoneForLead,
+                        customer_pincode: member.pincode || member.aadhaar_pincode || undefined,
+                        customer_id: user.id, // Pass logged-in user's ID directly!
+                        model: product.model,
+                        owner_tenant_id: product.tenant_id,
+                        source: 'PDP_QUICK_QUOTE',
+                    });
+
+                    if (leadResult.success && leadResult.leadId) {
+                        const commercials = buildCommercials();
+                        const quoteResult: any = await createQuoteAction({
+                            tenant_id: product.tenant_id,
+                            lead_id: leadResult.leadId,
+                            variant_id: product.id,
+                            color_id: colorSkuId,
+                            commercials,
+                            source: 'STORE_PDP',
+                        });
+
+                        toast.dismiss('create-quote');
+
+                        if (quoteResult?.success) {
+                            const displayId = quoteResult.data?.display_id || quoteResult.data?.id;
+                            toast.success(`Quote ${displayId} created successfully! 🎉`);
+                            // Optionally redirect to quotes page or show success message
+                            router.push('/profile?tab=quotes');
+                            return;
+                        } else {
+                            toast.error(quoteResult?.message || 'Failed to create quote');
+                        }
+                    } else {
+                        toast.dismiss('create-quote');
+                        toast.error(leadResult.message || 'Failed to process request');
+                    }
+                    return;
+                }
+            } catch (error) {
+                console.error('Auto-quote creation error:', error);
+                toast.error('Failed to create quote automatically');
+            }
+        }
+
+        // Fallback: Show modal for non-logged-in users or incomplete profiles
         if (!isReferralActive) {
-            setShowQuoteSuccess(true); // Simplified for now
+            setShowQuoteSuccess(true);
         } else {
             setShowQuoteSuccess(true);
         }

@@ -65,9 +65,13 @@ interface SKUPriceRow {
     onRoad?: number; // On-Road from RPC
     publishedAt?: string; // Latest publish timestamp
     displayState?: 'Draft' | 'In Review' | 'Published' | 'Live' | 'Inactive';
-    publishStage?: string; // AUMS: publish_stage from cat_price_state
-    originalPublishStage?: string; // For diff detection
+    publishStage?: 'DRAFT' | 'UNDER_REVIEW' | 'PUBLISHED' | 'LIVE' | 'INACTIVE';
+    originalPublishStage?: 'DRAFT' | 'UNDER_REVIEW' | 'PUBLISHED' | 'LIVE' | 'INACTIVE'; // For diff detection
     insurance_data?: any;
+    position?: number;
+    variantPosition?: number;
+    isPopular?: boolean;
+    originalIsPopular?: boolean;
 }
 
 export default function PricingPage() {
@@ -80,7 +84,7 @@ export default function PricingPage() {
     // Read initial filter values from URL (persist on reload)
     const [selectedStateId, setSelectedStateId] = useState<string>(searchParams.get('state') || '');
     const [selectedBrand, setSelectedBrand] = useState<string>(searchParams.get('brand') || 'ALL');
-    const [selectedCategory, setSelectedCategory] = useState<string>(searchParams.get('category') || 'ALL');
+    const [selectedCategory, setSelectedCategory] = useState<string>(searchParams.get('category') || 'VEHICLE');
     const [selectedSubCategory, setSelectedSubCategory] = useState<string>(searchParams.get('subCategory') || 'ALL');
     const [selectedModel, setSelectedModel] = useState<string>(searchParams.get('model') || 'ALL');
     const [selectedVariant, setSelectedVariant] = useState<string>(searchParams.get('variant') || 'ALL');
@@ -165,15 +169,14 @@ export default function PricingPage() {
                     `
                     id, name, slug, specs, price_base, parent_id, inclusion_type, status, position,
                     parent:parent_id (
-                        id,
-                        name,
-                        specs,
-                        position,
+                        id, name, type, specs, position,
                         parent:parent_id (
-                            id,
-                            name,
-                            price_base,
-                            specs,
+                            id, name, type, price_base, specs, position,
+                            parent:parent_id (
+                                id, name, type, price_base, specs,
+                                template:cat_templates(category, name),
+                                brand:cat_brands(id, name, logo_svg)
+                            ),
                             template:cat_templates(category, name),
                             brand:cat_brands(id, name, logo_svg)
                         )
@@ -190,7 +193,7 @@ export default function PricingPage() {
                 supabase
                     .from('cat_price_state')
                     .select(
-                        'vehicle_color_id, ex_showroom_price, rto_total, rto, insurance_total, insurance, on_road_price, updated_at, district, published_at, publish_stage'
+                        'vehicle_color_id, ex_showroom_price, rto_total, rto, insurance_total, insurance, on_road_price, updated_at, district, published_at, publish_stage, is_popular'
                     )
                     .eq('state_code', activeStateCode)
                     .eq('is_active', true)
@@ -200,7 +203,7 @@ export default function PricingPage() {
                           .from('cat_price_dealer')
                           .select('vehicle_color_id, offer_amount, inclusion_type, is_active')
                           .eq('state_code', activeStateCode)
-                          .eq('tenant_id', tenantId)
+                          .eq('tenant_id', tenantId as string)
                     : Promise.resolve({ data: [] as any, error: null as any }),
                 Promise.resolve({ data: [] as any, error: null as any }),
             ]);
@@ -227,6 +230,7 @@ export default function PricingPage() {
                     publishedAt?: string;
                     publishStage?: string;
                     updatedAt?: string;
+                    isPopular?: boolean;
                 }
             >();
             priceData?.forEach((p: any) => {
@@ -244,6 +248,7 @@ export default function PricingPage() {
                         publishedAt: p.published_at,
                         publishStage: p.publish_stage || 'DRAFT',
                         updatedAt: p.updated_at,
+                        isPopular: p.is_popular || false,
                     });
                 }
             });
@@ -267,10 +272,27 @@ export default function PricingPage() {
             brandDeltas?.forEach(d => brandDeltaMap.set(d.brand_id, d.delta_percentage));
 
             const formattedSkus: SKUPriceRow[] = (skuData || []).map((sku: any) => {
-                const variant = Array.isArray(sku.parent) ? sku.parent[0] : sku.parent;
-                const family = variant ? (Array.isArray(variant.parent) ? variant.parent[0] : variant.parent) : null;
+                const parent1 = Array.isArray(sku.parent) ? sku.parent[0] : sku.parent;
+                const parent2 = parent1 ? (Array.isArray(parent1.parent) ? parent1.parent[0] : parent1.parent) : null;
+                const parent3 = parent2 ? (Array.isArray(parent2.parent) ? parent2.parent[0] : parent2.parent) : null;
+
+                // Resolve Hierarchy: Family -> Variant -> Color -> SKU
+                let family = null;
+                let variant = null;
+                let color_def = null;
+
+                if (parent1?.type === 'COLOR_DEF') {
+                    color_def = parent1;
+                    variant = parent2;
+                    family = parent3;
+                } else if (parent1?.type === 'VARIANT') {
+                    variant = parent1;
+                    family = parent2;
+                } else if (parent1?.type === 'FAMILY') {
+                    family = parent1;
+                }
+
                 const brand = family ? (Array.isArray(family.brand) ? family.brand[0] : family.brand) : null;
-                // Template is at family (grandparent) level, not sku
                 const familyTemplate = family
                     ? Array.isArray(family.template)
                         ? family.template[0]
@@ -289,7 +311,7 @@ export default function PricingPage() {
                 const priceRecord = priceMap.get(sku.id);
                 const publishedAt = priceRecord?.publishedAt;
                 const updatedAt = priceRecord?.updatedAt;
-                const publishStage = priceRecord?.publishStage || 'DRAFT';
+                const publishStage = (priceRecord?.publishStage || 'DRAFT') as SKUPriceRow['publishStage'];
                 const resolvedStatus = sku.status || 'INACTIVE';
                 let displayState: SKUPriceRow['displayState'] = 'Draft';
                 if (tenantSlug !== 'aums') {
@@ -348,6 +370,8 @@ export default function PricingPage() {
                     status: sku.status || 'INACTIVE',
                     originalStatus: sku.status || 'INACTIVE',
                     localIsActive: localIsActive,
+                    position: sku.position || 999,
+                    variantPosition: variant?.position || 999,
                     originalLocalIsActive: localIsActive,
                     publishedAt: publishedAt,
                     updatedAt: updatedAt,
@@ -359,6 +383,8 @@ export default function PricingPage() {
                     publishStage: publishStage,
                     originalPublishStage: publishStage,
                     displayState: displayState,
+                    isPopular: priceRecord?.isPopular || false,
+                    originalIsPopular: priceRecord?.isPopular || false,
                 };
             });
 
@@ -413,7 +439,7 @@ export default function PricingPage() {
                 s.id === skuId
                     ? {
                           ...s,
-                          publishStage: stage,
+                          publishStage: stage as SKUPriceRow['publishStage'],
                           displayState: displayStateMap[stage] || 'Draft',
                       }
                     : s
@@ -425,6 +451,12 @@ export default function PricingPage() {
 
     const handleUpdateLocalStatus = (skuId: string, isActive: boolean) => {
         setSkus(prev => prev.map(s => (s.id === skuId ? { ...s, localIsActive: isActive } : s)));
+        setHasUnsavedChanges(true);
+        setLastEditTime(Date.now());
+    };
+
+    const handleUpdatePopular = (skuId: string, isPopular: boolean) => {
+        setSkus(prev => prev.map(s => (s.id === skuId ? { ...s, isPopular: isPopular } : s)));
         setHasUnsavedChanges(true);
         setLastEditTime(Date.now());
     };
@@ -448,6 +480,7 @@ export default function PricingPage() {
                 district: 'ALL',
                 ex_showroom_price: s.exShowroom,
                 is_active: true,
+                is_popular: s.isPopular || false,
                 // Include publish_stage if it was modified
                 ...(s.publishStage !== s.originalPublishStage && { publish_stage: s.publishStage }),
             }));
@@ -470,6 +503,7 @@ export default function PricingPage() {
                         originalExShowroom: s.exShowroom,
                         originalOfferAmount: s.offerAmount,
                         originalStatus: s.status,
+                        originalIsPopular: s.isPopular,
                     }))
                 );
                 try {
@@ -501,6 +535,7 @@ export default function PricingPage() {
                 offer_amount: s.offerAmount,
                 inclusion_type: s.inclusionType,
                 is_active: s.localIsActive,
+                is_popular: s.isPopular || false,
             }));
 
             const { error } = await supabase.rpc('upsert_dealer_offers', { offers: offerPayload });
@@ -515,6 +550,7 @@ export default function PricingPage() {
                         originalExShowroom: s.exShowroom,
                         originalOfferAmount: s.offerAmount,
                         originalStatus: s.status,
+                        originalIsPopular: s.isPopular,
                     }))
                 );
                 try {
@@ -624,19 +660,35 @@ export default function PricingPage() {
         const vMap = new Set<string>();
 
         skus.forEach(s => {
-            if (s.brand) bMap.add(s.brand);
+            // Category list should always show all available categories
             if (s.category) cMap.add(s.category);
-            const matchesBrand = selectedBrand === 'ALL' || s.brand === selectedBrand;
+
+            // Tight Filtering: Only show items matching the selected higher-level filters
             const matchesCategory = selectedCategory === 'ALL' || s.category === selectedCategory;
-            if (matchesBrand && matchesCategory && s.subCategory) {
+
+            // Brand list should be filtered by selected category
+            if (matchesCategory && s.brand) {
+                bMap.add(s.brand);
+            }
+
+            const matchesBrand = selectedBrand === 'ALL' || s.brand === selectedBrand;
+
+            // Sub-category list should be filtered by category AND brand
+            if (matchesCategory && matchesBrand && s.subCategory) {
                 scMap.add(s.subCategory);
             }
+
             const matchesSubCategory = selectedSubCategory === 'ALL' || s.subCategory === selectedSubCategory;
-            if (matchesBrand && matchesCategory && matchesSubCategory && s.model) {
+
+            // Model list should be filtered by category, brand, AND sub-category
+            if (matchesCategory && matchesBrand && matchesSubCategory && s.model) {
                 mMap.add(s.model);
             }
+
             const matchesModel = selectedModel === 'ALL' || s.model === selectedModel;
-            if (matchesBrand && matchesCategory && matchesSubCategory && matchesModel && s.variant) {
+
+            // Variant list should be filtered by all previous filters
+            if (matchesCategory && matchesBrand && matchesSubCategory && matchesModel && s.variant) {
                 vMap.add(s.variant);
             }
         });
@@ -899,6 +951,7 @@ export default function PricingPage() {
                             onUpdateStatus={handleUpdateStatus}
                             onUpdatePublishStage={handleUpdatePublishStage}
                             onUpdateLocalStatus={handleUpdateLocalStatus}
+                            onUpdatePopular={handleUpdatePopular}
                             onBulkUpdate={handleBulkUpdate}
                             onSaveAll={handleSaveAll}
                             onCalculate={handleCalculate}

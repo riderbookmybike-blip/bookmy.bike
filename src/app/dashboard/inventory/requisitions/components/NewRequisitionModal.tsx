@@ -1,18 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import {
-    X,
-    ChevronRight,
-    Plus,
-    Loader2,
-    AlertCircle,
-    CheckCircle2,
-    Users,
-    Package,
-    ArrowRight
-} from 'lucide-react';
+import { X, ChevronRight, Plus, Loader2, AlertCircle, CheckCircle2, Users, Package, ArrowRight } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { sanitizeSvg } from '@/lib/utils/sanitizeSvg';
 
 interface ModalProps {
     isOpen: boolean;
@@ -124,7 +115,7 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
                 .insert({
                     tenant_id: tenantId,
                     customer_name: customerName,
-                    status: 'PENDING'
+                    status: 'PENDING',
                 })
                 .select()
                 .single();
@@ -132,14 +123,12 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
             if (reqErr) throw reqErr;
 
             // 2. Create Requisition Item
-            const { error: itemErr } = await supabase
-                .from('inv_req_items')
-                .insert({
-                    requisition_id: req.id,
-                    sku_id: selectedColor,
-                    quantity: quantity,
-                    notes: notes
-                });
+            const { error: itemErr } = await supabase.from('inv_req_items').insert({
+                requisition_id: req.id,
+                sku_id: selectedColor,
+                quantity: quantity,
+                notes: notes,
+            });
 
             if (itemErr) throw itemErr;
 
@@ -157,7 +146,10 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose} />
+            <div
+                className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-300"
+                onClick={onClose}
+            />
 
             <div className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-slate-200 dark:border-white/5 flex flex-col max-h-[90vh]">
                 {/* Header */}
@@ -167,11 +159,18 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
                             <Plus size={24} />
                         </div>
                         <div>
-                            <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight italic">New Requisition</h2>
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Step {step} of 5 • {step === 5 ? 'Finalize Details' : 'Select Product'}</span>
+                            <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight italic">
+                                New Requisition
+                            </h2>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">
+                                Step {step} of 5 • {step === 5 ? 'Finalize Details' : 'Select Product'}
+                            </span>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-colors text-slate-500">
+                    <button
+                        onClick={onClose}
+                        className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-colors text-slate-500"
+                    >
                         <X size={20} />
                     </button>
                 </div>
@@ -197,14 +196,17 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
                     {/* Step 1: Select Brand */}
                     {step === 1 && (
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                            {brands.map((b) => (
+                            {brands.map(b => (
                                 <button
                                     key={b.id}
                                     onClick={() => handleBrandSelect(b.id)}
                                     className="p-6 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-3xl hover:border-purple-500 hover:bg-purple-500/5 transition-all group flex flex-col items-center gap-4"
                                 >
                                     {b.logo_svg ? (
-                                        <div dangerouslySetInnerHTML={{ __html: b.logo_svg }} className="w-12 h-12 [&>svg]:w-full [&>svg]:h-full object-contain grayscale group-hover:grayscale-0 transition-all" />
+                                        <div
+                                            dangerouslySetInnerHTML={{ __html: sanitizeSvg(b.logo_svg) }}
+                                            className="w-12 h-12 [&>svg]:w-full [&>svg]:h-full object-contain grayscale group-hover:grayscale-0 transition-all"
+                                        />
                                     ) : (
                                         <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-white/10 flex items-center justify-center font-black text-slate-400">
                                             {b.name.charAt(0)}
@@ -221,13 +223,15 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
                     {/* Step 2: Select Model */}
                     {step === 2 && (
                         <div className="grid grid-cols-1 gap-3">
-                            {models.map((m) => (
+                            {models.map(m => (
                                 <button
                                     key={m.id}
                                     onClick={() => handleModelSelect(m.id)}
                                     className="p-5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl hover:border-purple-500 hover:bg-purple-500/5 transition-all flex items-center justify-between group"
                                 >
-                                    <span className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight italic">{m.name}</span>
+                                    <span className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight italic">
+                                        {m.name}
+                                    </span>
                                     <ChevronRight className="text-slate-300 group-hover:text-purple-500" size={18} />
                                 </button>
                             ))}
@@ -237,17 +241,24 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
                     {/* Step 3: Select Variant */}
                     {step === 3 && (
                         <div className="grid grid-cols-1 gap-3">
-                            {variants.map((v) => (
+                            {variants.map(v => (
                                 <button
                                     key={v.id}
                                     onClick={() => handleVariantSelect(v.id)}
                                     className="p-5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl hover:border-purple-500 hover:bg-purple-500/5 transition-all flex flex-col gap-1 group"
                                 >
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm font-black text-slate-900 dark:text-white uppercase italic">{v.name}</span>
-                                        <ChevronRight className="text-slate-300 group-hover:text-purple-500" size={18} />
+                                        <span className="text-sm font-black text-slate-900 dark:text-white uppercase italic">
+                                            {v.name}
+                                        </span>
+                                        <ChevronRight
+                                            className="text-slate-300 group-hover:text-purple-500"
+                                            size={18}
+                                        />
                                     </div>
-                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{v.type} • {v.specs?.engine_cc || '-'}cc</span>
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                        {v.type} • {v.specs?.engine_cc || '-'}cc
+                                    </span>
                                 </button>
                             ))}
                         </div>
@@ -256,15 +267,20 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
                     {/* Step 4: Select Color */}
                     {step === 4 && (
                         <div className="grid grid-cols-1 gap-3">
-                            {colors.map((c) => (
+                            {colors.map(c => (
                                 <button
                                     key={c.id}
                                     onClick={() => handleColorSelect(c.id)}
                                     className="p-5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl hover:border-purple-500 hover:bg-purple-500/5 transition-all flex items-center justify-between group"
                                 >
                                     <div className="flex items-center gap-4">
-                                        <div className="w-6 h-6 rounded-full border border-slate-200 dark:border-white/20" style={{ backgroundColor: c.specs?.hex_primary || '#ccc' }} />
-                                        <span className="text-sm font-black text-slate-900 dark:text-white uppercase italic">{c.name}</span>
+                                        <div
+                                            className="w-6 h-6 rounded-full border border-slate-200 dark:border-white/20"
+                                            style={{ backgroundColor: c.specs?.hex_primary || '#ccc' }}
+                                        />
+                                        <span className="text-sm font-black text-slate-900 dark:text-white uppercase italic">
+                                            {c.name}
+                                        </span>
                                     </div>
                                     <ChevronRight className="text-slate-300 group-hover:text-purple-500" size={18} />
                                 </button>
@@ -282,12 +298,16 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
                                         <Package size={24} />
                                     </div>
                                     <div>
-                                        <h4 className="text-[10px] font-black text-purple-500 uppercase tracking-widest">Target Vehicle</h4>
+                                        <h4 className="text-[10px] font-black text-purple-500 uppercase tracking-widest">
+                                            Target Vehicle
+                                        </h4>
                                         <p className="text-lg font-black text-slate-900 dark:text-white uppercase italic">
-                                            {brands.find(b => b.id === selectedBrand)?.name} {models.find(m => m.id === selectedModel)?.name}
+                                            {brands.find(b => b.id === selectedBrand)?.name}{' '}
+                                            {models.find(m => m.id === selectedModel)?.name}
                                         </p>
                                         <p className="text-[11px] font-bold text-slate-500 uppercase">
-                                            {variants.find(v => v.id === selectedVariant)?.name} • {colors.find(c => c.id === selectedColor)?.name}
+                                            {variants.find(v => v.id === selectedVariant)?.name} •{' '}
+                                            {colors.find(c => c.id === selectedColor)?.name}
                                         </p>
                                     </div>
                                 </div>
@@ -306,7 +326,9 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
                                         >
                                             -
                                         </button>
-                                        <span className="flex-1 text-center font-black text-xl text-slate-900 dark:text-white">{quantity}</span>
+                                        <span className="flex-1 text-center font-black text-xl text-slate-900 dark:text-white">
+                                            {quantity}
+                                        </span>
                                         <button
                                             onClick={() => setQuantity(quantity + 1)}
                                             className="w-12 h-12 rounded-xl bg-indigo-600 text-white font-black text-xl hover:scale-105 transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
@@ -325,7 +347,7 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
                                         placeholder="EX: RAHUL SHARMA..."
                                         className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl py-4 px-6 text-sm font-black focus:outline-none focus:ring-2 focus:ring-purple-500/20 uppercase tracking-widest placeholder:text-slate-400/50"
                                         value={customerName}
-                                        onChange={(e) => setCustomerName(e.target.value)}
+                                        onChange={e => setCustomerName(e.target.value)}
                                     />
                                 </div>
 
@@ -338,7 +360,7 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
                                         rows={3}
                                         className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-3xl py-4 px-6 text-sm font-black focus:outline-none focus:ring-2 focus:ring-purple-500/20 uppercase tracking-widest placeholder:text-slate-400/50"
                                         value={notes}
-                                        onChange={(e) => setNotes(e.target.value)}
+                                        onChange={e => setNotes(e.target.value)}
                                     />
                                 </div>
                             </div>
@@ -368,7 +390,13 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
                         </button>
                     ) : (
                         <button
-                            disabled={step === 5 || (step === 1 && !selectedBrand) || (step === 2 && !selectedModel) || (step === 3 && !selectedVariant) || (step === 4 && !selectedColor)}
+                            disabled={
+                                step === 5 ||
+                                (step === 1 && !selectedBrand) ||
+                                (step === 2 && !selectedModel) ||
+                                (step === 3 && !selectedVariant) ||
+                                (step === 4 && !selectedColor)
+                            }
                             className="flex-[2] px-8 py-5 rounded-[2rem] bg-slate-100 dark:bg-white/5 text-slate-400 font-black uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 cursor-not-allowed opacity-50"
                         >
                             Select Options to Continue

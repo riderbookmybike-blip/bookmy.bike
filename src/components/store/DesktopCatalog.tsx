@@ -10,11 +10,11 @@ import {
     Star,
     StarHalf,
     X,
-    SlidersHorizontal,
     CircleHelp,
     MapPin,
     Bluetooth,
     ArrowRight,
+    Menu,
     Sparkles, // Added Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -87,10 +87,14 @@ export const DesktopCatalog = ({
         setSelectedBrakes,
         selectedWheels,
         setSelectedWheels,
+        selectedFuels,
+        setSelectedFuels,
         selectedBodyTypes,
         setSelectedBodyTypes,
         selectedSeatHeight,
         setSelectedSeatHeight,
+        selectedWeights,
+        setSelectedWeights,
         selectedFinishes,
         setSelectedFinishes,
         downpayment,
@@ -117,11 +121,27 @@ export const DesktopCatalog = ({
 
     // Local State
     const [isTv] = useState(_variant === 'tv');
-    const [sortBy, setSortBy] = useState<'popular' | 'price' | 'emi'>('popular');
+    const [sortBy] = useState<'popular' | 'price' | 'emi'>('popular');
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [isEmiOpen, setIsEmiOpen] = useState(true);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+    const bodyOptions = ['MOTORCYCLE', 'SCOOTER', 'MOPED'] as const;
+    const fuelOptions = ['Petrol', 'Electric', 'CNG'] as const;
+    const brakeOptions = [
+        'All Drum',
+        'Front Disc Rear Drum',
+        'Dual Disc',
+        'Front ABS Rear Drum',
+        'Front ABS Rear Disc',
+        'Dual ABS',
+    ] as const;
+    const finishOptions = ['MATTE', 'GLOSS'] as const;
+    const seatHeightOptions = ['< 780mm', '780-810mm', '> 810mm'] as const;
+    const weightOptions = ['< 110kg', '110-140kg', '> 140kg'] as const;
+    const selectedMakeSet = new Set(selectedMakes.map(m => m.toUpperCase()));
+    const allBrandSelected = makeOptions.length > 0 && makeOptions.every(m => selectedMakeSet.has(m.toUpperCase()));
 
     // Initial serviceability check (Client Side - keeps looking for updates)
     const [serviceability, setServiceability] = useState<{
@@ -458,6 +478,7 @@ export const DesktopCatalog = ({
         if (selectedWheels.length > 0) count++;
         if (selectedFinishes.length > 0) count++;
         if (selectedSeatHeight.length > 0) count++;
+        if (selectedWeights.length > 0) count++;
         if (maxPrice < 1000000) count++;
         if (maxEMI < 20000) count++;
         return count;
@@ -469,6 +490,7 @@ export const DesktopCatalog = ({
         selectedWheels.length,
         selectedFinishes.length,
         selectedSeatHeight.length,
+        selectedWeights.length,
         maxPrice,
         maxEMI,
     ]);
@@ -601,80 +623,148 @@ export const DesktopCatalog = ({
             <div className="flex-1 page-container pt-0 pb-10 md:pb-16">
                 <header className="hidden md:block sticky top-[var(--header-h)] z-[90] py-0 mb-4 mt-[calc(var(--header-h)+16px)] transition-all duration-300">
                     <div className="w-full">
-                        <div className="rounded-full bg-slate-50/50 dark:bg-[#0b0d10]/60 backdrop-blur-3xl border border-slate-200 dark:border-white/10 shadow-2xl h-[var(--header-h)] px-8 flex items-center">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                {/* Desktop Category Chips */}
-                                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar mask-gradient-right">
-                                    <button
-                                        onClick={() => setSelectedBodyTypes([])}
-                                        className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
-                                            activeCategory === 'ALL'
-                                                ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-md'
-                                                : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10'
-                                        }`}
-                                    >
-                                        All Types
-                                    </button>
-                                    {(['MOTORCYCLE', 'SCOOTER', 'MOPED'] as const).map(option => (
-                                        <button
-                                            key={option}
-                                            onClick={() =>
-                                                setSelectedBodyTypes(activeCategory === option ? [] : [option])
-                                            }
-                                            className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
-                                                activeCategory === option
-                                                    ? 'bg-[#F4B000] text-black shadow-lg shadow-[#F4B000]/20 scale-105'
-                                                    : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10'
-                                            }`}
-                                        >
-                                            {option}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                {/* Right: Sort + Filters + Count */}
-                                <div className="flex items-center gap-4 flex-shrink-0">
-                                    {/* Sort Dropdown */}
-                                    <div className="hidden md:flex items-center bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full px-3 py-2">
-                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mr-2">
-                                            Sort:
-                                        </span>
-                                        <select
-                                            value={sortBy}
-                                            onChange={e => setSortBy(e.target.value as 'popular' | 'price' | 'emi')}
-                                            className="bg-transparent text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white focus:outline-none cursor-pointer"
-                                        >
-                                            <option value="popular">Popularity</option>
-                                            <option value="price">Price: Low to High</option>
-                                            <option value="emi">EMI: Low to High</option>
-                                        </select>
+                        <div className="rounded-full bg-slate-50/15 dark:bg-[#0b0d10]/25 backdrop-blur-3xl border border-slate-200 dark:border-white/10 shadow-2xl h-14 px-4 flex items-center">
+                            <div className="flex items-center gap-3 w-full">
+                                <div className="flex-1">
+                                    <div className="flex flex-wrap items-center gap-2 w-full bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full px-4 py-2">
+                                        <Search size={14} className="text-slate-400" />
+                                        <input
+                                            type="text"
+                                            placeholder="Search model, brand, variant"
+                                            value={searchQuery}
+                                            onChange={e => setSearchQuery(e.target.value)}
+                                            className="flex-1 min-w-[160px] bg-transparent text-[11px] font-black tracking-widest uppercase focus:outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                                        />
+                                        {searchQuery && (
+                                            <button
+                                                onClick={() => setSearchQuery('')}
+                                                className="flex items-center text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        )}
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            {!allBrandSelected &&
+                                                selectedMakes.map(brand => (
+                                                    <span
+                                                        key={`brand-${brand}`}
+                                                        className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 dark:bg-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80"
+                                                    >
+                                                        {brand}
+                                                        <button
+                                                            onClick={() =>
+                                                                setSelectedMakes(
+                                                                    selectedMakes.filter(item => item !== brand)
+                                                                )
+                                                            }
+                                                            className="text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                                                        >
+                                                            <X size={10} />
+                                                        </button>
+                                                    </span>
+                                                ))}
+                                            {selectedBodyTypes.map(body => (
+                                                <span
+                                                    key={`body-${body}`}
+                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 dark:bg-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80"
+                                                >
+                                                    {body}
+                                                    <button
+                                                        onClick={() =>
+                                                            setSelectedBodyTypes(
+                                                                selectedBodyTypes.filter(item => item !== body)
+                                                            )
+                                                        }
+                                                        className="text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                                                    >
+                                                        <X size={10} />
+                                                    </button>
+                                                </span>
+                                            ))}
+                                            {selectedFuels.map(fuel => (
+                                                <span
+                                                    key={`fuel-${fuel}`}
+                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 dark:bg-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80"
+                                                >
+                                                    {fuel}
+                                                    <button
+                                                        onClick={() =>
+                                                            setSelectedFuels(
+                                                                selectedFuels.filter(item => item !== fuel)
+                                                            )
+                                                        }
+                                                        className="text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                                                    >
+                                                        <X size={10} />
+                                                    </button>
+                                                </span>
+                                            ))}
+                                            {selectedBrakes.map(brake => (
+                                                <span
+                                                    key={`brake-${brake}`}
+                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 dark:bg-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80"
+                                                >
+                                                    {brake}
+                                                    <button
+                                                        onClick={() => toggleFilter(setSelectedBrakes, brake)}
+                                                        className="text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                                                    >
+                                                        <X size={10} />
+                                                    </button>
+                                                </span>
+                                            ))}
+                                            {selectedFinishes.map(finish => (
+                                                <span
+                                                    key={`finish-${finish}`}
+                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 dark:bg-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80"
+                                                >
+                                                    {finish}
+                                                    <button
+                                                        onClick={() => toggleFilter(setSelectedFinishes, finish)}
+                                                        className="text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                                                    >
+                                                        <X size={10} />
+                                                    </button>
+                                                </span>
+                                            ))}
+                                            {selectedSeatHeight.map(height => (
+                                                <span
+                                                    key={`seat-${height}`}
+                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 dark:bg-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80"
+                                                >
+                                                    {height}
+                                                    <button
+                                                        onClick={() => toggleFilter(setSelectedSeatHeight, height)}
+                                                        className="text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                                                    >
+                                                        <X size={10} />
+                                                    </button>
+                                                </span>
+                                            ))}
+                                            {selectedWeights.map(weight => (
+                                                <span
+                                                    key={`weight-${weight}`}
+                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 dark:bg-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80"
+                                                >
+                                                    {weight}
+                                                    <button
+                                                        onClick={() => toggleFilter(setSelectedWeights, weight)}
+                                                        className="text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                                                    >
+                                                        <X size={10} />
+                                                    </button>
+                                                </span>
+                                            ))}
+                                        </div>
                                     </div>
-
-                                    <div className="h-6 w-px bg-slate-200 dark:bg-white/10 hidden md:block" />
-
-                                    <button
-                                        onClick={() => setIsFilterOpen(true)}
-                                        className={`relative flex items-center gap-2 px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all ${
-                                            activeFilterCount > 0
-                                                ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-md'
-                                                : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/10 hover:text-slate-900 dark:hover:text-white'
-                                        }`}
-                                    >
-                                        <SlidersHorizontal size={12} strokeWidth={2.5} />
-                                        <span className="hidden sm:inline">Filters</span>
-                                        {activeFilterCount > 0 && (
-                                            <span className="flex items-center justify-center bg-[#F4B000] text-black w-4 h-4 rounded-full text-[8px]">
-                                                {activeFilterCount}
-                                            </span>
-                                        )}
-                                        {/* Results Count Badge - Only show when filters applied */}
-                                        {activeFilterCount > 0 && (
-                                            <span className="absolute -top-2 -right-2 flex items-center justify-center bg-rose-500 text-white min-w-5 h-5 px-1.5 rounded-full text-[9px] font-black shadow-lg">
-                                                {results.length}
-                                            </span>
-                                        )}
-                                    </button>
                                 </div>
+
+                                <button
+                                    onClick={() => setIsFilterOpen(true)}
+                                    className="flex items-center justify-center w-10 h-10 rounded-full bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/70 hover:text-slate-900 dark:hover:text-white"
+                                >
+                                    <Menu size={16} />
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -912,7 +1002,7 @@ export const DesktopCatalog = ({
                                     />
                                     <FilterGroup
                                         title="Finish"
-                                        options={['MATT', 'GLOSSY', 'METALLIC', 'SATIN']}
+                                        options={['MATTE', 'GLOSS']}
                                         selectedValues={selectedFinishes}
                                         onToggle={(v: string) => toggleFilter(setSelectedFinishes, v)}
                                         onReset={() => setSelectedFinishes([])}
@@ -933,122 +1023,6 @@ export const DesktopCatalog = ({
 
                     {/* Main Content Area */}
                     <div className="flex-1 space-y-6">
-                        {/* Active Filter Chips */}
-                        {(searchQuery ||
-                            selectedCC.length > 0 ||
-                            selectedBrakes.length > 0 ||
-                            selectedWheels.length > 0 ||
-                            selectedFinishes.length > 0 ||
-                            selectedSeatHeight.length > 0) && (
-                            <div className="flex flex-wrap items-center gap-2">
-                                {searchQuery && (
-                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full">
-                                        <span className="text-[9px] font-black uppercase text-slate-400">Search</span>
-                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                            {searchQuery}
-                                        </span>
-                                        <button
-                                            onClick={() => setSearchQuery('')}
-                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                )}
-                                {selectedCC.map((cc: string) => (
-                                    <div
-                                        key={cc}
-                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
-                                    >
-                                        <span className="text-[9px] font-black uppercase text-slate-400">CC</span>
-                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                            {cc}
-                                        </span>
-                                        <button
-                                            onClick={() => toggleFilter(setSelectedCC, cc)}
-                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                ))}
-                                {selectedFinishes.map((finish: string) => (
-                                    <div
-                                        key={finish}
-                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
-                                    >
-                                        <span className="text-[9px] font-black uppercase text-slate-400">Finish</span>
-                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                            {finish}
-                                        </span>
-                                        <button
-                                            onClick={() => toggleFilter(setSelectedFinishes, finish)}
-                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                ))}
-                                {selectedSeatHeight.map((sh: string) => (
-                                    <div
-                                        key={sh}
-                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
-                                    >
-                                        <span className="text-[9px] font-black uppercase text-slate-400">Seat</span>
-                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                            {sh}
-                                        </span>
-                                        <button
-                                            onClick={() => toggleFilter(setSelectedSeatHeight, sh)}
-                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                ))}
-                                {selectedBrakes.map((brake: string) => (
-                                    <div
-                                        key={brake}
-                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
-                                    >
-                                        <span className="text-[9px] font-black uppercase text-slate-400">Brakes</span>
-                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                            {brake}
-                                        </span>
-                                        <button
-                                            onClick={() => toggleFilter(setSelectedBrakes, brake)}
-                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                ))}
-                                {selectedWheels.map((wheel: string) => (
-                                    <div
-                                        key={wheel}
-                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full"
-                                    >
-                                        <span className="text-[9px] font-black uppercase text-slate-400">Wheels</span>
-                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white">
-                                            {wheel}
-                                        </span>
-                                        <button
-                                            onClick={() => toggleFilter(setSelectedWheels, wheel)}
-                                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                ))}
-                                <button
-                                    onClick={clearAll}
-                                    className="text-[9px] font-black uppercase tracking-widest text-brand-primary hover:text-slate-900 dark:hover:text-white transition-colors px-3 ml-2"
-                                >
-                                    Clear all filters
-                                </button>
-                            </div>
-                        )}
-
                         <div
                             className={`grid ${
                                 viewMode === 'list'
@@ -1196,13 +1170,7 @@ export const DesktopCatalog = ({
                                         />
                                         <FilterGroup
                                             title="Brake System"
-                                            options={[
-                                                'Drum',
-                                                'Disc (Front)',
-                                                'Dual Disc',
-                                                'Single Channel ABS',
-                                                'Dual Channel ABS',
-                                            ]}
+                                            options={[...brakeOptions]}
                                             selectedValues={selectedBrakes}
                                             onToggle={(v: string) => toggleFilter(setSelectedBrakes, v)}
                                             onReset={() => setSelectedBrakes([])}
@@ -1210,7 +1178,7 @@ export const DesktopCatalog = ({
                                         />
                                         <FilterGroup
                                             title="Finish"
-                                            options={['MATT', 'GLOSSY', 'METALLIC', 'SATIN']}
+                                            options={['MATTE', 'GLOSS']}
                                             selectedValues={selectedFinishes}
                                             onToggle={(v: string) => toggleFilter(setSelectedFinishes, v)}
                                             onReset={() => setSelectedFinishes([])}
@@ -1222,6 +1190,14 @@ export const DesktopCatalog = ({
                                             selectedValues={selectedSeatHeight}
                                             onToggle={(v: string) => toggleFilter(setSelectedSeatHeight, v)}
                                             onReset={() => setSelectedSeatHeight([])}
+                                            showReset
+                                        />
+                                        <FilterGroup
+                                            title="Weight"
+                                            options={[...weightOptions]}
+                                            selectedValues={selectedWeights}
+                                            onToggle={(v: string) => toggleFilter(setSelectedWeights, v)}
+                                            onReset={() => setSelectedWeights([])}
                                             showReset
                                         />
                                     </div>

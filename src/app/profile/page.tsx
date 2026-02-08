@@ -11,7 +11,13 @@ export default async function ProfilePage() {
     if (!user) {
         redirect('/login?next=/profile');
     }
-    const { data: member } = await supabase.from('id_members').select('*').eq('id', user.id).maybeSingle();
+    const { data: member } = await supabase
+        .from('id_members')
+        .select(
+            'id, display_id, full_name, primary_phone, primary_email, pan_number, aadhaar_number, member_status, created_at, updated_at'
+        )
+        .eq('id', user.id)
+        .maybeSingle();
 
     // 2. Fetch User Memberships (to see roles/tenants)
     const { data: rawMemberships } = await supabase.rpc('get_user_memberships', { p_user_id: user.id });
@@ -25,7 +31,7 @@ export default async function ProfilePage() {
             *,
             crm_leads!inner (
                 customer_name,
-                phone,
+                customer_phone,
                 customer_id
             )
         `

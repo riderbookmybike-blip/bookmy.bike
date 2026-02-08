@@ -24,6 +24,7 @@ import Image from 'next/image';
 import { useTenant, TenantType } from '@/lib/tenant/tenantContext';
 import { createClient } from '@/lib/supabase/client';
 import { getSmartPincode } from '@/lib/location/geocode';
+import { syncMemberLocation } from '@/actions/locationSync';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 
 interface LoginSidebarProps {
@@ -44,7 +45,7 @@ export default function LoginSidebar({
     const router = useRouter();
     const { setTenantType, tenantId, activeRole, userRole, setUserRole, setActiveRole, setUserName } = useTenant();
     const [loginError, setLoginError] = useState<string | null>(null);
-    const [step, setStep] = useState<'INITIAL' | 'SIGNUP' | 'OTP'>('INITIAL');
+    const [step, setStep] = useState<'INITIAL' | 'SIGNUP' | 'GPS_UPDATE' | 'OTP'>('INITIAL');
     const [authMethod, setAuthMethod] = useState<'PHONE' | 'EMAIL'>('PHONE');
     const [isMarketplace, setIsMarketplace] = useState(true);
     const [isNewUser, setIsNewUser] = useState(false);
@@ -81,6 +82,17 @@ export default function LoginSidebar({
         latitude: null,
         longitude: null,
     });
+
+    // GPS-Only Location Capture (New User Signup)
+    const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+    const [gpsError, setGpsError] = useState<string | null>(null);
+    const [locationData, setLocationData] = useState<{
+        pincode: string;
+        state: string;
+        district: string;
+        taluka: string;
+        area: string;
+    } | null>(null);
 
     const inputRef = useRef<HTMLInputElement>(null);
     const OTP_LENGTH = 4;
@@ -142,6 +154,24 @@ export default function LoginSidebar({
         }
     }, [isOpen, redirectTo, tenantSlugProp]);
 
+    // Auto-trigger GPS detection for new users OR existing users without GPS
+    useEffect(() => {
+        if ((step === 'SIGNUP' || step === 'GPS_UPDATE') && !location.latitude && !isDetectingLocation) {
+            detectGPSLocation();
+        }
+    }, [step]);
+
+    // Auto-proceed after successful GPS capture + enrichment
+    useEffect(() => {
+        if (step === 'GPS_UPDATE' && location.latitude && location.longitude && !isDetectingLocation && !loading) {
+            // GPS captured successfully, auto-proceed
+            const timer = setTimeout(() => {
+                handleContinueAfterGPS();
+            }, 500); // Small delay to show success state
+            return () => clearTimeout(timer);
+        }
+    }, [step, location.latitude, location.longitude, isDetectingLocation, loading]);
+
     const detectLocation = () => {
         if ('geolocation' in navigator) {
             navigator.geolocation.getCurrentPosition(
@@ -159,6 +189,92 @@ export default function LoginSidebar({
                 }
             );
         }
+    };
+
+    // GPS-Only Detection for New Users (MANDATORY)
+    const detectGPSLocation = async () => {
+        if (!navigator.geolocation) {
+            setGpsError(
+                "Your browser doesn't support location services. Please use a modern browser or mobile device."
+            );
+            return;
+        }
+
+        setIsDetectingLocation(true);
+        setGpsError(null);
+
+        navigator.geolocation.getCurrentPosition(
+            async position => {
+                const { latitude, longitude } = position.coords;
+
+                try {
+                    // Step 1: Reverse geocode GPS → Pincode
+                    const { reverseGeocode } = await import('@/lib/location/reverseGeocode');
+                    const geocodeResult = await reverseGeocode(latitude, longitude);
+
+                    if (!geocodeResult.success || !geocodeResult.pincode) {
+                        // GPS succeeded but couldn't extract pincode - BLOCK signup
+                        setLocation({ pincode: null, latitude, longitude });
+                        setGpsError(
+                            '❌ Could not determine your pincode from GPS. Please enable precise location or try again.'
+                        );
+                        setIsDetectingLocation(false);
+                        return;
+                    }
+
+                    // Step 2: Enrich pincode with state/district/taluka/area (WITH RETRY)
+                    const { getPincodeDetails } = await import('@/actions/pincode');
+                    let enrichResult = await getPincodeDetails(geocodeResult.pincode);
+
+                    if (!enrichResult.success || !enrichResult.data?.district) {
+                        // Retry once after 2 seconds
+                        console.log('First enrichment attempt failed or incomplete. Retrying...');
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        enrichResult = await getPincodeDetails(geocodeResult.pincode);
+                    }
+
+                    // Proceed even if district is missing; background sync will reconcile
+                    setLocation({ pincode: geocodeResult.pincode, latitude, longitude });
+                    setLocationData({
+                        pincode: geocodeResult.pincode,
+                        state: enrichResult.data?.state || '',
+                        district: enrichResult.data?.district || '',
+                        taluka: enrichResult.data?.taluka || '',
+                        area: enrichResult.data?.area || '',
+                    });
+                    setGpsError(null);
+                } catch (error) {
+                    console.error('GPS enrichment error:', error);
+                    setLocation({ pincode: null, latitude, longitude });
+                    setGpsError('❌ Location enrichment failed. Please try again or contact support.');
+                } finally {
+                    setIsDetectingLocation(false);
+                }
+            },
+            error => {
+                setIsDetectingLocation(false);
+                let errorMsg = 'Location access denied. ';
+
+                switch (error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMsg =
+                            '📍 Location Access Required\n\nWe need your GPS location to create your account. This helps us provide accurate pricing and service availability.\n\nPlease allow location access to continue.';
+                        break;
+                    case error.TIMEOUT:
+                        errorMsg = 'Location request timed out. Please try again.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMsg = 'Location information unavailable. Please check your device settings.';
+                        break;
+                }
+
+                setGpsError(errorMsg);
+            },
+            {
+                timeout: 15000,
+                enableHighAccuracy: true,
+            }
+        );
     };
 
     const handleCheckUser = async (overrideId?: string) => {
@@ -259,16 +375,57 @@ export default function LoginSidebar({
 
     const validateSignupRequirements = () => {
         const nameOk = fullName.trim().length > 0;
-        if (!nameOk) {
+
+        // For new signup, name is required
+        if (step === 'SIGNUP' && !nameOk) {
             setLoginError('Please enter your full name to continue.');
             return false;
         }
-        const resolvedPincode = location.pincode || manualPincode.trim();
-        if (!resolvedPincode || resolvedPincode.length < 6) {
-            setLoginError('Please allow location access or enter a valid 6-digit pincode.');
+
+        // GPS is MANDATORY for both new and existing users
+        if (!location.latitude || !location.longitude) {
+            setLoginError('GPS location is required. Please allow location access.');
             return false;
         }
+
         return true;
+    };
+
+    const handleContinueAfterGPS = async () => {
+        if (!validateSignupRequirements()) return;
+
+        // For GPS_UPDATE step (existing user), update their profile
+        if (step === 'GPS_UPDATE') {
+            setLoading(true);
+            try {
+                const supabase = createClient();
+                const {
+                    data: { user },
+                } = await supabase.auth.getUser();
+
+                if (!user) throw new Error('User not found');
+
+                void syncMemberLocation({
+                    latitude: location.latitude!,
+                    longitude: location.longitude!,
+                    pincode: locationData?.pincode || location.pincode,
+                    state: locationData?.state,
+                    district: locationData?.district,
+                    taluka: locationData?.taluka,
+                    area: locationData?.area,
+                });
+
+                await completeLogin(user, null);
+            } catch (err) {
+                const message = err instanceof Error ? err.message : 'Failed to update location';
+                setLoginError(message);
+            } finally {
+                setLoading(false);
+            }
+            return;
+        }
+
+        // For SIGNUP step, validation passed, handleLogin will proceed
     };
 
     const handleLogin = async () => {
@@ -347,7 +504,13 @@ export default function LoginSidebar({
                     phone: phoneVal,
                     email: isEmail ? identifier : '',
                     displayName: fullName || 'Rider',
-                    pincode: resolvedPincode,
+                    pincode: locationData?.pincode || location.pincode || resolvedPincode,
+                    state: locationData?.state || null,
+                    district: locationData?.district || null,
+                    taluka: locationData?.taluka || null,
+                    area: locationData?.area || null,
+                    latitude: location.latitude,
+                    longitude: location.longitude,
                 }),
             });
             const signupData = await signupRes.json();
@@ -359,6 +522,46 @@ export default function LoginSidebar({
                 await supabase.auth.setSession(signupSession);
                 user = signupData.user; // Update user object for membership check below
             }
+        }
+
+        const coordsAvailable = !!location.latitude && !!location.longitude;
+
+        // For existing users: Check if GPS data exists
+        if (!isNewUser && user) {
+            const { data: memberProfile } = await supabase
+                .from('id_members')
+                .select('latitude, longitude')
+                .eq('id', user.id)
+                .maybeSingle();
+
+            if (!memberProfile?.latitude || !memberProfile?.longitude) {
+                if (!coordsAvailable) {
+                    setStep('GPS_UPDATE');
+                    setLoginError('GPS location is required. Please allow location access to continue.');
+                    return;
+                }
+
+                // Background sync without blocking login
+                void syncMemberLocation({
+                    latitude: location.latitude!,
+                    longitude: location.longitude!,
+                    pincode: locationData?.pincode || location.pincode,
+                    state: locationData?.state,
+                    district: locationData?.district,
+                    taluka: locationData?.taluka,
+                    area: locationData?.area,
+                });
+            }
+        } else if (isNewUser && coordsAvailable) {
+            void syncMemberLocation({
+                latitude: location.latitude!,
+                longitude: location.longitude!,
+                pincode: locationData?.pincode || location.pincode,
+                state: locationData?.state,
+                district: locationData?.district,
+                taluka: locationData?.taluka,
+                area: locationData?.area,
+            });
         }
 
         // Fetch Memberships & Redirect
@@ -509,13 +712,17 @@ export default function LoginSidebar({
                                                 ? 'Start Your'
                                                 : step === 'SIGNUP'
                                                   ? 'Create'
-                                                  : 'Verify'}
+                                                  : step === 'GPS_UPDATE'
+                                                    ? 'Update'
+                                                    : 'Verify'}
                                             <span className="block text-[#F4B000]">
                                                 {step === 'INITIAL'
                                                     ? 'Journey.'
                                                     : step === 'SIGNUP'
                                                       ? 'Profile.'
-                                                      : 'Identity.'}
+                                                      : step === 'GPS_UPDATE'
+                                                        ? 'Location.'
+                                                        : 'Identity.'}
                                             </span>
                                         </h2>
                                         <p className="text-sm font-bold text-black dark:text-white max-w-xs leading-relaxed text-center mx-auto">
@@ -525,6 +732,8 @@ export default function LoginSidebar({
                                                 (authMethod === 'EMAIL'
                                                     ? 'Enter your name to complete signup.'
                                                     : 'We just need your name to set up your rider profile.')}
+                                            {step === 'GPS_UPDATE' &&
+                                                'We need your location to provide accurate pricing and verify your service area. This is mandatory for all accounts.'}
                                             {step === 'OTP' && `Enter the verification code sent to ${identifier}.`}
                                         </p>
                                     </div>
@@ -560,29 +769,69 @@ export default function LoginSidebar({
                                             </div>
                                         )}
 
-                                        {step === 'SIGNUP' && (
+                                        {(step === 'SIGNUP' || step === 'GPS_UPDATE') && (
                                             <div className="space-y-2">
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-black dark:text-white block text-center w-full">
-                                                    Pincode (Required)
+                                                    📍 Location (GPS Required)
                                                 </label>
-                                                <input
-                                                    type="text"
-                                                    value={manualPincode}
-                                                    onChange={e =>
-                                                        setManualPincode(e.target.value.replace(/\D/g, '').slice(0, 6))
-                                                    }
-                                                    placeholder={
-                                                        location.pincode
-                                                            ? `Auto: ${location.pincode}`
-                                                            : 'Enter 6-digit pincode'
-                                                    }
-                                                    className="w-[80%] max-w-sm mx-auto block bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl p-5 text-lg font-bold text-black dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/40 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all text-center"
-                                                />
-                                                <p className="text-[10px] font-bold text-black dark:text-white">
-                                                    {location.pincode
-                                                        ? 'Location detected. You can edit if needed.'
-                                                        : 'Allow location or enter your pincode manually.'}
-                                                </p>
+
+                                                {isDetectingLocation && (
+                                                    <div className="text-center space-y-2">
+                                                        <div className="inline-block animate-spin w-8 h-8 border-4 border-brand-primary border-t-transparent rounded-full" />
+                                                        <p className="text-sm font-bold text-black dark:text-white">
+                                                            Detecting your location...
+                                                        </p>
+                                                    </div>
+                                                )}
+
+                                                {gpsError && (
+                                                    <div className="space-y-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/30 rounded-2xl">
+                                                        <p className="text-sm font-bold text-red-600 dark:text-red-400 whitespace-pre-wrap text-center">
+                                                            {gpsError}
+                                                        </p>
+                                                        <div className="flex gap-3 justify-center">
+                                                            <button
+                                                                onClick={detectGPSLocation}
+                                                                className="px-6 py-2 bg-brand-primary hover:bg-brand-primary/90 text-white font-bold rounded-xl transition-all"
+                                                            >
+                                                                Retry GPS
+                                                            </button>
+                                                            <button
+                                                                onClick={onClose}
+                                                                className="px-6 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-black dark:text-white font-bold rounded-xl transition-all"
+                                                            >
+                                                                Cancel Signup
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {locationData && location.latitude && (
+                                                    <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-500/30 rounded-2xl">
+                                                        <p className="text-sm font-bold text-green-600 dark:text-green-400 text-center">
+                                                            ✅ Location Detected
+                                                        </p>
+                                                        <p className="text-xs font-medium text-black dark:text-white text-center mt-2">
+                                                            {locationData.area && `${locationData.area}, `}
+                                                            {locationData.district}, {locationData.state} -{' '}
+                                                            {locationData.pincode}
+                                                        </p>
+                                                    </div>
+                                                )}
+
+                                                {!isDetectingLocation && !gpsError && !locationData && (
+                                                    <div className="text-center">
+                                                        <button
+                                                            onClick={detectGPSLocation}
+                                                            className="px-6 py-3 bg-brand-primary hover:bg-brand-primary/90 text-white font-bold rounded-xl transition-all"
+                                                        >
+                                                            📍 Enable Location
+                                                        </button>
+                                                        <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 mt-2">
+                                                            GPS access is required to create an account
+                                                        </p>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
 
@@ -670,17 +919,31 @@ export default function LoginSidebar({
                                                         authMethod === 'EMAIL'
                                                             ? handleSendEmailOtp(identifier)
                                                             : handleSendPhoneOtp(identifier);
+                                                    } else if (step === 'GPS_UPDATE') {
+                                                        handleContinueAfterGPS();
                                                     } else if (step === 'OTP') handleLogin();
                                                 }}
-                                                disabled={loading || (step === 'OTP' && otp.length < 4)}
+                                                disabled={
+                                                    loading ||
+                                                    (step === 'OTP' && otp.length < 4) ||
+                                                    (step === 'GPS_UPDATE' && location.latitude && location.longitude)
+                                                }
                                                 className="w-[80%] max-w-sm mx-auto py-5 bg-black dark:bg-white text-white dark:text-black rounded-2xl text-xs font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-xl disabled:opacity-50"
                                             >
                                                 {step === 'INITIAL'
                                                     ? 'Agree & Proceed'
                                                     : step === 'SIGNUP'
                                                       ? 'Complete Signup'
-                                                      : 'Verify & Proceed'}{' '}
-                                                <ChevronRight size={16} />
+                                                      : step === 'GPS_UPDATE'
+                                                        ? location.latitude && location.longitude
+                                                            ? 'Processing...'
+                                                            : 'Waiting for GPS...'
+                                                        : 'Verify & Proceed'}{' '}
+                                                {!(
+                                                    step === 'GPS_UPDATE' &&
+                                                    location.latitude &&
+                                                    location.longitude
+                                                ) && <ChevronRight size={16} />}
                                             </button>
                                         )}
 

@@ -1,0 +1,2256 @@
+{
+  "ActiveVariants": [
+    {
+      "id": "027f2086-a6b8-47a0-b15e-206223704859",
+      "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/Forms-Datasource/Book-Online-V2/Motorcycle/APACHE-RTR-160/RM-Disc-BT",
+      "name": "RM Disc BT",
+      "displayName": "RM Disc BT",
+      "fields": {
+        "ActiveColours": [
+          {
+            "id": "50cd4f88-1afd-428b-b79a-29e919f15fd5",
+            "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/Forms-Datasource/Book-Online-V2/Motorcycle/APACHE-RTR-160/RM-Disc-BT/Gloss-Black",
+            "name": "Gloss Black",
+            "displayName": "Gloss Black",
+            "fields": {
+              "OurProductsLogo": {
+                "value": {}
+              },
+              "OurProductsDesktopImage": {
+                "value": {}
+              },
+              "DisplayOnOurProducts": {
+                "value": false
+              },
+              "OurProductsMobileImage": {
+                "value": {}
+              },
+              "PartId": {
+                "value": "NR1921000D"
+              },
+              "Power": {
+                "value": "Sport: 16.04 PS @8750 rpm"
+              },
+              "VariantColorImages": [
+                {
+                  "id": "37231eab-2eb9-42c6-86eb-17c4c18e54bd",
+                  "url": "/-/media/BookOnline-V2/Motorcycle/APACHE-RTR-160-2V/black.webp",
+                  "name": "black",
+                  "displayName": "black",
+                  "fields": {
+                    "Description": {
+                      "value": ""
+                    },
+                    "Extension": {
+                      "value": "webp"
+                    },
+                    "Keywords": {
+                      "value": ""
+                    },
+                    "Mime Type": {
+                      "value": "application/octet-stream"
+                    },
+                    "Size": {
+                      "value": "11958"
+                    },
+                    "Title": {
+                      "value": ""
+                    },
+                    "CountryCode": {
+                      "value": ""
+                    },
+                    "Latitude": {
+                      "value": null
+                    },
+                    "LocationDescription": {
+                      "value": ""
+                    },
+                    "Longitude": {
+                      "value": null
+                    },
+                    "ZipCode": {
+                      "value": ""
+                    },
+                    "Blob": {
+                      "value": "{072E4EE1-541F-471E-92C1-26ED6C03B53B}"
+                    },
+                    "File Path": {
+                      "value": ""
+                    },
+                    "Format": {
+                      "value": ""
+                    },
+                    "Alt": {
+                      "value": ""
+                    },
+                    "Width": {
+                      "value": ""
+                    },
+                    "Height": {
+                      "value": ""
+                    },
+                    "Asset 1": null,
+                    "Asset 2": null,
+                    "Asset 3": null,
+                    "Marketing asset": null
+                  }
+                }
+              ],
+              "VehicleColor": {
+                "id": "0a29672b-56b4-40bc-a574-81163bd54337",
+                "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/service/sitecore/Forms-Datasource/Colors/Gloss-Black",
+                "name": "Gloss Black",
+                "displayName": "Gloss Black",
+                "fields": {
+                  "ColorTitle": {
+                    "value": "Gloss Black"
+                  },
+                  "ColorValue": {
+                    "value": 313
+                  }
+                }
+              },
+              "Weight": {
+                "value": "138 kgs"
+              },
+              "BrandCode": {
+                "value": "1"
+              },
+              "ColorHexCode": {
+                "value": "#000000"
+              },
+              "ColorImage": {
+                "value": {
+                  "src": "/book-online/-/media/BookOnline-V2/Motorcycle/Apache-Bike/RTR-160-Blue/RTR-160-Blue.png?h=330&iar=0&w=550&hash=4B5EC481DEB7805D649D49062DA54DA4",
+                  "alt": "",
+                  "width": "550",
+                  "height": "330"
+                }
+              },
+              "EngineCapacity": {
+                "value": "160 cc"
+              },
+              "ModelId": {
+                "value": "000010000100000714"
+              }
+            }
+          },
+          {
+            "id": "e6d54e5b-0356-4e12-b765-d154228a7a6d",
+            "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/Forms-Datasource/Book-Online-V2/Motorcycle/APACHE-RTR-160/RM-Disc-BT/Matte-Blue",
+            "name": "Matte Blue",
+            "displayName": "Matte Blue",
+            "fields": {
+              "OurProductsLogo": {
+                "value": {}
+              },
+              "OurProductsDesktopImage": {
+                "value": {}
+              },
+              "DisplayOnOurProducts": {
+                "value": false
+              },
+              "OurProductsMobileImage": {
+                "value": {}
+              },
+              "PartId": {
+                "value": "NR1921003A"
+              },
+              "Power": {
+                "value": "Sport: 16.04 PS @8750 rpm"
+              },
+              "VariantColorImages": [
+                {
+                  "id": "af5917da-b371-4684-a616-8ac45a929c3c",
+                  "url": "/-/media/BookOnline-V2/Motorcycle/APACHE-RTR-160-2V/blue.webp",
+                  "name": "blue",
+                  "displayName": "blue",
+                  "fields": {
+                    "Description": {
+                      "value": ""
+                    },
+                    "Extension": {
+                      "value": "webp"
+                    },
+                    "Keywords": {
+                      "value": ""
+                    },
+                    "Mime Type": {
+                      "value": "application/octet-stream"
+                    },
+                    "Size": {
+                      "value": "13130"
+                    },
+                    "Title": {
+                      "value": ""
+                    },
+                    "CountryCode": {
+                      "value": ""
+                    },
+                    "Latitude": {
+                      "value": null
+                    },
+                    "LocationDescription": {
+                      "value": ""
+                    },
+                    "Longitude": {
+                      "value": null
+                    },
+                    "ZipCode": {
+                      "value": ""
+                    },
+                    "Blob": {
+                      "value": "{B737EBB6-9315-476F-B1B0-DEC5EB5BF71D}"
+                    },
+                    "File Path": {
+                      "value": ""
+                    },
+                    "Format": {
+                      "value": ""
+                    },
+                    "Alt": {
+                      "value": ""
+                    },
+                    "Width": {
+                      "value": ""
+                    },
+                    "Height": {
+                      "value": ""
+                    },
+                    "Asset 1": null,
+                    "Asset 2": null,
+                    "Asset 3": null,
+                    "Marketing asset": null
+                  }
+                }
+              ],
+              "VehicleColor": {
+                "id": "c4815e7b-fb92-418d-8b57-271055b65ae8",
+                "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/service/sitecore/Forms-Datasource/Colors/Matte-Blue",
+                "name": "Matte Blue",
+                "displayName": "Matte Blue",
+                "fields": {
+                  "ColorTitle": {
+                    "value": "Matte Blue"
+                  },
+                  "ColorValue": {
+                    "value": 321
+                  }
+                }
+              },
+              "Weight": {
+                "value": "138 kgs"
+              },
+              "BrandCode": {
+                "value": "1"
+              },
+              "ColorHexCode": {
+                "value": "#1366a8"
+              },
+              "ColorImage": {
+                "value": {
+                  "src": "/book-online/-/media/BookOnline-V2/Motorcycle/Apache-Bike/RTR-160-Blue/RTR-160-Blue.png?h=330&iar=0&w=550&hash=4B5EC481DEB7805D649D49062DA54DA4",
+                  "alt": "",
+                  "width": "550",
+                  "height": "330"
+                }
+              },
+              "EngineCapacity": {
+                "value": "160 cc"
+              },
+              "ModelId": {
+                "value": "000010000100000714"
+              }
+            }
+          },
+          {
+            "id": "735e49b1-22b2-449f-9827-7a65e58ff46b",
+            "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/Forms-Datasource/Book-Online-V2/Motorcycle/APACHE-RTR-160/RM-Disc-BT/Pearl-White",
+            "name": "Pearl White",
+            "displayName": "Pearl White",
+            "fields": {
+              "OurProductsLogo": {
+                "value": {}
+              },
+              "OurProductsDesktopImage": {
+                "value": {}
+              },
+              "DisplayOnOurProducts": {
+                "value": false
+              },
+              "OurProductsMobileImage": {
+                "value": {}
+              },
+              "PartId": {
+                "value": "NR1921002F"
+              },
+              "Power": {
+                "value": "Sport: 16.04 PS @8750 rpm"
+              },
+              "VariantColorImages": [
+                {
+                  "id": "b367d68a-77f1-433f-be7e-7971b625d4a1",
+                  "url": "/-/media/BookOnline-V2/Motorcycle/APACHE-RTR-160-2V/white.webp",
+                  "name": "white",
+                  "displayName": "white",
+                  "fields": {
+                    "Description": {
+                      "value": ""
+                    },
+                    "Extension": {
+                      "value": "webp"
+                    },
+                    "Keywords": {
+                      "value": ""
+                    },
+                    "Mime Type": {
+                      "value": "application/octet-stream"
+                    },
+                    "Size": {
+                      "value": "13122"
+                    },
+                    "Title": {
+                      "value": ""
+                    },
+                    "CountryCode": {
+                      "value": ""
+                    },
+                    "Latitude": {
+                      "value": null
+                    },
+                    "LocationDescription": {
+                      "value": ""
+                    },
+                    "Longitude": {
+                      "value": null
+                    },
+                    "ZipCode": {
+                      "value": ""
+                    },
+                    "Blob": {
+                      "value": "{AB4872D0-294B-42A6-BA4F-B3FE3BCF9C1B}"
+                    },
+                    "File Path": {
+                      "value": ""
+                    },
+                    "Format": {
+                      "value": ""
+                    },
+                    "Alt": {
+                      "value": ""
+                    },
+                    "Width": {
+                      "value": ""
+                    },
+                    "Height": {
+                      "value": ""
+                    },
+                    "Asset 1": null,
+                    "Asset 2": null,
+                    "Asset 3": null,
+                    "Marketing asset": null
+                  }
+                }
+              ],
+              "VehicleColor": {
+                "id": "5ec5dcce-9de6-4b97-9029-8359ca1b7d4e",
+                "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/service/sitecore/Forms-Datasource/Colors/Pearl-White",
+                "name": "Pearl White",
+                "displayName": "Pearl White",
+                "fields": {
+                  "ColorTitle": {
+                    "value": "Pearl White"
+                  },
+                  "ColorValue": {
+                    "value": 333
+                  }
+                }
+              },
+              "Weight": {
+                "value": "138 kgs"
+              },
+              "BrandCode": {
+                "value": "1"
+              },
+              "ColorHexCode": {
+                "value": "#F8F6F0"
+              },
+              "ColorImage": {
+                "value": {
+                  "src": "/book-online/-/media/BookOnline-V2/Motorcycle/Apache-Bike/RTR-160-Blue/RTR-160-Blue.png?h=330&iar=0&w=550&hash=4B5EC481DEB7805D649D49062DA54DA4",
+                  "alt": "",
+                  "width": "550",
+                  "height": "330"
+                }
+              },
+              "EngineCapacity": {
+                "value": "160 cc"
+              },
+              "ModelId": {
+                "value": "000010000100000714"
+              }
+            }
+          },
+          {
+            "id": "22fafa82-74e6-490f-aa8d-908ca7c7afd6",
+            "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/Forms-Datasource/Book-Online-V2/Motorcycle/APACHE-RTR-160/RM-Disc-BT/Racing-Red",
+            "name": "Racing Red",
+            "displayName": "Racing Red",
+            "fields": {
+              "OurProductsLogo": {
+                "value": {}
+              },
+              "OurProductsDesktopImage": {
+                "value": {}
+              },
+              "DisplayOnOurProducts": {
+                "value": false
+              },
+              "OurProductsMobileImage": {
+                "value": {}
+              },
+              "PartId": {
+                "value": "NR1921008F"
+              },
+              "Power": {
+                "value": "Sport: 16.04 PS @8750 rpm"
+              },
+              "VariantColorImages": [
+                {
+                  "id": "5e1191fb-73aa-43d4-80de-402f90b85095",
+                  "url": "/-/media/BookOnline-V2/Motorcycle/APACHE-RTR-160-2V/red.webp",
+                  "name": "red",
+                  "displayName": "red",
+                  "fields": {
+                    "Description": {
+                      "value": ""
+                    },
+                    "Extension": {
+                      "value": "webp"
+                    },
+                    "Keywords": {
+                      "value": ""
+                    },
+                    "Mime Type": {
+                      "value": "application/octet-stream"
+                    },
+                    "Size": {
+                      "value": "13980"
+                    },
+                    "Title": {
+                      "value": ""
+                    },
+                    "CountryCode": {
+                      "value": ""
+                    },
+                    "Latitude": {
+                      "value": null
+                    },
+                    "LocationDescription": {
+                      "value": ""
+                    },
+                    "Longitude": {
+                      "value": null
+                    },
+                    "ZipCode": {
+                      "value": ""
+                    },
+                    "Blob": {
+                      "value": "{07E1506F-4BBE-4DE1-BC94-197B939706CC}"
+                    },
+                    "File Path": {
+                      "value": ""
+                    },
+                    "Format": {
+                      "value": ""
+                    },
+                    "Alt": {
+                      "value": ""
+                    },
+                    "Width": {
+                      "value": ""
+                    },
+                    "Height": {
+                      "value": ""
+                    },
+                    "Asset 1": null,
+                    "Asset 2": null,
+                    "Asset 3": null,
+                    "Marketing asset": null
+                  }
+                }
+              ],
+              "VehicleColor": {
+                "id": "a5dd2d2b-5a78-4bd4-a653-9148b4d91cfc",
+                "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/service/sitecore/Forms-Datasource/Colors/Racing-Red-Apache-2v",
+                "name": "Racing Red Apache 2v",
+                "displayName": "Racing Red Apache 2v",
+                "fields": {
+                  "ColorTitle": {
+                    "value": "Racing Red"
+                  },
+                  "ColorValue": {
+                    "value": 314
+                  }
+                }
+              },
+              "Weight": {
+                "value": "138 kgs"
+              },
+              "BrandCode": {
+                "value": "1"
+              },
+              "ColorHexCode": {
+                "value": "#FF0000"
+              },
+              "ColorImage": {
+                "value": {
+                  "src": "/book-online/-/media/BookOnline-V2/Motorcycle/Apache-Bike/RTR-160-Blue/RTR-160-Blue.png?h=330&iar=0&w=550&hash=4B5EC481DEB7805D649D49062DA54DA4",
+                  "alt": "",
+                  "width": "550",
+                  "height": "330"
+                }
+              },
+              "EngineCapacity": {
+                "value": "160 cc"
+              },
+              "ModelId": {
+                "value": "000010000100000714"
+              }
+            }
+          },
+          {
+            "id": "2443c39f-c32e-4856-b8e6-f2a09a610366",
+            "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/Forms-Datasource/Book-Online-V2/Motorcycle/APACHE-RTR-160/RM-Disc-BT/T-Grey",
+            "name": "T Grey",
+            "displayName": "T Grey",
+            "fields": {
+              "OurProductsLogo": {
+                "value": {}
+              },
+              "OurProductsDesktopImage": {
+                "value": {}
+              },
+              "DisplayOnOurProducts": {
+                "value": false
+              },
+              "OurProductsMobileImage": {
+                "value": {}
+              },
+              "PartId": {
+                "value": "NR1921008D"
+              },
+              "Power": {
+                "value": "Sport: 16.04 PS @8750 rpm"
+              },
+              "VariantColorImages": [
+                {
+                  "id": "b9c293f9-51eb-4973-80f2-1c22a62d1bf2",
+                  "url": "/-/media/BookOnline-V2/Motorcycle/APACHE-RTR-160-2V/grey.webp",
+                  "name": "grey",
+                  "displayName": "grey",
+                  "fields": {
+                    "Description": {
+                      "value": ""
+                    },
+                    "Extension": {
+                      "value": "webp"
+                    },
+                    "Keywords": {
+                      "value": ""
+                    },
+                    "Mime Type": {
+                      "value": "application/octet-stream"
+                    },
+                    "Size": {
+                      "value": "12398"
+                    },
+                    "Title": {
+                      "value": ""
+                    },
+                    "CountryCode": {
+                      "value": ""
+                    },
+                    "Latitude": {
+                      "value": null
+                    },
+                    "LocationDescription": {
+                      "value": ""
+                    },
+                    "Longitude": {
+                      "value": null
+                    },
+                    "ZipCode": {
+                      "value": ""
+                    },
+                    "Blob": {
+                      "value": "{457BB25A-76D3-459C-8D28-5704CE009A55}"
+                    },
+                    "File Path": {
+                      "value": ""
+                    },
+                    "Format": {
+                      "value": ""
+                    },
+                    "Alt": {
+                      "value": ""
+                    },
+                    "Width": {
+                      "value": ""
+                    },
+                    "Height": {
+                      "value": ""
+                    },
+                    "Asset 1": null,
+                    "Asset 2": null,
+                    "Asset 3": null,
+                    "Marketing asset": null
+                  }
+                }
+              ],
+              "VehicleColor": {
+                "id": "27370821-12d7-4876-9552-11df809abd91",
+                "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/service/sitecore/Forms-Datasource/Colors/T-Grey",
+                "name": "T Grey",
+                "displayName": "T Grey",
+                "fields": {
+                  "ColorTitle": {
+                    "value": "T Grey"
+                  },
+                  "ColorValue": {
+                    "value": 347
+                  }
+                }
+              },
+              "Weight": {
+                "value": "138 kgs"
+              },
+              "BrandCode": {
+                "value": "1"
+              },
+              "ColorHexCode": {
+                "value": "#808080"
+              },
+              "ColorImage": {
+                "value": {
+                  "src": "/book-online/-/media/BookOnline-V2/Motorcycle/Apache-Bike/RTR-160-Blue/RTR-160-Blue.png?h=330&iar=0&w=550&hash=4B5EC481DEB7805D649D49062DA54DA4",
+                  "alt": "",
+                  "width": "550",
+                  "height": "330"
+                }
+              },
+              "EngineCapacity": {
+                "value": "160 cc"
+              },
+              "ModelId": {
+                "value": "000010000100000714"
+              }
+            }
+          }
+        ],
+        "VariantCode": {
+          "value": "250"
+        },
+        "VariantName": {
+          "value": "RM Disc BT"
+        },
+        "isNewVehicle": {
+          "value": false
+        },
+        "ProductClass": {
+          "value": ""
+        },
+        "Brand": {
+          "value": ""
+        },
+        "Url": {
+          "value": {
+            "href": ""
+          }
+        },
+        "VehicleImageUrl": {
+          "value": {
+            "href": ""
+          }
+        },
+        "VehicleType": {
+          "value": ""
+        },
+        "Disclaimer": {
+          "value": ""
+        }
+      }
+    },
+    {
+      "id": "1e954b10-6c84-40e8-9d42-d9c4582f435b",
+      "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/Forms-Datasource/Book-Online-V2/Motorcycle/APACHE-RTR-160/Black-Edition",
+      "name": "Black Edition",
+      "displayName": "Black Edition",
+      "fields": {
+        "ActiveColours": [
+          {
+            "id": "5bb0bb26-a0e8-4bea-83a0-0f44d707c675",
+            "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/Forms-Datasource/Book-Online-V2/Motorcycle/APACHE-RTR-160/Black-Edition/Glossy-Black",
+            "name": "Glossy Black",
+            "displayName": "Glossy Black",
+            "fields": {
+              "OurProductsLogo": {
+                "value": {}
+              },
+              "OurProductsDesktopImage": {
+                "value": {}
+              },
+              "DisplayOnOurProducts": {
+                "value": false
+              },
+              "OurProductsMobileImage": {
+                "value": {}
+              },
+              "PartId": {
+                "value": "NR1924300D"
+              },
+              "Power": {
+                "value": "Sport: 16.04 PS @8750 rpm"
+              },
+              "VariantColorImages": [
+                {
+                  "id": "db1055c5-d821-48fb-84f6-60fcb4aaabf0",
+                  "url": "/-/media/BookOnline-V2/Motorcycle/APACHE-RTR-160-2V/2v_glossy_black.webp",
+                  "name": "2v_glossy_black",
+                  "displayName": "2v_glossy_black",
+                  "fields": {
+                    "Description": {
+                      "value": ""
+                    },
+                    "Extension": {
+                      "value": "webp"
+                    },
+                    "Keywords": {
+                      "value": ""
+                    },
+                    "Mime Type": {
+                      "value": "image/webp"
+                    },
+                    "Size": {
+                      "value": "21828"
+                    },
+                    "Title": {
+                      "value": ""
+                    },
+                    "CountryCode": {
+                      "value": ""
+                    },
+                    "Latitude": {
+                      "value": null
+                    },
+                    "LocationDescription": {
+                      "value": ""
+                    },
+                    "Longitude": {
+                      "value": null
+                    },
+                    "ZipCode": {
+                      "value": ""
+                    },
+                    "Blob": {
+                      "value": "d85fe031-abdf-4a1e-b73f-a26b3055b6d6"
+                    },
+                    "File Path": {
+                      "value": ""
+                    },
+                    "Format": {
+                      "value": ""
+                    },
+                    "Alt": {
+                      "value": ""
+                    },
+                    "Width": {
+                      "value": ""
+                    },
+                    "Height": {
+                      "value": ""
+                    },
+                    "Asset 1": null,
+                    "Asset 2": null,
+                    "Asset 3": null,
+                    "Marketing asset": null
+                  }
+                }
+              ],
+              "VehicleColor": {
+                "id": "82074197-d3a9-4e29-9916-142beb611133",
+                "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/service/sitecore/Forms-Datasource/Colors/Glossy-Black-2v",
+                "name": "Glossy Black 2v",
+                "displayName": "Glossy Black 2v",
+                "fields": {
+                  "ColorTitle": {
+                    "value": "Glossy Black"
+                  },
+                  "ColorValue": {
+                    "value": 409
+                  }
+                }
+              },
+              "Weight": {
+                "value": "137 kgs"
+              },
+              "BrandCode": {
+                "value": "1"
+              },
+              "ColorHexCode": {
+                "value": "#000000"
+              },
+              "ColorImage": {
+                "value": {
+                  "src": "/book-online/-/media/BookOnline-V2/Motorcycle/Apache-Bike/RTR-160-Blue/RTR-160-Blue.png?h=330&iar=0&w=550&hash=4B5EC481DEB7805D649D49062DA54DA4",
+                  "alt": "",
+                  "width": "550",
+                  "height": "330"
+                }
+              },
+              "EngineCapacity": {
+                "value": "160 cc"
+              },
+              "ModelId": {
+                "value": "000010000100000718"
+              }
+            }
+          }
+        ],
+        "VariantCode": {
+          "value": "204"
+        },
+        "VariantName": {
+          "value": "Black Edition"
+        },
+        "isNewVehicle": {
+          "value": true
+        },
+        "ProductClass": {
+          "value": ""
+        },
+        "Brand": {
+          "value": ""
+        },
+        "Url": {
+          "value": {
+            "href": ""
+          }
+        },
+        "VehicleImageUrl": {
+          "value": {
+            "href": ""
+          }
+        },
+        "VehicleType": {
+          "value": ""
+        },
+        "Disclaimer": {
+          "value": ""
+        }
+      }
+    },
+    {
+      "id": "d7611330-b68f-4c9b-8f54-a7301e3bd543",
+      "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/Forms-Datasource/Book-Online-V2/Motorcycle/APACHE-RTR-160/Racing-Edition",
+      "name": "Racing Edition",
+      "displayName": "Racing Edition",
+      "fields": {
+        "ActiveColours": [
+          {
+            "id": "7b216666-7823-44d1-b025-a65f211af780",
+            "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/Forms-Datasource/Book-Online-V2/Motorcycle/APACHE-RTR-160/Racing-Edition/Matte-Black",
+            "name": "Matte Black",
+            "displayName": "Matte Black",
+            "fields": {
+              "OurProductsLogo": {
+                "value": {}
+              },
+              "OurProductsDesktopImage": {
+                "value": {}
+              },
+              "DisplayOnOurProducts": {
+                "value": false
+              },
+              "OurProductsMobileImage": {
+                "value": {}
+              },
+              "PartId": {
+                "value": "NR1924405D"
+              },
+              "Power": {
+                "value": "Sport : 11.8 kW (16.04 PS) @ 8750 rpm"
+              },
+              "VariantColorImages": [
+                {
+                  "id": "8640c4f7-9e82-446e-84d3-d2c71286bc9a",
+                  "url": "/-/media/BookOnline-V2/book_online_desktop.webp",
+                  "name": "book_online_desktop",
+                  "displayName": "book_online_desktop",
+                  "fields": {
+                    "Description": {
+                      "value": ""
+                    },
+                    "Extension": {
+                      "value": "webp"
+                    },
+                    "Keywords": {
+                      "value": ""
+                    },
+                    "Mime Type": {
+                      "value": "image/webp"
+                    },
+                    "Size": {
+                      "value": "139492"
+                    },
+                    "Title": {
+                      "value": ""
+                    },
+                    "CountryCode": {
+                      "value": ""
+                    },
+                    "Latitude": {
+                      "value": null
+                    },
+                    "LocationDescription": {
+                      "value": ""
+                    },
+                    "Longitude": {
+                      "value": null
+                    },
+                    "ZipCode": {
+                      "value": ""
+                    },
+                    "Blob": {
+                      "value": "63d2f363-c384-435e-959a-034563dd98f3"
+                    },
+                    "File Path": {
+                      "value": ""
+                    },
+                    "Format": {
+                      "value": ""
+                    },
+                    "Alt": {
+                      "value": ""
+                    },
+                    "Width": {
+                      "value": ""
+                    },
+                    "Height": {
+                      "value": ""
+                    },
+                    "Asset 1": null,
+                    "Asset 2": null,
+                    "Asset 3": null,
+                    "Marketing asset": null
+                  }
+                }
+              ],
+              "VehicleColor": {
+                "id": "61b659a7-66c8-423f-9c9f-799b5e87068f",
+                "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/service/sitecore/Forms-Datasource/Colors/Matte-Black",
+                "name": "Matte Black",
+                "displayName": "Matte Black",
+                "fields": {
+                  "ColorTitle": {
+                    "value": "Matte Black"
+                  },
+                  "ColorValue": {
+                    "value": 391
+                  }
+                }
+              },
+              "Weight": {
+                "value": "138 kgs"
+              },
+              "BrandCode": {
+                "value": "1"
+              },
+              "ColorHexCode": {
+                "value": "#4f4f53"
+              },
+              "ColorImage": {
+                "value": {
+                  "src": "/book-online/-/media/BookOnline-V2/Motorcycle/Apache-Bike/RTR-160-Blue/RTR-160-Blue.png?h=330&iar=0&w=550&hash=4B5EC481DEB7805D649D49062DA54DA4",
+                  "alt": "",
+                  "width": "550",
+                  "height": "330"
+                }
+              },
+              "EngineCapacity": {
+                "value": "159.7 cc"
+              },
+              "ModelId": {
+                "value": "000010000100000719"
+              }
+            }
+          }
+        ],
+        "VariantCode": {
+          "value": "264"
+        },
+        "VariantName": {
+          "value": "Racing Edition"
+        },
+        "isNewVehicle": {
+          "value": true
+        },
+        "ProductClass": {
+          "value": ""
+        },
+        "Brand": {
+          "value": ""
+        },
+        "Url": {
+          "value": {
+            "href": ""
+          }
+        },
+        "VehicleImageUrl": {
+          "value": {
+            "href": ""
+          }
+        },
+        "VehicleType": {
+          "value": ""
+        },
+        "Disclaimer": {
+          "value": ""
+        }
+      }
+    },
+    {
+      "id": "354b58ff-cdc2-4b55-9293-b33182ca8997",
+      "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/Forms-Datasource/Book-Online-V2/Motorcycle/APACHE-RTR-160/RM-Disc",
+      "name": "RM Disc",
+      "displayName": "RM Disc",
+      "fields": {
+        "ActiveColours": [
+          {
+            "id": "d1a1edb8-1d6f-4a27-b3b8-60e015db98c2",
+            "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/Forms-Datasource/Book-Online-V2/Motorcycle/APACHE-RTR-160/RM-Disc/Gloss-Black",
+            "name": "Gloss Black",
+            "displayName": "Gloss Black",
+            "fields": {
+              "OurProductsLogo": {
+                "value": {}
+              },
+              "OurProductsDesktopImage": {
+                "value": {}
+              },
+              "DisplayOnOurProducts": {
+                "value": false
+              },
+              "OurProductsMobileImage": {
+                "value": {}
+              },
+              "PartId": {
+                "value": "NR1919700D"
+              },
+              "Power": {
+                "value": "Sport: 16.04 PS @8750 rpm"
+              },
+              "VariantColorImages": [
+                {
+                  "id": "37231eab-2eb9-42c6-86eb-17c4c18e54bd",
+                  "url": "/-/media/BookOnline-V2/Motorcycle/APACHE-RTR-160-2V/black.webp",
+                  "name": "black",
+                  "displayName": "black",
+                  "fields": {
+                    "Description": {
+                      "value": ""
+                    },
+                    "Extension": {
+                      "value": "webp"
+                    },
+                    "Keywords": {
+                      "value": ""
+                    },
+                    "Mime Type": {
+                      "value": "application/octet-stream"
+                    },
+                    "Size": {
+                      "value": "11958"
+                    },
+                    "Title": {
+                      "value": ""
+                    },
+                    "CountryCode": {
+                      "value": ""
+                    },
+                    "Latitude": {
+                      "value": null
+                    },
+                    "LocationDescription": {
+                      "value": ""
+                    },
+                    "Longitude": {
+                      "value": null
+                    },
+                    "ZipCode": {
+                      "value": ""
+                    },
+                    "Blob": {
+                      "value": "{072E4EE1-541F-471E-92C1-26ED6C03B53B}"
+                    },
+                    "File Path": {
+                      "value": ""
+                    },
+                    "Format": {
+                      "value": ""
+                    },
+                    "Alt": {
+                      "value": ""
+                    },
+                    "Width": {
+                      "value": ""
+                    },
+                    "Height": {
+                      "value": ""
+                    },
+                    "Asset 1": null,
+                    "Asset 2": null,
+                    "Asset 3": null,
+                    "Marketing asset": null
+                  }
+                }
+              ],
+              "VehicleColor": {
+                "id": "0a29672b-56b4-40bc-a574-81163bd54337",
+                "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/service/sitecore/Forms-Datasource/Colors/Gloss-Black",
+                "name": "Gloss Black",
+                "displayName": "Gloss Black",
+                "fields": {
+                  "ColorTitle": {
+                    "value": "Gloss Black"
+                  },
+                  "ColorValue": {
+                    "value": 313
+                  }
+                }
+              },
+              "Weight": {
+                "value": "138 kgs"
+              },
+              "BrandCode": {
+                "value": "1"
+              },
+              "ColorHexCode": {
+                "value": "#000000"
+              },
+              "ColorImage": {
+                "value": {
+                  "src": "/book-online/-/media/BookOnline-V2/Motorcycle/Apache-Bike/RTR-160-Blue/RTR-160-Blue.png?h=330&iar=0&w=550&hash=4B5EC481DEB7805D649D49062DA54DA4",
+                  "alt": "",
+                  "width": "550",
+                  "height": "330"
+                }
+              },
+              "EngineCapacity": {
+                "value": "160 cc"
+              },
+              "ModelId": {
+                "value": "000010000100000715"
+              }
+            }
+          },
+          {
+            "id": "6f6819b1-8a77-476f-99ed-8366f914ef40",
+            "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/Forms-Datasource/Book-Online-V2/Motorcycle/APACHE-RTR-160/RM-Disc/Matte-Blue",
+            "name": "Matte Blue",
+            "displayName": "Matte Blue",
+            "fields": {
+              "OurProductsLogo": {
+                "value": {}
+              },
+              "OurProductsDesktopImage": {
+                "value": {}
+              },
+              "DisplayOnOurProducts": {
+                "value": false
+              },
+              "OurProductsMobileImage": {
+                "value": {}
+              },
+              "PartId": {
+                "value": "NR1919703A"
+              },
+              "Power": {
+                "value": "Sport: 16.04 PS @8750 rpm"
+              },
+              "VariantColorImages": [
+                {
+                  "id": "af5917da-b371-4684-a616-8ac45a929c3c",
+                  "url": "/-/media/BookOnline-V2/Motorcycle/APACHE-RTR-160-2V/blue.webp",
+                  "name": "blue",
+                  "displayName": "blue",
+                  "fields": {
+                    "Description": {
+                      "value": ""
+                    },
+                    "Extension": {
+                      "value": "webp"
+                    },
+                    "Keywords": {
+                      "value": ""
+                    },
+                    "Mime Type": {
+                      "value": "application/octet-stream"
+                    },
+                    "Size": {
+                      "value": "13130"
+                    },
+                    "Title": {
+                      "value": ""
+                    },
+                    "CountryCode": {
+                      "value": ""
+                    },
+                    "Latitude": {
+                      "value": null
+                    },
+                    "LocationDescription": {
+                      "value": ""
+                    },
+                    "Longitude": {
+                      "value": null
+                    },
+                    "ZipCode": {
+                      "value": ""
+                    },
+                    "Blob": {
+                      "value": "{B737EBB6-9315-476F-B1B0-DEC5EB5BF71D}"
+                    },
+                    "File Path": {
+                      "value": ""
+                    },
+                    "Format": {
+                      "value": ""
+                    },
+                    "Alt": {
+                      "value": ""
+                    },
+                    "Width": {
+                      "value": ""
+                    },
+                    "Height": {
+                      "value": ""
+                    },
+                    "Asset 1": null,
+                    "Asset 2": null,
+                    "Asset 3": null,
+                    "Marketing asset": null
+                  }
+                }
+              ],
+              "VehicleColor": {
+                "id": "c4815e7b-fb92-418d-8b57-271055b65ae8",
+                "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/service/sitecore/Forms-Datasource/Colors/Matte-Blue",
+                "name": "Matte Blue",
+                "displayName": "Matte Blue",
+                "fields": {
+                  "ColorTitle": {
+                    "value": "Matte Blue"
+                  },
+                  "ColorValue": {
+                    "value": 321
+                  }
+                }
+              },
+              "Weight": {
+                "value": "138 kgs"
+              },
+              "BrandCode": {
+                "value": "1"
+              },
+              "ColorHexCode": {
+                "value": "#1366a8"
+              },
+              "ColorImage": {
+                "value": {
+                  "src": "/book-online/-/media/BookOnline-V2/Motorcycle/Apache-Bike/RTR-160-Blue/RTR-160-Blue.png?h=330&iar=0&w=550&hash=4B5EC481DEB7805D649D49062DA54DA4",
+                  "alt": "",
+                  "width": "550",
+                  "height": "330"
+                }
+              },
+              "EngineCapacity": {
+                "value": "160 cc"
+              },
+              "ModelId": {
+                "value": "000010000100000715"
+              }
+            }
+          },
+          {
+            "id": "25cee09c-b34e-423d-85c2-3a9d082cc68b",
+            "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/Forms-Datasource/Book-Online-V2/Motorcycle/APACHE-RTR-160/RM-Disc/Pearl-White",
+            "name": "Pearl White",
+            "displayName": "Pearl White",
+            "fields": {
+              "OurProductsLogo": {
+                "value": {}
+              },
+              "OurProductsDesktopImage": {
+                "value": {}
+              },
+              "DisplayOnOurProducts": {
+                "value": false
+              },
+              "OurProductsMobileImage": {
+                "value": {}
+              },
+              "PartId": {
+                "value": "NR1919702F"
+              },
+              "Power": {
+                "value": "Sport: 16.04 PS @8750 rpm"
+              },
+              "VariantColorImages": [
+                {
+                  "id": "b367d68a-77f1-433f-be7e-7971b625d4a1",
+                  "url": "/-/media/BookOnline-V2/Motorcycle/APACHE-RTR-160-2V/white.webp",
+                  "name": "white",
+                  "displayName": "white",
+                  "fields": {
+                    "Description": {
+                      "value": ""
+                    },
+                    "Extension": {
+                      "value": "webp"
+                    },
+                    "Keywords": {
+                      "value": ""
+                    },
+                    "Mime Type": {
+                      "value": "application/octet-stream"
+                    },
+                    "Size": {
+                      "value": "13122"
+                    },
+                    "Title": {
+                      "value": ""
+                    },
+                    "CountryCode": {
+                      "value": ""
+                    },
+                    "Latitude": {
+                      "value": null
+                    },
+                    "LocationDescription": {
+                      "value": ""
+                    },
+                    "Longitude": {
+                      "value": null
+                    },
+                    "ZipCode": {
+                      "value": ""
+                    },
+                    "Blob": {
+                      "value": "{AB4872D0-294B-42A6-BA4F-B3FE3BCF9C1B}"
+                    },
+                    "File Path": {
+                      "value": ""
+                    },
+                    "Format": {
+                      "value": ""
+                    },
+                    "Alt": {
+                      "value": ""
+                    },
+                    "Width": {
+                      "value": ""
+                    },
+                    "Height": {
+                      "value": ""
+                    },
+                    "Asset 1": null,
+                    "Asset 2": null,
+                    "Asset 3": null,
+                    "Marketing asset": null
+                  }
+                }
+              ],
+              "VehicleColor": {
+                "id": "5ec5dcce-9de6-4b97-9029-8359ca1b7d4e",
+                "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/service/sitecore/Forms-Datasource/Colors/Pearl-White",
+                "name": "Pearl White",
+                "displayName": "Pearl White",
+                "fields": {
+                  "ColorTitle": {
+                    "value": "Pearl White"
+                  },
+                  "ColorValue": {
+                    "value": 333
+                  }
+                }
+              },
+              "Weight": {
+                "value": "138 kgs"
+              },
+              "BrandCode": {
+                "value": "1"
+              },
+              "ColorHexCode": {
+                "value": "#F8F6F0"
+              },
+              "ColorImage": {
+                "value": {
+                  "src": "/book-online/-/media/BookOnline-V2/Motorcycle/Apache-Bike/RTR-160-Blue/RTR-160-Blue.png?h=330&iar=0&w=550&hash=4B5EC481DEB7805D649D49062DA54DA4",
+                  "alt": "",
+                  "width": "550",
+                  "height": "330"
+                }
+              },
+              "EngineCapacity": {
+                "value": "160 cc"
+              },
+              "ModelId": {
+                "value": "000010000100000715"
+              }
+            }
+          },
+          {
+            "id": "d4d9fd74-a170-4222-a437-dbb4e0527510",
+            "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/Forms-Datasource/Book-Online-V2/Motorcycle/APACHE-RTR-160/RM-Disc/Racing-Red",
+            "name": "Racing Red",
+            "displayName": "Racing Red",
+            "fields": {
+              "OurProductsLogo": {
+                "value": {}
+              },
+              "OurProductsDesktopImage": {
+                "value": {}
+              },
+              "DisplayOnOurProducts": {
+                "value": false
+              },
+              "OurProductsMobileImage": {
+                "value": {}
+              },
+              "PartId": {
+                "value": "NR1919708F"
+              },
+              "Power": {
+                "value": "Sport: 16.04 PS @8750 rpm"
+              },
+              "VariantColorImages": [
+                {
+                  "id": "5e1191fb-73aa-43d4-80de-402f90b85095",
+                  "url": "/-/media/BookOnline-V2/Motorcycle/APACHE-RTR-160-2V/red.webp",
+                  "name": "red",
+                  "displayName": "red",
+                  "fields": {
+                    "Description": {
+                      "value": ""
+                    },
+                    "Extension": {
+                      "value": "webp"
+                    },
+                    "Keywords": {
+                      "value": ""
+                    },
+                    "Mime Type": {
+                      "value": "application/octet-stream"
+                    },
+                    "Size": {
+                      "value": "13980"
+                    },
+                    "Title": {
+                      "value": ""
+                    },
+                    "CountryCode": {
+                      "value": ""
+                    },
+                    "Latitude": {
+                      "value": null
+                    },
+                    "LocationDescription": {
+                      "value": ""
+                    },
+                    "Longitude": {
+                      "value": null
+                    },
+                    "ZipCode": {
+                      "value": ""
+                    },
+                    "Blob": {
+                      "value": "{07E1506F-4BBE-4DE1-BC94-197B939706CC}"
+                    },
+                    "File Path": {
+                      "value": ""
+                    },
+                    "Format": {
+                      "value": ""
+                    },
+                    "Alt": {
+                      "value": ""
+                    },
+                    "Width": {
+                      "value": ""
+                    },
+                    "Height": {
+                      "value": ""
+                    },
+                    "Asset 1": null,
+                    "Asset 2": null,
+                    "Asset 3": null,
+                    "Marketing asset": null
+                  }
+                }
+              ],
+              "VehicleColor": {
+                "id": "a5dd2d2b-5a78-4bd4-a653-9148b4d91cfc",
+                "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/service/sitecore/Forms-Datasource/Colors/Racing-Red-Apache-2v",
+                "name": "Racing Red Apache 2v",
+                "displayName": "Racing Red Apache 2v",
+                "fields": {
+                  "ColorTitle": {
+                    "value": "Racing Red"
+                  },
+                  "ColorValue": {
+                    "value": 314
+                  }
+                }
+              },
+              "Weight": {
+                "value": "138 kgs"
+              },
+              "BrandCode": {
+                "value": "1"
+              },
+              "ColorHexCode": {
+                "value": "#FF0000"
+              },
+              "ColorImage": {
+                "value": {
+                  "src": "/book-online/-/media/BookOnline-V2/Motorcycle/Apache-Bike/RTR-160-Blue/RTR-160-Blue.png?h=330&iar=0&w=550&hash=4B5EC481DEB7805D649D49062DA54DA4",
+                  "alt": "",
+                  "width": "550",
+                  "height": "330"
+                }
+              },
+              "EngineCapacity": {
+                "value": "160 cc"
+              },
+              "ModelId": {
+                "value": "000010000100000715"
+              }
+            }
+          }
+        ],
+        "VariantCode": {
+          "value": "220"
+        },
+        "VariantName": {
+          "value": "RM Disc"
+        },
+        "isNewVehicle": {
+          "value": false
+        },
+        "ProductClass": {
+          "value": ""
+        },
+        "Brand": {
+          "value": ""
+        },
+        "Url": {
+          "value": {
+            "href": ""
+          }
+        },
+        "VehicleImageUrl": {
+          "value": {
+            "href": ""
+          }
+        },
+        "VehicleType": {
+          "value": ""
+        },
+        "Disclaimer": {
+          "value": ""
+        }
+      }
+    },
+    {
+      "id": "4188c529-f896-4aeb-9cdb-481833593037",
+      "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/Forms-Datasource/Book-Online-V2/Motorcycle/APACHE-RTR-160/RM-Drum",
+      "name": "RM Drum",
+      "displayName": "RM Drum",
+      "fields": {
+        "ActiveColours": [
+          {
+            "id": "13802f2c-59e3-4aa6-88e5-f385028b57b2",
+            "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/Forms-Datasource/Book-Online-V2/Motorcycle/APACHE-RTR-160/RM-Drum/Gloss-Black",
+            "name": "Gloss Black",
+            "displayName": "Gloss Black",
+            "fields": {
+              "OurProductsLogo": {
+                "value": {}
+              },
+              "OurProductsDesktopImage": {
+                "value": {}
+              },
+              "DisplayOnOurProducts": {
+                "value": false
+              },
+              "OurProductsMobileImage": {
+                "value": {}
+              },
+              "PartId": {
+                "value": "NR1920800D"
+              },
+              "Power": {
+                "value": "Sport: 16.04 PS @8750 rpm"
+              },
+              "VariantColorImages": [
+                {
+                  "id": "37231eab-2eb9-42c6-86eb-17c4c18e54bd",
+                  "url": "/-/media/BookOnline-V2/Motorcycle/APACHE-RTR-160-2V/black.webp",
+                  "name": "black",
+                  "displayName": "black",
+                  "fields": {
+                    "Description": {
+                      "value": ""
+                    },
+                    "Extension": {
+                      "value": "webp"
+                    },
+                    "Keywords": {
+                      "value": ""
+                    },
+                    "Mime Type": {
+                      "value": "application/octet-stream"
+                    },
+                    "Size": {
+                      "value": "11958"
+                    },
+                    "Title": {
+                      "value": ""
+                    },
+                    "CountryCode": {
+                      "value": ""
+                    },
+                    "Latitude": {
+                      "value": null
+                    },
+                    "LocationDescription": {
+                      "value": ""
+                    },
+                    "Longitude": {
+                      "value": null
+                    },
+                    "ZipCode": {
+                      "value": ""
+                    },
+                    "Blob": {
+                      "value": "{072E4EE1-541F-471E-92C1-26ED6C03B53B}"
+                    },
+                    "File Path": {
+                      "value": ""
+                    },
+                    "Format": {
+                      "value": ""
+                    },
+                    "Alt": {
+                      "value": ""
+                    },
+                    "Width": {
+                      "value": ""
+                    },
+                    "Height": {
+                      "value": ""
+                    },
+                    "Asset 1": null,
+                    "Asset 2": null,
+                    "Asset 3": null,
+                    "Marketing asset": null
+                  }
+                }
+              ],
+              "VehicleColor": {
+                "id": "0a29672b-56b4-40bc-a574-81163bd54337",
+                "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/service/sitecore/Forms-Datasource/Colors/Gloss-Black",
+                "name": "Gloss Black",
+                "displayName": "Gloss Black",
+                "fields": {
+                  "ColorTitle": {
+                    "value": "Gloss Black"
+                  },
+                  "ColorValue": {
+                    "value": 313
+                  }
+                }
+              },
+              "Weight": {
+                "value": "137 kgs"
+              },
+              "BrandCode": {
+                "value": "1"
+              },
+              "ColorHexCode": {
+                "value": "#000000"
+              },
+              "ColorImage": {
+                "value": {
+                  "src": "/book-online/-/media/BookOnline-V2/Motorcycle/Apache-Bike/RTR-160-Blue/RTR-160-Blue.png?h=330&iar=0&w=550&hash=4B5EC481DEB7805D649D49062DA54DA4",
+                  "alt": "",
+                  "width": "550",
+                  "height": "330"
+                }
+              },
+              "EngineCapacity": {
+                "value": "160 cc"
+              },
+              "ModelId": {
+                "value": "000010000100000716"
+              }
+            }
+          },
+          {
+            "id": "bdd29885-6a63-4129-9a42-c55ddc160110",
+            "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/Forms-Datasource/Book-Online-V2/Motorcycle/APACHE-RTR-160/RM-Drum/Pearl-White",
+            "name": "Pearl White",
+            "displayName": "Pearl White",
+            "fields": {
+              "OurProductsLogo": {
+                "value": {}
+              },
+              "OurProductsDesktopImage": {
+                "value": {}
+              },
+              "DisplayOnOurProducts": {
+                "value": false
+              },
+              "OurProductsMobileImage": {
+                "value": {}
+              },
+              "PartId": {
+                "value": "NR1920802F"
+              },
+              "Power": {
+                "value": "Sport: 16.04 PS @8750 rpm"
+              },
+              "VariantColorImages": [
+                {
+                  "id": "b367d68a-77f1-433f-be7e-7971b625d4a1",
+                  "url": "/-/media/BookOnline-V2/Motorcycle/APACHE-RTR-160-2V/white.webp",
+                  "name": "white",
+                  "displayName": "white",
+                  "fields": {
+                    "Description": {
+                      "value": ""
+                    },
+                    "Extension": {
+                      "value": "webp"
+                    },
+                    "Keywords": {
+                      "value": ""
+                    },
+                    "Mime Type": {
+                      "value": "application/octet-stream"
+                    },
+                    "Size": {
+                      "value": "13122"
+                    },
+                    "Title": {
+                      "value": ""
+                    },
+                    "CountryCode": {
+                      "value": ""
+                    },
+                    "Latitude": {
+                      "value": null
+                    },
+                    "LocationDescription": {
+                      "value": ""
+                    },
+                    "Longitude": {
+                      "value": null
+                    },
+                    "ZipCode": {
+                      "value": ""
+                    },
+                    "Blob": {
+                      "value": "{AB4872D0-294B-42A6-BA4F-B3FE3BCF9C1B}"
+                    },
+                    "File Path": {
+                      "value": ""
+                    },
+                    "Format": {
+                      "value": ""
+                    },
+                    "Alt": {
+                      "value": ""
+                    },
+                    "Width": {
+                      "value": ""
+                    },
+                    "Height": {
+                      "value": ""
+                    },
+                    "Asset 1": null,
+                    "Asset 2": null,
+                    "Asset 3": null,
+                    "Marketing asset": null
+                  }
+                }
+              ],
+              "VehicleColor": {
+                "id": "5ec5dcce-9de6-4b97-9029-8359ca1b7d4e",
+                "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/service/sitecore/Forms-Datasource/Colors/Pearl-White",
+                "name": "Pearl White",
+                "displayName": "Pearl White",
+                "fields": {
+                  "ColorTitle": {
+                    "value": "Pearl White"
+                  },
+                  "ColorValue": {
+                    "value": 333
+                  }
+                }
+              },
+              "Weight": {
+                "value": "137 kgs"
+              },
+              "BrandCode": {
+                "value": "1"
+              },
+              "ColorHexCode": {
+                "value": "#F8F6F0"
+              },
+              "ColorImage": {
+                "value": {
+                  "src": "/book-online/-/media/BookOnline-V2/Motorcycle/Apache-Bike/RTR-160-Blue/RTR-160-Blue.png?h=330&iar=0&w=550&hash=4B5EC481DEB7805D649D49062DA54DA4",
+                  "alt": "",
+                  "width": "550",
+                  "height": "330"
+                }
+              },
+              "EngineCapacity": {
+                "value": "160 cc"
+              },
+              "ModelId": {
+                "value": "000010000100000716"
+              }
+            }
+          }
+        ],
+        "VariantCode": {
+          "value": "204"
+        },
+        "VariantName": {
+          "value": "RM Drum"
+        },
+        "isNewVehicle": {
+          "value": false
+        },
+        "ProductClass": {
+          "value": ""
+        },
+        "Brand": {
+          "value": ""
+        },
+        "Url": {
+          "value": {
+            "href": ""
+          }
+        },
+        "VehicleImageUrl": {
+          "value": {
+            "href": ""
+          }
+        },
+        "VehicleType": {
+          "value": ""
+        },
+        "Disclaimer": {
+          "value": ""
+        }
+      }
+    },
+    {
+      "id": "0d11daab-b301-4f0e-96d4-a828d2f0647c",
+      "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/Forms-Datasource/Book-Online-V2/Motorcycle/APACHE-RTR-160/Dual-Channel-ABS",
+      "name": "Dual Channel ABS",
+      "displayName": "Dual Channel ABS",
+      "fields": {
+        "ActiveColours": [
+          {
+            "id": "54838967-9aab-49ae-b41a-1d168a6c9507",
+            "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/Forms-Datasource/Book-Online-V2/Motorcycle/APACHE-RTR-160/Dual-Channel-ABS/Matte-Black",
+            "name": "Matte Black",
+            "displayName": "Matte Black",
+            "fields": {
+              "OurProductsLogo": {
+                "value": {}
+              },
+              "OurProductsDesktopImage": {
+                "value": {}
+              },
+              "DisplayOnOurProducts": {
+                "value": false
+              },
+              "OurProductsMobileImage": {
+                "value": {}
+              },
+              "PartId": {
+                "value": "NR1923205D"
+              },
+              "Power": {
+                "value": "Sport: 16.04 PS @8750 rpm"
+              },
+              "VariantColorImages": [
+                {
+                  "id": "91c8e601-5b1e-44ce-9fdf-789d3fd570f8",
+                  "url": "/-/media/U750/13062025/RTR1602V_BOOK-ONLINE_700X500_MATTE-BLACK.webp",
+                  "name": "RTR1602V_BOOK ONLINE_700X500_MATTE BLACK",
+                  "displayName": "RTR1602V_BOOK ONLINE_700X500_MATTE BLACK",
+                  "fields": {
+                    "Description": {
+                      "value": ""
+                    },
+                    "Extension": {
+                      "value": "webp"
+                    },
+                    "Keywords": {
+                      "value": ""
+                    },
+                    "Mime Type": {
+                      "value": "image/webp"
+                    },
+                    "Size": {
+                      "value": "157478"
+                    },
+                    "Title": {
+                      "value": ""
+                    },
+                    "CountryCode": {
+                      "value": ""
+                    },
+                    "Latitude": {
+                      "value": null
+                    },
+                    "LocationDescription": {
+                      "value": ""
+                    },
+                    "Longitude": {
+                      "value": null
+                    },
+                    "ZipCode": {
+                      "value": ""
+                    },
+                    "Blob": {
+                      "value": "7aad27c6-02f8-44cc-947e-d13f3b8ffd7c"
+                    },
+                    "File Path": {
+                      "value": ""
+                    },
+                    "Format": {
+                      "value": ""
+                    },
+                    "Alt": {
+                      "value": ""
+                    },
+                    "Width": {
+                      "value": ""
+                    },
+                    "Height": {
+                      "value": ""
+                    },
+                    "Asset 1": null,
+                    "Asset 2": null,
+                    "Asset 3": null,
+                    "Marketing asset": null
+                  }
+                }
+              ],
+              "VehicleColor": {
+                "id": "64b87b4c-e1d8-4d61-9e54-810e18199725",
+                "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/service/sitecore/Forms-Datasource/Colors/160_4v_Matte_Black",
+                "name": "160_4v_Matte_Black",
+                "displayName": "160_4v_Matte_Black",
+                "fields": {
+                  "ColorTitle": {
+                    "value": "Matte Black"
+                  },
+                  "ColorValue": {
+                    "value": 391
+                  }
+                }
+              },
+              "Weight": {
+                "value": "139 kgs"
+              },
+              "BrandCode": {
+                "value": "1"
+              },
+              "ColorHexCode": {
+                "value": "#4f4f53"
+              },
+              "ColorImage": {
+                "value": {
+                  "src": "/book-online/-/media/U750/13062025/RTR1602V_BOOK-ONLINE_700X500_MATTE-BLACK.webp?iar=0&hash=C616558705EF7CFF83618F0514F94BF8",
+                  "alt": ""
+                }
+              },
+              "EngineCapacity": {
+                "value": "160 cc"
+              },
+              "ModelId": {
+                "value": "000010000100000751"
+              }
+            }
+          },
+          {
+            "id": "71d0d370-1c59-4c2d-9e22-a7608eacfaac",
+            "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/Forms-Datasource/Book-Online-V2/Motorcycle/APACHE-RTR-160/Dual-Channel-ABS/Pearl-White",
+            "name": "Pearl White",
+            "displayName": "Pearl White",
+            "fields": {
+              "OurProductsLogo": {
+                "value": {}
+              },
+              "OurProductsDesktopImage": {
+                "value": {}
+              },
+              "DisplayOnOurProducts": {
+                "value": false
+              },
+              "OurProductsMobileImage": {
+                "value": {}
+              },
+              "PartId": {
+                "value": "NR1923202F"
+              },
+              "Power": {
+                "value": "Sport: 16.04 PS @8750 rpm"
+              },
+              "VariantColorImages": [
+                {
+                  "id": "19ac7773-7855-4070-943b-fe34082a6def",
+                  "url": "/-/media/U750/13062025/RTR1602V_BOOK-ONLINE_700X500_PEARL-WHITE.webp",
+                  "name": "RTR1602V_BOOK ONLINE_700X500_PEARL WHITE",
+                  "displayName": "RTR1602V_BOOK ONLINE_700X500_PEARL WHITE",
+                  "fields": {
+                    "Description": {
+                      "value": ""
+                    },
+                    "Extension": {
+                      "value": "webp"
+                    },
+                    "Keywords": {
+                      "value": ""
+                    },
+                    "Mime Type": {
+                      "value": "image/webp"
+                    },
+                    "Size": {
+                      "value": "132310"
+                    },
+                    "Title": {
+                      "value": ""
+                    },
+                    "CountryCode": {
+                      "value": ""
+                    },
+                    "Latitude": {
+                      "value": null
+                    },
+                    "LocationDescription": {
+                      "value": ""
+                    },
+                    "Longitude": {
+                      "value": null
+                    },
+                    "ZipCode": {
+                      "value": ""
+                    },
+                    "Blob": {
+                      "value": "f09a544c-24c6-4acf-aa8f-33fa49704aa7"
+                    },
+                    "File Path": {
+                      "value": ""
+                    },
+                    "Format": {
+                      "value": ""
+                    },
+                    "Alt": {
+                      "value": ""
+                    },
+                    "Width": {
+                      "value": ""
+                    },
+                    "Height": {
+                      "value": ""
+                    },
+                    "Asset 1": null,
+                    "Asset 2": null,
+                    "Asset 3": null,
+                    "Marketing asset": null
+                  }
+                }
+              ],
+              "VehicleColor": {
+                "id": "8dfc990a-2932-46cf-8f39-1cdd31086fc2",
+                "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/service/sitecore/Forms-Datasource/Colors/160_4v_Pearl_White",
+                "name": "160_4v_Pearl_White",
+                "displayName": "160_4v_Pearl_White",
+                "fields": {
+                  "ColorTitle": {
+                    "value": "Pearl White"
+                  },
+                  "ColorValue": {
+                    "value": 333
+                  }
+                }
+              },
+              "Weight": {
+                "value": "139 kgs"
+              },
+              "BrandCode": {
+                "value": "1"
+              },
+              "ColorHexCode": {
+                "value": "#F8F6F0"
+              },
+              "ColorImage": {
+                "value": {
+                  "src": "/book-online/-/media/U750/13062025/RTR1602V_BOOK-ONLINE_700X500_PEARL-WHITE.webp?iar=0&hash=43802D83D27B68CF275458915D3E706F",
+                  "alt": ""
+                }
+              },
+              "EngineCapacity": {
+                "value": "160 cc"
+              },
+              "ModelId": {
+                "value": "000010000100000751"
+              }
+            }
+          }
+        ],
+        "VariantCode": {
+          "value": "263"
+        },
+        "VariantName": {
+          "value": "Dual Channel ABS"
+        },
+        "isNewVehicle": {
+          "value": true
+        },
+        "ProductClass": {
+          "value": ""
+        },
+        "Brand": {
+          "value": ""
+        },
+        "Url": {
+          "value": {
+            "href": ""
+          }
+        },
+        "VehicleImageUrl": {
+          "value": {
+            "href": ""
+          }
+        },
+        "VehicleType": {
+          "value": ""
+        },
+        "Disclaimer": {
+          "value": ""
+        }
+      }
+    }
+  ],
+  "VehicleLatlongType": {
+    "value": ""
+  },
+  "IsInterestedInFinance": {
+    "value": false
+  },
+  "NoCostEMI": {
+    "value": false
+  },
+  "VehicleImage": {
+    "value": {
+      "src": "/book-online/-/media/BookOnline-V2/Motorcycle/Apache-Bike/RTR-160-Blue/RTR-160-Blue.png?h=330&iar=0&w=550&hash=4B5EC481DEB7805D649D49062DA54DA4",
+      "alt": "",
+      "width": "550",
+      "height": "330"
+    }
+  },
+  "VehicleName": {
+    "value": "TVS Apache RTR 160"
+  },
+  "CTA2Text": {
+    "value": ""
+  },
+  "CTA1Text": {
+    "value": ""
+  },
+  "CTA2Link": {
+    "value": {
+      "href": ""
+    }
+  },
+  "VehicleCode": {
+    "value": "102"
+  },
+  "Offers": [
+    {
+      "id": "b23a9f6e-58a1-4f42-9929-08ca43595eb1",
+      "url": "https://tvsmazwebappprod01-corp-cd.azurewebsites.net/sitecore/Forms-Datasource/Offers/HDFC-Instant-Discount",
+      "name": "HDFC-Instant-Discount",
+      "displayName": "HDFC-Instant-Discount",
+      "fields": {
+        "IconImage": {
+          "value": {}
+        },
+        "BannerMobileImage": {
+          "value": {}
+        },
+        "BannerDesktopImage": {
+          "value": {}
+        },
+        "RawHTML": {
+          "value": "<section class=\"hdfcoffer\">\n  <div class=\"offer-info\">\n    <div class=\"hdfc-logo\">\n      <img src=\"/-/media/hdfc-offer/hdfclogo.webp\" />\n    </div>\n    <div class=\"icon-frame\">\n      <img src=\"/-/media/hdfc-offer/Iconframe.webp\" class=\"img-fluid\" />\n    </div>\n    <div class=\"marquee\" style=\"--marquee-speed: 10s; --direction:scroll-left\" role=\"marquee\">\n      <div class=\"intrest-info\">\n        <div class=\"roi\" style=\"display: none;\">\n          <span class=\"rate\">Rate Of Intrest</span>\n          <span class=\"starting-rate\">(Starting from)</span>\n        </div>\n        <div class=\"intrest-rate\" style=\"display: none;\">\n          <span class=\"intrest-number\">5%</span>\n        </div>\n        <div class=\"line\" style=\"display: none;\"></div>\n       <div class=\"description\">\n          <p class=\"info-text\">\n            Up to &nbsp;\n            <span>\u20b9 7500*&nbsp;</span>\n          </p>\n          <p class=\"info-text-latest\">\n            Instant Discount using EasyEMI on Credit Card<br />\n            <span class=\"tc-txt\">*T & C&nbsp;Apply</span>\n          </p>\n        </div>\n      </div>\n    </div>\n  </div>\n</section>"
+        },
+        "Description": {
+          "value": "Get 5% off upto Rs. 7500/- on HDFC Bank Credit Card and Debit Card EMIs"
+        },
+        "Expiry": {
+          "value": "2026-02-28T23:30:00Z"
+        },
+        "Heading": {
+          "value": "Bank Cashback Offers"
+        },
+        "Value": {
+          "value": "HDFCICEDISC"
+        }
+      }
+    }
+  ],
+  "ProductClass": {
+    "value": ""
+  },
+  "Brand": {
+    "value": ""
+  },
+  "Url": {
+    "value": {
+      "href": ""
+    }
+  },
+  "VehicleImageUrl": {
+    "value": {
+      "href": ""
+    }
+  },
+  "VehicleType": {
+    "value": "ICE"
+  },
+  "Disclaimer": {
+    "value": ""
+  }
+}

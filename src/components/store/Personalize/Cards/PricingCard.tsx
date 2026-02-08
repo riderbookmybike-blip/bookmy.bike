@@ -39,7 +39,7 @@ export default function PricingCard({
     productImage,
     pricingSource,
     leadName,
-    infoColorClass = 'text-slate-400',
+    infoColorClass = 'text-slate-500 dark:text-slate-400',
     serviceability,
 }: PricingCardProps) {
     return (
@@ -74,7 +74,7 @@ export default function PricingCard({
                                 className="flex justify-between items-center text-[10px] group/item relative"
                             >
                                 <span
-                                    className={`font-bold uppercase tracking-widest ${item.breakdown || item.helpText || (item as any).comparisonOptions ? 'cursor-help border-b border-dotted border-slate-300 dark:border-white/20' : 'text-slate-500/70'}`}
+                                    className={`font-bold uppercase tracking-widest ${item.breakdown || item.helpText || (item as any).comparisonOptions ? 'cursor-help border-b border-dotted border-slate-300 dark:border-white/20' : 'text-slate-600/80 dark:text-slate-400/80'}`}
                                 >
                                     {item.label}
                                 </span>
@@ -98,7 +98,7 @@ export default function PricingCard({
                                                 <p className="text-[9px] font-black uppercase tracking-widest text-brand-primary mb-0.5">
                                                     {item.label}
                                                 </p>
-                                                <p className="text-[9px] text-slate-400 font-medium">
+                                                <p className="text-[9px] text-slate-500 dark:text-slate-400 font-medium">
                                                     Breakdown & Details
                                                 </p>
                                             </div>
@@ -115,7 +115,7 @@ export default function PricingCard({
                                                                 <span className="text-[9px] font-bold text-white uppercase tracking-tighter">
                                                                     {opt.name.replace(' Registration', '')}
                                                                 </span>
-                                                                <span className="text-[8px] text-slate-500 max-w-[120px] truncate">
+                                                                <span className="text-[8px] text-slate-400 dark:text-slate-400 max-w-[120px] truncate">
                                                                     {opt.description}
                                                                 </span>
                                                             </div>
@@ -137,7 +137,7 @@ export default function PricingCard({
                                                                 key={bIdx}
                                                                 className="flex justify-between items-center text-[9px]"
                                                             >
-                                                                <span className="text-slate-500 font-bold uppercase tracking-tight">
+                                                                <span className="text-slate-600 dark:text-slate-400 font-bold uppercase tracking-tight">
                                                                     {b.label}
                                                                 </span>
                                                                 <span className="text-white font-mono">
@@ -154,7 +154,7 @@ export default function PricingCard({
                                                     {item.helpText.map((text, hIdx) => (
                                                         <p
                                                             key={hIdx}
-                                                            className="text-[9px] text-slate-400 leading-relaxed"
+                                                            className="text-[9px] text-slate-500 dark:text-slate-400 leading-relaxed"
                                                         >
                                                             • {text}
                                                         </p>
@@ -174,13 +174,13 @@ export default function PricingCard({
                 <div className="flex justify-between items-end">
                     <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-1">
-                            <span className="text-[10px] font-black uppercase italic tracking-widest text-slate-400">
+                            <span className="text-[10px] font-black uppercase italic tracking-widest text-slate-600 dark:text-slate-400">
                                 Final Price
                             </span>
                             <Info size={10} className={infoColorClass} />
                         </div>
                         {pricingSource && (
-                            <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest leading-none">
+                            <span className="text-[8px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest leading-none">
                                 ({pricingSource})
                             </span>
                         )}

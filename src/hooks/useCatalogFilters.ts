@@ -65,6 +65,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
     const [selectedWheels, setSelectedWheels] = useState<string[]>([]);
     const [selectedConsole, setSelectedConsole] = useState<string[]>([]);
     const [selectedSeatHeight, setSelectedSeatHeight] = useState<string[]>([]);
+    const [selectedWeights, setSelectedWeights] = useState<string[]>([]);
     const [selectedFinishes, setSelectedFinishes] = useState<string[]>([]);
     const [maxPrice, setMaxPrice] = useState<number>(1000000); // 10 Lakh default
     const [maxEMI, setMaxEMI] = useState<number>(20000); // 20k default
@@ -182,7 +183,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
             const matchesMake = isAllMakesSelected || selectedMakeSet.has(normalizedMake);
 
             const isElectric = v.model.toLowerCase().includes('electric') || v.fuelType === 'ELECTRIC';
-            const fuelType = isElectric ? 'Electric' : 'Petrol';
+            const fuelType = v.fuelType === 'CNG' ? 'CNG' : isElectric ? 'Electric' : 'Petrol';
             const matchesFuel = selectedFuels.length === 0 || selectedFuels.includes(fuelType);
 
             const segment = v.segment || 'Commuter';
@@ -202,8 +203,25 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
                         : '> 500cc';
             const matchesCC = selectedCC.length === 0 || selectedCC.includes(ccTag);
 
-            const brakeType = v.specifications?.brakes?.front?.toLowerCase().includes('disc') ? 'Disc (Front)' : 'Drum';
-            const matchesBrakes = selectedBrakes.length === 0 || selectedBrakes.includes(brakeType);
+            const frontBrake = (v.specifications as any)?.brakes?.front?.toLowerCase?.() || '';
+            const rearBrake = (v.specifications as any)?.brakes?.rear?.toLowerCase?.() || '';
+            const absText = (v.specifications?.features?.abs || '').toString().toLowerCase();
+            const hasFrontDisc = frontBrake.includes('disc');
+            const hasRearDisc = rearBrake.includes('disc');
+            const hasAbs = absText.includes('abs');
+            let brakeTag = 'All Drum';
+            if (hasAbs && absText.includes('dual')) {
+                brakeTag = 'Dual ABS';
+            } else if (hasAbs && hasFrontDisc && hasRearDisc) {
+                brakeTag = 'Front ABS Rear Disc';
+            } else if (hasAbs && hasFrontDisc && !hasRearDisc) {
+                brakeTag = 'Front ABS Rear Drum';
+            } else if (hasFrontDisc && hasRearDisc) {
+                brakeTag = 'Dual Disc';
+            } else if (hasFrontDisc && !hasRearDisc) {
+                brakeTag = 'Front Disc Rear Drum';
+            }
+            const matchesBrakes = selectedBrakes.length === 0 || selectedBrakes.includes(brakeTag);
 
             const wheelType = v.specifications?.wheels?.front?.toLowerCase().includes('alloy') ? 'Alloy' : 'Spoke';
             const matchesWheels = selectedWheels.length === 0 || selectedWheels.includes(wheelType);
@@ -217,6 +235,21 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
             const seatHeightTag =
                 seatHeight < 780 ? '< 780mm' : seatHeight >= 780 && seatHeight <= 810 ? '780-810mm' : '> 810mm';
             const matchesSeatHeight = selectedSeatHeight.length === 0 || selectedSeatHeight.includes(seatHeightTag);
+
+            const weightRaw = parseInt(
+                (v.specifications?.dimensions?.kerbWeight || v.specifications?.dimensions?.curbWeight || '0')
+                    .toString()
+                    .replace(/[^0-9]/g, '')
+            );
+            const weightTag =
+                weightRaw > 0 && weightRaw < 110
+                    ? '< 110kg'
+                    : weightRaw >= 110 && weightRaw <= 140
+                      ? '110-140kg'
+                      : weightRaw > 140
+                        ? '> 140kg'
+                        : 'Unknown';
+            const matchesWeight = selectedWeights.length === 0 || selectedWeights.includes(weightTag);
 
             const matchesFinish =
                 selectedFinishes.length === 0 ||
@@ -239,6 +272,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
                 matchesWheels &&
                 matchesConsole &&
                 matchesSeatHeight &&
+                matchesWeight &&
                 matchesFinish &&
                 matchesPrice &&
                 matchesEMI
@@ -256,6 +290,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         selectedWheels,
         selectedConsole,
         selectedSeatHeight,
+        selectedWeights,
         selectedFinishes,
         maxPrice,
         maxEMI,
@@ -278,6 +313,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         setSelectedWheels([]);
         setSelectedConsole([]);
         setSelectedSeatHeight([]);
+        setSelectedWeights([]);
         setSelectedFinishes([]);
         setMaxPrice(1000000);
         setMaxPrice(1000000);
@@ -306,6 +342,8 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         setSelectedConsole,
         selectedSeatHeight,
         setSelectedSeatHeight,
+        selectedWeights,
+        setSelectedWeights,
         selectedFinishes,
         setSelectedFinishes,
         downpayment,

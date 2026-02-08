@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSystemPDPLogic } from '@/hooks/SystemPDPLogic';
-import { PhonePDPSticky } from '@/components/phone/pdp/PhonePDPSticky';
+import { PhonePDPEnhanced } from '@/components/phone/pdp/PhonePDPEnhanced';
 import { useSystemDealerContext } from '@/hooks/useSystemDealerContext';
 import { LeadCaptureModal } from '@/components/leads/LeadCaptureModal';
 import { EmailUpdateModal } from '@/components/auth/EmailUpdateModal';
@@ -417,26 +417,15 @@ export default function SystemPDPRouter({
                 </div>
             )}
 
-            <PhonePDPSticky
+            <PhonePDPEnhanced
                 product={product}
+                makeParam={makeParam}
                 modelParam={modelParam}
                 variantParam={variantParam}
                 data={data}
                 handlers={handlers}
-                bestOffer={bestOffer}
-                serverPricing={serverPricing}
-                serviceability={
-                    resolvedLocation
-                        ? {
-                              status: 'serviceable',
-                              location: resolvedLocation.district || resolvedLocation.city || 'India',
-                              distance: 0,
-                          }
-                        : {
-                              status: initialLocation ? 'serviceable' : 'unset',
-                              location: initialLocation?.district || initialLocation?.city || 'India',
-                          }
-                }
+                leadContext={leadContext || undefined}
+                initialLocation={initialLocation}
             />
 
             <LeadCaptureModal

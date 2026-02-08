@@ -1,224 +1,979 @@
 'use client';
 
-import React from 'react';
-import Link from 'next/link';
-import { ChevronLeft, X, Plus, Zap, Star, ArrowRight } from 'lucide-react';
-import { useCompare } from '@/hooks/useCompare';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowRight, CheckCircle2, Flame, Gauge, Plus, Search, ShieldCheck, Sparkles, Trophy, X } from 'lucide-react';
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
-import { slugify } from '@/utils/slugs';
-import { PageFrame } from '@/components/layout/PageFrame';
+import { MOCK_VEHICLES, ProductVariant } from '@/types/productMaster';
+
+const MAX_COMPARE = 3;
+const DEFAULT_TENURE = 36;
+const DEFAULT_DOWNPAYMENT_PCT = 0.2;
+const EMI_FACTORS: Record<number, number> = { 12: 0.091, 24: 0.049, 36: 0.035, 48: 0.028, 60: 0.024 };
+const STORAGE_KEY = 'bmb_compare_ids';
+
+type CompareBike = {
+    id: string;
+    name: string;
+    tag: string;
+    image: string;
+    price: string;
+    emi: string;
+    score: number;
+    highlights: string[];
+    commercial: Record<string, string>;
+    technical: Record<string, string>;
+    features: Record<string, string>;
+    performance: Record<string, string>;
+    resale: Record<string, string>;
+    popularity: Record<string, string>;
+    isApproxEmi?: boolean;
+    metrics?: {
+        onRoad?: number;
+        emi?: number;
+        power?: number;
+        torque?: number;
+        weight?: number;
+        rating?: number;
+    };
+};
+
+type CompareOption = {
+    id: string;
+    title: string;
+    subtitle: string;
+    image: string;
+    priceLabel: string;
+};
+
+const mockCompare: CompareBike[] = [
+    {
+        id: 'splendor-plus',
+        name: 'Hero Splendor+',
+        tag: 'Reliable commuter icon',
+        image: '/images/templates/t4_white.webp',
+        price: '₹89,900',
+        emi: '₹2,999/mo',
+        score: 86,
+        highlights: ['Best mileage', 'Low service cost', 'Trusted resale'],
+        commercial: {
+            'On-road price': '₹89,900',
+            'EMI from': '₹2,999/mo',
+            'Fuel cost (₹/month)': '₹2,150',
+            'Service cost (1st yr)': '₹1,350',
+            Warranty: '5 years',
+        },
+        technical: {
+            Engine: '97.2cc, air-cooled',
+            Power: '7.9 PS',
+            Torque: '8.05 Nm',
+            Gearbox: '4-speed',
+            Weight: '112 kg',
+        },
+        features: {
+            'Start system': 'Kick + Self',
+            'Console type': 'Analog',
+            'Braking (front/rear)': 'Drum/Drum',
+            'USB charger': 'No',
+            'Safety add-ons': 'Side stand engine cut-off',
+        },
+        performance: {
+            'Mileage (real world)': '65-70 kmpl',
+            'Top speed': '90 km/h',
+            '0-60 km/h': '12.8s',
+            'City agility': 'High',
+        },
+        resale: {
+            'Resale strength': 'Very High',
+            'Demand in used market': 'High',
+            'Depreciation (3 yrs)': 'Low',
+            'Parts availability': 'Excellent',
+        },
+        popularity: {
+            'Monthly searches': 'Very High',
+            'Owner rating': '4.6/5',
+            'Service network': 'Pan-India',
+            'Community trust': 'Legacy brand',
+        },
+        metrics: {
+            onRoad: 89900,
+            emi: 2999,
+            power: 7.9,
+            torque: 8.05,
+            weight: 112,
+            rating: 4.6,
+        },
+    },
+    {
+        id: 'activa-6g',
+        name: 'Honda Activa 6G',
+        tag: 'All-rounder scooter',
+        image: '/images/templates/t3_night.webp',
+        price: '₹1,04,500',
+        emi: '₹3,499/mo',
+        score: 84,
+        highlights: ['Comfortable ride', 'Top brand service', 'High resale'],
+        commercial: {
+            'On-road price': '₹1,04,500',
+            'EMI from': '₹3,499/mo',
+            'Fuel cost (₹/month)': '₹2,450',
+            'Service cost (1st yr)': '₹1,650',
+            Warranty: '3 years',
+        },
+        technical: {
+            Engine: '109.5cc, air-cooled',
+            Power: '7.8 PS',
+            Torque: '8.9 Nm',
+            Gearbox: 'CVT',
+            Weight: '106 kg',
+        },
+        features: {
+            'Start system': 'Self start',
+            'Console type': 'Analog',
+            'Braking (front/rear)': 'Drum/Drum',
+            'USB charger': 'Optional',
+            'Safety add-ons': 'Engine cut-off with side stand',
+        },
+        performance: {
+            'Mileage (real world)': '50-55 kmpl',
+            'Top speed': '85 km/h',
+            '0-60 km/h': '13.5s',
+            'City agility': 'Very High',
+        },
+        resale: {
+            'Resale strength': 'High',
+            'Demand in used market': 'Very High',
+            'Depreciation (3 yrs)': 'Medium',
+            'Parts availability': 'Excellent',
+        },
+        popularity: {
+            'Monthly searches': 'Very High',
+            'Owner rating': '4.5/5',
+            'Service network': 'Pan-India',
+            'Community trust': 'Household name',
+        },
+        metrics: {
+            onRoad: 104500,
+            emi: 3499,
+            power: 7.8,
+            torque: 8.9,
+            weight: 106,
+            rating: 4.5,
+        },
+    },
+    {
+        id: 'chetak-urban',
+        name: 'Bajaj Chetak',
+        tag: 'Premium electric choice',
+        image: '/images/templates/t2_neon.webp',
+        price: '₹1,37,900',
+        emi: '₹4,299/mo',
+        score: 81,
+        highlights: ['Zero fuel cost', 'Premium build', 'Smart features'],
+        commercial: {
+            'On-road price': '₹1,37,900',
+            'EMI from': '₹4,299/mo',
+            'Fuel cost (₹/month)': '₹400',
+            'Service cost (1st yr)': '₹900',
+            Warranty: '3 years',
+        },
+        technical: {
+            Motor: '4.0 kW BLDC',
+            Battery: '3.0 kWh',
+            Range: '90-100 km',
+            Charging: '4-5 hrs',
+            Weight: '132 kg',
+        },
+        features: {
+            'Start system': 'Keyless',
+            'Console type': 'Digital',
+            'Braking (front/rear)': 'Disc/Drum',
+            'USB charger': 'Yes',
+            'Safety add-ons': 'App + geofencing',
+        },
+        performance: {
+            'Mileage (real world)': '90-100 km/charge',
+            'Top speed': '73 km/h',
+            '0-60 km/h': '9.5s',
+            'City agility': 'High',
+        },
+        resale: {
+            'Resale strength': 'Medium',
+            'Demand in used market': 'Growing',
+            'Depreciation (3 yrs)': 'Medium-High',
+            'Parts availability': 'Good',
+        },
+        popularity: {
+            'Monthly searches': 'High',
+            'Owner rating': '4.4/5',
+            'Service network': 'Urban focus',
+            'Community trust': 'Premium EV',
+        },
+        metrics: {
+            onRoad: 137900,
+            emi: 4299,
+            power: 4.0,
+            torque: 20,
+            weight: 132,
+            rating: 4.4,
+        },
+    },
+];
+
+const sections = [
+    { id: 'commercial', title: 'Commercials', icon: Sparkles },
+    { id: 'technical', title: 'Technical', icon: Gauge },
+    { id: 'features', title: 'Features', icon: ShieldCheck },
+    { id: 'performance', title: 'Performance', icon: Flame },
+    { id: 'resale', title: 'Resale & Ownership', icon: Trophy },
+    { id: 'popularity', title: 'Popularity & Trust', icon: CheckCircle2 },
+];
+
+const formatCurrency = (value?: number | null) => {
+    if (typeof value !== 'number' || Number.isNaN(value)) return '—';
+    return `₹${value.toLocaleString('en-IN')}`;
+};
+
+const calcApproxEmi = (onRoad: number) => {
+    const downpayment = Math.round(onRoad * DEFAULT_DOWNPAYMENT_PCT);
+    const loanAmount = Math.max(0, onRoad - downpayment);
+    const factor = EMI_FACTORS[DEFAULT_TENURE] ?? EMI_FACTORS[36];
+    return Math.max(0, Math.round(loanAmount * factor));
+};
+
+const calcEmiRange = (onRoad: number) => {
+    const downpaymentLow = Math.round(onRoad * 0.1);
+    const downpaymentHigh = Math.round(onRoad * 0.2);
+    const loanLow = Math.max(0, onRoad - downpaymentLow);
+    const loanHigh = Math.max(0, onRoad - downpaymentHigh);
+    const emiLow = Math.round(loanHigh * (EMI_FACTORS[48] ?? EMI_FACTORS[36]));
+    const emiHigh = Math.round(loanLow * (EMI_FACTORS[36] ?? EMI_FACTORS[48]));
+    return { low: Math.min(emiLow, emiHigh), high: Math.max(emiLow, emiHigh) };
+};
+
+const buildCompareFromVariant = (variant: ProductVariant): CompareBike => {
+    const onRoad = variant.price?.onRoad || 0;
+    const emiValue = calcApproxEmi(onRoad);
+    const displacement =
+        variant.specifications?.engine?.displacement || (variant.displacement ? `${variant.displacement} cc` : '—');
+    const power = variant.specifications?.engine?.maxPower || '—';
+    const torque = variant.specifications?.engine?.maxTorque || '—';
+    const transmission = variant.specifications?.transmission?.type || '—';
+    const gears = variant.specifications?.transmission?.gears || '—';
+    const weight =
+        variant.specifications?.dimensions?.kerbWeight || variant.specifications?.dimensions?.curbWeight || '—';
+
+    const ratingScore = Number.isFinite(variant.rating) ? Math.round(variant.rating * 20) : 78;
+    const parsedPower = numberFromText(variant.specifications?.engine?.maxPower || '') ?? undefined;
+    const parsedTorque = numberFromText(variant.specifications?.engine?.maxTorque || '') ?? undefined;
+    const parsedWeight =
+        numberFromText(variant.specifications?.dimensions?.kerbWeight || '') ??
+        numberFromText(variant.specifications?.dimensions?.curbWeight || '') ??
+        undefined;
+
+    return {
+        id: variant.id,
+        name: `${variant.make} ${variant.model}`,
+        tag: variant.variant || variant.segment || 'Market pick',
+        image: variant.imageUrl || '/images/templates/t3_night.webp',
+        price: formatCurrency(onRoad),
+        emi: `₹${emiValue.toLocaleString('en-IN')}/mo`,
+        score: ratingScore,
+        highlights: [
+            variant.bodyType?.toLowerCase() || 'Daily ride',
+            variant.fuelType === 'EV' ? 'Zero fuel cost' : 'Balanced performance',
+            variant.segment || 'Top segment fit',
+        ].map(item => item.replace(/(^\w)/, m => m.toUpperCase())),
+        commercial: {
+            'On-road price': formatCurrency(onRoad),
+            'Ex-showroom': formatCurrency(variant.price?.exShowroom || 0),
+            'EMI from': `₹${emiValue.toLocaleString('en-IN')}/mo`,
+            Savings: formatCurrency(variant.price?.totalSavings || 0),
+            Warranty: variant.fuelType === 'EV' ? '3 years (battery)' : '2-5 years',
+        },
+        technical: {
+            Engine: displacement,
+            Power: power,
+            Torque: torque,
+            Transmission: `${transmission}${gears !== '—' ? ` (${gears})` : ''}`,
+            Weight: weight,
+        },
+        features: {
+            ABS: variant.specifications?.features?.abs || '—',
+            Bluetooth: variant.specifications?.features?.bluetooth ? 'Yes' : 'No',
+            'Body type': variant.bodyType,
+            'Fuel type': variant.fuelType,
+            Segment: variant.segment || '—',
+        },
+        performance: {
+            'Mileage / Range': variant.fuelType === 'EV' ? 'Data coming soon' : 'Data coming soon',
+            'Top speed': 'Data coming soon',
+            '0-60 km/h': 'Data coming soon',
+            'Ride character': variant.segment || 'Balanced',
+        },
+        resale: {
+            'Resale strength': 'Data coming soon',
+            'Demand in used market': 'Data coming soon',
+            'Depreciation (3 yrs)': 'Data coming soon',
+            'Parts availability': 'Data coming soon',
+        },
+        popularity: {
+            'Owner rating': Number.isFinite(variant.rating) ? `${variant.rating.toFixed(1)}/5` : '—',
+            'Market demand': 'Data coming soon',
+            'Service network': 'Data coming soon',
+            'Community trust': 'Data coming soon',
+        },
+        isApproxEmi: true,
+        metrics: {
+            onRoad,
+            emi: emiValue,
+            power: parsedPower,
+            torque: parsedTorque,
+            weight: parsedWeight,
+            rating: Number.isFinite(variant.rating) ? variant.rating : undefined,
+        },
+    };
+};
+
+const getSectionData = (bike: CompareBike, sectionId: string) => {
+    switch (sectionId) {
+        case 'commercial':
+            return bike.commercial;
+        case 'technical':
+            return bike.technical;
+        case 'features':
+            return bike.features;
+        case 'performance':
+            return bike.performance;
+        case 'resale':
+            return bike.resale;
+        case 'popularity':
+            return bike.popularity;
+        default:
+            return {};
+    }
+};
+
+const numberFromText = (value?: string | number) => {
+    if (value === null || value === undefined) return null;
+    const raw = typeof value === 'number' ? value.toString() : value;
+    if (!raw) return null;
+    const match = raw.replace(/,/g, '').match(/-?\d+(?:\.\d+)?/);
+    if (!match) return null;
+    const num = Number(match[0]);
+    return Number.isFinite(num) ? num : null;
+};
+
+const lowerIsBetter = new Set([
+    'On-road price',
+    'Ex-showroom',
+    'EMI from',
+    'Fuel cost (₹/month)',
+    'Service cost (1st yr)',
+    'Depreciation (3 yrs)',
+    'Weight',
+]);
+
+const higherIsBetter = new Set([
+    'Power',
+    'Torque',
+    'Range',
+    'Mileage (real world)',
+    'Top speed',
+    'Owner rating',
+    'Overall score',
+]);
+
+const presets = [
+    {
+        id: 'balanced',
+        label: 'Balanced',
+        weights: { commercial: 0.25, technical: 0.2, features: 0.15, performance: 0.2, resale: 0.1, popularity: 0.1 },
+    },
+    {
+        id: 'value',
+        label: 'Best Value',
+        weights: { commercial: 0.45, technical: 0.15, features: 0.1, performance: 0.1, resale: 0.1, popularity: 0.1 },
+    },
+    {
+        id: 'performance',
+        label: 'Performance',
+        weights: {
+            commercial: 0.15,
+            technical: 0.35,
+            features: 0.15,
+            performance: 0.25,
+            resale: 0.05,
+            popularity: 0.05,
+        },
+    },
+    {
+        id: 'resale',
+        label: 'Resale Focus',
+        weights: { commercial: 0.2, technical: 0.15, features: 0.1, performance: 0.1, resale: 0.3, popularity: 0.15 },
+    },
+    {
+        id: 'city',
+        label: 'City Commuter',
+        weights: { commercial: 0.35, technical: 0.15, features: 0.15, performance: 0.15, resale: 0.1, popularity: 0.1 },
+    },
+];
+
+const buildOptionsFromVariants = (variants: ProductVariant[]): CompareOption[] =>
+    variants.map(item => ({
+        id: item.id,
+        title: `${item.make} ${item.model}`,
+        subtitle: item.variant || item.segment || item.bodyType,
+        image: item.imageUrl || '/images/templates/t3_night.webp',
+        priceLabel: formatCurrency(item.price?.onRoad || 0),
+    }));
+
+const buildOptionsFromMock = (items: CompareBike[]): CompareOption[] =>
+    items.map(item => ({
+        id: item.id,
+        title: item.name,
+        subtitle: item.tag,
+        image: item.image,
+        priceLabel: item.price,
+    }));
 
 export default function ComparePage() {
-    const { compareList, removeFromCompare, clearCompare, addToCompare } = useCompare();
-    const { items: allVehicles } = useSystemCatalogLogic();
-    const [isAddingMode, setIsAddingMode] = React.useState(false);
+    const { items, isLoading } = useSystemCatalogLogic();
+    const initializedRef = useRef(false);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [pickerOpen, setPickerOpen] = useState(false);
+    const [pickerQuery, setPickerQuery] = useState('');
+    const [activeSlot, setActiveSlot] = useState<number | null>(null);
+    const [activePreset, setActivePreset] = useState(presets[0].id);
 
-    // Grouping specs for presentation
-    const specGroups = [
-        {
-            label: 'Core Specs',
-            rows: [
-                { label: 'Category', getValue: (v: any) => v.bodyType },
-                { label: 'Fuel Type', getValue: (v: any) => v.fuelType },
-                { label: 'Segment', getValue: (v: any) => v.segment },
-                { label: 'Displacement', getValue: (v: any) => v.displacement ? `${v.displacement} ${v.powerUnit || 'CC'}` : '-' }
-            ]
-        },
-        {
-            label: 'Performance',
-            rows: [
-                { label: 'Max Power', getValue: (v: any) => getNestedSpec(v.specifications, 'maxPower') },
-                { label: 'Max Torque', getValue: (v: any) => getNestedSpec(v.specifications, 'maxTorque') },
-                { label: 'Cooling', getValue: (v: any) => getNestedSpec(v.specifications, 'cooling') }
-            ]
-        },
-        {
-            label: 'Dimensions',
-            rows: [
-                { label: 'Kerb Weight', getValue: (v: any) => getNestedSpec(v.specifications, 'kerbWeight') },
-                { label: 'Seat Height', getValue: (v: any) => getNestedSpec(v.specifications, 'seatHeight') },
-                { label: 'Fuel Capacity', getValue: (v: any) => getNestedSpec(v.specifications, 'fuelCapacity') },
-                { label: 'Ground Clearance', getValue: (v: any) => getNestedSpec(v.specifications, 'groundClearance') }
-            ]
-        }
-    ];
+    const catalogVariants = items.length > 0 ? items : MOCK_VEHICLES;
+    const catalogOptions = buildOptionsFromVariants(catalogVariants);
+    const mockOptions = buildOptionsFromMock(mockCompare);
 
-    const getNestedSpec = (specifications: any, key: string) => {
-        if (!specifications) return '-';
-        // Search through the nested objects (engine, transmission, etc.)
-        for (const category in specifications) {
-            if (specifications[category] && specifications[category][key]) {
-                return specifications[category][key];
+    useEffect(() => {
+        if (initializedRef.current) return;
+        if (isLoading) return;
+        const params = new URLSearchParams(window.location.search);
+        const paramIds = params.get('items')?.split(',').filter(Boolean) || [];
+        const availableIds = new Set(catalogOptions.map(opt => opt.id));
+        const validParamIds = paramIds.filter(id => availableIds.has(id));
+
+        if (validParamIds.length > 0) {
+            setSelectedIds(validParamIds.slice(0, MAX_COMPARE));
+        } else {
+            const cached = localStorage.getItem(STORAGE_KEY);
+            const cachedIds = cached ? cached.split(',').filter(id => availableIds.has(id)) : [];
+            if (cachedIds.length > 0) {
+                setSelectedIds(cachedIds.slice(0, MAX_COMPARE));
+            } else if (catalogOptions.length > 0) {
+                setSelectedIds(catalogOptions.slice(0, MAX_COMPARE).map(opt => opt.id));
+            } else {
+                setSelectedIds(mockCompare.slice(0, MAX_COMPARE).map(item => item.id));
             }
         }
-        return specifications[key] || '-';
+        initializedRef.current = true;
+    }, [catalogOptions, isLoading]);
+
+    useEffect(() => {
+        if (!initializedRef.current) return;
+        if (selectedIds.length > 0) {
+            localStorage.setItem(STORAGE_KEY, selectedIds.join(','));
+        } else {
+            localStorage.removeItem(STORAGE_KEY);
+        }
+    }, [selectedIds]);
+
+    useEffect(() => {
+        if (!initializedRef.current) return;
+        const params = new URLSearchParams(window.location.search);
+        if (selectedIds.length > 0) {
+            params.set('items', selectedIds.join(','));
+        } else {
+            params.delete('items');
+        }
+        const nextUrl = `${window.location.pathname}?${params.toString()}`;
+        window.history.replaceState(null, '', nextUrl);
+    }, [selectedIds]);
+
+    const handleShare = async () => {
+        const url = window.location.href;
+        if (navigator.share) {
+            await navigator.share({ title: 'BookMyBike Compare', url });
+            return;
+        }
+        await navigator.clipboard.writeText(url);
+        alert('Comparison link copied');
     };
 
-    if (compareList.length === 0) {
-        return (
-            <div className="min-h-[80vh] flex flex-col items-center justify-center space-y-8 bg-white dark:bg-slate-950">
-                <div className="w-24 h-24 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center">
-                    <Zap size={40} className="text-slate-300 dark:text-slate-700" />
-                </div>
-                <div className="text-center space-y-3">
-                    <h2 className="text-3xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white">Nothing to Compare</h2>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest italic">Add up to 4 machines to see the technical duel.</p>
-                </div>
-                <Link href="/store/catalog" className="px-10 py-4 bg-blue-600 text-white rounded-full font-black uppercase tracking-widest italic hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20">
-                    Explore Collection
-                </Link>
-            </div>
+    const compareBikes = useMemo(() => {
+        const map = new Map(catalogVariants.map(item => [item.id, item]));
+        return selectedIds
+            .map(id => {
+                const match = map.get(id);
+                if (match) return buildCompareFromVariant(match);
+                return mockCompare.find(item => item.id === id) || null;
+            })
+            .filter(Boolean) as CompareBike[];
+    }, [selectedIds, catalogVariants]);
+
+    const availableOptions = catalogOptions.length > 0 ? catalogOptions : mockOptions;
+    const filteredOptions = availableOptions.filter(option =>
+        `${option.title} ${option.subtitle}`.toLowerCase().includes(pickerQuery.toLowerCase())
+    );
+
+    const handleOpenPicker = (slotIndex: number) => {
+        setActiveSlot(slotIndex);
+        setPickerQuery('');
+        setPickerOpen(true);
+    };
+
+    const handlePickOption = (id: string) => {
+        setSelectedIds(prev => {
+            const next = [...prev];
+            if (activeSlot === null) return next;
+            next[activeSlot] = id;
+            return Array.from(new Set(next)).slice(0, MAX_COMPARE);
+        });
+        setPickerOpen(false);
+        setActiveSlot(null);
+    };
+
+    const handleRemoveSlot = (slotIndex: number) => {
+        setSelectedIds(prev => prev.filter((_, index) => index !== slotIndex));
+    };
+
+    const sectionAttributes = (sectionId: string) => {
+        const attributes = new Set<string>();
+        compareBikes.forEach(bike => {
+            Object.keys(getSectionData(bike, sectionId)).forEach(key => attributes.add(key));
+        });
+        return Array.from(attributes);
+    };
+
+    const slotCards = Array.from({ length: MAX_COMPARE }, (_, index) => compareBikes[index] || null);
+
+    const scoreMap = useMemo(() => {
+        const bikes = slotCards.filter(Boolean) as CompareBike[];
+        if (bikes.length === 0) return new Map<string, number>();
+
+        const metrics = bikes.map(bike => bike.metrics || {});
+        const maxOf = (key: keyof CompareBike['metrics']) =>
+            Math.max(...metrics.map(m => (typeof m?.[key] === 'number' ? (m?.[key] as number) : 0)));
+        const minOf = (key: keyof CompareBike['metrics']) =>
+            Math.min(...metrics.map(m => (typeof m?.[key] === 'number' ? (m?.[key] as number) : 0)));
+
+        const normalize = (value: number | undefined, min: number, max: number, higherBetter: boolean) => {
+            if (value === undefined || Number.isNaN(value)) return 0.5;
+            if (max === min) return 0.5;
+            const ratio = (value - min) / (max - min);
+            return higherBetter ? ratio : 1 - ratio;
+        };
+
+        const onRoadMin = minOf('onRoad');
+        const onRoadMax = maxOf('onRoad');
+        const emiMin = minOf('emi');
+        const emiMax = maxOf('emi');
+        const powerMin = minOf('power');
+        const powerMax = maxOf('power');
+        const torqueMin = minOf('torque');
+        const torqueMax = maxOf('torque');
+        const weightMin = minOf('weight');
+        const weightMax = maxOf('weight');
+        const ratingMin = minOf('rating');
+        const ratingMax = maxOf('rating');
+
+        const preset = presets.find(p => p.id === activePreset) || presets[0];
+        const weights = preset.weights;
+
+        return new Map(
+            bikes.map(bike => {
+                const m = bike.metrics || {};
+                const commercialScore =
+                    (normalize(m.onRoad, onRoadMin, onRoadMax, false) + normalize(m.emi, emiMin, emiMax, false)) / 2;
+                const technicalScore =
+                    (normalize(m.power, powerMin, powerMax, true) + normalize(m.torque, torqueMin, torqueMax, true)) /
+                    2;
+                const featuresScore = 0.6;
+                const performanceScore = 0.6;
+                const resaleScore = 0.6;
+                const popularityScore = normalize(m.rating, ratingMin, ratingMax, true);
+
+                const total =
+                    commercialScore * weights.commercial +
+                    technicalScore * weights.technical +
+                    featuresScore * weights.features +
+                    performanceScore * weights.performance +
+                    resaleScore * weights.resale +
+                    popularityScore * weights.popularity;
+
+                return [bike.id, Math.round(total * 100)];
+            })
         );
-    }
+    }, [slotCards, activePreset]);
+
+    const badgeMap = useMemo(() => {
+        const bikes = slotCards.filter(Boolean) as CompareBike[];
+        if (bikes.length === 0) return new Map<string, string[]>();
+
+        const minOnRoad = Math.min(...bikes.map(b => b.metrics?.onRoad || Infinity));
+        const minEmi = Math.min(...bikes.map(b => b.metrics?.emi || Infinity));
+        const maxPower = Math.max(...bikes.map(b => b.metrics?.power || 0));
+        const maxRating = Math.max(...bikes.map(b => b.metrics?.rating || 0));
+        const minWeight = Math.min(...bikes.map(b => b.metrics?.weight || Infinity));
+
+        return new Map(
+            bikes.map(bike => {
+                const tags: string[] = [];
+                if (bike.metrics?.onRoad === minOnRoad) tags.push('Lowest price');
+                if (bike.metrics?.emi === minEmi) tags.push('Lowest EMI');
+                if (bike.metrics?.power === maxPower) tags.push('Most power');
+                if (bike.metrics?.rating === maxRating) tags.push('Best rated');
+                if (bike.metrics?.weight === minWeight) tags.push('Lightest');
+                return [bike.id, tags.slice(0, 2)];
+            })
+        );
+    }, [slotCards]);
+    const getRowWinnerIndex = (sectionId: string, label: string) => {
+        const values = slotCards.map(bike => {
+            const raw = bike ? getSectionData(bike, sectionId)[label] : undefined;
+            return numberFromText(raw);
+        });
+        const filtered = values.filter(v => v !== null) as number[];
+        if (filtered.length <= 1) return null;
+        const isLower = lowerIsBetter.has(label);
+        const isHigher = higherIsBetter.has(label);
+        if (!isLower && !isHigher) return null;
+        const target = isLower ? Math.min(...filtered) : Math.max(...filtered);
+        return values.findIndex(v => v === target);
+    };
 
     return (
-        <div className="bg-white dark:bg-slate-950 transition-colors duration-500">
-            <PageFrame variant="wide" className="min-h-screen space-y-10">
-                {/* Header Area */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 border-b border-slate-200 dark:border-white/10 pb-8">
-                    <div className="space-y-4">
-                        <Link href="/store/catalog" className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-blue-600 transition-colors">
-                            <ChevronLeft size={14} /> Back to Catalog
-                        </Link>
-                        <h1 className="text-5xl md:text-8xl font-black uppercase tracking-tighter italic leading-none text-slate-900 dark:text-white">
-                            The Technical <br /> <span className="text-blue-600 italic">Duel.</span>
-                        </h1>
+        <div className="min-h-screen bg-slate-50 dark:bg-[#0b0d10] pb-16">
+            <section className="relative overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#fef3c7,transparent_55%),radial-gradient(circle_at_20%_20%,#c7d2fe,transparent_40%),radial-gradient(circle_at_90%_20%,#fde68a,transparent_45%)] opacity-70" />
+                <div className="relative max-w-6xl mx-auto px-6 md:px-10 py-12 md:py-16">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/80 dark:bg-white/10 border border-slate-200/60 dark:border-white/10 text-[11px] font-black tracking-[0.2em] uppercase text-slate-600 dark:text-white/70">
+                        Compare Studio
                     </div>
-                    <button
-                        onClick={clearCompare}
-                        className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-red-500 transition-colors flex items-center gap-2 pb-2"
-                    >
-                        Reset Comparison <X size={14} />
-                    </button>
+                    <h1 className="mt-5 text-3xl md:text-5xl font-black tracking-tight text-slate-900 dark:text-white">
+                        Smart bike comparison that helps you decide fast
+                    </h1>
+                    <p className="mt-4 max-w-2xl text-sm md:text-base text-slate-600 dark:text-white/70 font-medium">
+                        Commercials, technical specs, real-world performance, resale strength and popularity all in one
+                        screen. Mock data is used when live data is missing.
+                    </p>
+                    <div className="mt-6 flex flex-wrap items-center gap-3">
+                        <button
+                            className="px-5 py-2 rounded-xl bg-black text-white text-xs font-black uppercase tracking-widest flex items-center gap-2"
+                            onClick={() => handleOpenPicker(0)}
+                        >
+                            Customize Comparison
+                            <ArrowRight size={14} />
+                        </button>
+                        <button
+                            className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-100 dark:border-white/20 dark:text-white dark:hover:bg-white/10"
+                            onClick={handleShare}
+                        >
+                            Share
+                        </button>
+                        <span className="text-xs text-slate-500 dark:text-white/50 font-semibold">
+                            Choose any cross-category products (bike, scooter, EV)
+                        </span>
+                    </div>
+                    <div className="mt-6 flex flex-wrap items-center gap-2">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/50">
+                            Presets
+                        </span>
+                        {presets.map(preset => (
+                            <button
+                                key={preset.id}
+                                onClick={() => setActivePreset(preset.id)}
+                                className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+                                    activePreset === preset.id
+                                        ? 'bg-slate-900 text-white border-slate-900'
+                                        : 'border-slate-300 text-slate-600 dark:border-white/20 dark:text-white/70'
+                                }`}
+                            >
+                                {preset.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
+            </section>
 
-                {/* Comparison Grid */}
-                <div className="relative">
-                    {/* Horizontal scroll support for many items */}
-                    <div className="overflow-x-auto custom-scrollbar -mx-4 px-4 md:-mx-0 md:px-0">
-                        <div className="min-w-[1000px] space-y-24">
-                            {/* 1. Vehicle Headers */}
-                            <div className="grid grid-cols-4 gap-8">
-                                {compareList.map((v) => (
-                                    <div key={v.id} className="relative group">
-                                        <button
-                                            onClick={() => removeFromCompare(v.id)}
-                                            className="absolute -top-3 -right-3 w-8 h-8 bg-white dark:bg-[#0f1115] border border-slate-200 dark:border-white/10 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-20"
-                                        >
-                                            <X size={14} />
-                                        </button>
-                                        <div className="aspect-[4/3] bg-slate-50 dark:bg-white/5 rounded-[3rem] p-8 flex items-center justify-center relative overflow-hidden mb-8 border border-slate-200 dark:border-white/5">
-                                            <img
-                                                src={`/images/categories/${v.bodyType?.toLowerCase() || 'motorcycle'}_nobg.png`}
-                                                alt={v.model}
-                                                className="w-[85%] h-auto object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.1)] group-hover:scale-110 transition-transform duration-700"
-                                            />
-                                            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-slate-100 dark:from-black/20 to-transparent" />
+            <div className="sticky top-16 md:top-20 z-30 bg-white/90 dark:bg-[#0f131a]/90 backdrop-blur border-y border-slate-200/60 dark:border-white/10">
+                <div className="max-w-6xl mx-auto px-6 md:px-10 py-4 flex flex-col md:flex-row md:items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-3">
+                        {slotCards.map((bike, index) => (
+                            <div
+                                key={`sticky-${index}`}
+                                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-white/10 text-xs font-semibold"
+                            >
+                                <span className="text-slate-500 dark:text-white/60">#{index + 1}</span>
+                                <span className="text-slate-900 dark:text-white">
+                                    {bike ? bike.name : 'Add vehicle'}
+                                </span>
+                                <button
+                                    className="ml-2 text-slate-500 hover:text-slate-900 dark:text-white/60"
+                                    onClick={() => handleOpenPicker(index)}
+                                >
+                                    <Plus size={14} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 md:ml-auto text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/50">
+                        {sections.map(section => (
+                            <a
+                                key={section.id}
+                                href={`#${section.id}`}
+                                className="px-3 py-1 rounded-full bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 transition"
+                            >
+                                {section.title}
+                            </a>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            <section className="max-w-6xl mx-auto px-6 md:px-10">
+                <div className="grid md:grid-cols-3 gap-6 -mt-10">
+                    {slotCards.map((bike, index) => (
+                        <div
+                            key={bike?.id || `slot-${index}`}
+                            className="bg-white dark:bg-[#0f131a] rounded-3xl border border-slate-200/70 dark:border-white/10 shadow-xl shadow-slate-200/40 dark:shadow-black/40 overflow-hidden"
+                        >
+                            <div className="h-40 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-white/10 dark:to-white/5 flex items-center justify-center">
+                                {bike ? (
+                                    <img src={bike.image} alt={bike.name} className="h-32 object-contain" />
+                                ) : (
+                                    <button
+                                        onClick={() => handleOpenPicker(index)}
+                                        className="flex flex-col items-center gap-2 text-slate-500 dark:text-white/60"
+                                    >
+                                        <Plus size={24} />
+                                        <span className="text-xs font-semibold">Add vehicle</span>
+                                    </button>
+                                )}
+                            </div>
+                            <div className="p-5 space-y-3">
+                                {bike ? (
+                                    <>
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div>
+                                                <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                                                    {bike.name}
+                                                </h3>
+                                                <p className="text-xs text-slate-500 dark:text-white/60 font-semibold">
+                                                    {bike.tag}
+                                                </p>
+                                            </div>
+                                            <button
+                                                className="text-slate-400 hover:text-slate-900 dark:text-white/50"
+                                                onClick={() => handleRemoveSlot(index)}
+                                            >
+                                                <X size={16} />
+                                            </button>
                                         </div>
-                                        <div className="space-y-2 px-4 text-center">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-500 italic">{v.make}</p>
-                                            <h3 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white">{v.model}</h3>
-                                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{v.variant}</p>
-
-                                            <div className="pt-6 flex flex-col items-center gap-4">
-                                                <Link
-                                                    href={`/store/${slugify(v.make)}/${slugify(v.model)}/${slugify(v.variant)}`}
-                                                    className="w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 dark:hover:bg-blue-500 dark:hover:text-white transition-all shadow-xl"
-                                                >
-                                                    View Details
-                                                </Link>
-                                                <button className="text-[10px] font-black uppercase tracking-widest text-red-600/60 hover:text-red-600 transition-colors italic">Book Now</button>
+                                        <div className="flex items-center justify-between text-xs font-bold">
+                                            <span className="text-slate-500 dark:text-white/60 uppercase tracking-widest">
+                                                On-road
+                                            </span>
+                                            <span className="text-slate-900 dark:text-white">{bike.price}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-xs font-bold">
+                                            <span className="text-slate-500 dark:text-white/60 uppercase tracking-widest">
+                                                EMI
+                                            </span>
+                                            <span className="text-emerald-600 dark:text-emerald-400">{bike.emi}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-[10px] font-semibold text-slate-400 dark:text-white/50">
+                                            <span>EMI range</span>
+                                            <span>
+                                                ₹{calcEmiRange(bike.metrics?.onRoad || 0).low.toLocaleString('en-IN')} -
+                                                ₹{calcEmiRange(bike.metrics?.onRoad || 0).high.toLocaleString('en-IN')}
+                                            </span>
+                                        </div>
+                                        <div className="pt-2">
+                                            <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/60">
+                                                <span>Overall score</span>
+                                                <span>{scoreMap.get(bike.id) ?? bike.score}/100</span>
+                                            </div>
+                                            <div className="mt-2 h-2 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
+                                                <div
+                                                    className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600"
+                                                    style={{ width: `${scoreMap.get(bike.id) ?? bike.score}%` }}
+                                                />
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
-                                {compareList.length < 4 && (
-                                    <div className="border border-dashed border-slate-200 dark:border-white/10 rounded-[3rem] flex flex-col items-center justify-center bg-slate-50/50 dark:bg-white/[0.01] hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-all group cursor-pointer" onClick={() => setIsAddingMode(true)}>
-                                        <div className="w-16 h-16 rounded-full bg-white dark:bg-white/10 flex items-center justify-center text-slate-400 group-hover:scale-110 transition-transform shadow-xl">
-                                            <Plus size={24} />
+                                        <div className="flex flex-wrap gap-2 pt-2">
+                                            {bike.highlights.map(item => (
+                                                <span
+                                                    key={item}
+                                                    className="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-white/70"
+                                                >
+                                                    {item}
+                                                </span>
+                                            ))}
+                                            {(badgeMap.get(bike.id) || []).map(item => (
+                                                <span
+                                                    key={item}
+                                                    className="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-emerald-50 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200"
+                                                >
+                                                    {item}
+                                                </span>
+                                            ))}
                                         </div>
-                                        <p className="mt-4 text-[9px] font-black uppercase tracking-widest text-slate-400 group-hover:text-blue-600 transition-colors">Add Machine</p>
+                                    </>
+                                ) : (
+                                    <div className="text-xs text-slate-500 dark:text-white/50">
+                                        Choose another product to compare.
                                     </div>
                                 )}
                             </div>
+                        </div>
+                    ))}
+                </div>
 
-                            {/* 2. Specification Duel Rows */}
-                            <div className="space-y-20">
-                                {specGroups.map((group) => (
-                                    <div key={group.label} className="space-y-10">
-                                        <div className="flex items-center gap-6">
-                                            <h4 className="text-[12px] font-black uppercase tracking-[0.4em] text-slate-900 dark:text-white italic shrink-0">{group.label}</h4>
-                                            <div className="h-[1px] flex-1 bg-slate-100 dark:bg-white/10" />
+                <div className="mt-12 space-y-8">
+                    {sections.map(section => {
+                        const Icon = section.icon;
+                        const attributes = sectionAttributes(section.id);
+                        return (
+                            <div
+                                key={section.id}
+                                id={section.id}
+                                className="bg-white dark:bg-[#0f131a] rounded-3xl border border-slate-200/70 dark:border-white/10 overflow-hidden"
+                            >
+                                <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-white/10 flex items-center justify-center">
+                                        <Icon size={18} className="text-slate-700 dark:text-white" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                                            {section.title}
+                                        </h4>
+                                        <p className="text-[11px] text-slate-500 dark:text-white/50">
+                                            Compare key differentiators side by side
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="grid md:grid-cols-[220px_repeat(3,1fr)]">
+                                    <div className="hidden md:block border-r border-slate-100 dark:border-white/10 px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-white/40">
+                                        Attribute
+                                    </div>
+                                    {slotCards.map((bike, index) => (
+                                        <div
+                                            key={`${section.id}-head-${index}`}
+                                            className="border-b border-slate-100 dark:border-white/10 px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-white/40"
+                                        >
+                                            {bike?.name || `Slot ${index + 1}`}
                                         </div>
+                                    ))}
 
-                                        <div className="space-y-2">
-                                            {group.rows.map((row) => {
-                                                const values = compareList.map(v => row.getValue(v));
-                                                const allSame = values.every(val => val === values[0]);
-
+                                    {attributes.map(label => (
+                                        <React.Fragment key={`${section.id}-${label}`}>
+                                            <div className="border-t border-slate-100 dark:border-white/10 px-6 py-4 text-xs font-semibold text-slate-600 dark:text-white/70">
+                                                {label}
+                                            </div>
+                                            {slotCards.map((bike, index) => {
+                                                const winnerIndex = getRowWinnerIndex(section.id, label);
+                                                const isWinner = winnerIndex === index;
                                                 return (
-                                                    <div key={row.label} className={`grid grid-cols-4 gap-8 py-6 rounded-2xl hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors border-b border-slate-100 dark:border-white/5 last:border-0 group/row ${!allSame && compareList.length > 1 ? 'bg-blue-500/[0.03] dark:bg-blue-500/[0.05]' : ''}`}>
-                                                        {compareList.map((v, idx) => {
-                                                            const val = values[idx];
-                                                            return (
-                                                                <div key={v.id} className="px-4 text-center">
-                                                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2 group-hover/row:text-slate-500 transition-colors opacity-0 group-hover/row:opacity-100 uppercase">{row.label}</p>
-                                                                    <p className={`text-lg font-black italic tracking-tight leading-none ${!allSame && compareList.length > 1 ? 'text-blue-600 dark:text-blue-400' : 'text-slate-900 dark:text-white'}`}>
-                                                                        {val}
-                                                                    </p>
-                                                                </div>
-                                                            );
-                                                        })}
+                                                    <div
+                                                        key={`${section.id}-${label}-${index}`}
+                                                        className={`border-t border-slate-100 dark:border-white/10 px-6 py-4 text-sm font-semibold ${
+                                                            isWinner
+                                                                ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50/60 dark:bg-emerald-500/10'
+                                                                : 'text-slate-900 dark:text-white'
+                                                        }`}
+                                                    >
+                                                        {bike ? getSectionData(bike, section.id)[label] : '—'}
                                                     </div>
                                                 );
                                             })}
+                                        </React.Fragment>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                <div className="mt-12 bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-3xl px-6 md:px-10 py-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                    <div>
+                        <h3 className="text-xl md:text-2xl font-black">Ready to narrow it down?</h3>
+                        <p className="text-sm text-white/70 mt-2">
+                            Shortlist 2 vehicles, compare finances, then generate a quote in one click.
+                        </p>
+                    </div>
+                    <button className="px-5 py-3 rounded-2xl bg-[#F4B000] text-black text-xs font-black uppercase tracking-widest">
+                        Build My Final Shortlist
+                    </button>
+                </div>
+            </section>
+
+            {pickerOpen && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center px-4">
+                    <div className="w-full max-w-3xl bg-white dark:bg-[#0f131a] rounded-3xl border border-slate-200 dark:border-white/10 shadow-2xl overflow-hidden">
+                        <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
+                            <div>
+                                <h4 className="text-lg font-black text-slate-900 dark:text-white">Select a vehicle</h4>
+                                <p className="text-xs text-slate-500 dark:text-white/60">
+                                    Choose any bike, scooter or EV to compare.
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setPickerOpen(false)}
+                                className="text-slate-500 hover:text-slate-900 dark:text-white/60"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div className="flex items-center gap-3 px-4 py-3 rounded-2xl border border-slate-200 dark:border-white/10">
+                                <Search size={18} className="text-slate-400" />
+                                <input
+                                    value={pickerQuery}
+                                    onChange={event => setPickerQuery(event.target.value)}
+                                    placeholder="Search make, model, variant"
+                                    className="flex-1 bg-transparent text-sm text-slate-700 dark:text-white focus:outline-none"
+                                />
+                            </div>
+                            <div className="max-h-[60vh] overflow-y-auto space-y-3">
+                                {filteredOptions.map(option => (
+                                    <button
+                                        key={option.id}
+                                        onClick={() => handlePickOption(option.id)}
+                                        className="w-full flex items-center gap-4 px-4 py-3 rounded-2xl border border-slate-200 dark:border-white/10 hover:border-slate-400 dark:hover:border-white/30 transition"
+                                    >
+                                        <img
+                                            src={option.image}
+                                            alt={option.title}
+                                            className="w-16 h-12 object-contain"
+                                        />
+                                        <div className="flex-1 text-left">
+                                            <p className="text-sm font-black text-slate-900 dark:text-white">
+                                                {option.title}
+                                            </p>
+                                            <p className="text-xs text-slate-500 dark:text-white/60">
+                                                {option.subtitle}
+                                            </p>
                                         </div>
-                                    </div>
+                                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                            {option.priceLabel}
+                                        </span>
+                                    </button>
                                 ))}
+                                {filteredOptions.length === 0 && (
+                                    <div className="text-sm text-slate-500 dark:text-white/60 text-center py-10">
+                                        No matching vehicles.
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
                 </div>
-
-                {/* Selection Overlay (if Adding Mode) */}
-                {isAddingMode && (
-                    <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6 md:p-12 animate-in fade-in duration-300">
-                        <div className="w-full max-w-5xl bg-white dark:bg-[#0f1115] rounded-[4rem] border border-slate-200 dark:border-white/10 overflow-hidden flex flex-col max-h-[90vh]">
-                            <div className="p-10 border-b border-slate-100 dark:border-white/5 flex items-center justify-center relative">
-                                <h2 className="text-4xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white">Choose Your Ally.</h2>
-                                <button onClick={() => setIsAddingMode(false)} className="absolute right-10 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full border border-slate-200 dark:border-white/10 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/5 transition-all text-slate-900 dark:text-white">
-                                    <X size={20} />
-                                </button>
-                            </div>
-                            <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    {allVehicles.filter(v => !compareList.find(c => c.id === v.id)).map((v) => (
-                                        <div
-                                            key={v.id}
-                                            onClick={() => {
-                                                addToCompare(v);
-                                                setIsAddingMode(false);
-                                            }}
-                                            className="p-6 rounded-[2rem] border border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/5 hover:border-blue-500/50 transition-all cursor-pointer group"
-                                        >
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-16 h-16 rounded-xl bg-white dark:bg-white/10 flex items-center justify-center">
-                                                    <Zap size={20} className="text-blue-500" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-500 italic">{v.make}</p>
-                                                    <h4 className="text-lg font-black uppercase tracking-tighter italic text-slate-900 dark:text-white">{v.model}</h4>
-                                                </div>
-                                                <ArrowRight size={20} className="ml-auto text-slate-300 group-hover:translate-x-1 transition-transform" />
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </PageFrame>
+            )}
         </div>
     );
 }

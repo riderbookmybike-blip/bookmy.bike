@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminClient } from '@/lib/supabase/admin';
 import { generateDisplayId } from '@/utils/displayId';
 import { getAuthPassword } from '@/lib/auth/password-utils';
+import { toAppStorageFormat, isValidPhone } from '@/lib/utils/phoneUtils';
 
 export async function POST(req: NextRequest) {
     try {
-        const { phone, displayName, pincode } = await req.json();
+        const { phone, displayName, pincode, state, district, taluka, area, latitude, longitude } = await req.json();
 
         if (!phone || !displayName) {
             return NextResponse.json(
@@ -17,9 +18,34 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const formattedPhone = `+91${phone}`;
-        const email = `${phone}@bookmy.bike`;
-        const password = getAuthPassword(phone);
+        const cleanPhone = toAppStorageFormat(phone);
+        if (!isValidPhone(cleanPhone)) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: 'Invalid phone number',
+                },
+                { status: 400 }
+            );
+        }
+
+        // Validate GPS coordinates (mandatory)
+        const lat = Number(latitude);
+        const lng = Number(longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: 'GPS location is required to create an account',
+                    code: 'GPS_REQUIRED',
+                },
+                { status: 400 }
+            );
+        }
+
+        const formattedPhone = `+91${cleanPhone}`;
+        const email = `${cleanPhone}@bookmy.bike`;
+        const password = getAuthPassword(cleanPhone);
 
         // 1. Check if User Already Exists
         const { data: existingUsers } = await adminClient.auth.admin.listUsers();
@@ -42,7 +68,7 @@ export async function POST(req: NextRequest) {
             phone: formattedPhone,
             email_confirm: true,
             phone_confirm: true,
-            user_metadata: { full_name: displayName, phone: phone },
+            user_metadata: { full_name: displayName, phone: cleanPhone },
             password: password,
         });
 
@@ -64,10 +90,15 @@ export async function POST(req: NextRequest) {
         const { error: profileError } = await adminClient.from('id_members').insert({
             id: userId,
             full_name: displayName,
-            phone: phone,
+            phone: cleanPhone,
             role: 'BMB_USER',
             referral_code: referralCode,
             pincode: pincode || null,
+            state: state || null,
+            district: district || null,
+            taluka: taluka || null,
+            latitude: lat,
+            longitude: lng,
         });
 
         if (profileError) {

@@ -1,8 +1,7 @@
+import { normalizePhone } from './phoneUtils';
+
 export const normalizeIndianPhone = (value: string) => {
-    const digits = value.replace(/\D/g, '');
-    if (!digits) return '';
-    if (digits.length <= 10) return digits;
-    return digits.slice(-10);
+    return normalizePhone(value);
 };
 
 const isValidDate = (year: number, month: number, day: number) => {

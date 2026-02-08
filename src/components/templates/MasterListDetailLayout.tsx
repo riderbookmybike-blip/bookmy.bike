@@ -29,7 +29,7 @@ export default function MasterListDetailLayout({
     // Detail-only mode: Full-width detail, no list panel
     if (mode === 'detail-only') {
         return (
-            <div className="flex h-full overflow-hidden bg-white dark:bg-slate-950">
+            <div className="flex h-full overflow-hidden bg-white dark:bg-[#0b0d10]">
                 <div className="flex-1 h-full min-w-0">{detailChild}</div>
             </div>
         );
@@ -40,7 +40,7 @@ export default function MasterListDetailLayout({
 
     return (
         <div
-            className={`w-full flex h-full overflow-hidden bg-white dark:bg-slate-950 transition-colors duration-500 ${isRight ? 'flex-row-reverse' : 'flex-row'}`}
+            className={`w-full flex h-full overflow-hidden bg-white dark:bg-[#0b0d10] transition-colors duration-500 ${isRight ? 'flex-row-reverse' : 'flex-row'}`}
             style={{ height: '100%' }}
         >
             {/* List Panel - Fixed width */}
@@ -51,7 +51,7 @@ export default function MasterListDetailLayout({
             </div>
 
             {/* Detail Panel - Takes remaining space */}
-            <div className="flex-1 h-full min-w-[500px] overflow-hidden bg-slate-50/50 dark:bg-slate-950/50">
+            <div className="flex-1 h-full min-w-[500px] overflow-hidden bg-slate-50/50 dark:bg-[#0b0d10]/50">
                 {detailChild}
             </div>
         </div>

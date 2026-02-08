@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { checkServiceability } from './serviceArea';
 import { serverLog } from '@/lib/debug/logger';
 import { createOrLinkMember } from './members';
+import { toAppStorageFormat } from '@/lib/utils/phoneUtils';
 
 // --- CUSTOMER PROFILES ---
 
@@ -48,8 +49,8 @@ export async function updateMemberProfile(
     };
 
     if (updates.fullName) payload.full_name = updates.fullName;
-    if (updates.primaryPhone) payload.primary_phone = updates.primaryPhone;
-    if (updates.whatsapp) payload.whatsapp = updates.whatsapp;
+    if (updates.primaryPhone) payload.primary_phone = toAppStorageFormat(updates.primaryPhone);
+    if (updates.whatsapp) payload.whatsapp = toAppStorageFormat(updates.whatsapp);
     if (updates.primaryEmail) payload.primary_email = updates.primaryEmail;
     if (updates.email) payload.email = updates.email;
     if (updates.dob) payload.date_of_birth = updates.dob;
@@ -73,7 +74,8 @@ export async function updateMemberProfile(
     if (updates.workCompany) payload.work_company = updates.workCompany;
     if (updates.workDesignation) payload.work_designation = updates.workDesignation;
     if (updates.workEmail) payload.work_email = updates.workEmail;
-    if (updates.workPhone) payload.work_phone = updates.workPhone;
+    if (updates.workEmail) payload.work_email = updates.workEmail;
+    if (updates.workPhone) payload.work_phone = toAppStorageFormat(updates.workPhone);
 
     if (updates.phonesJson) payload.phones_json = updates.phonesJson;
     if (updates.emailsJson) payload.emails_json = updates.emailsJson;
@@ -90,7 +92,10 @@ export async function updateMemberProfile(
 }
 
 export async function checkExistingCustomer(phone: string) {
-    const cleanPhone = phone.trim();
+    const cleanPhone = toAppStorageFormat(phone);
+    if (!cleanPhone || cleanPhone.length !== 10) {
+        return { data: null, memberId: null };
+    }
 
     // Search id_members by whatsapp OR primary_phone
     const { data: profile, error } = await adminClient
@@ -244,6 +249,7 @@ export async function createLeadAction(data: {
     customer_pincode?: string;
     customer_dob?: string;
     customer_taluka?: string;
+    customer_id?: string; // If provided, use directly (for logged-in users)
     interest_model?: string;
     model?: string;
     owner_tenant_id?: string;
@@ -260,7 +266,13 @@ export async function createLeadAction(data: {
         payload: { phone: data.customer_phone, name: data.customer_name },
     });
 
-    console.log('[DEBUG] createLeadAction triggered by client:', data.customer_phone);
+    // Strict sanitation
+    const strictPhone = toAppStorageFormat(data.customer_phone);
+    if (!strictPhone || strictPhone.length !== 10) {
+        return { success: false, message: 'Invalid customer phone number' };
+    }
+
+    console.log('[DEBUG] createLeadAction triggered by client:', data.customer_phone, 'Sanitized:', strictPhone);
 
     try {
         // Handle owner_tenant_id fallback
@@ -278,19 +290,45 @@ export async function createLeadAction(data: {
             return { success: false, message: 'No owner tenant identified for lead creation' };
         }
 
-        // 1. Check/Create Customer Profile
-        console.log('[DEBUG] Step 1: getOrCreateCustomerProfile...');
-        // 1. Check/Create Customer Profile & Link to Tenant
-        console.log('[DEBUG] Step 1: createOrLinkMember...');
-        const { member } = await createOrLinkMember({
-            tenantId: effectiveOwnerId,
-            fullName: data.customer_name,
-            phone: data.customer_phone,
-            // Pass other details if createOrLinkMember supports them, otherwise they might be lost or need separate update
-            // createOrLinkMember only takes basic input.
-            // We might need to update extra fields if they are critical.
-        });
-        const customerId = member.id;
+        let customerId: string;
+
+        // If customer_id is provided (logged-in user), use it directly
+        if (data.customer_id) {
+            console.log('[DEBUG] Using provided customer_id:', data.customer_id);
+            customerId = data.customer_id;
+            if (effectiveOwnerId) {
+                const { error: tenantLinkError } = await adminClient.from('id_member_tenants').upsert(
+                    {
+                        member_id: customerId,
+                        tenant_id: effectiveOwnerId,
+                        status: 'ACTIVE',
+                    },
+                    { onConflict: 'member_id,tenant_id' }
+                );
+                if (tenantLinkError) {
+                    console.error('[DEBUG] id_member_tenants upsert failed:', tenantLinkError);
+                }
+            }
+        } else {
+            // Create/Link member for anonymous or new users
+            console.log('[DEBUG] Step 1: createOrLinkMember...');
+            const { member } = await createOrLinkMember({
+                tenantId: effectiveOwnerId,
+                fullName: data.customer_name,
+                phone: strictPhone,
+                // Pass other details if createOrLinkMember supports them, otherwise they might be lost or need separate update
+                // createOrLinkMember only takes basic input.
+                // We might need to update extra fields if they are critical.
+            });
+
+            if (!member?.id) {
+                console.error('[DEBUG] createOrLinkMember returned null or invalid member');
+                return { success: false, message: 'Failed to create or link customer profile' };
+            }
+            customerId = member.id;
+        }
+
+        console.log('[DEBUG] Step 1 Complete. CustomerId:', customerId);
 
         // update extra fields that createOrLinkMember might not handle (like dob, taluka)
         if (data.customer_dob || data.customer_pincode || data.customer_taluka) {
@@ -324,7 +362,7 @@ export async function createLeadAction(data: {
             .insert({
                 customer_id: customerId,
                 customer_name: data.customer_name,
-                customer_phone: data.customer_phone,
+                customer_phone: strictPhone,
                 customer_pincode: data.customer_pincode || null,
                 customer_taluka: data.customer_taluka || null,
                 customer_dob: data.customer_dob || null,
@@ -379,7 +417,13 @@ export async function createLeadAction(data: {
             error: error,
             duration_ms: Date.now() - startTime,
         });
-        return { success: false, message: error instanceof Error ? error.message : 'Unknown error' };
+        return {
+            success: false,
+            message:
+                error instanceof Error
+                    ? error.message
+                    : (error as any)?.message || (typeof error === 'string' ? error : 'Unknown error'),
+        };
     }
 }
 
@@ -441,6 +485,7 @@ import { getAuthUser } from '@/lib/auth/resolver';
 export async function createQuoteAction(data: {
     tenant_id: string;
     lead_id?: string;
+    member_id?: string; // Direct member ID (for logged-in users)
     variant_id: string;
     color_id?: string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -450,7 +495,8 @@ export async function createQuoteAction(data: {
     const user = await getAuthUser();
     const supabase = await createClient();
     const createdBy = user?.id;
-    let memberId: string | null = null;
+    // Prefer explicit member_id or lead-linked customer_id (avoid using staff auth IDs)
+    let memberId: string | null = data.member_id || null;
     let leadReferrerId: string | null = null;
 
     const comms: any = data.commercials || {};
@@ -497,8 +543,18 @@ export async function createQuoteAction(data: {
             .eq('id', data.lead_id)
             .maybeSingle();
         if (lead) {
-            memberId = lead.customer_id || null;
+            // Only use lead's customer_id if we don't already have a member_id
+            if (!memberId && lead.customer_id) {
+                memberId = lead.customer_id;
+            }
             leadReferrerId = lead.referred_by_id || null;
+        }
+    }
+
+    if (!memberId && user?.id) {
+        const { data: member } = await supabase.from('id_members').select('id, role').eq('id', user.id).maybeSingle();
+        if (member && (!member.role || member.role === 'BMB_USER' || member.role === 'MEMBER')) {
+            memberId = member.id;
         }
     }
 
@@ -513,6 +569,7 @@ export async function createQuoteAction(data: {
     );
 
     let nextVersion = 1;
+    let parentQuoteId: string | null = null;
     const vehicleSkuId = data.color_id || data.variant_id;
 
     // 1. Versioning Logic: If Lead & SKU match, increment version
@@ -527,13 +584,15 @@ export async function createQuoteAction(data: {
 
         if (existingLatest) {
             nextVersion = (existingLatest.version ?? 0) + 1;
-            // Mark previous as not latest
-            await supabase.from('crm_quotes').update({ is_latest: false }).eq('id', existingLatest.id);
-            data.commercials = {
-                ...data.commercials,
-                parent_quote_id: existingLatest.parent_quote_id || existingLatest.id,
-            };
+            parentQuoteId = existingLatest.parent_quote_id || existingLatest.id;
         }
+    }
+
+    if (parentQuoteId) {
+        data.commercials = {
+            ...data.commercials,
+            parent_quote_id: parentQuoteId,
+        };
     }
 
     const { data: quote, error } = await supabase
@@ -548,7 +607,7 @@ export async function createQuoteAction(data: {
             color_id: data.color_id,
             vehicle_sku_id: vehicleSkuId, // Use SKU (color) when available
             commercials: data.commercials,
-            parent_quote_id: (data.commercials as any)?.parent_quote_id || null,
+            parent_quote_id: parentQuoteId || (data.commercials as any)?.parent_quote_id || null,
 
             // New Flat Columns
             on_road_price: onRoadPrice,
@@ -574,6 +633,16 @@ export async function createQuoteAction(data: {
             context: { tenant_id: data.tenant_id, lead_id: data.lead_id, sku: data.variant_id },
         });
         return { success: false, message: error.message };
+    }
+
+    // Ensure only the latest quote is marked as latest for this lead + SKU
+    if (data.lead_id && vehicleSkuId) {
+        await supabase
+            .from('crm_quotes')
+            .update({ is_latest: false })
+            .eq('lead_id', data.lead_id)
+            .eq('vehicle_sku_id', vehicleSkuId)
+            .neq('id', quote.id);
     }
 
     const finance = (data.commercials as any)?.finance || null;
@@ -658,7 +727,9 @@ export async function createQuoteVersion(
     // Get parent version
     const { data: parent } = await supabase
         .from('crm_quotes')
-        .select('version, tenant_id, lead_id, variant_id, color_id, member_id, lead_referrer_id, quote_owner_id')
+        .select(
+            'version, tenant_id, lead_id, variant_id, color_id, member_id, lead_referrer_id, quote_owner_id, parent_quote_id'
+        )
         .eq('id', parentQuoteId)
         .single();
 
@@ -673,7 +744,15 @@ export async function createQuoteVersion(
         Number(pricingSnapshot?.insurance_total ?? pricingSnapshot?.insurance?.total ?? commercials.insurance ?? 0)
     );
 
-    await supabase.from('crm_quotes').update({ is_latest: false }).eq('id', parentQuoteId);
+    const rootParentId = parent.parent_quote_id || parentQuoteId;
+    const { data: latestVersionRow } = await supabase
+        .from('crm_quotes')
+        .select('version')
+        .or(`id.eq.${rootParentId},parent_quote_id.eq.${rootParentId}`)
+        .order('version', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+    const nextVersion = (latestVersionRow?.version ?? parent.version ?? 0) + 1;
 
     const { data: quote, error } = await supabase
         .from('crm_quotes')
@@ -686,8 +765,8 @@ export async function createQuoteVersion(
             variant_id: parent.variant_id,
             color_id: parent.color_id,
             vehicle_sku_id: parent.color_id || parent.variant_id, // Prefer SKU (color) when present
-            parent_quote_id: parentQuoteId,
-            version: (parent.version ?? 0) + 1,
+            parent_quote_id: rootParentId,
+            version: nextVersion,
             commercials,
 
             // New Flat Columns
@@ -708,6 +787,18 @@ export async function createQuoteVersion(
         console.error('Create Quote Version Error:', error);
         return { success: false, message: error.message };
     }
+
+    if (parent.lead_id && (parent.color_id || parent.variant_id)) {
+        await supabase
+            .from('crm_quotes')
+            .update({ is_latest: false })
+            .eq('lead_id', parent.lead_id)
+            .eq('vehicle_sku_id', parent.color_id || parent.variant_id)
+            .neq('id', quote.id);
+    } else {
+        await supabase.from('crm_quotes').update({ is_latest: false }).eq('id', parentQuoteId);
+    }
+
     revalidatePath('/app/[slug]/quotes');
     return { success: true, data: quote };
 }
@@ -1378,7 +1469,7 @@ export async function getQuoteById(
     // Fetch Member Profile (single query to avoid slow duplicate fetches)
     let customerProfile: any = null;
     const leadPhoneRaw = q.lead?.customer_phone || '';
-    const leadPhoneDigits = leadPhoneRaw.replace(/\D/g, '');
+    const leadPhoneDigits = toAppStorageFormat(leadPhoneRaw);
     const leadPhone = leadPhoneDigits; // Keep for conditional checks
 
     // Construct robust search variations
@@ -1396,7 +1487,7 @@ export async function getQuoteById(
     const resolvedMemberId = q.member_id || q.lead?.customer_id || null;
 
     if (resolvedMemberId || leadPhone) {
-        const { data: member } = await supabase
+        const { data: member } = await adminClient
             .from('id_members')
             .select(
                 [
@@ -1439,7 +1530,7 @@ export async function getQuoteById(
         let resolvedMember = member;
 
         if (!resolvedMember && phoneSearchVariations.size > 0) {
-            const { data: memberByContact } = await supabase
+            const { data: memberByContact } = await adminClient
                 .from('id_members')
                 .select(
                     [
@@ -1956,19 +2047,24 @@ export async function updateQuotePricing(
     quoteId: string,
     updates: {
         rtoType?: 'STATE' | 'BH' | 'COMPANY';
-        insuranceAddons?: string[];
-        accessories?: string[];
+        insuranceAddons?: any[]; // Allow full objects
+        insuranceTotal?: number;
+        accessories?: any[]; // Allow full objects
+        accessoriesTotal?: number;
+        grandTotal?: number; // On-road total
         managerDiscount?: number;
         managerDiscountNote?: string;
     }
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; newQuoteId?: string }> {
     const user = await getAuthUser();
     const supabase = await createClient();
 
     // Get current quote
     const { data: quote, error: fetchError } = await supabase
         .from('crm_quotes')
-        .select('commercials')
+        .select(
+            'id, status, commercials, lead_id, tenant_id, member_id, lead_referrer_id, quote_owner_id, variant_id, color_id, vehicle_sku_id, finance_mode, active_finance_id, discount_amount, manager_discount, manager_discount_note, created_by, version'
+        )
         .eq('id', quoteId)
         .single();
 
@@ -1984,42 +2080,198 @@ export async function updateQuotePricing(
         ...pricingSnapshot,
         rto_type: updates.rtoType || pricingSnapshot.rto_type,
         insurance_addons: updates.insuranceAddons || pricingSnapshot.insurance_addons,
+        insurance_addon_items: updates.insuranceAddons || pricingSnapshot.insurance_addon_items, // Dual save for compatibility
+        insurance_total:
+            updates.insuranceTotal !== undefined ? updates.insuranceTotal : pricingSnapshot.insurance_total,
         accessories: updates.accessories || pricingSnapshot.accessories,
+        accessory_items: updates.accessories || pricingSnapshot.accessory_items,
+        accessories_total:
+            updates.accessoriesTotal !== undefined ? updates.accessoriesTotal : pricingSnapshot.accessories_total,
+        grand_total: updates.grandTotal !== undefined ? updates.grandTotal : pricingSnapshot.grand_total,
     };
 
     const updatedCommercials = {
         ...commercials,
+        grand_total: updates.grandTotal !== undefined ? updates.grandTotal : commercials.grand_total, // Update root commercial total too
         pricing_snapshot: updatedPricingSnapshot,
     };
 
-    const updatePayload: any = {
-        commercials: updatedCommercials,
-        updated_at: new Date().toISOString(),
+    const normalizeItems = (items: any[] | null | undefined) => {
+        if (!Array.isArray(items)) return [];
+        return items
+            .map(item => {
+                if (item === null || item === undefined) return '';
+                if (typeof item === 'string' || typeof item === 'number') return String(item);
+                const id = item.id || item.sku_id || item.code || item.name || '';
+                const amount = item.amount ?? item.price ?? item.discountPrice ?? '';
+                return `${id}:${amount}`;
+            })
+            .filter(Boolean)
+            .sort();
     };
+    const isEqualArray = (a: string[], b: string[]) => a.length === b.length && a.every((v, i) => v === b[i]);
+    const toNumber = (value: any) => Number(value ?? 0);
 
-    if (updates.managerDiscount !== undefined) {
-        updatePayload.manager_discount = updates.managerDiscount;
+    const originalInsuranceItems = normalizeItems(
+        pricingSnapshot.insurance_addon_items || pricingSnapshot.insurance_addons || []
+    );
+    const updatedInsuranceItems = normalizeItems(
+        updatedPricingSnapshot.insurance_addon_items || updatedPricingSnapshot.insurance_addons || []
+    );
+    const originalAccessories = normalizeItems(pricingSnapshot.accessory_items || pricingSnapshot.accessories || []);
+    const updatedAccessories = normalizeItems(
+        updatedPricingSnapshot.accessory_items || updatedPricingSnapshot.accessories || []
+    );
+
+    const rtoChanged = (pricingSnapshot.rto_type || '') !== (updatedPricingSnapshot.rto_type || '');
+    const insuranceItemsChanged = !isEqualArray(originalInsuranceItems, updatedInsuranceItems);
+    const accessoriesChanged = !isEqualArray(originalAccessories, updatedAccessories);
+    const insuranceTotalChanged =
+        toNumber(pricingSnapshot.insurance_total) !== toNumber(updatedPricingSnapshot.insurance_total);
+    const accessoriesTotalChanged =
+        toNumber(pricingSnapshot.accessories_total) !== toNumber(updatedPricingSnapshot.accessories_total);
+    const grandTotalChanged = toNumber(pricingSnapshot.grand_total) !== toNumber(updatedPricingSnapshot.grand_total);
+
+    const nonManagerChanged =
+        rtoChanged ||
+        insuranceItemsChanged ||
+        accessoriesChanged ||
+        insuranceTotalChanged ||
+        accessoriesTotalChanged ||
+        grandTotalChanged;
+    const managerChanged = updates.managerDiscount !== undefined || updates.managerDiscountNote !== undefined;
+
+    if (!nonManagerChanged) {
+        if (!managerChanged) {
+            return { success: true };
+        }
+        const updatePayload: any = {
+            updated_at: new Date().toISOString(),
+        };
+        updatePayload.manager_discount = updates.managerDiscount ?? quote.manager_discount ?? 0;
         updatePayload.manager_discount_note = updates.managerDiscountNote || null;
         updatePayload.reviewed_by = user?.id || null;
         updatePayload.reviewed_at = new Date().toISOString();
+
+        const { error } = await supabase.from('crm_quotes').update(updatePayload).eq('id', quoteId);
+        if (error) {
+            console.error('updateQuotePricing Error:', error);
+            return { success: false, error: error.message };
+        }
+
+        await logQuoteEvent(
+            quoteId,
+            `Manager Discount Adjusted to ₹${updatePayload.manager_discount}`,
+            'Manager',
+            'team',
+            {
+                source: 'CRM',
+            }
+        );
+
+        revalidatePath('/app/[slug]/quotes');
+        return { success: true };
     }
 
-    const { error } = await supabase.from('crm_quotes').update(updatePayload).eq('id', quoteId);
+    const onRoadPrice = Math.round(toNumber(updatedPricingSnapshot.grand_total ?? updatedCommercials.grand_total));
+    const exShowroom = Math.round(
+        toNumber(updatedPricingSnapshot.ex_showroom ?? updatedCommercials.ex_showroom ?? updatedCommercials.base_price)
+    );
+    const rtoAmount = Math.round(
+        toNumber(updatedPricingSnapshot.rto_total ?? updatedPricingSnapshot.rto?.total ?? updatedCommercials.rto)
+    );
+    const insuranceAmount = Math.round(
+        toNumber(
+            updatedPricingSnapshot.insurance_total ??
+                updatedPricingSnapshot.insurance?.total ??
+                updatedCommercials.insurance
+        )
+    );
+    const accessoriesAmount = Math.round(toNumber(updatedPricingSnapshot.accessories_total));
 
-    if (error) {
-        console.error('updateQuotePricing Error:', error);
-        return { success: false, error: error.message };
+    const vehicleSkuId = quote.vehicle_sku_id || quote.color_id || quote.variant_id || null;
+
+    let versionQuery = supabase.from('crm_quotes').select('version');
+    if (vehicleSkuId) {
+        versionQuery = versionQuery.eq('vehicle_sku_id', vehicleSkuId);
+    } else {
+        versionQuery = versionQuery.eq('id', quoteId);
+    }
+    if (quote.lead_id) {
+        versionQuery = versionQuery.eq('lead_id', quote.lead_id);
+    } else if (quote.member_id) {
+        versionQuery = versionQuery.eq('member_id', quote.member_id);
+    } else {
+        versionQuery = versionQuery.eq('id', quoteId);
     }
 
-    // Log timeline event if manager discount changed
-    if (updates.managerDiscount !== undefined) {
-        await logQuoteEvent(quoteId, `Manager Discount Adjusted to ₹${updates.managerDiscount}`, 'Manager', 'team', {
-            source: 'CRM',
-        });
+    const { data: latestVersionRow } = await versionQuery.order('version', { ascending: false }).limit(1).maybeSingle();
+    const nextVersion = (latestVersionRow?.version ?? quote.version ?? 0) + 1;
+
+    const { data: newQuote, error: insertError } = await supabase
+        .from('crm_quotes')
+        .insert({
+            tenant_id: quote.tenant_id,
+            lead_id: quote.lead_id,
+            member_id: quote.member_id,
+            lead_referrer_id: quote.lead_referrer_id,
+            quote_owner_id: quote.quote_owner_id || user?.id || null,
+            variant_id: quote.variant_id,
+            color_id: quote.color_id,
+            vehicle_sku_id: vehicleSkuId,
+            commercials: updatedCommercials,
+            parent_quote_id: null,
+            on_road_price: onRoadPrice,
+            ex_showroom_price: exShowroom,
+            insurance_amount: insuranceAmount,
+            rto_amount: rtoAmount,
+            accessories_amount: accessoriesAmount,
+            discount_amount: quote.discount_amount ?? null,
+            manager_discount: updates.managerDiscount ?? quote.manager_discount ?? null,
+            manager_discount_note: updates.managerDiscountNote || quote.manager_discount_note || null,
+            finance_mode: quote.finance_mode || null,
+            active_finance_id: null,
+            status: 'DRAFT',
+            version: nextVersion,
+            is_latest: true,
+            created_by: user?.id || quote.created_by || null,
+        })
+        .select()
+        .single();
+
+    if (insertError || !newQuote) {
+        console.error('updateQuotePricing Insert Error:', insertError);
+        return { success: false, error: insertError?.message || 'Failed to create new quote' };
     }
+
+    const voidUpdate: any = {
+        status: 'VOID',
+        is_latest: false,
+        updated_at: new Date().toISOString(),
+    };
+
+    let voidQuery = supabase.from('crm_quotes').update(voidUpdate).neq('id', newQuote.id);
+    if (vehicleSkuId) {
+        voidQuery = voidQuery.eq('vehicle_sku_id', vehicleSkuId);
+    } else {
+        voidQuery = voidQuery.eq('id', quoteId);
+    }
+    if (quote.lead_id) {
+        voidQuery = voidQuery.eq('lead_id', quote.lead_id);
+    } else if (quote.member_id) {
+        voidQuery = voidQuery.eq('member_id', quote.member_id);
+    } else {
+        voidQuery = voidQuery.eq('id', quoteId);
+    }
+    await voidQuery;
+
+    await logQuoteEvent(newQuote.id, 'Quote Revised (New Quote)', 'Team Member', 'team', {
+        source: 'CRM',
+        voided_quote_id: quoteId,
+    });
 
     revalidatePath('/app/[slug]/quotes');
-    return { success: true };
+    return { success: true, newQuoteId: newQuote.id };
 }
 
 export async function sendQuoteToCustomer(quoteId: string): Promise<{ success: boolean; error?: string }> {

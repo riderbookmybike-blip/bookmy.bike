@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { toAppStorageFormat, isValidPhone } from '@/lib/utils/phoneUtils';
 
 export async function POST(request: NextRequest) {
     try {
@@ -9,25 +10,15 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: false, message: 'Phone or Email is required' }, { status: 400 });
         }
 
-        let formattedPhone = '';
-        if (phone) {
-            // STRICT NORMALIZATION
-            const cleaned = phone.replace(/\D/g, '');
-            if (cleaned.length === 10) {
-                formattedPhone = `91${cleaned}`;
-            } else if (cleaned.length === 12 && cleaned.startsWith('91')) {
-                formattedPhone = cleaned;
-            } else if (cleaned.length === 11 && cleaned.startsWith('0')) {
-                formattedPhone = `91${cleaned.substring(1)}`;
-            } else {
-                return NextResponse.json(
-                    {
-                        success: false,
-                        message: 'Invalid Phone Number. Please enter a valid 10-digit Indian number.',
-                    },
-                    { status: 400 }
-                );
-            }
+        const cleanPhone = phone ? toAppStorageFormat(phone) : '';
+        if (phone && !isValidPhone(cleanPhone)) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: 'Invalid Phone Number. Please enter a valid 10-digit Indian number.',
+                },
+                { status: 400 }
+            );
         }
 
         const supabaseAdmin = createClient(
@@ -51,16 +42,23 @@ export async function POST(request: NextRequest) {
         let user: any = null;
 
         // NEW: Try to find in id_members first (more reliable for 21k migrated users)
+        const orFilters = [
+            cleanPhone ? `primary_phone.eq.${cleanPhone}` : null,
+            email ? `primary_email.eq.${email}` : null,
+        ].filter(Boolean);
+
         const { data: memberMatch } = await supabaseAdmin
             .from('id_members')
             .select('id, primary_email, primary_phone')
-            .or(`primary_phone.eq.${phone},primary_phone.eq.${formattedPhone},primary_phone.eq.+${formattedPhone}${email ? `,primary_email.eq.${email}` : ''}`)
+            .or(orFilters.join(','))
             .maybeSingle();
 
         if (memberMatch) {
             console.log('[CheckMembership] Member Match Found:', memberMatch.id);
             // Even if profile exists, we check if they have an Auth account
-            const { data: { user: authUser } } = await supabaseAdmin.auth.admin.getUserById(memberMatch.id);
+            const {
+                data: { user: authUser },
+            } = await supabaseAdmin.auth.admin.getUserById(memberMatch.id);
             if (authUser) {
                 user = authUser;
             } else {
@@ -78,17 +76,18 @@ export async function POST(request: NextRequest) {
 
         // Fallback to searching Auth directly if profile check didn't resolve it (Legacy/New users)
         if (!user) {
-            const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+            const {
+                data: { users },
+                error: listError,
+            } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
             if (listError) throw listError;
 
             user = users.find(u => {
                 const hasEmail = email && u.email?.toLowerCase() === email.toLowerCase();
                 const hasPhone =
                     phone &&
-                    (u.phone === formattedPhone ||
-                        u.phone === `+${formattedPhone}` ||
-                        u.user_metadata?.phone === formattedPhone ||
-                        u.user_metadata?.phone === phone);
+                    (toAppStorageFormat(u.phone) === cleanPhone ||
+                        toAppStorageFormat((u.user_metadata as { phone?: string })?.phone || '') === cleanPhone);
                 return hasEmail || hasPhone;
             });
         }

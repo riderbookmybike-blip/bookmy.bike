@@ -6,11 +6,11 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
     ChevronLeft,
+    ChevronDown,
     Share2,
     Heart,
     Zap,
     ShieldCheck,
-    ChevronDown,
     ChevronRight,
     Star,
     Package,
@@ -20,6 +20,7 @@ import {
     Info,
     CheckCircle2,
     X,
+    ArrowRight,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useI18n } from '@/components/providers/I18nProvider';
@@ -70,7 +71,6 @@ export const PhonePDPEnhanced = ({
     const { language } = useI18n();
     const [showPriceBreakup, setShowPriceBreakup] = useState(false);
     const [showAccessorySheet, setShowAccessorySheet] = useState(false);
-    const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
 
     // Destructure data from parent
     const {
@@ -125,6 +125,7 @@ export const PhonePDPEnhanced = ({
         setRegType,
         setEmiTenure,
         setUserDownPayment,
+        setConfigTab,
     } = handlers;
 
     const REFERRAL_BONUS = 5000;
@@ -167,141 +168,90 @@ export const PhonePDPEnhanced = ({
         { label: 'Savings Applied', value: totalSavings, isDeduction: true },
     ];
 
-    const toggleCard = (id: string) => {
-        setExpandedCards(prev => ({ ...prev, [id]: !prev[id] }));
-    };
+    const selectedAccessoryItems = activeAccessories.filter((acc: any) => selectedAccessories.includes(acc.id));
+    const selectedServiceItems = (activeServices || []).filter((svc: any) => selectedServices.includes(svc.id));
 
     const cards = [
         {
-            id: 'finance',
-            title: 'Finance',
-            subtitle: 'Flexible EMI Options',
+            id: 'price',
+            title: 'Price Summary',
+            subtitle: 'On-road breakup',
+            icon: Info,
+            content: (
+                <div className="space-y-3">
+                    <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-zinc-400">
+                        <span>Ex-Showroom</span>
+                        <span>₹{baseExShowroom?.toLocaleString() || '0'}</span>
+                    </div>
+                    <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-zinc-400">
+                        <span>RTO & Reg.</span>
+                        <span>₹{rtoEstimates?.toLocaleString() || '0'}</span>
+                    </div>
+                    <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-zinc-400">
+                        <span>Insurance</span>
+                        <span>₹{baseInsurance?.toLocaleString() || '0'}</span>
+                    </div>
+                    {(offersDiscount < 0 || colorDiscount < 0) && (
+                        <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-green-400">
+                            <span>Dealer Discount</span>
+                            <span>₹{(Math.abs(offersDiscount) + Math.abs(colorDiscount)).toLocaleString()}</span>
+                        </div>
+                    )}
+                    <div className="pt-3 border-t border-white/10 flex justify-between text-sm font-black uppercase italic tracking-tighter text-white">
+                        <span>Total On-Road</span>
+                        <span className="text-[#F4B000]">₹{totalOnRoad.toLocaleString()}</span>
+                    </div>
+                    <button
+                        onClick={() => setShowPriceBreakup(true)}
+                        className="w-full mt-2 py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] text-zinc-300"
+                    >
+                        Full Details
+                    </button>
+                </div>
+            ),
+        },
+        {
+            id: 'ownership',
+            title: 'Ownership Plan',
+            subtitle: 'Finance',
             icon: Zap,
             content: (
                 <div className="space-y-4">
-                    <div className="text-center py-4 bg-white/5 rounded-xl border border-white/10">
-                        <p className="text-xs text-zinc-400 uppercase tracking-widest mb-1">Monthly EMI</p>
-                        <p className="text-4xl font-black text-white">₹{emi.toLocaleString()}</p>
-                        <p className="text-xs text-zinc-500 mt-1">
-                            {emiTenure} months @ {annualInterest}% p.a.
-                        </p>
-                    </div>
-
-                    <div>
-                        <div className="flex justify-between text-xs mb-2">
-                            <span className="text-zinc-400">Down Payment</span>
-                            <span className="font-bold">₹{downPayment.toLocaleString()}</span>
-                        </div>
-                        <input
-                            type="range"
-                            min={minDownPayment}
-                            max={maxDownPayment}
-                            value={downPayment}
-                            onChange={e => setUserDownPayment(parseInt(e.target.value))}
-                            className="w-full h-2 bg-zinc-800 rounded-full appearance-none cursor-pointer"
-                            style={{
-                                background: `linear-gradient(to right, #F4B000 0%, #F4B000 ${((downPayment - minDownPayment) / (maxDownPayment - minDownPayment)) * 100}%, #27272a ${((downPayment - minDownPayment) / (maxDownPayment - minDownPayment)) * 100}%, #27272a 100%)`,
-                            }}
-                        />
-                        <div className="flex justify-between text-[10px] text-zinc-500 mt-1">
-                            <span>Min: ₹{minDownPayment.toLocaleString()}</span>
-                            <span>Max: ₹{maxDownPayment.toLocaleString()}</span>
-                        </div>
-                    </div>
-
-                    <div>
-                        <p className="text-xs text-zinc-400 mb-2">Loan Tenure</p>
-                        <div className="grid grid-cols-4 gap-2">
-                            {[12, 24, 36, 48].map(months => (
-                                <button
-                                    key={months}
-                                    onClick={() => setEmiTenure(months)}
-                                    className={`py-2 px-3 rounded-lg text-xs font-bold transition-all ${
-                                        emiTenure === months
-                                            ? 'bg-white text-black'
-                                            : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                                    }`}
-                                >
-                                    {months}M
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+                    <p className="text-xs text-zinc-400 font-medium">
+                        Monthly commitment starting from ₹{emi?.toLocaleString()}. Adjust your downpayment for better
+                        rates.
+                    </p>
+                    <button
+                        onClick={() => setConfigTab?.('FINANCE')}
+                        className="w-full py-4 bg-[#F4B000] text-black font-black uppercase tracking-widest text-xs rounded-2xl flex items-center justify-center gap-2"
+                    >
+                        Modify EMI Plan
+                        <ArrowRight size={16} />
+                    </button>
                 </div>
             ),
         },
         {
-            id: 'registration',
-            title: 'Registration',
-            subtitle: 'Choose Type',
-            icon: ClipboardList,
-            content: (
-                <div className="space-y-2">
-                    {[
-                        { type: 'STATE', label: 'State RTO', desc: 'Standard registration' },
-                        { type: 'BH', label: 'BH Series', desc: 'Bharat series (All India)' },
-                        { type: 'COMPANY', label: 'Company', desc: 'Corporate registration' },
-                    ].map(option => (
-                        <button
-                            key={option.type}
-                            onClick={() => setRegType(option.type as any)}
-                            className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
-                                regType === option.type
-                                    ? 'border-white/30 bg-white/10'
-                                    : 'border-white/10 bg-white/5 hover:border-white/20'
-                            }`}
-                        >
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <p className="text-sm font-bold">{option.label}</p>
-                                    <p className="text-xs text-zinc-400 mt-0.5">{option.desc}</p>
-                                </div>
-                                <div
-                                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${regType === option.type ? 'border-white bg-white' : 'border-zinc-600'}`}
-                                >
-                                    {regType === option.type && <CheckCircle2 size={12} className="text-black" />}
-                                </div>
-                            </div>
-                        </button>
-                    ))}
-                </div>
-            ),
-        },
-        {
-            id: 'accessories',
-            title: 'Accessories',
-            subtitle: `${selectedAccessories.length} selected`,
+            id: 'personalization',
+            title: 'Personalization',
+            subtitle: `${selectedAccessoryItems.length} Items Selected`,
             icon: Package,
             content: (
-                <div className="space-y-2">
-                    {activeAccessories.slice(0, 3).map((acc: any) => (
-                        <div
-                            key={acc.id}
-                            onClick={() => toggleAccessory(acc.id)}
-                            className={`p-3 rounded-lg border transition-all ${
-                                selectedAccessories.includes(acc.id)
-                                    ? 'border-white/30 bg-white/10'
-                                    : 'border-white/10 bg-white/5'
-                            }`}
-                        >
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <p className="text-sm font-bold">{acc.displayName || acc.name}</p>
-                                    <p className="text-xs text-zinc-400">₹{acc.price.toLocaleString()}</p>
-                                </div>
-                                <div
-                                    className={`w-5 h-5 rounded-full border-2 ${selectedAccessories.includes(acc.id) ? 'border-white bg-white' : 'border-zinc-600'}`}
-                                >
-                                    {selectedAccessories.includes(acc.id) && (
-                                        <CheckCircle2 size={12} className="text-black" />
-                                    )}
-                                </div>
+                <div className="space-y-4">
+                    <div className="grid grid-cols-1 gap-2">
+                        {selectedAccessoryItems.slice(0, 3).map((acc: any) => (
+                            <div
+                                key={acc.id}
+                                className="flex items-center justify-between p-3 bg-white/5 rounded-xl text-xs"
+                            >
+                                <span className="font-bold uppercase italic">{acc.name || acc.displayName}</span>
+                                <span className="text-zinc-400">₹{acc.price?.toLocaleString()}</span>
                             </div>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                     <button
-                        onClick={() => setShowAccessorySheet(true)}
-                        className="w-full text-xs font-bold text-white/60 hover:text-white pt-1"
+                        onClick={() => setConfigTab?.('ACCESSORIES')}
+                        className="w-full py-4 border-2 border-white/10 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl"
                     >
                         View All Accessories
                     </button>
@@ -309,95 +259,37 @@ export const PhonePDPEnhanced = ({
             ),
         },
         {
-            id: 'insurance',
-            title: 'Insurance',
-            subtitle: 'Add-ons & Covers',
+            id: 'coverage',
+            title: 'Coverage & Care',
+            subtitle: `${selectedInsuranceAddons.length + selectedServiceItems.length} Protection Items`,
             icon: ShieldCheck,
             content: (
-                <div className="space-y-2">
-                    {availableInsuranceAddons?.map((addon: any) => (
-                        <div
-                            key={addon.id}
-                            onClick={() => toggleInsuranceAddon(addon.id)}
-                            className={`p-3 rounded-lg border transition-all ${
-                                selectedInsuranceAddons.includes(addon.id)
-                                    ? 'border-white/30 bg-white/10'
-                                    : 'border-white/10 bg-white/5'
-                            }`}
-                        >
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <p className="text-sm font-bold">{addon.displayName || addon.name}</p>
-                                    <p className="text-xs text-zinc-400">₹{addon.price.toLocaleString()}</p>
-                                </div>
-                                <div
-                                    className={`w-5 h-5 rounded-full border-2 ${selectedInsuranceAddons.includes(addon.id) ? 'border-white bg-white' : 'border-zinc-600'}`}
-                                >
-                                    {selectedInsuranceAddons.includes(addon.id) && (
-                                        <CheckCircle2 size={12} className="text-black" />
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    ))}
+                <div className="space-y-4">
+                    <button
+                        onClick={() => setConfigTab?.('INSURANCE')}
+                        className="w-full py-4 bg-white text-black font-black uppercase tracking-widest text-xs rounded-2xl"
+                    >
+                        Manage Protection
+                    </button>
                 </div>
             ),
         },
         {
-            id: 'services',
-            title: 'Services',
-            subtitle: 'AMC & Packages',
-            icon: Wrench,
+            id: 'legal',
+            title: 'Legal & Registry',
+            subtitle: 'RTO',
+            icon: ClipboardList,
             content: (
                 <div className="space-y-2">
-                    {activeServices?.map((service: any) => (
-                        <div
-                            key={service.id}
-                            onClick={() => toggleService(service.id)}
-                            className={`p-3 rounded-lg border transition-all ${
-                                selectedServices.includes(service.id)
-                                    ? 'border-white/30 bg-white/10'
-                                    : 'border-white/10 bg-white/5'
-                            }`}
-                        >
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <p className="text-sm font-bold">{service.displayName || service.name}</p>
-                                    <p className="text-xs text-zinc-400">₹{service.price.toLocaleString()}</p>
-                                </div>
-                                <div
-                                    className={`w-5 h-5 rounded-full border-2 ${selectedServices.includes(service.id) ? 'border-white bg-white' : 'border-zinc-600'}`}
-                                >
-                                    {selectedServices.includes(service.id) && (
-                                        <CheckCircle2 size={12} className="text-black" />
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    ))}
+                    <button
+                        onClick={() => setConfigTab?.('REGISTRATION')}
+                        className="w-full py-3 text-zinc-400 font-bold uppercase tracking-widest text-[10px]"
+                    >
+                        Change Registration Type
+                    </button>
                 </div>
             ),
         },
-        ...(warrantyItems?.length > 0
-            ? [
-                  {
-                      id: 'warranty',
-                      title: 'Warranty',
-                      subtitle: 'Extended Protection',
-                      icon: Gift,
-                      content: (
-                          <div className="space-y-2">
-                              {warrantyItems.map((warranty: any) => (
-                                  <div key={warranty.id} className="p-3 bg-white/5 rounded-lg border border-white/10">
-                                      <p className="text-sm font-bold">{warranty.name}</p>
-                                      <p className="text-xs text-zinc-400 mt-1">{warranty.description}</p>
-                                  </div>
-                              ))}
-                          </div>
-                      ),
-                  },
-              ]
-            : []),
     ];
 
     return (
@@ -480,22 +372,12 @@ export const PhonePDPEnhanced = ({
                 </div>
                 <div className="flex gap-4 overflow-x-auto px-5 pb-6 snap-x snap-mandatory no-scrollbar">
                     {cards.map(card => (
-                        <div key={card.id} className="snap-center shrink-0 w-[85vw] max-w-[420px]">
+                        <div key={card.id} className="snap-center shrink-0 w-[90vw] max-w-[520px] min-h-[70vh]">
                             <div className="bg-zinc-900/50 backdrop-blur-sm border border-white/10 rounded-2xl p-5 space-y-4">
-                                <button
-                                    onClick={() => toggleCard(card.id)}
-                                    className="w-full flex items-center justify-between"
-                                >
+                                <div className="w-full flex items-center justify-between">
                                     <SectionHeader icon={card.icon} title={card.title} subtitle={card.subtitle} />
-                                    <div className="text-zinc-400">
-                                        {expandedCards[card.id] ? (
-                                            <ChevronDown size={18} />
-                                        ) : (
-                                            <ChevronRight size={18} />
-                                        )}
-                                    </div>
-                                </button>
-                                {expandedCards[card.id] && <div className="space-y-4">{card.content}</div>}
+                                </div>
+                                <div className="space-y-4">{card.content}</div>
                             </div>
                         </div>
                     ))}

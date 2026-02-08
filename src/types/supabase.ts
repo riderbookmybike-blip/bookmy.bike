@@ -1686,6 +1686,47 @@ export type Database = {
                     },
                 ];
             };
+            crm_member_documents: {
+                Row: {
+                    category: string | null;
+                    created_at: string | null;
+                    file_path: string;
+                    file_type: string | null;
+                    id: string;
+                    member_id: string;
+                    name: string;
+                    updated_at: string | null;
+                };
+                Insert: {
+                    category?: string | null;
+                    created_at?: string | null;
+                    file_path: string;
+                    file_type?: string | null;
+                    id?: string;
+                    member_id: string;
+                    name: string;
+                    updated_at?: string | null;
+                };
+                Update: {
+                    category?: string | null;
+                    created_at?: string | null;
+                    file_path?: string;
+                    file_type?: string | null;
+                    id?: string;
+                    member_id?: string;
+                    name?: string;
+                    updated_at?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'crm_member_documents_member_id_fkey';
+                        columns: ['member_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_members';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
             crm_payments: {
                 Row: {
                     amount: number;
@@ -1823,9 +1864,94 @@ export type Database = {
                     },
                 ];
             };
+            crm_quote_finance_attempts: {
+                Row: {
+                    bank_id: string | null;
+                    bank_name: string | null;
+                    charges_breakup: Json | null;
+                    created_at: string | null;
+                    created_by: string | null;
+                    down_payment: number | null;
+                    emi: number | null;
+                    id: string;
+                    loan_addons: number | null;
+                    loan_amount: number | null;
+                    ltv: number | null;
+                    processing_fee: number | null;
+                    quote_id: string | null;
+                    roi: number | null;
+                    scheme_code: string | null;
+                    scheme_id: string | null;
+                    status: string | null;
+                    tenant_id: string | null;
+                    tenure_months: number | null;
+                    updated_at: string | null;
+                };
+                Insert: {
+                    bank_id?: string | null;
+                    bank_name?: string | null;
+                    charges_breakup?: Json | null;
+                    created_at?: string | null;
+                    created_by?: string | null;
+                    down_payment?: number | null;
+                    emi?: number | null;
+                    id?: string;
+                    loan_addons?: number | null;
+                    loan_amount?: number | null;
+                    ltv?: number | null;
+                    processing_fee?: number | null;
+                    quote_id?: string | null;
+                    roi?: number | null;
+                    scheme_code?: string | null;
+                    scheme_id?: string | null;
+                    status?: string | null;
+                    tenant_id?: string | null;
+                    tenure_months?: number | null;
+                    updated_at?: string | null;
+                };
+                Update: {
+                    bank_id?: string | null;
+                    bank_name?: string | null;
+                    charges_breakup?: Json | null;
+                    created_at?: string | null;
+                    created_by?: string | null;
+                    down_payment?: number | null;
+                    emi?: number | null;
+                    id?: string;
+                    loan_addons?: number | null;
+                    loan_amount?: number | null;
+                    ltv?: number | null;
+                    processing_fee?: number | null;
+                    quote_id?: string | null;
+                    roi?: number | null;
+                    scheme_code?: string | null;
+                    scheme_id?: string | null;
+                    status?: string | null;
+                    tenant_id?: string | null;
+                    tenure_months?: number | null;
+                    updated_at?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'crm_quote_finance_attempts_bank_id_fkey';
+                        columns: ['bank_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_quote_finance_attempts_quote_id_fkey';
+                        columns: ['quote_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'crm_quotes';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
             crm_quotes: {
                 Row: {
                     accessories_amount: number | null;
+                    active_finance_id: string | null;
                     color_id: string | null;
                     commercials: Json | null;
                     created_at: string | null;
@@ -1833,14 +1959,24 @@ export type Database = {
                     discount_amount: number | null;
                     display_id: string | null;
                     ex_showroom_price: number | null;
+                    expected_delivery: string | null;
+                    finance_mode: string | null;
                     id: string;
                     insurance_amount: number | null;
                     is_latest: boolean | null;
                     lead_id: string | null;
+                    lead_referrer_id: string | null;
+                    manager_discount: number | null;
+                    manager_discount_note: string | null;
+                    member_id: string | null;
                     on_road_price: number | null;
                     parent_quote_id: string | null;
+                    quote_owner_id: string | null;
+                    reviewed_at: string | null;
+                    reviewed_by: string | null;
                     rto_amount: number | null;
                     status: string | null;
+                    studio_id: string | null;
                     tenant_id: string | null;
                     updated_at: string | null;
                     valid_until: string | null;
@@ -1851,6 +1987,7 @@ export type Database = {
                 };
                 Insert: {
                     accessories_amount?: number | null;
+                    active_finance_id?: string | null;
                     color_id?: string | null;
                     commercials?: Json | null;
                     created_at?: string | null;
@@ -1858,14 +1995,24 @@ export type Database = {
                     discount_amount?: number | null;
                     display_id?: string | null;
                     ex_showroom_price?: number | null;
+                    expected_delivery?: string | null;
+                    finance_mode?: string | null;
                     id?: string;
                     insurance_amount?: number | null;
                     is_latest?: boolean | null;
                     lead_id?: string | null;
+                    lead_referrer_id?: string | null;
+                    manager_discount?: number | null;
+                    manager_discount_note?: string | null;
+                    member_id?: string | null;
                     on_road_price?: number | null;
                     parent_quote_id?: string | null;
+                    quote_owner_id?: string | null;
+                    reviewed_at?: string | null;
+                    reviewed_by?: string | null;
                     rto_amount?: number | null;
                     status?: string | null;
+                    studio_id?: string | null;
                     tenant_id?: string | null;
                     updated_at?: string | null;
                     valid_until?: string | null;
@@ -1876,6 +2023,7 @@ export type Database = {
                 };
                 Update: {
                     accessories_amount?: number | null;
+                    active_finance_id?: string | null;
                     color_id?: string | null;
                     commercials?: Json | null;
                     created_at?: string | null;
@@ -1883,14 +2031,24 @@ export type Database = {
                     discount_amount?: number | null;
                     display_id?: string | null;
                     ex_showroom_price?: number | null;
+                    expected_delivery?: string | null;
+                    finance_mode?: string | null;
                     id?: string;
                     insurance_amount?: number | null;
                     is_latest?: boolean | null;
                     lead_id?: string | null;
+                    lead_referrer_id?: string | null;
+                    manager_discount?: number | null;
+                    manager_discount_note?: string | null;
+                    member_id?: string | null;
                     on_road_price?: number | null;
                     parent_quote_id?: string | null;
+                    quote_owner_id?: string | null;
+                    reviewed_at?: string | null;
+                    reviewed_by?: string | null;
                     rto_amount?: number | null;
                     status?: string | null;
+                    studio_id?: string | null;
                     tenant_id?: string | null;
                     updated_at?: string | null;
                     valid_until?: string | null;
@@ -1969,6 +2127,54 @@ export type Database = {
                         referencedColumns: ['id'];
                     },
                 ];
+            };
+            crm_tasks: {
+                Row: {
+                    assignee_ids: string[] | null;
+                    created_at: string | null;
+                    created_by: string | null;
+                    description: string | null;
+                    due_date: string | null;
+                    id: string;
+                    linked_id: string;
+                    linked_type: string;
+                    primary_assignee_id: string | null;
+                    status: string | null;
+                    tenant_id: string | null;
+                    title: string;
+                    updated_at: string | null;
+                };
+                Insert: {
+                    assignee_ids?: string[] | null;
+                    created_at?: string | null;
+                    created_by?: string | null;
+                    description?: string | null;
+                    due_date?: string | null;
+                    id?: string;
+                    linked_id: string;
+                    linked_type: string;
+                    primary_assignee_id?: string | null;
+                    status?: string | null;
+                    tenant_id?: string | null;
+                    title: string;
+                    updated_at?: string | null;
+                };
+                Update: {
+                    assignee_ids?: string[] | null;
+                    created_at?: string | null;
+                    created_by?: string | null;
+                    description?: string | null;
+                    due_date?: string | null;
+                    id?: string;
+                    linked_id?: string;
+                    linked_type?: string;
+                    primary_assignee_id?: string | null;
+                    status?: string | null;
+                    tenant_id?: string | null;
+                    title?: string;
+                    updated_at?: string | null;
+                };
+                Relationships: [];
             };
             debug_logs: {
                 Row: {
@@ -2775,6 +2981,7 @@ export type Database = {
                     aadhaar_number: string | null;
                     aadhaar_pincode: string | null;
                     address: string | null;
+                    addresses_json: Json | null;
                     bookings_count: number | null;
                     category: string | null;
                     cliq_channel_id: string | null;
@@ -2789,6 +2996,7 @@ export type Database = {
                     district: string | null;
                     documents: Json | null;
                     email: string | null;
+                    emails_json: Json | null;
                     father_name: string | null;
                     full_name: string | null;
                     id: string;
@@ -2802,6 +3010,7 @@ export type Database = {
                     pan_card_url: string | null;
                     pan_number: string | null;
                     phone: string | null;
+                    phones_json: Json | null;
                     pincode: string | null;
                     primary_email: string | null;
                     primary_phone: string | null;
@@ -2815,6 +3024,13 @@ export type Database = {
                     tenant_id: string | null;
                     updated_at: string | null;
                     whatsapp: string | null;
+                    work_address1: string | null;
+                    work_address2: string | null;
+                    work_address3: string | null;
+                    work_company: string | null;
+                    work_designation: string | null;
+                    work_email: string | null;
+                    work_phone: string | null;
                     zoho_book_id: string | null;
                     zone: string | null;
                 };
@@ -2827,6 +3043,7 @@ export type Database = {
                     aadhaar_number?: string | null;
                     aadhaar_pincode?: string | null;
                     address?: string | null;
+                    addresses_json?: Json | null;
                     bookings_count?: number | null;
                     category?: string | null;
                     cliq_channel_id?: string | null;
@@ -2841,6 +3058,7 @@ export type Database = {
                     district?: string | null;
                     documents?: Json | null;
                     email?: string | null;
+                    emails_json?: Json | null;
                     father_name?: string | null;
                     full_name?: string | null;
                     id?: string;
@@ -2854,6 +3072,7 @@ export type Database = {
                     pan_card_url?: string | null;
                     pan_number?: string | null;
                     phone?: string | null;
+                    phones_json?: Json | null;
                     pincode?: string | null;
                     primary_email?: string | null;
                     primary_phone?: string | null;
@@ -2867,6 +3086,13 @@ export type Database = {
                     tenant_id?: string | null;
                     updated_at?: string | null;
                     whatsapp?: string | null;
+                    work_address1?: string | null;
+                    work_address2?: string | null;
+                    work_address3?: string | null;
+                    work_company?: string | null;
+                    work_designation?: string | null;
+                    work_email?: string | null;
+                    work_phone?: string | null;
                     zoho_book_id?: string | null;
                     zone?: string | null;
                 };
@@ -2879,6 +3105,7 @@ export type Database = {
                     aadhaar_number?: string | null;
                     aadhaar_pincode?: string | null;
                     address?: string | null;
+                    addresses_json?: Json | null;
                     bookings_count?: number | null;
                     category?: string | null;
                     cliq_channel_id?: string | null;
@@ -2893,6 +3120,7 @@ export type Database = {
                     district?: string | null;
                     documents?: Json | null;
                     email?: string | null;
+                    emails_json?: Json | null;
                     father_name?: string | null;
                     full_name?: string | null;
                     id?: string;
@@ -2906,6 +3134,7 @@ export type Database = {
                     pan_card_url?: string | null;
                     pan_number?: string | null;
                     phone?: string | null;
+                    phones_json?: Json | null;
                     pincode?: string | null;
                     primary_email?: string | null;
                     primary_phone?: string | null;
@@ -2919,6 +3148,13 @@ export type Database = {
                     tenant_id?: string | null;
                     updated_at?: string | null;
                     whatsapp?: string | null;
+                    work_address1?: string | null;
+                    work_address2?: string | null;
+                    work_address3?: string | null;
+                    work_company?: string | null;
+                    work_designation?: string | null;
+                    work_email?: string | null;
+                    work_phone?: string | null;
                     zoho_book_id?: string | null;
                     zone?: string | null;
                 };
@@ -3376,47 +3612,62 @@ export type Database = {
             loc_pincodes: {
                 Row: {
                     area: string | null;
+                    area_keys: Json | null;
+                    areas: Json | null;
                     country: string | null;
                     created_at: string | null;
                     district: string | null;
+                    district_key: string | null;
                     latitude: number | null;
                     longitude: number | null;
                     pincode: string;
                     rto_code: string | null;
                     state: string | null;
                     state_code: string | null;
+                    state_key: string | null;
                     status: string | null;
                     taluka: string | null;
+                    taluka_key: string | null;
                     updated_at: string | null;
                 };
                 Insert: {
                     area?: string | null;
+                    area_keys?: Json | null;
+                    areas?: Json | null;
                     country?: string | null;
                     created_at?: string | null;
                     district?: string | null;
+                    district_key?: string | null;
                     latitude?: number | null;
                     longitude?: number | null;
                     pincode: string;
                     rto_code?: string | null;
                     state?: string | null;
                     state_code?: string | null;
+                    state_key?: string | null;
                     status?: string | null;
                     taluka?: string | null;
+                    taluka_key?: string | null;
                     updated_at?: string | null;
                 };
                 Update: {
                     area?: string | null;
+                    area_keys?: Json | null;
+                    areas?: Json | null;
                     country?: string | null;
                     created_at?: string | null;
                     district?: string | null;
+                    district_key?: string | null;
                     latitude?: number | null;
                     longitude?: number | null;
                     pincode?: string;
                     rto_code?: string | null;
                     state?: string | null;
                     state_code?: string | null;
+                    state_key?: string | null;
                     status?: string | null;
                     taluka?: string | null;
+                    taluka_key?: string | null;
                     updated_at?: string | null;
                 };
                 Relationships: [];
@@ -3767,48 +4018,6 @@ export type Database = {
                 };
                 Relationships: [];
             };
-            sys_page_registry: {
-                Row: {
-                    completion_percentage: number | null;
-                    description: string | null;
-                    file_path: string;
-                    is_locked: boolean | null;
-                    last_verified_at: string | null;
-                    lock_reason: string | null;
-                    page_name: string | null;
-                    route_pattern: string | null;
-                    status: string;
-                    updated_at: string | null;
-                    used_tables: Json | null;
-                };
-                Insert: {
-                    completion_percentage?: number | null;
-                    description?: string | null;
-                    file_path: string;
-                    is_locked?: boolean | null;
-                    last_verified_at?: string | null;
-                    lock_reason?: string | null;
-                    page_name?: string | null;
-                    route_pattern?: string | null;
-                    status?: string;
-                    updated_at?: string | null;
-                    used_tables?: Json | null;
-                };
-                Update: {
-                    completion_percentage?: number | null;
-                    description?: string | null;
-                    file_path?: string;
-                    is_locked?: boolean | null;
-                    last_verified_at?: string | null;
-                    lock_reason?: string | null;
-                    page_name?: string | null;
-                    route_pattern?: string | null;
-                    status?: string;
-                    updated_at?: string | null;
-                    used_tables?: Json | null;
-                };
-                Relationships: [];
-            };
             sys_role_templates: {
                 Row: {
                     created_at: string | null;
@@ -3844,45 +4053,6 @@ export type Database = {
                     },
                 ];
             };
-            sys_schema_registry: {
-                Row: {
-                    created_at: string | null;
-                    description: string | null;
-                    history_log: Json | null;
-                    is_sot: boolean | null;
-                    last_schema_change_at: string | null;
-                    owner_module: string | null;
-                    status: string;
-                    table_name: string;
-                    updated_at: string | null;
-                    usage_refs: Json | null;
-                };
-                Insert: {
-                    created_at?: string | null;
-                    description?: string | null;
-                    history_log?: Json | null;
-                    is_sot?: boolean | null;
-                    last_schema_change_at?: string | null;
-                    owner_module?: string | null;
-                    status?: string;
-                    table_name: string;
-                    updated_at?: string | null;
-                    usage_refs?: Json | null;
-                };
-                Update: {
-                    created_at?: string | null;
-                    description?: string | null;
-                    history_log?: Json | null;
-                    is_sot?: boolean | null;
-                    last_schema_change_at?: string | null;
-                    owner_module?: string | null;
-                    status?: string;
-                    table_name?: string;
-                    updated_at?: string | null;
-                    usage_refs?: Json | null;
-                };
-                Relationships: [];
-            };
             sys_settings: {
                 Row: {
                     default_owner_tenant_id: string | null;
@@ -3903,29 +4073,7 @@ export type Database = {
             };
         };
         Views: {
-            view_risk_page_dependencies: {
-                Row: {
-                    depends_on_table: string | null;
-                    file_path: string | null;
-                    is_locked: boolean | null;
-                    last_schema_change_at: string | null;
-                    page_name: string | null;
-                    table_status: string | null;
-                };
-                Relationships: [];
-            };
-            view_risk_schema_impact: {
-                Row: {
-                    file_path: string | null;
-                    is_locked: boolean | null;
-                    is_sot: boolean | null;
-                    page_name: string | null;
-                    page_status: string | null;
-                    table_name: string | null;
-                    table_status: string | null;
-                };
-                Relationships: [];
-            };
+            [_ in never]: never;
         };
         Functions: {
             check_is_super_admin: { Args: { p_user_id: string }; Returns: boolean };

@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { toAppStorageFormat, isValidPhone } from '@/lib/utils/phoneUtils';
 
 export async function POST() {
     const cookieStore = await cookies();
@@ -34,10 +35,16 @@ export async function POST() {
 
     // Explicitly create profile with required Marketplace context
     // Using 'STAFF' as 'MEMBER' is not in the DB enum 'app_role'
+    const rawPhone = user.phone || user.user_metadata?.phone || '';
+    const cleanPhone = toAppStorageFormat(rawPhone);
+    if (cleanPhone && !isValidPhone(cleanPhone)) {
+        return NextResponse.json({ error: 'Invalid phone number' }, { status: 400 });
+    }
+
     const { error } = await supabase.from('id_members').insert({
         id: user.id,
         email: user.email,
-        phone: user.phone || user.user_metadata?.phone || '',
+        phone: cleanPhone,
         full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || '',
         avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
         tenant_id: MARKETPLACE_TENANT_ID,
