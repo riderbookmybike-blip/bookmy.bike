@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     Save,
     Send,
@@ -32,12 +33,25 @@ import {
     Loader2,
     FileText as FileIcon,
     Image as ImageIcon,
+    Wrench,
+    BarChart3,
+    Camera,
+    Wallet,
+    Check,
+    Target,
+    TrendingUp,
+    XCircle,
+    PlusCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import {
     updateTaskStatus,
+    createTask,
+    getTasksForEntity,
+    getTeamMembersForTenant,
     updateMemberProfile,
+    updateMemberAvatar,
     getQuotePdpUrl,
     setQuoteFinanceMode,
     updateQuoteFinanceStatus,
@@ -61,7 +75,17 @@ function cn(...inputs: any[]) {
 export interface QuoteData {
     id: string;
     displayId: string;
-    status: 'DRAFT' | 'PENDING_REVIEW' | 'REVIEWED' | 'SENT' | 'ACCEPTED' | 'CONFIRMED' | 'DELIVERED' | 'VOID';
+    status:
+        | 'DRAFT'
+        | 'IN_REVIEW'
+        | 'APPROVED'
+        | 'DENIED'
+        | 'SENT'
+        | 'CONFIRMED'
+        | 'REJECTED'
+        | 'CANCELED'
+        | 'DELIVERED'
+        | 'SUPERSEDED';
     createdAt: string;
     updatedAt: string;
     validUntil: string | null;
@@ -72,6 +96,7 @@ export interface QuoteData {
     studioId: string | null;
     studioName?: string | null;
     district?: string | null;
+    tenantId?: string | null;
     financeMode?: 'CASH' | 'LOAN';
     customerProfile?: {
         memberId?: string | null;
@@ -100,6 +125,7 @@ export interface QuoteData {
         state?: string | null;
         pincode?: string | null;
         dob?: string | null;
+        avatarUrl?: string | null;
     } | null;
     referral?: {
         referredByName?: string | null;
@@ -120,14 +146,35 @@ export interface QuoteData {
         loanAmount?: number | null;
         loanAddons?: number | null;
         processingFee?: number | null;
-        chargesBreakup?: any[] | null;
+        chargesBreakup?: { label: string; amount: number }[] | null;
+        addonsBreakup?: { label: string; amount: number }[] | null;
         emi?: number | null;
+        approvedAmount?: number | null;
+        requiredAmount?: number | null;
+        financeExecutive?: string | null;
+        approvedTenure?: number | null;
+        approvedEmi?: number | null;
+        approvedScheme?: string | null;
+        approvedProcessingFee?: number | null;
+        approvedAddOns?: number | null;
+        approvedDownPayment?: number | null;
+        approvedMarginMoney?: number | null;
+        approvedGrossLoan?: number | null;
+        approvedIrr?: number | null;
+        approvedChargesBreakup?: { label: string; amount: number }[] | null;
+        approvedAddonsBreakup?: { label: string; amount: number }[] | null;
+        bankLogo?: string | null;
+        companyName?: string | null;
+        branchName?: string | null;
+        executiveName?: string | null;
+        executivePhone?: string | null;
     };
 
     customer: {
         name: string;
         phone: string;
         email?: string | null;
+        memberId?: string | null;
         leadSource?: string | null;
     };
 
@@ -151,8 +198,12 @@ export interface QuoteData {
         insuranceAddons: { id: string; name: string; amount: number; selected: boolean }[];
         insuranceGST: number;
         insuranceTotal: number;
+        insuranceProvider?: string | null;
+        insuranceGstRate: number;
         accessories: { id: string; name: string; price: number; selected: boolean }[];
         accessoriesTotal: number;
+        services: { id: string; name: string; price: number; selected: boolean }[];
+        servicesTotal: number;
         dealerDiscount: number;
         managerDiscount: number;
         managerDiscountNote?: string | null;
@@ -164,6 +215,8 @@ export interface QuoteData {
         timestamp: string;
         actor?: string | null;
         actorType?: 'customer' | 'team';
+        actorOrg?: string | null;
+        actorDesignation?: string | null;
         source?: string | null;
         reason?: string | null;
     }[];
@@ -177,9 +230,11 @@ interface QuoteEditorTableProps {
         displayId: string;
         status?: string | null;
         createdAt?: string | null;
-        isLatest?: boolean | null;
-        version?: number | null;
+        onRoadPrice?: string | number | null;
+        createdBy?: string | null;
     }[];
+    bookings?: any[];
+    payments?: any[];
     onSave: (data: Partial<QuoteData>) => Promise<void>;
     onSendToCustomer: () => Promise<void>;
     onConfirmBooking: () => Promise<void>;
@@ -200,28 +255,35 @@ type QuoteChange = {
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string; label: string; icon: any }> = {
     DRAFT: { color: 'text-slate-600', bg: 'bg-slate-100 dark:bg-slate-800', label: 'Draft', icon: FileText },
-    PENDING_REVIEW: {
+    IN_REVIEW: {
         color: 'text-amber-600',
         bg: 'bg-amber-100 dark:bg-amber-900/30',
         label: 'In Review',
         icon: Clock,
     },
-    REVIEWED: { color: 'text-blue-600', bg: 'bg-blue-100 dark:bg-blue-900/30', label: 'Reviewed', icon: CheckCircle2 },
     SENT: { color: 'text-indigo-600', bg: 'bg-indigo-100 dark:bg-indigo-900/30', label: 'Sent', icon: Send },
-    ACCEPTED: {
+    APPROVED: {
         color: 'text-green-600',
         bg: 'bg-green-100 dark:bg-green-900/30',
-        label: 'Accepted',
+        label: 'Approved',
         icon: CheckCircle2,
     },
+    DENIED: { color: 'text-rose-600', bg: 'bg-rose-100 dark:bg-rose-900/30', label: 'Denied', icon: X },
     CONFIRMED: {
         color: 'text-emerald-600',
         bg: 'bg-emerald-100 dark:bg-emerald-900/30',
         label: 'Confirmed',
         icon: CheckCircle2,
     },
+    REJECTED: { color: 'text-rose-600', bg: 'bg-rose-100 dark:bg-rose-900/30', label: 'Rejected', icon: X },
+    CANCELED: { color: 'text-rose-600', bg: 'bg-rose-100 dark:bg-rose-900/30', label: 'Canceled', icon: X },
     DELIVERED: { color: 'text-teal-600', bg: 'bg-teal-100 dark:bg-teal-900/30', label: 'Delivered', icon: Bike },
-    VOID: { color: 'text-slate-500', bg: 'bg-slate-100 dark:bg-slate-800', label: 'Void', icon: X },
+    SUPERSEDED: {
+        color: 'text-slate-500',
+        bg: 'bg-slate-100 dark:bg-slate-800',
+        label: 'Superseded',
+        icon: X,
+    },
 };
 
 // ============================================================================
@@ -240,7 +302,7 @@ function PricingRow({
     isSaving = false,
     extra,
 }: {
-    label: string;
+    label: React.ReactNode;
     value: React.ReactNode;
     description?: React.ReactNode;
     isSub?: boolean;
@@ -251,7 +313,7 @@ function PricingRow({
     return (
         <div
             className={cn(
-                'group flex items-start justify-between py-3 px-6 border-b border-slate-100 dark:border-white/5',
+                'group flex items-start justify-between py-2 px-6 border-b border-slate-100 dark:border-white/5',
                 isSub && 'bg-slate-50/30 dark:bg-white/[0.01]',
                 isBold && 'bg-slate-50/50 dark:bg-white/[0.02]'
             )}
@@ -259,7 +321,7 @@ function PricingRow({
             <div className="flex flex-col gap-0.5 min-w-0">
                 <div className="flex items-center gap-2">
                     {isSub && <span className="text-slate-300 dark:text-white/20 select-none">└</span>}
-                    <span
+                    <div
                         className={cn(
                             'text-sm font-medium',
                             isBold ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-white/70',
@@ -267,7 +329,7 @@ function PricingRow({
                         )}
                     >
                         {label}
-                    </span>
+                    </div>
                     {extra}
                 </div>
                 {description && <div className="pl-4 text-[10px] text-slate-400 dark:text-white/40">{description}</div>}
@@ -298,9 +360,9 @@ function PricingGroup({
     onToggle,
     children,
 }: {
-    title: string;
+    title: React.ReactNode;
     icon: any;
-    total: string;
+    total: React.ReactNode;
     isExpanded: boolean;
     onToggle: () => void;
     children: React.ReactNode;
@@ -333,6 +395,75 @@ function PricingGroup({
     );
 }
 
+const TransactionSection = ({
+    title,
+    count,
+    expanded,
+    onToggle,
+    children,
+}: {
+    title: string;
+    count: number;
+    expanded: boolean;
+    onToggle: () => void;
+    children: React.ReactNode;
+}) => (
+    <div className="border-b border-slate-100 dark:border-white/5 last:border-b-0">
+        <div
+            className={cn(
+                'flex items-center justify-between px-6 py-2.5 transition-colors',
+                expanded
+                    ? 'bg-slate-50 dark:bg-white/[0.04] border-b border-slate-100 dark:border-white/5'
+                    : 'hover:bg-slate-50/50 dark:hover:bg-white/[0.02]'
+            )}
+        >
+            <button key="toggle-btn" onClick={onToggle} className="flex items-center gap-3">
+                <div className={cn('transition-transform duration-200', expanded ? 'rotate-90' : 'rotate-0')}>
+                    <ChevronRight size={14} className="text-slate-400 group-hover:text-slate-600" />
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white">
+                        {title}
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-white/10 text-[8px] font-black text-slate-500">
+                        {count}
+                    </span>
+                </div>
+            </button>
+            <div className="flex items-center gap-4">
+                <button
+                    key="new-btn"
+                    className="text-[9px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 flex items-center gap-1.5 px-3 py-1 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors"
+                >
+                    <Plus size={10} /> New
+                </button>
+            </div>
+        </div>
+        <AnimatePresence>
+            {expanded && (
+                <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                >
+                    <div className="px-6 pb-6 pt-4">{children}</div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    </div>
+);
+
+// Helper for bank initials
+const getBankInitials = (name: string) => {
+    return name
+        .split(' ')
+        .map(n => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+};
+
 // ============================================================================
 // MAIN COMPONENT
 // ============================================================================
@@ -341,6 +472,8 @@ export default function QuoteEditorTable({
     quote,
     tasks = [],
     relatedQuotes = [],
+    bookings = [],
+    payments = [],
     onSave,
     onSendToCustomer,
     onConfirmBooking,
@@ -357,9 +490,33 @@ export default function QuoteEditorTable({
     const [pendingChanges, setPendingChanges] = useState<QuoteChange[]>([]);
     const [pendingPayload, setPendingPayload] = useState<Partial<QuoteData> | null>(null);
     const [activeTab, setActiveTab] = useState<
-        'DYNAMIC' | 'MEMBER' | 'TASKS' | 'DOCUMENTS' | 'EVENTS' | 'NOTES' | 'TRANSACTIONS'
+        'DYNAMIC' | 'FINANCE' | 'MEMBER' | 'TASKS' | 'DOCUMENTS' | 'TIMELINE' | 'NOTES' | 'TRANSACTIONS'
     >('DYNAMIC');
     const [financeMode, setFinanceMode] = useState<'CASH' | 'LOAN'>(quote.financeMode || 'CASH');
+    const [docCount, setDocCount] = useState(0);
+
+    // Local task state for live refresh
+    const [localTasks, setLocalTasks] = useState<any[]>(tasks);
+    const [teamMembers, setTeamMembers] = useState<{ id: string; name: string; role: string }[]>([]);
+    const [selectedAssignee, setSelectedAssignee] = useState<string>('');
+    const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
+
+    const refreshTasks = async () => {
+        const fresh = await getTasksForEntity('QUOTE', quote.id);
+        setLocalTasks(fresh || []);
+    };
+
+    useEffect(() => {
+        setLocalTasks(tasks);
+    }, [tasks]);
+
+    useEffect(() => {
+        if (quote.tenantId) {
+            getTeamMembersForTenant(quote.tenantId).then(members => {
+                setTeamMembers(members as any[]);
+            });
+        }
+    }, [quote.tenantId]);
 
     // Profile Editing State
     const [isEditingProfile, setIsEditingProfile] = useState<string | null>(null);
@@ -369,10 +526,80 @@ export default function QuoteEditorTable({
     });
     const [isResolvingPincode, setIsResolvingPincode] = useState(false);
 
+    // Finance Editing State
+    const [isEditingFinance, setIsEditingFinance] = useState(false);
+    const [financeDraft, setFinanceDraft] = useState<Partial<NonNullable<QuoteData['finance']>>>({
+        ...quote.finance,
+        approvedAmount: quote.finance?.approvedAmount || 0,
+        requiredAmount:
+            quote.finance?.requiredAmount ||
+            localPricing.finalTotal - (quote.finance?.downPayment || 0) + (quote.finance?.processingFee || 0),
+        financeExecutive: quote.finance?.financeExecutive || '',
+        approvedTenure: quote.finance?.approvedTenure || quote.finance?.tenureMonths || 0,
+        approvedEmi: quote.finance?.approvedEmi || quote.finance?.emi || 0,
+        approvedScheme: quote.finance?.approvedScheme || quote.finance?.schemeCode || '',
+        approvedProcessingFee: quote.finance?.approvedProcessingFee || quote.finance?.processingFee || 0,
+        approvedAddOns: quote.finance?.approvedAddOns || quote.finance?.loanAddons || 0,
+        approvedDownPayment: quote.finance?.approvedDownPayment || quote.finance?.downPayment || 0,
+        approvedMarginMoney: quote.finance?.approvedMarginMoney || 0,
+        approvedGrossLoan:
+            quote.finance?.approvedGrossLoan ||
+            (quote.finance?.approvedAmount || 0) + (quote.finance?.approvedAddOns || 0),
+        approvedIrr: quote.finance?.approvedIrr || quote.finance?.roi || 0,
+        approvedChargesBreakup: quote.finance?.approvedChargesBreakup || quote.finance?.chargesBreakup || [],
+        approvedAddonsBreakup: quote.finance?.approvedAddonsBreakup || quote.finance?.addonsBreakup || [],
+    });
+
+    const calculateRequired = (dp: number, fee: number) => {
+        return localPricing.finalTotal - dp + fee;
+    };
+
+    // Avatar State
+    const [memberAvatarUrl, setMemberAvatarUrl] = useState<string | null>(quote.customerProfile?.avatarUrl || null);
+    const [avatarUploading, setAvatarUploading] = useState(false);
+    const avatarInputRef = useRef<HTMLInputElement>(null);
+
     const supabase = createClient();
     const params = useParams();
     const slug = typeof params?.slug === 'string' ? params.slug : Array.isArray(params?.slug) ? params.slug[0] : '';
     const dynamicTabLabel = 'QUOTE';
+
+    // Avatar Upload Handler
+    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        const memberId = quote.customerProfile?.memberId;
+        if (!file || !memberId) {
+            toast.error('No member linked to this quote');
+            return;
+        }
+        try {
+            setAvatarUploading(true);
+            const fileExt = file.name.split('.').pop();
+            const filePath = `${memberId}/avatar_${Date.now()}.${fileExt}`;
+
+            const { error: uploadError } = await supabase.storage.from('users').upload(filePath, file);
+            if (uploadError) throw uploadError;
+
+            const {
+                data: { publicUrl },
+            } = supabase.storage.from('users').getPublicUrl(filePath);
+
+            // Sync to both id_members and auth
+            const res = await updateMemberAvatar(memberId, publicUrl);
+            if (res.success) {
+                setMemberAvatarUrl(publicUrl);
+                toast.success('Member photo updated');
+            } else {
+                toast.error('Failed to update avatar');
+            }
+        } catch (err) {
+            console.error('Avatar upload error:', err);
+            toast.error('Upload failed');
+        } finally {
+            setAvatarUploading(false);
+            if (avatarInputRef.current) avatarInputRef.current.value = '';
+        }
+    };
 
     const fetchDocuments = () => {
         // This is now handled within MemberMediaManager
@@ -520,45 +747,20 @@ export default function QuoteEditorTable({
             toast.error(result.error || 'Failed to update task');
         } else {
             toast.success('Task updated');
+            refreshTasks();
         }
     };
 
-    const transactions = [
-        {
-            key: 'LEAD',
-            label: 'Lead',
-            id: quote.leadId,
-            status: quote.leadId ? 'CREATED' : 'PENDING',
-            href: slug ? `/app/${slug}/leads` : null,
-        },
-        { key: 'QUOTE', label: 'Quote', id: quote.id, status: quote.status, href: null },
-        {
-            key: 'FINANCE',
-            label: 'Finance',
-            id: quote.finance?.id || null,
-            status: quote.finance?.status || 'PENDING',
-            href: null,
-        },
-        { key: 'BOOKING', label: 'Booking', id: null, status: 'PENDING', href: null },
-        { key: 'PAYMENT', label: 'Payment (Refund)', id: null, status: 'PENDING', href: null },
-        { key: 'ALLOTMENT', label: 'Allotment', id: null, status: 'PENDING', href: null },
-        { key: 'PDI', label: 'Pre Delivery Inspection', id: null, status: 'PENDING', href: null },
-        { key: 'INVOICE', label: 'Invoice', id: null, status: 'PENDING', href: null },
-        { key: 'INSURANCE', label: 'Insurance', id: null, status: 'PENDING', href: null },
-        { key: 'REGISTRATION', label: 'Registration', id: null, status: 'PENDING', href: null },
-        { key: 'DELIVERY', label: 'Delivery', id: null, status: 'PENDING', href: null },
-        { key: 'HSRP', label: 'HSRP', id: null, status: 'PENDING', href: null },
-        { key: 'SERVICE', label: 'Service', id: null, status: 'PENDING', href: null },
-        { key: 'FEEDBACK', label: 'Feedback', id: null, status: 'PENDING', href: null },
-        { key: 'TICKETS', label: 'Tickets', id: null, status: 'PENDING', href: null },
-    ];
     const [groups, setGroups] = useState({
         insurance: false,
         accessories: false,
+        services: false,
         pricing: true, // New Toggle for Line-Item Breakdown
         finance: true, // New Toggle for Finance Section
+        transactionQuotes: true,
+        transactionBookings: false,
+        transactionPayments: false,
     });
-    const [expandedTransaction, setExpandedTransaction] = useState<string>('QUOTE');
 
     // --- TRACK QUOTE OPENED ---
     // TODO: Task List for Quote Editor Table Refactor
@@ -583,20 +785,26 @@ export default function QuoteEditorTable({
     // Recalculation engine
     useEffect(() => {
         const accessoriesTotal = localPricing.accessories.filter(a => a.selected).reduce((sum, a) => sum + a.price, 0);
+        const servicesTotal = (localPricing.services || [])
+            .filter((s: any) => s.selected)
+            .reduce((sum: number, s: any) => sum + s.price, 0);
         const insuranceAddonsTotal = localPricing.insuranceAddons
             .filter(a => a.selected)
             .reduce((sum, a) => sum + a.amount, 0);
+        const gstRate = localPricing.insuranceGstRate || 18;
         const insuranceBase = localPricing.insuranceOD + localPricing.insuranceTP + insuranceAddonsTotal;
-        const insuranceGST = Math.round(insuranceBase * 0.18);
+        const insuranceGST = Math.round(insuranceBase * (gstRate / 100));
         const insuranceTotal = insuranceBase + insuranceGST;
 
-        const subtotal = localPricing.exShowroom + localPricing.rtoTotal + insuranceTotal + accessoriesTotal;
+        const subtotal =
+            localPricing.exShowroom + localPricing.rtoTotal + insuranceTotal + accessoriesTotal + servicesTotal;
         const managerDiscount = parseFloat(managerDiscountInput) || 0;
         const finalTotal = subtotal - Math.abs(localPricing.dealerDiscount) - managerDiscount;
 
         setLocalPricing(prev => ({
             ...prev,
             accessoriesTotal,
+            servicesTotal,
             insuranceGST,
             insuranceTotal,
             onRoadTotal: subtotal,
@@ -610,6 +818,7 @@ export default function QuoteEditorTable({
         localPricing.insuranceTP,
         localPricing.insuranceAddons,
         localPricing.accessories,
+        localPricing.services,
         localPricing.dealerDiscount,
         managerDiscountInput,
     ]);
@@ -686,6 +895,26 @@ export default function QuoteEditorTable({
                 label: 'Accessories Total',
                 oldValue: formatCurrency(quote.pricing.accessoriesTotal),
                 newValue: formatCurrency(nextPricing.accessoriesTotal),
+            });
+        }
+
+        const oldServices = getSelectedItems(quote.pricing.services);
+        const newServices = getSelectedItems(nextPricing.services);
+        if (oldServices.join('|') !== newServices.join('|')) {
+            changes.push({
+                key: 'services',
+                label: 'Services',
+                oldValue: formatList(oldServices),
+                newValue: formatList(newServices),
+            });
+        }
+
+        if ((quote.pricing.servicesTotal || 0) !== (nextPricing.servicesTotal || 0)) {
+            changes.push({
+                key: 'servicesTotal',
+                label: 'Services Total',
+                oldValue: formatCurrency(quote.pricing.servicesTotal || 0),
+                newValue: formatCurrency(nextPricing.servicesTotal || 0),
             });
         }
 
@@ -830,79 +1059,52 @@ export default function QuoteEditorTable({
                     </div>
                 </div>
             )}
-            {/* MODULE HEADER LABEL - Above main container */}
-            <div className="px-8 pt-4 pb-2 bg-slate-50 dark:bg-[#0b0d10]">
-                <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-white shadow-[0_0_8px_rgba(99,102,241,0.5)] dark:shadow-none" />
-                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.4em]">
-                        Quote
-                    </span>
-                </div>
-            </div>
-
             {/* STICKY HEADER - MAIN CONTAINER */}
-            <div className="sticky top-0 z-20 flex items-center justify-between px-8 py-5 bg-white/80 dark:bg-[#0b0d10]/80 backdrop-blur-md border-b border-slate-100 dark:border-white/5 shadow-sm">
-                <div className="flex items-center gap-12">
-                    {/* Snapshot Grid */}
-                    <div className="flex items-center gap-8">
-                        {/* ID Section */}
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[9px] font-black text-slate-400 dark:text-white/20 uppercase tracking-widest">
-                                Identifier
-                            </span>
-                            <div className="flex items-center gap-2">
-                                <h1 className="text-sm font-black text-indigo-600 dark:text-white uppercase italic tracking-tight">
-                                    {formatDisplayId(quote.displayId)}
-                                </h1>
-                            </div>
-                        </div>
-
-                        <div className="w-px h-6 bg-slate-100 dark:bg-white/5" />
-
-                        {/* Creation Section */}
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[9px] font-black text-slate-400 dark:text-white/20 uppercase tracking-widest">
-                                Generation Node
-                            </span>
-                            <span className="text-[10px] font-bold text-slate-900 dark:text-white uppercase tracking-tight">
-                                {formatDate(quote.createdAt)}
-                            </span>
-                        </div>
-
-                        <div className="w-px h-6 bg-slate-100 dark:bg-white/5" />
-
-                        {/* Status Section */}
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[9px] font-black text-slate-400 dark:text-white/20 uppercase tracking-widest">
-                                Status Lifecycle
-                            </span>
-                            <div
-                                className={cn(
-                                    'flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider w-fit',
-                                    statusConfig.bg,
-                                    statusConfig.color
+            <div className="sticky top-0 z-20 flex items-center justify-between px-8 py-5 bg-white/80 dark:bg-[#0b0d10]/80 backdrop-blur-md shadow-sm mx-4 mt-4 rounded-2xl border border-slate-100 dark:border-white/5">
+                <div className="flex items-center gap-3 min-w-0">
+                    {/* Member Avatar with Upload */}
+                    <div className="relative shrink-0 group/avatar">
+                        <div
+                            className="w-10 h-10 rounded-full bg-indigo-600 dark:bg-white flex items-center justify-center text-white dark:text-black text-sm font-black uppercase shadow-lg shadow-indigo-600/20 dark:shadow-white/10 overflow-hidden cursor-pointer"
+                            onClick={() => avatarInputRef.current?.click()}
+                        >
+                            {memberAvatarUrl ? (
+                                <img src={memberAvatarUrl} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                                quote.customer.name
+                                    ?.split(' ')
+                                    .map(w => w[0])
+                                    .join('')
+                                    .slice(0, 2)
+                            )}
+                            {/* Camera Overlay */}
+                            <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
+                                {avatarUploading ? (
+                                    <Loader2 size={14} className="animate-spin text-white" />
+                                ) : (
+                                    <Camera size={14} className="text-white" />
                                 )}
-                            >
-                                <statusConfig.icon size={10} />
-                                {statusConfig.label}
                             </div>
                         </div>
-
-                        <div className="w-px h-6 bg-slate-100 dark:bg-white/5" />
-
-                        {/* Modified Section */}
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[9px] font-black text-slate-400 dark:text-white/20 uppercase tracking-widest">
-                                Last Telemetry
-                            </span>
-                            <span className="text-[10px] font-bold text-slate-900 dark:text-white uppercase tracking-tight">
-                                {formatDate(quote.updatedAt)}
-                            </span>
-                        </div>
+                        <input
+                            type="file"
+                            ref={avatarInputRef}
+                            className="hidden"
+                            accept="image/*"
+                            onChange={handleAvatarUpload}
+                        />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                        <h1 className="text-xl font-black italic uppercase tracking-tighter text-slate-900 dark:text-white truncate leading-tight">
+                            {quote.customer.name}
+                        </h1>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-3">
+                    <span className="text-xl font-black italic uppercase tracking-tighter text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
+                        {formatDisplayId(quote.displayId)}
+                    </span>
                     {hasChanges && (
                         <Button
                             onClick={handleSaveLocal}
@@ -922,6 +1124,17 @@ export default function QuoteEditorTable({
                         >
                             <Download size={14} />
                         </Button>
+                        {(quote.status === 'DRAFT' || quote.status === 'IN_REVIEW') && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={onSendToCustomer}
+                                className="h-8 rounded-lg text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400"
+                                title="Send to Customer"
+                            >
+                                <Send size={14} />
+                            </Button>
+                        )}
                         <Button
                             variant="ghost"
                             size="sm"
@@ -931,6 +1144,40 @@ export default function QuoteEditorTable({
                             <Share2 size={14} />
                         </Button>
                         <div className="w-px h-4 bg-slate-200 dark:bg-white/10 mx-1" />
+                        <div
+                            className={cn(
+                                'flex items-center gap-1 h-8 px-2 rounded-lg text-[9px] font-black uppercase tracking-wider',
+                                statusConfig.color
+                            )}
+                            title={`Status: ${statusConfig.label}`}
+                        >
+                            <statusConfig.icon size={14} />
+                        </div>
+                        <div className="w-px h-4 bg-slate-200 dark:bg-white/10 mx-1" />
+                        {(() => {
+                            const days = Math.floor(
+                                (Date.now() - new Date(quote.createdAt).getTime()) / (1000 * 60 * 60 * 24)
+                            );
+                            const color =
+                                days <= 3
+                                    ? 'text-emerald-600 bg-emerald-500/10'
+                                    : days <= 7
+                                      ? 'text-amber-600 bg-amber-500/10'
+                                      : 'text-red-600 bg-red-500/10';
+                            return (
+                                <div
+                                    className={cn(
+                                        'flex items-center gap-1 h-8 px-2.5 rounded-lg text-[9px] font-black uppercase tracking-wider',
+                                        color
+                                    )}
+                                    title={`Quote created ${days} day${days !== 1 ? 's' : ''} ago`}
+                                >
+                                    <Clock size={12} />
+                                    {days}D
+                                </div>
+                            );
+                        })()}
+                        <div className="w-px h-4 bg-slate-200 dark:bg-white/10 mx-1" />
                         <Button
                             variant="ghost"
                             size="sm"
@@ -939,53 +1186,68 @@ export default function QuoteEditorTable({
                             <MoreHorizontal size={14} />
                         </Button>
                     </div>
-
-                    {(quote.status === 'DRAFT' || quote.status === 'REVIEWED') && (
-                        <Button
-                            onClick={onSendToCustomer}
-                            className="bg-slate-900 dark:bg-white text-white dark:text-black hover:opacity-90 rounded-xl px-6 h-10 text-xs font-black uppercase tracking-widest transition-all active:scale-95 ml-2"
-                        >
-                            <Send size={16} className="mr-2" />
-                            Send to Customer
-                        </Button>
-                    )}
                 </div>
             </div>
 
             {/* MAIN CONTENT AREA - GRID SPLIT */}
             <div className="flex-1 flex min-h-0 overflow-hidden">
                 {/* LEFT: PRICING EDITOR (flex-1) */}
-                <div className="flex-1 overflow-y-auto no-scrollbar pb-24 border-r border-slate-100 dark:border-white/5">
-                    {/* 1. INFORMATIONAL GRID (Customer & Vehicle) */}
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-px bg-slate-100 dark:bg-white/5 border-b border-slate-100 dark:border-white/5">
-                        {/* Customer Info */}
-                        <div className="bg-white dark:bg-[#0b0d10] p-6 flex items-center gap-4 group hover:bg-slate-50 dark:hover:bg-white/[0.01] transition-colors">
-                            <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-white/5 flex items-center justify-center text-indigo-600 dark:text-white shrink-0 shadow-inner group-hover:scale-110 transition-transform">
-                                <User size={20} />
-                            </div>
-                            <div className="flex flex-col min-w-0">
-                                <span className="text-[9px] font-black text-slate-400 dark:text-white/20 uppercase tracking-[0.2em] mb-0.5">
-                                    Customer Selection
-                                </span>
-                                <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tighter truncate">
-                                    {quote.customer.name}
-                                </h2>
-                                <div className="flex items-center gap-3 mt-1">
-                                    <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
-                                        <Phone size={10} className="text-indigo-500/60" />
-                                        {quote.customer.phone}
-                                    </div>
-                                    <div className="w-0.5 h-0.5 rounded-full bg-slate-200 dark:bg-white/10" />
-                                    <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 uppercase tracking-tighter">
-                                        <History size={10} className="text-amber-500/60" />
-                                        {quote.customer.leadSource || 'Direct'}
-                                    </div>
-                                </div>
-                            </div>
+                <div className="flex-1 overflow-y-auto no-scrollbar pb-24 border-r border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-slate-950">
+                    {/* Tabs - Sticky */}
+                    <div
+                        className="sticky top-0 z-10 bg-white/20 dark:bg-white/[0.03] backdrop-blur-xl mx-4 mt-4 rounded-2xl overflow-hidden border border-white/20 dark:border-white/5 shadow-sm"
+                        style={{ width: 'calc(100% - 2rem)' }}
+                    >
+                        <div className="grid grid-cols-8 text-[9px] font-black uppercase tracking-widest w-full">
+                            {(
+                                [
+                                    { key: 'DYNAMIC', label: dynamicTabLabel, count: 0 },
+                                    { key: 'FINANCE', label: 'FINANCE', count: 0 },
+                                    {
+                                        key: 'TRANSACTIONS',
+                                        label: 'TRANSACTIONS',
+                                        count: relatedQuotes.length + bookings.length + payments.length,
+                                    },
+                                    { key: 'TASKS', label: 'TASKS', count: localTasks.length },
+                                    { key: 'NOTES', label: 'NOTES', count: 0 },
+                                    { key: 'DOCUMENTS', label: 'DOCUMENTS', count: docCount },
+                                    { key: 'MEMBER', label: 'MEMBER', count: 0 },
+                                    { key: 'TIMELINE', label: 'TIMELINE', count: quote.timeline?.length || 0 },
+                                ] as { key: string; label: string; count: number }[]
+                            ).map((tab, idx) => (
+                                <button
+                                    key={tab.key}
+                                    onClick={() => setActiveTab(tab.key as any)}
+                                    className={cn(
+                                        'w-full py-3 text-center transition-all relative',
+                                        idx < 7 ? 'border-r border-slate-100 dark:border-white/10' : '',
+                                        activeTab === tab.key
+                                            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                                            : 'bg-transparent text-slate-400 hover:text-slate-600 hover:bg-white/30 dark:hover:bg-white/10'
+                                    )}
+                                >
+                                    {tab.label}
+                                    {tab.count > 0 && (
+                                        <span
+                                            className={cn(
+                                                'ml-1 inline-flex items-center justify-center min-w-[14px] h-[14px] px-1 rounded-full text-[7px] font-black',
+                                                activeTab === tab.key
+                                                    ? 'bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900'
+                                                    : 'bg-indigo-500/10 text-indigo-600 dark:bg-white/10 dark:text-white/60'
+                                            )}
+                                        >
+                                            {tab.count}
+                                        </span>
+                                    )}
+                                </button>
+                            ))}
                         </div>
+                    </div>
 
-                        {/* Vehicle Info */}
-                        <div className="bg-white dark:bg-[#0b0d10] p-6 flex items-center gap-4 group hover:bg-slate-50 dark:hover:bg-white/[0.01] transition-colors border-t xl:border-t-0 xl:border-l border-slate-100 dark:border-white/5">
+                    {/* 1. INFORMATIONAL GRID (Vehicle & Finance) */}
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-px bg-slate-100 dark:bg-white/5 mx-4 mt-4 rounded-2xl overflow-hidden border border-slate-100 dark:border-white/5">
+                        {/* Vehicle / SKU Details */}
+                        <div className="bg-white dark:bg-[#0b0d10] p-6 flex items-center gap-4 group hover:bg-slate-50 dark:hover:bg-white/[0.01] transition-colors">
                             <div className="relative w-20 h-12 bg-slate-50 dark:bg-white/5 rounded-xl overflow-hidden shadow-inner group-hover:scale-105 transition-transform">
                                 {quote.vehicle.imageUrl ? (
                                     <img
@@ -1016,9 +1278,7 @@ export default function QuoteEditorTable({
                                             {quote.vehicle.variant} • {quote.vehicle.color}
                                         </p>
                                     </div>
-                                    <p className="text-[9px] font-bold text-slate-400 font-mono">
-                                        SKU: {quote.vehicle.skuId}
-                                    </p>
+
                                     {quote.studioName && (
                                         <div className="flex items-center gap-1.5 mt-1 pt-1 border-t border-slate-100 dark:border-white/5">
                                             <Building2 size={10} className="text-indigo-500 dark:text-white" />
@@ -1035,36 +1295,66 @@ export default function QuoteEditorTable({
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    {/* Tabs */}
-                    <div className="w-full bg-white dark:bg-[#0b0d10] border-y border-slate-100 dark:border-white/10">
-                        <div className="grid grid-cols-7 text-[9px] font-black uppercase tracking-widest w-full">
-                            {(
-                                [
-                                    { key: 'DYNAMIC', label: dynamicTabLabel },
-                                    { key: 'MEMBER', label: 'MEMBER' },
-                                    { key: 'TASKS', label: 'TASKS' },
-                                    { key: 'DOCUMENTS', label: 'DOCUMENTS' },
-                                    { key: 'EVENTS', label: 'EVENTS' },
-                                    { key: 'NOTES', label: 'NOTES' },
-                                    { key: 'TRANSACTIONS', label: 'TRANSACTIONS' },
-                                ] as const
-                            ).map((tab, idx) => (
-                                <button
-                                    key={tab.key}
-                                    onClick={() => setActiveTab(tab.key as any)}
-                                    className={cn(
-                                        'w-full py-3 text-center transition-all',
-                                        idx < 6 ? 'border-r border-slate-100 dark:border-white/10' : '',
-                                        activeTab === tab.key
-                                            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
-                                            : 'bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-slate-600'
+                        {/* Finance Details */}
+                        <div className="bg-white dark:bg-[#0b0d10] p-6 flex items-center gap-4 group hover:bg-slate-50 dark:hover:bg-white/[0.01] transition-colors border-t xl:border-t-0 xl:border-l border-slate-100 dark:border-white/5">
+                            <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-white/5 flex items-center justify-center text-emerald-600 dark:text-white shrink-0 shadow-inner group-hover:scale-110 transition-transform">
+                                <BarChart3 size={20} />
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                                <span className="text-[9px] font-black text-slate-400 dark:text-white/20 uppercase tracking-[0.2em] mb-0.5">
+                                    Finance Mode
+                                </span>
+                                <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tighter truncate">
+                                    {quote.financeMode === 'LOAN' ? 'Loan Finance' : 'Cash Purchase'}
+                                </h2>
+                                <div className="flex items-center gap-3 mt-1 flex-wrap">
+                                    {quote.finance?.bankName && (
+                                        <>
+                                            <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
+                                                <Building2 size={10} className="text-emerald-500/60" />
+                                                {quote.finance.bankName}
+                                            </div>
+                                            <div className="w-0.5 h-0.5 rounded-full bg-slate-200 dark:bg-white/10" />
+                                        </>
                                     )}
-                                >
-                                    {tab.label}
-                                </button>
-                            ))}
+                                    {quote.finance?.status && (
+                                        <div
+                                            className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${
+                                                quote.finance.status === 'APPROVED'
+                                                    ? 'bg-emerald-500/10 text-emerald-600'
+                                                    : quote.finance.status === 'REJECTED'
+                                                      ? 'bg-red-500/10 text-red-600'
+                                                      : 'bg-amber-500/10 text-amber-600'
+                                            }`}
+                                        >
+                                            {quote.finance.status}
+                                        </div>
+                                    )}
+                                    {quote.finance?.emi && (
+                                        <div className="text-[10px] font-bold text-slate-500">
+                                            EMI: ₹{quote.finance?.emi?.toLocaleString() || '0'}/mo
+                                        </div>
+                                    )}
+                                    {quote.finance?.downPayment && (
+                                        <div className="text-[10px] font-bold text-slate-500">
+                                            DP: ₹{quote.finance?.downPayment?.toLocaleString() || '0'}
+                                        </div>
+                                    )}
+                                    {quote.finance?.tenureMonths && (
+                                        <div className="text-[10px] font-bold text-slate-500">
+                                            {quote.finance.tenureMonths} months
+                                        </div>
+                                    )}
+                                    {!quote.finance?.bankName && !quote.finance?.status && (
+                                        <span className="text-[10px] font-bold text-slate-400">
+                                            {quote.financeMode === 'LOAN'
+                                                ? 'Bank selection pending'
+                                                : 'Full payment at delivery'}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1696,44 +1986,6 @@ export default function QuoteEditorTable({
                                         )}
                                     </div>
                                 </div>
-
-                                {/* Identity Vault (Documents) */}
-                                {quote.customerProfile?.memberId && (
-                                    <div className="mt-8 bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[3rem] p-10 shadow-sm">
-                                        <div className="mb-8 flex items-center justify-between">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 rounded-2xl bg-indigo-600 dark:bg-white flex items-center justify-center text-white dark:text-black shadow-lg shadow-indigo-600/30 dark:shadow-white/10">
-                                                    <ImageIcon size={24} />
-                                                </div>
-                                                <div>
-                                                    <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">
-                                                        Identity{' '}
-                                                        <span className="text-indigo-600 dark:text-white italic">
-                                                            Vault
-                                                        </span>
-                                                    </h2>
-                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-                                                        Media Manager & Document Studio
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <div className="px-4 py-2 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/10">
-                                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                                        Active Member
-                                                    </span>
-                                                    <div className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                                                        {quote.customerProfile.fullName}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <MemberMediaManager
-                                            memberId={quote.customerProfile.memberId}
-                                            quoteId={quote.id}
-                                        />
-                                    </div>
-                                )}
                             </div>
                         </div>
                     )}
@@ -1822,12 +2074,50 @@ export default function QuoteEditorTable({
                                                 <PricingRow
                                                     isSub
                                                     label="Third Party (Basic)"
-                                                    value={formatCurrency(localPricing.insuranceTP)}
+                                                    value={
+                                                        isEditable ? (
+                                                            <div className="flex items-center gap-1">
+                                                                <span className="text-slate-400">₹</span>
+                                                                <input
+                                                                    type="number"
+                                                                    value={localPricing.insuranceTP}
+                                                                    onChange={e =>
+                                                                        setLocalPricing(p => ({
+                                                                            ...p,
+                                                                            insuranceTP: parseInt(e.target.value) || 0,
+                                                                        }))
+                                                                    }
+                                                                    className="w-20 bg-transparent border-b border-slate-200 dark:border-white/10 focus:border-indigo-500 outline-none text-right font-black"
+                                                                />
+                                                            </div>
+                                                        ) : (
+                                                            formatCurrency(localPricing.insuranceTP)
+                                                        )
+                                                    }
                                                 />
                                                 <PricingRow
                                                     isSub
                                                     label="Own Damage (OD)"
-                                                    value={formatCurrency(localPricing.insuranceOD)}
+                                                    value={
+                                                        isEditable ? (
+                                                            <div className="flex items-center gap-1">
+                                                                <span className="text-slate-400">₹</span>
+                                                                <input
+                                                                    type="number"
+                                                                    value={localPricing.insuranceOD}
+                                                                    onChange={e =>
+                                                                        setLocalPricing(p => ({
+                                                                            ...p,
+                                                                            insuranceOD: parseInt(e.target.value) || 0,
+                                                                        }))
+                                                                    }
+                                                                    className="w-20 bg-transparent border-b border-slate-200 dark:border-white/10 focus:border-indigo-500 outline-none text-right font-black"
+                                                                />
+                                                            </div>
+                                                        ) : (
+                                                            formatCurrency(localPricing.insuranceOD)
+                                                        )
+                                                    }
                                                 />
                                                 {localPricing.insuranceAddons.map(addon => (
                                                     <PricingRow
@@ -1856,7 +2146,19 @@ export default function QuoteEditorTable({
                                                 ))}
                                                 <PricingRow
                                                     isSub
-                                                    label="GST (i18n Tax • 18%)"
+                                                    isBold
+                                                    label="Net Premium"
+                                                    value={formatCurrency(
+                                                        localPricing.insuranceOD +
+                                                            localPricing.insuranceTP +
+                                                            localPricing.insuranceAddons
+                                                                .filter(a => a.selected)
+                                                                .reduce((sum, a) => sum + a.amount, 0)
+                                                    )}
+                                                />
+                                                <PricingRow
+                                                    isSub
+                                                    label="GST (18% GST)"
                                                     value={formatCurrency(localPricing.insuranceGST)}
                                                 />
                                             </PricingGroup>
@@ -1892,6 +2194,41 @@ export default function QuoteEditorTable({
                                                 ))}
                                             </PricingGroup>
 
+                                            {/* Services Group */}
+                                            {(localPricing.services || []).length > 0 && (
+                                                <PricingGroup
+                                                    title="Services & Warranties"
+                                                    icon={Wrench}
+                                                    total={formatCurrency(localPricing.servicesTotal || 0)}
+                                                    isExpanded={groups.services}
+                                                    onToggle={() => setGroups(g => ({ ...g, services: !g.services }))}
+                                                >
+                                                    {(localPricing.services || []).map((svc: any) => (
+                                                        <PricingRow
+                                                            key={svc.id}
+                                                            isSub
+                                                            label={svc.name}
+                                                            value={
+                                                                svc.selected ? formatCurrency(svc.price) : 'Excluded'
+                                                            }
+                                                            extra={
+                                                                <div className="flex items-center gap-2">
+                                                                    {svc.selected ? (
+                                                                        <div className="flex items-center gap-1 px-2 py-0.5 bg-teal-500/10 dark:bg-white/10 text-teal-500 dark:text-white rounded text-[8px] font-black uppercase tracking-widest">
+                                                                            <CheckCircle2 size={10} /> Active
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="text-[8px] font-bold text-slate-400 uppercase">
+                                                                            Excluded
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            }
+                                                        />
+                                                    ))}
+                                                </PricingGroup>
+                                            )}
+
                                             {/* Discount Section */}
                                             <div className="bg-emerald-500/[0.03] dark:bg-emerald-500/[0.01]">
                                                 <PricingRow
@@ -1923,6 +2260,18 @@ export default function QuoteEditorTable({
                                                                 placeholder="0"
                                                             />
                                                         </div>
+                                                    </div>
+                                                    <div className="mt-4">
+                                                        <input
+                                                            type="text"
+                                                            value={managerNote}
+                                                            onChange={e => {
+                                                                setManagerNote(e.target.value);
+                                                                setHasChanges(true);
+                                                            }}
+                                                            className="w-full bg-white dark:bg-white/5 border border-amber-200/50 dark:border-amber-500/20 rounded-xl px-4 py-2.5 text-[10px] font-bold text-amber-900 dark:text-amber-400 placeholder:text-amber-500/30 focus:outline-none focus:ring-1 focus:ring-amber-500/30 shadow-sm"
+                                                            placeholder="Note: Reason for discretionary discount..."
+                                                        />
                                                     </div>
                                                 </div>
                                             </div>
@@ -1983,13 +2332,56 @@ export default function QuoteEditorTable({
                                                     </div>
                                                 </div>
                                             </div>
-                                            <Button
+                                            <button
                                                 onClick={onSendToCustomer}
-                                                className="bg-white hover:bg-slate-100 text-black rounded-xl px-8 h-12 text-xs font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap"
+                                                className="inline-flex items-center justify-center bg-white hover:bg-slate-100 text-slate-900 rounded-xl px-8 h-12 text-xs font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap shadow-lg"
                                             >
                                                 <Send size={16} className="mr-2" />
                                                 Release Quote
-                                            </Button>
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* FINANCE SUMMARY (Always show at bottom if LOAN) */}
+                                    {quote.financeMode === 'LOAN' && (
+                                        <div className="mx-8 mb-8 p-6 bg-indigo-50 dark:bg-indigo-500/5 rounded-3xl border border-indigo-100 dark:border-indigo-500/10 flex flex-col md:flex-row items-center justify-between gap-6">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 bg-white dark:bg-white/10 rounded-xl flex items-center justify-center text-indigo-600 dark:text-white shadow-sm">
+                                                    <BarChart3 size={20} />
+                                                </div>
+                                                <div>
+                                                    <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest block mb-0.5">
+                                                        Estimated Finance Summary
+                                                    </span>
+                                                    <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                                                        {quote.finance?.bankName || 'Standard Finance Scheme'}
+                                                    </h3>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-8">
+                                                <div className="text-center md:text-left">
+                                                    <span className="text-[8px] font-bold text-slate-400 uppercase block mb-0.5">
+                                                        Monthly EMI
+                                                    </span>
+                                                    <span className="text-lg font-black text-slate-900 dark:text-white tabular-nums">
+                                                        ₹{quote.finance?.emi?.toLocaleString() || '0'}/mo
+                                                    </span>
+                                                </div>
+                                                <div className="text-center md:text-left">
+                                                    <span className="text-[8px] font-bold text-slate-400 uppercase block mb-0.5">
+                                                        Down Payment
+                                                    </span>
+                                                    <span className="text-lg font-black text-slate-900 dark:text-white tabular-nums">
+                                                        ₹{quote.finance?.downPayment?.toLocaleString() || '0'}
+                                                    </span>
+                                                </div>
+                                                <button
+                                                    onClick={() => setActiveTab('FINANCE')}
+                                                    className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/20"
+                                                >
+                                                    View Details
+                                                </button>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
@@ -1997,19 +2389,849 @@ export default function QuoteEditorTable({
                         </>
                     )}
 
+                    {activeTab === 'FINANCE' && (
+                        <div className="p-6">
+                            {financeMode === 'CASH' ? (
+                                <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[2rem] p-12 text-center">
+                                    <div className="w-16 h-16 bg-slate-50 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
+                                        <Wallet size={32} className="text-slate-400" />
+                                    </div>
+                                    <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight mb-2">
+                                        Cash Purchase Mode
+                                    </h3>
+                                    <p className="text-xs text-slate-500 max-w-xs mx-auto font-bold">
+                                        This quote is configured for full payment. No finance or loan tracking is active
+                                        for this session.
+                                    </p>
+                                    <button
+                                        onClick={() => handleFinanceModeChange('LOAN')}
+                                        className="mt-6 px-6 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg active:scale-95"
+                                    >
+                                        Switch to Loan Finance
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-6">
+                                    {/* FINANCE SCHEME CARD */}
+                                    <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl shadow-indigo-500/5 transition-all">
+                                        {/* Card Header with Avatar */}
+                                        <div className="p-8 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-50 dark:border-white/5">
+                                            <div className="flex items-center gap-5">
+                                                <div className="relative group/avatar">
+                                                    {quote.finance?.bankLogo ? (
+                                                        <img
+                                                            src={quote.finance.bankLogo}
+                                                            alt={quote.finance.bankName || 'Bank'}
+                                                            className="w-14 h-14 rounded-2xl object-contain bg-white dark:bg-white/5 p-2 border border-slate-100 dark:border-white/10 shadow-md group-hover/avatar:scale-110 transition-transform"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-14 h-14 bg-indigo-600 dark:bg-white text-white dark:text-black rounded-2xl flex items-center justify-center text-base font-black tracking-tighter shadow-xl shadow-indigo-500/20 group-hover/avatar:scale-110 transition-transform">
+                                                            {getBankInitials(quote.finance?.bankName || 'BANK')}
+                                                        </div>
+                                                    )}
+                                                    <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 border-4 border-white dark:border-[#0b0d10] rounded-full shadow-lg" />
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center gap-3">
+                                                        {isEditingFinance ? (
+                                                            <input
+                                                                type="text"
+                                                                value={financeDraft.bankName || ''}
+                                                                onChange={e =>
+                                                                    setFinanceDraft(d => ({
+                                                                        ...d,
+                                                                        bankName: e.target.value,
+                                                                    }))
+                                                                }
+                                                                className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter bg-transparent border-b border-indigo-500/30 focus:border-indigo-500 outline-none w-64"
+                                                                placeholder="Financier Name..."
+                                                            />
+                                                        ) : (
+                                                            <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">
+                                                                {quote.finance?.bankName || 'Selecting Bank...'}
+                                                            </h3>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-3 mt-1">
+                                                        <span className="bg-amber-500/10 text-amber-600 shadow-sm text-[10px] font-black uppercase tracking-[0.1em] px-2.5 py-1 rounded-lg">
+                                                            UNDERWRITING
+                                                        </span>
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                            •
+                                                        </span>
+                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                            PRIMARY
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Removed On-Road Settlement block as per request */}
+                                        </div>
+
+                                        {/* Card content - Broken down by Logic Sections */}
+                                        <div className="p-8 space-y-10">
+                                            {/* SECTION A: ASSET SETTLEMENT */}
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-3 mb-6">
+                                                    <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-white/5 flex items-center justify-center text-indigo-500">
+                                                        <Target size={18} />
+                                                    </div>
+                                                    <h4 className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-[0.25em]">
+                                                        Asset Settlement
+                                                    </h4>
+                                                    <div className="flex-1 h-px bg-slate-100 dark:bg-white/5" />
+                                                </div>
+                                                <div className="bg-slate-50/50 dark:bg-white/[0.01] rounded-[2rem] border border-slate-100 dark:border-white/5 overflow-hidden">
+                                                    <PricingRow
+                                                        label="Asset Cost (Net SOT)"
+                                                        value={formatCurrency(localPricing.finalTotal)}
+                                                        description={
+                                                            <span className="text-[8px] text-slate-400 uppercase font-bold tracking-widest">
+                                                                Locked: Original Quote Value
+                                                            </span>
+                                                        }
+                                                    />
+                                                    <PricingRow
+                                                        label="Offer Discount"
+                                                        value={
+                                                            isEditingFinance ? (
+                                                                <div className="flex items-center gap-1">
+                                                                    <span className="text-slate-400 text-xs font-bold">
+                                                                        ₹
+                                                                    </span>
+                                                                    <input
+                                                                        type="number"
+                                                                        value={financeDraft.approvedMarginMoney || 0}
+                                                                        onChange={e =>
+                                                                            setFinanceDraft(p => ({
+                                                                                ...p,
+                                                                                approvedMarginMoney:
+                                                                                    parseInt(e.target.value) || 0,
+                                                                            }))
+                                                                        }
+                                                                        className="w-24 bg-transparent border-b border-indigo-500/30 focus:border-indigo-500 outline-none text-right font-black text-sm p-0"
+                                                                    />
+                                                                </div>
+                                                            ) : (
+                                                                formatCurrency(quote.finance?.approvedMarginMoney || 0)
+                                                            )
+                                                        }
+                                                        description={
+                                                            <span className="text-[8px] text-slate-400 uppercase font-black tracking-widest">
+                                                                Applied: ₹0
+                                                            </span>
+                                                        }
+                                                    />
+                                                    <PricingRow
+                                                        isBold
+                                                        label="Total Payable"
+                                                        value={formatCurrency(
+                                                            localPricing.finalTotal -
+                                                                (isEditingFinance
+                                                                    ? financeDraft.approvedMarginMoney || 0
+                                                                    : quote.finance?.approvedMarginMoney || 0)
+                                                        )}
+                                                        description={
+                                                            <span className="text-[8px] text-emerald-500 uppercase font-extrabold tracking-widest italic">
+                                                                Asset Cost - Discount
+                                                            </span>
+                                                        }
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* SECTION B: FINANCE PILLARS */}
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-3 mb-6">
+                                                    <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-white/5 flex items-center justify-center text-indigo-500">
+                                                        <TrendingUp size={18} />
+                                                    </div>
+                                                    <h4 className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-[0.25em]">
+                                                        Finance Pillars
+                                                    </h4>
+                                                    <div className="flex-1 h-px bg-slate-100 dark:bg-white/5" />
+                                                </div>
+                                                <div className="bg-slate-50/50 dark:bg-white/[0.01] rounded-[2rem] border border-slate-100 dark:border-white/5 overflow-hidden">
+                                                    <PricingRow
+                                                        label="Down Payment"
+                                                        value={
+                                                            isEditingFinance ? (
+                                                                <div className="flex items-center gap-1">
+                                                                    <span className="text-slate-400 text-xs font-bold">
+                                                                        ₹
+                                                                    </span>
+                                                                    <input
+                                                                        type="number"
+                                                                        value={financeDraft.approvedDownPayment || 0}
+                                                                        onChange={e =>
+                                                                            setFinanceDraft(p => ({
+                                                                                ...p,
+                                                                                approvedDownPayment:
+                                                                                    parseInt(e.target.value) || 0,
+                                                                            }))
+                                                                        }
+                                                                        className="w-32 bg-transparent border-b border-indigo-500/30 focus:border-indigo-500 outline-none text-right font-black text-sm p-0"
+                                                                    />
+                                                                </div>
+                                                            ) : (
+                                                                formatCurrency(quote.finance?.approvedDownPayment || 0)
+                                                            )
+                                                        }
+                                                        description={
+                                                            <span className="text-[8px] text-slate-400 uppercase font-black tracking-widest italic">
+                                                                Payable - Loan + Upfront
+                                                            </span>
+                                                        }
+                                                    />
+                                                    <PricingRow
+                                                        label="Loan Amount (Net)"
+                                                        value={
+                                                            isEditingFinance ? (
+                                                                <div className="flex items-center gap-1">
+                                                                    <span className="text-slate-400 text-xs font-bold">
+                                                                        ₹
+                                                                    </span>
+                                                                    <input
+                                                                        type="number"
+                                                                        value={financeDraft.approvedAmount || 0}
+                                                                        onChange={e =>
+                                                                            setFinanceDraft(p => ({
+                                                                                ...p,
+                                                                                approvedAmount:
+                                                                                    parseInt(e.target.value) || 0,
+                                                                            }))
+                                                                        }
+                                                                        className="w-32 bg-transparent border-b border-indigo-500/30 focus:border-indigo-500 outline-none text-right font-black text-sm p-0"
+                                                                    />
+                                                                </div>
+                                                            ) : (
+                                                                formatCurrency(quote.finance?.approvedAmount || 0)
+                                                            )
+                                                        }
+                                                        description={
+                                                            <span className="text-[8px] text-slate-400 uppercase font-black tracking-widest italic">
+                                                                Asset Cost - Down Payment
+                                                            </span>
+                                                        }
+                                                    />
+                                                    <PricingRow
+                                                        isBold
+                                                        label="Gross Loan Amount"
+                                                        value={formatCurrency(
+                                                            (isEditingFinance
+                                                                ? financeDraft.approvedAmount || 0
+                                                                : quote.finance?.approvedAmount || 0) +
+                                                                (isEditingFinance
+                                                                    ? financeDraft.approvedAddOns || 0
+                                                                    : quote.finance?.approvedAddOns || 0)
+                                                        )}
+                                                        description={
+                                                            <span className="text-[8px] text-emerald-500 uppercase font-extrabold tracking-widest italic">
+                                                                Net Loan + Add-ons Total
+                                                            </span>
+                                                        }
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* SECTION C-1: UPFRONT OBLIGATIONS */}
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-3 mb-6">
+                                                    <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-white/5 flex items-center justify-center text-indigo-500">
+                                                        <Wallet size={18} />
+                                                    </div>
+                                                    <h4 className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-[0.25em]">
+                                                        Upfront Obligations
+                                                    </h4>
+                                                    <div className="flex-1 h-px bg-slate-100 dark:bg-white/5" />
+                                                </div>
+                                                <div className="bg-slate-50/50 dark:bg-white/[0.01] rounded-[2rem] border border-slate-100 dark:border-white/5 overflow-hidden">
+                                                    {(isEditingFinance
+                                                        ? financeDraft.approvedChargesBreakup || []
+                                                        : quote.finance?.approvedChargesBreakup || []
+                                                    ).map((charge, idx) => (
+                                                        <PricingRow
+                                                            key={idx}
+                                                            isSub
+                                                            label={
+                                                                isEditingFinance ? (
+                                                                    <input
+                                                                        type="text"
+                                                                        value={charge.label}
+                                                                        onChange={e => {
+                                                                            const newBreakup = [
+                                                                                ...(financeDraft.approvedChargesBreakup ||
+                                                                                    []),
+                                                                            ];
+                                                                            newBreakup[idx] = {
+                                                                                ...newBreakup[idx],
+                                                                                label: e.target.value,
+                                                                            };
+                                                                            setFinanceDraft(d => ({
+                                                                                ...d,
+                                                                                approvedChargesBreakup: newBreakup,
+                                                                            }));
+                                                                        }}
+                                                                        className="bg-transparent border-b border-indigo-500/30 outline-none w-32 focus:border-indigo-500 font-bold"
+                                                                    />
+                                                                ) : (
+                                                                    charge.label
+                                                                )
+                                                            }
+                                                            value={
+                                                                isEditingFinance ? (
+                                                                    <div className="flex items-center gap-1">
+                                                                        <span className="text-slate-400 font-bold">
+                                                                            ₹
+                                                                        </span>
+                                                                        <input
+                                                                            type="number"
+                                                                            value={charge.amount}
+                                                                            onChange={e => {
+                                                                                const val =
+                                                                                    parseInt(e.target.value) || 0;
+                                                                                const newBreakup = [
+                                                                                    ...(financeDraft.approvedChargesBreakup ||
+                                                                                        []),
+                                                                                ];
+                                                                                newBreakup[idx] = {
+                                                                                    ...newBreakup[idx],
+                                                                                    amount: val,
+                                                                                };
+                                                                                const newTotal = newBreakup.reduce(
+                                                                                    (sum, c) => sum + c.amount,
+                                                                                    0
+                                                                                );
+                                                                                setFinanceDraft(d => ({
+                                                                                    ...d,
+                                                                                    approvedChargesBreakup: newBreakup,
+                                                                                    approvedProcessingFee: newTotal,
+                                                                                }));
+                                                                            }}
+                                                                            className="bg-transparent border-b border-indigo-500/30 outline-none w-20 text-right focus:border-indigo-500 font-black"
+                                                                        />
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                const newBreakup = (
+                                                                                    financeDraft.approvedChargesBreakup ||
+                                                                                    []
+                                                                                ).filter((_, i) => i !== idx);
+                                                                                const newTotal = newBreakup.reduce(
+                                                                                    (sum, c) => sum + c.amount,
+                                                                                    0
+                                                                                );
+                                                                                setFinanceDraft(d => ({
+                                                                                    ...d,
+                                                                                    approvedChargesBreakup: newBreakup,
+                                                                                    approvedProcessingFee: newTotal,
+                                                                                }));
+                                                                            }}
+                                                                            className="text-red-500 ml-2 hover:bg-red-500/10 p-1 rounded"
+                                                                        >
+                                                                            <XCircle size={12} />
+                                                                        </button>
+                                                                    </div>
+                                                                ) : (
+                                                                    formatCurrency(charge.amount)
+                                                                )
+                                                            }
+                                                        />
+                                                    ))}
+                                                    {isEditingFinance && (
+                                                        <div className="flex justify-start p-3 pl-8 border-b border-slate-100 dark:border-white/5">
+                                                            <button
+                                                                onClick={() => {
+                                                                    const newBreakup = [
+                                                                        ...(financeDraft.approvedChargesBreakup || []),
+                                                                        { label: 'New Charge', amount: 0 },
+                                                                    ];
+                                                                    setFinanceDraft(d => ({
+                                                                        ...d,
+                                                                        approvedChargesBreakup: newBreakup,
+                                                                    }));
+                                                                }}
+                                                                className="flex items-center gap-1.5 text-[9px] font-black text-indigo-500 uppercase bg-indigo-500/10 px-3 py-1.5 rounded-xl hover:bg-indigo-500/20 active:scale-95 transition-all"
+                                                            >
+                                                                <PlusCircle size={12} /> Add Row
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                    <PricingRow
+                                                        isBold
+                                                        label="Total Upfront Charges"
+                                                        value={formatCurrency(
+                                                            isEditingFinance
+                                                                ? financeDraft.approvedProcessingFee || 0
+                                                                : quote.finance?.approvedProcessingFee || 0
+                                                        )}
+                                                        description={
+                                                            <span className="text-[8px] text-emerald-500 uppercase font-extrabold tracking-widest italic">
+                                                                Payable to Finance Partner
+                                                            </span>
+                                                        }
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* SECTION C-2: FINANCED ADD-ONS */}
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-3 mb-6">
+                                                    <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-white/5 flex items-center justify-center text-indigo-500">
+                                                        <PlusCircle size={18} />
+                                                    </div>
+                                                    <h4 className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-[0.25em]">
+                                                        Financed Add-ons
+                                                    </h4>
+                                                    <div className="flex-1 h-px bg-slate-100 dark:bg-white/5" />
+                                                </div>
+                                                <div className="bg-slate-50/50 dark:bg-white/[0.01] rounded-[2rem] border border-slate-100 dark:border-white/5 overflow-hidden">
+                                                    {(isEditingFinance
+                                                        ? financeDraft.approvedAddonsBreakup || []
+                                                        : quote.finance?.approvedAddonsBreakup || []
+                                                    ).map((addon, idx) => (
+                                                        <PricingRow
+                                                            key={idx}
+                                                            isSub
+                                                            label={
+                                                                isEditingFinance ? (
+                                                                    <input
+                                                                        type="text"
+                                                                        value={addon.label}
+                                                                        onChange={e => {
+                                                                            const newBreakup = [
+                                                                                ...(financeDraft.approvedAddonsBreakup ||
+                                                                                    []),
+                                                                            ];
+                                                                            newBreakup[idx] = {
+                                                                                ...newBreakup[idx],
+                                                                                label: e.target.value,
+                                                                            };
+                                                                            setFinanceDraft(d => ({
+                                                                                ...d,
+                                                                                approvedAddonsBreakup: newBreakup,
+                                                                            }));
+                                                                        }}
+                                                                        className="bg-transparent border-b border-indigo-500/30 outline-none w-32 focus:border-indigo-500 font-bold"
+                                                                    />
+                                                                ) : (
+                                                                    addon.label
+                                                                )
+                                                            }
+                                                            value={
+                                                                isEditingFinance ? (
+                                                                    <div className="flex items-center gap-1">
+                                                                        <span className="text-slate-400 font-bold">
+                                                                            ₹
+                                                                        </span>
+                                                                        <input
+                                                                            type="number"
+                                                                            value={addon.amount}
+                                                                            onChange={e => {
+                                                                                const val =
+                                                                                    parseInt(e.target.value) || 0;
+                                                                                const newBreakup = [
+                                                                                    ...(financeDraft.approvedAddonsBreakup ||
+                                                                                        []),
+                                                                                ];
+                                                                                newBreakup[idx] = {
+                                                                                    ...newBreakup[idx],
+                                                                                    amount: val,
+                                                                                };
+                                                                                const newTotal = newBreakup.reduce(
+                                                                                    (sum, c) => sum + c.amount,
+                                                                                    0
+                                                                                );
+                                                                                setFinanceDraft(d => ({
+                                                                                    ...d,
+                                                                                    approvedAddonsBreakup: newBreakup,
+                                                                                    approvedAddOns: newTotal,
+                                                                                }));
+                                                                            }}
+                                                                            className="bg-transparent border-b border-indigo-500/30 outline-none w-20 text-right focus:border-indigo-500 font-black"
+                                                                        />
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                const newBreakup = (
+                                                                                    financeDraft.approvedAddonsBreakup ||
+                                                                                    []
+                                                                                ).filter((_, i) => i !== idx);
+                                                                                const newTotal = newBreakup.reduce(
+                                                                                    (sum, c) => sum + c.amount,
+                                                                                    0
+                                                                                );
+                                                                                setFinanceDraft(d => ({
+                                                                                    ...d,
+                                                                                    approvedAddonsBreakup: newBreakup,
+                                                                                    approvedAddOns: newTotal,
+                                                                                }));
+                                                                            }}
+                                                                            className="text-red-500 ml-2 hover:bg-red-500/10 p-1 rounded"
+                                                                        >
+                                                                            <XCircle size={12} />
+                                                                        </button>
+                                                                    </div>
+                                                                ) : (
+                                                                    formatCurrency(addon.amount)
+                                                                )
+                                                            }
+                                                        />
+                                                    ))}
+                                                    {isEditingFinance && (
+                                                        <div className="flex justify-start p-3 pl-8 border-b border-slate-100 dark:border-white/5">
+                                                            <button
+                                                                onClick={() => {
+                                                                    const newBreakup = [
+                                                                        ...(financeDraft.approvedAddonsBreakup || []),
+                                                                        { label: 'New Addon', amount: 0 },
+                                                                    ];
+                                                                    setFinanceDraft(d => ({
+                                                                        ...d,
+                                                                        approvedAddonsBreakup: newBreakup,
+                                                                    }));
+                                                                }}
+                                                                className="flex items-center gap-1.5 text-[9px] font-black text-indigo-500 uppercase bg-indigo-500/10 px-3 py-1.5 rounded-xl hover:bg-indigo-500/20 active:scale-95 transition-all"
+                                                            >
+                                                                <PlusCircle size={12} /> Add Row
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                    <PricingRow
+                                                        isBold
+                                                        label="Total Financed Add-ons"
+                                                        value={formatCurrency(
+                                                            isEditingFinance
+                                                                ? financeDraft.approvedAddOns || 0
+                                                                : quote.finance?.approvedAddOns || 0
+                                                        )}
+                                                        description={
+                                                            <span className="text-[8px] text-emerald-500 uppercase font-extrabold tracking-widest italic">
+                                                                Included in Loan Amount
+                                                            </span>
+                                                        }
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* SECTION D: TERMS & PERFORMANCE */}
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-3 mb-6">
+                                                    <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-white/5 flex items-center justify-center text-indigo-500">
+                                                        <Clock size={18} />
+                                                    </div>
+                                                    <h4 className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-[0.25em]">
+                                                        Terms & Performance
+                                                    </h4>
+                                                    <div className="flex-1 h-px bg-slate-100 dark:bg-white/5" />
+                                                </div>
+                                                <div className="bg-slate-50/50 dark:bg-white/[0.01] rounded-[2rem] border border-slate-100 dark:border-white/5 overflow-hidden">
+                                                    <PricingRow
+                                                        label="Scheme Name"
+                                                        value={
+                                                            isEditingFinance ? (
+                                                                <input
+                                                                    type="text"
+                                                                    value={financeDraft.approvedScheme || ''}
+                                                                    onChange={e =>
+                                                                        setFinanceDraft(p => ({
+                                                                            ...p,
+                                                                            approvedScheme: e.target.value,
+                                                                        }))
+                                                                    }
+                                                                    className="w-48 bg-transparent border-b border-indigo-500/30 focus:border-indigo-500 outline-none text-right font-black text-sm p-0"
+                                                                    placeholder="e.g. SPECIAL 2024"
+                                                                />
+                                                            ) : (
+                                                                financeDraft.approvedScheme ||
+                                                                quote.finance?.approvedScheme ||
+                                                                'STANDARD'
+                                                            )
+                                                        }
+                                                    />
+                                                    <PricingRow
+                                                        label="Tenure"
+                                                        value={
+                                                            isEditingFinance ? (
+                                                                <div className="flex items-center gap-2">
+                                                                    <input
+                                                                        type="number"
+                                                                        value={financeDraft.approvedTenure || 0}
+                                                                        onChange={e =>
+                                                                            setFinanceDraft(p => ({
+                                                                                ...p,
+                                                                                approvedTenure:
+                                                                                    parseInt(e.target.value) || 0,
+                                                                            }))
+                                                                        }
+                                                                        className="w-16 bg-transparent border-b border-indigo-500/30 focus:border-indigo-500 outline-none text-right font-black text-sm p-0"
+                                                                    />
+                                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                                                                        Months
+                                                                    </span>
+                                                                </div>
+                                                            ) : (
+                                                                `${quote.finance?.approvedTenure || 0} Months`
+                                                            )
+                                                        }
+                                                        description={
+                                                            <span className="text-[8px] text-slate-400 uppercase font-black tracking-widest italic">
+                                                                Applied: {quote.finance?.tenureMonths || 0} MO
+                                                            </span>
+                                                        }
+                                                    />
+                                                    <PricingRow
+                                                        isBold
+                                                        label="Monthly EMI"
+                                                        value={
+                                                            isEditingFinance ? (
+                                                                <div className="flex items-center gap-1">
+                                                                    <span className="text-slate-400 text-xs font-bold">
+                                                                        ₹
+                                                                    </span>
+                                                                    <input
+                                                                        type="number"
+                                                                        value={financeDraft.approvedEmi || 0}
+                                                                        onChange={e =>
+                                                                            setFinanceDraft(p => ({
+                                                                                ...p,
+                                                                                approvedEmi:
+                                                                                    parseInt(e.target.value) || 0,
+                                                                            }))
+                                                                        }
+                                                                        className="w-28 bg-transparent border-b border-indigo-500/30 focus:border-indigo-500 outline-none text-right font-black text-sm p-0"
+                                                                    />
+                                                                </div>
+                                                            ) : (
+                                                                formatCurrency(quote.finance?.approvedEmi || 0)
+                                                            )
+                                                        }
+                                                        description={
+                                                            <span className="text-[8px] text-emerald-500 uppercase font-extrabold tracking-widest italic">
+                                                                Approved Repayment Amount
+                                                            </span>
+                                                        }
+                                                    />
+                                                    <PricingRow
+                                                        label="ROI (IRR / ROI)"
+                                                        value={
+                                                            isEditingFinance ? (
+                                                                <div className="flex items-center gap-1">
+                                                                    <input
+                                                                        type="number"
+                                                                        value={financeDraft.approvedIrr || 0}
+                                                                        step="0.01"
+                                                                        onChange={e =>
+                                                                            setFinanceDraft(p => ({
+                                                                                ...p,
+                                                                                approvedIrr:
+                                                                                    parseFloat(e.target.value) || 0,
+                                                                            }))
+                                                                        }
+                                                                        className="w-16 bg-transparent border-b border-indigo-500/30 focus:border-indigo-500 outline-none text-right font-black text-sm p-0"
+                                                                    />
+                                                                    <span className="text-xs font-bold text-slate-400">
+                                                                        %
+                                                                    </span>
+                                                                </div>
+                                                            ) : (
+                                                                `${quote.finance?.approvedIrr || 0}%`
+                                                            )
+                                                        }
+                                                        description={
+                                                            <span className="text-[8px] text-slate-400 uppercase font-black tracking-widest italic">
+                                                                Applied: {quote.finance?.roi || 0}%
+                                                            </span>
+                                                        }
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Card Footer - Save/Cancel Actions */}
+                                        {isEditingFinance && (
+                                            <div className="p-8 bg-indigo-500/5 border-t border-indigo-500/10 flex justify-end gap-3 transition-all animate-in slide-in-from-bottom-2 duration-300">
+                                                <button
+                                                    className="px-6 py-2 bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-white/20 transition-all"
+                                                    onClick={() => {
+                                                        setFinanceDraft({ ...quote.finance });
+                                                        setIsEditingFinance(false);
+                                                    }}
+                                                >
+                                                    Discard Changes
+                                                </button>
+                                                <button
+                                                    className="px-8 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-500/20 active:scale-95"
+                                                    onClick={async () => {
+                                                        const updatedFinance = { ...quote.finance, ...financeDraft };
+                                                        setIsSaving(true);
+                                                        // Here we would call a server action, or just update local state if it's managed by Parent
+                                                        // For now, let's update the quote object locally and trigger onSave if needed
+                                                        // @ts-ignore
+                                                        quote.finance = updatedFinance;
+                                                        setIsEditingFinance(false);
+                                                        setHasChanges(true);
+                                                        toast.success('Finance Approved Terms updated');
+                                                        setIsSaving(false);
+                                                    }}
+                                                >
+                                                    Apply Approved Terms
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Action bar for switching/adding (Future) */}
+                                    <div className="flex justify-center p-4">
+                                        <button
+                                            onClick={handleAddNewFinance}
+                                            className="px-6 py-3 bg-slate-50 dark:bg-white/5 border border-dashed border-slate-200 dark:border-white/10 rounded-2xl flex items-center gap-3 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:border-indigo-500/50 hover:text-indigo-500 transition-all group"
+                                        >
+                                            <Plus size={14} className="group-hover:rotate-90 transition-transform" />
+                                            Add Alternative Finance Scheme
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {activeTab === 'TASKS' && (
                         <div className="p-6">
                             <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[2rem] p-6">
-                                <div className="text-xs font-black uppercase tracking-widest text-slate-500 mb-4">
-                                    Tasks
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="text-xs font-black uppercase tracking-widest text-slate-500">
+                                        Tasks
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            const el = document.getElementById('new-task-input');
+                                            if (el) {
+                                                (el as HTMLInputElement).focus();
+                                            }
+                                        }}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-500/10 text-indigo-600 dark:bg-white/10 dark:text-white text-[9px] font-black uppercase tracking-widest hover:bg-indigo-500/20 transition-colors"
+                                    >
+                                        <Plus size={12} />
+                                        Add Task
+                                    </button>
                                 </div>
-                                {tasks.length === 0 ? (
-                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                        No tasks yet
+
+                                {/* Add Task Inline Form */}
+                                <form
+                                    className="space-y-3 mb-5 bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-2xl p-4"
+                                    onSubmit={async e => {
+                                        e.preventDefault();
+                                        const form = e.target as HTMLFormElement;
+                                        const input = form.elements.namedItem('taskTitle') as HTMLInputElement;
+                                        const title = input.value.trim();
+                                        if (!title) return;
+                                        input.disabled = true;
+                                        const result = await createTask({
+                                            tenantId: quote.tenantId || null,
+                                            linkedType: 'QUOTE',
+                                            linkedId: quote.id,
+                                            title,
+                                            primaryAssigneeId: selectedAssignee || null,
+                                            assigneeIds: selectedAssignee ? [selectedAssignee] : [],
+                                        });
+                                        input.disabled = false;
+                                        if (result.success) {
+                                            toast.success('Task created');
+                                            input.value = '';
+                                            setSelectedAssignee('');
+                                            refreshTasks();
+                                        } else {
+                                            toast.error(result.error || 'Failed to create task');
+                                        }
+                                    }}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex-1">
+                                            <input
+                                                id="new-task-input"
+                                                name="taskTitle"
+                                                type="text"
+                                                placeholder="Type task title..."
+                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-sm text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all"
+                                            />
+                                        </div>
+                                        <button
+                                            type="submit"
+                                            className="shrink-0 h-10 px-4 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[9px] font-black uppercase tracking-widest hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors active:scale-95"
+                                        >
+                                            <Plus size={14} />
+                                        </button>
+                                    </div>
+
+                                    {/* Assignee Selector */}
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 shrink-0">
+                                            Assign to:
+                                        </span>
+                                        <div className="relative flex-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowAssigneeDropdown(!showAssigneeDropdown)}
+                                                className={cn(
+                                                    'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-bold transition-all w-full text-left',
+                                                    selectedAssignee
+                                                        ? 'border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
+                                                        : 'border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-500'
+                                                )}
+                                            >
+                                                {selectedAssignee
+                                                    ? teamMembers.find(m => m.id === selectedAssignee)?.name ||
+                                                      'Selected'
+                                                    : 'Select team member (optional)'}
+                                            </button>
+                                            {showAssigneeDropdown && (
+                                                <div className="absolute top-full left-0 mt-1 w-full bg-white dark:bg-[#0f1115] border border-slate-100 dark:border-white/10 rounded-xl shadow-xl z-50 overflow-hidden max-h-40 overflow-y-auto">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSelectedAssignee('');
+                                                            setShowAssigneeDropdown(false);
+                                                        }}
+                                                        className="w-full text-left px-4 py-2 text-[10px] font-bold text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5"
+                                                    >
+                                                        No assignee
+                                                    </button>
+                                                    {teamMembers.map(member => (
+                                                        <button
+                                                            key={member.id}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setSelectedAssignee(member.id);
+                                                                setShowAssigneeDropdown(false);
+                                                            }}
+                                                            className={cn(
+                                                                'w-full text-left px-4 py-2 text-[10px] font-bold transition-colors',
+                                                                selectedAssignee === member.id
+                                                                    ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
+                                                                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5'
+                                                            )}
+                                                        >
+                                                            <div className="flex items-center justify-between">
+                                                                <span>{member.name}</span>
+                                                                <span className="text-[8px] text-slate-400 uppercase">
+                                                                    {member.role}
+                                                                </span>
+                                                            </div>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </form>
+
+                                {localTasks.length === 0 ? (
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest py-4 text-center">
+                                        No tasks yet — create your first task above
                                     </div>
                                 ) : (
                                     <div className="space-y-3">
-                                        {tasks.map(task => (
+                                        {localTasks.map(task => (
                                             <div
                                                 key={task.id}
                                                 className="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-white/10"
@@ -2018,16 +3240,30 @@ export default function QuoteEditorTable({
                                                     <span className="text-sm font-bold text-slate-900 dark:text-white">
                                                         {task.title}
                                                     </span>
-                                                    <span className="text-[10px] text-slate-400 uppercase tracking-widest">
-                                                        {task.status}
-                                                    </span>
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        <span className="text-[10px] text-slate-400 uppercase tracking-widest">
+                                                            {task.status}
+                                                        </span>
+                                                        {task.primary_assignee_id && (
+                                                            <span className="text-[9px] font-bold text-indigo-500 bg-indigo-500/10 px-1.5 py-0.5 rounded uppercase">
+                                                                {teamMembers.find(
+                                                                    m => m.id === task.primary_assignee_id
+                                                                )?.name || 'Assigned'}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     {(['OPEN', 'IN_PROGRESS', 'DONE'] as const).map(status => (
                                                         <button
                                                             key={status}
                                                             onClick={() => handleTaskStatus(task.id, status)}
-                                                            className="px-2 py-1 rounded-lg bg-slate-50 text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900"
+                                                            className={cn(
+                                                                'px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-colors',
+                                                                task.status === status
+                                                                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                                                                    : 'bg-slate-50 dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                                                            )}
                                                         >
                                                             {status}
                                                         </button>
@@ -2045,9 +3281,8 @@ export default function QuoteEditorTable({
                             <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[2rem] p-6">
                                 <MemberMediaManager
                                     memberId={quote.customer?.memberId || quote.customerProfile?.memberId || ''}
-                                    tenantId={quote.tenantId}
-                                    onUpdate={fetchDocuments}
-                                    allowUpload={true}
+                                    quoteId={quote.id}
+                                    onDocCountChange={setDocCount}
                                 />
                             </div>
                         </div>
@@ -2073,256 +3308,473 @@ export default function QuoteEditorTable({
                         </div>
                     )}
 
-                    {activeTab === 'EVENTS' && (
-                        <div className="p-6">
-                            <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[2rem] p-6">
-                                <div className="text-xs font-black uppercase tracking-widest text-slate-500 mb-6">
-                                    Events
-                                </div>
-                                {quote.timeline.length === 0 ? (
-                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                        No events
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {quote.timeline.map((event, idx) => (
-                                            <div key={idx} className="flex items-start gap-3">
-                                                <div className="w-2 h-2 rounded-full bg-emerald-500 mt-2" />
-                                                <div>
-                                                    <div className="text-xs font-bold text-slate-900 dark:text-white">
-                                                        {event.event}
-                                                    </div>
-                                                    <div className="text-[10px] text-slate-400">
-                                                        {formatDate(event.timestamp)}
-                                                    </div>
-                                                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-400">
-                                                        <span>Who: {event.actor || 'System'}</span>
-                                                        <span>What: {event.actorType || 'team'}</span>
-                                                        {event.source && <span>From: {event.source}</span>}
-                                                        {event.reason && <span>Why: {event.reason}</span>}
-                                                    </div>
-                                                </div>
+                    {activeTab === 'TIMELINE' &&
+                        (() => {
+                            // Group events by day (Day 1, Day 2, etc.) - only days that have events
+                            const sortedEvents = [...quote.timeline].sort(
+                                (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+                            );
+
+                            // Get unique calendar dates (sorted newest first)
+                            const dateMap = new Map<string, typeof sortedEvents>();
+                            sortedEvents.forEach(ev => {
+                                const dateKey = new Date(ev.timestamp).toLocaleDateString('en-IN', {
+                                    year: 'numeric',
+                                    month: '2-digit',
+                                    day: '2-digit',
+                                });
+                                if (!dateMap.has(dateKey)) dateMap.set(dateKey, []);
+                                dateMap.get(dateKey)!.push(ev);
+                            });
+
+                            // Convert to array of day groups, newest first, with sequential day numbering
+                            const dayGroups = Array.from(dateMap.entries()).map(([dateKey, events], idx) => {
+                                const totalDays = dateMap.size;
+                                return {
+                                    dayNum: totalDays - idx, // Day 1 is the oldest
+                                    dateKey,
+                                    dateLabel: new Date(events[0].timestamp).toLocaleDateString('en-IN', {
+                                        weekday: 'short',
+                                        day: 'numeric',
+                                        month: 'short',
+                                        year: 'numeric',
+                                    }),
+                                    events,
+                                };
+                            });
+
+                            // Group events within a day by working hour slots
+                            const getHourSlot = (timestamp: string) => {
+                                const h = new Date(timestamp).getHours();
+                                if (h < 11) return 'Before 11 AM';
+                                if (h < 13) return '11 AM – 1 PM';
+                                if (h < 15) return '1 PM – 3 PM';
+                                if (h < 17) return '3 PM – 5 PM';
+                                if (h < 19) return '5 PM – 7 PM';
+                                return 'After 7 PM';
+                            };
+
+                            const slotOrder = [
+                                'After 7 PM',
+                                '5 PM – 7 PM',
+                                '3 PM – 5 PM',
+                                '1 PM – 3 PM',
+                                '11 AM – 1 PM',
+                                'Before 11 AM',
+                            ];
+
+                            return (
+                                <div className="p-6">
+                                    <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[2rem] p-6">
+                                        <div className="flex items-center justify-between mb-6">
+                                            <div className="text-xs font-black uppercase tracking-widest text-slate-500">
+                                                Timeline
                                             </div>
-                                        ))}
+                                            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                                {quote.timeline.length} events
+                                            </div>
+                                        </div>
+
+                                        {quote.timeline.length === 0 ? (
+                                            <div className="py-12 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                No events recorded
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-6">
+                                                {dayGroups.map(day => {
+                                                    // Group events by hour slot within this day
+                                                    const slotMap = new Map<string, typeof day.events>();
+                                                    day.events.forEach(ev => {
+                                                        const slot = getHourSlot(ev.timestamp);
+                                                        if (!slotMap.has(slot)) slotMap.set(slot, []);
+                                                        slotMap.get(slot)!.push(ev);
+                                                    });
+
+                                                    const activeSlots = slotOrder.filter(s => slotMap.has(s));
+
+                                                    return (
+                                                        <div key={day.dateKey}>
+                                                            {/* Day Header */}
+                                                            <div className="flex items-center gap-3 mb-3">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-[10px] font-black text-indigo-600 bg-indigo-500/10 px-2 py-0.5 rounded uppercase tracking-wider">
+                                                                        Day {day.dayNum}
+                                                                    </span>
+                                                                    <span className="text-[10px] font-bold text-slate-400">
+                                                                        {day.dateLabel}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex-1 h-px bg-slate-100 dark:bg-white/5" />
+                                                            </div>
+
+                                                            {/* Hour Slot Groups */}
+                                                            <div className="ml-1 space-y-3">
+                                                                {activeSlots.map(slot => (
+                                                                    <div key={slot}>
+                                                                        {/* Slot Label */}
+                                                                        <div className="text-[8px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600 mb-1.5 ml-5">
+                                                                            {slot}
+                                                                        </div>
+                                                                        {/* Events in this slot */}
+                                                                        <div className="space-y-0">
+                                                                            {slotMap.get(slot)!.map((event, eidx) => {
+                                                                                const eventTime = new Date(
+                                                                                    event.timestamp
+                                                                                ).toLocaleTimeString('en-IN', {
+                                                                                    hour: 'numeric',
+                                                                                    minute: '2-digit',
+                                                                                    hour12: true,
+                                                                                });
+                                                                                const isAction =
+                                                                                    event.event.includes('Created') ||
+                                                                                    event.event.includes('Sent') ||
+                                                                                    event.event.includes('Approved');
+                                                                                const dotColor = isAction
+                                                                                    ? 'bg-emerald-500'
+                                                                                    : event.actorType === 'customer'
+                                                                                      ? 'bg-blue-500'
+                                                                                      : 'bg-slate-300 dark:bg-slate-600';
+
+                                                                                return (
+                                                                                    <div
+                                                                                        key={eidx}
+                                                                                        className="flex items-start gap-4 py-2 group"
+                                                                                    >
+                                                                                        {/* Timeline dot + connector */}
+                                                                                        <div className="flex flex-col items-center mt-1">
+                                                                                            <div
+                                                                                                className={`w-2 h-2 rounded-full ${dotColor} ring-2 ring-white dark:ring-[#0b0d10]`}
+                                                                                            />
+                                                                                        </div>
+                                                                                        {/* Event content */}
+                                                                                        <div className="flex-1 min-w-0">
+                                                                                            <div className="flex items-center justify-between gap-2">
+                                                                                                <span className="text-[11px] font-black text-slate-800 dark:text-white uppercase tracking-tight">
+                                                                                                    {event.event}
+                                                                                                </span>
+                                                                                                <span className="text-[9px] font-bold text-slate-400 tabular-nums shrink-0">
+                                                                                                    {eventTime}
+                                                                                                </span>
+                                                                                            </div>
+
+                                                                                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                                                                                                {event.actor && (
+                                                                                                    <div className="flex items-center gap-1.5">
+                                                                                                        <span className="text-[10px] font-black text-slate-900 dark:text-white">
+                                                                                                            {event.actorType ===
+                                                                                                            'customer'
+                                                                                                                ? '👤'
+                                                                                                                : '🏢'}{' '}
+                                                                                                            {
+                                                                                                                event.actor
+                                                                                                            }
+                                                                                                        </span>
+                                                                                                        {event.actorDesignation && (
+                                                                                                            <span className="text-[8px] font-black text-indigo-500 bg-indigo-500/10 px-1.5 py-0.5 rounded uppercase tracking-widest">
+                                                                                                                {
+                                                                                                                    event.actorDesignation
+                                                                                                                }
+                                                                                                            </span>
+                                                                                                        )}
+                                                                                                        {event.actorOrg && (
+                                                                                                            <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 italic">
+                                                                                                                at{' '}
+                                                                                                                {
+                                                                                                                    event.actorOrg
+                                                                                                                }
+                                                                                                            </span>
+                                                                                                        )}
+                                                                                                    </div>
+                                                                                                )}
+
+                                                                                                <div className="flex items-center gap-2">
+                                                                                                    {event.source && (
+                                                                                                        <span className="text-[8px] font-black uppercase tracking-wider text-slate-300 dark:text-slate-600 border border-slate-100 dark:border-white/5 px-1 rounded">
+                                                                                                            {
+                                                                                                                event.source
+                                                                                                            }
+                                                                                                        </span>
+                                                                                                    )}
+                                                                                                    {event.reason && (
+                                                                                                        <span className="text-[8px] font-bold text-amber-500 bg-amber-500/5 px-1.5 py-0.5 rounded">
+                                                                                                            REASON:{' '}
+                                                                                                            {
+                                                                                                                event.reason
+                                                                                                            }
+                                                                                                        </span>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
                                     </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
+                                </div>
+                            );
+                        })()}
 
                     {activeTab === 'TRANSACTIONS' && (
                         <div className="p-6">
-                            <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[2rem] p-6">
-                                {relatedQuotes.length > 0 && (
-                                    <div className="mb-6">
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
-                                            Lead & Quotes
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                                            <div className="bg-slate-50 dark:bg-white/[0.03] rounded-xl px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                                                Lead ID: {quote.leadId ? formatDisplayId(quote.leadId) : 'Not Linked'}
-                                            </div>
-                                            <div className="bg-slate-50 dark:bg-white/[0.03] rounded-xl px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                                                Total Quotes: {relatedQuotes.length}
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            {relatedQuotes.map(q => (
-                                                <button
-                                                    key={q.id}
-                                                    type="button"
-                                                    onClick={() => {
-                                                        if (!slug) return;
-                                                        window.location.href = `/app/${slug}/quotes/${q.id}`;
-                                                    }}
-                                                    className={cn(
-                                                        'w-full flex items-center justify-between rounded-2xl border px-4 py-3 text-left transition',
-                                                        q.id === quote.id
-                                                            ? 'border-indigo-500/60 dark:border-white/20 bg-indigo-500/10 dark:bg-white/10'
-                                                            : 'border-slate-100 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02] hover:bg-slate-100/60 dark:hover:bg-white/[0.04]'
-                                                    )}
-                                                >
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                            {q.isLatest ? 'Latest' : 'Quote'}
-                                                        </div>
-                                                        <div>
-                                                            <div className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                                                                V{q.version ?? 1} • {formatDisplayId(q.displayId)}
-                                                            </div>
-                                                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                                                {q.createdAt ? formatDate(q.createdAt) : '—'}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        {q.isLatest && (
-                                                            <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-indigo-500/10 text-indigo-600">
-                                                                Current
-                                                            </span>
-                                                        )}
-                                                        <span
-                                                            className={cn(
-                                                                'px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest',
-                                                                q.status === 'PENDING'
-                                                                    ? 'bg-slate-200 text-slate-500 dark:bg-white/10 dark:text-white/40'
-                                                                    : q.status === 'DRAFT' ||
-                                                                        q.status === 'PENDING_REVIEW'
-                                                                      ? 'bg-amber-500/10 text-amber-600'
-                                                                      : 'bg-emerald-500/10 text-emerald-600'
-                                                            )}
-                                                        >
-                                                            {q.status || 'UNKNOWN'}
-                                                        </span>
-                                                        <ArrowRight size={12} className="text-slate-400" />
-                                                    </div>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                                <div className="flex items-center justify-between mb-6">
-                                    <div className="text-xs font-black uppercase tracking-widest text-slate-500">
-                                        Transactions Timeline
-                                    </div>
-                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                        Sequence View
-                                    </div>
-                                </div>
-
-                                <div className="space-y-3">
-                                    {transactions.map((item, index) => (
-                                        <div
-                                            key={item.key}
-                                            className="rounded-2xl border border-slate-100 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02] overflow-hidden"
-                                        >
-                                            <button
-                                                onClick={() => setExpandedTransaction(item.key)}
-                                                className={cn(
-                                                    'w-full flex items-center justify-between px-5 py-4 transition-all',
-                                                    expandedTransaction === item.key
-                                                        ? 'bg-indigo-500/5 dark:bg-white/5'
-                                                        : 'hover:bg-slate-100/60 dark:hover:bg-white/[0.03]'
-                                                )}
-                                            >
-                                                <div className="flex items-center gap-4">
-                                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                                        {index + 1}
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                                                            {item.label}
-                                                        </div>
-                                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                                            {item.id ? item.id : 'Not Created Yet'}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-3">
-                                                    <span
-                                                        className={cn(
-                                                            'px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest',
-                                                            item.status === 'PENDING'
-                                                                ? 'bg-slate-200 text-slate-500 dark:bg-white/10 dark:text-white/40'
-                                                                : item.key === 'QUOTE'
-                                                                  ? 'bg-emerald-500/10 text-emerald-600'
-                                                                  : 'bg-indigo-500/10 dark:bg-white/10 text-indigo-600 dark:text-white'
-                                                        )}
+                            <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[2rem] overflow-hidden">
+                                {/* Quotes Section */}
+                                <TransactionSection
+                                    title="Quotes"
+                                    count={relatedQuotes.length}
+                                    expanded={groups.transactionQuotes || false}
+                                    onToggle={() => setGroups(g => ({ ...g, transactionQuotes: !g.transactionQuotes }))}
+                                >
+                                    <div className="w-full overflow-x-auto">
+                                        <table className="w-full min-w-[700px] text-left border-collapse">
+                                            <thead className="bg-slate-50/50 dark:bg-white/[0.02]">
+                                                <tr className="border-b border-slate-100 dark:border-white/5">
+                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                        Date
+                                                    </th>
+                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                        ID
+                                                    </th>
+                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                        Vehicle
+                                                    </th>
+                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                        Total
+                                                    </th>
+                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                        Generated By
+                                                    </th>
+                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                        Status
+                                                    </th>
+                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                                        Actions
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {relatedQuotes.map(q => (
+                                                    <tr
+                                                        key={q.id}
+                                                        className="border-b border-slate-50 dark:border-white/[0.02] last:border-b-0 group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
                                                     >
-                                                        {item.status}
-                                                    </span>
-                                                    <div
-                                                        className={cn(
-                                                            'text-[10px] font-black uppercase tracking-widest transition-transform',
-                                                            expandedTransaction === item.key
-                                                                ? 'text-indigo-600 dark:text-white rotate-90'
-                                                                : 'text-slate-300'
-                                                        )}
-                                                    >
-                                                        <ChevronRight size={12} />
-                                                    </div>
-                                                </div>
-                                            </button>
-                                            {expandedTransaction === item.key && (
-                                                <div className="px-5 pb-4 pt-2 bg-white dark:bg-[#0b0d10] border-t border-slate-100 dark:border-white/10">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                                            Details
-                                                        </div>
-                                                        {item.href ? (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    window.location.href = item.href as string;
-                                                                }}
-                                                                className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 dark:text-white dark:hover:text-slate-200"
+                                                        <td className="px-4 py-3 text-[10px] font-bold text-slate-500">
+                                                            {q.createdAt ? formatDate(q.createdAt) : '—'}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                                            {formatDisplayId(q.displayId)}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                                                            {quote.vehicle?.brand} {quote.vehicle?.model}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-[10px] font-black text-slate-900 dark:text-white tabular-nums">
+                                                            {q.onRoadPrice
+                                                                ? `₹${Number(q.onRoadPrice).toLocaleString('en-IN')}`
+                                                                : '—'}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-[10px] font-bold text-slate-500">
+                                                            {q.createdBy
+                                                                ? teamMembers.find(m => m.id === q.createdBy)?.name ||
+                                                                  '—'
+                                                                : '—'}
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <span
+                                                                className={cn(
+                                                                    'px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest',
+                                                                    STATUS_CONFIG[q.status || 'DRAFT']?.bg ||
+                                                                        'bg-slate-100',
+                                                                    STATUS_CONFIG[q.status || 'DRAFT']?.color ||
+                                                                        'text-slate-600'
+                                                                )}
                                                             >
-                                                                Open {item.label}
-                                                            </button>
-                                                        ) : (
-                                                            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
-                                                                No Link
+                                                                {q.status}
                                                             </span>
-                                                        )}
-                                                    </div>
-                                                    <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                                                        <div className="bg-slate-50 dark:bg-white/[0.03] rounded-xl px-3 py-2">
-                                                            Stage: {item.label}
-                                                        </div>
-                                                        <div className="bg-slate-50 dark:bg-white/[0.03] rounded-xl px-3 py-2">
-                                                            Status: {item.status}
-                                                        </div>
-                                                    </div>
-                                                    {item.key === 'FINANCE' && (
-                                                        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-[10px] font-bold uppercase tracking-widest text-slate-600">
-                                                            <div className="bg-slate-50 dark:bg-white/[0.03] rounded-xl px-3 py-2">
-                                                                Bank: {quote.finance?.bankName || 'N/A'}
-                                                            </div>
-                                                            <div className="bg-slate-50 dark:bg-white/[0.03] rounded-xl px-3 py-2">
-                                                                Scheme: {quote.finance?.schemeCode || 'N/A'}
-                                                            </div>
-                                                            <div className="bg-slate-50 dark:bg-white/[0.03] rounded-xl px-3 py-2">
-                                                                Loan Amount:{' '}
-                                                                {quote.finance?.loanAmount
-                                                                    ? formatCurrency(quote.finance.loanAmount)
-                                                                    : 'N/A'}
-                                                            </div>
-                                                            <div className="bg-slate-50 dark:bg-white/[0.03] rounded-xl px-3 py-2">
-                                                                Down Payment:{' '}
-                                                                {quote.finance?.downPayment
-                                                                    ? formatCurrency(quote.finance.downPayment)
-                                                                    : 'N/A'}
-                                                            </div>
-                                                            <div className="bg-slate-50 dark:bg-white/[0.03] rounded-xl px-3 py-2">
-                                                                Tenure:{' '}
-                                                                {quote.finance?.tenureMonths
-                                                                    ? `${quote.finance.tenureMonths}M`
-                                                                    : 'N/A'}
-                                                            </div>
-                                                            <div className="bg-slate-50 dark:bg-white/[0.03] rounded-xl px-3 py-2">
-                                                                ROI:{' '}
-                                                                {quote.finance?.roi ? `${quote.finance.roi}%` : 'N/A'}
-                                                            </div>
-                                                            <div className="bg-slate-50 dark:bg-white/[0.03] rounded-xl px-3 py-2">
-                                                                EMI:{' '}
-                                                                {quote.finance?.emi
-                                                                    ? formatCurrency(quote.finance.emi)
-                                                                    : 'N/A'}
-                                                            </div>
-                                                            <div className="bg-slate-50 dark:bg-white/[0.03] rounded-xl px-3 py-2">
-                                                                Status Date:{' '}
-                                                                {quote.updatedAt ? formatDate(quote.updatedAt) : 'N/A'}
-                                                            </div>
-                                                            <div className="bg-slate-50 dark:bg-white/[0.03] rounded-xl px-3 py-2">
-                                                                Loan Status: {quote.finance?.status || 'PENDING'}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
+                                                        </td>
+                                                        <td className="py-3 px-4 text-right">
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (!slug) return;
+                                                                    window.location.href = `/app/${slug}/quotes/${q.id}`;
+                                                                }}
+                                                                className="text-[9px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 transition-opacity"
+                                                            >
+                                                                View →
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {relatedQuotes.length === 0 && (
+                                                    <tr>
+                                                        <td
+                                                            colSpan={7}
+                                                            className="py-12 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                                                        >
+                                                            No quotes found
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </TransactionSection>
+
+                                {/* Bookings Section */}
+                                <TransactionSection
+                                    title="Bookings"
+                                    count={bookings.length}
+                                    expanded={groups.transactionBookings || false}
+                                    onToggle={() =>
+                                        setGroups(g => ({ ...g, transactionBookings: !g.transactionBookings }))
+                                    }
+                                >
+                                    <div className="w-full overflow-x-auto">
+                                        <table className="w-full min-w-[600px] text-left border-collapse">
+                                            <thead className="bg-slate-50/50 dark:bg-white/[0.02]">
+                                                <tr className="border-b border-slate-100 dark:border-white/5">
+                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                        Date
+                                                    </th>
+                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                        Booking ID
+                                                    </th>
+                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                        Status
+                                                    </th>
+                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                        Amount
+                                                    </th>
+                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                                        Actions
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {bookings.map(b => (
+                                                    <tr
+                                                        key={b.id}
+                                                        className="border-b border-slate-50 dark:border-white/[0.02] last:border-b-0 group"
+                                                    >
+                                                        <td className="px-4 py-3 text-[10px] font-bold text-slate-500">
+                                                            {formatDate(b.created_at)}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                                            {formatDisplayId(b.display_id || b.id)}
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 text-[8px] font-black uppercase tracking-widest">
+                                                                {b.status}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3 text-[10px] font-black text-slate-900 dark:text-white">
+                                                            {formatCurrency(b.booking_amount_received || 0)}
+                                                        </td>
+                                                        <td className="py-3 text-right">
+                                                            <button className="text-[9px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                Manage
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {bookings.length === 0 && (
+                                                    <tr>
+                                                        <td
+                                                            colSpan={5}
+                                                            className="py-12 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                                                        >
+                                                            No bookings found
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </TransactionSection>
+
+                                {/* Payments Section */}
+                                <TransactionSection
+                                    title="Payments"
+                                    count={payments.length}
+                                    expanded={groups.transactionPayments || false}
+                                    onToggle={() =>
+                                        setGroups(g => ({ ...g, transactionPayments: !g.transactionPayments }))
+                                    }
+                                >
+                                    <div className="w-full overflow-x-auto">
+                                        <table className="w-full min-w-[600px] text-left border-collapse">
+                                            <thead className="bg-slate-50/50 dark:bg-white/[0.02]">
+                                                <tr className="border-b border-slate-100 dark:border-white/5">
+                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                        Date
+                                                    </th>
+                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                        Payment ID
+                                                    </th>
+                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                        Method
+                                                    </th>
+                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                        Amount
+                                                    </th>
+                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                                        Status
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {payments.map(p => (
+                                                    <tr
+                                                        key={p.id}
+                                                        className="border-b border-slate-50 dark:border-white/[0.02] last:border-b-0 group"
+                                                    >
+                                                        <td className="px-4 py-3 text-[10px] font-bold text-slate-500">
+                                                            {formatDate(p.created_at)}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                                            {formatDisplayId(p.display_id || p.id)}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase">
+                                                            {p.method}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-[10px] font-black text-slate-900 dark:text-white">
+                                                            {formatCurrency(p.amount)}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right">
+                                                            <span
+                                                                className={cn(
+                                                                    'px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest',
+                                                                    p.status === 'captured' || p.status === 'success'
+                                                                        ? 'bg-emerald-500/10 text-emerald-600'
+                                                                        : 'bg-amber-500/10 text-amber-600'
+                                                                )}
+                                                            >
+                                                                {p.status}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {payments.length === 0 && (
+                                                    <tr>
+                                                        <td
+                                                            colSpan={5}
+                                                            className="py-12 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                                                        >
+                                                            No payments found
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </TransactionSection>
                             </div>
                         </div>
                     )}

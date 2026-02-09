@@ -91,6 +91,36 @@ export async function updateMemberProfile(
     return { success: true };
 }
 
+export async function updateMemberAvatar(memberId: string, avatarUrl: string) {
+    'use server';
+    try {
+        // Update id_members table
+        const { error: memberError } = await adminClient
+            .from('id_members')
+            .update({ avatar_url: avatarUrl })
+            .eq('id', memberId);
+
+        if (memberError) {
+            console.error('updateMemberAvatar: id_members error:', memberError);
+        }
+
+        // Also sync to Supabase Auth metadata
+        try {
+            await adminClient.auth.admin.updateUserById(memberId, {
+                user_metadata: { avatar_url: avatarUrl },
+            });
+        } catch (authErr) {
+            // Member may not be auth user (CRM-only member) - that's OK
+            console.warn('updateMemberAvatar: auth sync skipped:', authErr);
+        }
+
+        return { success: true };
+    } catch (error) {
+        console.error('updateMemberAvatar Error:', error);
+        return { success: false, error: String(error) };
+    }
+}
+
 export async function checkExistingCustomer(phone: string) {
     const cleanPhone = toAppStorageFormat(phone);
     if (!cleanPhone || cleanPhone.length !== 10) {
@@ -457,11 +487,11 @@ export async function getQuotes(tenantId?: string) {
         customerName: q.leads?.customer_name || 'N/A',
         productName: q.commercials?.label || 'Custom Quote',
         productSku: q.variant_id || 'N/A',
-        price: q.on_road_price || q.commercials?.grand_total || 0, // Prefer column
+        price: q.on_road_price || q.commercials?.grand_total || 0,
         status: q.status,
         date: q.created_at.split('T')[0],
-        version: q.version,
-        isLatest: q.is_latest,
+        vehicleBrand: q.commercials?.brand || '',
+        vehicleModel: q.commercials?.model || '',
     }));
 }
 
@@ -567,33 +597,9 @@ export async function createQuoteAction(data: {
     const insuranceAmount = Math.round(
         Number(pricingSnapshot?.insurance_total ?? pricingSnapshot?.insurance?.total ?? comms.insurance ?? 0)
     );
+    const accessoriesAmount = Math.round(Number(pricingSnapshot?.accessories_total ?? comms.accessories_total ?? 0));
 
-    let nextVersion = 1;
-    let parentQuoteId: string | null = null;
     const vehicleSkuId = data.color_id || data.variant_id;
-
-    // 1. Versioning Logic: If Lead & SKU match, increment version
-    if (data.lead_id && vehicleSkuId) {
-        const { data: existingLatest } = await supabase
-            .from('crm_quotes')
-            .select('id, version, parent_quote_id')
-            .eq('lead_id', data.lead_id)
-            .eq('vehicle_sku_id', vehicleSkuId)
-            .eq('is_latest', true)
-            .maybeSingle(); // Use maybeSingle to avoid error if none found
-
-        if (existingLatest) {
-            nextVersion = (existingLatest.version ?? 0) + 1;
-            parentQuoteId = existingLatest.parent_quote_id || existingLatest.id;
-        }
-    }
-
-    if (parentQuoteId) {
-        data.commercials = {
-            ...data.commercials,
-            parent_quote_id: parentQuoteId,
-        };
-    }
 
     const { data: quote, error } = await supabase
         .from('crm_quotes')
@@ -607,18 +613,15 @@ export async function createQuoteAction(data: {
             color_id: data.color_id,
             vehicle_sku_id: vehicleSkuId, // Use SKU (color) when available
             commercials: data.commercials,
-            parent_quote_id: parentQuoteId || (data.commercials as any)?.parent_quote_id || null,
 
             // New Flat Columns
             on_road_price: onRoadPrice,
             ex_showroom_price: exShowroom,
             insurance_amount: insuranceAmount,
             rto_amount: rtoAmount,
-            // vehicle_color removed to fix 42703 error
+            accessories_amount: accessoriesAmount,
 
             status: 'DRAFT',
-            version: nextVersion,
-            is_latest: true,
             created_by: createdBy,
         })
         .select()
@@ -633,16 +636,6 @@ export async function createQuoteAction(data: {
             context: { tenant_id: data.tenant_id, lead_id: data.lead_id, sku: data.variant_id },
         });
         return { success: false, message: error.message };
-    }
-
-    // Ensure only the latest quote is marked as latest for this lead + SKU
-    if (data.lead_id && vehicleSkuId) {
-        await supabase
-            .from('crm_quotes')
-            .update({ is_latest: false })
-            .eq('lead_id', data.lead_id)
-            .eq('vehicle_sku_id', vehicleSkuId)
-            .neq('id', quote.id);
     }
 
     const finance = (data.commercials as any)?.finance || null;
@@ -715,99 +708,11 @@ export async function createQuoteAction(data: {
     return { success: true, data: quote };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function createQuoteVersion(
-    parentQuoteId: string,
-    commercials: Record<string, any>
-): Promise<{ success: boolean; data?: any; message?: string }> {
-    const user = await getAuthUser();
-    const supabase = await createClient();
-    const createdBy = user?.id;
-
-    // Get parent version
-    const { data: parent } = await supabase
-        .from('crm_quotes')
-        .select(
-            'version, tenant_id, lead_id, variant_id, color_id, member_id, lead_referrer_id, quote_owner_id, parent_quote_id'
-        )
-        .eq('id', parentQuoteId)
-        .single();
-
-    if (!parent) throw new Error('Parent quote not found');
-
-    const onRoadPrice = commercials.grand_total || 0;
-    const pricingSnapshot = commercials?.pricing_snapshot || {};
-    const rtoAmount = Math.round(
-        Number(pricingSnapshot?.rto_total ?? pricingSnapshot?.rto?.total ?? commercials.rto ?? 0)
-    );
-    const insuranceAmount = Math.round(
-        Number(pricingSnapshot?.insurance_total ?? pricingSnapshot?.insurance?.total ?? commercials.insurance ?? 0)
-    );
-
-    const rootParentId = parent.parent_quote_id || parentQuoteId;
-    const { data: latestVersionRow } = await supabase
-        .from('crm_quotes')
-        .select('version')
-        .or(`id.eq.${rootParentId},parent_quote_id.eq.${rootParentId}`)
-        .order('version', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-    const nextVersion = (latestVersionRow?.version ?? parent.version ?? 0) + 1;
-
-    const { data: quote, error } = await supabase
-        .from('crm_quotes')
-        .insert({
-            tenant_id: parent.tenant_id,
-            lead_id: parent.lead_id,
-            member_id: parent.member_id || null,
-            lead_referrer_id: parent.lead_referrer_id || null,
-            quote_owner_id: parent.quote_owner_id || createdBy || null,
-            variant_id: parent.variant_id,
-            color_id: parent.color_id,
-            vehicle_sku_id: parent.color_id || parent.variant_id, // Prefer SKU (color) when present
-            parent_quote_id: rootParentId,
-            version: nextVersion,
-            commercials,
-
-            // New Flat Columns
-            on_road_price: onRoadPrice,
-            ex_showroom_price: commercials.base_price || 0,
-            insurance_amount: insuranceAmount,
-            rto_amount: rtoAmount,
-            // vehicle_color removed to fix 42703 error
-
-            status: 'DRAFT',
-            is_latest: true,
-            created_by: createdBy,
-        })
-        .select()
-        .single();
-
-    if (error) {
-        console.error('Create Quote Version Error:', error);
-        return { success: false, message: error.message };
-    }
-
-    if (parent.lead_id && (parent.color_id || parent.variant_id)) {
-        await supabase
-            .from('crm_quotes')
-            .update({ is_latest: false })
-            .eq('lead_id', parent.lead_id)
-            .eq('vehicle_sku_id', parent.color_id || parent.variant_id)
-            .neq('id', quote.id);
-    } else {
-        await supabase.from('crm_quotes').update({ is_latest: false }).eq('id', parentQuoteId);
-    }
-
-    revalidatePath('/app/[slug]/quotes');
-    return { success: true, data: quote };
-}
-
 export async function acceptQuoteAction(id: string): Promise<{ success: boolean; message?: string }> {
     const supabase = await createClient();
     const { error } = await supabase
         .from('crm_quotes')
-        .update({ status: 'ACCEPTED', updated_at: new Date().toISOString() })
+        .update({ status: 'APPROVED', updated_at: new Date().toISOString() })
         .eq('id', id);
 
     if (error) {
@@ -816,7 +721,7 @@ export async function acceptQuoteAction(id: string): Promise<{ success: boolean;
     }
 
     // Log timeline event
-    await logQuoteEvent(id, 'Quote Accepted', 'Customer', 'customer', { source: 'CUSTOMER' });
+    await logQuoteEvent(id, 'Quote Approved', 'Team Member', 'team', { source: 'CRM' });
 
     revalidatePath('/app/[slug]/quotes');
     revalidatePath('/profile');
@@ -848,13 +753,31 @@ export async function lockQuoteAction(id: string): Promise<{ success: boolean; m
     const supabase = await createClient();
     const { error } = await supabase
         .from('crm_quotes')
-        .update({ status: 'LOCKED', updated_at: new Date().toISOString() })
+        .update({ status: 'DENIED', updated_at: new Date().toISOString() })
         .eq('id', id);
 
     if (error) {
         console.error('Lock Quote Error:', error);
         return { success: false, message: error.message };
     }
+    await logQuoteEvent(id, 'Quote Denied', 'Team Member', 'team', { source: 'CRM' });
+    revalidatePath('/app/[slug]/quotes');
+    revalidatePath('/profile');
+    return { success: true };
+}
+
+export async function cancelQuoteAction(id: string): Promise<{ success: boolean; message?: string }> {
+    const supabase = await createClient();
+    const { error } = await supabase
+        .from('crm_quotes')
+        .update({ status: 'CANCELED', updated_at: new Date().toISOString() })
+        .eq('id', id);
+
+    if (error) {
+        console.error('Cancel Quote Error:', error);
+        return { success: false, message: error.message };
+    }
+    await logQuoteEvent(id, 'Quote Canceled', 'Customer', 'customer', { source: 'CUSTOMER' });
     revalidatePath('/app/[slug]/quotes');
     revalidatePath('/profile');
     return { success: true };
@@ -919,8 +842,8 @@ export async function createBookingFromQuote(quoteId: string) {
     const { data: quote } = await supabase.from('crm_quotes').select('*').eq('id', quoteId).single();
 
     if (!quote) throw new Error('Quote not found');
-    if (quote.status !== 'LOCKED') {
-        throw new Error('Quote must be LOCKED before converting to Booking');
+    if (quote.status !== 'CONFIRMED') {
+        throw new Error('Quote must be CONFIRMED before converting to Booking');
     }
 
     // 2. Create Booking with enhanced commercial tracking
@@ -939,7 +862,7 @@ export async function createBookingFromQuote(quoteId: string) {
                 commercial_snapshot: quote.commercials,
             },
             status: 'BOOKED',
-            current_stage: 'FINANCE',
+            current_stage: 'BOOKING',
         })
         .select()
         .single();
@@ -1032,6 +955,8 @@ export async function uploadMemberDocument(data: {
     filePath: string;
     fileType: string;
     category: string;
+    label?: string;
+    fileSize?: number;
 }) {
     const supabase = await createClient();
     const { data: doc, error } = await supabase
@@ -1042,6 +967,8 @@ export async function uploadMemberDocument(data: {
             file_path: data.filePath,
             file_type: data.fileType,
             category: data.category,
+            label: data.label || data.category,
+            file_size: data.fileSize || null,
             updated_at: new Date().toISOString(),
         })
         .select()
@@ -1251,6 +1178,7 @@ export interface QuoteEditorData {
     expectedDelivery: string | null;
     studioId: string | null;
     studioName: string | null;
+    tenantId: string | null;
     district: string | null;
     customer: {
         name: string;
@@ -1291,6 +1219,7 @@ export interface QuoteEditorData {
         pincode?: string | null;
         dob?: string | null;
         ownershipType?: string | null;
+        avatarUrl?: string | null;
     } | null;
     referral?: {
         referredByName?: string | null;
@@ -1316,8 +1245,12 @@ export interface QuoteEditorData {
         insuranceAddons: { id: string; name: string; amount: number; selected: boolean }[];
         insuranceGST: number;
         insuranceTotal: number;
+        insuranceProvider?: string | null;
         accessories: { id: string; name: string; price: number; selected: boolean }[];
         accessoriesTotal: number;
+        services: { id: string; name: string; price: number; selected: boolean }[];
+        servicesTotal: number;
+        insuranceGstRate: number;
         dealerDiscount: number;
         managerDiscount: number;
         managerDiscountNote: string | null;
@@ -1341,6 +1274,16 @@ export interface QuoteEditorData {
         processingFee?: number | null;
         chargesBreakup?: any[] | null;
         emi?: number | null;
+        approvedDownPayment?: number | null;
+        approvedAmount?: number | null;
+        approvedAddOns?: number | null;
+        approvedProcessingFee?: number | null;
+        approvedChargesBreakup?: any[] | null;
+        approvedEmi?: number | null;
+        approvedScheme?: string | null;
+        approvedTenure?: number | null;
+        approvedIrr?: number | null;
+        approvedMarginMoney?: number | null;
     } | null;
     timeline: { event: string; timestamp: string; actor: string | null; actorType: 'customer' | 'team' }[];
 }
@@ -1424,7 +1367,7 @@ export async function getQuoteById(
 
     if (q.reviewed_at) {
         timeline.push({
-            event: q.status === 'PENDING_REVIEW' ? 'In Review' : 'Manager Reviewed',
+            event: q.status === 'IN_REVIEW' ? 'In Review' : 'Manager Reviewed',
             timestamp: q.reviewed_at,
             actor: q.reviewed_by,
             actorType: 'team',
@@ -1464,6 +1407,7 @@ export async function getQuoteById(
         studioName: dealerFromPricing?.dealer_name || dealerFromPricing?.name || null,
         district: pricingSnapshot?.location?.district || null,
         financeMode: q.finance_mode || (commercials.finance?.mode as any) || 'CASH',
+        tenantId: q.tenant_id || null,
     };
 
     // Fetch Member Profile (single query to avoid slow duplicate fetches)
@@ -1510,24 +1454,18 @@ export async function getQuoteById(
                     'work_designation',
                     'work_email',
                     'work_phone',
-                    'work_pincode',
-                    'work_taluka',
-                    'work_district',
-                    'work_state',
-                    'work_industry',
-                    'work_profile',
                     'taluka',
                     'district',
                     'state',
                     'pincode',
                     'date_of_birth',
-                    'ownership_type',
+                    'avatar_url',
                 ].join(', ')
             )
             .eq('id', resolvedMemberId || '')
             .maybeSingle();
 
-        let resolvedMember = member;
+        let resolvedMember: any = member;
 
         if (!resolvedMember && phoneSearchVariations.size > 0) {
             const { data: memberByContact } = await adminClient
@@ -1553,18 +1491,12 @@ export async function getQuoteById(
                         'work_designation',
                         'work_email',
                         'work_phone',
-                        'work_pincode',
-                        'work_taluka',
-                        'work_district',
-                        'work_state',
-                        'work_industry',
-                        'work_profile',
                         'taluka',
                         'district',
                         'state',
                         'pincode',
                         'date_of_birth',
-                        'ownership_type',
+                        'avatar_url',
                     ].join(', ')
                 )
                 .or(
@@ -1637,14 +1569,18 @@ export async function getQuoteById(
                 workDesignation: resolvedMember.work_designation,
                 workEmail: resolvedMember.work_email,
                 workPhone: resolvedMember.work_phone,
-                workPincode: resolvedMember.work_pincode,
-                workTaluka: resolvedMember.work_taluka,
-                workDistrict: resolvedMember.work_district,
-                workState: resolvedMember.work_state,
-                workIndustry: resolvedMember.work_industry,
-                workProfile: resolvedMember.work_profile,
-                ownershipType: resolvedMember.ownership_type,
+                avatarUrl: resolvedMember.avatar_url || null,
             };
+        }
+    }
+
+    // Resolve vehicle image: fallback to cat_items if not stored on quote
+    let vehicleImageUrl = q.vehicle_image || commercials.image_url || null;
+    if (!vehicleImageUrl) {
+        const skuId = q.vehicle_sku_id || q.color_id || q.variant_id;
+        if (skuId) {
+            const { data: catItem } = await adminClient.from('cat_items').select('image_url').eq('id', skuId).single();
+            vehicleImageUrl = catItem?.image_url || null;
         }
     }
 
@@ -1670,7 +1606,7 @@ export async function getQuoteById(
             variant: commercials.variant || 'N/A',
             color: commercials.color_name || commercials.color || 'N/A',
             colorHex: commercials.color_hex || '#000000',
-            imageUrl: q.vehicle_image || commercials.image_url || null,
+            imageUrl: vehicleImageUrl,
             skuId: q.vehicle_sku_id || q.color_id || q.variant_id || '',
         },
         pricing: {
@@ -1678,8 +1614,52 @@ export async function getQuoteById(
             rtoType: pricingSnapshot.rto_type || commercials.rto_type || 'STATE',
             rtoBreakdown: pricingSnapshot.rto_breakdown || [],
             rtoTotal: pricingSnapshot.rto_total || 0,
-            insuranceOD: pricingSnapshot.insurance?.od || 0,
-            insuranceTP: pricingSnapshot.insurance?.tp || 0,
+            insuranceTP: (() => {
+                // Priority 1: Flat key from new marketplace snapshots
+                const flatTp = pricingSnapshot.insurance_tp ?? commercials.insurance_tp;
+                if (flatTp !== undefined && flatTp !== null && Number(flatTp) > 0) return Number(flatTp);
+                // Priority 2: SOT object format {base, gst, total}
+                const objTp = pricingSnapshot.insurance?.tp;
+                if (objTp && typeof objTp === 'object' && 'total' in objTp) return Number(objTp.total || 0);
+                if (typeof objTp === 'number' && objTp > 0) return objTp;
+                // Priority 3: commercials insurance object
+                const commObjTp = commercials.insurance?.tp;
+                if (commObjTp && typeof commObjTp === 'object' && 'total' in commObjTp)
+                    return Number(commObjTp.total || 0);
+                if (typeof commObjTp === 'number' && commObjTp > 0) return commObjTp;
+                return 0;
+            })(),
+            insuranceOD: (() => {
+                // Priority 1: Flat key from new marketplace snapshots
+                const flatOd = pricingSnapshot.insurance_od ?? commercials.insurance_od;
+                if (flatOd !== undefined && flatOd !== null && Number(flatOd) > 0) return Number(flatOd);
+                // Priority 2: SOT object format {base, gst, total}
+                const objOd = pricingSnapshot.insurance?.od;
+                if (objOd && typeof objOd === 'object' && 'total' in objOd) return Number(objOd.total || 0);
+                if (typeof objOd === 'number' && objOd > 0) return objOd;
+                // Priority 3: commercials insurance object
+                const commObjOd = commercials.insurance?.od;
+                if (commObjOd && typeof commObjOd === 'object' && 'total' in commObjOd)
+                    return Number(commObjOd.total || 0);
+                if (typeof commObjOd === 'number' && commObjOd > 0) return commObjOd;
+                // Priority 4: Back-calculate from total (legacy quotes)
+                const insTotal = Number(pricingSnapshot.insurance_total || pricingSnapshot.insurance_base || 0);
+                if (insTotal > 0) {
+                    // Get TP we already resolved (re-resolve without this closure)
+                    const resolvedTp = Number(
+                        pricingSnapshot.insurance_tp ??
+                            commercials.insurance_tp ??
+                            (pricingSnapshot.insurance?.tp && typeof pricingSnapshot.insurance.tp === 'object'
+                                ? pricingSnapshot.insurance.tp.total
+                                : pricingSnapshot.insurance?.tp) ??
+                            0
+                    );
+                    // OD = base premium - TP (insurance_base is pre-GST total of OD+TP+GST)
+                    const baseBeforeGst = Math.round(insTotal / 1.18);
+                    return Math.max(0, baseBeforeGst - resolvedTp);
+                }
+                return 0;
+            })(),
             insuranceAddons: (pricingSnapshot.insurance_addon_items || pricingSnapshot.insurance_addons || []).map(
                 (a: any) => ({
                     id: a.id || a,
@@ -1688,8 +1668,41 @@ export async function getQuoteById(
                     selected: true,
                 })
             ),
-            insuranceGST: pricingSnapshot.insurance?.gst || 0,
+            insuranceGST: (() => {
+                // Priority 1: Flat key from new marketplace snapshots
+                const flatGst = pricingSnapshot.insurance_gst;
+                if (flatGst !== undefined && flatGst !== null && Number(flatGst) > 0) return Number(flatGst);
+                // Priority 2: SOT object — sum OD GST + TP GST
+                const odObj = pricingSnapshot.insurance?.od;
+                const tpObj = pricingSnapshot.insurance?.tp;
+                if (odObj && typeof odObj === 'object' && 'gst' in odObj) {
+                    return Number(odObj.gst || 0) + Number(tpObj?.gst || 0);
+                }
+                // Priority 3: Single gst field on insurance
+                const gstField = pricingSnapshot.insurance?.gst;
+                if (typeof gstField === 'number' && gstField > 0) return gstField;
+                // Priority 4: Back-calculate from total
+                const insTotal = Number(pricingSnapshot.insurance_total || 0);
+                if (insTotal > 0) return insTotal - Math.round(insTotal / 1.18);
+                return 0;
+            })(),
             insuranceTotal: pricingSnapshot.insurance_total || 0,
+            insuranceProvider: (await (async () => {
+                const existing =
+                    pricingSnapshot.insurance_provider ||
+                    pricingSnapshot.insurance?.insurer ||
+                    commercials.insurance_provider;
+                if (existing) return existing;
+
+                // Fallback to cat_ins_rules lookup
+                const { data: rule } = await adminClient
+                    .from('cat_ins_rules')
+                    .select('insurer_name')
+                    .eq('state_code', commercials.location?.state_code || 'ALL')
+                    .limit(1)
+                    .maybeSingle();
+                return rule?.insurer_name || null;
+            })()) as string | null,
             accessories: (pricingSnapshot.accessory_items || pricingSnapshot.accessories || []).map((a: any) => ({
                 id: a.id || a,
                 name: a.name || 'Accessory',
@@ -1697,6 +1710,14 @@ export async function getQuoteById(
                 selected: true,
             })),
             accessoriesTotal: pricingSnapshot.accessories_total || 0,
+            services: (pricingSnapshot.service_items || pricingSnapshot.services || []).map((s: any) => ({
+                id: s.id || s,
+                name: s.name || 'Service',
+                price: s.discountPrice || s.price || 0,
+                selected: true,
+            })),
+            servicesTotal: pricingSnapshot.services_total || 0,
+            insuranceGstRate: Number(pricingSnapshot.insurance_gst_rate || 18),
             dealerDiscount:
                 parseInt(q.discount_amount) ||
                 commercials.dealer_discount ||
@@ -1723,7 +1744,7 @@ export async function getQuoteById(
         if (attempt) {
             result.finance = {
                 id: attempt.id,
-                status: attempt.status,
+                status: attempt.status as any,
                 bankId: attempt.bank_id,
                 bankName: attempt.bank_name || null,
                 schemeId: attempt.scheme_id,
@@ -1735,25 +1756,59 @@ export async function getQuoteById(
                 loanAmount: attempt.loan_amount,
                 loanAddons: attempt.loan_addons,
                 processingFee: attempt.processing_fee,
-                chargesBreakup: attempt.charges_breakup,
+                approvedProcessingFee: attempt.processing_fee,
+                chargesBreakup: attempt.charges_breakup as any,
+                approvedChargesBreakup: attempt.charges_breakup as any,
                 emi: attempt.emi,
+                approvedEmi: attempt.emi,
+                approvedAmount: attempt.loan_amount,
+                approvedDownPayment: attempt.down_payment,
+                approvedAddOns: attempt.loan_addons,
+                approvedScheme: attempt.scheme_code,
+                approvedTenure: attempt.tenure_months,
+                approvedIrr: attempt.roi,
+                approvedMarginMoney: 0,
             };
         }
-    } else if (commercials.finance) {
+    } else if (commercials.finance || pricingSnapshot.finance_bank_name) {
         result.finance = {
-            bankId: commercials.finance?.bank_id || null,
-            bankName: commercials.finance?.bank_name || null,
-            schemeId: commercials.finance?.scheme_id || null,
-            schemeCode: commercials.finance?.scheme_code || null,
-            ltv: commercials.finance?.ltv ?? null,
-            roi: commercials.finance?.roi ?? null,
-            tenureMonths: commercials.finance?.tenure_months ?? null,
-            downPayment: commercials.finance?.down_payment ?? null,
-            loanAmount: commercials.finance?.loan_amount ?? null,
-            loanAddons: commercials.finance?.loan_addons ?? null,
-            processingFee: commercials.finance?.processing_fee ?? null,
-            chargesBreakup: commercials.finance?.charges_breakup ?? null,
-            emi: commercials.finance?.emi ?? null,
+            bankId: commercials.finance?.bank_id || pricingSnapshot.finance_bank_id || null,
+            bankName: commercials.finance?.bank_name || pricingSnapshot.finance_bank_name || null,
+            schemeId: commercials.finance?.scheme_id || pricingSnapshot.finance_scheme_id || null,
+            schemeCode:
+                commercials.finance?.scheme_code ||
+                pricingSnapshot.finance_scheme_code ||
+                pricingSnapshot.finance_scheme_id ||
+                null,
+            ltv: commercials.finance?.ltv ?? pricingSnapshot.finance_ltv ?? null,
+            roi: commercials.finance?.roi ?? pricingSnapshot.finance_roi ?? null,
+            tenureMonths:
+                commercials.finance?.tenure_months ??
+                pricingSnapshot.finance_tenure ??
+                pricingSnapshot.emi_tenure ??
+                null,
+            downPayment: commercials.finance?.down_payment ?? pricingSnapshot.down_payment ?? null,
+            approvedDownPayment: commercials.finance?.down_payment ?? pricingSnapshot.down_payment ?? 0,
+            loanAmount: commercials.finance?.loan_amount ?? pricingSnapshot.finance_loan_amount ?? null,
+            approvedAmount: commercials.finance?.loan_amount ?? pricingSnapshot.finance_loan_amount ?? 0,
+            loanAddons: commercials.finance?.loan_addons ?? pricingSnapshot.finance_loan_addons ?? null,
+            approvedAddOns: commercials.finance?.loan_addons ?? pricingSnapshot.finance_loan_addons ?? 0,
+            processingFee: commercials.finance?.processing_fee ?? pricingSnapshot.finance_processing_fees ?? null,
+            approvedProcessingFee: commercials.finance?.processing_fee ?? pricingSnapshot.finance_processing_fees ?? 0,
+            chargesBreakup: commercials.finance?.charges_breakup ?? pricingSnapshot.finance_charges_breakup ?? null,
+            approvedChargesBreakup:
+                commercials.finance?.charges_breakup ?? pricingSnapshot.finance_charges_breakup ?? [],
+            emi: commercials.finance?.emi ?? pricingSnapshot.finance_emi ?? null,
+            approvedEmi: commercials.finance?.emi ?? pricingSnapshot.finance_emi ?? 0,
+            approvedScheme:
+                commercials.finance?.scheme_code ||
+                pricingSnapshot.finance_scheme_code ||
+                pricingSnapshot.finance_scheme_id ||
+                '',
+            approvedTenure:
+                commercials.finance?.tenure_months ?? pricingSnapshot.finance_tenure ?? pricingSnapshot.emi_tenure ?? 0,
+            approvedIrr: commercials.finance?.roi ?? pricingSnapshot.finance_roi ?? 0,
+            approvedMarginMoney: commercials.finance?.margin_money ?? 0,
         };
     }
 
@@ -1822,7 +1877,7 @@ export async function markQuoteInReview(quoteId: string): Promise<{ success: boo
     }
 
     const updatePayload: Record<string, any> = {
-        status: 'PENDING_REVIEW',
+        status: 'IN_REVIEW',
         reviewed_by: user?.id || null,
         reviewed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -1961,13 +2016,15 @@ export async function updateQuoteFinanceStatus(
         return { success: false, error: error.message };
     }
 
-    await logQuoteEvent(attempt.quote_id, `Finance Status: ${status}`, 'Team Member', 'team', { source: 'CRM' });
+    await logQuoteEvent(attempt.quote_id as string, `Finance Status: ${status}`, 'Team Member', 'team', {
+        source: 'CRM',
+    });
 
     if (status === 'DOC_PENDING') {
         await createTask({
             tenantId: null,
             linkedType: 'QUOTE',
-            linkedId: attempt.quote_id,
+            linkedId: attempt.quote_id as string,
             title: 'Collect Finance Documents',
             description: 'Document collection required for finance processing.',
         });
@@ -2043,14 +2100,49 @@ export async function updateTaskStatus(taskId: string, status: 'OPEN' | 'IN_PROG
     return { success: true };
 }
 
+export async function getTeamMembersForTenant(tenantId: string) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('id_team')
+        .select('id, user_id, role, display_id')
+        .eq('tenant_id', tenantId)
+        .eq('status', 'ACTIVE');
+
+    if (error) {
+        console.error('getTeamMembersForTenant Error:', error);
+        return [];
+    }
+
+    // Deduplicate by user_id
+    const seen = new Set<string>();
+    return (data || [])
+        .filter(m => {
+            if (!m.user_id || seen.has(m.user_id)) return false;
+            seen.add(m.user_id);
+            return true;
+        })
+        .map(m => ({
+            id: m.user_id,
+            teamId: m.id,
+            role: m.role,
+            displayId: m.display_id,
+            name: m.display_id || m.role || 'Team Member',
+        }));
+}
+
 export async function updateQuotePricing(
     quoteId: string,
     updates: {
         rtoType?: 'STATE' | 'BH' | 'COMPANY';
         insuranceAddons?: any[]; // Allow full objects
         insuranceTotal?: number;
+        insuranceOD?: number;
+        insuranceTP?: number;
+        insuranceGST?: number;
         accessories?: any[]; // Allow full objects
         accessoriesTotal?: number;
+        services?: any[]; // Allow full objects
+        servicesTotal?: number;
         grandTotal?: number; // On-road total
         managerDiscount?: number;
         managerDiscountNote?: string;
@@ -2063,7 +2155,7 @@ export async function updateQuotePricing(
     const { data: quote, error: fetchError } = await supabase
         .from('crm_quotes')
         .select(
-            'id, status, commercials, lead_id, tenant_id, member_id, lead_referrer_id, quote_owner_id, variant_id, color_id, vehicle_sku_id, finance_mode, active_finance_id, discount_amount, manager_discount, manager_discount_note, created_by, version'
+            'id, status, commercials, lead_id, tenant_id, member_id, lead_referrer_id, quote_owner_id, variant_id, color_id, vehicle_sku_id, finance_mode, active_finance_id, discount_amount, manager_discount, manager_discount_note, created_by'
         )
         .eq('id', quoteId)
         .single();
@@ -2083,10 +2175,16 @@ export async function updateQuotePricing(
         insurance_addon_items: updates.insuranceAddons || pricingSnapshot.insurance_addon_items, // Dual save for compatibility
         insurance_total:
             updates.insuranceTotal !== undefined ? updates.insuranceTotal : pricingSnapshot.insurance_total,
+        insurance_od: updates.insuranceOD !== undefined ? updates.insuranceOD : pricingSnapshot.insurance_od,
+        insurance_tp: updates.insuranceTP !== undefined ? updates.insuranceTP : pricingSnapshot.insurance_tp,
+        insurance_gst: updates.insuranceGST !== undefined ? updates.insuranceGST : pricingSnapshot.insurance_gst,
         accessories: updates.accessories || pricingSnapshot.accessories,
         accessory_items: updates.accessories || pricingSnapshot.accessory_items,
         accessories_total:
             updates.accessoriesTotal !== undefined ? updates.accessoriesTotal : pricingSnapshot.accessories_total,
+        services: updates.services || pricingSnapshot.services,
+        service_items: updates.services || pricingSnapshot.service_items,
+        services_total: updates.servicesTotal !== undefined ? updates.servicesTotal : pricingSnapshot.services_total,
         grand_total: updates.grandTotal !== undefined ? updates.grandTotal : pricingSnapshot.grand_total,
     };
 
@@ -2122,22 +2220,31 @@ export async function updateQuotePricing(
     const updatedAccessories = normalizeItems(
         updatedPricingSnapshot.accessory_items || updatedPricingSnapshot.accessories || []
     );
+    const originalServices = normalizeItems(pricingSnapshot.service_items || pricingSnapshot.services || []);
+    const updatedServices = normalizeItems(
+        updatedPricingSnapshot.service_items || updatedPricingSnapshot.services || []
+    );
 
     const rtoChanged = (pricingSnapshot.rto_type || '') !== (updatedPricingSnapshot.rto_type || '');
     const insuranceItemsChanged = !isEqualArray(originalInsuranceItems, updatedInsuranceItems);
     const accessoriesChanged = !isEqualArray(originalAccessories, updatedAccessories);
+    const servicesChanged = !isEqualArray(originalServices, updatedServices);
     const insuranceTotalChanged =
         toNumber(pricingSnapshot.insurance_total) !== toNumber(updatedPricingSnapshot.insurance_total);
     const accessoriesTotalChanged =
         toNumber(pricingSnapshot.accessories_total) !== toNumber(updatedPricingSnapshot.accessories_total);
+    const servicesTotalChanged =
+        toNumber(pricingSnapshot.services_total) !== toNumber(updatedPricingSnapshot.services_total);
     const grandTotalChanged = toNumber(pricingSnapshot.grand_total) !== toNumber(updatedPricingSnapshot.grand_total);
 
     const nonManagerChanged =
         rtoChanged ||
         insuranceItemsChanged ||
         accessoriesChanged ||
+        servicesChanged ||
         insuranceTotalChanged ||
         accessoriesTotalChanged ||
+        servicesTotalChanged ||
         grandTotalChanged;
     const managerChanged = updates.managerDiscount !== undefined || updates.managerDiscountNote !== undefined;
 
@@ -2149,7 +2256,10 @@ export async function updateQuotePricing(
             updated_at: new Date().toISOString(),
         };
         updatePayload.manager_discount = updates.managerDiscount ?? quote.manager_discount ?? 0;
-        updatePayload.manager_discount_note = updates.managerDiscountNote || null;
+        updatePayload.manager_discount_note =
+            updates.managerDiscountNote !== undefined
+                ? updates.managerDiscountNote
+                : quote.manager_discount_note || null;
         updatePayload.reviewed_by = user?.id || null;
         updatePayload.reviewed_at = new Date().toISOString();
 
@@ -2191,23 +2301,6 @@ export async function updateQuotePricing(
 
     const vehicleSkuId = quote.vehicle_sku_id || quote.color_id || quote.variant_id || null;
 
-    let versionQuery = supabase.from('crm_quotes').select('version');
-    if (vehicleSkuId) {
-        versionQuery = versionQuery.eq('vehicle_sku_id', vehicleSkuId);
-    } else {
-        versionQuery = versionQuery.eq('id', quoteId);
-    }
-    if (quote.lead_id) {
-        versionQuery = versionQuery.eq('lead_id', quote.lead_id);
-    } else if (quote.member_id) {
-        versionQuery = versionQuery.eq('member_id', quote.member_id);
-    } else {
-        versionQuery = versionQuery.eq('id', quoteId);
-    }
-
-    const { data: latestVersionRow } = await versionQuery.order('version', { ascending: false }).limit(1).maybeSingle();
-    const nextVersion = (latestVersionRow?.version ?? quote.version ?? 0) + 1;
-
     const { data: newQuote, error: insertError } = await supabase
         .from('crm_quotes')
         .insert({
@@ -2220,7 +2313,6 @@ export async function updateQuotePricing(
             color_id: quote.color_id,
             vehicle_sku_id: vehicleSkuId,
             commercials: updatedCommercials,
-            parent_quote_id: null,
             on_road_price: onRoadPrice,
             ex_showroom_price: exShowroom,
             insurance_amount: insuranceAmount,
@@ -2228,12 +2320,13 @@ export async function updateQuotePricing(
             accessories_amount: accessoriesAmount,
             discount_amount: quote.discount_amount ?? null,
             manager_discount: updates.managerDiscount ?? quote.manager_discount ?? null,
-            manager_discount_note: updates.managerDiscountNote || quote.manager_discount_note || null,
+            manager_discount_note:
+                updates.managerDiscountNote !== undefined
+                    ? updates.managerDiscountNote
+                    : quote.manager_discount_note || null,
             finance_mode: quote.finance_mode || null,
             active_finance_id: null,
             status: 'DRAFT',
-            version: nextVersion,
-            is_latest: true,
             created_by: user?.id || quote.created_by || null,
         })
         .select()
@@ -2244,26 +2337,23 @@ export async function updateQuotePricing(
         return { success: false, error: insertError?.message || 'Failed to create new quote' };
     }
 
-    const voidUpdate: any = {
-        status: 'VOID',
-        is_latest: false,
-        updated_at: new Date().toISOString(),
-    };
+    if (vehicleSkuId && quote.vehicle_sku_id === vehicleSkuId) {
+        const supersedeUpdate: any = {
+            status: 'SUPERSEDED',
+            updated_at: new Date().toISOString(),
+        };
 
-    let voidQuery = supabase.from('crm_quotes').update(voidUpdate).neq('id', newQuote.id);
-    if (vehicleSkuId) {
-        voidQuery = voidQuery.eq('vehicle_sku_id', vehicleSkuId);
-    } else {
-        voidQuery = voidQuery.eq('id', quoteId);
+        let supersedeQuery = supabase.from('crm_quotes').update(supersedeUpdate).neq('id', newQuote.id);
+        supersedeQuery = supersedeQuery.eq('vehicle_sku_id', vehicleSkuId);
+        if (quote.lead_id) {
+            supersedeQuery = supersedeQuery.eq('lead_id', quote.lead_id);
+        } else if (quote.member_id) {
+            supersedeQuery = supersedeQuery.eq('member_id', quote.member_id);
+        } else {
+            supersedeQuery = supersedeQuery.eq('id', quoteId);
+        }
+        await supersedeQuery;
     }
-    if (quote.lead_id) {
-        voidQuery = voidQuery.eq('lead_id', quote.lead_id);
-    } else if (quote.member_id) {
-        voidQuery = voidQuery.eq('member_id', quote.member_id);
-    } else {
-        voidQuery = voidQuery.eq('id', quoteId);
-    }
-    await voidQuery;
 
     await logQuoteEvent(newQuote.id, 'Quote Revised (New Quote)', 'Team Member', 'team', {
         source: 'CRM',
@@ -2380,14 +2470,14 @@ export async function logQuoteEvent(
     event: string,
     actor?: string | null,
     actorType: 'customer' | 'team' = 'team',
-    details?: { source?: string; reason?: string }
+    details?: { source?: string; reason?: string; [key: string]: any }
 ) {
-    const supabase = await createClient(); // Use createClient for RLS compliance if possible
+    const supabase = await createClient();
 
-    // Fetch current commercials to get timeline
+    // Fetch quote first to get tenant_id and commercials
     const { data: quote, error: fetchError } = await supabase
         .from('crm_quotes')
-        .select('commercials')
+        .select('tenant_id, commercials')
         .eq('id', quoteId)
         .single();
 
@@ -2396,15 +2486,54 @@ export async function logQuoteEvent(
         return { success: false, error: 'Quote not found' };
     }
 
+    const tenantId = quote.tenant_id;
     const commercials = (quote.commercials as any) || {};
     const timeline = commercials.timeline || [];
+
+    // Auto-resolve actor metadata
+    let resolvedActor = actor;
+    let actorOrg: string | null = null;
+    let actorDesignation: string | null = null;
+
+    if (actorType === 'team') {
+        try {
+            const user = await getAuthUser();
+            if (user) {
+                // If it's a generic actor name, resolve to real name
+                if (!resolvedActor || resolvedActor === 'Team Member' || resolvedActor === 'System') {
+                    const fullName = user.user_metadata?.full_name || user.user_metadata?.name || null;
+                    resolvedActor = fullName || user.email?.split('@')[0] || 'System';
+                }
+
+                if (tenantId) {
+                    // Fetch organization name and user role in parallel if possible, or sequentially
+                    const [tenantRes, teamRes] = await Promise.all([
+                        adminClient.from('id_tenants').select('name').eq('id', tenantId).single(),
+                        adminClient
+                            .from('id_team')
+                            .select('role')
+                            .eq('tenant_id', tenantId)
+                            .eq('user_id', user.id)
+                            .single(),
+                    ]);
+
+                    if (tenantRes.data) actorOrg = tenantRes.data.name;
+                    if (teamRes.data) actorDesignation = teamRes.data.role;
+                }
+            }
+        } catch (e) {
+            console.error('Error resolving actor metadata:', e);
+        }
+    }
 
     // Add new event
     const newEvent = {
         event,
         timestamp: new Date().toISOString(),
-        actor: actor || 'System',
+        actor: resolvedActor || 'System',
         actorType,
+        actorOrg,
+        actorDesignation,
         source: details?.source || null,
         reason: details?.reason || null,
     };
@@ -2425,4 +2554,40 @@ export async function logQuoteEvent(
     }
 
     return { success: true };
+}
+
+export async function getBookingsForLead(leadId: string) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('crm_bookings')
+        .select('*')
+        .eq('lead_id', leadId)
+        .order('created_at', { ascending: false });
+    if (error) {
+        console.error('getBookingsForLead Error:', error);
+        return [];
+    }
+    return data || [];
+}
+
+export async function getPaymentsForEntity(leadId?: string | null, memberId?: string | null) {
+    const supabase = await createClient();
+    let query = supabase.from('crm_payments').select('*').order('created_at', { ascending: false });
+
+    if (leadId && memberId) {
+        query = query.or(`lead_id.eq.${leadId},member_id.eq.${memberId}`);
+    } else if (leadId) {
+        query = query.eq('lead_id', leadId);
+    } else if (memberId) {
+        query = query.eq('member_id', memberId);
+    } else {
+        return [];
+    }
+
+    const { data, error } = await query;
+    if (error) {
+        console.error('getPaymentsForEntity Error:', error);
+        return [];
+    }
+    return data || [];
 }

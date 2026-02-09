@@ -11,6 +11,8 @@ import {
     markQuoteInReview,
     getTasksForEntity,
     getQuotesForLead,
+    getBookingsForLead,
+    getPaymentsForEntity,
 } from '@/actions/crm';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
@@ -31,10 +33,12 @@ export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: Quot
             displayId: string;
             status?: string | null;
             createdAt?: string | null;
-            isLatest?: boolean | null;
-            version?: number | null;
+            onRoadPrice?: string | number | null;
+            createdBy?: string | null;
         }[]
     >([]);
+    const [bookings, setBookings] = useState<any[]>([]);
+    const [payments, setPayments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const params = useParams();
@@ -59,7 +63,7 @@ export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: Quot
                 const now = new Date().toISOString();
                 setQuote({
                     ...(result.data as unknown as QuoteData),
-                    status: 'PENDING_REVIEW',
+                    status: 'IN_REVIEW',
                     reviewedAt: now,
                     timeline: [
                         ...(result.data.timeline || []),
@@ -81,12 +85,22 @@ export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: Quot
                         displayId: q.display_id || q.displayId || formatDisplayId(q.id),
                         status: q.status,
                         createdAt: q.created_at || q.createdAt,
-                        isLatest: q.is_latest ?? q.isLatest ?? false,
-                        version: q.version ?? 1,
+                        onRoadPrice: q.on_road_price,
+                        createdBy: q.created_by,
                     }))
                 );
             } else {
                 setRelatedQuotes([]);
+            }
+
+            // Fetch Bookings and Payments
+            if (result.data.leadId) {
+                const [bookingsData, paymentsData] = await Promise.all([
+                    getBookingsForLead(result.data.leadId),
+                    getPaymentsForEntity(result.data.leadId, result.data.customerProfile?.memberId),
+                ]);
+                setBookings(bookingsData);
+                setPayments(paymentsData);
             }
         } else {
             setError(result.error || 'Failed to load quote');
@@ -103,8 +117,13 @@ export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: Quot
             // Pass full objects for insurance addons to persist amounts
             insuranceAddons: data.pricing?.insuranceAddons?.filter(a => a.selected) as any,
             insuranceTotal: data.pricing?.insuranceTotal,
+            insuranceOD: data.pricing?.insuranceOD,
+            insuranceTP: data.pricing?.insuranceTP,
+            insuranceGST: data.pricing?.insuranceGST,
             accessories: data.pricing?.accessories?.filter(a => a.selected) as any,
             accessoriesTotal: data.pricing?.accessoriesTotal,
+            services: data.pricing?.services?.filter((s: any) => s.selected) as any,
+            servicesTotal: data.pricing?.servicesTotal,
             grandTotal: data.pricing?.finalTotal,
             managerDiscount: data.pricing?.managerDiscount,
             managerDiscountNote: data.pricing?.managerDiscountNote || undefined,
@@ -182,10 +201,12 @@ export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: Quot
             quote={quote}
             tasks={tasks}
             relatedQuotes={relatedQuotes}
+            bookings={bookings}
+            payments={payments}
             onSave={handleSave}
             onSendToCustomer={handleSendToCustomer}
             onConfirmBooking={handleConfirmBooking}
-            isEditable={quote.status === 'DRAFT' || quote.status === 'PENDING_REVIEW'}
+            isEditable={quote.status === 'DRAFT' || quote.status === 'IN_REVIEW'}
         />
     );
 }
