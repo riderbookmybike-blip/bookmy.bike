@@ -523,6 +523,12 @@ export async function createQuoteAction(data: {
     source?: 'STORE_PDP' | 'LEADS';
 }): Promise<{ success: boolean; data?: any; message?: string }> {
     const user = await getAuthUser();
+    if (!user) {
+        return {
+            success: false,
+            message: 'Authentication required to generate a quote.',
+        };
+    }
     const supabase = await createClient();
     const createdBy = user?.id;
     // Prefer explicit member_id or lead-linked customer_id (avoid using staff auth IDs)
@@ -601,7 +607,7 @@ export async function createQuoteAction(data: {
 
     const vehicleSkuId = data.color_id || data.variant_id;
 
-    const { data: quote, error } = await supabase
+    const { data: quote, error } = await adminClient
         .from('crm_quotes')
         .insert({
             tenant_id: data.tenant_id,
@@ -640,7 +646,7 @@ export async function createQuoteAction(data: {
 
     const finance = (data.commercials as any)?.finance || null;
     if (finance?.scheme_id || finance?.bank_id) {
-        const { data: attempt, error: financeError } = await supabase
+        const { data: attempt, error: financeError } = await adminClient
             .from('crm_quote_finance_attempts')
             .insert({
                 quote_id: quote.id,
@@ -667,7 +673,7 @@ export async function createQuoteAction(data: {
         if (financeError) {
             console.error('Finance attempt create failed:', financeError);
         } else if (attempt?.id) {
-            await supabase
+            await adminClient
                 .from('crm_quotes')
                 .update({
                     finance_mode: 'LOAN',
@@ -677,7 +683,7 @@ export async function createQuoteAction(data: {
                 .eq('id', quote.id);
         }
     } else {
-        await supabase
+        await adminClient
             .from('crm_quotes')
             .update({
                 finance_mode: 'CASH',
@@ -688,7 +694,7 @@ export async function createQuoteAction(data: {
 
     // 2. Sync Lead Status to 'QUOTE'
     if (data.lead_id) {
-        const { error: leadUpdateError } = await supabase
+        const { error: leadUpdateError } = await adminClient
             .from('crm_leads')
             .update({
                 status: 'QUOTE',
