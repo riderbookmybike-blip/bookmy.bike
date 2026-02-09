@@ -95,6 +95,23 @@ export default function ReviewStep({ brand, family, template, variants, colors, 
     const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>('ASC');
     const [users, setUsers] = useState<any[]>([]);
 
+    const resolveColorObj = (sku: any) => {
+        const colorName = sku.specs?.[l2Label] || sku.color_name;
+        const directColor = colors.find((c: any) => c.id === sku.parent_id);
+        if (directColor) return directColor;
+        return colors.find((c: any) => {
+            if (colorName && c.name?.toUpperCase() === colorName.toUpperCase()) return true;
+            if (sku.specs?.hex_primary && c.specs?.hex_primary?.toLowerCase() === sku.specs.hex_primary.toLowerCase())
+                return true;
+            return false;
+        });
+    };
+
+    const resolveVariantId = (sku: any) => {
+        const colorObj = resolveColorObj(sku);
+        return colorObj?.parent_id || sku.parent_id;
+    };
+
     React.useEffect(() => {
         const fetchUsers = async () => {
             const supabase = createClient();
@@ -257,11 +274,10 @@ export default function ReviewStep({ brand, family, template, variants, colors, 
                             {skus && skus.length > 0 ? (
                                 [...skus]
                                     .filter(s => {
-                                        if (filterVariant !== 'ALL' && s.parent_id !== filterVariant) return false;
-                                        const cName = s.specs?.[l2Label] || s.color_name;
-                                        const cObj = colors.find(
-                                            (c: any) => c.name?.toUpperCase() === cName?.toUpperCase()
-                                        );
+                                        const resolvedVariantId = resolveVariantId(s);
+                                        if (filterVariant !== 'ALL' && resolvedVariantId !== filterVariant)
+                                            return false;
+                                        const cObj = resolveColorObj(s);
                                         if (filterColor !== 'ALL' && cObj?.id !== filterColor) return false;
                                         if (
                                             filterSearch &&
@@ -278,8 +294,8 @@ export default function ReviewStep({ brand, family, template, variants, colors, 
                                         }
 
                                         // Default: Sort by Variant Position then Color Position
-                                        const vA = variants.find((v: any) => v.id === a.parent_id);
-                                        const vB = variants.find((v: any) => v.id === b.parent_id);
+                                        const vA = variants.find((v: any) => v.id === resolveVariantId(a));
+                                        const vB = variants.find((v: any) => v.id === resolveVariantId(b));
                                         const vPosA = vA?.position ?? 0;
                                         const vPosB = vB?.position ?? 0;
 
@@ -303,17 +319,7 @@ export default function ReviewStep({ brand, family, template, variants, colors, 
                                     .map((sku: any, idx: number) => {
                                         // Asset Logic
                                         let colorName = sku.specs?.[l2Label] || sku.color_name;
-                                        const colorObj = colors.find((c: any) => {
-                                            if (colorName && c.name?.toUpperCase() === colorName.toUpperCase())
-                                                return true;
-                                            if (
-                                                sku.specs?.hex_primary &&
-                                                c.specs?.hex_primary?.toLowerCase() ===
-                                                    sku.specs.hex_primary.toLowerCase()
-                                            )
-                                                return true;
-                                            return false;
-                                        });
+                                        const colorObj = resolveColorObj(sku);
 
                                         if (colorObj) colorName = colorObj.name;
                                         const colorSpecs = colorObj?.specs || {};
@@ -321,17 +327,18 @@ export default function ReviewStep({ brand, family, template, variants, colors, 
                                         const getSharedAssets = () => {
                                             const fVideos = family.specs?.video_urls || [];
                                             const vVideos =
-                                                variants.find((v: any) => v.id === sku.parent_id)?.specs?.video_urls ||
-                                                [];
+                                                variants.find((v: any) => v.id === resolveVariantId(sku))?.specs
+                                                    ?.video_urls || [];
                                             const cVideos = colorSpecs.video_urls || [];
                                             const fPdfs = family.specs?.pdf_urls || [];
                                             const vPdfs =
-                                                variants.find((v: any) => v.id === sku.parent_id)?.specs?.pdf_urls ||
-                                                [];
+                                                variants.find((v: any) => v.id === resolveVariantId(sku))?.specs
+                                                    ?.pdf_urls || [];
                                             const cPdfs = colorSpecs.pdf_urls || [];
                                             const fGallery = family.specs?.gallery || [];
                                             const vGallery =
-                                                variants.find((v: any) => v.id === sku.parent_id)?.specs?.gallery || [];
+                                                variants.find((v: any) => v.id === resolveVariantId(sku))?.specs
+                                                    ?.gallery || [];
                                             const cGallery = colorSpecs.gallery || [];
 
                                             return {
@@ -362,7 +369,7 @@ export default function ReviewStep({ brand, family, template, variants, colors, 
                                             skuPdfs.length > 0 &&
                                             skuPdfs.every((p: string) => sharedAssets.pdfs.includes(p));
 
-                                        const parentVariant = variants.find((v: any) => v.id === sku.parent_id);
+                                        const parentVariant = variants.find((v: any) => v.id === resolveVariantId(sku));
                                         const hexPrimary = sku.specs?.hex_primary || colorObj?.specs?.hex_primary;
 
                                         return (

@@ -1,7 +1,16 @@
-export type BookingStatus = 'DRAFT' | 'CONFIRMED' | 'DELIVERED';
+export type BookingStatus =
+    | 'DRAFT'
+    | 'IN_REVIEW'
+    | 'APPROVED'
+    | 'DENIED'
+    | 'CONFIRMED'
+    | 'CANCELED'
+    | 'SUPERSEDED'
+    | 'DELIVERED';
 export type AllotmentStatus = 'NONE' | 'SOFT_LOCK' | 'HARD_LOCK';
+export type PdiStatus = 'PENDING' | 'PASSED' | 'FAILED';
+export type OperationalStage = 'QUOTE' | 'BOOKING' | 'PAYMENT' | 'FINANCE' | 'ALLOTMENT' | 'COMPLIANCE' | 'DELIVERED';
 import { PriceSnapshot } from './pricing';
-
 
 export interface Booking {
     id: string; // Internal UUID
@@ -19,9 +28,15 @@ export interface Booking {
     // Locked Price Context
     priceSnapshot?: PriceSnapshot;
 
-    // Status
+    // Status & Stage
     status: BookingStatus;
+    operationalStage: OperationalStage;
     allotmentStatus: AllotmentStatus;
+    booking_amount_paid?: boolean;
+
+    // Stage Audit
+    stage_updated_at?: string;
+    stage_updated_by?: string;
 
     // Step 6: Insurance & RTO
     insuranceStatus?: 'PENDING' | 'COMPLETED';
@@ -37,13 +52,8 @@ export interface Booking {
     assignedEngineNumber?: string;
 
     // Step 11: PDI
-    pdiStatus?: 'PENDING' | 'APPROVED';
-    pdiDetails?: {
-        inspectorName: string;
-        odoReading: string;
-        allChecksPassed: boolean;
-        notes: string;
-    };
+    pdiStatus?: PdiStatus;
+    pdiMeta?: Record<string, any>;
 
     // Step 12: Documents
     documents?: {

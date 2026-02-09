@@ -23,10 +23,16 @@ const TEMPLATE_CATEGORIES = [
 interface TemplateStepProps {
     templates: any[];
     selectedTemplate: string | null;
+    templateStats?: Record<string, number>;
     onSelectTemplate: (templateId: string) => void;
 }
 
-export default function TemplateStep({ templates, selectedTemplate, onSelectTemplate }: TemplateStepProps) {
+export default function TemplateStep({
+    templates,
+    selectedTemplate,
+    templateStats = {},
+    onSelectTemplate,
+}: TemplateStepProps) {
     const [activeCategory, setActiveCategory] = useState('ALL');
 
     // Filter templates by selected category
@@ -97,47 +103,52 @@ export default function TemplateStep({ templates, selectedTemplate, onSelectTemp
                     {activeCategory === 'ALL' ? 'All Templates' : `${activeCategory} Templates`}
                 </label>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    {filteredTemplates.map((tmpl: any) => (
-                        <button
-                            key={tmpl.id}
-                            onClick={() => onSelectTemplate(tmpl.id)}
-                            className={`group relative p-6 rounded-[2rem] border-2 transition-all duration-500 text-left overflow-hidden h-full flex flex-col items-center gap-4 ${
-                                selectedTemplate === tmpl.id
-                                    ? 'border-indigo-500 bg-indigo-50/30 dark:bg-indigo-900/20 dark:border-indigo-500/50'
-                                    : 'border-slate-100 bg-white dark:bg-white/5 dark:border-white/10 hover:border-indigo-200 dark:hover:border-indigo-500/30'
-                            }`}
-                        >
-                            {/* Category Badge - Top Left */}
-                            <span
-                                className={`absolute top-3 left-3 text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${getCategoryStyle(tmpl.category)}`}
+                    {filteredTemplates.map((tmpl: any) => {
+                        const modelCount = templateStats[tmpl.id] || 0;
+
+                        return (
+                            <button
+                                key={tmpl.id}
+                                onClick={() => onSelectTemplate(tmpl.id)}
+                                className={`group relative p-6 rounded-[2rem] border-2 transition-all duration-500 text-left overflow-hidden h-full flex flex-col items-center gap-4 ${
+                                    selectedTemplate === tmpl.id
+                                        ? 'border-indigo-500 bg-indigo-50/30 dark:bg-indigo-900/20 dark:border-indigo-500/50'
+                                        : 'border-slate-100 bg-white dark:bg-white/5 dark:border-white/10 hover:border-indigo-200 dark:hover:border-indigo-500/30'
+                                }`}
                             >
-                                {tmpl.category || 'VEHICLE'}
-                            </span>
+                                {/* Category Badge - Top Left */}
+                                <span
+                                    className={`absolute top-3 left-3 text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${getCategoryStyle(tmpl.category)}`}
+                                >
+                                    {tmpl.category || 'VEHICLE'}
+                                </span>
 
-                            <div className="w-16 h-16 rounded-[2rem] bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm mt-2">
-                                <Fingerprint size={32} />
-                            </div>
-                            <div className="text-center w-full">
-                                <h4 className="font-black text-slate-900 dark:text-white uppercase italic leading-none text-lg">
-                                    {tmpl.name}
-                                </h4>
-                                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-2 leading-tight">
-                                    {tmpl.hierarchy_config?.l1 || 'Variant'} → {tmpl.hierarchy_config?.l2 || 'Color'}
-                                </p>
-                            </div>
+                                {/* Model Count Badge - Top Right */}
+                                <span className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/10 text-[8px] font-black uppercase tracking-widest text-slate-500 group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                                    {modelCount} {modelCount === 1 ? 'Model' : 'Models'}
+                                </span>
 
-                            {selectedTemplate === tmpl.id && (
-                                <div className="absolute top-4 right-4 text-emerald-500 scale-125 animate-in zoom-in duration-300">
-                                    <CheckCircle2
-                                        size={24}
-                                        fill="currentColor"
-                                        strokeWidth={1}
-                                        className="text-white"
-                                    />
+                                <div className="w-16 h-16 rounded-[2rem] bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm mt-2">
+                                    <Fingerprint size={32} />
                                 </div>
-                            )}
-                        </button>
-                    ))}
+                                <div className="text-center w-full">
+                                    <h4 className="font-black text-slate-900 dark:text-white uppercase italic leading-none text-lg">
+                                        {tmpl.name}
+                                    </h4>
+                                    <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-2 leading-tight">
+                                        {tmpl.hierarchy_config?.l1 || 'Variant'} →{' '}
+                                        {tmpl.hierarchy_config?.l2 || 'Color'}
+                                    </p>
+                                </div>
+
+                                {selectedTemplate === tmpl.id && (
+                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-emerald-500/10 scale-[5] pointer-events-none">
+                                        <CheckCircle2 size={24} fill="currentColor" strokeWidth={1} />
+                                    </div>
+                                )}
+                            </button>
+                        );
+                    })}
                 </div>
 
                 {/* Empty State */}

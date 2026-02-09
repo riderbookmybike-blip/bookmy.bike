@@ -20,6 +20,7 @@ import {
     Zap,
     Upload,
     Trash2,
+    Wind,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import SKUMediaManager from '@/components/catalog/SKUMediaManager';
@@ -75,6 +76,7 @@ export default function FamilyStep({
         price_base: familyData?.price_base || 0,
         item_tax_rate: familyData?.item_tax_rate || 18,
         hsn_code: familyData?.hsn_code || '',
+        sku_code: familyData?.sku_code || '',
     });
     const [isMediaOpen, setIsMediaOpen] = useState(false);
 
@@ -99,6 +101,30 @@ export default function FamilyStep({
                 setHsnSearch(`${selected.code} • ${selected.class || selected.description} (${selected.gst_rate}%)`);
         }
     }, [formData.hsn_code, hsnList]);
+
+    // Sync formData when familyData prop changes
+    useEffect(() => {
+        if (familyData) {
+            setFormData({
+                name: familyData.name || '',
+                specs: {
+                    ...familyData.specs,
+                    engine_cc: familyData.specs?.engine_cc || familyData.specs?.engine_capacity || '',
+                    fuel_capacity:
+                        familyData.specs?.fuel_capacity ||
+                        familyData.specs?.fuel_tank_capacity ||
+                        familyData.specs?.tank_capacity ||
+                        familyData.specs?.fuel_tank ||
+                        '',
+                    mileage: familyData.specs?.mileage || familyData.specs?.arai_mileage || '',
+                },
+                price_base: familyData.price_base || 0,
+                item_tax_rate: familyData.item_tax_rate || 18,
+                hsn_code: familyData.hsn_code || '',
+                sku_code: familyData.sku_code || '',
+            });
+        }
+    }, [familyData]);
 
     const handleAutoSave = async () => {
         if (!formData.name) return;
@@ -140,6 +166,30 @@ export default function FamilyStep({
 
         try {
             const supabase = createClient();
+
+            // Generate robust slug: brand-modelname (compact)
+            const cleanBrand = brand.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const cleanModel = formData.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const baseSlug = `${cleanBrand}-${cleanModel}`.replace(/-+/g, '-').replace(/^-|-$/g, '');
+
+            const findUniqueSlug = async (candidate: string) => {
+                let slug = candidate;
+                let suffix = 1;
+                // Ensure global uniqueness (cat_items.slug has unique constraint)
+                while (true) {
+                    const { data: existing } = await supabase
+                        .from('cat_items')
+                        .select('id')
+                        .eq('slug', slug)
+                        .maybeSingle();
+                    if (!existing || existing.id === familyData?.id) return slug;
+                    suffix += 1;
+                    slug = `${candidate}-${suffix}`;
+                }
+            };
+
+            const generatedSlug = await findUniqueSlug(baseSlug);
+
             const payload = {
                 ...formData,
                 specs: {
@@ -156,13 +206,8 @@ export default function FamilyStep({
                 template_id: template.id,
                 brand_id: brand.id,
                 type: 'FAMILY',
-                slug: (brand.name + '-' + formData.name)
-                    .toLowerCase()
-                    .trim()
-                    .replace(/[^a-z0-9\s-]/g, '') // Remove special chars
-                    .replace(/\s+/g, '-') // Spaces to dashes
-                    .replace(/-+/g, '-') // Multiple dashes to single
-                    .replace(/^-|-$/g, ''), // Trim leading/trailing dashes
+                slug: generatedSlug,
+                sku_code: formData.sku_code || null,
                 status: 'ACTIVE',
             };
 
@@ -175,17 +220,53 @@ export default function FamilyStep({
                     .update(payload)
                     .eq('id', familyData.id)
                     .select()
-                    .single();
+                    .maybeSingle();
                 data = result.data;
                 error = result.error;
             } else {
                 // INSERT new record
-                const result = await supabase.from('cat_items').insert(payload).select().single();
+                const result = await supabase.from('cat_items').insert(payload).select().maybeSingle();
                 data = result.data;
                 error = result.error;
             }
 
             if (error) throw error;
+            if (!data) {
+                const {
+                    data: { session },
+                } = await supabase.auth.getSession();
+
+                if (familyData?.id) {
+                    const fetchResult = await supabase
+                        .from('cat_items')
+                        .select('id')
+                        .eq('id', familyData.id)
+                        .maybeSingle();
+                    if (fetchResult.error) throw fetchResult.error;
+                    if (!fetchResult.data) {
+                        throw new Error('Model update failed: record not found.');
+                    }
+                    if (!session) {
+                        throw new Error('Session expired. Please refresh and login again.');
+                    }
+                    throw new Error('Model update blocked. Please refresh and try again.');
+                } else {
+                    const fetchResult = await supabase
+                        .from('cat_items')
+                        .select('id')
+                        .eq('type', 'FAMILY')
+                        .eq('slug', generatedSlug)
+                        .maybeSingle();
+                    if (fetchResult.error) throw fetchResult.error;
+                    if (!fetchResult.data) {
+                        throw new Error('Model create failed: record not found.');
+                    }
+                    if (!session) {
+                        throw new Error('Session expired. Please refresh and login again.');
+                    }
+                    throw new Error('Model create blocked. Please refresh and try again.');
+                }
+            }
 
             if (data) {
                 onSave(data);
@@ -324,6 +405,7 @@ export default function FamilyStep({
                                                         price_base: fam.price_base || 0,
                                                         item_tax_rate: fam.item_tax_rate || 18,
                                                         hsn_code: fam.hsn_code || '',
+                                                        sku_code: fam.sku_code || '',
                                                     });
                                                     onSave(fam);
                                                     setIsModalOpen(true);
@@ -366,28 +448,58 @@ export default function FamilyStep({
                                         {/* Quick Specs Preview - Dynamic */}
                                         {keyAttributes.length > 0 ? (
                                             <div className="grid grid-cols-3 gap-2 mb-4 py-3 border-t border-slate-100 dark:border-white/5">
-                                                {keyAttributes.map((attr: any, i: number) => (
-                                                    <div
-                                                        key={attr.key}
-                                                        className={`text-center ${i < keyAttributes.length - 1 ? 'border-r border-slate-100 dark:border-white/5' : ''}`}
-                                                    >
-                                                        <div className="flex items-center justify-center gap-1 text-[9px] uppercase text-slate-400 font-bold mb-0.5">
-                                                            {attr.type === 'number' ? (
-                                                                <Gauge size={10} />
-                                                            ) : (
-                                                                <Box size={10} />
-                                                            )}
-                                                            {attr.label?.split(' ')[0] || attr.key}
+                                                {keyAttributes.map((attr: any, i: number) => {
+                                                    const value = specs?.[attr.key];
+                                                    const suffix = attr.suffix;
+
+                                                    // Smart label: "Max Power" -> "Power", "Engine Capacity" -> "Engine"
+                                                    let displayLabel = attr.label || attr.key;
+                                                    const lowerLabel = displayLabel.toLowerCase();
+                                                    if (lowerLabel.includes('power')) displayLabel = 'Power';
+                                                    else if (lowerLabel.includes('torque')) displayLabel = 'Torque';
+                                                    else if (
+                                                        lowerLabel.includes('capacity') ||
+                                                        lowerLabel.includes('engine')
+                                                    )
+                                                        displayLabel = 'Engine';
+                                                    else if (lowerLabel.includes('mileage')) displayLabel = 'Mileage';
+                                                    else displayLabel = displayLabel.split(' ')[0];
+
+                                                    // Smart suffix: don't append if already present in value
+                                                    const renderedValue = value
+                                                        ? typeof value === 'string' &&
+                                                          suffix &&
+                                                          value.toLowerCase().includes(suffix.toLowerCase())
+                                                            ? value
+                                                            : `${value}${suffix || ''}`
+                                                        : '-';
+
+                                                    return (
+                                                        <div
+                                                            key={attr.key}
+                                                            className={`text-center ${i < keyAttributes.length - 1 ? 'border-r border-slate-100 dark:border-white/5' : ''}`}
+                                                        >
+                                                            <div className="flex items-center justify-center gap-1 text-[9px] uppercase text-slate-400 font-bold mb-0.5">
+                                                                {displayLabel === 'Power' ? (
+                                                                    <Zap size={10} className="text-amber-500" />
+                                                                ) : displayLabel === 'Torque' ? (
+                                                                    <Wind size={10} className="text-blue-500" />
+                                                                ) : attr.type === 'number' ||
+                                                                  displayLabel === 'Engine' ? (
+                                                                    <Gauge size={10} />
+                                                                ) : (
+                                                                    <Box size={10} />
+                                                                )}
+                                                                {displayLabel}
+                                                            </div>
+                                                            <div className="text-xs font-black text-slate-700 dark:text-slate-200">
+                                                                {Array.isArray(value)
+                                                                    ? `${value.length} Items`
+                                                                    : renderedValue}
+                                                            </div>
                                                         </div>
-                                                        <div className="text-xs font-black text-slate-700 dark:text-slate-200">
-                                                            {specs?.[attr.key]
-                                                                ? Array.isArray(specs[attr.key])
-                                                                    ? `${specs[attr.key].length} Items`
-                                                                    : `${specs[attr.key]}${attr.suffix && !attr.label?.toLowerCase().includes('material') && !(attr.key === 'weight' && attr.type === 'select') ? attr.suffix : ''}`
-                                                                : '-'}
-                                                        </div>
-                                                    </div>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
                                         ) : (
                                             // Fallback / No Specs logic or cleaner spacing
@@ -485,6 +597,7 @@ export default function FamilyStep({
                                 price_base: 0,
                                 item_tax_rate: 18,
                                 hsn_code: '',
+                                sku_code: '',
                             });
                             onSave(null);
                             setIsModalOpen(true);
@@ -526,6 +639,18 @@ export default function FamilyStep({
                                     onChange={e => setFormData({ ...formData, name: e.target.value })}
                                     className="text-4xl font-black uppercase italic bg-transparent border-b-2 border-slate-100 dark:border-white/10 focus:border-indigo-500 outline-none w-full placeholder:text-slate-200 dark:placeholder:text-white/10"
                                     placeholder="e.g. JUPITER"
+                                />
+                            </div>
+                            <div className="space-y-2 text-right">
+                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                                    OEM SKU Code
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.sku_code}
+                                    onChange={e => setFormData({ ...formData, sku_code: e.target.value })}
+                                    className="text-xl font-black uppercase bg-transparent border-b-2 border-slate-100 dark:border-white/10 focus:border-indigo-500 outline-none w-full text-right placeholder:text-slate-200 dark:placeholder:text-white/10"
+                                    placeholder="e.g. BD51"
                                 />
                             </div>
                             <div className="flex items-center gap-2 shrink-0 mb-2">

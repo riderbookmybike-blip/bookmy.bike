@@ -770,6 +770,35 @@ export const DesktopCatalog = ({
                     </div>
                 </header>
 
+                <div className="md:hidden sticky top-[var(--header-h)] z-[90] py-3 mb-4 bg-slate-50/80 dark:bg-[#0b0d10]/80 backdrop-blur-2xl border-b border-slate-200/60 dark:border-white/5">
+                    <div className="flex items-center gap-3">
+                        <div className="flex-1 flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+                            <Search size={14} className="text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder="Search model, brand, variant"
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                className="flex-1 bg-transparent text-[11px] font-black tracking-widest uppercase focus:outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                            />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery('')}
+                                    className="flex items-center text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
+                        </div>
+                        <button
+                            onClick={() => setIsFilterOpen(true)}
+                            className="flex items-center justify-center w-11 h-11 rounded-full bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/70 hover:text-slate-900 dark:hover:text-white"
+                        >
+                            <Menu size={16} />
+                        </button>
+                    </div>
+                </div>
+
                 {/* Not Serviceable Banner */}
                 {serviceability.status === 'unserviceable' && serviceability.fallbackDistrict && (
                     <div className="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20">
@@ -1027,7 +1056,7 @@ export const DesktopCatalog = ({
                             className={`grid ${
                                 viewMode === 'list'
                                     ? 'grid-cols-1 w-full gap-6'
-                                    : 'grid-cols-1 md:grid-cols-3 gap-6 w-full'
+                                    : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full'
                             }`}
                         >
                             {/* Results Grid */}
@@ -1052,12 +1081,12 @@ export const DesktopCatalog = ({
 
                 {/* Mega Filter Overlay (Grid View Only) */}
                 {isFilterOpen && viewMode === 'grid' ? (
-                    <div className="fixed top-[76px] inset-x-0 bottom-0 z-[100] bg-white/95 dark:bg-[#0b0d10]/95 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 flex flex-col animate-in fade-in duration-300">
+                    <div className="fixed inset-x-0 bottom-0 md:top-[var(--header-h)] md:bottom-0 z-[100] bg-white/95 dark:bg-[#0b0d10]/95 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 flex flex-col animate-in fade-in duration-300 h-[85svh] md:h-auto rounded-t-3xl md:rounded-none pb-[env(safe-area-inset-bottom)]">
                         <div className="page-container flex flex-col h-full">
                             {/* Overlay Header */}
-                            <div className="flex-shrink-0 py-8 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
+                            <div className="flex-shrink-0 py-5 md:py-8 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
                                 <div>
-                                    <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-widest italic uppercase">
+                                    <h3 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-widest italic uppercase">
                                         Customize
                                     </h3>
                                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-2">

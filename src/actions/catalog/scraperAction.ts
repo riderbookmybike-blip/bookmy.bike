@@ -643,7 +643,14 @@ const YamahaExtractor: BaseExtractor = {
             return { success: true, brand_slug: 'yamaha', models: menuModels, errors, logs };
         }
 
-        // 2. Check if it's a detail page (Spec Table parsing)
+        // 2. Check if it's the main "Two Wheeler" page (Grid parsing)
+        const gridModels = extractYamahaModelsFromGrid(sourceHtml, sourceUrl, this.PARSER_VERSION, logs);
+        if (gridModels.length > 0) {
+            logs.push(log('PARSE_SUCCESS', `Grid extracted ${gridModels.length} models`));
+            return { success: true, brand_slug: 'yamaha', models: gridModels, errors, logs };
+        }
+
+        // 3. Check if it's a detail page (Spec Table parsing)
         const specs = extractYamahaSpecsFromHtml(sourceHtml);
         if (Object.keys(specs).length > 0) {
             // Extract model name from title or H1
@@ -1488,122 +1495,6 @@ export async function getExtractorInfo(): Promise<{
         allowed_domains: DOMAIN_ALLOWLIST,
     };
 }
-// ─── Persistence ─────────────────────────────────────────────────────────────
-
-/**
- * Saves or updates inbound source HTML for a catalog item.
- */
-export async function saveIngestionSources(params: {
-    itemId?: string;
-    brandId?: string;
-    sources: any[];
-    tenantId?: string;
-}) {
-    const { itemId, brandId, sources, tenantId: providedTenantId } = params;
-    if (!!itemId === !!brandId) {
-        throw new Error('Either itemId or brandId must be provided (but not both).');
-    }
-    const supabase = await createServerClient();
-
-    let tenantId: string | null = providedTenantId || null;
-
-    // Derive tenantId from item if not provided
-    if (!tenantId && itemId) {
-        const { data: item, error } = await supabase.from('cat_items').select('tenant_id').eq('id', itemId).single();
-        if (!error && item) {
-            tenantId = (item as any)?.tenant_id || null;
-        }
-    }
-
-    // Fetch existing ID if it exists to avoid ON CONFLICT target mismatch
-    const { data: existing } = await supabase
-        .from('cat_item_ingestion_sources')
-        .select('id')
-        .eq(itemId ? 'item_id' : 'brand_id', itemId || brandId)
-        .maybeSingle();
-
-    const payload = {
-        item_id: itemId || null,
-        brand_id: brandId || null,
-        tenant_id: tenantId,
-        sources: sources.map(s => ({
-            id: s.id,
-            sourceUrl: s.sourceUrl,
-            sourceHtml: s.sourceHtml,
-        })),
-        updated_at: new Date().toISOString(),
-    };
-
-    let error = null as any;
-    const targetKey = itemId ? 'item_id' : 'brand_id';
-    const targetValue = itemId || brandId;
-
-    const { data: updated, error: updateError } = await supabase
-        .from('cat_item_ingestion_sources')
-        .update(payload)
-        .eq(targetKey, targetValue as string)
-        .select('id');
-
-    if (updateError) {
-        error = updateError;
-    } else if (!updated || updated.length === 0) {
-        const { error: insertError } = await supabase.from('cat_item_ingestion_sources').insert(payload);
-        error = insertError;
-    }
-
-    if (error) {
-        console.error('Failed to save ingestion sources:', error);
-        throw new Error(error.message);
-    }
-
-    return { success: true };
-}
-
-/**
- * Fetches saved inbound sources for a catalog item.
- */
-export async function getIngestionSources(params: { itemId?: string; brandId?: string }) {
-    const { itemId, brandId } = params;
-    if (!!itemId === !!brandId) return [];
-    if (itemId === 'dry-run') return [];
-
-    const supabase = await createServerClient();
-    const { data, error } = await supabase
-        .from('cat_item_ingestion_sources')
-        .select('sources')
-        .eq(itemId ? 'item_id' : 'brand_id', itemId || brandId)
-        .single();
-
-    if (error && error.code !== 'PGRST116') {
-        console.error('Failed to fetch ingestion sources:', error);
-        return [];
-    }
-
-    return data?.sources || [];
-}
-
-/**
- * Deletes saved inbound sources for a catalog item.
- */
-export async function deleteIngestionSources(params: { itemId?: string; brandId?: string }) {
-    const { itemId, brandId } = params;
-    if (!!itemId === !!brandId) {
-        throw new Error('Either itemId or brandId must be provided (but not both).');
-    }
-    const supabase = await createServerClient();
-    const { error } = await supabase
-        .from('cat_item_ingestion_sources')
-        .delete()
-        .eq(itemId ? 'item_id' : 'brand_id', itemId || brandId);
-
-    if (error) {
-        console.error('Failed to delete ingestion sources:', error);
-        throw new Error(error.message);
-    }
-
-    return { success: true };
-}
-
 // ─── Ignore Rules (Discovery) ────────────────────────────────────────────────
 
 export async function getIngestionIgnoreRules(params: { brandId: string }) {
@@ -1767,6 +1658,70 @@ export async function expandSeriesFromSources(params: {
     }
 
     return { success: true, models };
+}
+
+function extractYamahaModelsFromGrid(
+    sourceHtml: string,
+    sourceUrl: string,
+    parserVersion: string,
+    logs: ExtractorLog[]
+): ExtractedModel[] {
+    const models: ExtractedModel[] = [];
+    const seen = new Set<string>();
+
+    const blockRegex = /<div[^>]*class="[^"]*col-block[^"]*"[^>]*>([\s\S]*?)<div class="product_accessoryCard/gi;
+
+    let match: RegExpExecArray | null;
+    while ((match = blockRegex.exec(sourceHtml)) !== null) {
+        const blockHtml = match[1];
+
+        const nameMatch = blockHtml.match(/<h4>([\s\S]*?)<\/h4>/i);
+        if (!nameMatch) continue;
+        const rawName = nameMatch[1].replace(/<[^>]*>/g, '').trim();
+        if (!rawName) continue;
+
+        const urlMatch = blockHtml.match(/<a[^>]*href="([^"]+)"/i);
+        const href = urlMatch ? urlMatch[1] : '';
+        const fullUrl = href
+            ? href.startsWith('http')
+                ? href
+                : `https://www.yamaha-motor-india.com${href}`
+            : sourceUrl;
+
+        const key = rawName.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        let category = 'MOTORCYCLE';
+        if (
+            rawName.toLowerCase().includes('scooter') ||
+            rawName.toLowerCase().includes('ray') ||
+            rawName.toLowerCase().includes('fascino') ||
+            rawName.toLowerCase().includes('aerox')
+        ) {
+            category = 'SCOOTER';
+        }
+
+        models.push({
+            name: rawName,
+            category,
+            specs: {},
+            variants: [],
+            provenance: {
+                source_url: sanitizeUrl(sourceUrl),
+                fetched_at: new Date().toISOString(),
+                parser_version: parserVersion,
+                external_id: href || rawName,
+                brand_slug: 'yamaha',
+            },
+        });
+    }
+
+    if (models.length === 0) {
+        logs.push(log('PARSE_FAIL', 'Grid fallback found no model cards'));
+    }
+
+    return models;
 }
 
 // Helper to create server client (internal)

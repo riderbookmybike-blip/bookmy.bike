@@ -1,41 +1,10 @@
-import { headers } from 'next/headers';
-import { Suspense } from 'react';
 import StorePage from './store/page';
 import StoreLayout from './store/layout';
-import { PhoneHome } from '@/components/phone/home/PhoneHome';
-import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
-import { ColorProvider } from '@/contexts/ColorContext';
 
-function MobileHome() {
-  return (
-    <FavoritesProvider>
-      <ColorProvider>
-        <PhoneHome />
-      </ColorProvider>
-    </FavoritesProvider>
-  );
-}
-
-export default async function RootPage() {
-  // Detect mobile devices via user-agent
-  const headersList = await headers();
-  const userAgent = headersList.get('user-agent') || '';
-
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
-
-  // Render mobile version directly (no redirect for SEO)
-  if (isMobile) {
+export default function RootPage() {
     return (
-      <Suspense fallback={<div className="min-h-screen bg-black" />}>
-        <MobileHome />
-      </Suspense>
+        <StoreLayout>
+            <StorePage />
+        </StoreLayout>
     );
-  }
-
-  // Desktop users see the store page
-  return (
-    <StoreLayout>
-      <StorePage />
-    </StoreLayout>
-  );
 }

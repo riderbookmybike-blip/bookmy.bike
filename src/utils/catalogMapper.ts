@@ -48,6 +48,37 @@ export interface CatalogItemDB {
         specs?: any;
         price_base?: number;
         position?: number;
+        colors?: {
+            id: string;
+            type: string;
+            name: string;
+            slug: string;
+            specs?: any;
+            position?: number;
+            skus?: {
+                id: string;
+                type: string;
+                status?: string;
+                price_base: number;
+                specs?: any;
+                prices?: {
+                    ex_showroom_price: number;
+                    is_active?: boolean;
+                    rto_total?: number;
+                    insurance_total?: number;
+                    rto?: any; // New JSON SOT
+                    insurance?: any; // New JSON SOT
+                    rto_breakdown?: any;
+                    insurance_breakdown?: any;
+                    on_road_price?: number;
+                    published_at?: string;
+                    state_code: string;
+                    district?: string;
+                    latitude?: number;
+                    longitude?: number;
+                }[];
+            }[];
+        }[];
         skus?: {
             id: string;
             type: string;
@@ -109,9 +140,14 @@ export function mapCatalogItems(
 
         const familyChildren = family.children || [];
         const variantChildren = familyChildren.filter(c => c.type === 'VARIANT');
-        const variantChildrenWithSkus = variantChildren.filter(
-            v => Array.isArray((v as any).skus) && (v as any).skus.length > 0
-        );
+        const getVariantSkus = (variantItem: any) => {
+            const directSkus = Array.isArray(variantItem?.skus) ? variantItem.skus : [];
+            const colorSkus = Array.isArray(variantItem?.colors)
+                ? variantItem.colors.flatMap((c: any) => (Array.isArray(c?.skus) ? c.skus : []))
+                : [];
+            return [...directSkus, ...colorSkus];
+        };
+        const variantChildrenWithSkus = variantChildren.filter(v => getVariantSkus(v).length > 0);
         // If variants exist, only show variants that actually have SKUs.
         // If no variants (or no variant has SKUs), show a single family card (SKUs = family children).
         let displayVariants =
@@ -132,7 +168,7 @@ export function mapCatalogItems(
                     family.specs?.brand_name ||
                     'Unknown';
 
-                const variantSkus = (variantItem as any).skus;
+                const variantSkus = getVariantSkus(variantItem as any);
                 const isSkuItem = (variantItem as any).type === 'SKU';
                 const allSkus = (
                     Array.isArray(variantSkus) && variantSkus.length > 0 ? variantSkus : isSkuItem ? [variantItem] : []
@@ -430,18 +466,32 @@ export function mapCatalogItems(
                     })(),
 
                     availableColors: (() => {
-                        const colorsMap = new Map();
-                        eligibleSkus.forEach((sku: any) => {
-                            const hex = sku.specs?.hex_primary;
-                            if (hex && !colorsMap.has(hex)) {
+                        const colorsMap = new Map<string, any>();
+                        const eligibleSkuIds = new Set(eligibleSkus.map((s: any) => s.id));
+
+                        if (Array.isArray((variantItem as any).colors) && (variantItem as any).colors.length > 0) {
+                            (variantItem as any).colors.forEach((color: any) => {
+                                const colorSkus = Array.isArray(color?.skus) ? color.skus : [];
+                                const sku =
+                                    colorSkus.find((s: any) => eligibleSkuIds.has(s.id)) || colorSkus[0] || null;
+                                if (!sku) return;
+
                                 const assets = (sku.assets || []) as any[];
                                 const primaryAsset = assets.find(a => a.type === 'IMAGE' && a.is_primary);
                                 const firstImageAsset = assets.find(a => a.type === 'IMAGE');
+                                const hex =
+                                    color?.specs?.hex_primary ||
+                                    color?.specs?.hex_code ||
+                                    sku.specs?.hex_primary ||
+                                    sku.specs?.hex_code;
 
-                                colorsMap.set(hex, {
+                                if (!hex) return;
+
+                                colorsMap.set(sku.id, {
+                                    id: sku.id,
                                     hexCode: hex,
-                                    secondaryHexCode: sku.specs?.hex_secondary,
-                                    name: sku.specs?.Color || sku.name,
+                                    secondaryHexCode: color?.specs?.hex_secondary || sku.specs?.hex_secondary,
+                                    name: color?.specs?.color || color?.name || sku.specs?.Color || sku.name,
                                     imageUrl:
                                         primaryAsset?.url ||
                                         firstImageAsset?.url ||
@@ -451,10 +501,44 @@ export function mapCatalogItems(
                                     isFlipped: Boolean(primaryAsset?.is_flipped || sku.is_flipped || false),
                                     offsetX: Number(primaryAsset?.offset_x || sku.offset_x || 0),
                                     offsetY: Number(primaryAsset?.offset_y || sku.offset_y || 0),
-                                    finish: (sku.specs?.Finish || sku.specs?.finish)?.toUpperCase(),
+                                    finish: (
+                                        color?.specs?.Finish ||
+                                        color?.specs?.finish ||
+                                        sku.specs?.Finish ||
+                                        sku.specs?.finish
+                                    )?.toUpperCase(),
                                 });
-                            }
-                        });
+                            });
+                        }
+
+                        if (colorsMap.size === 0) {
+                            eligibleSkus.forEach((sku: any) => {
+                                const hex = sku.specs?.hex_primary;
+                                if (hex && !colorsMap.has(hex)) {
+                                    const assets = (sku.assets || []) as any[];
+                                    const primaryAsset = assets.find(a => a.type === 'IMAGE' && a.is_primary);
+                                    const firstImageAsset = assets.find(a => a.type === 'IMAGE');
+
+                                    colorsMap.set(hex, {
+                                        id: sku.id,
+                                        hexCode: hex,
+                                        secondaryHexCode: sku.specs?.hex_secondary,
+                                        name: sku.specs?.Color || sku.name,
+                                        imageUrl:
+                                            primaryAsset?.url ||
+                                            firstImageAsset?.url ||
+                                            sku.image_url ||
+                                            sku.specs?.primary_image,
+                                        zoomFactor: Number(primaryAsset?.zoom_factor || sku.zoom_factor || 1.0),
+                                        isFlipped: Boolean(primaryAsset?.is_flipped || sku.is_flipped || false),
+                                        offsetX: Number(primaryAsset?.offset_x || sku.offset_x || 0),
+                                        offsetY: Number(primaryAsset?.offset_y || sku.offset_y || 0),
+                                        finish: (sku.specs?.Finish || sku.specs?.finish)?.toUpperCase(),
+                                    });
+                                }
+                            });
+                        }
+
                         return Array.from(colorsMap.values());
                     })(),
 

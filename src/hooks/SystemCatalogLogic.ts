@@ -358,6 +358,13 @@ export function useSystemCatalogLogic(leadId?: string) {
                             price_base,
                             parent:cat_items!parent_id(name, slug),
                             position,
+                            colors:cat_items!parent_id(
+                                id,
+                                type,
+                                name,
+                                slug,
+                                specs,
+                                position,
                                 skus:cat_items!parent_id(
                                     id,
                                     type,
@@ -371,9 +378,28 @@ export function useSystemCatalogLogic(leadId?: string) {
                                     zoom_factor,
                                     is_flipped,
                                     offset_x,
-                                     assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
-                                     prices:cat_price_state!vehicle_color_id(ex_showroom_price, state_code, district, latitude, longitude, is_active)
+                                    offset_y,
+                                    assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
+                                    prices:cat_price_state!vehicle_color_id(ex_showroom_price, state_code, district, latitude, longitude, is_active)
                                 )
+                            ),
+                            skus:cat_items!parent_id(
+                                id,
+                                type,
+                                status,
+                                price_base,
+                                specs,
+                                is_primary,
+                                image_url,
+                                gallery_urls,
+                                video_url,
+                                zoom_factor,
+                                is_flipped,
+                                offset_x,
+                                offset_y,
+                                assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
+                                prices:cat_price_state!vehicle_color_id(ex_showroom_price, state_code, district, latitude, longitude, is_active)
+                            )
                         )
                     `
                     )

@@ -12,7 +12,7 @@ This file is the permanent control log for this repo. It tracks all Codex + Anti
 - `queued` | `in_progress` | `blocked` | `done` | `dropped`
 
 ## Current Snapshot
-- Last updated: 2026-02-07
+- Last updated: 2026-02-08
 - Active owners: Codex, Antigravity
 
 ---
@@ -160,6 +160,122 @@ This file is the permanent control log for this repo. It tracks all Codex + Anti
   - src/app/app/[slug]/dashboard/catalog/products/studio/page.tsx
   - src/app/app/[slug]/dashboard/catalog/products/studio/steps/TemplateStep.tsx
 - next action: Validate series expansion on TVS Apache and refine series detection rules if needed.
+
+### T-CODEX-009: Unify Phone/Desktop Store UI
+- status: done
+- owner: Codex
+- goal: Use a single store UI for phone and desktop instead of separate render paths.
+- progress: Removed mobile UA branching, deleted phone-only UI components, and removed `/phone` route pages entirely.
+- outcome: Single responsive UI is the source of truth; phone-specific pages/components removed and `/phone` routes eliminated.
+- blockers: none
+- files:
+  - src/app/phone/page.tsx
+  - src/app/phone/search/page.tsx
+  - src/app/phone/store/catalog/page.tsx
+  - src/app/phone/store/[make]/[model]/[variant]/page.tsx
+  - src/app/phone/store/layout.tsx
+  - src/app/page.tsx
+  - src/app/store/catalog/SystemCatalogRouter.tsx
+  - src/app/store/[make]/[model]/[variant]/ProductClient.tsx
+  - src/app/store/layout.tsx
+  - src/actions/getProductBySlug.ts
+  - src/hooks/useSystemDealerContext.ts
+  - src/components/phone/layout/PhoneMenuDrawer.tsx
+  - src/components/phone/layout/PhoneFooter.tsx
+  - src/components/phone/layout/PhoneHeader.tsx
+  - src/components/phone/layout/PhoneBottomNav.tsx
+  - src/components/phone/home/OClubDashboard.tsx
+  - src/components/phone/home/PhoneHome.tsx
+  - src/components/phone/pdp/PhonePDPBottomBar.tsx
+  - src/components/phone/pdp/PhonePDPSticky.tsx
+  - src/components/phone/pdp/PhonePDP.tsx
+  - src/components/phone/pdp/PhonePDPEnhanced.tsx
+  - src/components/phone/pdp/PhonePDPSimple.tsx
+  - src/components/phone/catalog/FullPageDeal.tsx
+  - src/components/phone/catalog/PhoneFilterModal.tsx
+  - src/components/phone/catalog/PhoneContextFeed.tsx
+  - src/components/phone/catalog/PhoneSearch.tsx
+  - src/components/phone/catalog/ModelCard.tsx
+  - src/components/phone/catalog/PhoneCatalog.tsx
+  - src/components/phone/ui/SwipeHint.tsx
+  - src/app/phone/store/[make]/[model]/[variant]/SystemPDPRouter.tsx
+- file tree impact:
+  - src/app/phone/page.tsx
+  - src/app/phone/search/page.tsx
+  - src/app/phone/store/catalog/page.tsx
+  - src/app/phone/store/[make]/[model]/[variant]/page.tsx
+  - src/app/phone/store/layout.tsx
+  - src/app/page.tsx
+  - src/app/store/catalog/SystemCatalogRouter.tsx
+  - src/app/store/[make]/[model]/[variant]/ProductClient.tsx
+  - src/app/store/layout.tsx
+  - src/actions/getProductBySlug.ts
+  - src/hooks/useSystemDealerContext.ts
+  - src/components/phone/layout/PhoneMenuDrawer.tsx
+  - src/components/phone/layout/PhoneFooter.tsx
+  - src/components/phone/layout/PhoneHeader.tsx
+  - src/components/phone/layout/PhoneBottomNav.tsx
+  - src/components/phone/home/OClubDashboard.tsx
+  - src/components/phone/home/PhoneHome.tsx
+  - src/components/phone/pdp/PhonePDPBottomBar.tsx
+  - src/components/phone/pdp/PhonePDPSticky.tsx
+  - src/components/phone/pdp/PhonePDP.tsx
+  - src/components/phone/pdp/PhonePDPEnhanced.tsx
+  - src/components/phone/pdp/PhonePDPSimple.tsx
+  - src/components/phone/catalog/FullPageDeal.tsx
+  - src/components/phone/catalog/PhoneFilterModal.tsx
+  - src/components/phone/catalog/PhoneContextFeed.tsx
+  - src/components/phone/catalog/PhoneSearch.tsx
+  - src/components/phone/catalog/ModelCard.tsx
+  - src/components/phone/catalog/PhoneCatalog.tsx
+  - src/components/phone/ui/SwipeHint.tsx
+  - src/app/phone/store/[make]/[model]/[variant]/SystemPDPRouter.tsx
+- next action: Validate `/phone/*` redirects and ensure desktop UI is responsive for key flows.
+
+### T-CODEX-010: Responsive Pass (Home/Catalog/PDP)
+- status: done
+- owner: Codex
+- goal: Make home, catalog, and PDP layouts responsive for mobile without separate phone UI.
+- progress: Added mobile catalog header + bottom-sheet filters, adjusted catalog grid, built mobile PDP accordions + sticky bottom CTA, and disabled desktop scroll-snapping on mobile; updated home sections to use min-height and mobile-friendly typography.
+- outcome: Core store flows render cleanly on mobile with a single responsive UI and touch-friendly navigation.
+- blockers: none
+- files:
+  - src/components/store/DesktopCatalog.tsx
+  - src/components/store/DesktopPDP.tsx
+  - src/components/store/DesktopHome.tsx
+  - src/app/store/layout.tsx
+- file tree impact:
+  - src/components/store/DesktopCatalog.tsx
+  - src/components/store/DesktopPDP.tsx
+  - src/components/store/DesktopHome.tsx
+  - src/app/store/layout.tsx
+- next action: Validate touch interactions and verify mobile CTA/filters in real device testing.
+
+### T-CODEX-011: Yamaha Catalog Studio Visibility
+- status: done
+- owner: Codex
+- goal: Ensure Yamaha models appear in Catalog Studio and normalize RayZR naming.
+- progress: Added paginated fetch for `cat_items` to avoid PostgREST default limits; normalized RayZR Street Rally family name in DB.
+- outcome: Catalog Studio now loads all families reliably, including Yamaha entries.
+- blockers: none
+- files:
+  - src/app/app/[slug]/dashboard/catalog/products/studio/page.tsx
+- file tree impact:
+  - src/app/app/[slug]/dashboard/catalog/products/studio/page.tsx
+- next action: Verify Yamaha families show in Studio with ICE Scooter template selected.
+
+### T-CODEX-012: SKU Variant/Color Resolution in Review
+- status: done
+- owner: Codex
+- goal: Show variant and color in Studio SKU/Review even when SKUs are nested under Color.
+- progress: Added parent-chain resolution for variant/color in ReviewStep filters, sorting, and display.
+- outcome: SKU list now displays correct variant and color for Yamaha RayZR data.
+- blockers: none
+- files:
+  - src/app/app/[slug]/dashboard/catalog/products/studio/steps/ReviewStep.tsx
+- file tree impact:
+  - src/app/app/[slug]/dashboard/catalog/products/studio/steps/ReviewStep.tsx
+- next action: Reload Studio SKU step and confirm variant/color display.
 
 ## Antigravity Tasks
 

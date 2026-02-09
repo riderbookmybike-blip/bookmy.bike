@@ -42,6 +42,31 @@ async function getRawCatalog() {
                 price_base,
                 parent:cat_items!parent_id(name, slug),
                 position,
+                colors:cat_items!parent_id(
+                    id,
+                    type,
+                    name,
+                    slug,
+                    specs,
+                    position,
+                    skus:cat_items!parent_id(
+                        id,
+                        type,
+                        status,
+                        price_base,
+                        is_primary,
+                        image_url,
+                        gallery_urls,
+                        video_url,
+                        zoom_factor,
+                        is_flipped,
+                        offset_x,
+                        offset_y,
+                        specs,
+                        assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
+                        prices:cat_price_state!vehicle_color_id(ex_showroom_price, rto_total, insurance_total, rto, insurance, on_road_price, published_at, state_code, district, latitude, longitude, is_active)
+                    )
+                ),
                 skus:cat_items!parent_id(
                     id,
                     type,
@@ -128,15 +153,44 @@ export async function fetchCatalogServerSide(leadId?: string): Promise<ProductVa
 
     if (activeVehicleColorIds.size === 0) return [];
 
+    const collectVariantSkus = (variant: any) => {
+        const directSkus = Array.isArray(variant?.skus) ? variant.skus : [];
+        const colorSkus = Array.isArray(variant?.colors)
+            ? variant.colors.flatMap((c: any) => (Array.isArray(c?.skus) ? c.skus : []))
+            : [];
+        return [...directSkus, ...colorSkus];
+    };
+
     filteredData = filteredData
         .map(family => ({
             ...family,
             children: (family.children || [])
-                .map((variant: any) => ({
-                    ...variant,
-                    skus: (variant.skus || []).filter((sku: any) => activeVehicleColorIds.has(sku.id)),
-                }))
-                .filter((variant: any) => variant.skus && variant.skus.length > 0),
+                .map((variant: any) => {
+                    const eligibleSkus = collectVariantSkus(variant).filter((sku: any) =>
+                        activeVehicleColorIds.has(sku.id)
+                    );
+
+                    const filteredColors = Array.isArray(variant?.colors)
+                        ? variant.colors
+                              .map((c: any) => ({
+                                  ...c,
+                                  skus: Array.isArray(c?.skus)
+                                      ? c.skus.filter((sku: any) => activeVehicleColorIds.has(sku.id))
+                                      : [],
+                              }))
+                              .filter((c: any) => c.skus && c.skus.length > 0)
+                        : [];
+
+                    return {
+                        ...variant,
+                        skus: Array.isArray(variant?.skus)
+                            ? variant.skus.filter((sku: any) => activeVehicleColorIds.has(sku.id))
+                            : [],
+                        colors: filteredColors,
+                        _eligibleSkuCount: eligibleSkus.length,
+                    };
+                })
+                .filter((variant: any) => variant._eligibleSkuCount > 0),
         }))
         .filter(family => family.children && family.children.length > 0);
 

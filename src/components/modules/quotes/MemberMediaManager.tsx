@@ -14,15 +14,17 @@ import {
     Move,
     Eraser,
     AlertTriangle,
-    ExternalLink,
-    Crop,
-    Eye,
     FileText,
-    Clock,
-    RefreshCw,
+    Eye,
     Maximize2,
+    ChevronDown,
+    Tag,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+function cn(...inputs: any[]) {
+    return inputs.filter(Boolean).join(' ');
+}
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import {
@@ -32,32 +34,64 @@ import {
     getMemberDocumentUrl,
 } from '@/actions/crm';
 
+const DOCUMENT_LABELS = [
+    'Pan Card',
+    'Aadhar Card',
+    'Electricity Bill',
+    'Voting Card',
+    'Passport',
+    'Rent Agreement',
+] as const;
+
+type DocumentLabel = (typeof DOCUMENT_LABELS)[number];
+
 interface MemberMediaManagerProps {
     memberId: string;
     quoteId: string;
     onUpdate?: () => void;
+    onDocCountChange?: (count: number) => void;
 }
 
 interface MemberDocument {
     id: string;
     name: string;
     category: string;
+    label?: string | null;
     file_type: string;
     file_path: string;
+    file_size?: number | null;
     created_at: string;
 }
 
-export default function MemberMediaManager({ memberId, quoteId, onUpdate }: MemberMediaManagerProps) {
+function formatFileSize(bytes?: number | null): string {
+    if (!bytes) return '—';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getFileTypeLabel(fileType: string): string {
+    if (fileType?.includes('pdf')) return 'PDF';
+    if (fileType?.includes('png')) return 'PNG';
+    if (fileType?.includes('jpeg') || fileType?.includes('jpg')) return 'JPEG';
+    if (fileType?.includes('webp')) return 'WEBP';
+    if (fileType?.includes('svg')) return 'SVG';
+    if (fileType?.includes('gif')) return 'GIF';
+    return fileType?.split('/').pop()?.toUpperCase() || 'FILE';
+}
+
+export default function MemberMediaManager({ memberId, quoteId, onUpdate, onDocCountChange }: MemberMediaManagerProps) {
     const [docs, setDocs] = useState<MemberDocument[]>([]);
     const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
     const [isLoading, setIsLoading] = useState(true);
     const [isUploading, setIsUploading] = useState(false);
+    const [selectedLabel, setSelectedLabel] = useState<DocumentLabel | ''>('');
+    const [showLabelDropdown, setShowLabelDropdown] = useState(false);
 
     // Editor State
     const [selectedDoc, setSelectedDoc] = useState<MemberDocument | null>(null);
     const [isEditorOpen, setIsEditorOpen] = useState(false);
     const [isRemovingBg, setIsRemovingBg] = useState(false);
-    const [isCropping, setIsCropping] = useState(false);
 
     // Alignment/Transformation State
     const [zoomFactor, setZoomFactor] = useState(1);
@@ -66,7 +100,11 @@ export default function MemberMediaManager({ memberId, quoteId, onUpdate }: Memb
     const [offsetX, setOffsetX] = useState(0);
     const [offsetY, setOffsetY] = useState(0);
 
+    // Label editing
+    const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
+
     const supabase = createClient();
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const fetchDocuments = async () => {
         setIsLoading(true);
@@ -74,10 +112,15 @@ export default function MemberMediaManager({ memberId, quoteId, onUpdate }: Memb
             const documents = await getCrmMemberDocuments(memberId);
             if (documents && Array.isArray(documents)) {
                 setDocs(documents as MemberDocument[]);
-                // Fetch signed URLs
+                onDocCountChange?.(documents.length);
+
+                // For Supabase-stored files, get signed URLs; local files use path directly
                 const urls: Record<string, string> = {};
                 for (const doc of documents) {
-                    if (doc.file_type?.includes('image') || doc.file_type?.includes('pdf')) {
+                    if (doc.file_path?.startsWith('/uploads/')) {
+                        // Local file — use path directly
+                        urls[doc.id] = doc.file_path;
+                    } else if (doc.file_type?.includes('image') || doc.file_type?.includes('pdf')) {
                         const signedUrl = await getMemberDocumentUrl(doc.file_path);
                         if (signedUrl) {
                             urls[doc.id] = signedUrl;
@@ -102,40 +145,74 @@ export default function MemberMediaManager({ memberId, quoteId, onUpdate }: Memb
         const file = e.target.files?.[0];
         if (!file) return;
 
+        if (!selectedLabel) {
+            toast.error('Please select a document label first');
+            return;
+        }
+
         setIsUploading(true);
         try {
-            const fileName = `${memberId}/${Date.now()}-${file.name}`;
-            const { data, error } = await supabase.storage.from('member-documents').upload(fileName, file);
-            if (error) throw error;
+            // Upload to local server
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('memberId', memberId);
 
+            const res = await fetch('/api/crm/upload-document', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const result = await res.json();
+            if (!result.success) throw new Error(result.error);
+
+            // Save to database
             await uploadMemberDocument({
                 memberId,
                 name: file.name,
-                filePath: data.path,
+                filePath: result.filePath,
                 fileType: file.type,
-                category: 'OTHER', // Default
+                category: selectedLabel,
+                label: selectedLabel,
+                fileSize: result.fileSize,
             });
 
-            toast.success('Asset archived');
+            toast.success('Document uploaded');
+            setSelectedLabel('');
             fetchDocuments();
             if (onUpdate) onUpdate();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Upload error:', error);
-            toast.error('Upload failed');
+            toast.error(error.message || 'Upload failed');
         } finally {
             setIsUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
     const handleDelete = async (docId: string) => {
-        if (!confirm('Are you sure you want to purge this asset?')) return;
+        if (!confirm('Are you sure you want to delete this document?')) return;
         try {
             await deleteCrmMemberDocument(docId);
-            toast.success('Asset purged');
+            toast.success('Document deleted');
             fetchDocuments();
             if (onUpdate) onUpdate();
         } catch (error) {
-            toast.error('Purge failed');
+            toast.error('Delete failed');
+        }
+    };
+
+    const handleLabelChange = async (docId: string, newLabel: string) => {
+        try {
+            const supabaseClient = createClient();
+            await supabaseClient
+                .from('crm_member_documents')
+                .update({ label: newLabel, category: newLabel, updated_at: new Date().toISOString() })
+                .eq('id', docId);
+            toast.success('Label updated');
+            setEditingLabelId(null);
+            fetchDocuments();
+        } catch (err) {
+            toast.error('Failed to update label');
         }
     };
 
@@ -149,26 +226,26 @@ export default function MemberMediaManager({ memberId, quoteId, onUpdate }: Memb
 
             const resultBlob = await removeBackground(imageBlob);
 
-            const fileName = `${memberId}/nobg_${Date.now()}.png`;
-            const arrayBuffer = await resultBlob.arrayBuffer();
+            // Upload bg-removed version to local server
+            const bgFile = new File([resultBlob], `nobg_${selectedDoc.name}`, { type: 'image/png' });
+            const formData = new FormData();
+            formData.append('file', bgFile);
+            formData.append('memberId', memberId);
 
-            const { data, error: uploadError } = await supabase.storage
-                .from('member-documents')
-                .upload(fileName, arrayBuffer, {
-                    contentType: 'image/png',
-                });
-
-            if (uploadError) throw uploadError;
+            const res = await fetch('/api/crm/upload-document', { method: 'POST', body: formData });
+            const result = await res.json();
+            if (!result.success) throw new Error(result.error);
 
             await uploadMemberDocument({
                 memberId,
                 name: `nobg_${selectedDoc.name}`,
-                filePath: data.path,
+                filePath: result.filePath,
                 fileType: 'image/png',
                 category: selectedDoc.category,
+                label: selectedDoc.label || selectedDoc.category,
             });
 
-            toast.success('Background removed and saved as new asset');
+            toast.success('Background removed and saved');
             setIsEditorOpen(false);
             fetchDocuments();
         } catch (err) {
@@ -189,6 +266,13 @@ export default function MemberMediaManager({ memberId, quoteId, onUpdate }: Memb
         setIsEditorOpen(true);
     };
 
+    const getDisplayLabel = (doc: MemberDocument) => {
+        return doc.label || doc.category || doc.name;
+    };
+
+    const isPdf = (doc: MemberDocument) => doc.file_type?.includes('pdf');
+    const isImage = (doc: MemberDocument) => doc.file_type?.includes('image');
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -197,31 +281,96 @@ export default function MemberMediaManager({ memberId, quoteId, onUpdate }: Memb
                         Identity <span className="text-indigo-500">Vault</span>
                     </h3>
                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">
-                        High-Fidelity Document Management
+                        High-Fidelity Document Management • {docs.length} document{docs.length !== 1 ? 's' : ''}
                     </p>
                 </div>
+            </div>
 
-                <label className="flex items-center gap-3 bg-slate-900 dark:bg-white px-6 py-3 rounded-2xl cursor-pointer hover:scale-105 transition-all active:scale-95 shadow-xl group">
-                    {isUploading ? (
-                        <Loader2 className="animate-spin text-white dark:text-slate-900" size={16} />
-                    ) : (
-                        <Upload
-                            className="text-white dark:text-slate-900 group-hover:-translate-y-0.5 transition-transform"
-                            size={16}
+            {/* Upload Section with Label Selection */}
+            <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-2xl p-4">
+                <div className="flex items-center gap-3 flex-wrap">
+                    {/* Label Selector */}
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowLabelDropdown(!showLabelDropdown)}
+                            className={cn(
+                                'flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all',
+                                selectedLabel
+                                    ? 'border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
+                                    : 'border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-500 hover:border-slate-300'
+                            )}
+                        >
+                            <Tag size={14} />
+                            {selectedLabel || 'Select Label'}
+                            <ChevronDown
+                                size={12}
+                                className={cn('transition-transform', showLabelDropdown && 'rotate-180')}
+                            />
+                        </button>
+                        {showLabelDropdown && (
+                            <div className="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-[#0f1115] border border-slate-100 dark:border-white/10 rounded-xl shadow-xl z-50 overflow-hidden">
+                                {DOCUMENT_LABELS.map(label => (
+                                    <button
+                                        key={label}
+                                        onClick={() => {
+                                            setSelectedLabel(label);
+                                            setShowLabelDropdown(false);
+                                        }}
+                                        className={cn(
+                                            'w-full text-left px-4 py-2.5 text-xs font-bold transition-colors',
+                                            selectedLabel === label
+                                                ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
+                                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5'
+                                        )}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Upload Button */}
+                    <label
+                        className={cn(
+                            'flex items-center gap-2 px-5 py-2.5 rounded-xl cursor-pointer transition-all active:scale-95 shadow-sm',
+                            selectedLabel
+                                ? 'bg-slate-900 dark:bg-white hover:opacity-90'
+                                : 'bg-slate-200 dark:bg-white/10 cursor-not-allowed opacity-60'
+                        )}
+                    >
+                        {isUploading ? (
+                            <Loader2 className="animate-spin text-white dark:text-slate-900" size={14} />
+                        ) : (
+                            <Upload className="text-white dark:text-slate-900" size={14} />
+                        )}
+                        <span className="text-[10px] font-black uppercase tracking-widest text-white dark:text-slate-900">
+                            {isUploading ? 'Uploading...' : 'Upload'}
+                        </span>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            className="hidden"
+                            onChange={handleFileUpload}
+                            disabled={isUploading || !selectedLabel}
+                            accept="image/*,.pdf"
                         />
+                    </label>
+
+                    {!selectedLabel && (
+                        <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest flex items-center gap-1">
+                            <AlertTriangle size={10} />
+                            Select a label first
+                        </span>
                     )}
-                    <span className="text-[10px] font-black uppercase tracking-widest text-white dark:text-slate-900">
-                        {isUploading ? 'Archiving...' : 'Upload Asset'}
-                    </span>
-                    <input type="file" className="hidden" onChange={handleFileUpload} disabled={isUploading} />
-                </label>
+                </div>
             </div>
 
             {isLoading ? (
                 <div className="py-20 flex flex-col items-center justify-center">
                     <Loader2 className="animate-spin text-indigo-500 mb-4" size={32} />
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        Hydrating Vault...
+                        Loading Documents...
                     </p>
                 </div>
             ) : docs.length === 0 ? (
@@ -230,37 +379,41 @@ export default function MemberMediaManager({ memberId, quoteId, onUpdate }: Memb
                         <ImageIcon size={32} />
                     </div>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        No assets archived in vault
+                        No documents uploaded yet
                     </p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                     {docs.map(doc => (
                         <motion.div
                             key={doc.id}
                             layoutId={doc.id}
-                            className="group relative bg-white dark:bg-[#0f1115] border border-slate-100 dark:border-white/10 rounded-[2.5rem] overflow-hidden hover:border-indigo-500/50 transition-all shadow-sm hover:shadow-2xl hover:shadow-indigo-500/10"
+                            className="group relative bg-white dark:bg-[#0f1115] border border-slate-100 dark:border-white/10 rounded-2xl overflow-hidden hover:border-indigo-500/50 transition-all shadow-sm hover:shadow-xl hover:shadow-indigo-500/5"
                         >
                             {/* Preview Area */}
                             <div className="aspect-[4/3] w-full bg-slate-50 dark:bg-black/40 flex items-center justify-center relative overflow-hidden">
-                                {doc.file_type?.includes('image') ? (
+                                {isImage(doc) ? (
                                     <img
                                         src={signedUrls[doc.id]}
-                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                                        alt={doc.name}
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                        alt={getDisplayLabel(doc)}
+                                    />
+                                ) : isPdf(doc) ? (
+                                    <iframe
+                                        src={`${signedUrls[doc.id]}#toolbar=0&navpanes=0&scrollbar=0`}
+                                        className="w-full h-full border-0"
+                                        title={getDisplayLabel(doc)}
                                     />
                                 ) : (
                                     <div className="flex flex-col items-center gap-3">
                                         <FileText size={48} className="text-slate-300 dark:text-slate-700" />
-                                        <span className="text-[8px] font-black text-slate-400 uppercase">
-                                            PDF DOCUMENT
-                                        </span>
+                                        <span className="text-[8px] font-black text-slate-400 uppercase">DOCUMENT</span>
                                     </div>
                                 )}
 
                                 {/* Overlay Controls */}
                                 <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-sm">
-                                    {doc.file_type?.includes('image') ? (
+                                    {isImage(doc) ? (
                                         <button
                                             onClick={() => openEditor(doc)}
                                             className="w-10 h-10 rounded-xl bg-white text-slate-900 flex items-center justify-center hover:scale-110 transition-transform shadow-xl"
@@ -284,19 +437,69 @@ export default function MemberMediaManager({ memberId, quoteId, onUpdate }: Memb
                                 </div>
                             </div>
 
-                            {/* Info Area */}
-                            <div className="p-6">
+                            {/* Info Area with Label */}
+                            <div className="p-4">
                                 <div className="flex items-center justify-between mb-2">
-                                    <span className="text-[8px] font-black text-indigo-500 bg-indigo-500/10 px-2 py-0.5 rounded uppercase tracking-widest">
-                                        {doc.category}
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[8px] font-black bg-slate-100 dark:bg-white/5 text-slate-500 px-1.5 py-0.5 rounded uppercase">
+                                            {getFileTypeLabel(doc.file_type)}
+                                        </span>
+                                        <span className="text-[8px] font-bold text-slate-400 tabular-nums">
+                                            {formatFileSize(doc.file_size)}
+                                        </span>
+                                    </div>
                                     <span className="text-[8px] font-bold text-slate-400 tabular-nums">
-                                        {new Date(doc.created_at).toLocaleDateString()}
+                                        {new Date(doc.created_at).toLocaleDateString('en-IN', {
+                                            day: 'numeric',
+                                            month: 'short',
+                                        })}
+                                        ,{' '}
+                                        {new Date(doc.created_at).toLocaleTimeString('en-IN', {
+                                            hour: 'numeric',
+                                            minute: '2-digit',
+                                            hour12: true,
+                                        })}
                                     </span>
                                 </div>
-                                <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase truncate tracking-tight">
-                                    {doc.name}
-                                </h4>
+
+                                {/* Label Display / Edit */}
+                                {editingLabelId === doc.id ? (
+                                    <div className="space-y-1.5">
+                                        {DOCUMENT_LABELS.map(label => (
+                                            <button
+                                                key={label}
+                                                onClick={() => handleLabelChange(doc.id, label)}
+                                                className={cn(
+                                                    'w-full text-left px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors',
+                                                    (doc.label || doc.category) === label
+                                                        ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
+                                                        : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5'
+                                                )}
+                                            >
+                                                {label}
+                                            </button>
+                                        ))}
+                                        <button
+                                            onClick={() => setEditingLabelId(null)}
+                                            className="w-full text-center px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[9px] font-black text-indigo-500 bg-indigo-500/10 px-2.5 py-1 rounded-lg uppercase tracking-widest">
+                                            {getDisplayLabel(doc)}
+                                        </span>
+                                        <button
+                                            onClick={() => setEditingLabelId(doc.id)}
+                                            className="text-slate-300 hover:text-indigo-500 transition-colors"
+                                            title="Change label"
+                                        >
+                                            <Tag size={10} />
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </motion.div>
                     ))}
@@ -328,188 +531,103 @@ export default function MemberMediaManager({ memberId, quoteId, onUpdate }: Memb
                                         Asset <span className="text-indigo-500">Studio</span>
                                     </h3>
                                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                        Identity Optimization Suite
+                                        {getDisplayLabel(selectedDoc)}
                                     </p>
                                 </div>
 
-                                <div className="flex-1 overflow-y-auto p-8 space-y-8 no-scrollbar">
-                                    {/* Alignment Tools */}
-                                    <div className="space-y-4">
-                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                            <Move size={12} /> Alignment & Scale
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-3">
+                                <div className="flex-1 p-8 space-y-4 overflow-y-auto">
+                                    {/* Zoom */}
+                                    <div>
+                                        <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest block mb-2">
+                                            Zoom
+                                        </label>
+                                        <div className="flex items-center gap-2">
                                             <button
-                                                onClick={() => setZoomFactor(prev => Math.min(prev + 0.1, 3))}
-                                                className="p-4 bg-white dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/10 hover:border-indigo-500/50 transition-all flex flex-col items-center gap-2 group"
+                                                onClick={() => setZoomFactor(f => Math.max(0.5, f - 0.1))}
+                                                className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"
                                             >
-                                                <ZoomIn
-                                                    size={18}
-                                                    className="text-slate-400 group-hover:text-indigo-500"
-                                                />
-                                                <span className="text-[9px] font-black uppercase">Zoom In</span>
+                                                −
                                             </button>
+                                            <span className="text-xs font-black text-slate-600 tabular-nums w-12 text-center">
+                                                {Math.round(zoomFactor * 100)}%
+                                            </span>
                                             <button
-                                                onClick={() => setZoomFactor(prev => Math.max(prev - 0.1, 0.5))}
-                                                className="p-4 bg-white dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/10 hover:border-indigo-500/50 transition-all flex flex-col items-center gap-2 group"
+                                                onClick={() => setZoomFactor(f => Math.min(3, f + 0.1))}
+                                                className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"
                                             >
-                                                <RefreshCw
-                                                    size={18}
-                                                    className="text-slate-400 group-hover:text-indigo-500"
-                                                />
-                                                <span className="text-[9px] font-black uppercase">Reset</span>
-                                            </button>
-                                            <button
-                                                onClick={() => setRotation(prev => prev - 90)}
-                                                className="p-4 bg-white dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/10 hover:border-indigo-500/50 transition-all flex flex-col items-center gap-2 group"
-                                            >
-                                                <RotateCcw
-                                                    size={18}
-                                                    className="text-slate-400 group-hover:text-indigo-500"
-                                                />
-                                                <span className="text-[9px] font-black uppercase">Rotate L</span>
-                                            </button>
-                                            <button
-                                                onClick={() => setRotation(prev => prev + 90)}
-                                                className="p-4 bg-white dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/10 hover:border-indigo-500/50 transition-all flex flex-col items-center gap-2 group"
-                                            >
-                                                <RotateCw
-                                                    size={18}
-                                                    className="text-slate-400 group-hover:text-indigo-500"
-                                                />
-                                                <span className="text-[9px] font-black uppercase">Rotate R</span>
+                                                +
                                             </button>
                                         </div>
                                     </div>
 
-                                    {/* Advanced Tools */}
-                                    <div className="space-y-4">
-                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                            <Eraser size={12} /> Magic Intelligence
+                                    {/* Rotation */}
+                                    <div>
+                                        <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest block mb-2">
+                                            Rotation
+                                        </label>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => setRotation(r => r - 90)}
+                                                className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"
+                                            >
+                                                <RotateCcw size={14} />
+                                            </button>
+                                            <button
+                                                onClick={() => setRotation(r => r + 90)}
+                                                className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"
+                                            >
+                                                <RotateCw size={14} />
+                                            </button>
+                                            <button
+                                                onClick={() => setIsFlipped(f => !f)}
+                                                className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors text-xs font-black"
+                                            >
+                                                ↔
+                                            </button>
                                         </div>
-                                        <button
-                                            onClick={handleRemoveBg}
-                                            disabled={isRemovingBg}
-                                            className="w-full flex items-center justify-between p-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl transition-all shadow-xl shadow-indigo-600/20 disabled:opacity-50 group"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                {isRemovingBg ? (
-                                                    <Loader2 className="animate-spin" size={18} />
-                                                ) : (
-                                                    <Eraser size={18} />
-                                                )}
-                                                <div className="flex flex-col items-start">
-                                                    <span className="text-[10px] font-black uppercase tracking-widest">
-                                                        Remove Background
-                                                    </span>
-                                                    <span className="text-[8px] font-bold opacity-60">
-                                                        AI-Powered Extraction
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div className="px-2 py-0.5 bg-white/20 rounded text-[7px] font-bold">
-                                                SMART
-                                            </div>
-                                        </button>
                                     </div>
+
+                                    {/* BG Removal */}
+                                    <button
+                                        onClick={handleRemoveBg}
+                                        disabled={isRemovingBg}
+                                        className="w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                                    >
+                                        {isRemovingBg ? (
+                                            <Loader2 size={14} className="animate-spin" />
+                                        ) : (
+                                            <Eraser size={14} />
+                                        )}
+                                        {isRemovingBg ? 'Processing...' : 'Remove Background'}
+                                    </button>
                                 </div>
 
-                                <div className="p-8 border-t border-slate-100 dark:border-white/5 flex gap-3">
+                                {/* Close */}
+                                <div className="p-6 border-t border-slate-100 dark:border-white/5">
                                     <button
                                         onClick={() => setIsEditorOpen(false)}
-                                        className="flex-1 px-6 py-4 bg-slate-100 dark:bg-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-white/10 transition-all"
+                                        className="w-full py-3 bg-slate-100 dark:bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
                                     >
-                                        Close
+                                        <X size={14} /> Close Editor
                                     </button>
                                 </div>
                             </div>
 
-                            {/* Editor Body: Right (Preview) */}
-                            <div className="flex-1 bg-slate-900 flex flex-col relative overflow-hidden">
-                                {/* Header */}
-                                <div className="absolute top-0 left-0 right-0 p-8 flex items-center justify-between z-10 bg-gradient-to-b from-black/60 to-transparent">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white">
-                                            <ImageIcon size={20} />
-                                        </div>
-                                        <div>
-                                            <h4 className="text-sm font-black text-white uppercase tracking-tight">
-                                                {selectedDoc.name}
-                                            </h4>
-                                            <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest italic">
-                                                {selectedDoc.category}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() => setIsEditorOpen(false)}
-                                        className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-all"
-                                    >
-                                        <X size={20} />
-                                    </button>
-                                </div>
-
-                                {/* Viewport */}
-                                <div className="flex-1 flex items-center justify-center p-20 relative">
-                                    {/* Grid Lines Overlay */}
-                                    <div
-                                        className="absolute inset-0 opacity-10 pointer-events-none"
-                                        style={{
-                                            backgroundImage:
-                                                'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
-                                            backgroundSize: '40px 40px',
-                                        }}
+                            {/* Editor Body: Right (Canvas) */}
+                            <div className="flex-1 bg-[#1a1a2e] flex items-center justify-center overflow-hidden">
+                                <div
+                                    className="relative max-w-full max-h-full"
+                                    style={{
+                                        transform: `scale(${zoomFactor}) rotate(${rotation}deg) scaleX(${isFlipped ? -1 : 1}) translate(${offsetX}px, ${offsetY}px)`,
+                                        transition: 'transform 0.3s ease',
+                                    }}
+                                >
+                                    <img
+                                        src={signedUrls[selectedDoc.id]}
+                                        alt={getDisplayLabel(selectedDoc)}
+                                        className="max-w-full max-h-[80vh] object-contain"
+                                        draggable={false}
                                     />
-
-                                    <div className="relative w-full h-full flex items-center justify-center">
-                                        <motion.div
-                                            animate={{
-                                                scale: zoomFactor,
-                                                rotate: rotation,
-                                                scaleX: isFlipped ? -1 : 1,
-                                                x: offsetX,
-                                                y: offsetY,
-                                            }}
-                                            transition={{ type: 'spring', damping: 20, stiffness: 100 }}
-                                            className="relative max-w-full max-h-full shadow-[0_0_100px_rgba(0,0,0,0.5)] rounded-2xl overflow-hidden"
-                                        >
-                                            <img
-                                                src={signedUrls[selectedDoc.id]}
-                                                className="max-w-[80vw] max-h-[60vh] object-contain"
-                                                alt="Editor Preview"
-                                            />
-                                        </motion.div>
-                                    </div>
-                                </div>
-
-                                {/* Footer Indicators */}
-                                <div className="p-8 flex items-center justify-between bg-black/40 backdrop-blur-md">
-                                    <div className="flex items-center gap-6">
-                                        <div className="flex flex-col">
-                                            <span className="text-[8px] font-black text-white/40 uppercase tracking-[0.2em] mb-1">
-                                                Scale Factor
-                                            </span>
-                                            <span className="text-xs font-black text-white italic">
-                                                {(zoomFactor * 100).toFixed(0)}%
-                                            </span>
-                                        </div>
-                                        <div className="w-px h-8 bg-white/10" />
-                                        <div className="flex flex-col">
-                                            <span className="text-[8px] font-black text-white/40 uppercase tracking-[0.2em] mb-1">
-                                                Rotation
-                                            </span>
-                                            <span className="text-xs font-black text-white italic">{rotation}°</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
-                                            <Check className="text-emerald-500" size={14} />
-                                            <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">
-                                                High-Fidelity Preview
-                                            </span>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </motion.div>

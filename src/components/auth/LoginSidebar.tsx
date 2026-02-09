@@ -565,11 +565,22 @@ export default function LoginSidebar({
         }
 
         // Fetch Memberships & Redirect
-        const { data: memberships } = await supabase
-            .from('memberships')
-            .select('*, tenants!inner(*)')
-            .eq('user_id', user?.id)
-            .eq('status', 'ACTIVE');
+        let memberships = [];
+        try {
+            const { data: mData, error: mError } = await supabase
+                .from('memberships')
+                .select('*, tenants!inner(*)')
+                .eq('user_id', user?.id)
+                .eq('status', 'ACTIVE');
+
+            if (mError) {
+                console.warn('[LoginSidebar] Membership fetch error:', mError.message);
+            } else {
+                memberships = mData || [];
+            }
+        } catch (err) {
+            console.error('[LoginSidebar] Failed to fetch memberships:', err);
+        }
 
         // Session Set
         const primaryMembership = memberships && memberships.length > 0 ? memberships[0] : null;

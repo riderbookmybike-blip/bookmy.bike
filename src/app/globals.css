@@ -10,9 +10,11 @@
 :root {
     /* Layout Metrics - Responsive */
     --header-h: 64px;
+    --hero-offset: 20px;
 
     @media (min-width: 768px) {
         --header-h: 80px;
+        --hero-offset: 32px;
     }
 
     /* Primary Brand (Cyber Yellow) */
@@ -416,17 +418,6 @@ body {
 /* =============================================
    ANIMATION UTILITIES
    ============================================= */
-/* Premium Layout Variables - Aligned with Approved Implementation Plan */
-:root {
-    --header-h: 72px;
-    --hero-offset: 20px;
-
-    @media (min-width: 1024px) {
-        --header-h: 96px;
-        --hero-offset: 32px;
-    }
-}
-
 @keyframes fadeIn {
     from {
         opacity: 0;

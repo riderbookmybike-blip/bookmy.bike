@@ -21,7 +21,7 @@ export async function getProductBySlug(
     const decodedVariant = decodeURIComponent(variantSlug);
 
     // Construct the expected variant slug pattern
-    // URL structure: /phone/store/{make}/{model}/{variant}
+    // URL structure: /store/{make}/{model}/{variant}
     // Database slug could be: {make}-{model}-{variant} or just {variant}
     const possibleVariantSlugs = [
         decodedVariant,

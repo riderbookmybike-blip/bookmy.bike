@@ -244,8 +244,13 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
 
     const statusConfig: any = {
         DRAFT: { color: 'text-slate-400', bg: 'bg-slate-400/10', icon: Clock },
-        FINAL: { color: 'text-blue-500', bg: 'bg-blue-500/10', icon: FileText },
+        IN_REVIEW: { color: 'text-amber-500', bg: 'bg-amber-500/10', icon: Clock },
         APPROVED: { color: 'text-emerald-500', bg: 'bg-emerald-500/10', icon: ShieldCheck },
+        DENIED: { color: 'text-rose-500', bg: 'bg-rose-500/10', icon: Package },
+        CONFIRMED: { color: 'text-indigo-500', bg: 'bg-indigo-500/10', icon: FileText },
+        REJECTED: { color: 'text-rose-500', bg: 'bg-rose-500/10', icon: Package },
+        CANCELED: { color: 'text-rose-500', bg: 'bg-rose-500/10', icon: Package },
+        SUPERSEDED: { color: 'text-slate-400', bg: 'bg-slate-400/10', icon: FileText },
         EXPIRED: { color: 'text-rose-500', bg: 'bg-rose-500/10', icon: Package },
     };
 
@@ -1115,9 +1120,6 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                                                             className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg ${statusConfig[q.status]?.bg || 'bg-slate-100'} ${statusConfig[q.status]?.color || 'text-slate-500'}`}
                                                                         >
                                                                             {q.status}
-                                                                        </span>
-                                                                        <span className="text-[10px] font-bold text-slate-400 font-mono">
-                                                                            v{q.version || 1.0}
                                                                         </span>
                                                                     </div>
                                                                 </div>

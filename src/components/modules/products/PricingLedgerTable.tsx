@@ -913,7 +913,7 @@ export default function PricingLedgerTable({
                         return (
                             <div
                                 key={key}
-                                className="flex items-center gap-2 px-4 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 group animate-in fade-in zoom-in duration-200"
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-lg text-[9px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 group animate-in fade-in zoom-in duration-200"
                             >
                                 <span className="opacity-50">{key}:</span>
                                 <span>{value}</span>
@@ -928,7 +928,7 @@ export default function PricingLedgerTable({
                     })}
 
                     {selectedBrand !== 'ALL' && (
-                        <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 group animate-in fade-in zoom-in duration-200">
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg text-[9px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 group animate-in fade-in zoom-in duration-200">
                             <span className="opacity-50">Brand:</span>
                             <span>{selectedBrand}</span>
                             <button
@@ -941,7 +941,7 @@ export default function PricingLedgerTable({
                     )}
 
                     {selectedCategory !== 'ALL' && (
-                        <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-xl text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 group animate-in fade-in zoom-in duration-200">
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-lg text-[9px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 group animate-in fade-in zoom-in duration-200">
                             <span className="opacity-50">Category:</span>
                             <span>{selectedCategory}</span>
                             <button
@@ -954,7 +954,7 @@ export default function PricingLedgerTable({
                     )}
 
                     {selectedSubCategory !== 'ALL' && (
-                        <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-xl text-[10px] font-black uppercase tracking-widest text-purple-600 dark:text-purple-400 group animate-in fade-in zoom-in duration-200">
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-lg text-[9px] font-black uppercase tracking-wider text-purple-600 dark:text-purple-400 group animate-in fade-in zoom-in duration-200">
                             <span className="opacity-50">Sub:</span>
                             <span>{selectedSubCategory}</span>
                             <button
@@ -967,7 +967,7 @@ export default function PricingLedgerTable({
                     )}
 
                     {selectedModel !== 'ALL' && (
-                        <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 group animate-in fade-in zoom-in duration-200">
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-lg text-[9px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 group animate-in fade-in zoom-in duration-200">
                             <span className="opacity-50">Model:</span>
                             <span>{selectedModel}</span>
                             <button
@@ -1473,7 +1473,7 @@ export default function PricingLedgerTable({
                                             key={sku.id}
                                             className={`group transition-all duration-200 ${isSelected ? 'bg-emerald-50/50 dark:bg-emerald-900/20' : 'even:bg-slate-50/10 dark:even:bg-slate-800/10 hover:bg-slate-50 dark:hover:bg-slate-800/30'}`}
                                         >
-                                            <td className="px-6 py-5 pl-8">
+                                            <td className="px-4 py-3 pl-6">
                                                 <input
                                                     type="checkbox"
                                                     checked={isSelected}
@@ -1484,8 +1484,8 @@ export default function PricingLedgerTable({
 
                                             {/* VEHICLE COLUMNS */}
                                             {activeCategory === 'vehicles' && (
-                                                <td className="px-6 py-5">
-                                                    <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight">
+                                                <td className="px-4 py-3">
+                                                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight">
                                                         {sku.variant}
                                                     </span>
                                                 </td>
@@ -1493,9 +1493,9 @@ export default function PricingLedgerTable({
 
                                             {/* ACCESSORY COLUMNS - Composite Product */}
                                             {activeCategory !== 'vehicles' && (
-                                                <td className="px-6 py-5">
+                                                <td className="px-4 py-3">
                                                     <div className="flex flex-col gap-0.5">
-                                                        <span className="text-[11px] font-bold text-slate-900 dark:text-white uppercase tracking-tight">
+                                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white uppercase tracking-tight">
                                                             {sku.category} / {sku.subCategory} / {sku.model} /{' '}
                                                             {sku.variant}
                                                         </span>
@@ -1503,21 +1503,21 @@ export default function PricingLedgerTable({
                                                 </td>
                                             )}
 
-                                            <td className="px-6 py-5 min-w-[160px]">
-                                                <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase leading-relaxed">
+                                            <td className="px-4 py-3 min-w-[120px]">
+                                                <span className="text-[9px] font-medium text-slate-500 dark:text-slate-400 uppercase leading-relaxed">
                                                     {sku.color}
                                                 </span>
                                             </td>
 
                                             {activeCategory === 'vehicles' && (
-                                                <td className="px-6 py-5">
-                                                    <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-tight">
+                                                <td className="px-4 py-3">
+                                                    <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-tight">
                                                         {sku.engineCc ? `${Number(sku.engineCc).toFixed(2)}cc` : '—'}
                                                     </span>
                                                 </td>
                                             )}
 
-                                            <td className="px-6 py-5 text-right">
+                                            <td className="px-4 py-3 text-right">
                                                 <div className="flex justify-end items-center gap-2">
                                                     <input
                                                         type="number"
@@ -1526,7 +1526,7 @@ export default function PricingLedgerTable({
                                                         onChange={e =>
                                                             isAums && onUpdatePrice(sku.id, Number(e.target.value))
                                                         }
-                                                        className={`w-28 rounded-lg px-3 py-1.5 text-sm font-black text-right transition-all 
+                                                        className={`w-24 rounded-lg px-2 py-1 text-[10px] font-black text-right transition-all 
                                                             ${
                                                                 !isAums || !canEdit
                                                                     ? 'bg-transparent border-transparent text-slate-900 dark:text-slate-100 cursor-default'
@@ -1539,7 +1539,7 @@ export default function PricingLedgerTable({
                                             </td>
                                             {activeCategory === 'vehicles' ? (
                                                 <>
-                                                    <td className="px-6 py-5 text-right relative group/tooltip">
+                                                    <td className="px-4 py-3 text-right relative group/tooltip">
                                                         <span
                                                             className={`font-bold text-[11px] text-slate-600 dark:text-slate-400 ${sku.rto_data ? 'cursor-help border-b border-dotted border-slate-300 dark:border-slate-700' : ''}`}
                                                         >
@@ -1874,7 +1874,7 @@ export default function PricingLedgerTable({
                                                 </>
                                             )}
 
-                                            <td className="px-8 py-5 text-right bg-emerald-50/20 dark:bg-emerald-900/10">
+                                            <td className="px-5 py-3 text-right bg-emerald-50/20 dark:bg-emerald-900/10">
                                                 {isAums ? (
                                                     <span className="font-bold text-[11px] text-emerald-700 dark:text-emerald-400 tracking-tight">
                                                         {activeCategory === 'vehicles'
@@ -1907,7 +1907,7 @@ export default function PricingLedgerTable({
                                                                 const newDelta = enteredPrice - base;
                                                                 onUpdateOffer(sku.id, newDelta);
                                                             }}
-                                                            className={`w-28 rounded-lg px-3 py-1.5 text-[11px] font-bold text-right outline-none transition-all
+                                                            className={`w-24 rounded-lg px-2 py-1 text-[10px] font-bold text-right outline-none transition-all
                                                                 ${
                                                                     !canEdit
                                                                         ? 'bg-transparent border-transparent text-emerald-700 dark:text-emerald-400 cursor-default'
@@ -1937,7 +1937,7 @@ export default function PricingLedgerTable({
                                             </td>
 
                                             {!isAums && activeCategory === 'vehicles' && (
-                                                <td className="px-6 py-5 text-right">
+                                                <td className="px-4 py-3 text-right">
                                                     {(() => {
                                                         // Delta = OnRoad (AUMS base) - OfferOnRoad (dealer input)
                                                         // offerDelta here is the dealer's Offer On Road price
@@ -1966,40 +1966,24 @@ export default function PricingLedgerTable({
                                                 </td>
                                             )}
 
-                                            <td className="px-6 py-5 text-right w-[140px]">
-                                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                                            <td className="px-4 py-3 text-right w-[120px]">
+                                                <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400">
                                                     {updatedLabel}
                                                 </span>
                                             </td>
 
-                                            <td className="px-6 py-5 border-r border-slate-100 dark:border-slate-800">
-                                                <div className="flex justify-center">
-                                                    <button
-                                                        onClick={e => {
-                                                            e.stopPropagation();
-                                                            if (onUpdatePopular)
-                                                                onUpdatePopular(sku.id, !sku.isPopular);
-                                                        }}
-                                                        className={`p-2 rounded-xl transition-all ${
-                                                            sku.isPopular
-                                                                ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 scale-110 shadow-lg shadow-amber-500/10'
-                                                                : 'bg-slate-50 text-slate-400 dark:bg-slate-800 dark:text-slate-500 hover:bg-slate-100'
-                                                        }`}
-                                                        title={
-                                                            sku.isPopular ? 'Remove Popular Badge' : 'Mark as Popular'
-                                                        }
-                                                    >
-                                                        <Rocket
-                                                            size={14}
-                                                            className={sku.isPopular ? 'fill-current' : ''}
-                                                        />
-                                                    </button>
-                                                </div>
-                                            </td>
-
-                                            <td className="px-8 py-5 text-right w-[140px] relative">
+                                            <td className="px-5 py-3 text-right w-[120px] relative">
                                                 {(() => {
-                                                    const state = sku.displayState || 'Draft';
+                                                    const state = isAums
+                                                        ? sku.displayState || 'Draft'
+                                                        : sku.localIsActive
+                                                          ? 'Live'
+                                                          : 'Inactive';
+                                                    const displayLabel = !isAums
+                                                        ? state === 'Live'
+                                                            ? 'Active'
+                                                            : 'Inactive'
+                                                        : state;
                                                     const styleMap: Record<string, string> = {
                                                         Published:
                                                             'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800',
@@ -2025,6 +2009,7 @@ export default function PricingLedgerTable({
                                                               ? ['Live']
                                                               : baseOptions
                                                         : ['Active', 'Inactive'];
+                                                    const selectedOpt = isAums ? state : displayLabel;
                                                     return (
                                                         <>
                                                             <button
@@ -2034,7 +2019,7 @@ export default function PricingLedgerTable({
                                                                 }}
                                                                 className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-sm border cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-emerald-400/50 ${styleMap[state] || styleMap['Draft']}`}
                                                             >
-                                                                {!isAums && state === 'Live' ? 'Active' : state}
+                                                                {displayLabel}
                                                             </button>
                                                             {isAums && !canPublish(sku) && (
                                                                 <button
@@ -2103,8 +2088,16 @@ export default function PricingLedgerTable({
                                                                                                 sku.id,
                                                                                                 stageMap[opt] || 'DRAFT'
                                                                                             );
+                                                                                        } else if (
+                                                                                            onUpdateLocalStatus
+                                                                                        ) {
+                                                                                            // Non-AUMS: Update dealer-local visibility
+                                                                                            onUpdateLocalStatus(
+                                                                                                sku.id,
+                                                                                                opt === 'Active'
+                                                                                            );
                                                                                         } else {
-                                                                                            // Non-AUMS: Update status in cat_items
+                                                                                            // Fallback: Update status in cat_items
                                                                                             const statusMap: Record<
                                                                                                 string,
                                                                                                 | 'ACTIVE'
@@ -2124,7 +2117,7 @@ export default function PricingLedgerTable({
                                                                                         setOpenStatusDropdownId(null);
                                                                                     }}
                                                                                     className={`w-full text-left px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all flex items-center justify-between ${
-                                                                                        state === opt
+                                                                                        selectedOpt === opt
                                                                                             ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600'
                                                                                             : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                                                                                     }`}
@@ -2132,10 +2125,7 @@ export default function PricingLedgerTable({
                                                                                     {isAums && opt === 'Live'
                                                                                         ? 'Active'
                                                                                         : opt}
-                                                                                    {(state === opt ||
-                                                                                        (!isAums &&
-                                                                                            state === 'Live' &&
-                                                                                            opt === 'Active')) && (
+                                                                                    {selectedOpt === opt && (
                                                                                         <CheckCircle2 size={12} />
                                                                                     )}
                                                                                 </button>
@@ -2147,6 +2137,31 @@ export default function PricingLedgerTable({
                                                         </>
                                                     );
                                                 })()}
+                                            </td>
+
+                                            <td className="px-6 py-5 border-r border-slate-100 dark:border-slate-800">
+                                                <div className="flex justify-center">
+                                                    <button
+                                                        onClick={e => {
+                                                            e.stopPropagation();
+                                                            if (onUpdatePopular)
+                                                                onUpdatePopular(sku.id, !sku.isPopular);
+                                                        }}
+                                                        className={`p-2 rounded-xl transition-all ${
+                                                            sku.isPopular
+                                                                ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 scale-110 shadow-lg shadow-amber-500/10'
+                                                                : 'bg-slate-50 text-slate-400 dark:bg-slate-800 dark:text-slate-500 hover:bg-slate-100'
+                                                        }`}
+                                                        title={
+                                                            sku.isPopular ? 'Remove Popular Badge' : 'Mark as Popular'
+                                                        }
+                                                    >
+                                                        <Rocket
+                                                            size={14}
+                                                            className={sku.isPopular ? 'fill-current' : ''}
+                                                        />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     );

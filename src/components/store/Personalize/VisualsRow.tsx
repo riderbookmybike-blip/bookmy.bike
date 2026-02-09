@@ -11,6 +11,7 @@ interface ColorOption {
     name: string;
     hex: string;
     class: string;
+    assets?: any[];
 }
 
 interface VisualsRowProps {
@@ -18,6 +19,7 @@ interface VisualsRowProps {
     selectedColor: string;
     onColorSelect: (id: string) => void;
     productImage: string;
+    assets?: any[];
     videoSource: string;
     className?: string;
     isVideoOpen?: boolean;
@@ -29,6 +31,7 @@ export default function VisualsRow({
     selectedColor,
     onColorSelect,
     productImage,
+    assets = [],
     videoSource,
     className = '',
     isVideoOpen = false,
@@ -36,13 +39,48 @@ export default function VisualsRow({
 }: VisualsRowProps) {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [imageLoaded, setImageLoaded] = useState(false);
+    const [is360Active, setIs360Active] = useState(false);
     const activeColor = colors.find(c => c.id === selectedColor) || colors[0];
     const activeColorName = activeColor.name;
 
     // Reset loading state when image changes
     React.useEffect(() => {
         setImageLoaded(false);
-    }, [productImage, currentImageIndex]);
+        // If color changes and we have 360, maybe default to it? Or at least reset state.
+        setIs360Active(false);
+    }, [productImage, currentImageIndex, selectedColor]);
+
+    const v360Assets = assets.filter(a => a.type === '360').sort((a, b) => (a.position || 0) - (b.position || 0));
+    const has360 = v360Assets.length > 0;
+
+    // Cloudimage 360 initialization
+    React.useEffect(() => {
+        if (is360Active && has360) {
+            // Need to wait for DOM to be ready
+            const timer = setTimeout(() => {
+                if ((window as any).CI360) {
+                    (window as any).CI360.init();
+                }
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [is360Active, has360, selectedColor]);
+
+    const get360Config = () => {
+        if (!has360) return null;
+        const firstAsset = v360Assets[0].url;
+        const lastSlash = firstAsset.lastIndexOf('/');
+        const folder = firstAsset.substring(0, lastSlash);
+        // Pattern assumes {index}.webp or similar.
+        // Our script linked as path/1.webp, path/2.webp etc.
+        return {
+            folder,
+            filename: '{index}.webp',
+            amount: v360Assets.length,
+        };
+    };
+
+    const config360 = get360Config();
 
     // Mock gallery for now, ensuring we have at least one image
     const galaxyImages = [productImage, productImage, productImage]; // Placeholder for multiple angles
@@ -79,15 +117,44 @@ export default function VisualsRow({
                         </div>
                     )}
 
-                    <img
-                        src={productImage || '/images/categories/scooter_nobg.png'}
-                        alt="Product Visual"
-                        onLoad={() => setImageLoaded(true)}
-                        className={`w-full max-w-[65%] max-h-[90%] object-contain brightness-[1.1] contrast-[1.1] drop-shadow-[0_40px_80px_rgba(0,0,0,0.5)] dark:drop-shadow-[0_60px_100px_rgba(0,0,0,0.9)] transition-opacity duration-500 ${
-                            imageLoaded ? 'opacity-100 animate-in fade-in zoom-in-95 duration-700' : 'opacity-0'
-                        }`}
-                        key={currentImageIndex}
-                    />
+                    {has360 && is360Active && config360 ? (
+                        <div
+                            className="cloudimage-360 w-full h-full flex items-center justify-center p-8"
+                            data-folder={config360.folder}
+                            data-filename-x={config360.filename}
+                            data-amount-x={config360.amount}
+                            data-spin-reverse
+                            data-drag-speed="150"
+                            data-autoplay
+                            data-speed="50"
+                        />
+                    ) : (
+                        <img
+                            src={productImage || '/images/categories/scooter_nobg.png'}
+                            alt="Product Visual"
+                            onLoad={() => setImageLoaded(true)}
+                            className={`w-full max-w-[65%] max-h-[90%] object-contain brightness-[1.1] contrast-[1.1] drop-shadow-[0_40px_80px_rgba(0,0,0,0.5)] dark:drop-shadow-[0_60px_100px_rgba(0,0,0,0.9)] transition-opacity duration-500 ${
+                                imageLoaded ? 'opacity-100 animate-in fade-in zoom-in-95 duration-700' : 'opacity-0'
+                            }`}
+                            key={currentImageIndex}
+                        />
+                    )}
+
+                    {/* Gallery Navigation / 360 Toggle */}
+                    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex items-center gap-4">
+                        {has360 && (
+                            <button
+                                onClick={() => setIs360Active(!is360Active)}
+                                className={`px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-widest transition-all ${
+                                    is360Active
+                                        ? 'bg-[#F4B000] text-black shadow-[0_0_20px_rgba(244,176,0,0.5)]'
+                                        : 'bg-white/10 text-white border border-white/20 hover:bg-white/20'
+                                }`}
+                            >
+                                {is360Active ? 'Static View' : '360 View'}
+                            </button>
+                        )}
+                    </div>
 
                     {/* Gallery Navigation */}
                     <button

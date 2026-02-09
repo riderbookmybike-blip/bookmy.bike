@@ -11,8 +11,6 @@ export interface Quote {
     price: number;
     status: string;
     date: string;
-    version: number;
-    isLatest: boolean;
 }
 
 interface QuoteListProps {
@@ -66,7 +64,7 @@ export default function QuoteList({ quotes, selectedId, onSelect, onNewQuote }: 
                         {item.displayId}
                     </span>
                     <span className="text-[9px] font-bold text-slate-400 opacity-60 flex items-center gap-1">
-                        ver.{item.version}
+                        {item.date}
                     </span>
                 </div>
 
@@ -83,7 +81,7 @@ export default function QuoteList({ quotes, selectedId, onSelect, onNewQuote }: 
                 <div className="flex items-center justify-between">
                     <div
                         className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-tighter ${
-                            item.status === 'ACCEPTED'
+                            item.status === 'APPROVED'
                                 ? 'bg-emerald-500/10 text-emerald-500'
                                 : item.status === 'SENT'
                                   ? 'bg-indigo-500/10 text-indigo-500'

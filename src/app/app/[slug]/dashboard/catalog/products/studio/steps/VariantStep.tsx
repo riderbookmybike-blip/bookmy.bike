@@ -239,6 +239,17 @@ export default function VariantStep({ family, template, existingVariants, onUpda
 
             const titleCasedName = toTitleCase(name); // Enforce Title Case
 
+            // Robust Slug: family-slug + compact-variant-name
+            const cleanVariantName = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const generatedSlug = `${family.slug}-${cleanVariantName}`;
+
+            // Pre-emptive uniqueness check locally
+            const isDuplicate = existingVariants.some((v: any) => v.slug === generatedSlug);
+            if (isDuplicate) {
+                toast.error(`A variant with this name/slug already exists for this model.`);
+                return;
+            }
+
             const payload = {
                 name: titleCasedName,
                 specs: { [l1Label]: titleCasedName },
@@ -247,13 +258,7 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                 brand_id: family.brand_id,
                 template_id: family.template_id,
                 parent_id: family.id,
-                slug: `${family.slug}-${name}`
-                    .toLowerCase()
-                    .trim()
-                    .replace(/[^a-z0-9\s-]/g, '') // Remove special chars
-                    .replace(/\s+/g, '-') // Spaces to dashes
-                    .replace(/-+/g, '-') // Multiple dashes to single
-                    .replace(/^-|-$/g, ''), // Trim leading/trailing dashes
+                slug: generatedSlug,
                 position: nextPosition,
                 hsn_code: family.hsn_code || '',
             };
@@ -266,8 +271,8 @@ export default function VariantStep({ family, template, existingVariants, onUpda
 
             if (dbError) throw dbError;
 
-            const isDuplicate = existingVariants.some((v: any) => v.slug === data.slug);
-            if (!isDuplicate) {
+            const alreadyExists = existingVariants.some((v: any) => v.slug === data.slug);
+            if (!alreadyExists) {
                 onUpdate([...existingVariants, data].sort((a: any, b: any) => (a.position || 0) - (b.position || 0)));
             } else {
                 onUpdate(

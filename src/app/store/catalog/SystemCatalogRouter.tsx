@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { DesktopCatalog } from '@/components/store/DesktopCatalog';
-import { PhoneCatalog } from '@/components/phone/catalog/PhoneCatalog';
 import { useCatalogFilters } from '@/hooks/useCatalogFilters';
 import { ProductVariant } from '@/types/productMaster';
 import { useSearchParams } from 'next/navigation';
@@ -24,19 +23,6 @@ export default function SystemCatalogRouter({ initialItems, basePath = '/store' 
     const loading = isClientLoading && currentItems.length === 0;
 
     const filters = useCatalogFilters(currentItems);
-
-    const [isMobile, setIsMobile] = useState(false);
-
-    useEffect(() => {
-        const checkMobile = () => setIsMobile(window.innerWidth < 1024);
-        checkMobile();
-        window.addEventListener('resize', checkMobile);
-        return () => window.removeEventListener('resize', checkMobile);
-    }, []);
-
-    if (isMobile) {
-        return <PhoneCatalog />;
-    }
 
     return (
         <DesktopCatalog

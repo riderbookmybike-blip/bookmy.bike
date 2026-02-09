@@ -13,6 +13,7 @@ import {
     FileText,
     CheckCircle2,
     Zap,
+    X,
     History,
     ChevronRight,
     Bike,
@@ -404,7 +405,9 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
             else if (actionType === 'LOCK') result = await lockQuoteAction(quoteId);
 
             if (result?.success) {
-                import('sonner').then(({ toast }) => toast.success(`Quote ${actionType.toLowerCase()}ed successfully`));
+                const actionLabel =
+                    actionType === 'ACCEPT' ? 'approved' : actionType === 'LOCK' ? 'denied' : 'confirmed';
+                import('sonner').then(({ toast }) => toast.success(`Quote ${actionLabel} successfully`));
                 fetchQuotes();
             } else {
                 console.error(`Quote ${actionType} Action Failure:`, result);
@@ -489,8 +492,8 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
             const sorted = [...group].sort(
                 (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
             );
-            const latest = sorted.find(q => q.is_latest) || sorted[0];
-            const history = sorted.filter(q => q.id !== latest.id);
+            const latest = sorted[0];
+            const history = sorted.slice(1);
             return { latest, history, all: sorted };
         });
     };
@@ -580,19 +583,14 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                                         <h4 className="font-bold text-slate-900 dark:text-white uppercase tracking-tight">
                                             {formatDisplayId(quote.display_id || quote.id)}
                                         </h4>
-                                        {quote.is_latest && (
-                                            <span className="text-[9px] font-black px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded uppercase tracking-tighter border border-emerald-500/20">
-                                                Latest
-                                            </span>
-                                        )}
                                         <span
                                             className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter border ${
-                                                quote.status === 'ACCEPTED'
+                                                quote.status === 'APPROVED'
                                                     ? 'bg-blue-500/10 text-blue-500 border-blue-500/20'
                                                     : quote.status === 'CONFIRMED'
                                                       ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20'
-                                                      : quote.status === 'LOCKED'
-                                                        ? 'bg-slate-900 text-white'
+                                                      : quote.status === 'DENIED'
+                                                        ? 'bg-rose-500/10 text-rose-600 border-rose-500/20'
                                                         : 'bg-slate-500/10 text-slate-500 border-slate-500/20'
                                             }`}
                                         >
@@ -795,7 +793,7 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                                             Workflow Actions
                                         </h5>
                                         <div className="grid grid-cols-2 gap-3">
-                                            {quote.status === 'DRAFT' && (
+                                            {quote.status === 'IN_REVIEW' && (
                                                 <button
                                                     onClick={() => handleAction(quote.id, 'ACCEPT')}
                                                     disabled={!!isUpdating}
@@ -806,10 +804,24 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                                                     ) : (
                                                         <CheckCircle2 size={12} />
                                                     )}
-                                                    Accept
+                                                    Approve
                                                 </button>
                                             )}
-                                            {quote.status === 'ACCEPTED' && (
+                                            {quote.status === 'IN_REVIEW' && (
+                                                <button
+                                                    onClick={() => handleAction(quote.id, 'LOCK')}
+                                                    disabled={!!isUpdating}
+                                                    className="flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50"
+                                                >
+                                                    {isUpdating === quote.id ? (
+                                                        <Loader2 size={12} className="animate-spin" />
+                                                    ) : (
+                                                        <X size={12} />
+                                                    )}
+                                                    Deny
+                                                </button>
+                                            )}
+                                            {quote.status === 'APPROVED' && (
                                                 <button
                                                     onClick={() => handleAction(quote.id, 'CONFIRM')}
                                                     disabled={!!isUpdating}
@@ -888,8 +900,11 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                                                     >
                                                         <div>
                                                             <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest">
-                                                                Version {row.current.version || '—'} •{' '}
-                                                                {formatDateTime(row.current.created_at)}
+                                                                Quote{' '}
+                                                                {formatDisplayId(
+                                                                    row.current.display_id || row.current.id
+                                                                )}{' '}
+                                                                • {formatDateTime(row.current.created_at)}
                                                             </p>
                                                             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                                                                 Saved by{' '}

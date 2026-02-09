@@ -93,6 +93,10 @@ export default function PricingPage() {
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [lastEditTime, setLastEditTime] = useState<number | null>(null);
     const [tableSummary, setTableSummary] = useState<{ count: number; value: number }>({ count: 0, value: 0 });
+    const [quickFilter, setQuickFilter] = useState<'inventory' | 'market_ready' | 'pipeline' | 'critical' | null>(null);
+    const toggleQuickFilter = (value: 'inventory' | 'market_ready' | 'pipeline' | 'critical') => {
+        setQuickFilter(prev => (prev === value ? null : value));
+    };
     const [isPublishing, setIsPublishing] = useState(false);
 
     // Sync filters to URL when they change (persist across reloads)
@@ -450,7 +454,17 @@ export default function PricingPage() {
     };
 
     const handleUpdateLocalStatus = (skuId: string, isActive: boolean) => {
-        setSkus(prev => prev.map(s => (s.id === skuId ? { ...s, localIsActive: isActive } : s)));
+        setSkus(prev =>
+            prev.map(s =>
+                s.id === skuId
+                    ? {
+                          ...s,
+                          localIsActive: isActive,
+                          displayState: isActive ? 'Live' : 'Inactive',
+                      }
+                    : s
+            )
+        );
         setHasUnsavedChanges(true);
         setLastEditTime(Date.now());
     };
@@ -715,7 +729,7 @@ export default function PricingPage() {
     }, [uniqueVariants, selectedVariant]);
 
     const filteredSkus = useMemo(() => {
-        return skus.filter(s => {
+        const baseFiltered = skus.filter(s => {
             const matchesBrand = selectedBrand === 'ALL' || s.brand === selectedBrand;
             const matchesCategory = selectedCategory === 'ALL' || s.category === selectedCategory;
             const matchesSubCategory = selectedSubCategory === 'ALL' || s.subCategory === selectedSubCategory;
@@ -723,7 +737,27 @@ export default function PricingPage() {
             const matchesVariant = selectedVariant === 'ALL' || s.variant === selectedVariant;
             return matchesBrand && matchesCategory && matchesSubCategory && matchesModel && matchesVariant;
         });
-    }, [skus, selectedBrand, selectedCategory, selectedSubCategory, selectedModel, selectedVariant]);
+        if (!quickFilter || quickFilter === 'inventory') return baseFiltered;
+
+        const isMarketReady = (s: SKUPriceRow) =>
+            tenantSlug === 'aums'
+                ? s.displayState === 'Live' || s.displayState === 'Published'
+                : s.localIsActive === true;
+
+        if (quickFilter === 'market_ready') return baseFiltered.filter(isMarketReady);
+        if (quickFilter === 'pipeline') return baseFiltered.filter(s => s.status !== 'ACTIVE');
+        if (quickFilter === 'critical') return baseFiltered.filter(s => s.exShowroom === 0);
+        return baseFiltered;
+    }, [
+        skus,
+        selectedBrand,
+        selectedCategory,
+        selectedSubCategory,
+        selectedModel,
+        selectedVariant,
+        quickFilter,
+        tenantSlug,
+    ]);
 
     const activeRule = states.find(s => s.id === selectedStateId) || null;
 
@@ -782,7 +816,14 @@ export default function PricingPage() {
                 {/* KPI Grid - Expanded to 6 items to match Studio */}
                 <div className="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-4">
                     {/* Brands/SKUs (Indigo) */}
-                    <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left">
+                    <div
+                        onClick={() => toggleQuickFilter('inventory')}
+                        className={`p-6 rounded-[2rem] bg-white dark:bg-slate-900 border shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left cursor-pointer ${
+                            quickFilter === 'inventory'
+                                ? 'border-indigo-400 ring-2 ring-indigo-300/50'
+                                : 'border-slate-200 dark:border-white/10'
+                        }`}
+                    >
                         <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                             <Package size={64} className="text-indigo-600" />
                         </div>
@@ -805,7 +846,14 @@ export default function PricingPage() {
                     </div>
 
                     {/* Live SKUs (Emerald) */}
-                    <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left">
+                    <div
+                        onClick={() => toggleQuickFilter('market_ready')}
+                        className={`p-6 rounded-[2rem] bg-white dark:bg-slate-900 border shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left cursor-pointer ${
+                            quickFilter === 'market_ready'
+                                ? 'border-emerald-400 ring-2 ring-emerald-300/50'
+                                : 'border-slate-200 dark:border-white/10'
+                        }`}
+                    >
                         <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                             <TrendingUp size={64} className="text-emerald-600" />
                         </div>
@@ -828,7 +876,14 @@ export default function PricingPage() {
                     </div>
 
                     {/* Draft/New (Amber) */}
-                    <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left">
+                    <div
+                        onClick={() => toggleQuickFilter('pipeline')}
+                        className={`p-6 rounded-[2rem] bg-white dark:bg-slate-900 border shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left cursor-pointer ${
+                            quickFilter === 'pipeline'
+                                ? 'border-amber-400 ring-2 ring-amber-300/50'
+                                : 'border-slate-200 dark:border-white/10'
+                        }`}
+                    >
                         <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                             <Zap size={64} className="text-amber-600" />
                         </div>
@@ -851,7 +906,14 @@ export default function PricingPage() {
                     </div>
 
                     {/* Missing Price (Rose) */}
-                    <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left">
+                    <div
+                        onClick={() => toggleQuickFilter('critical')}
+                        className={`p-6 rounded-[2rem] bg-white dark:bg-slate-900 border shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left cursor-pointer ${
+                            quickFilter === 'critical'
+                                ? 'border-rose-400 ring-2 ring-rose-300/50'
+                                : 'border-slate-200 dark:border-white/10'
+                        }`}
+                    >
                         <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                             <Target size={64} className="text-rose-600" />
                         </div>

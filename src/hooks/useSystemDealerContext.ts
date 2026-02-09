@@ -73,7 +73,7 @@ export function useSystemDealerContext({
     const [dealerColors, setDealerColors] = useState<any[]>(product.colors || []);
     const [dealerAccessories, setDealerAccessories] = useState<any[]>(initialAccessories);
 
-    // The "Best Offer" object to be passed to UI (PhonePDPSticky / ProductCard)
+    // The "Best Offer" object to be passed to UI (ProductCard)
     const [bestOffer, setBestOffer] = useState<
         | {
               price: number;

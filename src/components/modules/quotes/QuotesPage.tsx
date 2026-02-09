@@ -21,7 +21,8 @@ export interface Quote {
     price: number;
     status: string;
     date: string;
-    version: number;
+    vehicleBrand: string;
+    vehicleModel: string;
 }
 
 export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string }) {
@@ -76,8 +77,8 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
     const stats = [
         { label: 'Total Quotes', value: quotes.length, icon: FileText, color: 'indigo' as const, trend: '+5.2%' },
         {
-            label: 'Accepted',
-            value: quotes.filter(q => q.status === 'ACCEPTED').length,
+            label: 'Approved',
+            value: quotes.filter(q => q.status === 'APPROVED').length,
             icon: FileCheck,
             color: 'emerald' as const,
             trend: '85% Rate',
@@ -109,7 +110,7 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
     // --- LANDING VIEW ---
     if (!selectedQuoteId) {
         return (
-            <div className="h-full bg-slate-50 dark:bg-[#0b0d10]">
+            <div className="h-full bg-slate-50 dark:bg-[#0b0d10] -m-6 md:-m-8">
                 <ModuleLanding
                     title="Quotes"
                     subtitle="Commercial Proposals"
@@ -133,7 +134,7 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
                                     <div className="relative z-10">
                                         <div className="flex justify-between items-start mb-6">
                                             <div className="text-[10px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">
-                                                V{quote.version} • {formatDisplayId(quote.displayId)}
+                                                {formatDisplayId(quote.displayId)}
                                             </div>
                                             <div className="text-indigo-600 font-black text-sm italic tracking-tighter">
                                                 ₹{quote.price.toLocaleString()}
@@ -151,7 +152,7 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
                                         <div className="flex items-center justify-between pt-6 border-t border-slate-100 dark:border-white/5">
                                             <div
                                                 className={`px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest ${
-                                                    quote.status === 'ACCEPTED'
+                                                    quote.status === 'APPROVED'
                                                         ? 'bg-emerald-500/10 text-emerald-500'
                                                         : 'bg-slate-100 dark:bg-white/5 text-slate-400'
                                                 }`}
@@ -195,7 +196,7 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
                                         >
                                             <td className="p-6">
                                                 <div className="text-xs font-black text-indigo-500 uppercase tracking-widest">
-                                                    V{quote.version} • {formatDisplayId(quote.displayId)}
+                                                    {formatDisplayId(quote.displayId)}
                                                 </div>
                                             </td>
                                             <td className="p-6">
@@ -216,7 +217,7 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
                                             <td className="p-6">
                                                 <div
                                                     className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest inline-block ${
-                                                        quote.status === 'ACCEPTED'
+                                                        quote.status === 'APPROVED'
                                                             ? 'bg-emerald-500/10 text-emerald-500'
                                                             : 'bg-slate-100 dark:bg-white/5 text-slate-400'
                                                     }`}
@@ -237,7 +238,7 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
 
     // --- DETAIL VIEW ---
     return (
-        <div className="h-full bg-slate-50 dark:bg-slate-950 flex overflow-hidden font-sans">
+        <div className="h-full bg-slate-50 dark:bg-slate-950 flex overflow-hidden font-sans -m-6 md:-m-8">
             <MasterListDetailLayout mode="list-detail" listPosition="left">
                 {/* Sidebar List */}
                 <div className="h-full flex flex-col bg-white dark:bg-[#0b0d10] border-r border-slate-200 dark:border-white/5 w-full">
@@ -265,30 +266,92 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
-                        {filteredQuotes.map(quote => (
-                            <button
-                                key={quote.id}
-                                onClick={() => handleOpenQuote(quote.id)}
-                                className={`w-full text-left p-4 rounded-2xl border transition-all duration-300 group ${
-                                    selectedQuoteId === quote.id
-                                        ? 'bg-indigo-600 border-indigo-500 shadow-xl shadow-indigo-500/20 text-white translate-x-2'
-                                        : 'bg-white dark:bg-white/5 border-slate-100 dark:border-white/10 hover:border-indigo-500/30 text-slate-900 dark:text-white shadow-sm'
-                                }`}
-                            >
-                                <div className="text-[9px] font-black uppercase opacity-60 mb-1">
-                                    V{quote.version} • {formatDisplayId(quote.displayId)}
-                                </div>
-                                <div className="text-sm font-black italic tracking-tighter uppercase mb-1 truncate">
-                                    {quote.customerName}
-                                </div>
-                                <div
-                                    className={`text-[9px] font-bold ${selectedQuoteId === quote.id ? 'text-white/80' : 'text-slate-500'}`}
+                    <div className="flex-1 overflow-y-auto p-3 space-y-1.5 no-scrollbar">
+                        {filteredQuotes.map(quote => {
+                            const isActive = selectedQuoteId === quote.id;
+                            const statusColor =
+                                quote.status === 'APPROVED' || quote.status === 'SENT'
+                                    ? 'emerald'
+                                    : quote.status === 'IN_REVIEW'
+                                      ? 'amber'
+                                      : quote.status === 'SUPERSEDED'
+                                        ? 'slate'
+                                        : 'indigo';
+                            return (
+                                <button
+                                    key={quote.id}
+                                    onClick={() => handleOpenQuote(quote.id)}
+                                    className={`w-full text-left rounded-xl border transition-all duration-300 group overflow-hidden ${
+                                        isActive
+                                            ? 'bg-indigo-600 border-indigo-500 shadow-lg shadow-indigo-500/20 text-white'
+                                            : 'bg-white dark:bg-white/[0.03] border-slate-100 dark:border-white/[0.06] hover:border-indigo-500/30 text-slate-900 dark:text-white hover:shadow-md'
+                                    }`}
                                 >
-                                    ₹{quote.price.toLocaleString()}
-                                </div>
-                            </button>
-                        ))}
+                                    <div className="flex">
+                                        {/* Status accent bar */}
+                                        <div
+                                            className={`w-1 shrink-0 ${
+                                                isActive
+                                                    ? 'bg-white/30'
+                                                    : statusColor === 'emerald'
+                                                      ? 'bg-emerald-500'
+                                                      : statusColor === 'amber'
+                                                        ? 'bg-amber-500'
+                                                        : statusColor === 'slate'
+                                                          ? 'bg-slate-300 dark:bg-slate-600'
+                                                          : 'bg-indigo-500'
+                                            }`}
+                                        />
+                                        <div className="flex-1 px-3.5 py-3 min-w-0">
+                                            {/* Row 1: ID + Status */}
+                                            <div className="flex items-center justify-between mb-1.5">
+                                                <span
+                                                    className={`text-[9px] font-black uppercase tracking-wider ${isActive ? 'text-white/70' : 'text-slate-400'}`}
+                                                >
+                                                    {formatDisplayId(quote.displayId)}
+                                                </span>
+                                                <span
+                                                    className={`text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${
+                                                        isActive
+                                                            ? 'bg-white/20 text-white'
+                                                            : statusColor === 'emerald'
+                                                              ? 'bg-emerald-500/10 text-emerald-600'
+                                                              : statusColor === 'amber'
+                                                                ? 'bg-amber-500/10 text-amber-600'
+                                                                : statusColor === 'slate'
+                                                                  ? 'bg-slate-100 dark:bg-white/5 text-slate-400'
+                                                                  : 'bg-indigo-500/10 text-indigo-600'
+                                                    }`}
+                                                >
+                                                    {quote.status}
+                                                </span>
+                                            </div>
+                                            {/* Row 2: Customer Name */}
+                                            <div
+                                                className={`text-[12px] font-black tracking-tight uppercase truncate mb-0.5 ${isActive ? 'text-white' : 'text-slate-800 dark:text-white'}`}
+                                            >
+                                                {quote.customerName}
+                                            </div>
+                                            {/* Row 3: Vehicle + Price */}
+                                            <div className="flex items-center justify-between">
+                                                <span
+                                                    className={`text-[10px] font-bold truncate ${isActive ? 'text-white/70' : 'text-slate-400'}`}
+                                                >
+                                                    {quote.vehicleBrand && quote.vehicleModel
+                                                        ? `${quote.vehicleBrand} ${quote.vehicleModel}`
+                                                        : quote.productName || '—'}
+                                                </span>
+                                                <span
+                                                    className={`text-[10px] font-black tabular-nums shrink-0 ml-2 ${isActive ? 'text-white' : 'text-slate-700 dark:text-slate-300'}`}
+                                                >
+                                                    ₹{Number(quote.price).toLocaleString('en-IN')}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
 

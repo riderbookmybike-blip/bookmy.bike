@@ -1,8 +1,8 @@
-import { Booking } from "@/types/booking";
-import { InventoryItem } from "@/types/inventory";
-import { VehicleUnit } from "@/types/vehicleUnit";
-import { LedgerEntry, TransactionType, PartyType } from "@/types/ledger";
-import { ACCOUNT_MASTER } from "./accounting/accountMaster";
+import { Booking, OperationalStage } from '@/types/booking';
+import { InventoryItem } from '@/types/inventory';
+import { VehicleUnit } from '@/types/vehicleUnit';
+import { LedgerEntry, TransactionType, PartyType } from '@/types/ledger';
+import { ACCOUNT_MASTER } from './accounting/accountMaster';
 
 // Types needed directly here to avoid circular deps if any, but simplistic for now
 // Quote Interface
@@ -14,6 +14,8 @@ export interface Quote {
     productSku: string;
     price: number;
     status: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'EXPIRED' | 'REJECTED' | 'CONFIRMED' | 'Converted to Order';
+    operationalStage?: OperationalStage;
+    booking_amount_paid?: boolean;
     date: string;
     version?: number;
     isLatest?: boolean;
@@ -35,6 +37,7 @@ export interface MockOrder {
     price: number;
     status: string;
     date: string;
+    operationalStage?: OperationalStage;
     currentStage?: string;
 }
 
@@ -53,8 +56,8 @@ let ORDERS: MockOrder[] = [
         variant: 'Standard / Matte Axis Grey',
         price: 85000,
         status: 'BOOKED',
-        date: '2024-01-02'
-    }
+        date: '2024-01-02',
+    },
 ];
 
 // Initial Mock Quotes
@@ -67,8 +70,8 @@ let QUOTES: Quote[] = [
         productSku: 'HND-ACT-6G-STD-GRY',
         price: 85000,
         status: 'Converted to Order',
-        date: '2024-01-01'
-    }
+        date: '2024-01-01',
+    },
 ];
 
 // MOCK INVENTORY
@@ -84,7 +87,7 @@ const MOCK_INVENTORY: InventoryItem[] = [
         reserved: 0,
         allotted: 0,
         available: 5,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
     },
     {
         id: 'INV-002',
@@ -97,19 +100,68 @@ const MOCK_INVENTORY: InventoryItem[] = [
         reserved: 0,
         allotted: 0,
         available: 2,
-        lastUpdated: new Date().toISOString()
-    }
+        lastUpdated: new Date().toISOString(),
+    },
 ];
 
 // MOCK VINS
 let MOCK_VINS: VehicleUnit[] = [
-    { id: 'VIN-001', vin: 'HND2024ACT00001', sku: 'HND-ACT-6G-STD-GRY', status: 'AVAILABLE', location: 'Yard A', inwardDate: '2024-01-01' },
-    { id: 'VIN-002', vin: 'HND2024ACT00002', sku: 'HND-ACT-6G-STD-GRY', status: 'AVAILABLE', location: 'Yard A', inwardDate: '2024-01-01' },
-    { id: 'VIN-003', vin: 'HND2024ACT00003', sku: 'HND-ACT-6G-STD-GRY', status: 'AVAILABLE', location: 'Yard A', inwardDate: '2024-01-01' },
-    { id: 'VIN-004', vin: 'HND2024ACT00004', sku: 'HND-ACT-6G-STD-GRY', status: 'AVAILABLE', location: 'Yard B', inwardDate: '2024-01-02' },
-    { id: 'VIN-005', vin: 'HND2024ACT00005', sku: 'HND-ACT-6G-STD-GRY', status: 'AVAILABLE', location: 'Yard B', inwardDate: '2024-01-02' },
-    { id: 'VIN-006', vin: 'HND2024ACT00006', sku: 'HND-ACT-6G-DLX-RED', status: 'AVAILABLE', location: 'Showroom', inwardDate: '2024-01-03' },
-    { id: 'VIN-007', vin: 'HND2024ACT00007', sku: 'HND-ACT-6G-DLX-RED', status: 'AVAILABLE', location: 'Showroom', inwardDate: '2024-01-03' },
+    {
+        id: 'VIN-001',
+        vin: 'HND2024ACT00001',
+        sku: 'HND-ACT-6G-STD-GRY',
+        status: 'AVAILABLE',
+        location: 'Yard A',
+        inwardDate: '2024-01-01',
+    },
+    {
+        id: 'VIN-002',
+        vin: 'HND2024ACT00002',
+        sku: 'HND-ACT-6G-STD-GRY',
+        status: 'AVAILABLE',
+        location: 'Yard A',
+        inwardDate: '2024-01-01',
+    },
+    {
+        id: 'VIN-003',
+        vin: 'HND2024ACT00003',
+        sku: 'HND-ACT-6G-STD-GRY',
+        status: 'AVAILABLE',
+        location: 'Yard A',
+        inwardDate: '2024-01-01',
+    },
+    {
+        id: 'VIN-004',
+        vin: 'HND2024ACT00004',
+        sku: 'HND-ACT-6G-STD-GRY',
+        status: 'AVAILABLE',
+        location: 'Yard B',
+        inwardDate: '2024-01-02',
+    },
+    {
+        id: 'VIN-005',
+        vin: 'HND2024ACT00005',
+        sku: 'HND-ACT-6G-STD-GRY',
+        status: 'AVAILABLE',
+        location: 'Yard B',
+        inwardDate: '2024-01-02',
+    },
+    {
+        id: 'VIN-006',
+        vin: 'HND2024ACT00006',
+        sku: 'HND-ACT-6G-DLX-RED',
+        status: 'AVAILABLE',
+        location: 'Showroom',
+        inwardDate: '2024-01-03',
+    },
+    {
+        id: 'VIN-007',
+        vin: 'HND2024ACT00007',
+        sku: 'HND-ACT-6G-DLX-RED',
+        status: 'AVAILABLE',
+        location: 'Showroom',
+        inwardDate: '2024-01-03',
+    },
 ];
 
 export const getVins = () => MOCK_VINS;
@@ -121,7 +173,10 @@ export const getInventory = () => MOCK_INVENTORY;
 export const getQuotes = () => QUOTES;
 
 // Quote Generation
-export const createQuote = (details: { customerName: string, product: { label: string, sku: string, price: number } }) => {
+export const createQuote = (details: {
+    customerName: string;
+    product: { label: string; sku: string; price: number };
+}) => {
     const newQuote: Quote = {
         id: crypto.randomUUID(),
         displayId: generateDisplayId('QUOTE', QUOTES.length),
@@ -130,7 +185,9 @@ export const createQuote = (details: { customerName: string, product: { label: s
         productSku: details.product.sku,
         price: details.product.price,
         status: 'DRAFT',
-        date: new Date().toISOString().split('T')[0]
+        operationalStage: 'QUOTE',
+        booking_amount_paid: false,
+        date: new Date().toISOString().split('T')[0],
     };
     QUOTES = [newQuote, ...QUOTES];
     return newQuote;
@@ -139,10 +196,8 @@ export const createQuote = (details: { customerName: string, product: { label: s
 // Inventory Logic
 export const adjustStock = (skuPartial: string, operation: 'RESERVE' | 'ALLOT' | 'DELIVER', qty: number): boolean => {
     // For Demo: simplified matching. In real app, perfect match on SKU.
-    const itemIndex = MOCK_INVENTORY.findIndex(i =>
-        i.sku.includes(skuPartial) ||
-        (i.brand + i.model).includes(skuPartial) ||
-        true // Fallback to first item if completely ambiguous for demo flows
+    const itemIndex = MOCK_INVENTORY.findIndex(
+        i => i.sku.includes(skuPartial) || (i.brand + i.model).includes(skuPartial) || true // Fallback to first item if completely ambiguous for demo flows
     );
 
     // Default to first item if logic fails to match string
@@ -182,7 +237,7 @@ import { generateMockSnapshot } from './pricingEngine';
 
 export const createBookingFromOrder = (orderId: string) => {
     const order = ORDERS.find(o => o.id === orderId);
-    if (!order) throw new Error("Order not found");
+    if (!order) throw new Error('Order not found');
 
     // 1. Generate Locked Price Snapshot
     // Construct a temporary variant object for the mock generator
@@ -194,7 +249,7 @@ export const createBookingFromOrder = (orderId: string) => {
         variant: order.variant,
         sku: 'SKU-' + order.id, // Mock SKU
         label: `${order.brand} ${order.model} ${order.variant}`,
-        status: 'ACTIVE'
+        status: 'ACTIVE',
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any;
 
@@ -216,23 +271,56 @@ export const createBookingFromOrder = (orderId: string) => {
         priceSnapshot: lockedSnapshot,
 
         status: 'DRAFT',
+        operationalStage: 'BOOKING',
         allotmentStatus: 'NONE',
-        history: [{
-            timestamp: new Date().toISOString(),
-            action: 'Booking Created from ' + order.displayId,
-            user: 'Sales Exec'
-        }]
+        pdiStatus: 'PENDING',
+        pdiMeta: {},
+        history: [
+            {
+                timestamp: new Date().toISOString(),
+                action: 'Booking Created from ' + order.displayId,
+                user: 'Sales Exec',
+            },
+        ],
     };
 
     BOOKINGS = [newBooking, ...BOOKINGS];
-    ORDERS = ORDERS.map(o => o.id === orderId ? { ...o, status: 'CONVERTED' } : o);
+    ORDERS = ORDERS.map(o => (o.id === orderId ? { ...o, status: 'CONVERTED' } : o));
 
     return newBooking;
 };
 
+export const checkAndConvertQuoteToBooking = (quoteId: string) => {
+    const quote = QUOTES.find(q => q.id === quoteId);
+    if (!quote) return null;
+
+    if (quote.status === 'CONFIRMED' && quote.booking_amount_paid) {
+        // Create Mock Order first (since createBookingFromOrder expects it)
+        const newOrder: MockOrder = {
+            id: crypto.randomUUID(),
+            displayId: generateDisplayId('ORDER'),
+            quoteId: quote.id,
+            quoteDisplayId: quote.displayId,
+            customer: quote.customerName,
+            brand: 'Yamaha', // Mocked or extracted from SKU
+            model: quote.productName,
+            variant: 'Standard',
+            price: quote.price,
+            status: 'BOOKED',
+            date: new Date().toISOString().split('T')[0],
+        };
+        ORDERS = [newOrder, ...ORDERS];
+
+        const booking = createBookingFromOrder(newOrder.id);
+        quote.status = 'Converted to Order';
+        return booking;
+    }
+    return null;
+};
+
 export const updateBookingStatus = (bookingId: string, updates: Partial<Booking>, auditNote: string) => {
     const bookingFound = BOOKINGS.find(b => b.id === bookingId);
-    if (!bookingFound) throw new Error("Booking not found");
+    if (!bookingFound) throw new Error('Booking not found');
 
     // Intercept Allotment Changes for Inventory Check
     if (updates.allotmentStatus) {
@@ -240,20 +328,26 @@ export const updateBookingStatus = (bookingId: string, updates: Partial<Booking>
 
         if (bookingFound.allotmentStatus === 'NONE' && updates.allotmentStatus === 'SOFT_LOCK') {
             if (!adjustStock(skuParams, 'RESERVE', 1)) {
-                throw new Error("Inventory Limit: Not enough stock available to Reserve.");
+                throw new Error('Inventory Limit: Not enough stock available to Reserve.');
             }
-        }
-        else if (bookingFound.allotmentStatus === 'SOFT_LOCK' && updates.allotmentStatus === 'HARD_LOCK') {
+        } else if (bookingFound.allotmentStatus === 'SOFT_LOCK' && updates.allotmentStatus === 'HARD_LOCK') {
             // Insurance reset on Hard Lock
             updates.insuranceStatus = 'PENDING';
             if (!adjustStock(skuParams, 'ALLOT', 1)) {
-                throw new Error("Inventory Error: Sync failed during Allotment.");
+                throw new Error('Inventory Error: Sync failed during Allotment.');
             }
-        }
-        else if (bookingFound.allotmentStatus === 'NONE' && updates.allotmentStatus === 'HARD_LOCK') {
+        } else if (
+            updates.allotmentStatus === 'NONE' &&
+            (bookingFound.allotmentStatus === 'SOFT_LOCK' || bookingFound.allotmentStatus === 'HARD_LOCK')
+        ) {
+            // Revoke logic
+            updates.pdiStatus = 'PENDING';
+            updates.pdiMeta = {};
+            updates.assignedVin = undefined;
+        } else if (bookingFound.allotmentStatus === 'NONE' && updates.allotmentStatus === 'HARD_LOCK') {
             updates.insuranceStatus = 'PENDING';
             if (!adjustStock(skuParams, 'ALLOT', 1)) {
-                throw new Error("Inventory Limit: Not enough stock available to Allot.");
+                throw new Error('Inventory Limit: Not enough stock available to Allot.');
             }
         }
     }
@@ -264,10 +358,7 @@ export const updateBookingStatus = (bookingId: string, updates: Partial<Booking>
             return {
                 ...b,
                 ...updates,
-                history: [
-                    { timestamp: new Date().toISOString(), action: auditNote, user: 'Manager' },
-                    ...b.history
-                ]
+                history: [{ timestamp: new Date().toISOString(), action: auditNote, user: 'Manager' }, ...b.history],
             };
         }
         return b;
@@ -276,13 +367,13 @@ export const updateBookingStatus = (bookingId: string, updates: Partial<Booking>
 
 export const assignVinToBooking = (bookingId: string, vin: string) => {
     const booking = BOOKINGS.find(b => b.id === bookingId);
-    if (!booking) throw new Error("Booking not found");
-    if (booking.allotmentStatus !== 'HARD_LOCK') throw new Error("Booking must be Hard Locked before assigning VIN");
-    if (booking.assignedVin) throw new Error("Booking already has a VIN assigned");
+    if (!booking) throw new Error('Booking not found');
+    if (booking.allotmentStatus !== 'HARD_LOCK') throw new Error('Booking must be Hard Locked before assigning VIN');
+    if (booking.assignedVin) throw new Error('Booking already has a VIN assigned');
 
     const vehicleUnit = MOCK_VINS.find(v => v.vin === vin);
-    if (!vehicleUnit) throw new Error("VIN not found");
-    if (vehicleUnit.status !== 'AVAILABLE') throw new Error("VIN is not available");
+    if (!vehicleUnit) throw new Error('VIN not found');
+    if (vehicleUnit.status !== 'AVAILABLE') throw new Error('VIN is not available');
 
     // Demo Logic so simple match is enough
     if (!vehicleUnit.sku.includes(booking.brandName.substring(0, 3).toUpperCase())) {
@@ -290,84 +381,105 @@ export const assignVinToBooking = (bookingId: string, vin: string) => {
     }
 
     // Update VIN State
-    MOCK_VINS = MOCK_VINS.map(v => v.vin === vin ? { ...v, status: 'ASSIGNED', bookingId, assignedDate: new Date().toISOString() } : v);
+    MOCK_VINS = MOCK_VINS.map(v =>
+        v.vin === vin ? { ...v, status: 'ASSIGNED', bookingId, assignedDate: new Date().toISOString() } : v
+    );
 
     // Update Booking State via the standard updater to ensure audit trail
-    updateBookingStatus(bookingId, {
-        assignedVin: vin,
-        assignedEngineNumber: vehicleUnit.engineNumber || 'ENG-' + vin.slice(-5),
-        pdiStatus: 'PENDING' // Start PDI
-    }, `Assigned VIN: ${vin}`);
+    updateBookingStatus(
+        bookingId,
+        {
+            assignedVin: vin,
+            assignedEngineNumber: vehicleUnit.engineNumber || 'ENG-' + vin.slice(-5),
+            pdiStatus: 'PENDING', // Start PDI
+        },
+        `Assigned VIN: ${vin}`
+    );
 };
 
-export const completePDI = (bookingId: string, details: { inspectorName: string, odoReading: string, notes: string }) => {
+export const completePDI = (
+    bookingId: string,
+    details: { inspectorName: string; odoReading: string; notes: string }
+) => {
     const booking = BOOKINGS.find(b => b.id === bookingId);
-    if (!booking) throw new Error("Booking not found");
+    if (!booking) throw new Error('Booking not found');
     // Ensure VIN
-    if (!booking.assignedVin) throw new Error("Cannot perform PDI without Assigned VIN");
-    if (booking.pdiStatus === 'APPROVED') throw new Error("PDI already approved");
+    if (!booking.assignedVin) throw new Error('Cannot perform PDI without Assigned VIN');
+    if (booking.pdiStatus === 'PASSED') throw new Error('PDI already approved');
 
     // Update Status
-    updateBookingStatus(bookingId, {
-        pdiStatus: 'APPROVED',
-        pdiDetails: {
-            inspectorName: details.inspectorName,
-            odoReading: details.odoReading,
-            allChecksPassed: true,
-            notes: details.notes
-        }
-    }, `PDI Approved by ${details.inspectorName}`);
+    updateBookingStatus(
+        bookingId,
+        {
+            pdiStatus: 'PASSED',
+            pdiMeta: {
+                inspectorName: details.inspectorName,
+                odoReading: details.odoReading,
+                allChecksPassed: true,
+                notes: details.notes,
+            },
+        },
+        `PDI Approved by ${details.inspectorName}`
+    );
 };
 
-export const deliverBooking = (bookingId: string, details: { receiverName: string, notes: string }) => {
+export const deliverBooking = (bookingId: string, details: { receiverName: string; notes: string }) => {
     const booking = BOOKINGS.find(b => b.id === bookingId);
-    if (!booking) throw new Error("Booking not found");
+    if (!booking) throw new Error('Booking not found');
     // Ensure VIN Assigned
-    if (!booking.assignedVin) throw new Error("Cannot deliver without Assigned VIN");
+    if (!booking.assignedVin) throw new Error('Cannot deliver without Assigned VIN');
 
     // Ensure PDI Approved (Step 11)
-    if (booking.pdiStatus !== 'APPROVED') throw new Error("Cannot deliver: PDI not Approved");
+    if (booking.pdiStatus !== 'PASSED') throw new Error('Cannot deliver: PDI not Approved');
 
-    if (booking.status === 'DELIVERED') throw new Error("Booking already delivered");
+    if (booking.status === 'DELIVERED') throw new Error('Booking already delivered');
 
     // 1. Update Vehicle Unit Status
     if (booking.assignedVin) {
-        MOCK_VINS = MOCK_VINS.map(v => v.vin === booking.assignedVin ? { ...v, status: 'DELIVERED' } : v);
+        MOCK_VINS = MOCK_VINS.map(v => (v.vin === booking.assignedVin ? { ...v, status: 'DELIVERED' } : v));
     }
 
     // 2. Adjust Stock (Remove from Inventory - Allotted -> Gone)
     const skuParams = booking.brandName;
     if (!adjustStock(skuParams, 'DELIVER', 1)) {
-        throw new Error("Inventory Error: Sync failed during Delivery.");
+        throw new Error('Inventory Error: Sync failed during Delivery.');
     }
 
     // 3. Update Booking Status
-    updateBookingStatus(bookingId, {
-        status: 'DELIVERED'
-    }, `Vehicle Delivered to ${details.receiverName}. Notes: ${details.notes}`);
+    updateBookingStatus(
+        bookingId,
+        {
+            status: 'DELIVERED',
+        },
+        `Vehicle Delivered to ${details.receiverName}. Notes: ${details.notes}`
+    );
 };
 
 export const acknowledgeDocuments = (bookingId: string, details: { insurancePolicyNo: string }) => {
     const booking = BOOKINGS.find(b => b.id === bookingId);
-    if (!booking) throw new Error("Booking not found");
+    if (!booking) throw new Error('Booking not found');
 
     // Rule: Only after Delivery
-    if (booking.status !== 'DELIVERED') throw new Error("Cannot acknowledge documents before Delivery");
+    if (booking.status !== 'DELIVERED') throw new Error('Cannot acknowledge documents before Delivery');
 
-    if (booking.documents?.customerAck) throw new Error("Documents already acknowledged");
+    if (booking.documents?.customerAck) throw new Error('Documents already acknowledged');
 
-    updateBookingStatus(bookingId, {
-        documents: {
-            invoiceAck: true,
-            deliveryNoteAck: true,
-            insurancePolicyNo: details.insurancePolicyNo,
-            rcStatus: 'APPLIED', // Auto-set to Applied on handover
-            customerAck: true,
-            ackDate: new Date().toISOString()
-        }
-    }, `Documents Acknowledged & Policy #${details.insurancePolicyNo} Recorded`);
+    updateBookingStatus(
+        bookingId,
+        {
+            documents: {
+                invoiceAck: true,
+                deliveryNoteAck: true,
+                insurancePolicyNo: details.insurancePolicyNo,
+                rcStatus: 'APPLIED', // Auto-set to Applied on handover
+                customerAck: true,
+                ackDate: new Date().toISOString(),
+            },
+        },
+        `Documents Acknowledged & Policy #${details.insurancePolicyNo} Recorded`
+    );
 };
-import { Invoice, InvoiceLineItem } from "@/types/invoice";
+import { Invoice, InvoiceLineItem } from '@/types/invoice';
 
 let INVOICES: Invoice[] = [];
 
@@ -376,21 +488,21 @@ export const getAllInvoices = () => INVOICES;
 
 export const generateInvoice = (bookingId: string) => {
     const booking = BOOKINGS.find(b => b.id === bookingId);
-    if (!booking) throw new Error("Booking not found");
+    if (!booking) throw new Error('Booking not found');
 
     if (booking.invoiceId) return INVOICES.find(i => i.id === booking.invoiceId);
 
     // Rule: Must be Delivered (or ready for it) - Prompt said "Invoice created ONLY after Delivery"
-    if (booking.status !== 'DELIVERED') throw new Error("Cannot generate invoice before Delivery");
+    if (booking.status !== 'DELIVERED') throw new Error('Cannot generate invoice before Delivery');
 
-    if (!booking.priceSnapshot) throw new Error("Critical: No Price Snapshot attached to Booking");
+    if (!booking.priceSnapshot) throw new Error('Critical: No Price Snapshot attached to Booking');
 
     const snap = booking.priceSnapshot;
 
     // 1. Establish GST Context
     const dealerState = 'DL'; // Mock Tenant Context
 
-    if (!snap.stateCode) throw new Error("Critical: Customer State Code missing in Snapshot");
+    if (!snap.stateCode) throw new Error('Critical: Customer State Code missing in Snapshot');
     const customerState = snap.stateCode;
     const registrationType = dealerState === customerState ? 'INTRA_STATE' : 'INTER_STATE';
 
@@ -403,7 +515,7 @@ export const generateInvoice = (bookingId: string) => {
     // Formula: Taxable = Total / (1 + Rate)
     const vehicleGstRate = 28;
     const vehicleExShowroom = snap.exShowroom;
-    const vehicleTaxable = money(vehicleExShowroom / (1 + (vehicleGstRate / 100)));
+    const vehicleTaxable = money(vehicleExShowroom / (1 + vehicleGstRate / 100));
 
     // Tax Amounts
     const vehicleTotalTax = vehicleExShowroom - vehicleTaxable;
@@ -411,7 +523,7 @@ export const generateInvoice = (bookingId: string) => {
 
     // Split Tax
     const vCgst = isIntra ? money(vehicleTotalTax / 2) : 0;
-    const vSgst = isIntra ? (vehicleTotalTax - vCgst) : 0; // Balance to matching total
+    const vSgst = isIntra ? vehicleTotalTax - vCgst : 0; // Balance to matching total
     const vIgst = !isIntra ? vehicleTotalTax : 0;
 
     lineItems.push({
@@ -427,7 +539,7 @@ export const generateInvoice = (bookingId: string) => {
         cgstAmount: vCgst,
         sgstAmount: vSgst,
         igstAmount: vIgst,
-        total: vehicleExShowroom
+        total: vehicleExShowroom,
     });
 
     // 4. RTO Item (Fee, 0% GST)
@@ -445,7 +557,7 @@ export const generateInvoice = (bookingId: string) => {
             cgstAmount: 0,
             sgstAmount: 0,
             igstAmount: 0,
-            total: snap.rtoCharges
+            total: snap.rtoCharges,
         });
     }
 
@@ -453,11 +565,11 @@ export const generateInvoice = (bookingId: string) => {
     if (snap.insuranceBase > 0) {
         const insGstRate = 18;
         const insTotal = snap.insuranceBase;
-        const insTaxable = money(insTotal / (1 + (insGstRate / 100)));
+        const insTaxable = money(insTotal / (1 + insGstRate / 100));
         const insTotalTax = insTotal - insTaxable;
 
         const iCgst = isIntra ? money(insTotalTax / 2) : 0;
-        const iSgst = isIntra ? (insTotalTax - iCgst) : 0;
+        const iSgst = isIntra ? insTotalTax - iCgst : 0;
         const iIgst = !isIntra ? insTotalTax : 0;
 
         lineItems.push({
@@ -473,24 +585,27 @@ export const generateInvoice = (bookingId: string) => {
             cgstAmount: iCgst,
             sgstAmount: iSgst,
             igstAmount: iIgst,
-            total: insTotal
+            total: insTotal,
         });
     }
 
     // 6. Aggregates
-    const totals = lineItems.reduce((acc, item) => ({
-        taxableTotal: acc.taxableTotal + item.taxableValue,
-        cgstTotal: acc.cgstTotal + item.cgstAmount,
-        sgstTotal: acc.sgstTotal + item.sgstAmount,
-        igstTotal: acc.igstTotal + item.igstAmount,
-        grandTotal: acc.grandTotal + item.total
-    }), {
-        taxableTotal: 0,
-        cgstTotal: 0,
-        sgstTotal: 0,
-        igstTotal: 0,
-        grandTotal: 0
-    });
+    const totals = lineItems.reduce(
+        (acc, item) => ({
+            taxableTotal: acc.taxableTotal + item.taxableValue,
+            cgstTotal: acc.cgstTotal + item.cgstAmount,
+            sgstTotal: acc.sgstTotal + item.sgstAmount,
+            igstTotal: acc.igstTotal + item.igstAmount,
+            grandTotal: acc.grandTotal + item.total,
+        }),
+        {
+            taxableTotal: 0,
+            cgstTotal: 0,
+            sgstTotal: 0,
+            igstTotal: 0,
+            grandTotal: 0,
+        }
+    );
 
     const newInvoice: Invoice = {
         id: crypto.randomUUID(),
@@ -503,7 +618,7 @@ export const generateInvoice = (bookingId: string) => {
             snapshotId: snap.id,
             snapshotLockedAt: snap.calculatedAt,
             variantLabel: `${booking.brandName} ${booking.modelName} ${booking.variantName}`,
-            stateCode: snap.stateCode
+            stateCode: snap.stateCode,
         },
 
         lineItems,
@@ -512,7 +627,7 @@ export const generateInvoice = (bookingId: string) => {
         gstContext: {
             supplyState: dealerState,
             registrationType,
-            note: `Supply Code: ${dealerState}`
+            note: `Supply Code: ${dealerState}`,
         },
 
         generatedAt: new Date().toISOString(),
@@ -522,16 +637,20 @@ export const generateInvoice = (bookingId: string) => {
         // Payment Initialization
         paymentStatus: 'UNPAID',
         amountPaid: 0,
-        amountDue: totals.grandTotal
+        amountDue: totals.grandTotal,
     };
 
     INVOICES = [newInvoice, ...INVOICES];
 
     // Link to Booking
-    updateBookingStatus(bookingId, {
-        invoiceId: newInvoice.id,
-        invoiceDisplayId: newInvoice.displayId
-    }, `Invoice Generated: ${newInvoice.displayId}`);
+    updateBookingStatus(
+        bookingId,
+        {
+            invoiceId: newInvoice.id,
+            invoiceDisplayId: newInvoice.displayId,
+        },
+        `Invoice Generated: ${newInvoice.displayId}`
+    );
 
     // --- LEDGER POSTING (INVOICE) ---
     // Rule: Debit Customer (Receivable), Credit Revenue & GST
@@ -546,13 +665,14 @@ export const generateInvoice = (bookingId: string) => {
         description: `Invoice ${newInvoice.displayId} - Sales`,
         debitAccount: ACCOUNT_MASTER.ACCOUNTS_RECEIVABLE.name,
         creditAccount: 'Sales Clearing', // Temporary contra for multi-split
-        amount: newInvoice.totals.grandTotal
+        amount: newInvoice.totals.grandTotal,
     });
 
     // 2. Credit Revenue (Vegetable/Insurance/RTO splits)
     newInvoice.lineItems.forEach(item => {
         let revenueAccount = ACCOUNT_MASTER.SALES_VEHICLE;
-        if (item.type === 'SERVICE' && item.label.includes('Insurance')) revenueAccount = ACCOUNT_MASTER.SALES_INSURANCE;
+        if (item.type === 'SERVICE' && item.label.includes('Insurance'))
+            revenueAccount = ACCOUNT_MASTER.SALES_INSURANCE;
         if (item.type === 'FEE' && item.label.includes('RTO')) revenueAccount = ACCOUNT_MASTER.SALES_RTO;
 
         if (item.taxableValue > 0) {
@@ -565,7 +685,7 @@ export const generateInvoice = (bookingId: string) => {
                 description: `Rev: ${item.label}`,
                 debitAccount: 'Sales Clearing',
                 creditAccount: revenueAccount.name,
-                amount: item.taxableValue
+                amount: item.taxableValue,
             });
         }
     });
@@ -582,7 +702,7 @@ export const generateInvoice = (bookingId: string) => {
             description: `GST on Invoice ${newInvoice.displayId}`,
             debitAccount: 'Sales Clearing',
             creditAccount: ACCOUNT_MASTER.OUTPUT_GST.name,
-            amount: totalGst
+            amount: totalGst,
         });
     }
 
@@ -598,7 +718,12 @@ export const getPartyLedger = (partyId: string) => LEDGER.filter(e => e.partyId 
 
 export const postLedgerEntry = (entry: Omit<LedgerEntry, 'id' | 'displayId' | 'transactionDate' | 'tenantId'>) => {
     // 1. Idempotency Check
-    const exists = LEDGER.some(e => e.referenceId === entry.referenceId && e.creditAccount === entry.creditAccount && e.debitAccount === entry.debitAccount);
+    const exists = LEDGER.some(
+        e =>
+            e.referenceId === entry.referenceId &&
+            e.creditAccount === entry.creditAccount &&
+            e.debitAccount === entry.debitAccount
+    );
     if (exists) {
         console.warn(`Duplicate Ledger Posting Prevented: Ref ${entry.referenceId}`);
         return;
@@ -610,7 +735,7 @@ export const postLedgerEntry = (entry: Omit<LedgerEntry, 'id' | 'displayId' | 't
         id: crypto.randomUUID(),
         displayId: generateDisplayId('A_JOURNAL'), // Using generic random ID
         transactionDate: new Date().toISOString(),
-        tenantId: 'dealer-001' // Mock Context
+        tenantId: 'dealer-001', // Mock Context
     };
 
     // 3. Post
@@ -618,9 +743,8 @@ export const postLedgerEntry = (entry: Omit<LedgerEntry, 'id' | 'displayId' | 't
     return newEntry;
 };
 
-
 // --- RECEIPTS MODULE ---
-import { Receipt, PaymentMode } from "@/types/payment";
+import { Receipt, PaymentMode } from '@/types/payment';
 let RECEIPTS: Receipt[] = [];
 
 export const getReceiptsForInvoice = (invoiceId: string) => RECEIPTS.filter(r => r.invoiceId === invoiceId);
@@ -633,9 +757,9 @@ export const recordPayment = (
     receivedBy: string = 'System User'
 ): Receipt => {
     const invoice = INVOICES.find(i => i.id === invoiceId);
-    if (!invoice) throw new Error("Invoice not found");
+    if (!invoice) throw new Error('Invoice not found');
 
-    if (amount <= 0) throw new Error("Payment amount must be greater than 0");
+    if (amount <= 0) throw new Error('Payment amount must be greater than 0');
 
     const newReceipt: Receipt = {
         id: crypto.randomUUID(),
@@ -649,7 +773,7 @@ export const recordPayment = (
         receivedBy,
         receivedAt: new Date().toISOString(),
         invoiceTotalAtReceipt: invoice.totals.grandTotal, // Locked Snapshot of Total
-        isImmutable: true
+        isImmutable: true,
     };
 
     RECEIPTS = [newReceipt, ...RECEIPTS];
@@ -686,15 +810,14 @@ export const recordPayment = (
         description: `Receipt ${newReceipt.displayId} (${mode})`,
         debitAccount: debitAcc.name,
         creditAccount: ACCOUNT_MASTER.ACCOUNTS_RECEIVABLE.name,
-        amount: amount
+        amount: amount,
     });
 
     return newReceipt;
 };
 
-
 // --- CREDIT NOTES MODULE ---
-import { CreditNote, Refund } from "@/types/ledger";
+import { CreditNote, Refund } from '@/types/ledger';
 
 let CREDIT_NOTES: CreditNote[] = [];
 let REFUNDS: Refund[] = [];
@@ -704,7 +827,7 @@ export const getCreditNotesForInvoice = (invoiceId: string) => CREDIT_NOTES.filt
 
 export const generateCreditNote = (invoiceId: string, reason: string) => {
     const invoice = INVOICES.find(i => i.id === invoiceId);
-    if (!invoice) throw new Error("Invoice not found");
+    if (!invoice) throw new Error('Invoice not found');
 
     // Reversal Logic (Simplistic: Full Reversal for now as per prompt)
     const reversalAmount = invoice.totals.grandTotal;
@@ -723,7 +846,7 @@ export const generateCreditNote = (invoiceId: string, reason: string) => {
         totalAmount: reversalAmount,
         status: 'ISSUED',
         createdAt: new Date().toISOString(),
-        tenantId: 'dealer-001'
+        tenantId: 'dealer-001',
     };
 
     CREDIT_NOTES = [newCN, ...CREDIT_NOTES];
@@ -741,7 +864,7 @@ export const generateCreditNote = (invoiceId: string, reason: string) => {
         description: `CN ${newCN.displayId} - Sales Return`,
         debitAccount: ACCOUNT_MASTER.SALES_RETURNS.name,
         creditAccount: 'Accounts Receivable (Clearing)',
-        amount: reversalTaxable
+        amount: reversalTaxable,
     });
 
     // 2. Dr Output GST (Reversing Liability)
@@ -755,7 +878,7 @@ export const generateCreditNote = (invoiceId: string, reason: string) => {
             description: `CN ${newCN.displayId} - GST Reversal`,
             debitAccount: ACCOUNT_MASTER.OUTPUT_GST.name,
             creditAccount: 'Accounts Receivable (Clearing)',
-            amount: reversalTax
+            amount: reversalTax,
         });
     }
 
@@ -769,7 +892,7 @@ export const generateCreditNote = (invoiceId: string, reason: string) => {
         description: `CN ${newCN.displayId} - Credit Given`,
         debitAccount: 'Sales Returns/GST (Clearing)',
         creditAccount: ACCOUNT_MASTER.ACCOUNTS_RECEIVABLE.name,
-        amount: reversalAmount
+        amount: reversalAmount,
     });
 
     // Update Booking Status
@@ -785,9 +908,9 @@ export const getRefundsForCreditNote = (cnId: string) => REFUNDS.filter(r => r.c
 
 export const processRefund = (creditNoteId: string, amount: number, mode: 'CASH' | 'BANK' | 'UPI' | 'CHEQUE') => {
     const cn = CREDIT_NOTES.find(c => c.id === creditNoteId);
-    if (!cn) throw new Error("Credit Note not found");
+    if (!cn) throw new Error('Credit Note not found');
 
-    if (amount > cn.totalAmount) throw new Error("Refund amount cannot exceed Credit Note amount");
+    if (amount > cn.totalAmount) throw new Error('Refund amount cannot exceed Credit Note amount');
 
     const newRefund: Refund = {
         id: crypto.randomUUID(),
@@ -795,7 +918,7 @@ export const processRefund = (creditNoteId: string, amount: number, mode: 'CASH'
         creditNoteId: cn.id,
         amount,
         mode,
-        refundedAt: new Date().toISOString()
+        refundedAt: new Date().toISOString(),
     };
 
     REFUNDS = [newRefund, ...REFUNDS];
@@ -814,7 +937,7 @@ export const processRefund = (creditNoteId: string, amount: number, mode: 'CASH'
         description: `Refund ${newRefund.displayId} for CN ${cn.displayId}`,
         debitAccount: ACCOUNT_MASTER.ACCOUNTS_RECEIVABLE.name,
         creditAccount: creditAcc.name,
-        amount: amount
+        amount: amount,
     });
 
     // Update CN Status if fully refunded
@@ -825,5 +948,3 @@ export const processRefund = (creditNoteId: string, amount: number, mode: 'CASH'
 
     return newRefund;
 };
-
-

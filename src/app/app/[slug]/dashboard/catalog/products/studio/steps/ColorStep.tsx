@@ -430,7 +430,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
             )}
 
             <div
-                className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}
+                className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6' : 'grid-cols-1'}`}
                 onKeyDown={handleGridKeyDown}
             >
                 {existingColors.map((color: any, index: number) => (
@@ -441,7 +441,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                         }}
                         tabIndex={0}
                         onFocus={() => setFocusedIndex(index)}
-                        className="group relative bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-white/5 rounded-[2.5rem] p-6 hover:border-indigo-500/20 transition-all shadow-xl shadow-slate-200/5 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                        className="group relative bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-white/5 rounded-3xl p-4 hover:border-indigo-500/20 transition-all shadow-xl shadow-slate-200/5 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                         title={`Debug Info:\nID: ${color.id}\nSlug: ${color.slug}\nBrand: ${color.brand_id}\nTemplate: ${color.template_id}`}
                         aria-label={`${l2Label} ${color.name}`}
                     >
@@ -450,7 +450,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                                 <div className="flex items-center gap-4">
                                     <div className="relative">
                                         <div
-                                            className="w-16 h-16 rounded-2xl border-2 border-slate-100 dark:border-white/10 overflow-hidden bg-slate-50 dark:bg-black/40 flex items-center justify-center group-hover:border-indigo-500/30 transition-all"
+                                            className="w-10 h-10 rounded-xl border-2 border-slate-100 dark:border-white/10 overflow-hidden bg-slate-50 dark:bg-black/40 flex items-center justify-center group-hover:border-indigo-500/30 transition-all"
                                             title={`Primary Image: ${color.specs.primary_image || 'None'}\nGallery Count: ${color.specs.gallery?.length || 0}`}
                                         >
                                             {color.specs.primary_image || color.specs.gallery?.[0] ? (
@@ -471,7 +471,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                                     </div>
                                     <div>
                                         <h4
-                                            className="font-black text-xl text-slate-900 dark:text-white uppercase italic leading-none cursor-help"
+                                            className="font-black text-sm text-slate-900 dark:text-white uppercase italic leading-none cursor-help"
                                             title={`Name: ${color.name}\nSlug: ${color.slug}`}
                                         >
                                             {color.name}
@@ -532,12 +532,12 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                                     {/* Color Picker (25%) */}
                                     <button
                                         onClick={() => openSmartPicker(color)}
-                                        className="w-1/4 flex items-center justify-center py-4 rounded-2xl border-2 border-slate-50 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
+                                        className="w-1/4 flex items-center justify-center py-2 rounded-xl border-2 border-slate-50 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
                                         title="Smart Color Picker"
                                         aria-label={`Pick ${l2Label.toLowerCase()} colors for ${color.name}`}
                                     >
                                         <div
-                                            className="w-8 h-8 rounded-full shadow-lg border-2 border-white dark:border-white/10"
+                                            className="w-6 h-6 rounded-full shadow-lg border-2 border-white dark:border-white/10"
                                             style={{
                                                 background: color.specs.hex_secondary
                                                     ? `linear-gradient(135deg, ${color.specs.hex_primary || '#000000'} 50%, ${color.specs.hex_secondary} 50%)`
@@ -554,7 +554,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                                                 setActiveColorId(color.id);
                                                 setMediaModalOpen(true);
                                             }}
-                                            className={`flex-1 flex flex-col items-center justify-center gap-1 rounded-2xl border-2 transition-all ${color.specs.gallery?.length > 0 ? 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/10' : 'border-dashed border-slate-100 dark:border-white/10 hover:border-indigo-300 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10'}`}
+                                            className={`flex-1 flex flex-col items-center justify-center gap-1 rounded-xl border-2 transition-all ${color.specs.gallery?.length > 0 ? 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/10' : 'border-dashed border-slate-100 dark:border-white/10 hover:border-indigo-300 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10'}`}
                                             aria-label={`Manage images for ${color.name}`}
                                         >
                                             {color.specs.gallery?.length > 0 ? (
@@ -594,7 +594,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                                                 setActiveColorId(color.id);
                                                 setMediaModalOpen(true);
                                             }}
-                                            className={`flex-1 flex flex-col items-center justify-center gap-1 rounded-2xl border-2 transition-all ${color.specs.video_urls?.length > 0 || family.specs?.video_urls?.length > 0 ? 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/10' : 'border-dashed border-slate-100 dark:border-white/10 hover:border-indigo-300 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10'}`}
+                                            className={`flex-1 flex flex-col items-center justify-center gap-1 rounded-xl border-2 transition-all ${color.specs.video_urls?.length > 0 || family.specs?.video_urls?.length > 0 ? 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/10' : 'border-dashed border-slate-100 dark:border-white/10 hover:border-indigo-300 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10'}`}
                                             aria-label={`Manage videos for ${color.name}`}
                                         >
                                             {(() => {
@@ -656,7 +656,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                                                 setActiveColorId(color.id);
                                                 setMediaModalOpen(true);
                                             }}
-                                            className={`flex-1 flex flex-col items-center justify-center gap-1 rounded-2xl border-2 transition-all ${color.specs.pdf_urls?.length > 0 || family.specs?.pdf_urls?.length > 0 ? 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/10' : 'border-dashed border-slate-100 dark:border-white/10 hover:border-indigo-300 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10'}`}
+                                            className={`flex-1 flex flex-col items-center justify-center gap-1 rounded-xl border-2 transition-all ${color.specs.pdf_urls?.length > 0 || family.specs?.pdf_urls?.length > 0 ? 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/10' : 'border-dashed border-slate-100 dark:border-white/10 hover:border-indigo-300 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10'}`}
                                             aria-label={`Manage PDFs for ${color.name}`}
                                         >
                                             {(() => {
@@ -716,12 +716,12 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                 {/* Add Color Card */}
                 <button
                     onClick={() => setAddModalOpen(true)}
-                    className="group relative h-full border-2 border-dashed border-slate-200 dark:border-white/10 rounded-[2.5rem] p-6 hover:border-indigo-500 hover:bg-indigo-50/10 transition-all flex flex-col items-center justify-center gap-4 text-slate-400 hover:text-indigo-600"
+                    className="group relative h-full border-2 border-dashed border-slate-200 dark:border-white/10 rounded-3xl p-4 hover:border-indigo-500 hover:bg-indigo-50/10 transition-all flex flex-col items-center justify-center gap-2 text-slate-400 hover:text-indigo-600 min-h-[140px]"
                 >
-                    <div className="w-16 h-16 rounded-2xl bg-slate-50 dark:bg-white/5 flex items-center justify-center group-hover:scale-110 transition-all shadow-sm">
-                        <Plus size={32} />
+                    <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center group-hover:scale-110 transition-all shadow-sm">
+                        <Plus size={24} />
                     </div>
-                    <span className="text-sm font-black uppercase tracking-widest">Add {l2Label}</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-center">Add {l2Label}</span>
                 </button>
             </div>
 

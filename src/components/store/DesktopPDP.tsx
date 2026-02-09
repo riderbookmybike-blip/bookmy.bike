@@ -287,6 +287,7 @@ export function DesktopPDP({
     } = handlers;
 
     const activeColorConfig = colors.find((c: any) => c.id === selectedColor) || colors[0];
+    const activeColorAssets = activeColorConfig?.assets || [];
 
     const shouldDevanagari = language === 'hi' || language === 'mr';
     const scriptText = (value?: string) => {
@@ -343,9 +344,9 @@ export function DesktopPDP({
             comparisonOptions: data?.rtoOptions,
         },
         { label: 'Required Insurance', value: baseInsurance, breakdown: insuranceBreakdown },
-        { label: 'Extra Insurance', value: insuranceAddonsPrice },
-        { label: 'Accessories', value: accessoriesPrice },
-        { label: 'Services / AMC', value: servicesPrice },
+        { label: 'Extra Insurance', value: (data.insuranceAddonsPrice || 0) + (data.insuranceAddonsDiscount || 0) },
+        { label: 'Accessories', value: (data.accessoriesPrice || 0) + (data.accessoriesDiscount || 0) },
+        { label: 'Services / AMC', value: (data.servicesPrice || 0) + (data.servicesDiscount || 0) },
         ...(otherCharges > 0 ? [{ label: 'Other Charges', value: otherCharges }] : []),
         { label: 'Delivery TAT', value: '7 DAYS', isInfo: true },
         ...(totalSurge > 0 ? [{ label: 'Surge Applied', value: totalSurge, helpText: surgeHelpLines }] : []),
@@ -479,8 +480,147 @@ export function DesktopPDP({
         );
     };
 
+    const renderCategoryContent = (categoryId: string) => {
+        if (categoryId === 'ACCESSORIES') {
+            return (
+                <div className="space-y-6">
+                    {activeAccessories.filter((a: any) => a.isMandatory).length > 0 && (
+                        <div className="space-y-3">
+                            {activeAccessories
+                                .filter((a: any) => a.isMandatory)
+                                .map((acc: any) => (
+                                    <ConfigItemRow
+                                        key={acc.id}
+                                        item={acc}
+                                        isSelected={true}
+                                        onToggle={() => {}}
+                                        isMandatory={true}
+                                    />
+                                ))}
+                        </div>
+                    )}
+                    <div className="space-y-3">
+                        {activeAccessories
+                            .filter((a: any) => !a.isMandatory)
+                            .map((acc: any) => (
+                                <ConfigItemRow
+                                    key={acc.id}
+                                    item={acc}
+                                    isSelected={selectedAccessories.includes(acc.id)}
+                                    onToggle={() => toggleAccessory(acc.id)}
+                                />
+                            ))}
+                    </div>
+                </div>
+            );
+        }
+
+        if (categoryId === 'INSURANCE') {
+            return (
+                <div className="space-y-6">
+                    <div className="space-y-3">
+                        {insuranceRequiredItems.map((item: any) => (
+                            <ConfigItemRow
+                                key={item.id}
+                                item={item}
+                                isSelected={true}
+                                onToggle={() => {}}
+                                isMandatory={true}
+                                breakdown={item.breakdown}
+                            />
+                        ))}
+                    </div>
+                    <div className="space-y-3">
+                        {availableInsuranceAddons.map((item: any) => (
+                            <ConfigItemRow
+                                key={item.id}
+                                item={item}
+                                isSelected={selectedInsuranceAddons.includes(item.id)}
+                                onToggle={() => toggleInsuranceAddon(item.id)}
+                                breakdown={item.breakdown}
+                            />
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        if (categoryId === 'REGISTRATION') {
+            const fallbackOptions = [
+                {
+                    id: 'STATE',
+                    name: 'State Registration',
+                    price: Math.round((data.baseExShowroom || 0) * 0.12),
+                    description: 'Standard RTO charges for your state.',
+                },
+                {
+                    id: 'BH',
+                    name: 'Bharat Series (BH)',
+                    price: Math.round((data.baseExShowroom || 0) * 0.08),
+                    description: 'For frequent interstate travel.',
+                },
+                {
+                    id: 'COMPANY',
+                    name: 'Company Registration',
+                    price: Math.round((data.baseExShowroom || 0) * 0.2),
+                    description: 'Corporate entity registration.',
+                },
+            ];
+            const items = data.rtoOptions && data.rtoOptions.length > 0 ? data.rtoOptions : fallbackOptions;
+            return (
+                <div className="space-y-3">
+                    {items.map((item: any) => (
+                        <ConfigItemRow
+                            key={item.id}
+                            item={item}
+                            isSelected={regType === item.id}
+                            onToggle={() => setRegType(item.id as any)}
+                            isRadio
+                            breakdown={item.breakdown}
+                        />
+                    ))}
+                </div>
+            );
+        }
+
+        if (categoryId === 'SERVICES') {
+            return (
+                <div className="space-y-3">
+                    {activeServices.map((service: any) => (
+                        <ConfigItemRow
+                            key={service.id}
+                            item={service}
+                            isSelected={selectedServices.includes(service.id)}
+                            onToggle={() => toggleService(service.id)}
+                            breakdown={service.breakdown}
+                        />
+                    ))}
+                </div>
+            );
+        }
+
+        if (categoryId === 'WARRANTY') {
+            return (
+                <div className="space-y-3">
+                    {warrantyItems.map((item: any) => (
+                        <ConfigItemRow
+                            key={item.id}
+                            item={item}
+                            isSelected={true}
+                            onToggle={() => {}}
+                            isMandatory={true}
+                        />
+                    ))}
+                </div>
+            );
+        }
+
+        return null;
+    };
+
     // Video Modal State
     const [isVideoOpen, setIsVideoOpen] = useState(false);
+    const [mobileConfigOpen, setMobileConfigOpen] = useState<string | null>('ACCESSORIES');
 
     const configCards = [
         {
@@ -593,7 +733,7 @@ export function DesktopPDP({
             </div>
             {/* 1. Sticky PDP Command Bar (Floating Design) */}
             <div
-                className="sticky z-[90] w-full flex justify-center transition-all duration-300 py-0 px-4 mb-4 mt-[calc(var(--header-h)+16px)]"
+                className="hidden md:flex sticky z-[90] w-full justify-center transition-all duration-300 py-0 px-4 mb-4 mt-[calc(var(--header-h)+16px)]"
                 style={{ top: 'var(--header-h)' }}
             >
                 <div className="page-container w-full">
@@ -708,21 +848,22 @@ export function DesktopPDP({
                 </div>
             </div>
 
-            <div className="page-container pt-4 pb-10 space-y-12 relative z-10">
+            <div className="page-container pt-4 pb-24 md:pb-10 space-y-12 relative z-10">
                 {/* 2. Top Fluid Section (50/25/25 Split) */}
                 <motion.div
                     variants={containerVariants}
                     initial="hidden"
                     animate="visible"
-                    className="flex gap-6 items-stretch"
+                    className="flex flex-col lg:flex-row gap-6 items-stretch"
                 >
                     {/* Visual Section (50%) */}
-                    <motion.div variants={itemVariants} className="w-1/2 min-w-0">
+                    <motion.div variants={itemVariants} className="w-full lg:w-1/2 min-w-0">
                         <VisualsRow
                             colors={colors}
                             selectedColor={selectedColor}
                             onColorSelect={handleColorChange}
                             productImage={getProductImage()}
+                            assets={activeColorAssets}
                             videoSource={activeColorConfig?.video || ''}
                             isVideoOpen={isVideoOpen}
                             onCloseVideo={() => setIsVideoOpen(false)}
@@ -730,7 +871,7 @@ export function DesktopPDP({
                     </motion.div>
 
                     {/* Pricing Summary (25%) */}
-                    <motion.div variants={itemVariants} className="w-1/4">
+                    <motion.div variants={itemVariants} className="w-full lg:w-1/4">
                         <PricingCard
                             product={product}
                             variantName={displayVariant}
@@ -744,7 +885,7 @@ export function DesktopPDP({
                     </motion.div>
 
                     {/* Finance Card (25%) */}
-                    <motion.div variants={itemVariants} className="w-1/4">
+                    <motion.div variants={itemVariants} className="w-full lg:w-1/4">
                         <FinanceCard
                             emi={emi}
                             emiTenure={emiTenure}
@@ -763,8 +904,52 @@ export function DesktopPDP({
                     </motion.div>
                 </motion.div>
 
-                {/* 3. Modular 5-Pillar Configuration Grid (Consolidated Design) */}
-                <div className="grid grid-cols-5 gap-6">
+                {/* 3. Mobile Configuration Accordions */}
+                <div className="md:hidden space-y-4">
+                    {configCards.map(category => {
+                        const Icon = category.icon;
+                        const isOpen = mobileConfigOpen === category.id;
+                        return (
+                            <div
+                                key={category.id}
+                                className="glass-panel bg-white/90 dark:bg-[#0b0d10]/40 rounded-3xl border border-slate-200 dark:border-white/5 shadow-xl overflow-hidden"
+                            >
+                                <button
+                                    onClick={() => setMobileConfigOpen(isOpen ? null : category.id)}
+                                    className="w-full flex items-center justify-between px-5 py-4 text-left"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-2xl bg-brand-primary/10 text-brand-primary flex items-center justify-center">
+                                            <Icon size={18} />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-black uppercase tracking-[0.2em] text-brand-primary">
+                                                {category.label}
+                                            </p>
+                                            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                                {category.subtext}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <ChevronRight
+                                        size={18}
+                                        className={`text-slate-400 transition-transform ${isOpen ? 'rotate-90' : ''}`}
+                                    />
+                                </button>
+                                {isOpen && (
+                                    <div className="px-5 pb-5">
+                                        <div className="border-t border-slate-200/60 dark:border-white/5 pt-4 space-y-4">
+                                            {renderCategoryContent(category.id)}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {/* 4. Modular 5-Pillar Configuration Grid (Consolidated Design) */}
+                <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
                     {configCards.map((category, idx) => {
                         const Icon = category.icon;
                         return (
@@ -789,130 +974,7 @@ export function DesktopPDP({
                                     {/* Content Area Section */}
                                     <div className="flex-1 overflow-hidden flex flex-col p-2">
                                         <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar space-y-4 p-2 pb-12">
-                                            {category.id === 'ACCESSORIES' && (
-                                                <div className="space-y-6">
-                                                    {activeAccessories.filter((a: any) => a.isMandatory).length > 0 && (
-                                                        <div className="space-y-3">
-                                                            {activeAccessories
-                                                                .filter((a: any) => a.isMandatory)
-                                                                .map((acc: any) => (
-                                                                    <ConfigItemRow
-                                                                        key={acc.id}
-                                                                        item={acc}
-                                                                        isSelected={true}
-                                                                        onToggle={() => {}}
-                                                                        isMandatory={true}
-                                                                    />
-                                                                ))}
-                                                        </div>
-                                                    )}
-                                                    <div className="space-y-3">
-                                                        {activeAccessories
-                                                            .filter((a: any) => !a.isMandatory)
-                                                            .map((acc: any) => (
-                                                                <ConfigItemRow
-                                                                    key={acc.id}
-                                                                    item={acc}
-                                                                    isSelected={selectedAccessories.includes(acc.id)}
-                                                                    onToggle={() => toggleAccessory(acc.id)}
-                                                                />
-                                                            ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                            {category.id === 'INSURANCE' && (
-                                                <div className="space-y-6">
-                                                    <div className="space-y-3">
-                                                        {insuranceRequiredItems.map((item: any) => (
-                                                            <ConfigItemRow
-                                                                key={item.id}
-                                                                item={item}
-                                                                isSelected={true}
-                                                                onToggle={() => {}}
-                                                                isMandatory={true}
-                                                                breakdown={item.breakdown}
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                    <div className="space-y-3">
-                                                        {availableInsuranceAddons.map((item: any) => (
-                                                            <ConfigItemRow
-                                                                key={item.id}
-                                                                item={item}
-                                                                isSelected={selectedInsuranceAddons.includes(item.id)}
-                                                                onToggle={() => toggleInsuranceAddon(item.id)}
-                                                                breakdown={item.breakdown}
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                            {category.id === 'REGISTRATION' && (
-                                                <div className="space-y-3">
-                                                    {(() => {
-                                                        const fallbackOptions = [
-                                                            {
-                                                                id: 'STATE',
-                                                                name: 'State Registration',
-                                                                price: Math.round((data.baseExShowroom || 0) * 0.12),
-                                                                description: 'Standard RTO charges for your state.',
-                                                            },
-                                                            {
-                                                                id: 'BH',
-                                                                name: 'Bharat Series (BH)',
-                                                                price: Math.round((data.baseExShowroom || 0) * 0.08),
-                                                                description: 'For frequent interstate travel.',
-                                                            },
-                                                            {
-                                                                id: 'COMPANY',
-                                                                name: 'Company Registration',
-                                                                price: Math.round((data.baseExShowroom || 0) * 0.2),
-                                                                description: 'Corporate entity registration.',
-                                                            },
-                                                        ];
-                                                        const items =
-                                                            data.rtoOptions && data.rtoOptions.length > 0
-                                                                ? data.rtoOptions
-                                                                : fallbackOptions;
-                                                        return items.map((item: any) => (
-                                                            <ConfigItemRow
-                                                                key={item.id}
-                                                                item={item}
-                                                                isSelected={regType === item.id}
-                                                                onToggle={() => setRegType(item.id as any)}
-                                                                isRadio
-                                                                breakdown={item.breakdown}
-                                                            />
-                                                        ));
-                                                    })()}
-                                                </div>
-                                            )}
-                                            {category.id === 'SERVICES' && (
-                                                <div className="space-y-3">
-                                                    {activeServices.map((service: any) => (
-                                                        <ConfigItemRow
-                                                            key={service.id}
-                                                            item={service}
-                                                            isSelected={selectedServices.includes(service.id)}
-                                                            onToggle={() => toggleService(service.id)}
-                                                            breakdown={service.breakdown}
-                                                        />
-                                                    ))}
-                                                </div>
-                                            )}
-                                            {category.id === 'WARRANTY' && (
-                                                <div className="space-y-3">
-                                                    {warrantyItems.map((item: any) => (
-                                                        <ConfigItemRow
-                                                            key={item.id}
-                                                            item={item}
-                                                            isSelected={true}
-                                                            onToggle={() => {}}
-                                                            isMandatory={true}
-                                                        />
-                                                    ))}
-                                                </div>
-                                            )}
+                                            {renderCategoryContent(category.id)}
                                         </div>
                                     </div>
 
@@ -922,6 +984,31 @@ export function DesktopPDP({
                             </motion.div>
                         );
                     })}
+                </div>
+            </div>
+
+            <div className="md:hidden fixed bottom-0 inset-x-0 z-[95] pb-[env(safe-area-inset-bottom)]">
+                <div className="mx-4 mb-4 rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white/90 dark:bg-[#0b0d10]/90 backdrop-blur-2xl shadow-2xl p-3 flex items-center justify-between gap-3">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">On-Road</span>
+                        <div className="flex items-center gap-2">
+                            {totalSavings > 0 && (
+                                <span className="text-[10px] text-slate-400 line-through font-mono">
+                                    ₹{(totalOnRoad + totalSavings).toLocaleString()}
+                                </span>
+                            )}
+                            <span className="text-lg font-black text-[#FFD700] font-mono">
+                                ₹{totalOnRoad.toLocaleString()}
+                            </span>
+                        </div>
+                    </div>
+                    <button
+                        onClick={handleBookingRequest}
+                        className="h-11 px-5 bg-[#FFD700] hover:bg-[#FFD700]/90 text-slate-900 font-black text-[11px] uppercase tracking-widest rounded-full shadow-xl shadow-[#FFD700]/20 flex items-center gap-2"
+                    >
+                        Get Quote
+                        <ArrowRight size={14} />
+                    </button>
                 </div>
             </div>
         </div>

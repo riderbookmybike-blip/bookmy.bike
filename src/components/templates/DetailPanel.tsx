@@ -5,7 +5,6 @@ import { X } from 'lucide-react';
 import ActivityTimeline from './ActivityTimeline';
 
 const TABS = ['Overview', 'Details', 'Settings', 'Activity'];
-type TabName = (typeof TABS)[number];
 
 export interface SnapshotItem {
     label: string;
@@ -22,12 +21,13 @@ interface DetailPanelProps {
     onTabChange?: (tab: string) => void;
     actionButton?: React.ReactNode;
     tabs?: string[];
-    snapshotItems?: SnapshotItem[]; // NEW: Snapshot grid items
+    snapshotItems?: SnapshotItem[];
     isLoading?: boolean;
     hideHeader?: boolean;
     showTabs?: boolean;
     onEdit?: () => void;
     onAction?: () => void;
+    activeTab?: string; // Controlled active tab
 }
 
 export default function DetailPanel({
@@ -45,25 +45,29 @@ export default function DetailPanel({
     showTabs = true,
     onEdit,
     onAction,
+    activeTab,
 }: DetailPanelProps) {
     const effectiveTabs = tabs.includes('Activity') ? tabs : [...tabs, 'Activity'];
-    const [activeTab, setActiveTab] = useState<string>(effectiveTabs[0]);
+    const [internalActiveTab, setInternalActiveTab] = useState<string>(activeTab || effectiveTabs[0]);
+
+    // Use controlled tab if provided, otherwise internal state
+    const currentTab = activeTab !== undefined ? activeTab : internalActiveTab;
 
     const handleTabClick = (tab: string) => {
-        setActiveTab(tab);
+        setInternalActiveTab(tab);
         if (onTabChange) onTabChange(tab);
     };
 
     // Helper to get status badge styling
     const getStatusBadgeClass = (s: string) => {
-        const status = s?.toLowerCase();
-        if (['active', 'issued', 'delivered', 'completed', 'paid', 'confirmed'].includes(status)) {
+        const statusStr = s?.toLowerCase();
+        if (['active', 'issued', 'delivered', 'completed', 'paid', 'confirmed'].includes(statusStr)) {
             return 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800';
         }
-        if (['pending', 'processing', 'in_progress', 'awaiting'].includes(status)) {
+        if (['pending', 'processing', 'in_progress', 'awaiting'].includes(statusStr)) {
             return 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800';
         }
-        if (['cancelled', 'rejected', 'failed', 'overdue'].includes(status)) {
+        if (['cancelled', 'rejected', 'failed', 'overdue'].includes(statusStr)) {
             return 'bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800';
         }
         return 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700';
@@ -142,7 +146,7 @@ export default function DetailPanel({
                 </div>
             )}
 
-            {/* Tabs Navigation - Premium Segmented Control */}
+            {/* Tabs Navigation */}
             {showTabs && effectiveTabs.length > 0 && (
                 <div className="px-6 lg:px-8 py-3 border-b border-slate-100 dark:border-white/5 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md shrink-0 flex items-center justify-between">
                     <div className="flex bg-slate-100/50 dark:bg-white/5 p-1 rounded-2xl border border-slate-200/50 dark:border-white/5">
@@ -154,7 +158,7 @@ export default function DetailPanel({
                                     className={`
                                         min-w-[100px] py-2 px-6 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all duration-300
                                         ${
-                                            activeTab === tab
+                                            currentTab === tab
                                                 ? 'bg-white dark:bg-white/10 text-blue-600 dark:text-blue-400 shadow-sm scale-[1.02] border border-slate-200/50 dark:border-white/10'
                                                 : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/5'
                                         }
@@ -165,15 +169,13 @@ export default function DetailPanel({
                             ))}
                         </nav>
                     </div>
-
                     <div className="flex items-center">{actionButton}</div>
                 </div>
             )}
 
-            {/* Content Area - Symmetric Padding */}
+            {/* Content Area */}
             <div className="flex-1 overflow-auto scrollbar-thin px-6 lg:px-8 py-6">
                 {rightPanelContent ? (
-                    // 2-Column Layout when rightPanelContent is provided
                     <div className="flex gap-10 w-full h-full">
                         <div className="flex-[8] min-w-0 overflow-auto">
                             {isLoading ? (
@@ -181,26 +183,25 @@ export default function DetailPanel({
                                     <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded-lg w-1/4"></div>
                                     <div className="h-40 bg-slate-200 dark:bg-slate-800 rounded-2xl"></div>
                                 </div>
-                            ) : activeTab === 'Activity' ? (
+                            ) : currentTab === 'Activity' ? (
                                 <ActivityTimeline />
                             ) : (
-                                renderContent && renderContent(activeTab)
+                                renderContent && renderContent(currentTab)
                             )}
                         </div>
-                        <div className="flex-[2] min-w-0 overflow-auto">{rightPanelContent(activeTab)}</div>
+                        <div className="flex-[2] min-w-0 overflow-auto">{rightPanelContent(currentTab)}</div>
                     </div>
                 ) : (
-                    // Original single-column layout - FULL WIDTH
                     <div className="w-full h-full flex flex-col">
                         {isLoading ? (
                             <div className="space-y-6 animate-pulse">
                                 <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded-lg w-1/4"></div>
                                 <div className="h-40 bg-slate-200 dark:bg-slate-800 rounded-2xl"></div>
                             </div>
-                        ) : activeTab === 'Activity' ? (
+                        ) : currentTab === 'Activity' ? (
                             <ActivityTimeline />
                         ) : (
-                            renderContent && renderContent(activeTab)
+                            renderContent && renderContent(currentTab)
                         )}
                     </div>
                 )}

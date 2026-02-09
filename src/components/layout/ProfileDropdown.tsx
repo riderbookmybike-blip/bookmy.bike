@@ -224,6 +224,9 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
 
             if (updateError) throw updateError;
 
+            // Sync avatar to id_members (SOT for member data)
+            await supabase.from('id_members').update({ avatar_url: publicUrl }).eq('id', user.id);
+
             setUser(prev =>
                 prev ? { ...prev, user_metadata: { ...prev.user_metadata, avatar_url: publicUrl } } : null
             );

@@ -137,6 +137,11 @@ export function DesktopHome() {
 
     // Strict E-Book Scroll Control (Zero Glitch Logic)
     React.useEffect(() => {
+        if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+            setHasMounted(true);
+            return;
+        }
+
         const handleScrollTransition = (direction: number) => {
             const now = Date.now();
             if (now - lastScrollTime.current < 700) return; // 0.7s responsive lock
@@ -196,7 +201,7 @@ export function DesktopHome() {
         <div className="flex flex-col pb-0 transition-colors duration-500 bg-white dark:bg-black text-slate-900 dark:text-white">
             {/* the hyper-aperture: kinetic chassis extraordinaria */}
             <section
-                className="relative h-screen ebook-section overflow-hidden bg-gradient-to-br from-rose-900/60 via-[#0b0d10] to-[#0b0d10] dark:from-rose-950/80 dark:via-black dark:to-black isolate flex flex-col items-center justify-center p-0"
+                className="relative min-h-[100svh] md:h-screen ebook-section overflow-hidden bg-gradient-to-br from-rose-900/60 via-[#0b0d10] to-[#0b0d10] dark:from-rose-950/80 dark:via-black dark:to-black isolate flex flex-col items-center justify-center p-0 px-6 md:px-0"
                 onMouseMove={e => {
                     const xPct = (e.clientX / window.innerWidth) * 100;
                     const x = (e.clientX / window.innerWidth - 0.5) * 30;
@@ -325,7 +330,7 @@ export function DesktopHome() {
                                 initial={{ opacity: 0, y: 40 }}
                                 animate={{ opacity: 0.1, y: 0 }}
                                 transition={{ delay: 0.4, duration: 1.5 }}
-                                className="absolute -inset-2 text-7xl md:text-8xl lg:text-[clamp(4rem,12.5vw,10.5rem)] font-black uppercase text-white blur-3xl pointer-events-none opacity-20"
+                                className="absolute -inset-2 text-4xl sm:text-6xl md:text-8xl lg:text-[clamp(4rem,12.5vw,10.5rem)] font-black uppercase text-white blur-3xl pointer-events-none opacity-20"
                                 style={{
                                     backgroundPosition: 'calc(100% - var(--mouse-x-pct)) 50%',
                                 }}
@@ -338,7 +343,7 @@ export function DesktopHome() {
                                 initial={{ opacity: 0, scale: 0.95, y: 30 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
-                                className="relative text-7xl md:text-8xl lg:text-[clamp(4rem,12vw,9.5rem)] font-black italic uppercase tracking-[-0.03em] leading-none text-transparent bg-clip-text bg-[linear-gradient(110deg,#fff_0%,#fff_40%,#ff9d00_50%,#fff_60%,#fff_100%)] bg-[length:200%_100%] transition-all duration-1000 font-[family-name:var(--font-bruno-ace)]"
+                                className="relative text-4xl sm:text-6xl md:text-8xl lg:text-[clamp(4rem,12vw,9.5rem)] font-black italic uppercase tracking-[-0.03em] leading-none text-transparent bg-clip-text bg-[linear-gradient(110deg,#fff_0%,#fff_40%,#ff9d00_50%,#fff_60%,#fff_100%)] bg-[length:200%_100%] transition-all duration-1000 font-[family-name:var(--font-bruno-ace)]"
                                 style={{
                                     textShadow: '0 20px 50px rgba(0,0,0,0.5)',
                                     WebkitTextFillColor: 'transparent',
@@ -619,7 +624,7 @@ export function DesktopHome() {
                                 <h2 className="text-zinc-500 font-black uppercase tracking-[0.4em] text-xs mb-4">
                                     {t('THE SYNDICATE')}
                                 </h2>
-                                <h1 className="text-8xl xl:text-9xl font-extrabold italic uppercase tracking-[-0.05em] leading-[0.85] text-white">
+                                <h1 className="text-4xl sm:text-6xl md:text-7xl xl:text-9xl font-extrabold italic uppercase tracking-[-0.05em] leading-[0.85] text-white">
                                     {t('ELITE')}
                                     <br />
                                     {t('MAKERS')}
@@ -830,7 +835,7 @@ export function DesktopHome() {
             {/* How it Works */}
             {/* How it Works Section */}
             {/* How it Works Section */}
-            <section className="h-screen ebook-section relative overflow-hidden bg-gradient-to-tr from-amber-700/60 via-[#0b0d10] to-[#0b0d10] dark:from-amber-950/80 dark:via-black dark:to-black text-slate-900 dark:text-white pt-[var(--header-h)] flex flex-col justify-start transition-colors duration-500">
+            <section className="min-h-[100svh] md:h-screen ebook-section relative overflow-hidden bg-gradient-to-tr from-amber-700/60 via-[#0b0d10] to-[#0b0d10] dark:from-amber-950/80 dark:via-black dark:to-black text-slate-900 dark:text-white flex flex-col justify-start transition-colors duration-500">
                 <div className="absolute inset-0 opacity-10 pointer-events-none">
                     <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_120%,#FFD700,transparent_70%)]" />
                 </div>
@@ -852,7 +857,7 @@ export function DesktopHome() {
                                         {t('The Process')}
                                     </p>
                                 </div>
-                                <h2 className="text-7xl xl:text-9xl font-extrabold uppercase tracking-[-0.05em] italic leading-[0.85] text-white cursor-pointer group/text">
+                                <h2 className="text-4xl sm:text-6xl md:text-7xl xl:text-9xl font-extrabold uppercase tracking-[-0.05em] italic leading-[0.85] text-white cursor-pointer group/text">
                                     {processHeadings.map((text, i) => (
                                         <div
                                             key={i}
@@ -922,7 +927,7 @@ export function DesktopHome() {
                                         <div className="relative flex-1 flex flex-col justify-end">
                                             {activeStep !== i && (
                                                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 whitespace-nowrap">
-                                                    <span className="text-6xl font-black uppercase italic tracking-tighter text-white/40">
+                                                    <span className="text-4xl sm:text-5xl md:text-6xl font-black uppercase italic tracking-tighter text-white/40">
                                                         {item.title}
                                                     </span>
                                                 </div>
@@ -938,7 +943,7 @@ export function DesktopHome() {
                                                     <p className="text-sm font-bold uppercase tracking-[0.2em] text-zinc-500">
                                                         {item.subtitle}
                                                     </p>
-                                                    <h3 className="text-5xl md:text-7xl font-black uppercase italic tracking-tighter leading-[0.9]">
+                                                    <h3 className="text-3xl sm:text-4xl md:text-7xl font-black uppercase italic tracking-tighter leading-[0.9]">
                                                         {item.title}
                                                     </h3>
                                                     <p className="text-lg font-medium text-zinc-600 max-w-md leading-relaxed">
@@ -966,7 +971,7 @@ export function DesktopHome() {
                 </div>
             </section>
 
-            <section className="h-screen ebook-section relative flex flex-col justify-start bg-gradient-to-br from-emerald-100 via-slate-50 to-slate-50 dark:from-emerald-950/80 dark:via-black dark:to-black pt-[var(--header-h)] overflow-hidden">
+            <section className="min-h-[100svh] md:h-screen ebook-section relative flex flex-col justify-start bg-gradient-to-br from-emerald-100 via-slate-50 to-slate-50 dark:from-emerald-950/80 dark:via-black dark:to-black overflow-hidden">
                 {/* Vibrant Background Layer: Silken 'Aurora' cross-fades to avoid the flash */}
                 <div className="absolute inset-0 z-0 pointer-events-none">
                     <div className="absolute inset-0 bg-gradient-to-tr from-emerald-800/50 via-[#0b0d10] to-black" />
@@ -989,7 +994,7 @@ export function DesktopHome() {
                                         {t('Curated Collections')}
                                     </p>
                                 </div>
-                                <h2 className="text-7xl xl:text-9xl font-extrabold uppercase tracking-[-0.05em] italic leading-[0.85] text-white">
+                                <h2 className="text-4xl sm:text-6xl md:text-7xl xl:text-9xl font-extrabold uppercase tracking-[-0.05em] italic leading-[0.85] text-white">
                                     {t('Select')} <br /> {t('Your')} <br /> {t('Vibe')}
                                 </h2>
                             </motion.div>
@@ -1043,7 +1048,7 @@ export function DesktopHome() {
                                                                     </span>
                                                                 ))}
                                                             </div>
-                                                            <h3 className="text-4xl md:text-6xl font-black uppercase italic tracking-tighter text-white leading-[0.9]">
+                                                            <h3 className="text-3xl sm:text-4xl md:text-6xl font-black uppercase italic tracking-tighter text-white leading-[0.9]">
                                                                 {title}
                                                             </h3>
                                                         </div>
@@ -1073,7 +1078,7 @@ export function DesktopHome() {
                                                     <div
                                                         className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 pointer-events-none transition-opacity duration-500 ${activeVibe !== i ? 'opacity-100 hidden lg:block' : 'opacity-0 hidden'}`}
                                                     >
-                                                        <span className="text-6xl font-black uppercase italic tracking-tighter text-white/40 whitespace-nowrap">
+                                                        <span className="text-4xl sm:text-5xl md:text-6xl font-black uppercase italic tracking-tighter text-white/40 whitespace-nowrap">
                                                             {title}
                                                         </span>
                                                     </div>
@@ -1105,7 +1110,7 @@ export function DesktopHome() {
             </section>
 
             {/* Restored Rider Pulse (Reviews) Section */}
-            <div className="ebook-section h-screen flex flex-col justify-start pt-[var(--header-h)] bg-gradient-to-br from-blue-100 via-slate-50 to-slate-50 dark:from-blue-900/50 dark:via-[#0b0d10] dark:to-[#0b0d10]">
+            <div className="ebook-section min-h-[100svh] md:h-screen flex flex-col justify-start bg-gradient-to-br from-blue-100 via-slate-50 to-slate-50 dark:from-blue-900/50 dark:via-[#0b0d10] dark:to-[#0b0d10]">
                 <RiderPulse />
             </div>
 
@@ -1113,7 +1118,7 @@ export function DesktopHome() {
             <EliteCircle />
 
             {/* Integrated Footer as Last Section */}
-            <div className="ebook-section h-screen bg-gradient-to-t from-slate-200 via-white to-white dark:from-zinc-950/80 dark:via-black dark:to-black">
+            <div className="ebook-section min-h-[100svh] md:h-screen bg-gradient-to-t from-slate-200 via-white to-white dark:from-zinc-950/80 dark:via-black dark:to-black">
                 <Footer />
             </div>
         </div>

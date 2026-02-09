@@ -126,20 +126,25 @@ export async function POST(req: NextRequest) {
 
         const canBypassSuperadmin = async () => {
             if (!isBypassEnv) return false;
-            const user = await resolveUser();
-            if (!user) return false;
-            const { data: memberships, error: membershipError } = await adminClient
-                .from('memberships')
-                .select('role, tenants!inner(slug, type)')
-                .eq('user_id', user.id)
-                .eq('status', 'ACTIVE')
-                .eq('tenants.slug', 'aums')
-                .in('role', ['SUPER_ADMIN', 'SUPERADMIN']);
-            if (membershipError) {
-                console.warn('Superadmin bypass check failed:', membershipError);
+            try {
+                const user = await resolveUser();
+                if (!user) return false;
+                const { data: memberships, error: membershipError } = await adminClient
+                    .from('memberships')
+                    .select('role, tenants!inner(slug, type)')
+                    .eq('user_id', user.id)
+                    .eq('status', 'ACTIVE')
+                    .eq('tenants.slug', 'aums')
+                    .in('role', ['SUPER_ADMIN', 'SUPERADMIN']);
+                if (membershipError) {
+                    console.warn('Superadmin bypass check failed:', membershipError);
+                    return false;
+                }
+                return (memberships || []).length > 0;
+            } catch (err) {
+                console.error('Superadmin bypass check error:', err);
                 return false;
             }
-            return (memberships || []).length > 0;
         };
 
         if (await canBypassSuperadmin()) {

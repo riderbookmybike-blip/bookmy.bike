@@ -105,14 +105,18 @@ export default function EditColorModal({
 
                     <div className="space-y-3">
                         <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">
-                            Finish (Matte, Gloss, etc.)
+                            Finish
                         </label>
-                        <input
+                        <select
                             value={finish}
                             onChange={e => setFinish(e.target.value)}
-                            placeholder="e.g. Matte, Glossy..."
-                            className="w-full px-6 py-4 bg-slate-50 dark:bg-black/20 border-2 border-slate-100 dark:border-white/10 rounded-2xl font-bold text-xl outline-none focus:border-indigo-500 transition-all placeholder:font-normal placeholder:text-slate-300 dark:placeholder:text-slate-600"
-                        />
+                            className="w-full px-6 py-4 bg-slate-50 dark:bg-black/20 border-2 border-slate-100 dark:border-white/10 rounded-2xl font-bold text-xl outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer"
+                        >
+                            <option value="">SELECT FINISH...</option>
+                            <option value="MATTE">MATTE</option>
+                            <option value="GLOSSY">GLOSSY</option>
+                            <option value="TCKBOX">TCKBOX</option>
+                        </select>
                     </div>
 
                     <div className="flex gap-4">

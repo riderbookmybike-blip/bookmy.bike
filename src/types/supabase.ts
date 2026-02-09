@@ -237,6 +237,51 @@ export type Database = {
                 };
                 Relationships: [];
             };
+            cat_ingestion_ignore_rules: {
+                Row: {
+                    active: boolean;
+                    brand_id: string;
+                    created_at: string | null;
+                    id: string;
+                    pattern_type: string;
+                    pattern_value: string;
+                    tenant_id: string | null;
+                };
+                Insert: {
+                    active?: boolean;
+                    brand_id: string;
+                    created_at?: string | null;
+                    id?: string;
+                    pattern_type: string;
+                    pattern_value: string;
+                    tenant_id?: string | null;
+                };
+                Update: {
+                    active?: boolean;
+                    brand_id?: string;
+                    created_at?: string | null;
+                    id?: string;
+                    pattern_type?: string;
+                    pattern_value?: string;
+                    tenant_id?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'cat_ingestion_ignore_rules_brand_id_fkey';
+                        columns: ['brand_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_brands';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'cat_ingestion_ignore_rules_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
             cat_ins_rules: {
                 Row: {
                     addons: Json;
@@ -296,6 +341,58 @@ export type Database = {
                     version?: number | null;
                 };
                 Relationships: [];
+            };
+            cat_item_ingestion_sources: {
+                Row: {
+                    brand_id: string | null;
+                    created_at: string | null;
+                    id: string;
+                    item_id: string | null;
+                    sources: Json;
+                    tenant_id: string | null;
+                    updated_at: string | null;
+                };
+                Insert: {
+                    brand_id?: string | null;
+                    created_at?: string | null;
+                    id?: string;
+                    item_id?: string | null;
+                    sources: Json;
+                    tenant_id?: string | null;
+                    updated_at?: string | null;
+                };
+                Update: {
+                    brand_id?: string | null;
+                    created_at?: string | null;
+                    id?: string;
+                    item_id?: string | null;
+                    sources?: Json;
+                    tenant_id?: string | null;
+                    updated_at?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'cat_item_ingestion_sources_brand_id_fkey';
+                        columns: ['brand_id'];
+                        isOneToOne: true;
+                        referencedRelation: 'cat_brands';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'cat_item_ingestion_sources_item_id_fkey';
+                        columns: ['item_id'];
+                        isOneToOne: true;
+                        referencedRelation: 'cat_items';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'cat_item_ingestion_sources_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                ];
             };
             cat_item_suitability: {
                 Row: {
@@ -542,6 +639,7 @@ export type Database = {
                     insurance_breakdown: Json | null;
                     insurance_total: number | null;
                     is_active: boolean | null;
+                    is_popular: boolean | null;
                     latitude: number | null;
                     longitude: number | null;
                     on_road_price: number | null;
@@ -567,6 +665,7 @@ export type Database = {
                     insurance_breakdown?: Json | null;
                     insurance_total?: number | null;
                     is_active?: boolean | null;
+                    is_popular?: boolean | null;
                     latitude?: number | null;
                     longitude?: number | null;
                     on_road_price?: number | null;
@@ -592,6 +691,7 @@ export type Database = {
                     insurance_breakdown?: Json | null;
                     insurance_total?: number | null;
                     is_active?: boolean | null;
+                    is_popular?: boolean | null;
                     latitude?: number | null;
                     longitude?: number | null;
                     on_road_price?: number | null;
@@ -1192,7 +1292,7 @@ export type Database = {
             };
             crm_bookings: {
                 Row: {
-                    allotment_status: string | null;
+                    allotment_status: Database['public']['Enums']['allotment_status'] | null;
                     base_price: number | null;
                     booking_amount_received: number | null;
                     cancellation_reason: string | null;
@@ -1211,6 +1311,7 @@ export type Database = {
                     insurance_provider: string | null;
                     insurance_status: string | null;
                     inventory_status: string | null;
+                    operational_stage: Database['public']['Enums']['crm_operational_stage'] | null;
                     payment_status: string | null;
                     pdi_status: string | null;
                     quote_id: string | null;
@@ -1218,6 +1319,8 @@ export type Database = {
                     registration_number: string | null;
                     registration_status: string | null;
                     rto_receipt_number: string | null;
+                    stage_updated_at: string | null;
+                    stage_updated_by: string | null;
                     status: string | null;
                     tenant_id: string | null;
                     updated_at: string | null;
@@ -1228,7 +1331,7 @@ export type Database = {
                     zoho_order_id: string | null;
                 };
                 Insert: {
-                    allotment_status?: string | null;
+                    allotment_status?: Database['public']['Enums']['allotment_status'] | null;
                     base_price?: number | null;
                     booking_amount_received?: number | null;
                     cancellation_reason?: string | null;
@@ -1247,6 +1350,7 @@ export type Database = {
                     insurance_provider?: string | null;
                     insurance_status?: string | null;
                     inventory_status?: string | null;
+                    operational_stage?: Database['public']['Enums']['crm_operational_stage'] | null;
                     payment_status?: string | null;
                     pdi_status?: string | null;
                     quote_id?: string | null;
@@ -1254,6 +1358,8 @@ export type Database = {
                     registration_number?: string | null;
                     registration_status?: string | null;
                     rto_receipt_number?: string | null;
+                    stage_updated_at?: string | null;
+                    stage_updated_by?: string | null;
                     status?: string | null;
                     tenant_id?: string | null;
                     updated_at?: string | null;
@@ -1264,7 +1370,7 @@ export type Database = {
                     zoho_order_id?: string | null;
                 };
                 Update: {
-                    allotment_status?: string | null;
+                    allotment_status?: Database['public']['Enums']['allotment_status'] | null;
                     base_price?: number | null;
                     booking_amount_received?: number | null;
                     cancellation_reason?: string | null;
@@ -1283,6 +1389,7 @@ export type Database = {
                     insurance_provider?: string | null;
                     insurance_status?: string | null;
                     inventory_status?: string | null;
+                    operational_stage?: Database['public']['Enums']['crm_operational_stage'] | null;
                     payment_status?: string | null;
                     pdi_status?: string | null;
                     quote_id?: string | null;
@@ -1290,6 +1397,8 @@ export type Database = {
                     registration_number?: string | null;
                     registration_status?: string | null;
                     rto_receipt_number?: string | null;
+                    stage_updated_at?: string | null;
+                    stage_updated_by?: string | null;
                     status?: string | null;
                     tenant_id?: string | null;
                     updated_at?: string | null;
@@ -1312,6 +1421,13 @@ export type Database = {
                         columns: ['color_id'];
                         isOneToOne: false;
                         referencedRelation: 'cat_items';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_bookings_user_id_fkey';
+                        columns: ['user_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_members';
                         referencedColumns: ['id'];
                     },
                     {
@@ -1952,6 +2068,7 @@ export type Database = {
                 Row: {
                     accessories_amount: number | null;
                     active_finance_id: string | null;
+                    booking_amount_paid: boolean | null;
                     color_id: string | null;
                     commercials: Json | null;
                     created_at: string | null;
@@ -1963,18 +2080,19 @@ export type Database = {
                     finance_mode: string | null;
                     id: string;
                     insurance_amount: number | null;
-                    is_latest: boolean | null;
                     lead_id: string | null;
                     lead_referrer_id: string | null;
                     manager_discount: number | null;
                     manager_discount_note: string | null;
                     member_id: string | null;
                     on_road_price: number | null;
-                    parent_quote_id: string | null;
+                    operational_stage: Database['public']['Enums']['crm_operational_stage'] | null;
                     quote_owner_id: string | null;
                     reviewed_at: string | null;
                     reviewed_by: string | null;
                     rto_amount: number | null;
+                    stage_updated_at: string | null;
+                    stage_updated_by: string | null;
                     status: string | null;
                     studio_id: string | null;
                     tenant_id: string | null;
@@ -1983,11 +2101,11 @@ export type Database = {
                     variant_id: string | null;
                     vehicle_image: string | null;
                     vehicle_sku_id: string | null;
-                    version: number | null;
                 };
                 Insert: {
                     accessories_amount?: number | null;
                     active_finance_id?: string | null;
+                    booking_amount_paid?: boolean | null;
                     color_id?: string | null;
                     commercials?: Json | null;
                     created_at?: string | null;
@@ -1999,18 +2117,19 @@ export type Database = {
                     finance_mode?: string | null;
                     id?: string;
                     insurance_amount?: number | null;
-                    is_latest?: boolean | null;
                     lead_id?: string | null;
                     lead_referrer_id?: string | null;
                     manager_discount?: number | null;
                     manager_discount_note?: string | null;
                     member_id?: string | null;
                     on_road_price?: number | null;
-                    parent_quote_id?: string | null;
+                    operational_stage?: Database['public']['Enums']['crm_operational_stage'] | null;
                     quote_owner_id?: string | null;
                     reviewed_at?: string | null;
                     reviewed_by?: string | null;
                     rto_amount?: number | null;
+                    stage_updated_at?: string | null;
+                    stage_updated_by?: string | null;
                     status?: string | null;
                     studio_id?: string | null;
                     tenant_id?: string | null;
@@ -2019,11 +2138,11 @@ export type Database = {
                     variant_id?: string | null;
                     vehicle_image?: string | null;
                     vehicle_sku_id?: string | null;
-                    version?: number | null;
                 };
                 Update: {
                     accessories_amount?: number | null;
                     active_finance_id?: string | null;
+                    booking_amount_paid?: boolean | null;
                     color_id?: string | null;
                     commercials?: Json | null;
                     created_at?: string | null;
@@ -2035,18 +2154,19 @@ export type Database = {
                     finance_mode?: string | null;
                     id?: string;
                     insurance_amount?: number | null;
-                    is_latest?: boolean | null;
                     lead_id?: string | null;
                     lead_referrer_id?: string | null;
                     manager_discount?: number | null;
                     manager_discount_note?: string | null;
                     member_id?: string | null;
                     on_road_price?: number | null;
-                    parent_quote_id?: string | null;
+                    operational_stage?: Database['public']['Enums']['crm_operational_stage'] | null;
                     quote_owner_id?: string | null;
                     reviewed_at?: string | null;
                     reviewed_by?: string | null;
                     rto_amount?: number | null;
+                    stage_updated_at?: string | null;
+                    stage_updated_by?: string | null;
                     status?: string | null;
                     studio_id?: string | null;
                     tenant_id?: string | null;
@@ -2055,21 +2175,20 @@ export type Database = {
                     variant_id?: string | null;
                     vehicle_image?: string | null;
                     vehicle_sku_id?: string | null;
-                    version?: number | null;
                 };
                 Relationships: [
+                    {
+                        foreignKeyName: 'crm_quotes_member_id_fkey';
+                        columns: ['member_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_members';
+                        referencedColumns: ['id'];
+                    },
                     {
                         foreignKeyName: 'quotes_lead_id_fkey';
                         columns: ['lead_id'];
                         isOneToOne: false;
                         referencedRelation: 'crm_leads';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'quotes_parent_quote_id_fkey';
-                        columns: ['parent_quote_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'crm_quotes';
                         referencedColumns: ['id'];
                     },
                 ];
@@ -2982,6 +3101,7 @@ export type Database = {
                     aadhaar_pincode: string | null;
                     address: string | null;
                     addresses_json: Json | null;
+                    avatar_url: string | null;
                     bookings_count: number | null;
                     category: string | null;
                     cliq_channel_id: string | null;
@@ -3044,6 +3164,7 @@ export type Database = {
                     aadhaar_pincode?: string | null;
                     address?: string | null;
                     addresses_json?: Json | null;
+                    avatar_url?: string | null;
                     bookings_count?: number | null;
                     category?: string | null;
                     cliq_channel_id?: string | null;
@@ -3106,6 +3227,7 @@ export type Database = {
                     aadhaar_pincode?: string | null;
                     address?: string | null;
                     addresses_json?: Json | null;
+                    avatar_url?: string | null;
                     bookings_count?: number | null;
                     category?: string | null;
                     cliq_channel_id?: string | null;
@@ -3612,62 +3734,47 @@ export type Database = {
             loc_pincodes: {
                 Row: {
                     area: string | null;
-                    area_keys: Json | null;
-                    areas: Json | null;
                     country: string | null;
                     created_at: string | null;
                     district: string | null;
-                    district_key: string | null;
                     latitude: number | null;
                     longitude: number | null;
                     pincode: string;
                     rto_code: string | null;
                     state: string | null;
                     state_code: string | null;
-                    state_key: string | null;
                     status: string | null;
                     taluka: string | null;
-                    taluka_key: string | null;
                     updated_at: string | null;
                 };
                 Insert: {
                     area?: string | null;
-                    area_keys?: Json | null;
-                    areas?: Json | null;
                     country?: string | null;
                     created_at?: string | null;
                     district?: string | null;
-                    district_key?: string | null;
                     latitude?: number | null;
                     longitude?: number | null;
                     pincode: string;
                     rto_code?: string | null;
                     state?: string | null;
                     state_code?: string | null;
-                    state_key?: string | null;
                     status?: string | null;
                     taluka?: string | null;
-                    taluka_key?: string | null;
                     updated_at?: string | null;
                 };
                 Update: {
                     area?: string | null;
-                    area_keys?: Json | null;
-                    areas?: Json | null;
                     country?: string | null;
                     created_at?: string | null;
                     district?: string | null;
-                    district_key?: string | null;
                     latitude?: number | null;
                     longitude?: number | null;
                     pincode?: string;
                     rto_code?: string | null;
                     state?: string | null;
                     state_code?: string | null;
-                    state_key?: string | null;
                     status?: string | null;
                     taluka?: string | null;
-                    taluka_key?: string | null;
                     updated_at?: string | null;
                 };
                 Relationships: [];
@@ -4102,6 +4209,46 @@ export type Database = {
                     vehicle_color_id: string;
                 }[];
             };
+            get_item_descendants_tree: {
+                Args: { root_id: string };
+                Returns: {
+                    brand_id: string | null;
+                    created_at: string | null;
+                    created_by: string | null;
+                    gallery_urls: Json | null;
+                    history: Json | null;
+                    hsn_code: string | null;
+                    id: string;
+                    image_url: string | null;
+                    inclusion_type: string | null;
+                    is_flipped: boolean | null;
+                    is_primary: boolean | null;
+                    item_tax_rate: number | null;
+                    name: string;
+                    offset_x: number | null;
+                    offset_y: number | null;
+                    parent_id: string | null;
+                    position: number | null;
+                    price_base: number | null;
+                    sku_code: string | null;
+                    slug: string | null;
+                    specs: Json | null;
+                    status: string | null;
+                    template_id: string | null;
+                    tenant_id: string | null;
+                    type: string;
+                    updated_at: string | null;
+                    updated_by: string | null;
+                    video_url: string | null;
+                    zoom_factor: number | null;
+                }[];
+                SetofOptions: {
+                    from: '*';
+                    to: 'cat_items';
+                    isOneToOne: false;
+                    isSetofReturn: true;
+                };
+            };
             get_market_best_offers: {
                 Args: { p_district_name: string; p_state_code: string };
                 Returns: {
@@ -4162,6 +4309,7 @@ export type Database = {
             upsert_dealer_offers: { Args: { offers: Json }; Returns: undefined };
         };
         Enums: {
+            allotment_status: 'NONE' | 'SOFT_LOCK' | 'HARD_LOCK';
             app_role: 'SUPER_ADMIN' | 'MARKETPLACE_ADMIN' | 'DEALER_ADMIN' | 'BANK_ADMIN' | 'STAFF';
             bank_app_status:
                 | 'REQUESTED'
@@ -4171,6 +4319,15 @@ export type Database = {
                 | 'REJECTED'
                 | 'DISBURSED'
                 | 'CLOSED';
+            crm_operational_stage:
+                | 'QUOTE'
+                | 'BOOKING'
+                | 'PAYMENT'
+                | 'FINANCE'
+                | 'ALLOTMENT'
+                | 'PDI'
+                | 'COMPLIANCE'
+                | 'DELIVERED';
             fuel_type: 'PETROL' | 'ELECTRIC' | 'CNG' | 'HYBRID';
             inventory_status: 'IN_TRANSIT' | 'AVAILABLE' | 'BOOKED' | 'SOLD' | 'ALLOCATED';
             inventory_transaction_type: 'OEM_ALLOCATION' | 'DEALER_TRANSFER' | 'CUSTOMER_SALE' | 'STOCK_ADJUSTMENT';
@@ -4298,8 +4455,19 @@ export type CompositeTypes<
 export const Constants = {
     public: {
         Enums: {
+            allotment_status: ['NONE', 'SOFT_LOCK', 'HARD_LOCK'],
             app_role: ['SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALER_ADMIN', 'BANK_ADMIN', 'STAFF'],
             bank_app_status: ['REQUESTED', 'DOCS_PENDING', 'SUBMITTED', 'APPROVED', 'REJECTED', 'DISBURSED', 'CLOSED'],
+            crm_operational_stage: [
+                'QUOTE',
+                'BOOKING',
+                'PAYMENT',
+                'FINANCE',
+                'ALLOTMENT',
+                'PDI',
+                'COMPLIANCE',
+                'DELIVERED',
+            ],
             fuel_type: ['PETROL', 'ELECTRIC', 'CNG', 'HYBRID'],
             inventory_status: ['IN_TRANSIT', 'AVAILABLE', 'BOOKED', 'SOLD', 'ALLOCATED'],
             inventory_transaction_type: ['OEM_ALLOCATION', 'DEALER_TRANSFER', 'CUSTOMER_SALE', 'STOCK_ADJUSTMENT'],

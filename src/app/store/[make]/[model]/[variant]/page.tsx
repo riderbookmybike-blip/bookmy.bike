@@ -396,15 +396,35 @@ export default async function Page({ params, searchParams }: Props) {
     }
 
     // 2.5 Fetch SKUs EARLY (Needed for Market Offer Filtering)
-    // We need to know the SKU IDs of this variant to check if a dealer has an offer for THIS bike.
+    // Unified schema: Variant -> COLOR_DEF -> SKU (new) OR Variant -> SKU (legacy)
     const { data: skus } = await supabase
         .from('cat_items')
-        .select('id, name, slug, specs, price_base')
+        .select('id, name, slug, specs, price_base, parent_id')
         .eq('parent_id', item.id)
         .eq('type', 'SKU');
 
+    const { data: colorDefs } = await supabase
+        .from('cat_items')
+        .select('id, name, slug, specs, position')
+        .eq('parent_id', item.id)
+        .eq('type', 'COLOR_DEF')
+        .order('position', { ascending: true });
+
+    let colorSkus: any[] = [];
+    if (colorDefs && colorDefs.length > 0) {
+        const colorDefIds = colorDefs.map((c: any) => c.id);
+        const { data: colorSkuRows } = await supabase
+            .from('cat_items')
+            .select('id, name, slug, specs, price_base, parent_id')
+            .in('parent_id', colorDefIds)
+            .eq('type', 'SKU');
+        colorSkus = colorSkuRows || [];
+    }
+
+    const allSkus = [...(skus || []), ...colorSkus];
+
     // 2.6 Fetch Prices from cat_price_state (Authoritative Source)
-    const skuIds = (skus || []).map((s: any) => s.id);
+    const skuIds = allSkus.map((s: any) => s.id);
     let publishedPriceData: any = null;
 
     if (skuIds.length > 0) {
@@ -593,7 +613,7 @@ export default async function Page({ params, searchParams }: Props) {
     const leadId = resolvedSearchParams.leadId;
 
     // Fetch dealer pricing rules for vehicle SKUs
-    const currentSkuIds = (skus || []).map((s: any) => s.id);
+    const currentSkuIds = allSkus.map((s: any) => s.id);
     if (winningDealerId && currentSkuIds.length > 0) {
         const { data: vehicleRules } = await supabase
             .from('cat_price_dealer')
@@ -688,38 +708,61 @@ export default async function Page({ params, searchParams }: Props) {
     // 6. Map to Product Object
     // We already fetched SKUs earlier
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const colors = (skus || []).map((sku: any) => {
-        // Derive clean color name
-        // 1. Try specs.color
-        // 2. Try stripping Variant Name from SKU Name
-        let cleanName = sku.specs?.color || sku.name;
-        if (!sku.specs?.color && sku.name.includes(item.name)) {
-            // Remove common prefixes/suffixes to get just the color name
-            cleanName = sku.name
-                .replace(item.name, '')
-                .replace(item.brand?.name || '', '')
-                .replace(item.parent?.name || '', '')
-                .trim();
-        }
-
-        // Derive clean ID (slug) for URL
-        const cleanId = sku.specs?.color_slug || slugify(cleanName);
-
-        // Dealer Offer Delta (positive = surge, negative = discount)
-        // We use the filtered marketOffers map populated earlier
-        const rawOffer = marketOffers[sku.id] || 0;
-
-        return {
-            id: cleanId, // Use clean slug as stable ID
-            skuId: sku.id,
-            name: cleanName,
-            hex: sku.specs?.hex_primary || sku.specs?.hex_code || '#000000',
-            image: sku.specs?.primary_image || sku.specs?.gallery?.[0] || null,
-            video: sku.video_url || sku.specs?.video_urls?.[0] || sku.specs?.video_url || null,
-            priceOverride: sku.price_base, // SKU might override price
-            dealerOffer: rawOffer, // Inject Dealer Offer Delta
-        };
+    const colorSkuMap = new Map<string, any[]>();
+    colorSkus.forEach((sku: any) => {
+        if (!colorSkuMap.has(sku.parent_id)) colorSkuMap.set(sku.parent_id, []);
+        colorSkuMap.get(sku.parent_id)!.push(sku);
     });
+
+    const colors =
+        colorDefs && colorDefs.length > 0
+            ? colorDefs.map((color: any) => {
+                  const linkedSkus = colorSkuMap.get(color.id) || [];
+                  const sku = linkedSkus[0] || null;
+                  const cleanName = color.specs?.color || color.name;
+                  const cleanId = slugify(cleanName);
+                  const rawOffer = sku?.id ? marketOffers[sku.id] || 0 : 0;
+
+                  return {
+                      id: cleanId,
+                      skuId: sku?.id,
+                      name: cleanName,
+                      hex:
+                          color.specs?.hex_primary ||
+                          color.specs?.hex_code ||
+                          sku?.specs?.hex_primary ||
+                          sku?.specs?.hex_code ||
+                          '#000000',
+                      image: sku?.specs?.primary_image || sku?.specs?.gallery?.[0] || null,
+                      video: sku?.video_url || sku?.specs?.video_urls?.[0] || sku?.specs?.video_url || null,
+                      priceOverride: sku?.price_base,
+                      dealerOffer: rawOffer,
+                  };
+              })
+            : (skus || []).map((sku: any) => {
+                  let cleanName = sku.specs?.color || sku.name;
+                  if (!sku.specs?.color && sku.name.includes(item.name)) {
+                      cleanName = sku.name
+                          .replace(item.name, '')
+                          .replace(item.brand?.name || '', '')
+                          .replace(item.parent?.name || '', '')
+                          .trim();
+                  }
+
+                  const cleanId = slugify(cleanName);
+                  const rawOffer = marketOffers[sku.id] || 0;
+
+                  return {
+                      id: cleanId,
+                      skuId: sku.id,
+                      name: cleanName,
+                      hex: sku.specs?.hex_primary || sku.specs?.hex_code || '#000000',
+                      image: sku.specs?.primary_image || sku.specs?.gallery?.[0] || null,
+                      video: sku.video_url || sku.specs?.video_urls?.[0] || sku.specs?.video_url || null,
+                      priceOverride: sku.price_base,
+                      dealerOffer: rawOffer,
+                  };
+              });
 
     // If no SKUs, make a default One
     if (colors.length === 0) {

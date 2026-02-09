@@ -102,9 +102,9 @@ export default function UnifiedStudioPage() {
 
     const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
     const [editingBrand, setEditingBrand] = useState<any>(null);
-    const [brandStats, setBrandStats] = useState<Record<string, { families: number; variants: number; skus: number }>>(
-        {}
-    );
+    const [brandStats, setBrandStats] = useState<
+        Record<string, { families: number; variants: number; skus: number; templates: Record<string, number> }>
+    >({});
     const [familyStats, setFamilyStats] = useState<Record<string, { variants: number; colors: number; skus: number }>>(
         {}
     );
@@ -151,70 +151,72 @@ export default function UnifiedStudioPage() {
         setIsLoading(true);
 
         try {
-            // Fetch all descendants of the Family
-            const { data: descendants, error: treeError } = await (supabase.rpc as any)('get_item_descendants_tree', {
+            // Fetch all descendants of the Family using the optimized recursive RPC
+            const { data: items, error: treeError } = await supabase.rpc('get_item_descendants_tree', {
                 root_id: fId,
-                depth_limit: 5,
             });
 
-            // Simple recursive strategy using recursion in JS because Postgrest doesn't support recursive CTEs easily via standard API
-            // But we can fetch deeper by fetching all items belonging to this Family's tree.
-            // Authority: Model (Family) -> Variant -> Color -> SKU
+            if (treeError) {
+                console.warn('RPC failed, falling back to local pool:', treeError);
+            }
 
-            const { data: items } = await supabase.rpc('get_item_descendants_tree', { root_id: fId });
+            // Fallback: If RPC failed or returned nothing, try to find items in our pre-fetched local pool
+            // This handles cases where items were just added or the RPC is still propagating.
+            let finalItems = items && (items as any).length > 0 ? items : null;
 
-            // If RPC is not available, fallback to manual fetch of common levels
-            let finalItems = items;
-            if (!items) {
-                const { data: lvl1 } = await supabase.from('cat_items').select('*').eq('parent_id', fId);
-                const lvl1Ids = lvl1?.map(i => i.id) || [];
-                const { data: lvl2 } =
-                    lvl1Ids.length > 0
-                        ? await supabase.from('cat_items').select('*').in('parent_id', lvl1Ids)
-                        : { data: [] };
-                const lvl2Ids = lvl2?.map(i => i.id) || [];
-                const { data: lvl3 } =
-                    lvl2Ids.length > 0
-                        ? await supabase.from('cat_items').select('*').in('parent_id', lvl2Ids)
-                        : { data: [] };
+            if (!finalItems) {
+                // Find all items in catalogItems that have this family as their ancestor (up to 3 levels)
+                const itemsMap = new Map(catalogItems.map(i => [i.id, i]));
+                const findFamilyRoot = (item: any, depth = 0): string | null => {
+                    if (!item || depth > 3) return null;
+                    if (item.id === fId) return item.id;
+                    if (item.parent_id) return findFamilyRoot(itemsMap.get(item.parent_id), depth + 1);
+                    return null;
+                };
 
-                finalItems = [...(lvl1 || []), ...(lvl2 || []), ...(lvl3 || [])] as any[];
+                finalItems = catalogItems.filter(i => i.id !== fId && findFamilyRoot(i) === fId);
             }
 
             if (finalItems && (finalItems as any).length > 0) {
-                const variantItems = finalItems
-                    .filter((c: any) => c.type === 'VARIANT')
-                    .sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
+                const itemsArray = finalItems as any[];
 
-                const allColorItems = finalItems
-                    .filter((c: any) => c.type === 'COLOR_DEF')
-                    .sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
+                const variantItems = itemsArray
+                    .filter(c => c.type === 'VARIANT')
+                    .sort((a, b) => (a.position || 0) - (b.position || 0));
 
-                // Hierarchy-Aware Deduplication:
-                // Group colors by name and pick the highest-level one (parent_id === fId) as source
+                const allColorItems = itemsArray
+                    .filter(c => c.type === 'COLOR_DEF')
+                    .sort((a, b) => (a.position || 0) - (b.position || 0));
+
+                // Hierarchy-Aware Deduplication for Colors:
+                // Group colors by name and pick the highest-level one (child of Family) if it exists,
+                // or just the first occurrence.
                 const colorMap = new Map<string, any>();
-                allColorItems.forEach((c: any) => {
+                allColorItems.forEach(c => {
                     const nameKey = (c.name || 'UNNAMED').toUpperCase();
                     const existing = colorMap.get(nameKey);
-                    // Keep existing if it's already global, or if current is global, replace it.
                     if (!existing || (c.parent_id === fId && existing.parent_id !== fId)) {
                         colorMap.set(nameKey, c);
                     }
                 });
-                const colorItems = Array.from(colorMap.values());
 
                 setVariants(variantItems);
-                setColors(colorItems);
+                setColors(Array.from(colorMap.values()));
                 setAllColors(allColorItems);
 
-                const skuItems = (finalItems as any[])
-                    .filter((c: any) => c.type === 'SKU')
-                    .sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
+                const skuItems = itemsArray
+                    .filter(c => c.type === 'SKU')
+                    .sort((a, b) => (a.position || 0) - (b.position || 0));
 
                 setSkus(skuItems);
+            } else {
+                // If we truly have no children, clear the details steps
+                setVariants([]);
+                setColors([]);
+                setSkus([]);
             }
         } catch (err) {
-            console.error('Failed to fetch hierarchy data:', err);
+            console.error('Failed to resolve model hierarchy:', err);
             setVariants([]);
             setColors([]);
             setSkus([]);
@@ -259,10 +261,30 @@ export default function UnifiedStudioPage() {
             // Actually, we should filter by brand later, but fetching all FAMILIES is okay if not too huge.
             // For now fetching all items is what caused the bleed if we didn't filter.
             // But here we are just fetching the "Pool". Isolation happens in Step Components via props.
-            const { data: allItems } = await supabase.from('cat_items').select('*');
+            const pageSize = 1000;
+            let offset = 0;
+            let allItems: any[] = [];
+            // Fetch all items with pagination to avoid PostgREST default limits
+            while (true) {
+                const { data: batch, error: batchError } = await supabase
+                    .from('cat_items')
+                    .select('*')
+                    .range(offset, offset + pageSize - 1);
+                if (batchError) {
+                    console.error('[Catalog Studio] Failed to fetch catalog items batch:', batchError);
+                    break;
+                }
+                if (!batch || batch.length === 0) break;
+                allItems = allItems.concat(batch);
+                if (batch.length < pageSize) break;
+                offset += pageSize;
+            }
             if (allItems) {
                 setCatalogItems(allItems);
-                const stats: Record<string, { families: number; variants: number; skus: number }> = {};
+                const stats: Record<
+                    string,
+                    { families: number; variants: number; skus: number; templates: Record<string, number> }
+                > = {};
                 const fStats: Record<string, { variants: number; colors: number; skus: number }> = {};
                 const itemMap = new Map(allItems.map(i => [i.id, i]));
 
@@ -287,8 +309,14 @@ export default function UnifiedStudioPage() {
                     const bId = findBrand(item);
                     // ... stats logic ...
                     if (bId) {
-                        if (!stats[bId]) stats[bId] = { families: 0, variants: 0, skus: 0 };
-                        if (item.type === 'FAMILY') stats[bId].families++;
+                        if (!stats[bId]) stats[bId] = { families: 0, variants: 0, skus: 0, templates: {} };
+                        if (item.type === 'FAMILY') {
+                            stats[bId].families++;
+                            if (item.template_id) {
+                                stats[bId].templates[item.template_id] =
+                                    (stats[bId].templates[item.template_id] || 0) + 1;
+                            }
+                        }
                         if (item.type === 'VARIANT') stats[bId].variants++;
                         if (item.type === 'SKU') stats[bId].skus++;
                     }
@@ -501,6 +529,7 @@ export default function UnifiedStudioPage() {
                         <TemplateStep
                             templates={templates.filter(t => t.category === selectedCategory || !selectedCategory)}
                             selectedTemplate={template?.id ?? null}
+                            templateStats={brand?.id ? (brandStats[brand.id]?.templates ?? {}) : {}}
                             onSelectTemplate={(id: string) => {
                                 setTemplate(templates.find(t => t.id === id) ?? null);
                             }}

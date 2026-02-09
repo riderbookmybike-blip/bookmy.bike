@@ -33,11 +33,6 @@ const DesktopPDP = dynamic(() => import('@/components/store/DesktopPDP').then(mo
     ssr: false,
 });
 
-const PhonePDPEnhanced = dynamic(
-    () => import('@/components/phone/pdp/PhonePDPEnhanced').then(mod => mod.PhonePDPEnhanced),
-    { loading: () => <PDPSkeleton />, ssr: false }
-);
-
 interface ProductClientProps {
     product: any; // eslint-disable-line @typescript-eslint/no-explicit-any
     makeParam: string;
@@ -79,17 +74,6 @@ export default function ProductClient({
     const router = useRouter();
     const leadIdFromUrl = searchParams.get('leadId');
     const [leadContext, setLeadContext] = useState<{ id: string; name: string } | null>(null);
-    const [isMobile, setIsMobile] = useState(false);
-
-    useEffect(() => {
-        const checkMobile = () => {
-            setIsMobile(window.innerWidth < 768);
-        };
-        checkMobile();
-        window.addEventListener('resize', checkMobile);
-        return () => window.removeEventListener('resize', checkMobile);
-    }, []);
-
     useEffect(() => {
         if (leadIdFromUrl) {
             const fetchLead = async () => {
@@ -341,6 +325,12 @@ export default function ProductClient({
                 rto_total: data.rtoEstimates || 0,
                 rto_breakdown: data.rtoBreakdown || [],
                 insurance_base: data.baseInsurance || 0,
+                insurance_od: data.insuranceOD || 0,
+                insurance_tp: data.insuranceTP || 0,
+                insurance_gst: Math.round(
+                    (((data.insuranceOD || 0) + (data.insuranceTP || 0)) * (data.insuranceGstRate || 18)) / 100
+                ),
+                insurance_gst_rate: data.insuranceGstRate || 18,
                 insurance_addons_total: data.insuranceAddonsPrice || 0,
                 insurance_total: insuranceTotal,
                 insurance_breakdown: data.insuranceBreakdown || [],
@@ -555,7 +545,7 @@ export default function ProductClient({
 
     return (
         <>
-            {isMobile ? <PhonePDPEnhanced {...commonProps} /> : <DesktopPDP {...commonProps} basePath="/phone/store" />}
+            <DesktopPDP {...commonProps} />
 
             <LeadCaptureModal
                 isOpen={showQuoteSuccess}
