@@ -532,6 +532,16 @@ export const ProductCard = ({
             onClick={handleCardClick}
             className={`group bg-white dark:bg-[#0f1115] border border-black/[0.04] dark:border-white/10 rounded-[2rem] overflow-hidden flex flex-col shadow-[0_1px_2px_rgba(0,0,0,0.02),0_4px_12px_rgba(0,0,0,0.03),0_12px_24px_-4px_rgba(0,0,0,0.08)] dark:shadow-none hover:shadow-[0_20px_40px_-12px_rgba(244,176,0,0.15)] hover:border-brand-primary/30 transition-all duration-700 hover:-translate-y-2 ${isTv ? 'min-h-[640px]' : 'min-h-[580px] md:min-h-[660px]'}`}
         >
+            <style>{`
+                @keyframes catalogSwatchShimmer {
+                    0% { transform: translateX(-100%) rotate(25deg); }
+                    100% { transform: translateX(200%) rotate(25deg); }
+                }
+                .catalog-swatch-shimmer {
+                    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.6) 40%, rgba(255,255,255,0.8) 50%, rgba(255,255,255,0.6) 60%, transparent 100%);
+                    animation: catalogSwatchShimmer 2.5s ease-in-out infinite;
+                }
+            `}</style>
             <div
                 className="h-[340px] md:h-[344px] lg:h-[384px] bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center relative p-4 border-b border-black/[0.04] dark:border-white/5 overflow-hidden group/card"
                 style={{ backgroundColor: selectedHex ? `${selectedHex}4D` : undefined }}
@@ -699,15 +709,43 @@ export const ProductCard = ({
                                                         onColorChange(c.id);
                                                     }
                                                 }}
-                                                className="w-5 h-5 rounded-full border border-white dark:border-slate-900 shadow-sm relative hover:scale-110 transition-all duration-300 cursor-pointer overflow-hidden"
-                                                style={{ background: c.hexCode }}
+                                                className="w-5 h-5 rounded-full relative hover:scale-125 transition-all duration-300 cursor-pointer overflow-hidden"
+                                                style={{
+                                                    background: c.hexCode,
+                                                    border:
+                                                        c.finish?.toUpperCase() === 'GLOSSY'
+                                                            ? '1.5px solid rgba(255,255,255,0.7)'
+                                                            : '1px solid rgba(255,255,255,0.25)',
+                                                    boxShadow:
+                                                        c.finish?.toUpperCase() === 'GLOSSY'
+                                                            ? '0 2px 8px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.2)'
+                                                            : 'inset 0 1px 3px rgba(0,0,0,0.2)',
+                                                }}
                                                 title={`${c.name}${c.finish ? ` (${c.finish})` : ''}`}
                                             >
-                                                {c.finish?.toUpperCase() === 'GLOSS' && (
-                                                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/60 to-white/20 pointer-events-none" />
+                                                {/* GLOSSY: bright gloss highlight + animated shimmer */}
+                                                {c.finish?.toUpperCase() === 'GLOSSY' && (
+                                                    <>
+                                                        <div
+                                                            className="absolute inset-0 rounded-full pointer-events-none"
+                                                            style={{
+                                                                background:
+                                                                    'radial-gradient(ellipse 80% 60% at 30% 20%, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.15) 50%, transparent 75%)',
+                                                            }}
+                                                        />
+                                                        <div className="absolute inset-0 rounded-full pointer-events-none catalog-swatch-shimmer" />
+                                                    </>
                                                 )}
+                                                {/* MATTE: grain texture + deep inset shadow */}
                                                 {c.finish?.toUpperCase() === 'MATTE' && (
-                                                    <div className="absolute inset-0 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] pointer-events-none" />
+                                                    <div
+                                                        className="absolute inset-0 rounded-full pointer-events-none"
+                                                        style={{
+                                                            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+                                                            opacity: 0.15,
+                                                            mixBlendMode: 'overlay' as any,
+                                                        }}
+                                                    />
                                                 )}
                                             </div>
                                         ))}

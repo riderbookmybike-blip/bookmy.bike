@@ -31,6 +31,18 @@ export async function proxy(request: NextRequest) {
         return NextResponse.next();
     }
 
+    // C. Legacy color-in-path redirect: /store/{make}/{model}/{variant}/{color} -> ?color=
+    if (pathname.startsWith('/store/')) {
+        const parts = pathname.split('/').filter(Boolean); // ['store', make, model, variant, color]
+        if (parts.length === 5 && parts[4] && !parts[4].includes('.')) {
+            const [, make, model, variant, color] = parts;
+            const url = new URL(`/store/${make}/${model}/${variant}`, request.url);
+            request.nextUrl.searchParams.forEach((v, k) => url.searchParams.set(k, v));
+            url.searchParams.set('color', color);
+            return NextResponse.redirect(url, 308);
+        }
+    }
+
     const response = NextResponse.next();
 
     // Initialize Supabase to check Auth

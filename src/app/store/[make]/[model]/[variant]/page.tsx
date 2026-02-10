@@ -239,7 +239,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
             canonical: canonical,
         },
         robots: {
-            index: !district && !dealer && !state && !studio, // Location/Dealer context is noindex
+            index: !district && !dealer && !state && !studio && !color, // Noindex if contextual (location/dealer/color)
             follow: true,
         },
         openGraph: {
@@ -872,33 +872,59 @@ export default async function Page({ params, searchParams }: Props) {
     // 7. Resolve Finance Scheme
     const resolvedFinance = await resolveFinanceScheme(product.make, product.model, leadId);
 
+    const jsonLd: Record<string, any> = {
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        name: `${product.make} ${product.model} ${product.variant}`.trim(),
+        brand: product.make ? { '@type': 'Brand', name: product.make } : undefined,
+        model: product.model || undefined,
+        color: product.color || undefined,
+    };
+
+    if (publishedPriceData?.ex_showroom_price) {
+        jsonLd.offers = {
+            '@type': 'Offer',
+            priceCurrency: 'INR',
+            price: Number(publishedPriceData.ex_showroom_price),
+            availability: 'https://schema.org/InStock',
+            url: canonicalPath,
+        };
+    }
+
     return (
-        <ProductClient
-            product={product}
-            makeParam={resolvedParams.make}
-            modelParam={product.model}
-            variantParam={product.variant}
-            initialLocation={location}
-            initialPrice={initialPricingSnapshot}
-            insuranceRule={insuranceRule}
-            registrationRule={effectiveRule} // Passing registration rule for client side calc
-            initialAccessories={accessories}
-            initialServices={services}
-            initialFinance={
-                resolvedFinance
-                    ? {
-                          bank: {
-                              id: resolvedFinance.bank.id,
-                              name: resolvedFinance.bank.name,
-                              identity: resolvedFinance.bank.config?.identity,
-                              overview: resolvedFinance.bank.config?.overview,
-                          },
-                          scheme: resolvedFinance.scheme,
-                          logic: resolvedFinance.logic, // Trace logic
-                      }
-                    : undefined
-            }
-            initialDealerId={winningDealerId}
-        />
+        <>
+            <script
+                type="application/ld+json"
+                // eslint-disable-next-line react/no-danger
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+            />
+            <ProductClient
+                product={product}
+                makeParam={resolvedParams.make}
+                modelParam={product.model}
+                variantParam={product.variant}
+                initialLocation={location}
+                initialPrice={initialPricingSnapshot}
+                insuranceRule={insuranceRule}
+                registrationRule={effectiveRule} // Passing registration rule for client side calc
+                initialAccessories={accessories}
+                initialServices={services}
+                initialFinance={
+                    resolvedFinance
+                        ? {
+                              bank: {
+                                  id: resolvedFinance.bank.id,
+                                  name: resolvedFinance.bank.name,
+                                  identity: resolvedFinance.bank.config?.identity,
+                                  overview: resolvedFinance.bank.config?.overview,
+                              },
+                              scheme: resolvedFinance.scheme,
+                              logic: resolvedFinance.logic, // Trace logic
+                          }
+                        : undefined
+                }
+                initialDealerId={winningDealerId}
+            />
+        </>
     );
 }
