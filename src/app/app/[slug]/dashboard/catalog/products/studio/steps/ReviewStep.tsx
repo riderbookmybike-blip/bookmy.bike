@@ -85,7 +85,7 @@ function HistoryTooltip({ history, users }: { history: any[]; users: any[] }) {
 
 export default function ReviewStep({ brand, family, variants, colors, skus, onUpdate }: any) {
     const category = family?.category || 'VEHICLE';
-    const subCategory = family?.sub_category || null;
+
     const l2Label = 'Unit';
     const [filterVariant, setFilterVariant] = useState<string>('ALL');
     const [filterColor, setFilterColor] = useState<string>('ALL');
@@ -245,9 +245,7 @@ export default function ReviewStep({ brand, family, variants, colors, skus, onUp
                                 <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">
                                     Category
                                 </th>
-                                <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                    Sub Category
-                                </th>
+
                                 <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">
                                     Brand
                                 </th>
@@ -382,9 +380,7 @@ export default function ReviewStep({ brand, family, variants, colors, skus, onUp
                                                 <td className="p-3 text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">
                                                     {category}
                                                 </td>
-                                                <td className="p-3 text-[10px] font-bold text-indigo-600 uppercase">
-                                                    {subCategory}
-                                                </td>
+
                                                 <td className="p-3 text-[10px] font-bold text-slate-900 dark:text-white uppercase">
                                                     {brand?.name}
                                                 </td>

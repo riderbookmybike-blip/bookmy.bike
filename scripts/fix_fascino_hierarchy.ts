@@ -15,20 +15,20 @@ async function main() {
     console.log('--- REORGANIZING FASCINO 125 HIERARCHY ---');
 
     // 1. Get Product
-    const { data: family } = await supabase
+    const { data: product } = await supabase
         .from('cat_items')
         .select('id')
         .eq('slug', PRODUCT_SLUG)
         .eq('type', 'PRODUCT')
         .single();
 
-    if (!family) throw new Error('Product not found');
+    if (!product) throw new Error('Product not found');
 
     // 2. Rename S (Disc) to Disc Tft if it exists
     const { data: sDisc } = await supabase
         .from('cat_items')
         .select('id')
-        .eq('parent_id', family.id)
+        .eq('parent_id', product.id)
         .eq('name', 'S (Disc)')
         .single();
 
@@ -44,7 +44,7 @@ async function main() {
     const { data: discTft } = await supabase
         .from('cat_items')
         .select('id')
-        .eq('parent_id', family.id)
+        .eq('parent_id', product.id)
         .eq('name', 'Disc Tft')
         .single();
 
@@ -60,7 +60,7 @@ async function main() {
     const { data: orphanedColors } = await supabase
         .from('cat_items')
         .select('id, name')
-        .eq('parent_id', family.id)
+        .eq('parent_id', product.id)
         .eq('type', 'UNIT');
 
     if (orphanedColors && orphanedColors.length > 0) {

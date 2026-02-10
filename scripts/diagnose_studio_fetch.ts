@@ -6,14 +6,16 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl!, serviceKey!);
 
-const FAMILY_ID = '44b1597b-c7c4-45aa-9af1-7404c8f132b2';
+const PRODUCT_ID = '44b1597b-c7c4-45aa-9af1-7404c8f132b2';
 
 async function diagnose() {
-    console.log('--- Diagnosing Fetch Logic for Product:', FAMILY_ID);
+    console.log('--- Diagnosing Fetch Logic for Product:', PRODUCT_ID);
 
     // 1. Try RPC
     console.log('\nTesting get_item_descendants_tree RPC...');
-    const { data: items, error: rpcError } = await supabase.rpc('get_item_descendants_tree', { root_id: FAMILY_ID });
+    const { data: items, error: rpcError } = await supabase.rpc('get_item_descendants_tree', {
+        root_id: PRODUCT_ID,
+    });
 
     if (rpcError) {
         console.error('RPC Error:', rpcError.message);
@@ -26,7 +28,7 @@ async function diagnose() {
 
     // 2. Try Fallback Logic
     console.log('\nTesting Fallback Select Logic...');
-    const { data: lvl1, error: l1Error } = await supabase.from('cat_items').select('*').eq('parent_id', FAMILY_ID);
+    const { data: lvl1, error: l1Error } = await supabase.from('cat_items').select('*').eq('parent_id', PRODUCT_ID);
     if (l1Error) console.error('L1 Error:', l1Error.message);
 
     const lvl1Ids = lvl1?.map(i => i.id) || [];

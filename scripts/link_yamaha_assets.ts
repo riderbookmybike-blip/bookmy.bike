@@ -54,20 +54,20 @@ async function main() {
     console.log(`Linking assets for ${MODEL_NAME}...`);
 
     // 1. Fetch the PRODUCT item (Hardcoded ID from ingestion log)
-    const familyId = '44b1597b-c7c4-45aa-9af1-7404c8f132b2';
-    console.log(`Using Hardcoded Product ID: ${familyId}`);
+    const productId = '44b1597b-c7c4-45aa-9af1-7404c8f132b2';
+    console.log(`Using Hardcoded Product ID: ${productId}`);
 
-    const { data: family, error: familyError } = await supabase
+    const { data: product, error: productError } = await supabase
         .from('cat_items')
         .select('id, name')
-        .eq('id', familyId)
+        .eq('id', productId)
         .single();
 
-    if (familyError || !family) {
-        console.error(`Product item ID '${familyId}' not found!`, familyError);
+    if (productError || !product) {
+        console.error(`Product item ID '${productId}' not found!`, productError);
         return;
     }
-    console.log(`Found Product ID: ${family.id}`);
+    console.log(`Found Product ID: ${product.id}`);
 
     // 2. Ensure Variant "Standard" exists
     const variantSlug = `${MODEL_NAME.toLowerCase()
@@ -87,7 +87,7 @@ async function main() {
                 name: 'Standard',
                 slug: variantSlug,
                 type: 'VARIANT',
-                parent_id: family.id,
+                parent_id: product.id,
                 brand_id: YAMAHA_BRAND_ID,
                 template_id: VEHICLE_TEMPLATE_ID,
                 status: 'ACTIVE',
@@ -157,10 +157,10 @@ async function main() {
         }
 
         // b. Ensure SKU exists under UNIT
-        const familySlug = MODEL_NAME.toLowerCase()
+        const productSlug = MODEL_NAME.toLowerCase()
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/^-|-$/g, '');
-        const skuSlug = `${familySlug}-${color.slug}`;
+        const skuSlug = `${productSlug}-${color.slug}`;
 
         const { data: existingSku } = await supabase.from('cat_items').select('id').eq('slug', skuSlug).single();
 

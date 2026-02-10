@@ -24,18 +24,18 @@ async function fixSplendorEngineCc() {
 
     console.log(`Found ${splendorItems?.length || 0} items with 'splendor' in name`);
 
-    // Get family IDs
-    const familyIds = splendorItems?.filter(i => i.type === 'PRODUCT').map(i => i.id) || [];
-    console.log(`Family IDs:`, familyIds);
+    // Get product IDs
+    const productIds = splendorItems?.filter(i => i.type === 'PRODUCT').map(i => i.id) || [];
+    console.log(`Product IDs:`, productIds);
 
-    // Get variant IDs under these families
+    // Get variant IDs under these products
     const { data: variants } = await supabase
         .from('cat_items')
         .select('id, name, type, specs, parent_id')
-        .in('parent_id', familyIds)
+        .in('parent_id', productIds)
         .eq('type', 'VARIANT');
 
-    console.log(`Found ${variants?.length || 0} variants under Splendor+ families`);
+    console.log(`Found ${variants?.length || 0} variants under Splendor+ products`);
     const variantIds = variants?.map(v => v.id) || [];
 
     // Get SKUs under these variants

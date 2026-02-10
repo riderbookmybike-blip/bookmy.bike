@@ -111,13 +111,13 @@ async function main() {
     }
 
     // 1. PRODUCT
-    const familySlug = await findUniqueSlug(FASCINO_125.slug);
-    const { data: family, error: familyError } = await supabase
+    const productSlug = await findUniqueSlug(FASCINO_125.slug);
+    const { data: product, error: productError } = await supabase
         .from('cat_items')
         .upsert(
             {
                 name: FASCINO_125.name,
-                slug: familySlug,
+                slug: productSlug,
                 type: 'PRODUCT',
                 brand_id: YAMAHA_BRAND_ID,
                 template_id: templateId,
@@ -131,15 +131,15 @@ async function main() {
         .select()
         .single();
 
-    if (familyError) {
-        console.error('Error creating product:', familyError);
+    if (productError) {
+        console.error('Error creating product:', productError);
         return;
     }
-    console.log('Product OK:', family.id);
+    console.log('Product OK:', product.id);
 
     // 2. VARIANTS
     for (const v of FASCINO_125.variants) {
-        const variantSlug = await findUniqueSlug(`${familySlug}-${v.name.toLowerCase().replace(/[^a-z0-9]+/g, '')}`);
+        const variantSlug = await findUniqueSlug(`${productSlug}-${v.name.toLowerCase().replace(/[^a-z0-9]+/g, '')}`);
         const { data: variant, error: variantError } = await supabase
             .from('cat_items')
             .upsert(
@@ -147,7 +147,7 @@ async function main() {
                     name: v.name,
                     slug: variantSlug,
                     type: 'VARIANT',
-                    parent_id: family.id,
+                    parent_id: product.id,
                     brand_id: YAMAHA_BRAND_ID,
                     template_id: templateId,
                     status: 'ACTIVE',
@@ -194,7 +194,7 @@ async function main() {
             }
 
             const skuCode = `YAM-FASC-${v.sku_suffix}-${c.slug.toUpperCase()}`;
-            const skuSlug = await findUniqueSlug(`${familySlug}-${c.slug}`);
+            const skuSlug = await findUniqueSlug(`${productSlug}-${c.slug}`);
             console.log(`Creating SKU: ${skuCode} (${skuSlug})`);
 
             const { error: skuError } = await supabase.from('cat_items').upsert(
