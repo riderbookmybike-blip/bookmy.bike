@@ -561,44 +561,15 @@ export default function UnitStep({ family, existingColors, onUpdate }: any) {
                                         aria-label={`Pick ${l2Label.toLowerCase()} colors for ${color.name}`}
                                     >
                                         <div
-                                            className="relative w-8 h-8 rounded-full border-2 overflow-hidden"
+                                            className="w-8 h-8 rounded-full shadow-lg border-2 border-white dark:border-white/10 overflow-hidden relative"
                                             style={{
                                                 background: color.specs.hex_secondary
                                                     ? `linear-gradient(135deg, ${color.specs.hex_primary || '#000000'} 50%, ${color.specs.hex_secondary} 50%)`
                                                     : color.specs.hex_primary || '#000000',
-                                                borderColor:
-                                                    color.specs?.Finish === 'MATTE'
-                                                        ? 'rgba(255,255,255,0.15)'
-                                                        : 'rgba(255,255,255,0.6)',
-                                                boxShadow:
-                                                    color.specs?.Finish === 'MATTE'
-                                                        ? 'inset 0 1px 3px rgba(0,0,0,0.15)'
-                                                        : '0 3px 12px rgba(0,0,0,0.35), 0 1px 4px rgba(0,0,0,0.2), inset 0 -2px 4px rgba(0,0,0,0.15)',
                                             }}
                                         >
-                                            {/* GLOSSY: gloss highlight + animated shimmer sweep */}
                                             {color.specs?.Finish !== 'MATTE' && (
-                                                <>
-                                                    <div
-                                                        className="absolute inset-0 rounded-full"
-                                                        style={{
-                                                            background:
-                                                                'radial-gradient(ellipse 70% 50% at 35% 25%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.15) 40%, transparent 70%)',
-                                                        }}
-                                                    />
-                                                    <div className="absolute inset-0 rounded-full swatch-shimmer" />
-                                                </>
-                                            )}
-                                            {/* MATTE: subtle grain texture overlay */}
-                                            {color.specs?.Finish === 'MATTE' && (
-                                                <div
-                                                    className="absolute inset-0 rounded-full"
-                                                    style={{
-                                                        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-                                                        opacity: 0.12,
-                                                        mixBlendMode: 'overlay',
-                                                    }}
-                                                />
+                                                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-white/10 pointer-events-none" />
                                             )}
                                         </div>
                                     </button>
