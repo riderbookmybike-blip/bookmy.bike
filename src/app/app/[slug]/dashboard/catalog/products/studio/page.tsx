@@ -38,8 +38,8 @@ import ReviewStep from './steps/ReviewStep';
 import PublishStep from './steps/PublishStep';
 
 const STEPS = [
-    { id: 'category', title: 'Type', icon: Box, color: 'text-orange-500' },
     { id: 'brand', title: 'Brand', icon: Landmark, color: 'text-blue-500' },
+    { id: 'category', title: 'Type', icon: Box, color: 'text-orange-500' },
     { id: 'model', title: 'Product', icon: Box, color: 'text-purple-500' },
     { id: 'variants', title: 'Variants', icon: Layers, color: 'text-indigo-500' },
     { id: 'colors', title: 'Units', icon: Palette, color: 'text-pink-500' },
@@ -213,7 +213,7 @@ export default function UnifiedStudioPage() {
     // Reset when Step Back changes high level context
     useEffect(() => {
         if (currentStep < 2) {
-            // Category or Brand Step
+            // Brand or Category Step
             setFamilyData(null);
         }
     }, [currentStep]);

@@ -80,7 +80,7 @@ export const MARKETPLACE_SOURCE_STRINGS = [
     'Daily commuting made easy with comfort and great mileage. See transparent on-road prices and get instant quotes. Book your scooter in minutes.',
     'dealer_rebate',
     'dealerId',
-    'DEBUG: handleSaveMedia reached in ColorStep.tsx',
+    'DEBUG: handleSaveMedia reached in UnitStep.tsx',
     'default_owner_tenant_id',
     'Delivery',
     'Details updated successfully',

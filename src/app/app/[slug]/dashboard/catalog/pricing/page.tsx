@@ -280,13 +280,13 @@ export default function PricingPage() {
                 const parent2 = parent1 ? (Array.isArray(parent1.parent) ? parent1.parent[0] : parent1.parent) : null;
                 const parent3 = parent2 ? (Array.isArray(parent2.parent) ? parent2.parent[0] : parent2.parent) : null;
 
-                // Resolve Hierarchy: Family -> Variant -> Color -> SKU
+                // Resolve Hierarchy: Product -> Variant -> Unit -> SKU
                 let family = null;
                 let variant = null;
-                let color_def = null;
+                let unit = null;
 
                 if (parent1?.type === 'UNIT') {
-                    color_def = parent1;
+                    unit = parent1;
                     variant = parent2;
                     family = parent3;
                 } else if (parent1?.type === 'VARIANT') {
