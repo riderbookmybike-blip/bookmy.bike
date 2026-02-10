@@ -84,7 +84,6 @@ export default function ProductStep({
     const [hsnSearch, setHsnSearch] = useState('');
     const [isHsnOpen, setIsHsnOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    const skipNextAutoSave = useRef(false);
 
     useEffect(() => {
         const fetchHSN = async () => {
@@ -106,7 +105,6 @@ export default function ProductStep({
     // Sync formData when familyData prop changes (external selection, not user edit)
     useEffect(() => {
         if (familyData) {
-            skipNextAutoSave.current = true;
             setFormData({
                 name: familyData.name || '',
                 specs: {
@@ -294,25 +292,6 @@ export default function ProductStep({
             setIsSaving(false);
         }
     };
-
-    const saveRef = useRef(handleAutoSave);
-    saveRef.current = handleAutoSave;
-
-    useEffect(() => {
-        if (!formData.name) return;
-        if (skipNextAutoSave.current) {
-            skipNextAutoSave.current = false;
-            return;
-        }
-        const timer = setTimeout(() => saveRef.current(), 1500);
-        return () => clearTimeout(timer);
-    }, [formData]);
-
-    useEffect(() => {
-        return () => {
-            saveRef.current();
-        };
-    }, []);
 
     const hsnRef = useRef<HTMLDivElement>(null);
     useEffect(() => {

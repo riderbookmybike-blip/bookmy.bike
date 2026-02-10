@@ -454,14 +454,6 @@ export default function UnifiedStudioPage() {
             <main className="flex-1 max-w-[1600px] w-full mx-auto py-8 px-12 relative">
                 <div className="min-h-[600px] mb-24">
                     {currentStep === 0 && (
-                        <CategoryStep
-                            selectedCategory={selectedCategory}
-                            onSelectCategory={(id: string) => {
-                                setSelectedCategory(id);
-                            }}
-                        />
-                    )}
-                    {currentStep === 1 && (
                         <BrandStep
                             brands={brands}
                             stats={brandStats}
@@ -476,6 +468,14 @@ export default function UnifiedStudioPage() {
                             onEditBrand={brand => {
                                 setEditingBrand(brand);
                                 setIsBrandModalOpen(true);
+                            }}
+                        />
+                    )}
+                    {currentStep === 1 && (
+                        <CategoryStep
+                            selectedCategory={selectedCategory}
+                            onSelectCategory={(id: string) => {
+                                setSelectedCategory(id);
                             }}
                         />
                     )}
@@ -596,8 +596,8 @@ export default function UnifiedStudioPage() {
                         <button
                             onClick={handleNext}
                             disabled={
-                                (currentStep === 0 && !selectedCategory) ||
-                                (currentStep === 1 && !brand) ||
+                                (currentStep === 0 && !brand) ||
+                                (currentStep === 1 && !selectedCategory) ||
                                 (currentStep === 2 && !familyData)
                             }
                             className="flex items-center gap-3 px-8 py-3 bg-slate-900 text-white rounded-[1.25rem] font-black uppercase text-[10px] tracking-[0.2em] shadow-2xl shadow-slate-900/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none"
