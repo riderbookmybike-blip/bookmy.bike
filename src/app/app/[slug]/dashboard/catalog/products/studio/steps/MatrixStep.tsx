@@ -18,6 +18,10 @@ import {
     Gauge,
     ChevronDown,
     Plus,
+    MapPin,
+    IndianRupee,
+    Link2,
+    Package,
 } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -26,6 +30,7 @@ import { getProxiedUrl } from '@/lib/utils/urlHelper';
 import SKUMediaManager from '@/components/catalog/SKUMediaManager';
 import AttributeInput from '@/components/catalog/AttributeInput';
 import { toast } from 'sonner';
+import { INDIAN_STATES, DEFAULT_STATE_CODE, getStateName } from '@/constants/indianStates';
 
 const getYoutubeThumbnail = (url: string) => {
     if (!url) return null;
@@ -34,17 +39,9 @@ const getYoutubeThumbnail = (url: string) => {
     return match && match[2].length === 11 ? `https://img.youtube.com/vi/${match[2]}/mqdefault.jpg` : null;
 };
 
-export default function MatrixStep({
-    family,
-    template,
-    variants,
-    colors,
-    allColors = [],
-    existingSkus,
-    onUpdate,
-}: any) {
-    const l1Label = template?.hierarchy_config?.l1 || 'Variant';
-    const l2Label = template?.hierarchy_config?.l2 || 'Style';
+export default function MatrixStep({ family, variants, colors, allColors = [], existingSkus, onUpdate }: any) {
+    const l1Label = 'Variant';
+    const l2Label = 'Unit';
 
     const [isSyncing, setIsSyncing] = useState(false);
     const [activeMediaSku, setActiveMediaSku] = useState<any>(null);
@@ -60,6 +57,17 @@ export default function MatrixStep({
     const [editingSku, setEditingSku] = useState<any>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [allVehicles, setAllVehicles] = useState<any[]>([]);
+
+    // State Pricing State
+    const [statePrices, setStatePrices] = useState<Record<string, number>>({});
+    const [selectedStates, setSelectedStates] = useState<string[]>([DEFAULT_STATE_CODE]);
+    const [isSavingSku, setIsSavingSku] = useState(false);
+
+    // Inclusion Type State
+    const [inclusionType, setInclusionType] = useState<string>('OPTIONAL');
+
+    // Compatibility (Suitable For) State — relational via cat_item_compatibility
+    const [compatEntries, setCompatEntries] = useState<any[]>([]);
 
     // Cascading Selection State
     const [brands, setBrands] = useState<any[]>([]);
@@ -92,7 +100,7 @@ export default function MatrixStep({
                 .from('cat_items')
                 .select('id, name')
                 .eq('brand_id', selectedBrandId)
-                .eq('type', 'FAMILY')
+                .eq('type', 'PRODUCT')
                 .eq('status', 'ACTIVE') // Ensure we only get active models
                 .order('name');
             if (data) setModels(data);
@@ -120,6 +128,134 @@ export default function MatrixStep({
         fetchVariants();
     }, [selectedModelId]);
 
+    // Fetch state prices + compatibility when editing a SKU
+    const fetchSkuDetails = async (skuId: string) => {
+        const supabase = createClient();
+        // Fetch state prices
+        const { data: prices } = await supabase
+            .from('cat_price_state')
+            .select('state_code, ex_showroom_price')
+            .eq('vehicle_color_id', skuId);
+        if (prices && prices.length > 0) {
+            const priceMap: Record<string, number> = {};
+            const states: string[] = [];
+            prices.forEach((p: any) => {
+                priceMap[p.state_code] = Number(p.ex_showroom_price) || 0;
+                states.push(p.state_code);
+            });
+            setStatePrices(priceMap);
+            setSelectedStates(states.length > 0 ? states : [DEFAULT_STATE_CODE]);
+        } else {
+            setStatePrices({});
+            setSelectedStates([DEFAULT_STATE_CODE]);
+        }
+        // Fetch compatibility entries
+        const { data: compat } = await supabase
+            .from('cat_item_compatibility')
+            .select(
+                `
+                id, is_universal,
+                target_brand_id, target_family_id, target_variant_id
+            `
+            )
+            .eq('sku_id', skuId);
+        if (compat) {
+            // Enrich with names
+            const enriched = await Promise.all(
+                compat.map(async (c: any) => {
+                    let label = '';
+                    if (c.is_universal) {
+                        label = 'UNIVERSAL / ALL MODELS';
+                    } else {
+                        const parts: string[] = [];
+                        if (c.target_brand_id) {
+                            const { data: brand } = await supabase
+                                .from('cat_brands')
+                                .select('name')
+                                .eq('id', c.target_brand_id)
+                                .single();
+                            parts.push(brand?.name || 'Unknown Brand');
+                        }
+                        if (c.target_family_id) {
+                            const { data: fam } = await supabase
+                                .from('cat_items')
+                                .select('name')
+                                .eq('id', c.target_family_id)
+                                .single();
+                            if (!c.target_variant_id) parts.push(`${fam?.name || 'All Models'}`);
+                            else parts.push(fam?.name || '');
+                        } else if (c.target_brand_id && !c.target_family_id) {
+                            parts.push('(All Models)');
+                        }
+                        if (c.target_variant_id) {
+                            const { data: v } = await supabase
+                                .from('cat_items')
+                                .select('name')
+                                .eq('id', c.target_variant_id)
+                                .single();
+                            parts.push(v?.name || '');
+                        }
+                        label = parts.join(' ');
+                    }
+                    return { ...c, label };
+                })
+            );
+            setCompatEntries(enriched);
+        } else {
+            setCompatEntries([]);
+        }
+    };
+
+    const addCompatibilityEntry = () => {
+        if (selectedBrandId === 'UNIVERSAL') {
+            // Check if already exists
+            if (compatEntries.some(c => c.is_universal)) return;
+            setCompatEntries([
+                ...compatEntries,
+                {
+                    id: `new-${Date.now()}`,
+                    is_universal: true,
+                    target_brand_id: null,
+                    target_family_id: null,
+                    target_variant_id: null,
+                    label: 'UNIVERSAL / ALL MODELS',
+                },
+            ]);
+        } else if (selectedBrandId) {
+            const brandName = brands.find(b => b.id === selectedBrandId)?.name || '';
+            const modelName =
+                selectedModelId && selectedModelId !== 'ALL_MODELS'
+                    ? models.find(m => m.id === selectedModelId)?.name || ''
+                    : '';
+            const variantName =
+                selectedVariantId && selectedVariantId !== 'ALL_VARIANTS'
+                    ? variantsList.find(v => v.id === selectedVariantId)?.name || ''
+                    : '';
+
+            const entry: any = {
+                id: `new-${Date.now()}`,
+                is_universal: false,
+                target_brand_id: selectedBrandId,
+                target_family_id: selectedModelId && selectedModelId !== 'ALL_MODELS' ? selectedModelId : null,
+                target_variant_id: selectedVariantId && selectedVariantId !== 'ALL_VARIANTS' ? selectedVariantId : null,
+                label: [brandName, modelName || '(All Models)', variantName].filter(Boolean).join(' '),
+            };
+
+            // Dedup check
+            const isDup = compatEntries.some(
+                c =>
+                    c.target_brand_id === entry.target_brand_id &&
+                    c.target_family_id === entry.target_family_id &&
+                    c.target_variant_id === entry.target_variant_id
+            );
+            if (!isDup) setCompatEntries([...compatEntries, entry]);
+        }
+        setSelectedBrandId('');
+        setSelectedModelId('');
+        setSelectedVariantId('');
+    };
+
+    // Legacy tag support for backward compat
     const addCompatibilityTag = (tag: string) => {
         const current = (editingSku.specs?.suitable_for || '').split(',').filter(Boolean);
         if (!current.includes(tag)) {
@@ -129,7 +265,6 @@ export default function MatrixStep({
                 specs: { ...editingSku.specs, suitable_for: next.join(',') },
             });
         }
-        // Reset local selection after adding
         setSelectedVariantId('');
     };
 
@@ -208,12 +343,10 @@ export default function MatrixStep({
             const colorNameUpper = colorColumn.name?.toUpperCase() || '';
 
             // Hierarchy-Aware Existence Check:
-            // 1. Find ANY COLOR_DEF in allColors whose name matches colorNameUpper and parent is current variant
+            // 1. Find ANY UNIT in allColors whose name matches colorNameUpper and parent is current variant
             const localColor = allColors.find(
                 (c: any) =>
-                    c.type === 'COLOR_DEF' &&
-                    c.parent_id === variant.id &&
-                    (c.name || '').toUpperCase() === colorNameUpper
+                    c.type === 'UNIT' && c.parent_id === variant.id && (c.name || '').toUpperCase() === colorNameUpper
             );
 
             // 2. Find ANY SKU whose parent is either current variant OR localColor
@@ -265,7 +398,7 @@ export default function MatrixStep({
                     type: 'SKU',
                     status: 'ACTIVE',
                     brand_id: family.brand_id,
-                    template_id: family.template_id,
+                    category: family.category || 'VEHICLE',
                     parent_id: targetParentId,
                     slug: `${variant.slug}-${(colorColumn.name || '').toLowerCase()}`
                         .replace(/ /g, '-')
@@ -556,7 +689,7 @@ export default function MatrixStep({
                                         // 1. Find if there's a local color for this variant matching the same name
                                         const localColor = allColors.find(
                                             (c: any) =>
-                                                c.type === 'COLOR_DEF' &&
+                                                c.type === 'UNIT' &&
                                                 c.parent_id === variant.id &&
                                                 (c.name || '').toUpperCase() === colorNameUpper
                                         );
@@ -727,7 +860,13 @@ export default function MatrixStep({
                                                             onClick={e => {
                                                                 e.stopPropagation();
                                                                 setEditingSku(sku);
+                                                                setInclusionType(sku.inclusion_type || 'OPTIONAL');
+                                                                setStatePrices({
+                                                                    [DEFAULT_STATE_CODE]: sku.price_base || 0,
+                                                                });
+                                                                setSelectedStates([DEFAULT_STATE_CODE]);
                                                                 setIsEditModalOpen(true);
+                                                                fetchSkuDetails(sku.id);
                                                             }}
                                                             className="w-14 h-8 rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-400 hover:text-indigo-600 hover:border-indigo-500 flex items-center justify-center transition-all mt-1"
                                                             title="Edit SKU Attributes"
@@ -801,12 +940,14 @@ export default function MatrixStep({
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {(() => {
-                                const modelAttrs = Array.isArray(template?.attribute_config)
-                                    ? template.attribute_config
-                                    : template?.attribute_config?.model || [];
-                                const variantAttrs = Array.isArray(template?.attribute_config)
-                                    ? []
-                                    : template?.attribute_config?.variant || [];
+                                const modelAttrs: any[] =
+                                    (family?.specs as any)?.model_attributes ||
+                                    (family?.specs as any)?.modelAttrs ||
+                                    [];
+                                const variantAttrs: any[] =
+                                    (family?.specs as any)?.variant_attributes ||
+                                    (family?.specs as any)?.variantAttrs ||
+                                    [];
                                 return [...modelAttrs, ...variantAttrs];
                             })().map((attr: any) => {
                                 // Resolve inherited value from Variant or Family
@@ -853,45 +994,107 @@ export default function MatrixStep({
                             })}
                         </div>
 
+                        {/* ─── STATE-AWARE PRICING SECTION ─── */}
+                        <div className="pt-8 mt-6 border-t border-slate-100 dark:border-white/5 space-y-4">
+                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                                <IndianRupee size={12} className="text-emerald-500" /> State-Aware Pricing
+                            </label>
+                            <div className="flex flex-wrap gap-2 mb-3">
+                                {INDIAN_STATES.map(s => (
+                                    <button
+                                        key={s.code}
+                                        onClick={() => {
+                                            setSelectedStates(prev =>
+                                                prev.includes(s.code)
+                                                    ? prev.filter(c => c !== s.code)
+                                                    : [...prev, s.code]
+                                            );
+                                        }}
+                                        className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all border ${
+                                            selectedStates.includes(s.code)
+                                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                                : 'bg-white dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-white/10 hover:border-indigo-300'
+                                        }`}
+                                    >
+                                        {s.code}
+                                    </button>
+                                ))}
+                                <button
+                                    onClick={() => setSelectedStates(INDIAN_STATES.map(s => s.code))}
+                                    className="px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider bg-slate-100 dark:bg-white/5 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 transition-all border border-slate-200 dark:border-white/10"
+                                >
+                                    Select All
+                                </button>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {selectedStates.map(code => (
+                                    <div
+                                        key={code}
+                                        className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/10"
+                                    >
+                                        <div className="flex items-center gap-2 min-w-[120px]">
+                                            <MapPin size={12} className="text-indigo-500" />
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">
+                                                {getStateName(code)}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-1 flex-1">
+                                            <span className="text-[10px] font-bold text-slate-400">₹</span>
+                                            <input
+                                                type="number"
+                                                value={statePrices[code] || editingSku?.price_base || 0}
+                                                onChange={e =>
+                                                    setStatePrices(prev => ({
+                                                        ...prev,
+                                                        [code]: Number(e.target.value),
+                                                    }))
+                                                }
+                                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-sm font-bold outline-none focus:border-indigo-500"
+                                                placeholder="Ex-showroom price"
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex items-center gap-2 p-2 bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-200 dark:border-amber-800/30">
+                                <Info size={12} className="text-amber-500" />
+                                <p className="text-[9px] text-amber-700 dark:text-amber-400 font-bold">
+                                    The first selected state&apos;s price sets the SKU base price (price_base). All
+                                    states get saved to the pricing ledger.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* ─── INCLUSION TYPE & SUITABLE FOR ─── */}
                         <div className="col-span-1 md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 mt-6 border-t border-slate-100 dark:border-white/5">
+                            {/* Suitable For — cat_item_compatibility backed */}
                             <div className="space-y-4">
                                 <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                                    <Box size={12} className="text-indigo-500" /> Suitable For
+                                    <Link2 size={12} className="text-indigo-500" /> Suitable For
                                 </label>
                                 <div className="space-y-3">
                                     <div className="flex flex-wrap gap-2 min-h-[40px] p-2 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/10">
-                                        {(editingSku.specs?.suitable_for || '')
-                                            .split(',')
-                                            .filter(Boolean)
-                                            .map((v: string) => (
-                                                <div
-                                                    key={v}
-                                                    className="flex items-center gap-1.5 px-2 py-1 bg-indigo-500 text-white rounded-lg text-[9px] font-black uppercase tracking-wider shadow-sm"
+                                        {compatEntries.map((entry: any) => (
+                                            <div
+                                                key={entry.id}
+                                                className="flex items-center gap-1.5 px-2 py-1 bg-indigo-500 text-white rounded-lg text-[9px] font-black uppercase tracking-wider shadow-sm"
+                                            >
+                                                {entry.label}
+                                                <button
+                                                    onClick={() =>
+                                                        setCompatEntries(
+                                                            compatEntries.filter((c: any) => c.id !== entry.id)
+                                                        )
+                                                    }
+                                                    className="hover:scale-125 transition-transform"
                                                 >
-                                                    {v}
-                                                    <button
-                                                        onClick={() => {
-                                                            const current = (editingSku.specs?.suitable_for || '')
-                                                                .split(',')
-                                                                .filter(Boolean);
-                                                            const next = current.filter((x: string) => x !== v);
-                                                            setEditingSku({
-                                                                ...editingSku,
-                                                                specs: {
-                                                                    ...editingSku.specs,
-                                                                    suitable_for: next.join(','),
-                                                                },
-                                                            });
-                                                        }}
-                                                        className="hover:scale-125 transition-transform"
-                                                    >
-                                                        <X size={10} />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        {!editingSku.specs?.suitable_for && (
+                                                    <X size={10} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {compatEntries.length === 0 && (
                                             <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest px-2 py-1">
-                                                No Compatibility Fixed
+                                                No Compatibility Set
                                             </span>
                                         )}
                                     </div>
@@ -905,7 +1108,7 @@ export default function MatrixStep({
                                                 setSelectedBrandId(val);
                                                 setSelectedModelId('');
                                                 setSelectedVariantId('');
-                                                if (val === 'UNIVERSAL') addCompatibilityTag('UNIVERSAL / ALL MODELS');
+                                                if (val === 'UNIVERSAL') addCompatibilityEntry();
                                             }}
                                         >
                                             <option value="">Select Brand...</option>
@@ -926,12 +1129,6 @@ export default function MatrixStep({
                                                     const val = e.target.value;
                                                     setSelectedModelId(val);
                                                     setSelectedVariantId('');
-                                                    if (val === 'ALL_MODELS') {
-                                                        const brandName = brands.find(
-                                                            b => b.id === selectedBrandId
-                                                        )?.name;
-                                                        addCompatibilityTag(`${brandName} (All Models)`);
-                                                    }
                                                 }}
                                             >
                                                 <option value="">Select Model...</option>
@@ -951,19 +1148,7 @@ export default function MatrixStep({
                                             <select
                                                 className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-xs font-bold outline-none focus:border-indigo-500 shadow-sm"
                                                 value={selectedVariantId}
-                                                onChange={e => {
-                                                    const val = e.target.value;
-                                                    setSelectedVariantId(val);
-                                                    const brandName = brands.find(b => b.id === selectedBrandId)?.name;
-                                                    const modelName = models.find(m => m.id === selectedModelId)?.name;
-
-                                                    if (val === 'ALL_VARIANTS') {
-                                                        addCompatibilityTag(`${brandName} ${modelName}`);
-                                                    } else {
-                                                        const variantName = variantsList.find(v => v.id === val)?.name;
-                                                        addCompatibilityTag(`${brandName} ${modelName} ${variantName}`);
-                                                    }
-                                                }}
+                                                onChange={e => setSelectedVariantId(e.target.value)}
                                             >
                                                 <option value="">Select Variant...</option>
                                                 <option value="ALL_VARIANTS">
@@ -976,54 +1161,151 @@ export default function MatrixStep({
                                                 ))}
                                             </select>
                                         )}
+
+                                        {/* Add Button */}
+                                        {selectedBrandId && selectedBrandId !== 'UNIVERSAL' && (
+                                            <button
+                                                onClick={addCompatibilityEntry}
+                                                className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-all w-fit"
+                                            >
+                                                <Plus size={12} /> Add Compatibility
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                                    Related Keywords (Tags)
-                                </label>
-                                <input
-                                    type="text"
-                                    value={editingSku.specs?.related_keywords || ''}
-                                    onChange={e =>
-                                        setEditingSku({
-                                            ...editingSku,
-                                            specs: { ...editingSku.specs, related_keywords: e.target.value },
-                                        })
-                                    }
-                                    className="bg-transparent font-bold text-sm outline-none w-full border-b border-gray-200 dark:border-gray-700 focus:border-indigo-500"
-                                    placeholder="Comma separated tags e.g. sport, taluka, budget"
-                                />
+
+                            {/* Right Column: Inclusion Type + Keywords */}
+                            <div className="space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                                        <Package size={12} className="text-purple-500" /> Inclusion Type
+                                    </label>
+                                    <select
+                                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500 shadow-sm"
+                                        value={inclusionType}
+                                        onChange={e => setInclusionType(e.target.value)}
+                                    >
+                                        <option value="OPTIONAL">Optional (Standalone / Add-On)</option>
+                                        <option value="BUNDLE">Bundled (Included in Vehicle Price)</option>
+                                        <option value="MANDATORY">Mandatory (Auto-included)</option>
+                                    </select>
+                                    <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">
+                                        {inclusionType === 'OPTIONAL' &&
+                                            'Optional item (sold independently or as an add-on).'}
+                                        {inclusionType === 'BUNDLE' && 'Included with the vehicle — no extra charge.'}
+                                        {inclusionType === 'MANDATORY' && 'Mandatory item for this SKU.'}
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                                        Related Keywords (Tags)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={editingSku.specs?.related_keywords || ''}
+                                        onChange={e =>
+                                            setEditingSku({
+                                                ...editingSku,
+                                                specs: { ...editingSku.specs, related_keywords: e.target.value },
+                                            })
+                                        }
+                                        className="bg-transparent font-bold text-sm outline-none w-full border-b border-gray-200 dark:border-gray-700 focus:border-indigo-500"
+                                        placeholder="Comma separated tags e.g. sport, taluka, budget"
+                                    />
+                                </div>
                             </div>
                         </div>
                         <div className="flex justify-end pt-6 border-t border-slate-100 dark:border-white/5">
                             <button
+                                disabled={isSavingSku}
                                 onClick={async () => {
+                                    setIsSavingSku(true);
                                     try {
-                                        // Save Logic
                                         const supabase = createClient();
+
+                                        // 1. Determine base price from first selected state
+                                        const primaryState = selectedStates[0] || DEFAULT_STATE_CODE;
+                                        const basePrice = statePrices[primaryState] || editingSku.price_base || 0;
+
+                                        // 2. Update cat_items (specs, price_base, inclusion_type)
                                         const { error } = await supabase
                                             .from('cat_items')
                                             .update({
                                                 specs: editingSku.specs,
+                                                price_base: basePrice,
+                                                inclusion_type: inclusionType,
                                             })
                                             .eq('id', editingSku.id);
-
                                         if (error) throw error;
 
-                                        // Update Local State
+                                        // 3. Upsert state prices into cat_price_state
+                                        const effectivePrices: Record<string, number> = {};
+                                        selectedStates.forEach(code => {
+                                            const val = statePrices[code];
+                                            if (val && val > 0) {
+                                                effectivePrices[code] = val;
+                                            } else if (code === primaryState && basePrice > 0) {
+                                                effectivePrices[code] = basePrice;
+                                            }
+                                        });
+
+                                        const priceRows = Object.entries(effectivePrices).map(([code, price]) => ({
+                                            vehicle_color_id: editingSku.id,
+                                            state_code: code,
+                                            district: 'ALL',
+                                            ex_showroom_price: price,
+                                            is_active: true,
+                                        }));
+                                        if (priceRows.length > 0) {
+                                            const { error: priceErr } = await supabase
+                                                .from('cat_price_state')
+                                                .upsert(priceRows, {
+                                                    onConflict: 'vehicle_color_id,state_code,district',
+                                                });
+                                            if (priceErr) console.error('State price upsert warning:', priceErr);
+                                        }
+
+                                        // 4. Sync compatibility entries to cat_item_compatibility
+                                        // Delete existing entries then re-insert
+                                        await supabase
+                                            .from('cat_item_compatibility')
+                                            .delete()
+                                            .eq('sku_id', editingSku.id);
+                                        if (compatEntries.length > 0) {
+                                            const compatRows = compatEntries.map((c: any) => ({
+                                                sku_id: editingSku.id,
+                                                is_universal: c.is_universal || false,
+                                                target_brand_id: c.target_brand_id || null,
+                                                target_family_id: c.target_family_id || null,
+                                                target_variant_id: c.target_variant_id || null,
+                                            }));
+                                            const { error: compatErr } = await supabase
+                                                .from('cat_item_compatibility')
+                                                .insert(compatRows);
+                                            if (compatErr) console.error('Compatibility insert warning:', compatErr);
+                                        }
+
+                                        // 5. Update Local State
+                                        const updatedSku = {
+                                            ...editingSku,
+                                            price_base: basePrice,
+                                            inclusion_type: inclusionType,
+                                        };
                                         onUpdate(
-                                            existingSkus.map((s: any) => (s.id === editingSku.id ? editingSku : s))
+                                            existingSkus.map((s: any) => (s.id === editingSku.id ? updatedSku : s))
                                         );
                                         setIsEditModalOpen(false);
-                                        toast.success('SKU updated');
+                                        toast.success('SKU updated with pricing, compatibility & inclusion type');
                                     } catch (err: any) {
                                         toast.error('Failed to update SKU: ' + err.message);
+                                    } finally {
+                                        setIsSavingSku(false);
                                     }
                                 }}
-                                className="px-8 py-3 bg-slate-900 text-white rounded-xl font-bold uppercase tracking-widest text-sm hover:scale-105 transition-transform"
+                                className="px-8 py-3 bg-slate-900 text-white rounded-xl font-bold uppercase tracking-widest text-sm hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                             >
+                                {isSavingSku && <Loader2 size={16} className="animate-spin" />}
                                 Save Changes
                             </button>
                         </div>

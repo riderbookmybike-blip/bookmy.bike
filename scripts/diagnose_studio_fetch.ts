@@ -9,7 +9,7 @@ const supabase = createClient(supabaseUrl!, serviceKey!);
 const FAMILY_ID = '44b1597b-c7c4-45aa-9af1-7404c8f132b2';
 
 async function diagnose() {
-    console.log('--- Diagnosing Fetch Logic for Family:', FAMILY_ID);
+    console.log('--- Diagnosing Fetch Logic for Product:', FAMILY_ID);
 
     // 1. Try RPC
     console.log('\nTesting get_item_descendants_tree RPC...');
@@ -51,7 +51,7 @@ async function diagnose() {
 
     const finalItems = [...(lvl1 || []), ...(lvl2 || []), ...(lvl3 || [])];
     const variants = finalItems.filter(i => i.type === 'VARIANT');
-    const colors = finalItems.filter(i => i.type === 'COLOR_DEF');
+    const colors = finalItems.filter(i => i.type === 'UNIT');
 
     console.log('\nFinal Results:');
     console.log(`- Filtered Variants: ${variants.length}`);

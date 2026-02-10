@@ -140,7 +140,7 @@ async function main() {
         .from('cat_items')
         .select('id, slug')
         .eq('brand_id', YAMAHA_BRAND_ID)
-        .eq('type', 'FAMILY');
+        .eq('type', 'PRODUCT');
 
     const existingMap = new Map(existing?.map(x => [x.slug, x.id]));
     const toInsert = [];
@@ -157,9 +157,9 @@ async function main() {
         }
 
         /* 
-          Schema for cat_items (FAMILY) 
+          Schema for cat_items (PRODUCT) 
           id (auto-gen if not provided? No, usually uuid_generate_v4(), but let's see if we need to provide)
-          But usually type='FAMILY', name, slug, brand_id, template_id, status='DRAFT'
+          But usually type='PRODUCT', name, slug, brand_id, template_id, status='DRAFT'
         */
 
         toInsert.push({
@@ -167,7 +167,7 @@ async function main() {
             slug: slug,
             brand_id: YAMAHA_BRAND_ID,
             template_id: await getTemplateId(model.template),
-            type: 'FAMILY',
+            type: 'PRODUCT',
             status: 'ACTIVE',
             specs: model.specs,
             tenant_id: null,

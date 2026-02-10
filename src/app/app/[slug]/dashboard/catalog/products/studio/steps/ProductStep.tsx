@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
     Loader2,
-    ShieldCheck,
     ImageIcon,
     Video,
     FileText,
@@ -49,9 +48,9 @@ function toTitleCase(str: string): string {
 }
 // End of Helper Function
 
-export default function FamilyStep({
+export default function ProductStep({
     brand,
-    template,
+    category,
     familyData,
     families = [],
     stats = {},
@@ -77,6 +76,7 @@ export default function FamilyStep({
         item_tax_rate: familyData?.item_tax_rate || 18,
         hsn_code: familyData?.hsn_code || '',
         sku_code: familyData?.sku_code || '',
+        category: familyData?.category || category || 'VEHICLE',
     });
     const [isMediaOpen, setIsMediaOpen] = useState(false);
 
@@ -84,6 +84,7 @@ export default function FamilyStep({
     const [hsnSearch, setHsnSearch] = useState('');
     const [isHsnOpen, setIsHsnOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const skipNextAutoSave = useRef(false);
 
     useEffect(() => {
         const fetchHSN = async () => {
@@ -102,9 +103,10 @@ export default function FamilyStep({
         }
     }, [formData.hsn_code, hsnList]);
 
-    // Sync formData when familyData prop changes
+    // Sync formData when familyData prop changes (external selection, not user edit)
     useEffect(() => {
         if (familyData) {
+            skipNextAutoSave.current = true;
             setFormData({
                 name: familyData.name || '',
                 specs: {
@@ -122,6 +124,7 @@ export default function FamilyStep({
                 item_tax_rate: familyData.item_tax_rate || 18,
                 hsn_code: familyData.hsn_code || '',
                 sku_code: familyData.sku_code || '',
+                category: familyData.category || category || 'VEHICLE',
             });
         }
     }, [familyData]);
@@ -129,28 +132,7 @@ export default function FamilyStep({
     const handleAutoSave = async () => {
         if (!formData.name) return;
 
-        // Validation: Engine Capacity is mandatory for NEW model creation (not edit)
-        const isNewModel = !familyData?.id;
-
-        // Dynamically find the key for Engine Capacity from template config
-        const modelAttrs = Array.isArray(template?.attribute_config)
-            ? template.attribute_config
-            : template?.attribute_config?.model || [];
-
-        const ccAttr = modelAttrs.find(
-            (a: any) =>
-                a.label?.toLowerCase().includes('engine capacity') ||
-                a.key === 'engine_cc' ||
-                a.key === 'engine_capacity'
-        );
-
-        const ccKey = ccAttr?.key;
-        const engineCc = ccKey ? formData.specs[ccKey] : formData.specs?.engine_cc || formData.specs?.engine_capacity;
-
-        if (isNewModel && (!engineCc || engineCc === '' || engineCc === 0)) {
-            toast.error('Engine Capacity (CC) is mandatory for new model creation');
-            return false; // Return false to indicate validation failure
-        }
+        // No dynamic validation
 
         setIsSaving(true);
 
@@ -167,7 +149,7 @@ export default function FamilyStep({
         try {
             const supabase = createClient();
 
-            // Generate robust slug: brand-modelname (compact)
+            // Generate robust slug: brand-productname (compact)
             const cleanBrand = brand.name.toLowerCase().replace(/[^a-z0-9]/g, '');
             const cleanModel = formData.name.toLowerCase().replace(/[^a-z0-9]/g, '');
             const baseSlug = `${cleanBrand}-${cleanModel}`.replace(/-+/g, '-').replace(/^-|-$/g, '');
@@ -203,9 +185,9 @@ export default function FamilyStep({
                     mileage: (formData.specs as any).mileage || (formData.specs as any).arai_mileage,
                 },
                 name: toTitleCase(formData.name), // Enforce Title Case
-                template_id: template.id,
+                category: formData.category || category || 'VEHICLE',
                 brand_id: brand.id,
-                type: 'FAMILY',
+                type: 'PRODUCT',
                 slug: generatedSlug,
                 sku_code: formData.sku_code || null,
                 status: 'ACTIVE',
@@ -244,27 +226,27 @@ export default function FamilyStep({
                         .maybeSingle();
                     if (fetchResult.error) throw fetchResult.error;
                     if (!fetchResult.data) {
-                        throw new Error('Model update failed: record not found.');
+                        throw new Error('Product update failed: record not found.');
                     }
                     if (!session) {
                         throw new Error('Session expired. Please refresh and login again.');
                     }
-                    throw new Error('Model update blocked. Please refresh and try again.');
+                    throw new Error('Product update blocked. Please refresh and try again.');
                 } else {
                     const fetchResult = await supabase
                         .from('cat_items')
                         .select('id')
-                        .eq('type', 'FAMILY')
+                        .eq('type', 'PRODUCT')
                         .eq('slug', generatedSlug)
                         .maybeSingle();
                     if (fetchResult.error) throw fetchResult.error;
                     if (!fetchResult.data) {
-                        throw new Error('Model create failed: record not found.');
+                        throw new Error('Product create failed: record not found.');
                     }
                     if (!session) {
                         throw new Error('Session expired. Please refresh and login again.');
                     }
-                    throw new Error('Model create blocked. Please refresh and try again.');
+                    throw new Error('Product create blocked. Please refresh and try again.');
                 }
             }
 
@@ -296,17 +278,17 @@ export default function FamilyStep({
                             { duration: 5000 }
                         );
                     } else {
-                        toast.success('Model saved successfully');
+                        toast.success('Product saved successfully');
                     }
                 } else {
-                    toast.success(`✅ New model "${data.name}" created successfully`);
+                    toast.success(`✅ New product "${data.name}" created successfully`);
                 }
                 return true;
             }
             return true;
         } catch (error: any) {
             console.error('Save failed details:', JSON.stringify(error, null, 2));
-            toast.error('Failed to save model: ' + (error.message || 'Unknown error'));
+            toast.error('Failed to save product: ' + (error.message || 'Unknown error'));
             return false;
         } finally {
             setIsSaving(false);
@@ -318,6 +300,10 @@ export default function FamilyStep({
 
     useEffect(() => {
         if (!formData.name) return;
+        if (skipNextAutoSave.current) {
+            skipNextAutoSave.current = false;
+            return;
+        }
         const timer = setTimeout(() => saveRef.current(), 1500);
         return () => clearTimeout(timer);
     }, [formData]);
@@ -344,16 +330,16 @@ export default function FamilyStep({
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
                     <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-4">
-                        Select Model from {brand.name}
+                        Select Product from {brand.name}
                     </label>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                     {families &&
                         families.map((fam: any) => {
-                            // Dynamic key specs derived from template attributes
+                            // No dynamic attributes
                             // We take the first 3 attributes of any type for the quick view
-                            const keyAttributes = template?.attribute_config?.model?.slice(0, 3) || [];
+                            const keyAttributes: any[] = [];
                             const specs = fam.specs as any;
 
                             return (
@@ -406,32 +392,33 @@ export default function FamilyStep({
                                                         item_tax_rate: fam.item_tax_rate || 18,
                                                         hsn_code: fam.hsn_code || '',
                                                         sku_code: fam.sku_code || '',
+                                                        category: fam.category || category || 'VEHICLE',
                                                     });
                                                     onSave(fam);
                                                     setIsModalOpen(true);
                                                 }}
                                                 className="p-2 bg-white dark:bg-slate-900 rounded-full text-slate-400 hover:text-indigo-600 shadow-sm border border-slate-100 dark:border-white/10 hover:border-indigo-500 transition-colors"
-                                                title="Edit Model"
+                                                title="Edit Product"
                                             >
                                                 <Edit2 size={12} />
                                             </button>
                                             <button
                                                 onClick={e => {
                                                     e.stopPropagation();
-                                                    if (confirm('Are you sure you want to delete this model?')) {
+                                                    if (confirm('Are you sure you want to delete this product?')) {
                                                         const deleteModel = async () => {
                                                             try {
                                                                 onDelete && (await onDelete(fam.id));
-                                                                toast.success('Model deleted');
+                                                                toast.success('Product deleted');
                                                             } catch (err) {
-                                                                toast.error('Failed to delete model');
+                                                                toast.error('Failed to delete product');
                                                             }
                                                         };
                                                         deleteModel();
                                                     }
                                                 }}
                                                 className="p-2 bg-white dark:bg-slate-900 rounded-full text-slate-400 hover:text-rose-600 shadow-sm border border-slate-100 dark:border-white/10 hover:border-rose-500 transition-colors"
-                                                title="Delete Model"
+                                                title="Delete Product"
                                             >
                                                 <Trash2 size={12} />
                                             </button>
@@ -442,7 +429,7 @@ export default function FamilyStep({
                                             {fam.name}
                                         </h4>
                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">
-                                            Model Family
+                                            Product Family
                                         </p>
 
                                         {/* Quick Specs Preview - Dynamic */}
@@ -505,7 +492,7 @@ export default function FamilyStep({
                                             // Fallback / No Specs logic or cleaner spacing
                                             <div className="mb-4 py-3 border-t border-slate-100 dark:border-white/5 flex justify-center">
                                                 <span className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">
-                                                    {template.name}
+                                                    {category || 'CATEGORY'}
                                                 </span>
                                             </div>
                                         )}
@@ -588,7 +575,7 @@ export default function FamilyStep({
                             );
                         })}
 
-                    {/* Create Model Card */}
+                    {/* Create Product Card */}
                     <button
                         onClick={() => {
                             setFormData({
@@ -598,6 +585,7 @@ export default function FamilyStep({
                                 item_tax_rate: 18,
                                 hsn_code: '',
                                 sku_code: '',
+                                category: category || 'VEHICLE',
                             });
                             onSave(null);
                             setIsModalOpen(true);
@@ -607,7 +595,7 @@ export default function FamilyStep({
                         <div className="w-16 h-16 rounded-2xl bg-slate-50 dark:bg-white/5 flex items-center justify-center group-hover:scale-110 transition-all shadow-sm">
                             <Plus size={32} />
                         </div>
-                        <span className="text-sm font-black uppercase tracking-widest">Create New Model</span>
+                        <span className="text-sm font-black uppercase tracking-widest">Create New Product</span>
                     </button>
                 </div>
 
@@ -615,7 +603,7 @@ export default function FamilyStep({
                 {(!families || families.length === 0) && (
                     <div className="text-center py-12 opacity-50">
                         <p className="text-xs font-medium text-slate-400 uppercase tracking-widest">
-                            No models found for this brand. Create one to get started.
+                            No products found for this brand. Create one to get started.
                         </p>
                     </div>
                 )}
@@ -624,14 +612,14 @@ export default function FamilyStep({
                 <Modal
                     isOpen={isModalOpen}
                     onClose={() => setIsModalOpen(false)}
-                    title={familyData?.id ? `Edit ${familyData.name}` : 'Create New Model'}
+                    title={familyData?.id ? `Edit ${familyData.name}` : 'Create New Product'}
                     size="xl"
                 >
                     <div className="flex flex-col gap-6">
                         <div className="flex items-end justify-between">
                             <div className="space-y-2 text-left w-full">
                                 <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                                    Model Name
+                                    Product Name
                                 </label>
                                 <input
                                     type="text"
@@ -662,18 +650,18 @@ export default function FamilyStep({
                                 {familyData?.id && (
                                     <button
                                         onClick={() => {
-                                            if (confirm('Delete this model?')) {
+                                            if (confirm('Delete this product?')) {
                                                 try {
                                                     onDelete && onDelete(familyData.id);
                                                     setIsModalOpen(false);
-                                                    toast.success('Model deleted');
+                                                    toast.success('Product deleted');
                                                 } catch (e) {
                                                     toast.error('Failed to delete');
                                                 }
                                             }
                                         }}
                                         className="p-2 ml-4 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors bg-rose-50/50"
-                                        title="Delete Model"
+                                        title="Delete Product"
                                     >
                                         <Trash2 size={16} />
                                     </button>
@@ -683,10 +671,7 @@ export default function FamilyStep({
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 p-6 bg-slate-50 dark:bg-white/5 rounded-3xl border border-slate-100 dark:border-white/5">
                             {/* Dynamic Attribute Inputs */}
-                            {(Array.isArray(template?.attribute_config)
-                                ? template.attribute_config
-                                : template?.attribute_config?.model || []
-                            ).map((attr: any) => (
+                            {([] as any[]).map((attr: any) => (
                                 <div
                                     key={attr.key}
                                     className={`space-y-2 ${attr.type === 'service_schedule' || attr.type === 'warranty' ? 'col-span-full' : ''}`}
@@ -898,7 +883,7 @@ export default function FamilyStep({
                                     .from('cat_items')
                                     .select('id, specs')
                                     .eq('brand_id', brand.id)
-                                    .eq('template_id', template.id)
+                                    .eq('brand_id', brand.id)
                                     .eq('type', 'SKU');
 
                                 // Filter locally for family (since family_id is not a direct column, parent_id links to variant, variant links to family)

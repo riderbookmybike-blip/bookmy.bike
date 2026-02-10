@@ -12,6 +12,7 @@ export default function EditColorModal({
     initialFinish,
     existingNames,
     l2Label,
+    placeholder,
 }: {
     isOpen: boolean;
     onClose: () => void;
@@ -21,6 +22,7 @@ export default function EditColorModal({
     initialFinish?: string;
     existingNames: string[];
     l2Label: string;
+    placeholder?: string;
 }) {
     const [name, setName] = useState(initialName);
     const [status, setStatus] = useState(initialStatus || 'INACTIVE');
@@ -54,7 +56,7 @@ export default function EditColorModal({
             trimmedName.toLowerCase() !== initialName.toLowerCase() &&
             existingNames.some(n => n.toLowerCase() === trimmedName.toLowerCase())
         ) {
-            setError(`Color "${trimmedName}" already exists.`);
+            setError(`${l2Label} "${trimmedName}" already exists.`);
             return;
         }
 
@@ -84,7 +86,7 @@ export default function EditColorModal({
                 <form onSubmit={handleSubmit} className="space-y-8">
                     <div className="space-y-3">
                         <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">
-                            Full Color Name
+                            Full {l2Label} Name
                         </label>
                         <input
                             autoFocus
@@ -93,7 +95,7 @@ export default function EditColorModal({
                                 setName(e.target.value);
                                 setError(null);
                             }}
-                            placeholder="e.g. Matte Black..."
+                            placeholder={placeholder || `e.g. ${l2Label === 'Unit' ? 'Matte Black' : 'Standard'}...`}
                             className="w-full px-6 py-4 bg-slate-50 dark:bg-black/20 border-2 border-slate-100 dark:border-white/10 rounded-2xl font-bold text-xl outline-none focus:border-indigo-500 transition-all placeholder:font-normal placeholder:text-slate-300 dark:placeholder:text-slate-600"
                         />
                         {error && (

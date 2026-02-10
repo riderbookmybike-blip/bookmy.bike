@@ -61,7 +61,6 @@ export default function UnifiedCatalogPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('ALL');
     const [selectedBrand, setSelectedBrand] = useState('ALL');
-    const [selectedTemplate, setSelectedTemplate] = useState('ALL');
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
     useEffect(() => {
@@ -79,7 +78,6 @@ export default function UnifiedCatalogPage() {
                 `
                 *,
                 brand:cat_brands(id, name, logo_svg),
-                template:cat_templates(id, name, hierarchy_config, category),
                 colors:cat_items!parent_id(id, name, type, specs, position, status),
                 variants:cat_items!parent_id(
                     id, name, type, position, status,
@@ -90,7 +88,7 @@ export default function UnifiedCatalogPage() {
                 )
             `
             )
-            .eq('type', 'FAMILY')
+            .eq('type', 'PRODUCT')
             .order('created_at', { ascending: false });
 
         if (data) setItems(data as any);
@@ -98,40 +96,23 @@ export default function UnifiedCatalogPage() {
     };
 
     // Filter Logic Calculation
-    const { uniqueBrands, filteredTemplates } = useMemo(() => {
-        if (!items) return { uniqueBrands: [], filteredTemplates: [] };
+    const { uniqueBrands } = useMemo(() => {
+        if (!items) return { uniqueBrands: [] };
 
         const brandsMap = new Map();
-        const templatesMap = new Map();
-
         items.forEach((item: any) => {
             if (item.brand) {
-                // Cascading: Only show brands that have products in the selected category
-                const matchesCategory = selectedCategory === 'ALL' || item.template?.category === selectedCategory;
+                const matchesCategory = selectedCategory === 'ALL' || item.category === selectedCategory;
                 if (matchesCategory) {
                     brandsMap.set(item.brand.id, item.brand);
                 }
             }
-            if (item.template) {
-                // Cascading Filters: Only show templates belonging to the selected Brand and Category
-                const matchesBrand = selectedBrand === 'ALL' || item.brand_id === selectedBrand;
-                const matchesCategory = selectedCategory === 'ALL' || item.template.category === selectedCategory;
-
-                if (matchesBrand && matchesCategory) {
-                    templatesMap.set(item.template.id, item.template);
-                }
-            }
         });
 
-        // Info: Sort alphabetically
         const sortedBrands = Array.from(brandsMap.values()).sort((a: any, b: any) => a.name.localeCompare(b.name));
-        const sortedTemplates = Array.from(templatesMap.values()).sort((a: any, b: any) =>
-            a.name.localeCompare(b.name)
-        );
 
         return {
             uniqueBrands: sortedBrands,
-            filteredTemplates: sortedTemplates,
         };
     }, [items, selectedCategory, selectedBrand]);
 
@@ -147,12 +128,11 @@ export default function UnifiedCatalogPage() {
                 inactiveSkus: 0,
             };
 
-        // 1. Filter Families strictly based on Brand + Category + Template selection
+        // 1. Filter Families strictly based on Brand + Category selection
         const filteredFamilies = items.filter((f: any) => {
             const matchesBrand = selectedBrand === 'ALL' || f.brand_id === selectedBrand;
-            const matchesCategory = selectedCategory === 'ALL' || f.template?.category === selectedCategory;
-            const matchesTemplate = selectedTemplate === 'ALL' || f.template_id === selectedTemplate;
-            return matchesBrand && matchesCategory && matchesTemplate;
+            const matchesCategory = selectedCategory === 'ALL' || f.category === selectedCategory;
+            return matchesBrand && matchesCategory;
         });
 
         const activeBrands = new Set(filteredFamilies.map(f => f.brand_id).filter(Boolean)).size;
@@ -166,7 +146,7 @@ export default function UnifiedCatalogPage() {
 
         filteredFamilies.forEach((f: any) => {
             const variants = (f.variants || []).filter((v: any) => v.type === 'VARIANT');
-            const colors = (f.colors || []).filter((c: any) => c.type === 'COLOR_DEF');
+            const colors = (f.colors || []).filter((c: any) => c.type === 'UNIT');
 
             activeVariantsTotal += variants.length;
             activeColorsTotal += colors.length;
@@ -187,7 +167,7 @@ export default function UnifiedCatalogPage() {
             activeSkus: activeSkusTotal,
             inactiveSkus: inactiveSkusTotal,
         };
-    }, [items, selectedBrand, selectedCategory, selectedTemplate]);
+    }, [items, selectedBrand, selectedCategory]);
 
     // Removed Auto-Selection Effects to allow "ALL" selection
 
@@ -223,7 +203,7 @@ export default function UnifiedCatalogPage() {
                 const walk = (item: any, inheritedColor: any = null) => {
                     if (item.type === 'SKU') {
                         recursiveSkus.push({ sku: item, color: inheritedColor });
-                    } else if (item.type === 'COLOR_DEF') {
+                    } else if (item.type === 'UNIT') {
                         // If it's a Color, walk its SKU children
                         (item.skus || []).forEach((s: any) => walk(s, item));
                     }
@@ -250,9 +230,7 @@ export default function UnifiedCatalogPage() {
                     } else {
                         // Fallback to pool/specs for direct SKUs
                         const rawColorName =
-                            sku.specs?.[(family as any).template?.hierarchy_config?.l2 || 'Style'] ||
-                            sku.specs?.color ||
-                            skuName.replace(variantName, '').trim();
+                            sku.specs?.Unit || sku.specs?.color || skuName.replace(variantName, '').trim();
                         colorName = rawColorName;
                         const colorInfo = colorPool.get(colorName?.toUpperCase());
                         colorPosition = colorInfo?.position || 999;
@@ -281,8 +259,7 @@ export default function UnifiedCatalogPage() {
                         variant,
                         sku,
                         brandName,
-                        templateCategory: (family as any).template?.category || 'VEHICLE',
-                        templateName: (family as any).template?.name || '',
+                        category: (family as any).category || 'VEHICLE',
                         familyName,
                         familyPosition: (family as any).position || 999,
                         variantName,
@@ -316,15 +293,11 @@ export default function UnifiedCatalogPage() {
         );
 
         if (selectedCategory !== 'ALL') {
-            skus = skus.filter(item => item.templateCategory === selectedCategory);
+            skus = skus.filter(item => item.category === selectedCategory);
         }
 
         if (selectedBrand !== 'ALL') {
             skus = skus.filter(item => (item.family as any).brand?.id === selectedBrand);
-        }
-
-        if (selectedTemplate !== 'ALL') {
-            skus = skus.filter(item => (item.family as any).template?.id === selectedTemplate);
         }
 
         // Apply Sorting
@@ -380,7 +353,7 @@ export default function UnifiedCatalogPage() {
         }
 
         return skus; // Return ALL sorted/filtered items
-    }, [items, searchTerm, sortConfig, selectedBrand, selectedCategory, selectedTemplate]);
+    }, [items, searchTerm, sortConfig, selectedBrand, selectedCategory]);
 
     // Pagination Logic
     const ITEMS_PER_PAGE = 50;
@@ -389,7 +362,7 @@ export default function UnifiedCatalogPage() {
     // Reset to Page 1 when filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm, selectedBrand, selectedCategory, selectedTemplate]);
+    }, [searchTerm, selectedBrand, selectedCategory]);
 
     const totalPages = Math.ceil(processedSkus.length / ITEMS_PER_PAGE);
     const paginatedSkus = useMemo(() => {
@@ -575,27 +548,12 @@ export default function UnifiedCatalogPage() {
                                 value={selectedCategory}
                                 onChange={e => {
                                     setSelectedCategory(e.target.value);
-                                    setSelectedTemplate('ALL'); // Reset template on category change
                                 }}
                             >
                                 <option value="ALL">All Categories</option>
                                 <option value="VEHICLE">Vehicles</option>
                                 <option value="ACCESSORY">Accessories</option>
                                 <option value="SERVICE">Services</option>
-                            </select>
-
-                            {/* Template Filter (Sub-Category) */}
-                            <select
-                                className="px-4 py-4 rounded-2xl bg-white dark:bg-black/20 font-bold text-xs uppercase tracking-wider text-slate-600 dark:text-slate-300 outline-none focus:ring-2 ring-emerald-500/20 min-w-[160px] border border-slate-100 dark:border-white/5"
-                                value={selectedTemplate}
-                                onChange={e => setSelectedTemplate(e.target.value)}
-                            >
-                                <option value="ALL">All Templates</option>
-                                {filteredTemplates.map((t: any) => (
-                                    <option key={t.id} value={t.id}>
-                                        {t.name}
-                                    </option>
-                                ))}
                             </select>
                         </div>
 

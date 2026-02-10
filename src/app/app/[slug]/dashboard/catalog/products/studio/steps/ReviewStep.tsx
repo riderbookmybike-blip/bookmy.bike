@@ -83,11 +83,10 @@ function HistoryTooltip({ history, users }: { history: any[]; users: any[] }) {
     );
 }
 
-export default function ReviewStep({ brand, family, template, variants, colors, skus, onUpdate }: any) {
-    // Get category from template
-    const category = template?.category || 'VEHICLE';
-    const subCategory = template?.name || 'Unknown';
-    const l2Label = template?.hierarchy_config?.l2 || 'Style';
+export default function ReviewStep({ brand, family, variants, colors, skus, onUpdate }: any) {
+    const category = family?.category || 'VEHICLE';
+    const subCategory = family?.sub_category || null;
+    const l2Label = 'Unit';
     const [filterVariant, setFilterVariant] = useState<string>('ALL');
     const [filterColor, setFilterColor] = useState<string>('ALL');
     const [filterSearch, setFilterSearch] = useState<string>('');
@@ -212,7 +211,7 @@ export default function ReviewStep({ brand, family, template, variants, colors, 
                         onChange={e => setFilterColor(e.target.value)}
                         className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-900 cursor-pointer shadow-sm"
                     >
-                        <option value="ALL">All Styles</option>
+                        <option value="ALL">All {l2Label}s</option>
                         {colors.map((c: any) => (
                             <option key={c.id} value={c.id}>
                                 {c.name}
@@ -259,7 +258,7 @@ export default function ReviewStep({ brand, family, template, variants, colors, 
                                     Variant
                                 </th>
                                 <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                    Color
+                                    {l2Label}
                                 </th>
                                 <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">
                                     Assets / Inheritance

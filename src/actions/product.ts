@@ -26,9 +26,8 @@ export async function getAllProducts(): Promise<{ products: ProductVariant[]; er
             .from('cat_items')
             .select(
                 `
-                id, type, name, slug, specs, price_base, brand_id,
+                id, type, name, slug, specs, price_base, brand_id, category,
                 brand:cat_brands(name),
-                template:cat_templates!inner(name, code, category),
                 children:cat_items!parent_id(
                     id, type, name, slug, specs, price_base, position,
                     skus:cat_items!parent_id(
@@ -38,7 +37,7 @@ export async function getAllProducts(): Promise<{ products: ProductVariant[]; er
                 )
             `
             )
-            .eq('type', 'FAMILY')
+            .eq('type', 'PRODUCT')
             .eq('status', 'ACTIVE');
 
         if (error) {
@@ -104,13 +103,13 @@ export async function getAllProducts(): Promise<{ products: ProductVariant[]; er
                 const skuCode = `SKU-${slugPart}`.toUpperCase();
 
                 // Determine Product Type based on Template Category
-                const templateCat = family.template?.category || 'VEHICLE';
+                const itemCategory = family.category || 'VEHICLE';
                 let type: 'VEHICLE' | 'ACCESSORY' | 'SERVICE' = 'VEHICLE';
-                if (templateCat === 'ACCESSORY') type = 'ACCESSORY';
-                if (templateCat === 'SERVICE') type = 'SERVICE';
+                if (itemCategory === 'ACCESSORY') type = 'ACCESSORY';
+                if (itemCategory === 'SERVICE') type = 'SERVICE';
 
                 // Determine Category/BodyType
-                const bodyType = specs.body_type || (templateCat === 'VEHICLE' ? 'MOTORCYCLE' : templateCat);
+                const bodyType = specs.body_type || (itemCategory === 'VEHICLE' ? 'MOTORCYCLE' : itemCategory);
 
                 return {
                     id: node.id,

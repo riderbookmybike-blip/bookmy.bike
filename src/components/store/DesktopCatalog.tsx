@@ -621,7 +621,10 @@ export const DesktopCatalog = ({
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-[#0b0d10] transition-colors duration-500 font-sans">
             <div className="flex-1 page-container pt-0 pb-10 md:pb-16">
-                <header className="hidden md:block sticky top-[var(--header-h)] z-[90] py-0 mb-4 mt-[calc(var(--header-h)+16px)] transition-all duration-300">
+                <header
+                    className="hidden md:block sticky z-[90] py-0 mb-4 transition-all duration-300"
+                    style={{ top: 'var(--header-h)', marginTop: 'calc(var(--header-h) + 16px)' }}
+                >
                     <div className="w-full">
                         <div className="rounded-full bg-slate-50/15 dark:bg-[#0b0d10]/25 backdrop-blur-3xl border border-slate-200 dark:border-white/10 shadow-2xl h-14 px-4 flex items-center">
                             <div className="flex items-center gap-3 w-full">
@@ -770,7 +773,10 @@ export const DesktopCatalog = ({
                     </div>
                 </header>
 
-                <div className="md:hidden sticky top-[var(--header-h)] z-[90] py-3 mb-4 bg-slate-50/80 dark:bg-[#0b0d10]/80 backdrop-blur-2xl border-b border-slate-200/60 dark:border-white/5">
+                <div
+                    className="md:hidden sticky z-[90] py-3 mb-4 bg-slate-50/80 dark:bg-[#0b0d10]/80 backdrop-blur-2xl border-b border-slate-200/60 dark:border-white/5"
+                    style={{ top: 'var(--header-h)' }}
+                >
                     <div className="flex items-center gap-3">
                         <div className="flex-1 flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10">
                             <Search size={14} className="text-slate-400" />
@@ -827,7 +833,10 @@ export const DesktopCatalog = ({
                 >
                     {/* Sidebar Filter - Left Column (Only List View) */}
                     {viewMode === 'list' && (
-                        <aside className="hidden xl:block w-80 flex-shrink-0 space-y-6 sticky top-[calc(var(--header-h)+24px)] self-start pt-2 transition-all animate-in fade-in slide-in-from-left-4">
+                        <aside
+                            className="hidden xl:block w-80 flex-shrink-0 space-y-6 sticky self-start pt-2 transition-all animate-in fade-in slide-in-from-left-4"
+                            style={{ top: 'calc(var(--header-h) + 24px)' }}
+                        >
                             <div className="flex flex-col gap-8 p-6 bg-white/60 dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/5 rounded-[3rem] backdrop-blur-3xl shadow-2xl">
                                 {/* EMI Calculator Accordion */}
                                 <div className="space-y-4">
@@ -1081,7 +1090,10 @@ export const DesktopCatalog = ({
 
                 {/* Mega Filter Overlay (Grid View Only) */}
                 {isFilterOpen && viewMode === 'grid' ? (
-                    <div className="fixed inset-x-0 bottom-0 md:top-[var(--header-h)] md:bottom-0 z-[100] bg-white/95 dark:bg-[#0b0d10]/95 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 flex flex-col animate-in fade-in duration-300 h-[85svh] md:h-auto rounded-t-3xl md:rounded-none pb-[env(safe-area-inset-bottom)]">
+                    <div
+                        className="fixed inset-x-0 bottom-0 md:bottom-0 z-[100] bg-white/95 dark:bg-[#0b0d10]/95 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 flex flex-col animate-in fade-in duration-300 h-[85svh] md:h-auto rounded-t-3xl md:rounded-none pb-[env(safe-area-inset-bottom)]"
+                        style={{ top: 'var(--header-h)' }}
+                    >
                         <div className="page-container flex flex-col h-full">
                             {/* Overlay Header */}
                             <div className="flex-shrink-0 py-5 md:py-8 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">

@@ -25,7 +25,7 @@ async function fixSplendorEngineCc() {
     console.log(`Found ${splendorItems?.length || 0} items with 'splendor' in name`);
 
     // Get family IDs
-    const familyIds = splendorItems?.filter(i => i.type === 'FAMILY').map(i => i.id) || [];
+    const familyIds = splendorItems?.filter(i => i.type === 'PRODUCT').map(i => i.id) || [];
     console.log(`Family IDs:`, familyIds);
 
     // Get variant IDs under these families
@@ -73,13 +73,10 @@ async function fixSplendorEngineCc() {
     for (const item of itemsNeedingUpdate) {
         const newSpecs = {
             ...item.specs,
-            engine_cc: 97 // Splendor+ is 97.2cc
+            engine_cc: 97, // Splendor+ is 97.2cc
         };
 
-        const { error: updateError } = await supabase
-            .from('cat_items')
-            .update({ specs: newSpecs })
-            .eq('id', item.id);
+        const { error: updateError } = await supabase.from('cat_items').update({ specs: newSpecs }).eq('id', item.id);
 
         if (updateError) {
             console.log(`  ❌ Failed to update [${item.type}] ${item.name}: ${updateError.message}`);

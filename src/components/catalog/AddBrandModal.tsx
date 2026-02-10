@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Loader2, ShoppingBag, Globe, ChevronRight, Settings2 } from 'lucide-react';
+import { X, Loader2, ShoppingBag, Globe, ChevronRight } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import AttributeInput from '@/components/catalog/AttributeInput';
 import { sanitizeSvg } from '@/lib/utils/sanitizeSvg';
 
 interface AddBrandModalProps {
@@ -11,10 +10,9 @@ interface AddBrandModalProps {
     onClose: () => void;
     onSuccess: (brandName: string) => void;
     initialData?: any; // NEW for editing
-    template?: any; // NEW for template-driven specs
 }
 
-export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData, template }: AddBrandModalProps) {
+export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData }: AddBrandModalProps) {
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
@@ -215,36 +213,6 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData,
                                 />
                             </div>
                         </div>
-
-                        {/* Template-driven Brand Specifications */}
-                        {template?.attribute_config?.brand?.length > 0 && (
-                            <div className="space-y-6 pt-6 border-t border-slate-100 dark:border-white/5">
-                                <div className="flex items-center gap-4 ml-4">
-                                    <div className="w-8 h-8 rounded-xl bg-indigo-600/10 flex items-center justify-center">
-                                        <Settings2 className="text-indigo-600" size={16} />
-                                    </div>
-                                    <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest italic">
-                                        Manufacturer Specifications
-                                    </h3>
-                                </div>
-
-                                <div className="grid grid-cols-1 gap-6 px-4">
-                                    {template.attribute_config.brand.map((attr: any) => (
-                                        <AttributeInput
-                                            key={attr.name}
-                                            attr={attr}
-                                            value={formData.specifications[attr.name]}
-                                            onChange={val =>
-                                                setFormData(prev => ({
-                                                    ...prev,
-                                                    specifications: { ...prev.specifications, [attr.name]: val },
-                                                }))
-                                            }
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-                        )}
 
                         <div className="space-y-4">
                             <div className="flex items-center justify-between ml-4">

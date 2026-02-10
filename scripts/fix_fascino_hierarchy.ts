@@ -14,15 +14,15 @@ const YAMAHA_BRAND_ID = '3170e557-4581-424a-93f5-66289b7b9982';
 async function main() {
     console.log('--- REORGANIZING FASCINO 125 HIERARCHY ---');
 
-    // 1. Get Family
+    // 1. Get Product
     const { data: family } = await supabase
         .from('cat_items')
         .select('id')
         .eq('slug', FAMILY_SLUG)
-        .eq('type', 'FAMILY')
+        .eq('type', 'PRODUCT')
         .single();
 
-    if (!family) throw new Error('Family not found');
+    if (!family) throw new Error('Product not found');
 
     // 2. Rename S (Disc) to Disc Tft if it exists
     const { data: sDisc } = await supabase
@@ -56,12 +56,12 @@ async function main() {
     }
 
     // 4. Relink orphaned Special Edition colors
-    // These were found to be direct children of the family
+    // These were found to be direct children of the product
     const { data: orphanedColors } = await supabase
         .from('cat_items')
         .select('id, name')
         .eq('parent_id', family.id)
-        .eq('type', 'COLOR_DEF');
+        .eq('type', 'UNIT');
 
     if (orphanedColors && orphanedColors.length > 0) {
         console.log(`Relinking ${orphanedColors.length} orphaned colors to Disc Tft...`);

@@ -140,7 +140,10 @@ export default function SidebarHUD({
     }
 
     return (
-        <div className="hidden lg:block lg:w-[440px] lg:sticky lg:top-[var(--header-h)] glass-panel dark:bg-[#0b0d10]/60 rounded-[3rem] overflow-hidden shadow-2xl flex-col animate-in fade-in slide-in-from-right-8 duration-700 h-fit lg:flex border border-slate-200 dark:border-white/5 relative">
+        <div
+            className="hidden lg:block lg:w-[440px] lg:sticky glass-panel dark:bg-[#0b0d10]/60 rounded-[3rem] overflow-hidden shadow-2xl flex-col animate-in fade-in slide-in-from-right-8 duration-700 h-fit lg:flex border border-slate-200 dark:border-white/5 relative"
+            style={{ top: 'var(--header-h)' }}
+        >
             {/* Ambient Card Glow */}
             <div className="absolute -top-24 -right-24 w-48 h-48 bg-brand-primary/10 blur-3xl rounded-full pointer-events-none" />
             {/* 1. Global Actions */}

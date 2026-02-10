@@ -14,7 +14,7 @@ async function run() {
         .from('cat_items')
         .select('id, name, slug, type')
         .ilike('slug', '%jupiter%')
-        .eq('type', 'FAMILY');
+        .eq('type', 'PRODUCT');
 
     console.log('Families found:', families);
 

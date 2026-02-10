@@ -7,17 +7,11 @@ import {
     ChevronRight,
     Loader2,
     Save,
-    Fingerprint,
     Box,
     Layers,
     Palette,
     Grid3X3,
     FileCheck,
-    Gauge,
-    Wind,
-    Zap,
-    HardHat,
-    LayoutTemplate,
     CheckCircle2,
     Plus,
     X,
@@ -31,41 +25,24 @@ import { createClient } from '@/lib/supabase/client';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { toast } from 'sonner';
 import AddBrandModal from '@/components/catalog/AddBrandModal';
-import { CatalogItem, CatalogTemplate } from '@/types/store';
+import { CatalogItem } from '@/types/store';
 
 // Modular Step Components
 import CategoryStep from './steps/CategoryStep';
 import BrandStep from './steps/BrandStep';
-import TemplateStep from './steps/TemplateStep';
-import FamilyStep from './steps/FamilyStep';
+import ProductStep from './steps/ProductStep';
 import VariantStep from './steps/VariantStep';
-import ColorStep from './steps/ColorStep';
+import UnitStep from './steps/UnitStep';
 import MatrixStep from './steps/MatrixStep';
 import ReviewStep from './steps/ReviewStep';
 import PublishStep from './steps/PublishStep';
 
-const getTemplateIcon = (code: string) => {
-    switch (code) {
-        case 'ice_bike':
-            return Gauge;
-        case 'ice_scooter':
-            return Wind;
-        case 'ev_scooter':
-            return Zap;
-        case 'helmet':
-            return HardHat;
-        default:
-            return LayoutTemplate;
-    }
-};
-
 const STEPS = [
     { id: 'category', title: 'Type', icon: Box, color: 'text-orange-500' },
     { id: 'brand', title: 'Brand', icon: Landmark, color: 'text-blue-500' },
-    { id: 'template', title: 'Templates', icon: Fingerprint, color: 'text-cyan-500' },
-    { id: 'model', title: 'Model', icon: Box, color: 'text-purple-500' },
+    { id: 'model', title: 'Product', icon: Box, color: 'text-purple-500' },
     { id: 'variants', title: 'Variants', icon: Layers, color: 'text-indigo-500' },
-    { id: 'colors', title: 'Colors', icon: Palette, color: 'text-pink-500' },
+    { id: 'colors', title: 'Units', icon: Palette, color: 'text-pink-500' },
     { id: 'sku', title: 'SKU', icon: Grid3X3, color: 'text-emerald-500' },
     { id: 'review', title: 'Review', icon: FileCheck, color: 'text-slate-500' },
     { id: 'publish', title: 'Publish', icon: Rocket, color: 'text-orange-500' },
@@ -86,12 +63,9 @@ export default function UnifiedStudioPage() {
 
     // Global Data
     const [brands, setBrands] = useState<any[]>([]);
-    const [templates, setTemplates] = useState<CatalogTemplate[]>([]);
-
     // Selection State
     const [selectedCategory, setSelectedCategory] = useState<string | null>('VEHICLE');
     const [brand, setBrand] = useState<any>(null);
-    const [template, setTemplate] = useState<CatalogTemplate | null>(null);
 
     // Data State
     const [familyData, setFamilyData] = useState<CatalogItem | null>(null);
@@ -102,9 +76,9 @@ export default function UnifiedStudioPage() {
 
     const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
     const [editingBrand, setEditingBrand] = useState<any>(null);
-    const [brandStats, setBrandStats] = useState<
-        Record<string, { families: number; variants: number; skus: number; templates: Record<string, number> }>
-    >({});
+    const [brandStats, setBrandStats] = useState<Record<string, { families: number; variants: number; skus: number }>>(
+        {}
+    );
     const [familyStats, setFamilyStats] = useState<Record<string, { variants: number; colors: number; skus: number }>>(
         {}
     );
@@ -185,7 +159,7 @@ export default function UnifiedStudioPage() {
                     .sort((a, b) => (a.position || 0) - (b.position || 0));
 
                 const allColorItems = itemsArray
-                    .filter(c => c.type === 'COLOR_DEF')
+                    .filter(c => c.type === 'UNIT')
                     .sort((a, b) => (a.position || 0) - (b.position || 0));
 
                 // Hierarchy-Aware Deduplication for Colors:
@@ -238,9 +212,8 @@ export default function UnifiedStudioPage() {
 
     // Reset when Step Back changes high level context
     useEffect(() => {
-        if (currentStep < 3) {
-            // Category, Brand or Template Step
-            if (currentStep < 2) setTemplate(null);
+        if (currentStep < 2) {
+            // Category or Brand Step
             setFamilyData(null);
         }
     }, [currentStep]);
@@ -253,9 +226,6 @@ export default function UnifiedStudioPage() {
         try {
             const { data: bData } = await supabase.from('cat_brands').select('*');
             if (bData) setBrands(bData);
-
-            const { data: tData } = await supabase.from('cat_templates').select('*');
-            if (tData) setTemplates(tData);
 
             // Fetch Stats & Catalog Items for Lists (Families are top level, so safe to fetch all for studio list?)
             // Actually, we should filter by brand later, but fetching all FAMILIES is okay if not too huge.
@@ -281,10 +251,7 @@ export default function UnifiedStudioPage() {
             }
             if (allItems) {
                 setCatalogItems(allItems);
-                const stats: Record<
-                    string,
-                    { families: number; variants: number; skus: number; templates: Record<string, number> }
-                > = {};
+                const stats: Record<string, { families: number; variants: number; skus: number }> = {};
                 const fStats: Record<string, { variants: number; colors: number; skus: number }> = {};
                 const itemMap = new Map(allItems.map(i => [i.id, i]));
 
@@ -300,7 +267,7 @@ export default function UnifiedStudioPage() {
                 // Helper to find Family ID recursively
                 const findFamily = (item: any, depth = 0): string | null => {
                     if (!item || depth > 2) return null;
-                    if (item.type === 'FAMILY') return item.id;
+                    if (item.type === 'PRODUCT') return item.id;
                     if (item.parent_id) return findFamily(itemMap.get(item.parent_id), depth + 1);
                     return null;
                 };
@@ -309,13 +276,9 @@ export default function UnifiedStudioPage() {
                     const bId = findBrand(item);
                     // ... stats logic ...
                     if (bId) {
-                        if (!stats[bId]) stats[bId] = { families: 0, variants: 0, skus: 0, templates: {} };
-                        if (item.type === 'FAMILY') {
+                        if (!stats[bId]) stats[bId] = { families: 0, variants: 0, skus: 0 };
+                        if (item.type === 'PRODUCT') {
                             stats[bId].families++;
-                            if (item.template_id) {
-                                stats[bId].templates[item.template_id] =
-                                    (stats[bId].templates[item.template_id] || 0) + 1;
-                            }
                         }
                         if (item.type === 'VARIANT') stats[bId].variants++;
                         if (item.type === 'SKU') stats[bId].skus++;
@@ -325,7 +288,7 @@ export default function UnifiedStudioPage() {
                     if (fId) {
                         if (!fStats[fId]) fStats[fId] = { variants: 0, colors: 0, skus: 0 };
                         if (item.type === 'VARIANT') fStats[fId].variants++;
-                        if (item.type === 'COLOR_DEF') fStats[fId].colors++;
+                        if (item.type === 'UNIT') fStats[fId].colors++;
                         if (item.type === 'SKU') fStats[fId].skus++;
                     }
                 });
@@ -341,9 +304,7 @@ export default function UnifiedStudioPage() {
             if (familyId) {
                 const { data: fData } = await supabase.from('cat_items').select('*').eq('id', familyId).single();
                 if (fData) {
-                    setFamilyData(fData);
-                    const tmpl = tData?.find(t => t.id === fData.template_id);
-                    if (tmpl) setTemplate(tmpl);
+                    setFamilyData(fData as unknown as CatalogItem);
                     if (brandId) {
                         const brnd = bData?.find(b => b.id === brandId);
                         if (brnd) setBrand(brnd);
@@ -355,10 +316,8 @@ export default function UnifiedStudioPage() {
                         if (!isNaN(stepIndex) && stepIndex >= 0 && stepIndex < STEPS.length) {
                             setCurrentStep(stepIndex);
                         }
-                    } else if (fData.template_id) {
-                        const tmpl = tData?.find(t => t.id === fData.template_id);
-                        if (tmpl?.category) setSelectedCategory(tmpl.category);
                     }
+                    if (fData.category) setSelectedCategory(fData.category);
                 }
             }
         } finally {
@@ -420,7 +379,7 @@ export default function UnifiedStudioPage() {
                                     </h1>
 
                                     {/* Context Breadcrumb */}
-                                    {(selectedCategory || brand || template || familyData) && (
+                                    {(selectedCategory || brand || familyData) && (
                                         <div className="flex items-center gap-2 ml-4 pl-4 border-l-2 border-slate-200 dark:border-white/10 opacity-50">
                                             {selectedCategory && (
                                                 <div className="flex items-center gap-1 text-[10px] uppercase font-bold text-slate-500">
@@ -430,11 +389,6 @@ export default function UnifiedStudioPage() {
                                             {brand && (
                                                 <div className="flex items-center gap-1 text-[10px] uppercase font-bold text-slate-500">
                                                     <span className="text-slate-300">/</span> {brand.name}
-                                                </div>
-                                            )}
-                                            {template && (
-                                                <div className="flex items-center gap-1 text-[10px] uppercase font-bold text-slate-500">
-                                                    <span className="text-slate-300">/</span> {template.name}
                                                 </div>
                                             )}
                                             {familyData && (
@@ -525,23 +479,16 @@ export default function UnifiedStudioPage() {
                             }}
                         />
                     )}
-                    {currentStep === 2 && (
-                        <TemplateStep
-                            templates={templates.filter(t => t.category === selectedCategory || !selectedCategory)}
-                            selectedTemplate={template?.id ?? null}
-                            templateStats={brand?.id ? (brandStats[brand.id]?.templates ?? {}) : {}}
-                            onSelectTemplate={(id: string) => {
-                                setTemplate(templates.find(t => t.id === id) ?? null);
-                            }}
-                        />
-                    )}
-                    {currentStep === 3 && brand && template && (
-                        <FamilyStep
+                    {currentStep === 2 && brand && (
+                        <ProductStep
                             brand={brand}
-                            template={template}
+                            category={selectedCategory}
                             familyData={familyData}
                             families={catalogItems.filter(
-                                i => i.type === 'FAMILY' && i.brand_id === brand?.id && i.template_id === template?.id
+                                i =>
+                                    i.type === 'PRODUCT' &&
+                                    i.brand_id === brand?.id &&
+                                    (!selectedCategory || i.category === selectedCategory)
                             )}
                             stats={familyStats}
                             onSave={(updatedFamily: CatalogItem | null) => {
@@ -561,7 +508,7 @@ export default function UnifiedStudioPage() {
                             onDelete={async (id: string) => {
                                 if (
                                     confirm(
-                                        'Are you sure you want to delete this Model Family? This will delete all associated Variants and SKUs.'
+                                        'Are you sure you want to delete this Product Family? This will delete all associated Variants and SKUs.'
                                     )
                                 ) {
                                     const supabase = createClient();
@@ -577,19 +524,17 @@ export default function UnifiedStudioPage() {
                             tenantId={tenantId}
                         />
                     )}
-                    {currentStep === 4 && familyData && template && (
+                    {currentStep === 3 && familyData && (
                         <VariantStep
                             family={familyData}
-                            template={template}
                             existingVariants={variants}
                             onUpdate={setVariants}
                             tenantId={tenantId}
                         />
                     )}
-                    {currentStep === 5 && familyData && template && (
-                        <ColorStep
+                    {currentStep === 4 && familyData && (
+                        <UnitStep
                             family={familyData}
-                            template={template}
                             existingColors={colors}
                             onUpdate={(newDeduplicatedColors: any[]) => {
                                 setColors(newDeduplicatedColors);
@@ -605,10 +550,9 @@ export default function UnifiedStudioPage() {
                             }}
                         />
                     )}
-                    {currentStep === 6 && familyData && template && (
+                    {currentStep === 5 && familyData && (
                         <MatrixStep
                             family={familyData}
-                            template={template}
                             variants={variants}
                             colors={colors}
                             allColors={allColors}
@@ -616,18 +560,17 @@ export default function UnifiedStudioPage() {
                             onUpdate={setSkus}
                         />
                     )}
-                    {currentStep === 7 && (
+                    {currentStep === 6 && (
                         <ReviewStep
                             brand={brand}
                             family={familyData}
-                            template={template}
                             variants={variants}
                             colors={colors}
                             skus={skus}
                             onUpdate={setSkus}
                         />
                     )}
-                    {currentStep === 8 && <PublishStep onFinish={handleNext} />}
+                    {currentStep === 7 && <PublishStep onFinish={handleNext} />}
                 </div>
             </main>
 
@@ -655,7 +598,7 @@ export default function UnifiedStudioPage() {
                             disabled={
                                 (currentStep === 0 && !selectedCategory) ||
                                 (currentStep === 1 && !brand) ||
-                                (currentStep === 2 && !template)
+                                (currentStep === 2 && !familyData)
                             }
                             className="flex items-center gap-3 px-8 py-3 bg-slate-900 text-white rounded-[1.25rem] font-black uppercase text-[10px] tracking-[0.2em] shadow-2xl shadow-slate-900/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none"
                         >
@@ -685,7 +628,6 @@ export default function UnifiedStudioPage() {
                         // Re-fetch or update locally - since we only get name, we re-fetch to be safe
                         fetchInitialData();
                     }}
-                    template={template}
                 />
             )}
         </div>

@@ -37,7 +37,7 @@ export interface CatalogItemDB {
     price_base: number;
     brand_id: string;
     brand: { name: string; logo_svg?: string };
-    template: { name: string; code: string; category: string };
+    category?: string;
     children?: {
         id: string;
         type: string;
@@ -132,11 +132,10 @@ export function mapCatalogItems(
     const insuranceRule: any = insuranceRuleData?.[0];
 
     return rawData.flatMap((family: CatalogItemDB) => {
-        const templateName = family.template?.name?.toLowerCase() || '';
+        const category = family.category || 'VEHICLE';
         let bodyType: any = 'MOTORCYCLE';
-        if (templateName.includes('scooter')) bodyType = 'SCOOTER';
-        if (templateName.includes('moped')) bodyType = 'MOPED';
-        if (templateName.includes('helmet')) bodyType = 'ACCESSORY';
+        if (category === 'ACCESSORY') bodyType = 'ACCESSORY';
+        if (category === 'SERVICE') bodyType = 'SERVICE';
 
         const familyChildren = family.children || [];
         const variantChildren = familyChildren.filter(c => c.type === 'VARIANT');
@@ -195,7 +194,7 @@ export function mapCatalogItems(
                     return null as any;
                 }
 
-                // Only fallback to family-level SKUs when rendering the FAMILY card (no variants with SKUs).
+                // Only fallback to product-level SKUs when rendering the PRODUCT card (no variants with SKUs).
                 if (activeSkus.length === 0 && variantItem.id === family.id && Array.isArray(familyChildren)) {
                     const familySkus = familyChildren.flatMap(c =>
                         c.type === 'SKU' ? [{ ...c, price_base: c.price_base ?? 0 }] : c.skus || []

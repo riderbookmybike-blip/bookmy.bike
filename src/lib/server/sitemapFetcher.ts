@@ -20,7 +20,7 @@ export async function getSitemapData() {
             )
         `
         )
-        .eq('type', 'FAMILY')
+        .eq('type', 'PRODUCT')
         .eq('status', 'ACTIVE');
 
     return {

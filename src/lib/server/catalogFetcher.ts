@@ -30,9 +30,8 @@ async function getRawCatalog() {
         .from('cat_items')
         .select(
             `
-            id, type, name, slug, specs, price_base, brand_id,
+            id, type, name, slug, specs, price_base, brand_id, category,
             brand:cat_brands(name, logo_svg),
-            template:cat_templates!inner(name, code, category),
             children:cat_items!parent_id(
                 id,
                 type,
@@ -40,6 +39,7 @@ async function getRawCatalog() {
                 slug,
                 specs,
                 price_base,
+                category,
                 parent:cat_items!parent_id(name, slug),
                 position,
                 colors:cat_items!parent_id(
@@ -54,6 +54,7 @@ async function getRawCatalog() {
                         type,
                         status,
                         price_base,
+                        category,
                         is_primary,
                         image_url,
                         gallery_urls,
@@ -72,6 +73,7 @@ async function getRawCatalog() {
                     type,
                     status,
                     price_base,
+                    category,
                     is_primary,
                     image_url,
                     gallery_urls,
@@ -87,10 +89,9 @@ async function getRawCatalog() {
             )
         `
         )
-        .eq('type', 'FAMILY')
+        .eq('type', 'PRODUCT')
         .eq('status', 'ACTIVE')
-        .not('template_id', 'is', null)
-        .eq('template.category', 'VEHICLE');
+        .eq('category', 'VEHICLE');
 
     if (error) {
         console.error('[CatalogCache] Fetch Error:', error.message);
@@ -108,18 +109,23 @@ export async function fetchCatalogServerSide(leadId?: string): Promise<ProductVa
     const userDistrict = pricingContext.district;
     const stateCode = pricingContext.stateCode;
 
-    if (!dealerId) return [];
-
     // 2. Parallel Fetch - SOT Phase 3: Rules removed, pricing from JSON
     const [rawCatalog, offerData] = await Promise.all([
         withCache(() => getRawCatalog(), ['raw-catalog'], {
             revalidate: 3600,
             tags: [CACHE_TAGS.catalog, CACHE_TAGS.catalog_global],
         }),
-        withCache(() => getRawDealerOffers(dealerId, stateCode), ['dealer-offers', dealerId, stateCode], {
-            revalidate: 3600,
-            tags: [CACHE_TAGS.catalog, CACHE_TAGS.offers, tenantTag(dealerId), districtTag(userDistrict || 'ALL')],
-        }),
+        dealerId
+            ? withCache(() => getRawDealerOffers(dealerId, stateCode), ['dealer-offers', dealerId, stateCode], {
+                  revalidate: 3600,
+                  tags: [
+                      CACHE_TAGS.catalog,
+                      CACHE_TAGS.offers,
+                      tenantTag(dealerId),
+                      districtTag(userDistrict || 'ALL'),
+                  ],
+              })
+            : Promise.resolve([]),
     ]);
 
     if (!rawCatalog) return [];
@@ -150,8 +156,7 @@ export async function fetchCatalogServerSide(leadId?: string): Promise<ProductVa
     // 3.1 Dealer-only filter
     const activeOffers = offerData || [];
     const activeVehicleColorIds = new Set(activeOffers.map((offer: any) => offer.vehicle_color_id));
-
-    if (activeVehicleColorIds.size === 0) return [];
+    const hasEligibility = Boolean(dealerId) && activeVehicleColorIds.size > 0;
 
     const collectVariantSkus = (variant: any) => {
         const directSkus = Array.isArray(variant?.skus) ? variant.skus : [];
@@ -161,44 +166,46 @@ export async function fetchCatalogServerSide(leadId?: string): Promise<ProductVa
         return [...directSkus, ...colorSkus];
     };
 
-    filteredData = filteredData
-        .map(family => ({
-            ...family,
-            children: (family.children || [])
-                .map((variant: any) => {
-                    const eligibleSkus = collectVariantSkus(variant).filter((sku: any) =>
-                        activeVehicleColorIds.has(sku.id)
-                    );
+    if (hasEligibility) {
+        filteredData = filteredData
+            .map(family => ({
+                ...family,
+                children: (family.children || [])
+                    .map((variant: any) => {
+                        const eligibleSkus = collectVariantSkus(variant).filter((sku: any) =>
+                            activeVehicleColorIds.has(sku.id)
+                        );
 
-                    const filteredColors = Array.isArray(variant?.colors)
-                        ? variant.colors
-                              .map((c: any) => ({
-                                  ...c,
-                                  skus: Array.isArray(c?.skus)
-                                      ? c.skus.filter((sku: any) => activeVehicleColorIds.has(sku.id))
-                                      : [],
-                              }))
-                              .filter((c: any) => c.skus && c.skus.length > 0)
-                        : [];
+                        const filteredColors = Array.isArray(variant?.colors)
+                            ? variant.colors
+                                  .map((c: any) => ({
+                                      ...c,
+                                      skus: Array.isArray(c?.skus)
+                                          ? c.skus.filter((sku: any) => activeVehicleColorIds.has(sku.id))
+                                          : [],
+                                  }))
+                                  .filter((c: any) => c.skus && c.skus.length > 0)
+                            : [];
 
-                    return {
-                        ...variant,
-                        skus: Array.isArray(variant?.skus)
-                            ? variant.skus.filter((sku: any) => activeVehicleColorIds.has(sku.id))
-                            : [],
-                        colors: filteredColors,
-                        _eligibleSkuCount: eligibleSkus.length,
-                    };
-                })
-                .filter((variant: any) => variant._eligibleSkuCount > 0),
-        }))
-        .filter(family => family.children && family.children.length > 0);
+                        return {
+                            ...variant,
+                            skus: Array.isArray(variant?.skus)
+                                ? variant.skus.filter((sku: any) => activeVehicleColorIds.has(sku.id))
+                                : [],
+                            colors: filteredColors,
+                            _eligibleSkuCount: eligibleSkus.length,
+                        };
+                    })
+                    .filter((variant: any) => variant._eligibleSkuCount > 0),
+            }))
+            .filter(family => family.children && family.children.length > 0);
+    }
 
     // SOT Phase 3: Pass empty arrays for rules - pricing comes from JSON columns
     return mapCatalogItems(
         filteredData,
         [], // ruleData deprecated
         [], // insuranceRuleData deprecated
-        { stateCode, userLat, userLng, userDistrict, offers: offerData || [], requireEligibility: true }
+        { stateCode, userLat, userLng, userDistrict, offers: offerData || [], requireEligibility: hasEligibility }
     );
 }

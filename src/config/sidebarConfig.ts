@@ -117,7 +117,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
             {
                 title: 'Leads',
                 href: '/leads',
-                icon: Users,
+                icon: Megaphone,
                 color: 'text-brand-gold',
                 allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
                 allowedRoles: [
@@ -178,7 +178,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 title: 'Finance',
                 href: '/sales-orders?stage=FINANCE',
                 icon: Landmark,
-                color: 'text-brand-primary',
+                color: 'text-emerald-500',
                 allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
                 allowedRoles: [
                     'OWNER',

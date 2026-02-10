@@ -21,7 +21,7 @@ export async function getPricingLedger(tenantId: string) {
     // STATE CODE - Default to MH for now (proper logic would use tenant settings)
     const stateCode = 'MH';
 
-    // 1. Fetch SKUs with their hierarchy (Parent=VARIANT, Grandparent=FAMILY)
+    // 1. Fetch SKUs with their hierarchy (Parent=UNIT, Grandparent=VARIANT, Great-grandparent=PRODUCT)
     const { data: skus, error } = await supabase
         .from('cat_items')
         .select(
@@ -38,14 +38,13 @@ export async function getPricingLedger(tenantId: string) {
                 type,
                 specs,
                 position,
-                parent:parent_id (
+                    parent:parent_id (
                     id,
                     name,
                     type,
                     brand_id,
                     brand:cat_brands (id, name),
-                    template_id,
-                    template:cat_templates (id, category, code)
+                    category
                 )
             )
         `
@@ -110,13 +109,11 @@ export async function getPricingLedger(tenantId: string) {
         const variant = sku.parent || {};
         const family = variant.parent || {};
         const brand = family.brand || {};
-        const template = family.template || {};
-
         const price = priceMap.get(sku.id);
         const rule = dealerRulesMap.get(sku.id);
 
         // Category normalization: DB 'VEHICLE' -> UI 'vehicles'
-        let category = (template.category || 'VEHICLE').toLowerCase();
+        let category = (family.category || 'VEHICLE').toLowerCase();
         // Pluralize for UI filter compatibility
         if (category === 'vehicle') category = 'vehicles';
         else if (category === 'accessory') category = 'accessories';

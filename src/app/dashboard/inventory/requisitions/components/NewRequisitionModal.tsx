@@ -61,7 +61,7 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
 
     const fetchModels = async (brandId: string) => {
         setLoading(true);
-        const { data } = await supabase.from('cat_items').select('*').eq('brand_id', brandId).eq('type', 'FAMILY');
+        const { data } = await supabase.from('cat_items').select('*').eq('brand_id', brandId).eq('type', 'PRODUCT');
         setModels(data || []);
         setLoading(false);
     };

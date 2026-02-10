@@ -24,19 +24,19 @@ const FAMILY_SLUG = 'yamaha-fascino125fihybrid';
 async function main() {
     console.log('Linking localized assets for Yamaha Fascino 125...');
 
-    // 1. Get Family
+    // 1. Get Product
     const { data: family, error: familyError } = await supabase
         .from('cat_items')
         .select('id, name')
         .eq('slug', FAMILY_SLUG)
-        .eq('type', 'FAMILY')
+        .eq('type', 'PRODUCT')
         .single();
 
     if (familyError || !family) {
-        console.error('Family not found!', familyError);
+        console.error('Product not found!', familyError);
         return;
     }
-    console.log(`Found Family: ${family.name} (${family.id})`);
+    console.log(`Found Product: ${family.name} (${family.id})`);
 
     // 2. Get Variants
     const { data: variants, error: variantsError } = await supabase
@@ -50,7 +50,7 @@ async function main() {
         return;
     }
 
-    // 3. Update COLOR_DEFS and link SKU assets
+    // 3. Update UNITs and link SKU assets
     for (const v of variants) {
         console.log(`Processing Variant: ${v.name}`);
         const variantSlug = v.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -59,7 +59,7 @@ async function main() {
             .from('cat_items')
             .select('id, name, slug, specs')
             .eq('parent_id', v.id)
-            .eq('type', 'COLOR_DEF');
+            .eq('type', 'UNIT');
 
         if (colorsError || !colors) {
             console.error(`Colors not found for ${v.name}!`, colorsError);
@@ -70,12 +70,12 @@ async function main() {
             // Local path for static image
             const localStaticPath = `/media/yamaha/fascino-125-fi-hybrid/${variantSlug}/${c.slug}/static.webp`;
 
-            console.log(`Updating COLOR_DEF: ${c.name} with static path ${localStaticPath}`);
+            console.log(`Updating UNIT: ${c.name} with static path ${localStaticPath}`);
             const updatedSpecs = { ...(c.specs as object), image_url: localStaticPath, is_360: true };
 
             await supabase.from('cat_items').update({ specs: updatedSpecs }).eq('id', c.id);
 
-            // Find SKU under this COLOR_DEF
+            // Find SKU under this UNIT
             const { data: sku } = await supabase
                 .from('cat_items')
                 .select('id, name')

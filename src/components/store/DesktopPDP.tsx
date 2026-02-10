@@ -68,6 +68,7 @@ const WarrantyTab = dynamic(() => import('./Personalize/Tabs/WarrantyTab'), {
 
 import PricingCard from './Personalize/Cards/PricingCard';
 import FinanceCard from './Personalize/Cards/FinanceCard';
+import TechSpecsSection from './Personalize/TechSpecsSection';
 
 interface DesktopPDPProps {
     product: any;
@@ -103,6 +104,8 @@ interface DesktopPDPProps {
         ) => void;
         setUserDownPayment: (amount: number) => void;
     };
+    initialLocation?: any;
+    bestOffer?: any;
 }
 
 const FullLayoutDebugger = () => {
@@ -217,6 +220,8 @@ export function DesktopPDP({
     handlers,
     leadContext,
     basePath = '/store',
+    initialLocation,
+    bestOffer,
 }: DesktopPDPProps) {
     const { language } = useI18n();
     // Configuration Constants
@@ -343,14 +348,23 @@ export function DesktopPDP({
             breakdown: rtoBreakdown,
             comparisonOptions: data?.rtoOptions,
         },
-        { label: 'Required Insurance', value: baseInsurance, breakdown: insuranceBreakdown },
-        { label: 'Extra Insurance', value: (data.insuranceAddonsPrice || 0) + (data.insuranceAddonsDiscount || 0) },
-        { label: 'Accessories', value: (data.accessoriesPrice || 0) + (data.accessoriesDiscount || 0) },
-        { label: 'Services / AMC', value: (data.servicesPrice || 0) + (data.servicesDiscount || 0) },
+        { label: 'Insurance', value: baseInsurance, breakdown: insuranceBreakdown },
+        { label: 'Insurance Add-ons', value: (data.insuranceAddonsPrice || 0) + (data.insuranceAddonsDiscount || 0) },
+        {
+            label: 'Mandatory Accessories',
+            value: accessoriesPrice,
+            breakdown: activeAccessories
+                .filter((a: any) => a.isMandatory)
+                .map((a: any) => ({ label: a.displayName || a.name, amount: a.discountPrice || a.price })),
+        },
+        {
+            label: 'Optional Accessories',
+            value: (data.accessoriesPrice || 0) + (data.accessoriesDiscount || 0) - accessoriesPrice,
+        },
+        { label: 'Services', value: (data.servicesPrice || 0) + (data.servicesDiscount || 0) },
         ...(otherCharges > 0 ? [{ label: 'Other Charges', value: otherCharges }] : []),
         { label: 'Delivery TAT', value: '7 DAYS', isInfo: true },
         ...(totalSurge > 0 ? [{ label: 'Surge Applied', value: totalSurge, helpText: surgeHelpLines }] : []),
-        { label: 'Savings Applied', value: totalSavings, isDeduction: true, helpText: savingsHelpLines },
     ];
 
     const getProductImage = () => {
@@ -374,63 +388,75 @@ export function DesktopPDP({
         const finalPrice = item.discountPrice > 0 ? item.discountPrice : item.price;
 
         return (
-            <div className="group/item relative">
+            <div className="group/item relative h-full">
                 <button
                     onClick={() => !isMandatory && onToggle && onToggle()}
                     disabled={isMandatory}
-                    className={`w-full p-4 rounded-2xl border transition-all duration-500 flex items-center justify-between gap-3 group/btn
+                    className={`w-full h-full p-4 rounded-3xl border transition-all duration-500 flex flex-col justify-between gap-4 group/btn
                         ${
                             isSelected
-                                ? 'bg-brand-primary/10 border-brand-primary/40 shadow-[0_10px_30px_rgba(255,215,0,0.15)] dark:shadow-[0_10px_30px_rgba(255,215,0,0.1)]'
-                                : 'bg-slate-50/50 dark:bg-white/[0.02] border-slate-100 dark:border-white/5 hover:border-slate-200 dark:hover:border-white/10 hover:bg-slate-100/50 dark:hover:bg-white/[0.04]'
-                        } ${isMandatory ? 'cursor-default' : 'cursor-pointer hover:-translate-y-1 hover:shadow-lg hover:shadow-black/5'} transition-all`}
+                                ? 'bg-brand-primary/[0.08] dark:bg-brand-primary/[0.04] border-brand-primary/40 shadow-[0_15px_40px_rgba(255,215,0,0.1)]'
+                                : 'bg-white/40 dark:bg-white/[0.02] border-slate-100 dark:border-white/5 hover:border-slate-200 dark:hover:border-white/10 hover:bg-white dark:hover:bg-white/[0.04]'
+                        } ${isMandatory ? 'cursor-default' : 'cursor-pointer hover:-translate-y-1 hover:shadow-xl hover:shadow-black/5'}`}
                 >
-                    <div className="flex items-center gap-3 min-w-0">
-                        <div
-                            className={`w-8 h-8 rounded-xl flex items-center justify-center border transition-all duration-500 shrink-0
-                            ${
-                                isSelected
-                                    ? 'bg-[#FFD700] text-black border-[#FFD700] shadow-[0_0_20px_rgba(255,215,0,0.5)] scale-110'
-                                    : 'bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-white/10 group-hover/btn:border-slate-300 dark:group-hover/btn:border-white/20'
-                            }`}
-                        >
-                            {isRadio ? (
-                                <div
-                                    className={`w-2.5 h-2.5 rounded-full ${isSelected ? 'bg-black' : 'bg-transparent'}`}
-                                />
-                            ) : isMandatory ? (
-                                <CheckCircle2 size={16} strokeWidth={3} />
-                            ) : isSelected ? (
-                                <CheckCircle2 size={16} strokeWidth={3} />
-                            ) : (
-                                <Plus size={16} />
-                            )}
-                        </div>
-                        <div className="flex flex-col items-start min-w-0">
-                            <span
-                                className={`text-[11px] font-black uppercase tracking-tight truncate w-full ${isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}
+                    <div className="w-full flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div
+                                className={`w-9 h-9 rounded-2xl flex items-center justify-center border transition-all duration-500 shrink-0
+                                ${
+                                    isSelected
+                                        ? 'bg-brand-primary text-black border-brand-primary shadow-[0_0_20px_rgba(255,215,0,0.5)] scale-105'
+                                        : 'bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-zinc-600 border-slate-200 dark:border-white/10'
+                                }`}
                             >
-                                {item.displayName || item.name}
-                            </span>
-                            <div className="flex items-center gap-2 mt-0.5">
-                                <span
-                                    className={`text-[10px] font-bold ${isSelected ? 'text-brand-primary' : 'text-slate-600 dark:text-slate-500'}`}
-                                >
-                                    ₹{finalPrice.toLocaleString()}
-                                </span>
-                                {item.discountPrice > 0 && (
-                                    <span className="text-[9px] text-slate-400 dark:text-slate-600 line-through font-bold">
-                                        ₹{item.price.toLocaleString()}
-                                    </span>
+                                {isRadio ? (
+                                    <div
+                                        className={`w-2.5 h-2.5 rounded-full ${isSelected ? 'bg-black' : 'bg-transparent'}`}
+                                    />
+                                ) : isMandatory ? (
+                                    <CheckCircle2 size={18} strokeWidth={3} />
+                                ) : isSelected ? (
+                                    <CheckCircle2 size={18} strokeWidth={3} />
+                                ) : (
+                                    <Plus size={18} />
                                 )}
                             </div>
+                            <div className="flex flex-col items-start min-w-0">
+                                <span
+                                    className={`text-xs font-black uppercase tracking-tight leading-tight mb-1 truncate w-full ${isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-zinc-400'}`}
+                                >
+                                    {item.displayName || item.name}
+                                </span>
+                                <div className="flex items-baseline gap-1.5">
+                                    <span
+                                        className={`text-sm font-black font-mono ${isSelected ? 'text-brand-primary' : 'text-slate-900 dark:text-zinc-300'}`}
+                                    >
+                                        ₹{finalPrice.toLocaleString()}
+                                    </span>
+                                    {item.discountPrice > 0 && (
+                                        <span className="text-[10px] text-slate-400 dark:text-zinc-600 line-through font-bold">
+                                            ₹{item.price.toLocaleString()}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
                         </div>
+
+                        {(item.description || breakdown) && (
+                            <div
+                                className={`p-1.5 rounded-full transition-colors ${isSelected ? 'bg-brand-primary/20 text-brand-primary' : 'text-slate-400 hover:text-brand-primary'}`}
+                            >
+                                <Info size={14} />
+                            </div>
+                        )}
                     </div>
 
-                    {(item.description || breakdown) && (
-                        <div className="text-slate-600 hover:text-brand-primary transition-colors p-1 shrink-0">
-                            <HelpCircle size={14} />
-                        </div>
+                    {item.description && (
+                        <p
+                            className={`text-[10px] leading-relaxed text-left line-clamp-2 ${isSelected ? 'text-slate-700 dark:text-zinc-400' : 'text-slate-400 dark:text-zinc-600'}`}
+                        >
+                            {item.description}
+                        </p>
                     )}
                 </button>
 
@@ -483,33 +509,51 @@ export function DesktopPDP({
     const renderCategoryContent = (categoryId: string) => {
         if (categoryId === 'ACCESSORIES') {
             return (
-                <div className="space-y-6">
+                <div className="space-y-8">
                     {activeAccessories.filter((a: any) => a.isMandatory).length > 0 && (
-                        <div className="space-y-3">
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-3 px-2">
+                                <Package size={14} className="text-brand-primary" />
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                    Mandatory Extras
+                                </span>
+                                <div className="flex-1 h-px bg-slate-200 dark:bg-white/5" />
+                            </div>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                {activeAccessories
+                                    .filter((a: any) => a.isMandatory)
+                                    .map((acc: any) => (
+                                        <ConfigItemRow
+                                            key={acc.id}
+                                            item={acc}
+                                            isSelected={true}
+                                            onToggle={() => {}}
+                                            isMandatory={true}
+                                        />
+                                    ))}
+                            </div>
+                        </div>
+                    )}
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3 px-2">
+                            <Plus size={14} className="text-brand-primary" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                Personalize Your Ride
+                            </span>
+                            <div className="flex-1 h-px bg-slate-200 dark:bg-white/5" />
+                        </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                             {activeAccessories
-                                .filter((a: any) => a.isMandatory)
+                                .filter((a: any) => !a.isMandatory)
                                 .map((acc: any) => (
                                     <ConfigItemRow
                                         key={acc.id}
                                         item={acc}
-                                        isSelected={true}
-                                        onToggle={() => {}}
-                                        isMandatory={true}
+                                        isSelected={selectedAccessories.includes(acc.id)}
+                                        onToggle={() => toggleAccessory(acc.id)}
                                     />
                                 ))}
                         </div>
-                    )}
-                    <div className="space-y-3">
-                        {activeAccessories
-                            .filter((a: any) => !a.isMandatory)
-                            .map((acc: any) => (
-                                <ConfigItemRow
-                                    key={acc.id}
-                                    item={acc}
-                                    isSelected={selectedAccessories.includes(acc.id)}
-                                    onToggle={() => toggleAccessory(acc.id)}
-                                />
-                            ))}
                     </div>
                 </div>
             );
@@ -517,29 +561,47 @@ export function DesktopPDP({
 
         if (categoryId === 'INSURANCE') {
             return (
-                <div className="space-y-6">
-                    <div className="space-y-3">
-                        {insuranceRequiredItems.map((item: any) => (
-                            <ConfigItemRow
-                                key={item.id}
-                                item={item}
-                                isSelected={true}
-                                onToggle={() => {}}
-                                isMandatory={true}
-                                breakdown={item.breakdown}
-                            />
-                        ))}
+                <div className="space-y-8">
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3 px-2">
+                            <ShieldCheck size={14} className="text-brand-primary" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                Standard Protection
+                            </span>
+                            <div className="flex-1 h-px bg-slate-200 dark:bg-white/5" />
+                        </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            {insuranceRequiredItems.map((item: any) => (
+                                <ConfigItemRow
+                                    key={item.id}
+                                    item={item}
+                                    isSelected={true}
+                                    onToggle={() => {}}
+                                    isMandatory={true}
+                                    breakdown={item.breakdown}
+                                />
+                            ))}
+                        </div>
                     </div>
-                    <div className="space-y-3">
-                        {availableInsuranceAddons.map((item: any) => (
-                            <ConfigItemRow
-                                key={item.id}
-                                item={item}
-                                isSelected={selectedInsuranceAddons.includes(item.id)}
-                                onToggle={() => toggleInsuranceAddon(item.id)}
-                                breakdown={item.breakdown}
-                            />
-                        ))}
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3 px-2">
+                            <Zap size={14} className="text-brand-primary" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                Enhanced Coverage Add-ons
+                            </span>
+                            <div className="flex-1 h-px bg-slate-200 dark:bg-white/5" />
+                        </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            {availableInsuranceAddons.map((item: any) => (
+                                <ConfigItemRow
+                                    key={item.id}
+                                    item={item}
+                                    isSelected={selectedInsuranceAddons.includes(item.id)}
+                                    onToggle={() => toggleInsuranceAddon(item.id)}
+                                    breakdown={item.breakdown}
+                                />
+                            ))}
+                        </div>
                     </div>
                 </div>
             );
@@ -568,49 +630,76 @@ export function DesktopPDP({
             ];
             const items = data.rtoOptions && data.rtoOptions.length > 0 ? data.rtoOptions : fallbackOptions;
             return (
-                <div className="space-y-3">
-                    {items.map((item: any) => (
-                        <ConfigItemRow
-                            key={item.id}
-                            item={item}
-                            isSelected={regType === item.id}
-                            onToggle={() => setRegType(item.id as any)}
-                            isRadio
-                            breakdown={item.breakdown}
-                        />
-                    ))}
+                <div className="space-y-4">
+                    <div className="flex items-center gap-3 px-2">
+                        <ClipboardList size={14} className="text-brand-primary" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                            Select Registration Type
+                        </span>
+                        <div className="flex-1 h-px bg-slate-200 dark:bg-white/5" />
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {items.map((item: any) => (
+                            <ConfigItemRow
+                                key={item.id}
+                                item={item}
+                                isSelected={regType === item.id}
+                                onToggle={() => setRegType(item.id as any)}
+                                isRadio
+                                breakdown={item.breakdown}
+                            />
+                        ))}
+                    </div>
                 </div>
             );
         }
 
         if (categoryId === 'SERVICES') {
             return (
-                <div className="space-y-3">
-                    {activeServices.map((service: any) => (
-                        <ConfigItemRow
-                            key={service.id}
-                            item={service}
-                            isSelected={selectedServices.includes(service.id)}
-                            onToggle={() => toggleService(service.id)}
-                            breakdown={service.breakdown}
-                        />
-                    ))}
+                <div className="space-y-4">
+                    <div className="flex items-center gap-3 px-2">
+                        <Wrench size={14} className="text-brand-primary" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                            Care & Maintenance Plans
+                        </span>
+                        <div className="flex-1 h-px bg-slate-200 dark:bg-white/5" />
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {activeServices.map((service: any) => (
+                            <ConfigItemRow
+                                key={service.id}
+                                item={service}
+                                isSelected={selectedServices.includes(service.id)}
+                                onToggle={() => toggleService(service.id)}
+                                breakdown={service.breakdown}
+                            />
+                        ))}
+                    </div>
                 </div>
             );
         }
 
         if (categoryId === 'WARRANTY') {
             return (
-                <div className="space-y-3">
-                    {warrantyItems.map((item: any) => (
-                        <ConfigItemRow
-                            key={item.id}
-                            item={item}
-                            isSelected={true}
-                            onToggle={() => {}}
-                            isMandatory={true}
-                        />
-                    ))}
+                <div className="space-y-4">
+                    <div className="flex items-center gap-3 px-2">
+                        <Gift size={14} className="text-brand-primary" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                            Longevity Protection
+                        </span>
+                        <div className="flex-1 h-px bg-slate-200 dark:bg-white/5" />
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {warrantyItems.map((item: any) => (
+                            <ConfigItemRow
+                                key={item.id}
+                                item={item}
+                                isSelected={true}
+                                onToggle={() => {}}
+                                isMandatory={true}
+                            />
+                        ))}
+                    </div>
                 </div>
             );
         }
@@ -621,6 +710,7 @@ export function DesktopPDP({
     // Video Modal State
     const [isVideoOpen, setIsVideoOpen] = useState(false);
     const [mobileConfigOpen, setMobileConfigOpen] = useState<string | null>('ACCESSORIES');
+    const [activeConfigTab, setActiveConfigTab] = useState<string | null>('ACCESSORIES');
 
     const configCards = [
         {
@@ -733,8 +823,8 @@ export function DesktopPDP({
             </div>
             {/* 1. Sticky PDP Command Bar (Floating Design) */}
             <div
-                className="hidden md:flex sticky z-[90] w-full justify-center transition-all duration-300 py-0 px-4 mb-4 mt-[calc(var(--header-h)+16px)]"
-                style={{ top: 'var(--header-h)' }}
+                className="hidden md:flex sticky z-[90] w-full justify-center transition-all duration-300 py-0 px-4 mb-4"
+                style={{ top: 'var(--header-h)', marginTop: 'calc(var(--header-h) + 16px)' }}
             >
                 <div className="page-container w-full">
                     <div className="w-full bg-white/60 dark:bg-[#0b0d10]/60 backdrop-blur-3xl border border-slate-200/60 dark:border-white/10 rounded-full h-[var(--header-h)] px-8 flex items-center justify-between shadow-2xl shadow-black/10 ring-1 ring-black/5 dark:ring-white/5">
@@ -877,9 +967,15 @@ export function DesktopPDP({
                             variantName={displayVariant}
                             activeColor={{ name: displayColor || activeColorConfig.name, hex: activeColorConfig.hex }}
                             totalOnRoad={totalOnRoad}
+                            totalSavings={totalSavings}
+                            originalPrice={totalOnRoad + totalSavings}
                             priceBreakup={priceBreakupData}
                             productImage={getProductImage()}
-                            pricingSource={data.pricingSource}
+                            pricingSource={
+                                [initialLocation?.district, bestOffer?.dealer?.business_name]
+                                    .filter(Boolean)
+                                    .join(' • ') || data.pricingSource
+                            }
                             leadName={leadContext?.name}
                         />
                     </motion.div>
@@ -900,6 +996,8 @@ export function DesktopPDP({
                             interestType={interestType}
                             schemeId={initialFinance?.scheme?.id}
                             financeCharges={financeCharges}
+                            bank={initialFinance?.bank}
+                            scheme={initialFinance?.scheme}
                         />
                     </motion.div>
                 </motion.div>
@@ -948,43 +1046,103 @@ export function DesktopPDP({
                     })}
                 </div>
 
-                {/* 4. Modular 5-Pillar Configuration Grid (Consolidated Design) */}
-                <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+                {/* 4. Modular 5-Pillar Configuration Grid (Horizontal Accordion Design) */}
+                <div className="hidden md:flex flex-row gap-4 h-[720px] overflow-visible">
                     {configCards.map((category, idx) => {
                         const Icon = category.icon;
+                        const isActive = activeConfigTab === category.id;
+
                         return (
                             <motion.div
                                 key={category.id}
+                                layout
                                 custom={idx}
                                 variants={configVariants}
                                 initial="hidden"
                                 animate="visible"
+                                onClick={() => setActiveConfigTab(category.id)}
+                                className={`relative rounded-[2.5rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between shrink-0 lg:shrink
+                                    ${
+                                        isActive
+                                            ? 'flex-[3] bg-white dark:bg-[#0b0d10] border-slate-200 dark:border-white/10 shadow-2xl dark:shadow-[0_40px_80px_rgba(0,0,0,0.5)]'
+                                            : 'flex-[0.5] bg-white/40 dark:bg-white/[0.03] backdrop-blur-xl border-white/60 dark:border-white/5 hover:bg-white/60 dark:hover:bg-white/[0.06] shadow-lg shadow-black/[0.03]'
+                                    }`}
                             >
-                                <div className="glass-panel bg-white/90 dark:bg-[#0b0d10]/40 rounded-[3rem] h-[720px] flex flex-col border border-slate-200 dark:border-white/5 shadow-2xl relative overflow-hidden group/pillar hover:-translate-y-2 hover:shadow-brand-primary/10 transition-all duration-500">
-                                    {/* Consolidated Header Section - Unified Background */}
-                                    <div className="p-6 border-b border-slate-100 dark:border-white/5 flex flex-col items-start gap-4 h-20 shrink-0 relative overflow-hidden transition-colors group-hover/pillar:bg-white/[0.02]">
-                                        <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-brand-primary relative z-10">
-                                            <Icon size={16} />
-                                            <span>{category.label}</span>
-                                        </div>
-                                        {/* Subtle Ambient Glow */}
-                                        <div className="absolute -top-4 -right-4 w-16 h-16 bg-brand-primary/10 blur-2xl rounded-full" />
+                                {/* Header / Category Label (Always visible) */}
+                                <div
+                                    className={`p-6 flex items-center gap-3 transition-colors duration-500 shrink-0 ${isActive ? 'bg-brand-primary/[0.03] border-b border-slate-100 dark:border-white/5' : ''}`}
+                                >
+                                    <div
+                                        className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500
+                                        ${isActive ? 'bg-brand-primary text-black shadow-[0_0_20px_rgba(255,215,0,0.4)]' : 'bg-slate-200 dark:bg-white/5 text-slate-400 dark:text-zinc-600'}`}
+                                    >
+                                        <Icon size={20} />
                                     </div>
 
-                                    {/* Content Area Section */}
-                                    <div className="flex-1 overflow-hidden flex flex-col p-2">
-                                        <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar space-y-4 p-2 pb-12">
-                                            {renderCategoryContent(category.id)}
-                                        </div>
+                                    <div
+                                        className={`flex flex-col transition-all duration-500 ${isActive ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4 absolute'}`}
+                                    >
+                                        <span className="text-xs font-black uppercase tracking-[0.2em] text-brand-primary">
+                                            {category.label}
+                                        </span>
+                                        <span className="text-[10px] text-slate-500 dark:text-zinc-500 font-bold whitespace-nowrap">
+                                            {category.subtext}
+                                        </span>
                                     </div>
-
-                                    {/* Unified Bottom Fade - Theme Aware */}
-                                    <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white via-white/80 dark:from-black/80 dark:via-black/40 to-transparent pointer-events-none z-10" />
                                 </div>
+
+                                {/* Content Area (Only visible when active) */}
+                                <div className="flex-1 overflow-hidden relative">
+                                    <AnimatePresence mode="wait">
+                                        {isActive ? (
+                                            <motion.div
+                                                key="content"
+                                                initial={{ opacity: 0, x: 20 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                exit={{ opacity: 0, x: -20 }}
+                                                transition={{ duration: 0.4, delay: 0.2 }}
+                                                className="absolute inset-0 p-4 pt-2 flex flex-col"
+                                            >
+                                                <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar space-y-4 p-2 pb-12">
+                                                    {renderCategoryContent(category.id)}
+                                                </div>
+                                            </motion.div>
+                                        ) : (
+                                            <motion.div
+                                                key="vertical-label"
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                exit={{ opacity: 0 }}
+                                                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                                            >
+                                                <span className="text-2xl font-black uppercase tracking-[0.3em] text-slate-400/60 dark:text-white/10 -rotate-90 whitespace-nowrap">
+                                                    {category.label}
+                                                </span>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+
+                                {/* Unified Bottom Fade (Active state) */}
+                                {isActive && (
+                                    <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white via-white/80 dark:from-[#0b0d10] dark:via-[#0b0d10]/40 to-transparent pointer-events-none z-10" />
+                                )}
                             </motion.div>
                         );
                     })}
                 </div>
+
+                {/* 5. Technical Specifications Section */}
+                {product.specs && Object.keys(product.specs).length > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.8, duration: 0.6 }}
+                        className="glass-panel bg-white/90 dark:bg-[#0b0d10]/40 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-xl p-6 md:p-8"
+                    >
+                        <TechSpecsSection specs={product.specs} modelName={displayModel} variantName={displayVariant} />
+                    </motion.div>
+                )}
             </div>
 
             <div className="md:hidden fixed bottom-0 inset-x-0 z-[95] pb-[env(safe-area-inset-bottom)]">

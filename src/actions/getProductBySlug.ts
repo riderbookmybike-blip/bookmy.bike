@@ -34,9 +34,8 @@ export async function getProductBySlug(
         .from('cat_items')
         .select(
             `
-            id, type, name, slug, specs, price_base, brand_id,
+            id, type, name, slug, specs, price_base, brand_id, category,
             brand:cat_brands(name, logo_svg),
-            template:cat_templates!inner(name, code, category),
             children:cat_items!parent_id(
                 id,
                 type,
@@ -44,6 +43,7 @@ export async function getProductBySlug(
                 slug,
                 specs,
                 price_base,
+                category,
                 parent:cat_items!parent_id(name, slug),
                 position,
                 skus:cat_items!parent_id(
@@ -51,6 +51,7 @@ export async function getProductBySlug(
                     type,
                     status,
                     price_base,
+                    category,
                     specs,
                     is_primary,
                     image_url,
@@ -65,10 +66,10 @@ export async function getProductBySlug(
             )
         `
         )
-        .eq('type', 'FAMILY')
+        .eq('type', 'PRODUCT')
         .eq('status', 'ACTIVE')
         .eq('slug', decodedModel)
-        .eq('template.category', 'VEHICLE')
+        .eq('category', 'VEHICLE')
         .single();
 
     if (familyError || !familyData) {
@@ -126,7 +127,6 @@ export async function getProductBySlug(
     const filteredFamily: CatalogItemDB = {
         ...familyData,
         brand: familyData.brand as any,
-        template: familyData.template as any,
         children: matchedVariant ? [matchedVariant] : variants.length > 0 ? [variants[0]] : [],
     };
 

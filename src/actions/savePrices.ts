@@ -7,7 +7,7 @@ import { CACHE_TAGS, districtTag } from '@/lib/cache/tags';
 import { getAuthUser } from '@/lib/auth/resolver';
 
 interface PricePayload {
-    vehicle_color_id: string;
+    vehicle_color_id: string; // SKU id (cat_items.id). Legacy column name.
     state_code: string;
     district: string;
     ex_showroom_price: number;

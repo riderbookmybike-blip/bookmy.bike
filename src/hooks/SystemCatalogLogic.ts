@@ -27,7 +27,7 @@ interface CatalogItemDB {
     price_base: number;
     brand_id: string;
     brand: { name: string; logo_svg?: string };
-    template: { name: string; code: string; category: string };
+    category?: string;
     children?: {
         id: string;
         type: string;
@@ -231,7 +231,7 @@ export function useSystemCatalogLogic(leadId?: string) {
 
                         return {
                             id: s.family_id,
-                            type: 'FAMILY',
+                            type: 'PRODUCT',
                             make: makeName,
                             model: s.model_name,
                             variant: s.model_name, // Summary represents the Family-as-Variant
@@ -250,7 +250,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                             brand: { name: makeName, logo_svg: brand?.logo_svg },
                             // Construct a minimal structure for UI
                             specs: {},
-                            template: { category: 'VEHICLE' },
+                            category: 'VEHICLE',
                             children: [], // Details hidden in summary mode
                             // Custom field to indicate this is a summary
                             _isSummary: true,
@@ -298,9 +298,8 @@ export function useSystemCatalogLogic(leadId?: string) {
                         .from('cat_items')
                         .select(
                             `
-                            id, type, name, slug, specs, price_base, brand_id,
-                            brand:cat_brands(name, logo_svg),
-                            template:cat_templates!inner(name, code, category)
+                            id, type, name, slug, specs, price_base, brand_id, category,
+                            brand:cat_brands(name, logo_svg)
                         `
                         )
                         .in('id', familyIds);
@@ -346,9 +345,8 @@ export function useSystemCatalogLogic(leadId?: string) {
                     .from('cat_items')
                     .select(
                         `
-                        id, type, name, slug, specs, price_base, brand_id,
+                        id, type, name, slug, specs, price_base, brand_id, category,
                         brand:cat_brands(name, logo_svg),
-                        template:cat_templates!inner(name, code, category),
                         children:cat_items!parent_id(
                             id,
                             type,
@@ -356,6 +354,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                             slug,
                             specs,
                             price_base,
+                            category,
                             parent:cat_items!parent_id(name, slug),
                             position,
                             colors:cat_items!parent_id(
@@ -370,6 +369,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                                     type,
                                     status,
                                     price_base,
+                                    category,
                                     specs,
                                     is_primary,
                                     image_url,
@@ -388,6 +388,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                                 type,
                                 status,
                                 price_base,
+                                category,
                                 specs,
                                 is_primary,
                                 image_url,
@@ -403,10 +404,9 @@ export function useSystemCatalogLogic(leadId?: string) {
                         )
                     `
                     )
-                    .eq('type', 'FAMILY')
+                    .eq('type', 'PRODUCT')
                     .eq('status', 'ACTIVE')
-                    .not('template_id', 'is', null)
-                    .eq('template.category', 'VEHICLE');
+                    .eq('category', 'VEHICLE');
 
                 if (dbError) {
                     console.error('Database error fetching catalog:', JSON.stringify(dbError, null, 2));
@@ -504,13 +504,9 @@ export function useSystemCatalogLogic(leadId?: string) {
                     }
                 }
 
-                if (!resolvedDealerId || !isValidUuid(resolvedDealerId)) {
-                    setItems([]);
-                    setIsLoading(false);
-                    return;
-                }
+                const hasValidDealer = Boolean(resolvedDealerId && isValidUuid(resolvedDealerId));
 
-                if (resolvedStateCode && resolvedDealerId && !disableOffersRef.current) {
+                if (resolvedStateCode && hasValidDealer && !disableOffersRef.current) {
                     try {
                         const { data: dealerOffers, error: rpcError } = await (supabase.rpc as any)(
                             'get_dealer_offers',
@@ -583,13 +579,15 @@ export function useSystemCatalogLogic(leadId?: string) {
                     const userLat: number | null = cachedLocation.lat;
                     const userLng: number | null = cachedLocation.lng;
 
+                    const hasEligibility = Boolean(hasValidDealer && (offerData as any[])?.length > 0);
+
                     const mappedItems = mapCatalogItems(data as any[], ruleData || [], insuranceRuleData || [], {
                         stateCode: resolvedStateCode,
                         userLat,
                         userLng,
                         userDistrict: resolvedUserDistrict,
                         offers: offerData || [],
-                        requireEligibility: true,
+                        requireEligibility: hasEligibility,
                     });
 
                     let enrichedItems = mappedItems;

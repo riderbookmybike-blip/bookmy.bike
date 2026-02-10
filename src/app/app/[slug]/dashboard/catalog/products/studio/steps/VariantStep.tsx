@@ -20,7 +20,7 @@ function toTitleCase(str: string): string {
         .join(' ');
 }
 
-export default function VariantStep({ family, template, existingVariants, onUpdate, tenantId }: any) {
+export default function VariantStep({ family, existingVariants, onUpdate, tenantId }: any) {
     const [error, setError] = useState<string | null>(null);
     const [newVariantName, setNewVariantName] = useState('');
     const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -41,14 +41,14 @@ export default function VariantStep({ family, template, existingVariants, onUpda
     const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
 
     // Lookup Constants & State
-    const isLookupMode = template?.hierarchy_config?.l1_input_type === 'lookup';
+    const isLookupMode = false;
     const [lookupBrands, setLookupBrands] = useState<any[]>([]);
     const [lookupFamilies, setLookupFamilies] = useState<any[]>([]);
     const [lookupVariants, setLookupVariants] = useState<any[]>([]);
     const [selectedBrandId, setSelectedBrandId] = useState<string>('');
     const [selectedFamilyId, setSelectedFamilyId] = useState<string>('');
 
-    const l1Label = template?.hierarchy_config?.l1 || 'Variant';
+    const l1Label = 'Variant';
     // Mock/Common Suggestions if needed, or just unique existing ones
     const commonVariants = ['STANDARD', 'PRO', 'PLUS', 'SE', 'DISC', 'DRUM', 'BASE', 'TOP', 'LUXURY'];
 
@@ -189,7 +189,7 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                 let query = supabase
                     .from('cat_items')
                     .select('id, name, brand_id, brands:cat_brands(name)')
-                    .eq('type', 'FAMILY');
+                    .eq('type', 'PRODUCT');
 
                 if (selectedBrandId !== 'ALL') {
                     query = query.eq('brand_id', selectedBrandId);
@@ -256,7 +256,7 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                 type: 'VARIANT',
                 status: 'ACTIVE',
                 brand_id: family.brand_id,
-                template_id: family.template_id,
+                category: family.category || 'VEHICLE',
                 parent_id: family.id,
                 slug: generatedSlug,
                 position: nextPosition,
@@ -385,12 +385,8 @@ export default function VariantStep({ family, template, existingVariants, onUpda
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-left">
                 {existingVariants.map((v: any) => {
-                    // Dynamic key specs derived from template attributes
-                    const keyAttributes = (
-                        template?.attribute_config?.variant ||
-                        template?.attribute_config?.model ||
-                        []
-                    ).slice(0, 3);
+                    // No key attributes
+                    const keyAttributes: any[] = [];
 
                     return (
                         <div
@@ -712,41 +708,16 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                         </div>
                         <div className="flex flex-col gap-4">
                             <div className="flex items-center gap-4">
-                                {template?.hierarchy_config?.lookup &&
-                                Array.isArray(template.hierarchy_config.lookup) &&
-                                template.hierarchy_config.lookup.length > 0 ? (
-                                    <select
-                                        id="new-variant-input"
-                                        value={newVariantName}
-                                        onChange={e => setNewVariantName(e.target.value)}
-                                        className="flex-1 bg-transparent border-none p-0 text-2xl font-black uppercase italic text-slate-900 dark:text-white outline-none cursor-pointer appearance-none"
-                                        style={{ backgroundImage: 'none' }}
-                                    >
-                                        <option value="" disabled className="text-slate-300">
-                                            SELECT {l1Label}...
-                                        </option>
-                                        {template.hierarchy_config.lookup.map((opt: string) => (
-                                            <option
-                                                key={opt}
-                                                value={opt}
-                                                className="text-lg font-bold text-slate-700 bg-white dark:bg-slate-900"
-                                            >
-                                                {opt}
-                                            </option>
-                                        ))}
-                                    </select>
-                                ) : (
-                                    <input
-                                        id="new-variant-input"
-                                        type="text"
-                                        autoComplete="off"
-                                        value={newVariantName}
-                                        onChange={e => setNewVariantName(e.target.value)}
-                                        placeholder={`e.g. STANDARD...`}
-                                        onKeyDown={handleInputKeyDown}
-                                        className="flex-1 bg-transparent border-none p-0 text-2xl font-black uppercase italic text-slate-900 dark:text-white placeholder:text-slate-200 dark:placeholder:text-white/10 outline-none"
-                                    />
-                                )}
+                                <input
+                                    id="new-variant-input"
+                                    type="text"
+                                    autoComplete="off"
+                                    value={newVariantName}
+                                    onChange={e => setNewVariantName(e.target.value)}
+                                    placeholder={`e.g. STANDARD...`}
+                                    onKeyDown={handleInputKeyDown}
+                                    className="flex-1 bg-transparent border-none p-0 text-2xl font-black uppercase italic text-slate-900 dark:text-white placeholder:text-slate-200 dark:placeholder:text-white/10 outline-none"
+                                />
                                 <button
                                     onClick={() => handleAddVariant(newVariantName)}
                                     className="p-4 bg-slate-900 text-white rounded-2xl hover:bg-indigo-600 hover:scale-110 active:scale-95 transition-all shadow-xl shadow-slate-900/10"
@@ -868,10 +839,7 @@ export default function VariantStep({ family, template, existingVariants, onUpda
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {(Array.isArray(template?.attribute_config)
-                                ? []
-                                : template?.attribute_config?.variant || []
-                            ).map((attr: any) => (
+                            {([] as any[]).map((attr: any) => (
                                 <div
                                     key={attr.key}
                                     className={`space-y-2 ${attr.type === 'service_schedule' || attr.type === 'warranty' ? 'md:col-span-2 lg:col-span-3' : ''}`}

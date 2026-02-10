@@ -396,7 +396,7 @@ export default async function Page({ params, searchParams }: Props) {
     }
 
     // 2.5 Fetch SKUs EARLY (Needed for Market Offer Filtering)
-    // Unified schema: Variant -> COLOR_DEF -> SKU (new) OR Variant -> SKU (legacy)
+    // Unified schema: Variant -> UNIT -> SKU (new) OR Variant -> SKU (legacy)
     const { data: skus } = await supabase
         .from('cat_items')
         .select('id, name, slug, specs, price_base, parent_id')
@@ -407,7 +407,7 @@ export default async function Page({ params, searchParams }: Props) {
         .from('cat_items')
         .select('id, name, slug, specs, position')
         .eq('parent_id', item.id)
-        .eq('type', 'COLOR_DEF')
+        .eq('type', 'UNIT')
         .order('position', { ascending: true });
 
     let colorSkus: any[] = [];
@@ -475,12 +475,12 @@ export default async function Page({ params, searchParams }: Props) {
         .limit(1);
 
     // Fetch Accessories & Services
-    // Only fetch SKU-type items (final products), not FAMILY/VARIANT hierarchy items
+    // Only fetch SKU-type items (final products), not PRODUCT/VARIANT hierarchy items
     const { data: accessoriesData } = await supabase
         .from('cat_items')
-        .select('*, brand:cat_brands(name), template:cat_templates!inner(category, name)')
-        .eq('template.category', 'ACCESSORY')
-        .eq('type', 'SKU') // Only final SKUs, not FAMILY or VARIANT
+        .select('*, brand:cat_brands(name), category')
+        .eq('category', 'ACCESSORY')
+        .eq('type', 'SKU') // Only final SKUs, not PRODUCT or VARIANT
         .eq('status', 'ACTIVE');
 
     const { data: servicesData } = await supabase.from('cat_services').select('*').eq('status', 'ACTIVE');
@@ -838,7 +838,7 @@ export default async function Page({ params, searchParams }: Props) {
             }
 
             const accessoryName = nameBase || a.name;
-            const displayName = [a.brand?.name, a.template?.name].filter(Boolean).join(' ');
+            const displayName = [a.brand?.name, a.name].filter(Boolean).join(' ');
             const descriptionLabel = [accessoryName, colorLabel].filter(Boolean).join(' ');
 
             return {
@@ -852,9 +852,9 @@ export default async function Page({ params, searchParams }: Props) {
                 maxQty: 1,
                 isMandatory: isMandatory,
                 inclusionType: inclusionType,
-                category: a.template?.category || 'OTHERS',
+                category: a.category || 'OTHERS',
                 brand: a.brand?.name || null,
-                subCategory: a.template?.name || null,
+                subCategory: null,
             };
         });
 

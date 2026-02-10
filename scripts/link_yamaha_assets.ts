@@ -53,9 +53,9 @@ const COLORS = [
 async function main() {
     console.log(`Linking assets for ${MODEL_NAME}...`);
 
-    // 1. Fetch the FAMILY item (Hardcoded ID from ingestion log)
+    // 1. Fetch the PRODUCT item (Hardcoded ID from ingestion log)
     const familyId = '44b1597b-c7c4-45aa-9af1-7404c8f132b2';
-    console.log(`Using Hardcoded Family ID: ${familyId}`);
+    console.log(`Using Hardcoded Product ID: ${familyId}`);
 
     const { data: family, error: familyError } = await supabase
         .from('cat_items')
@@ -64,10 +64,10 @@ async function main() {
         .single();
 
     if (familyError || !family) {
-        console.error(`Family item ID '${familyId}' not found!`, familyError);
+        console.error(`Product item ID '${familyId}' not found!`, familyError);
         return;
     }
-    console.log(`Found Family ID: ${family.id}`);
+    console.log(`Found Product ID: ${family.id}`);
 
     // 2. Ensure Variant "Standard" exists
     const variantSlug = `${MODEL_NAME.toLowerCase()
@@ -115,19 +115,19 @@ async function main() {
             }
         }
 
-        // a. Ensure COLOR_DEF exists
+        // a. Ensure UNIT exists
         const colorSlug = `${variantSlug}-${color.slug}`;
         const { data: existingColorDef } = await supabase.from('cat_items').select('id').eq('slug', colorSlug).single();
 
         let colorDefId = existingColorDef?.id;
         if (!existingColorDef) {
-            console.log(`Creating COLOR_DEF: ${color.name}`);
+            console.log(`Creating UNIT: ${color.name}`);
             const { data: newColorDef, error: colorDefError } = await supabase
                 .from('cat_items')
                 .insert({
                     name: color.name,
                     slug: colorSlug,
-                    type: 'COLOR_DEF',
+                    type: 'UNIT',
                     parent_id: variantId,
                     brand_id: YAMAHA_BRAND_ID,
                     template_id: VEHICLE_TEMPLATE_ID,
@@ -150,13 +150,13 @@ async function main() {
                 .single();
 
             if (colorDefError) {
-                console.error(`Failed to create COLOR_DEF ${colorSlug}:`, colorDefError);
+                console.error(`Failed to create UNIT ${colorSlug}:`, colorDefError);
                 continue;
             }
             colorDefId = newColorDef.id;
         }
 
-        // b. Ensure SKU exists under COLOR_DEF
+        // b. Ensure SKU exists under UNIT
         const familySlug = MODEL_NAME.toLowerCase()
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/^-|-$/g, '');
@@ -222,7 +222,7 @@ async function main() {
             const { error: assetError } = await supabase.from('cat_assets').insert(assetRows);
             if (assetError) console.error('Error linking assets:', assetError);
 
-            // Also link to COLOR_DEF so Studio shows it?
+            // Also link to UNIT so Studio shows it?
             if (colorDefId) {
                 await supabase.from('cat_assets').delete().eq('item_id', colorDefId).eq('type', '360');
                 const assetRowsColor = urls360.map((url, index) => ({

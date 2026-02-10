@@ -110,7 +110,7 @@ async function main() {
         return;
     }
 
-    // 1. FAMILY
+    // 1. PRODUCT
     const familySlug = await findUniqueSlug(FASCINO_125.slug);
     const { data: family, error: familyError } = await supabase
         .from('cat_items')
@@ -118,7 +118,7 @@ async function main() {
             {
                 name: FASCINO_125.name,
                 slug: familySlug,
-                type: 'FAMILY',
+                type: 'PRODUCT',
                 brand_id: YAMAHA_BRAND_ID,
                 template_id: templateId,
                 status: 'ACTIVE',
@@ -132,10 +132,10 @@ async function main() {
         .single();
 
     if (familyError) {
-        console.error('Error creating family:', familyError);
+        console.error('Error creating product:', familyError);
         return;
     }
-    console.log('Family OK:', family.id);
+    console.log('Product OK:', family.id);
 
     // 2. VARIANTS
     for (const v of FASCINO_125.variants) {
@@ -165,7 +165,7 @@ async function main() {
         }
         console.log(`Variant OK: ${v.name} (${variant.id})`);
 
-        // 3. COLOR_DEFS & SKUs
+        // 3. UNITs & SKUs
         for (const c of v.colors) {
             const colorSlug = await findUniqueSlug(`${variantSlug}-${c.slug}`);
             const { data: colorDef, error: colorDefError } = await supabase
@@ -174,7 +174,7 @@ async function main() {
                     {
                         name: c.name,
                         slug: colorSlug,
-                        type: 'COLOR_DEF',
+                        type: 'UNIT',
                         parent_id: variant.id,
                         brand_id: YAMAHA_BRAND_ID,
                         template_id: templateId,
@@ -189,7 +189,7 @@ async function main() {
                 .single();
 
             if (colorDefError) {
-                console.error(`Error creating color_def ${c.name}:`, colorDefError);
+                console.error(`Error creating unit ${c.name}:`, colorDefError);
                 continue;
             }
 

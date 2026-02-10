@@ -251,7 +251,11 @@ export async function getCustomerHistory(customerId: string) {
 
 export async function getCatalogModels() {
     const supabase = await createClient();
-    const { data, error } = await supabase.from('cat_items').select('name').eq('type', 'FAMILY').eq('status', 'ACTIVE');
+    const { data, error } = await supabase
+        .from('cat_items')
+        .select('name')
+        .eq('type', 'PRODUCT')
+        .eq('status', 'ACTIVE');
 
     if (error) {
         console.error('Error fetching catalog models:', error);

@@ -19,6 +19,8 @@ interface FinanceCardProps {
     interestType?: string;
     schemeId?: string;
     financeCharges?: { id: string; label: string; value: number; helpText?: string }[];
+    bank?: any;
+    scheme?: any;
 }
 
 export default function FinanceCard({
@@ -35,6 +37,8 @@ export default function FinanceCard({
     interestType = 'REDUCING',
     schemeId,
     financeCharges = [],
+    bank,
+    scheme,
 }: FinanceCardProps) {
     const displayDownPayment = downPayment < 1 ? 0 : downPayment;
 
@@ -179,48 +183,119 @@ export default function FinanceCard({
                         const calculatedEmiForT = Math.round(calculateEMI(t));
                         const isSelected = emiTenure === t;
                         return (
-                            <button
-                                key={t}
-                                onClick={() => setEmiTenure && setEmiTenure(t)}
-                                className={`w-full group/item p-3 rounded-2xl border transition-all duration-300 flex items-center justify-between
-                                    ${
-                                        isSelected
-                                            ? 'bg-brand-primary/10 border-brand-primary shadow-[0_4px_15px_rgba(255,215,0,0.1)]'
-                                            : 'bg-white/5 border-white/5 hover:border-white/10 hover:bg-white/10'
-                                    }`}
-                            >
-                                <div className="flex flex-col items-start gap-0.5">
-                                    <span
-                                        className={`text-[10px] font-black uppercase tracking-widest ${isSelected ? 'text-brand-primary' : 'text-slate-600 dark:text-slate-400'}`}
-                                    >
-                                        {t} Months
-                                    </span>
-                                    <span
-                                        className={`text-[8px] font-bold uppercase tracking-widest ${isSelected ? 'text-slate-700 dark:text-slate-300' : 'text-slate-600 dark:text-slate-500'}`}
-                                    >
-                                        EMI TENURE
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <div className="text-right">
+                            <div key={t} className="relative group/tenure">
+                                <button
+                                    onClick={() => setEmiTenure && setEmiTenure(t)}
+                                    className={`w-full group/item p-3 rounded-2xl border transition-all duration-300 flex items-center justify-between
+                                        ${
+                                            isSelected
+                                                ? 'bg-brand-primary/10 border-brand-primary shadow-[0_4px_15px_rgba(255,215,0,0.1)]'
+                                                : 'bg-white/5 border-white/5 hover:border-white/10 hover:bg-white/10'
+                                        }`}
+                                >
+                                    <div className="flex flex-col items-start gap-0.5">
                                         <span
-                                            className={`block text-xs font-black font-mono tracking-tight ${isSelected ? 'text-brand-primary' : 'text-slate-700 dark:text-white/60'}`}
+                                            className={`text-[10px] font-black uppercase tracking-widest ${isSelected ? 'text-brand-primary' : 'text-slate-600 dark:text-slate-400'}`}
                                         >
-                                            ₹{calculatedEmiForT.toLocaleString()}
+                                            {t} Months
                                         </span>
-                                        <span className="block text-[7px] font-bold text-slate-600 dark:text-slate-500 uppercase">
-                                            MONTHLY EMI
+                                        <span
+                                            className={`text-[8px] font-bold uppercase tracking-widest ${isSelected ? 'text-slate-700 dark:text-slate-300' : 'text-slate-600 dark:text-slate-500'}`}
+                                        >
+                                            EMI TENURE
                                         </span>
                                     </div>
-                                    <div
-                                        className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${isSelected ? 'bg-brand-primary border-brand-primary' : 'border-white/10'}`}
-                                    >
-                                        {isSelected && (
-                                            <CheckCircle2 size={10} className="text-black" strokeWidth={4} />
-                                        )}
+                                    <div className="flex items-center gap-3">
+                                        <div className="text-right">
+                                            <span
+                                                className={`block text-xs font-black font-mono tracking-tight ${isSelected ? 'text-brand-primary' : 'text-slate-700 dark:text-white/60'}`}
+                                            >
+                                                ₹{calculatedEmiForT.toLocaleString()}
+                                            </span>
+                                            <span className="block text-[7px] font-bold text-slate-600 dark:text-slate-500 uppercase">
+                                                MONTHLY EMI
+                                            </span>
+                                        </div>
+                                        <div
+                                            className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${isSelected ? 'bg-brand-primary border-brand-primary' : 'border-white/10'}`}
+                                        >
+                                            {isSelected && (
+                                                <CheckCircle2 size={10} className="text-black" strokeWidth={4} />
+                                            )}
+                                        </div>
                                     </div>
+                                </button>
+
+                                {/* Detailed Tenure Tooltip */}
+                                <div className="absolute left-full ml-4 top-1/2 -translate-y-1/2 w-64 p-4 glass-panel dark:bg-[#0b0d10]/95 backdrop-blur-3xl rounded-3xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] opacity-0 invisible group-hover/tenure:opacity-100 group-hover/tenure:visible transition-all duration-300 z-[100] translate-x-2 group-hover/tenure:translate-x-0">
+                                    <div className="space-y-4">
+                                        <div className="pb-3 border-b border-white/5">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-primary mb-1">
+                                                Plan Overview
+                                            </p>
+                                            <p className="text-sm font-black text-white uppercase italic tracking-tighter">
+                                                {t} Months Plan
+                                            </p>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            {/* Financier & Scheme */}
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-[9px] font-bold uppercase text-slate-500 tracking-widest">
+                                                    Financier / Scheme
+                                                </span>
+                                                <span className="text-[10px] font-black text-white uppercase truncate">
+                                                    {bank?.name || 'Standard'} •{' '}
+                                                    {schemeId
+                                                        ? formatDisplayIdForUI(unformatDisplayId(schemeId))
+                                                        : 'Standard'}
+                                                </span>
+                                            </div>
+
+                                            {/* ROI Detail */}
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-[9px] font-bold uppercase text-slate-500 tracking-widest">
+                                                    Interest Rate
+                                                </span>
+                                                <span className="text-xs font-black text-brand-primary font-mono">
+                                                    {(annualInterest * 100).toFixed(2)}% {interestType}
+                                                </span>
+                                            </div>
+
+                                            {/* Charges Breakdown */}
+                                            {financeCharges && financeCharges.length > 0 && (
+                                                <div className="flex flex-col gap-2 pt-2 border-t border-white/5">
+                                                    <span className="text-[9px] font-bold uppercase text-slate-500 tracking-widest">
+                                                        Upfront Charges
+                                                    </span>
+                                                    <div className="space-y-1.5">
+                                                        {financeCharges.map((charge: any) => (
+                                                            <div key={charge.id}>
+                                                                <div className="flex justify-between items-center text-[10px]">
+                                                                    <span className="font-bold text-slate-300 uppercase truncate pr-2">
+                                                                        {charge.label}
+                                                                    </span>
+                                                                    <span className="font-mono font-black text-white">
+                                                                        ₹{charge.value.toLocaleString()}
+                                                                    </span>
+                                                                </div>
+                                                                {charge.helpText && (
+                                                                    <p className="text-[8px] text-slate-500 tracking-wide mt-1 leading-relaxed">
+                                                                        {charge.helpText}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Arrow for Tooltip */}
+                                    <div className="absolute right-full top-1/2 -translate-y-1/2 border-8 border-transparent border-r-[#0b0d10] dark:border-r-white/10" />
                                 </div>
-                            </button>
+                            </div>
                         );
                     })}
                 </div>

@@ -278,7 +278,7 @@ export const WishlistClient = () => {
             </div>
 
             {/* STICKY NAVBAR (Copied & Adapted) */}
-            <header className="sticky top-[var(--header-h)] z-40 mb-12 transition-all duration-300">
+            <header className="sticky z-40 mb-12 transition-all duration-300" style={{ top: 'var(--header-h)' }}>
                 <div className="w-full">
                     <div className="rounded-[2rem] bg-slate-50/80 dark:bg-[#0b0d10]/80 backdrop-blur-xl border border-slate-200 dark:border-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.08)] px-6 py-4">
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">

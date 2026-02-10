@@ -35,7 +35,7 @@ export interface FieldDiff {
 }
 
 export interface SyncItem {
-    type: 'FAMILY' | 'VARIANT' | 'COLOR_DEF' | 'SKU';
+    type: 'PRODUCT' | 'VARIANT' | 'UNIT' | 'SKU';
     name: string;
     action: SyncAction;
     existing_id?: string;
@@ -59,9 +59,7 @@ export interface SyncAsset {
 
 export interface SyncPlan {
     brand_id: string;
-    template_id: string | null;
     mode?: 'DISCOVERY' | 'ITEM';
-    can_sync?: boolean;
     items: SyncItem[];
     stats: {
         creates: number;
@@ -95,18 +93,17 @@ const NEVER_OVERWRITE_FIELDS = ['notes', 'manual_price_override', 'custom_descri
 export async function buildSyncPlan(params: {
     models: ExtractedModel[];
     brandId: string;
-    templateId?: string | null;
     matchOverrides?: Record<string, string>;
     mode?: 'DISCOVERY' | 'ITEM';
 }): Promise<SyncPlan> {
-    const { models, brandId, templateId, matchOverrides, mode = 'ITEM' } = params;
+    const { models, brandId, matchOverrides, mode = 'ITEM' } = params;
     const supabase = await createServerClient();
 
     const { data: existingFamilies } = await supabase
         .from('cat_items')
         .select('id, name, slug, specs, type, parent_id, price_base, status')
         .eq('brand_id', brandId)
-        .eq('type', 'FAMILY');
+        .eq('type', 'PRODUCT');
 
     const familyByExternalId = new Map<string, any>();
     const familyByName = new Map<string, any>();
@@ -127,23 +124,21 @@ export async function buildSyncPlan(params: {
                 familyByExternalId.get(model.provenance.external_id) || familyByName.get(model.name.toLowerCase());
 
             items.push({
-                type: 'FAMILY',
+                type: 'PRODUCT',
                 name: model.name,
                 action: existing ? 'SKIP' : 'CREATE',
                 existing_id: existing?.id,
                 existing_specs: existing?.specs || {},
                 diffs: [],
                 provenance: model.provenance,
-                match_key: `FAMILY|${familyKey}`,
+                match_key: `PRODUCT|${familyKey}`,
                 children: [],
             });
         }
 
         const plan: SyncPlan = {
             brand_id: brandId,
-            template_id: templateId || null,
             mode,
-            can_sync: !!templateId,
             items,
             stats: { creates: 0, updates: 0, skips: 0, assets_to_download: 0 },
         };
@@ -153,7 +148,7 @@ export async function buildSyncPlan(params: {
 
     for (const model of models) {
         const familyKey = model.provenance.external_id || model.name.toLowerCase();
-        const familyMatchKey = `FAMILY|${familyKey}`;
+        const familyMatchKey = `PRODUCT|${familyKey}`;
         const overrideId = matchOverrides?.[familyMatchKey];
 
         const { modelSpecs, variantSpecs } = segregateSpecs(model.specs);
@@ -206,14 +201,14 @@ export async function buildSyncPlan(params: {
                     .from('cat_items')
                     .select('id, name, slug, specs, type, parent_id, status, position')
                     .eq('parent_id', existingVar.id)
-                    .in('type', ['COLOR_DEF', 'SKU']);
+                    .in('type', ['UNIT', 'SKU']);
                 existingColors = data || [];
             }
 
             const colorItems: SyncItem[] = [];
             for (const color of variant.colors) {
                 const colorKey = color.provenance.external_id || color.name.toLowerCase();
-                const colorMatchKey = `COLOR_DEF|${familyKey}|${variantKey}|${colorKey}`;
+                const colorMatchKey = `UNIT|${familyKey}|${variantKey}|${colorKey}`;
                 const colorOverrideId = matchOverrides?.[colorMatchKey];
                 const existingCol =
                     (colorOverrideId ? existingColors.find(c => c.id === colorOverrideId) : null) ||
@@ -231,7 +226,7 @@ export async function buildSyncPlan(params: {
                     : 'CREATE';
 
                 colorItems.push({
-                    type: 'COLOR_DEF',
+                    type: 'UNIT',
                     name: color.name,
                     action: colAction,
                     existing_id: existingCol?.id,
@@ -259,7 +254,7 @@ export async function buildSyncPlan(params: {
         }
 
         items.push({
-            type: 'FAMILY',
+            type: 'PRODUCT',
             name: model.name,
             action,
             existing_id: existing?.id,
@@ -273,9 +268,7 @@ export async function buildSyncPlan(params: {
 
     const plan: SyncPlan = {
         brand_id: brandId,
-        template_id: templateId || null,
         mode,
-        can_sync: !!templateId,
         items,
         stats: { creates: 0, updates: 0, skips: 0, assets_to_download: 0 },
     };
@@ -287,9 +280,6 @@ export async function buildSyncPlan(params: {
 
 export async function executeSyncPlan(params: { plan: SyncPlan; dryRun?: boolean }): Promise<SyncResult> {
     const { plan, dryRun = false } = params;
-    if (plan.can_sync === false || !plan.template_id) {
-        throw new Error('Sync is disabled for this plan. Select a template before syncing.');
-    }
     const supabase = await createServerClient();
     const result: SyncResult = {
         success: true,
@@ -322,7 +312,7 @@ export async function executeSyncPlan(params: { plan: SyncPlan; dryRun?: boolean
             if (family.action === 'CREATE') {
                 if (dryRun) {
                     result.created++;
-                    result.created_ids.push({ name: family.name, id: 'dry-run', type: 'FAMILY' });
+                    result.created_ids.push({ name: family.name, id: 'dry-run', type: 'PRODUCT' });
                 } else {
                     const slug = generateSlug(family.provenance.brand_slug, family.name);
                     const specs = mergeSpecs({}, family.diffs, family.provenance);
@@ -330,8 +320,7 @@ export async function executeSyncPlan(params: { plan: SyncPlan; dryRun?: boolean
                         .from('cat_items')
                         .insert({
                             brand_id: plan.brand_id,
-                            template_id: plan.template_id,
-                            type: 'FAMILY',
+                            type: 'PRODUCT',
                             name: family.name,
                             slug,
                             status: 'INACTIVE',
@@ -346,7 +335,7 @@ export async function executeSyncPlan(params: { plan: SyncPlan; dryRun?: boolean
                     }
                     familyId = data.id;
                     result.created++;
-                    result.created_ids.push({ name: family.name, id: familyId!, type: 'FAMILY' });
+                    result.created_ids.push({ name: family.name, id: familyId!, type: 'PRODUCT' });
                 }
             } else if (family.action === 'UPDATE' && familyId) {
                 if (!dryRun) {
@@ -427,7 +416,6 @@ async function syncChild(
                 .insert({
                     parent_id: parentId,
                     brand_id: plan.brand_id,
-                    template_id: plan.template_id,
                     type: item.type,
                     name: item.name,
                     slug,
@@ -499,7 +487,7 @@ async function syncItemAssets(params: {
                 targetPath: generateAssetPath({
                     brandSlug: item.provenance.brand_slug,
                     modelSlug: familyName || item.name,
-                    colorSlug: item.type === 'FAMILY' ? undefined : item.name,
+                    colorSlug: item.type === 'PRODUCT' ? undefined : item.name,
                     filename: `${idx + 1}.${ext}`,
                 }),
             };

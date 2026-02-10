@@ -429,6 +429,7 @@ export type Database = {
             cat_items: {
                 Row: {
                     brand_id: string | null;
+                    category: string | null;
                     created_at: string | null;
                     created_by: string | null;
                     gallery_urls: Json | null;
@@ -450,7 +451,6 @@ export type Database = {
                     slug: string | null;
                     specs: Json | null;
                     status: string | null;
-                    template_id: string | null;
                     tenant_id: string | null;
                     type: string;
                     updated_at: string | null;
@@ -460,6 +460,7 @@ export type Database = {
                 };
                 Insert: {
                     brand_id?: string | null;
+                    category?: string | null;
                     created_at?: string | null;
                     created_by?: string | null;
                     gallery_urls?: Json | null;
@@ -481,7 +482,6 @@ export type Database = {
                     slug?: string | null;
                     specs?: Json | null;
                     status?: string | null;
-                    template_id?: string | null;
                     tenant_id?: string | null;
                     type: string;
                     updated_at?: string | null;
@@ -491,6 +491,7 @@ export type Database = {
                 };
                 Update: {
                     brand_id?: string | null;
+                    category?: string | null;
                     created_at?: string | null;
                     created_by?: string | null;
                     gallery_urls?: Json | null;
@@ -512,7 +513,6 @@ export type Database = {
                     slug?: string | null;
                     specs?: Json | null;
                     status?: string | null;
-                    template_id?: string | null;
                     tenant_id?: string | null;
                     type?: string;
                     updated_at?: string | null;
@@ -533,13 +533,6 @@ export type Database = {
                         columns: ['parent_id'];
                         isOneToOne: false;
                         referencedRelation: 'cat_items';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'catalog_items_template_id_fkey';
-                        columns: ['template_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_templates';
                         referencedColumns: ['id'];
                     },
                 ];
@@ -1027,42 +1020,6 @@ export type Database = {
                     name?: string;
                     price?: number;
                     status?: string | null;
-                    updated_at?: string | null;
-                };
-                Relationships: [];
-            };
-            cat_templates: {
-                Row: {
-                    attribute_config: Json | null;
-                    category: string | null;
-                    code: string;
-                    created_at: string | null;
-                    features_config: Json | null;
-                    hierarchy_config: Json | null;
-                    id: string;
-                    name: string;
-                    updated_at: string | null;
-                };
-                Insert: {
-                    attribute_config?: Json | null;
-                    category?: string | null;
-                    code: string;
-                    created_at?: string | null;
-                    features_config?: Json | null;
-                    hierarchy_config?: Json | null;
-                    id?: string;
-                    name: string;
-                    updated_at?: string | null;
-                };
-                Update: {
-                    attribute_config?: Json | null;
-                    category?: string | null;
-                    code?: string;
-                    created_at?: string | null;
-                    features_config?: Json | null;
-                    hierarchy_config?: Json | null;
-                    id?: string;
-                    name?: string;
                     updated_at?: string | null;
                 };
                 Relationships: [];
@@ -4213,6 +4170,7 @@ export type Database = {
                 Args: { root_id: string };
                 Returns: {
                     brand_id: string | null;
+                    category: string | null;
                     created_at: string | null;
                     created_by: string | null;
                     gallery_urls: Json | null;
@@ -4234,7 +4192,6 @@ export type Database = {
                     slug: string | null;
                     specs: Json | null;
                     status: string | null;
-                    template_id: string | null;
                     tenant_id: string | null;
                     type: string;
                     updated_at: string | null;

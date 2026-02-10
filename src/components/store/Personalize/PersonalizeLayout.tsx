@@ -16,7 +16,10 @@ export default function PersonalizeLayout({ header, visuals, tabs, children, cla
             <div className="page-container py-4 md:py-8 space-y-8">
                 {/* 1. Header Section */}
                 {header && (
-                    <div className="sticky top-[var(--header-h)] z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl px-6 -mx-6 py-4 border-b border-slate-200 dark:border-white/5 transition-all duration-300">
+                    <div
+                        className="sticky z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl px-6 -mx-6 py-4 border-b border-slate-200 dark:border-white/5 transition-all duration-300"
+                        style={{ top: 'var(--header-h)' }}
+                    >
                         {header}
                     </div>
                 )}

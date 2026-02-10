@@ -1,31 +1,12 @@
-export interface CatalogTemplate {
-    id: string;
-    name: string;
-    code: string;
-    category?: string;
-    hierarchy_config: {
-        l1: string;
-        l2: string;
-    };
-    attribute_config: {
-        key: string;
-        label: string;
-        type: 'text' | 'number' | 'select' | 'boolean';
-        options?: string[];
-        suffix?: string;
-        required?: boolean;
-    }[];
-}
-
 export interface CatalogItem {
     id: string;
-    template_id: string;
     brand_id?: string;
     parent_id?: string;
-    type: 'FAMILY' | 'VARIANT' | 'SKU';
+    type: 'PRODUCT' | 'VARIANT' | 'UNIT' | 'SKU';
     name: string;
     slug?: string;
     sku_code?: string;
+    category?: string;
 
     // Dynamic Specs (The Engine)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

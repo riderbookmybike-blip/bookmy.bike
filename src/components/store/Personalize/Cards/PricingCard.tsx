@@ -9,6 +9,8 @@ interface PricingCardProps {
     variantName: string;
     activeColor: { name: string; hex: string };
     totalOnRoad: number;
+    originalPrice?: number;
+    totalSavings?: number;
     priceBreakup: {
         label: string;
         value: number | string;
@@ -35,6 +37,8 @@ export default function PricingCard({
     variantName,
     activeColor,
     totalOnRoad,
+    originalPrice,
+    totalSavings = 0,
     priceBreakup,
     productImage,
     pricingSource,
@@ -42,6 +46,9 @@ export default function PricingCard({
     infoColorClass = 'text-slate-500 dark:text-slate-400',
     serviceability,
 }: PricingCardProps) {
+    // If originalPrice not provided, fallback to total + savings
+    const displayOriginal = originalPrice || totalOnRoad + totalSavings;
+
     return (
         <div className="glass-panel dark:bg-black/60 rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col h-full border border-white/5">
             {/* Main Content Holder */}
@@ -65,27 +72,33 @@ export default function PricingCard({
 
             {/* Price Breakup */}
             <div className="px-6 py-4 flex-1">
-                <div className="space-y-2.5">
+                <div className="space-y-4">
                     {priceBreakup
                         .filter(i => !i.isTotal)
                         .map((item, idx) => (
-                            <div
-                                key={idx}
-                                className="flex justify-between items-center text-[10px] group/item relative"
-                            >
-                                <span
-                                    className={`font-bold uppercase tracking-widest ${item.breakdown || item.helpText || (item as any).comparisonOptions ? 'cursor-help border-b border-dotted border-slate-300 dark:border-white/20' : 'text-slate-600/80 dark:text-slate-400/80'}`}
-                                >
-                                    {item.label}
-                                </span>
-                                <span
-                                    className={`font-mono font-black ${item.isDeduction ? 'text-emerald-500' : item.isInfo ? 'text-brand-primary' : 'text-slate-700 dark:text-slate-300'}`}
-                                >
-                                    {item.isDeduction ? '-' : ''}₹
-                                    {typeof item.value === 'number'
-                                        ? Math.abs(item.value).toLocaleString()
-                                        : item.value}
-                                </span>
+                            <div key={idx} className="group/item relative">
+                                <div className="flex justify-between items-center text-[10px]">
+                                    <span
+                                        className={`font-bold uppercase tracking-widest ${item.breakdown || item.helpText || (item as any).comparisonOptions ? 'cursor-help border-b border-dotted border-slate-300 dark:border-white/20' : 'text-slate-600/80 dark:text-slate-400/80'}`}
+                                    >
+                                        {item.label}
+                                    </span>
+                                    <span
+                                        className={`font-mono font-black ${item.isDeduction ? 'text-emerald-500' : item.isInfo ? 'text-brand-primary' : 'text-slate-700 dark:text-slate-300'}`}
+                                    >
+                                        {item.isDeduction ? '-' : ''}₹
+                                        {typeof item.value === 'number'
+                                            ? Math.abs(item.value).toLocaleString()
+                                            : item.value}
+                                    </span>
+                                </div>
+
+                                {/* Brief Details Inline (New Request) */}
+                                {item.breakdown && item.breakdown.length > 0 && (
+                                    <p className="text-[8px] text-slate-400 dark:text-zinc-600 mt-1 font-bold uppercase tracking-tighter truncate max-w-[180px]">
+                                        {item.breakdown.map(b => b.label).join(' • ')}
+                                    </p>
+                                )}
 
                                 {/* Enhanced Tooltip */}
                                 {(item.breakdown || item.helpText || (item as any).comparisonOptions) && (
@@ -171,25 +184,53 @@ export default function PricingCard({
 
             {/* Final Price Footer */}
             <div className="p-6 pt-4 border-t border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
-                <div className="flex justify-between items-end">
-                    <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-1">
-                            <span className="text-[10px] font-black uppercase italic tracking-widest text-slate-600 dark:text-slate-400">
-                                Final Price
-                            </span>
-                            <Info size={10} className={infoColorClass} />
+                <div className="flex flex-col gap-3">
+                    <div className="flex justify-between items-end">
+                        <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-black uppercase italic tracking-widest text-slate-600 dark:text-slate-400">
+                                    Offer Price
+                                </span>
+                                <Info size={10} className={infoColorClass} />
+                            </div>
+                            {pricingSource && (
+                                <span className="text-[8px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest leading-none">
+                                    ({pricingSource})
+                                </span>
+                            )}
                         </div>
-                        {pricingSource && (
-                            <span className="text-[8px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest leading-none">
-                                ({pricingSource})
+                        <div className="text-right flex flex-col items-end">
+                            {totalSavings > 0 && (
+                                <span className="text-xs font-bold text-slate-400 dark:text-zinc-600 line-through decoration-red-500/50 decoration-2 mr-1">
+                                    On Road ₹{displayOriginal.toLocaleString()}
+                                </span>
+                            )}
+                            <span className="text-4xl font-black italic tracking-tighter text-brand-primary font-mono block drop-shadow-[0_0_20px_rgba(255,215,0,0.3)] animate-in zoom-in-95 duration-700">
+                                ₹{totalOnRoad.toLocaleString()}
                             </span>
-                        )}
+                        </div>
                     </div>
-                    <div className="text-right">
-                        <span className="text-4xl font-black italic tracking-tighter text-brand-primary font-mono block drop-shadow-[0_0_20px_rgba(255,215,0,0.3)] animate-in zoom-in-95 duration-700">
-                            ₹{totalOnRoad.toLocaleString()}
-                        </span>
-                    </div>
+
+                    {totalSavings > 0 && (
+                        <div className="group/savings relative">
+                            <div className="flex items-center justify-between py-2.5 px-4 bg-brand-primary/[0.12] dark:bg-brand-primary/[0.06] border border-brand-primary/30 rounded-2xl animate-in slide-in-from-bottom-2 duration-500 shadow-[0_0_20px_rgba(255,215,0,0.05)]">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-5 h-5 rounded-full bg-brand-primary/20 flex items-center justify-center">
+                                        <Zap
+                                            size={10}
+                                            className="text-brand-primary fill-brand-primary animate-pulse"
+                                        />
+                                    </div>
+                                    <span className="text-[11px] font-black uppercase tracking-wider text-brand-primary">
+                                        You Are Saving ₹{totalSavings.toLocaleString()}
+                                    </span>
+                                </div>
+                                <div className="px-2 py-0.5 bg-brand-primary text-black text-[8px] font-black rounded-full uppercase tracking-tighter">
+                                    Limited Deal
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

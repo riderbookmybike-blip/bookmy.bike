@@ -35,7 +35,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import autoTable from 'jspdf-autotable';
 import { RegistrationRule } from '@/types/registration';
 import { sanitizeSvg } from '@/lib/utils/sanitizeSvg';
 // Helper Component for Robust Brand Logo/Avatar
@@ -190,7 +190,7 @@ export default function PricingLedgerTable({
     isCalculating,
 }: PricingLedgerTableProps) {
     const router = useRouter();
-    const { tenantSlug } = useTenant();
+    const { tenantSlug, tenantName, tenantConfig } = useTenant();
     const isAums = tenantSlug === 'aums';
     const [skus, setSkus] = useState<SKUPriceRow[]>(initialSkus);
     const [isSaving, setIsSaving] = useState(false);
@@ -201,31 +201,188 @@ export default function PricingLedgerTable({
     const handleExportPDF = async () => {
         setIsExporting(true);
         try {
-            const element = document.getElementById('pricing-ledger-table');
-            if (!element) return;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            let yPos = 15;
 
-            // Hide UI elements during export
-            const uiElements = element.querySelectorAll('.no-export');
-            uiElements.forEach(el => ((el as HTMLElement).style.display = 'none'));
+            // --- Pre-load dealership logo ---
+            const logoUrl = tenantConfig?.brand?.logoUrl;
+            let logoData: string | null = null;
+            let logoAspect = 1;
+            if (logoUrl) {
+                try {
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    await new Promise<void>((resolve, reject) => {
+                        img.onload = () => resolve();
+                        img.onerror = () => reject();
+                        img.src = logoUrl;
+                    });
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx?.drawImage(img, 0, 0);
+                    logoData = canvas.toDataURL('image/png');
+                    logoAspect = img.naturalWidth / img.naturalHeight;
+                } catch {
+                    // Logo failed to load, continue without it
+                }
+            }
 
-            const canvas = await html2canvas(element, {
-                scale: 2,
-                useCORS: true,
-                logging: false,
-                backgroundColor: '#ffffff',
+            const dealerName = tenantConfig?.brand?.displayName || tenantName || 'Pricelist';
+            const stateName = states.find(s => s.id === selectedStateId)?.ruleName || '';
+            const timestamp = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+
+            // --- Helper: draw page header ---
+            const drawHeader = (brandName: string) => {
+                yPos = 15;
+                if (logoData) {
+                    const logoH = 10;
+                    const logoW = logoAspect * logoH;
+                    pdf.addImage(logoData, 'PNG', 14, yPos, logoW, logoH);
+                    yPos += logoH + 2;
+                }
+                pdf.setFontSize(14);
+                pdf.setFont('helvetica', 'bold');
+                pdf.setTextColor(0);
+                pdf.text(dealerName, 14, yPos + 4);
+                yPos += 8;
+                pdf.setFontSize(8);
+                pdf.setFont('helvetica', 'normal');
+                pdf.setTextColor(100);
+                pdf.text(`State: ${stateName}  |  Generated: ${timestamp}`, 14, yPos + 3);
+                pdf.text(`Brand: ${brandName}`, pageWidth - 14, yPos + 3, { align: 'right' });
+                yPos += 8;
+                pdf.setTextColor(0);
+            };
+
+            // --- Build data grouped by brand ---
+            const fmt = (n?: number) => (n ? n.toLocaleString('en-IN') : '-');
+            const isVehicle = activeCategory === 'vehicles';
+            const headers = isVehicle
+                ? [
+                      '#',
+                      'Model',
+                      'Variant',
+                      'Color',
+                      'Ex-Showroom',
+                      'Offer',
+                      'RTO',
+                      'Insurance',
+                      'On-Road',
+                      'Delta',
+                      'Status',
+                  ]
+                : ['#', 'Category/Sub', 'Product', 'Variant', 'Ex-Showroom', 'Offer', 'Inclusion', 'Status'];
+
+            // Sort and group by brand
+            const sorted = [...tableSkus].sort(
+                (a, b) =>
+                    a.brand.localeCompare(b.brand) ||
+                    a.model.localeCompare(b.model) ||
+                    a.variant.localeCompare(b.variant)
+            );
+            const brandGroups = new Map<string, typeof sorted>();
+            sorted.forEach(sku => {
+                const group = brandGroups.get(sku.brand) || [];
+                group.push(sku);
+                brandGroups.set(sku.brand, group);
             });
 
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF('l', 'mm', 'a4');
-            const imgProps = pdf.getImageProperties(imgData);
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+            // --- Render one table per brand, each on a new page ---
+            let isFirstBrand = true;
+            brandGroups.forEach((skus, brandName) => {
+                if (!isFirstBrand) pdf.addPage();
+                isFirstBrand = false;
 
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save(`Pricing_Ledger_${new Date().toISOString().split('T')[0]}.pdf`);
+                drawHeader(brandName);
 
-            // Restore UI elements
-            uiElements.forEach(el => ((el as HTMLElement).style.display = ''));
+                const bodyData = skus.map((sku, idx) => {
+                    const offer = sku.offerAmount || 0;
+                    const onRoad = sku.onRoad || 0;
+                    const exShow = sku.exShowroom || 0;
+                    const delta = onRoad > 0 && exShow > 0 ? onRoad - exShow : 0;
+
+                    if (isVehicle) {
+                        return [
+                            String(idx + 1),
+                            sku.model,
+                            sku.variant,
+                            sku.color || '-',
+                            fmt(sku.exShowroom),
+                            offer > 0 ? fmt(offer) : '-',
+                            fmt(sku.rto),
+                            fmt(sku.insurance),
+                            fmt(sku.onRoad),
+                            delta !== 0 ? fmt(Math.abs(delta)) : '-',
+                            sku.displayState || sku.status || '-',
+                        ];
+                    }
+                    return [
+                        String(idx + 1),
+                        `${sku.category} / ${sku.subCategory}`,
+                        sku.model,
+                        sku.variant,
+                        fmt(sku.exShowroom),
+                        offer > 0 ? fmt(offer) : '-',
+                        sku.inclusionType || '-',
+                        sku.displayState || sku.status || '-',
+                    ];
+                });
+
+                autoTable(pdf, {
+                    startY: yPos,
+                    head: [headers],
+                    body: bodyData,
+                    theme: 'grid',
+                    styles: {
+                        fontSize: 7,
+                        cellPadding: 1.5,
+                        lineColor: [220, 220, 220],
+                        lineWidth: 0.2,
+                    },
+                    headStyles: {
+                        fillColor: [16, 185, 129],
+                        textColor: 255,
+                        fontStyle: 'bold',
+                        fontSize: 6.5,
+                        halign: 'center',
+                    },
+                    alternateRowStyles: {
+                        fillColor: [248, 250, 252],
+                    },
+                    columnStyles: isVehicle
+                        ? {
+                              0: { halign: 'center', cellWidth: 7 },
+                              4: { halign: 'right', cellWidth: 20 },
+                              5: { halign: 'right', cellWidth: 16 },
+                              6: { halign: 'right', cellWidth: 16 },
+                              7: { halign: 'right', cellWidth: 18 },
+                              8: { halign: 'right', cellWidth: 20, fontStyle: 'bold' },
+                              9: { halign: 'right', cellWidth: 16 },
+                              10: { halign: 'center', cellWidth: 14 },
+                          }
+                        : {
+                              0: { halign: 'center', cellWidth: 7 },
+                              4: { halign: 'right', cellWidth: 20 },
+                              5: { halign: 'right', cellWidth: 16 },
+                              6: { halign: 'center' },
+                              7: { halign: 'center', cellWidth: 14 },
+                          },
+                    didDrawPage: () => {
+                        const pageH = pdf.internal.pageSize.getHeight();
+                        pdf.setFontSize(7);
+                        pdf.setTextColor(150);
+                        pdf.text(`${dealerName} \u2014 Confidential Pricelist`, 14, pageH - 8);
+                        pdf.text(`Page ${pdf.getCurrentPageInfo().pageNumber}`, pageWidth - 14, pageH - 8, {
+                            align: 'right',
+                        });
+                    },
+                });
+            });
+
+            pdf.save(`${dealerName.replace(/\s+/g, '_')}_Pricelist_${new Date().toISOString().split('T')[0]}.pdf`);
         } catch (error) {
             console.error('PDF Export failed:', error);
             alert('PDF Export failed. Please try again.');
@@ -478,27 +635,19 @@ export default function PricingLedgerTable({
 
     const toggleAll = () => {
         // Check if all VISIBLE/FILTERED rows are currently selected
-        // We use tableSkus (locally filtered) instead of processedSkus (parent filtered only)
-        // This ensures we don't accidentally select hidden rows when a column filter is active.
         const allVisibleSelected = tableSkus.length > 0 && tableSkus.every(s => selectedSkuIds.has(s.id));
 
-        const newSet = new Set(selectedSkuIds);
-
-        const targetModel =
-            selectedSkuIds.size > 0
-                ? getModelForId(selectedSkuIds.values().next().value as string)
-                : tableSkus[0]?.model || null;
-
-        const sameModelRows = targetModel ? tableSkus.filter(s => s.model === targetModel) : tableSkus;
-
         if (allVisibleSelected) {
-            // Deselect visible rows
-            sameModelRows.forEach(s => newSet.delete(s.id));
+            // Deselect all visible rows
+            const newSet = new Set(selectedSkuIds);
+            tableSkus.forEach(s => newSet.delete(s.id));
+            setSelectedSkuIds(newSet);
         } else {
-            // Select visible rows
-            sameModelRows.forEach(s => newSet.add(s.id));
+            // Select all visible rows (across all brands/models)
+            const newSet = new Set(selectedSkuIds);
+            tableSkus.forEach(s => newSet.add(s.id));
+            setSelectedSkuIds(newSet);
         }
-        setSelectedSkuIds(newSet);
     };
 
     const handleSave = async () => {
@@ -540,17 +689,22 @@ export default function PricingLedgerTable({
     return (
         <div className="w-full h-full flex flex-col animate-in fade-in duration-700 bg-white dark:bg-slate-950">
             {/* Soft Tricolor Toolbar */}
-            <div className="z-30 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-md px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-4">
-                <div className="flex items-center gap-3 flex-1">
-                    {/* Search Icon */}
-                    <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl shrink-0">
-                        <Search size={14} className="text-emerald-600" />
+            <div className="z-30 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-md px-4 py-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap flex-1">
+                    {/* Search Bar */}
+                    <div className="relative w-[160px] ml-[18px]">
+                        <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
+                        <input
+                            type="text"
+                            placeholder="Search..."
+                            className="w-full pl-7 pr-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-[10px] font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide placeholder:text-slate-400 placeholder:normal-case focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 outline-none transition-all"
+                        />
                     </div>
                     {/* State Filter */}
-                    <div className="relative group flex-1 min-w-[140px]">
+                    <div className="relative group w-[160px]">
                         <button
                             onClick={() => setActiveToolbarFilter(activeToolbarFilter === 'state' ? null : 'state')}
-                            className={`w-full flex items-center justify-between pl-9 pr-4 py-2.5 bg-white dark:bg-slate-900 border ${activeToolbarFilter === 'state' ? 'border-emerald-500 ring-4 ring-emerald-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-emerald-400'} rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide transition-all`}
+                            className={`w-full flex items-center justify-between pl-7 pr-3 py-1.5 bg-white dark:bg-slate-900 border ${activeToolbarFilter === 'state' ? 'border-emerald-500 ring-2 ring-emerald-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-emerald-400'} rounded-lg text-[10px] font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide transition-all`}
                         >
                             <Landmark
                                 size={12}
@@ -592,12 +746,12 @@ export default function PricingLedgerTable({
                         )}
                     </div>
                     {/* Category Filter */}
-                    <div className="relative group flex-1 min-w-[140px]">
+                    <div className="relative group w-[160px]">
                         <button
                             onClick={() =>
                                 setActiveToolbarFilter(activeToolbarFilter === 'category' ? null : 'category')
                             }
-                            className={`w-full flex items-center justify-between pl-9 pr-4 py-2.5 bg-white dark:bg-slate-900 border ${activeToolbarFilter === 'category' ? 'border-emerald-500 ring-4 ring-emerald-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-emerald-400'} rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide transition-all`}
+                            className={`w-full flex items-center justify-between pl-7 pr-3 py-1.5 bg-white dark:bg-slate-900 border ${activeToolbarFilter === 'category' ? 'border-emerald-500 ring-2 ring-emerald-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-emerald-400'} rounded-lg text-[10px] font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide transition-all`}
                         >
                             <Activity
                                 size={12}
@@ -673,92 +827,11 @@ export default function PricingLedgerTable({
                         )}
                     </div>
 
-                    {/* Sub Category Filter */}
-                    <div className="relative group flex-1 min-w-[140px]">
-                        <button
-                            onClick={() =>
-                                setActiveToolbarFilter(activeToolbarFilter === 'subCategory' ? null : 'subCategory')
-                            }
-                            className={`w-full flex items-center justify-between pl-9 pr-4 py-2.5 bg-white dark:bg-slate-900 border ${activeToolbarFilter === 'subCategory' ? 'border-emerald-500 ring-4 ring-emerald-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-emerald-400'} rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide transition-all`}
-                        >
-                            <Info
-                                size={12}
-                                className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10"
-                            />
-                            <span className="truncate">
-                                {selectedSubCategory === 'ALL' ? 'All Sub-Cat' : selectedSubCategory}
-                            </span>
-                            <Filter
-                                size={10}
-                                className={`opacity-50 ${selectedSubCategory !== 'ALL' ? 'text-emerald-600 opacity-100' : ''}`}
-                            />
-                        </button>
-
-                        {activeToolbarFilter === 'subCategory' && (
-                            <>
-                                <div className="fixed inset-0 z-40" onClick={() => setActiveToolbarFilter(null)} />
-                                <div className="absolute top-full mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                    <div className="p-3 border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
-                                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                                            Sort & Filter Sub-Cat
-                                        </span>
-                                    </div>
-                                    <div className="p-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/20">
-                                        <div className="grid grid-cols-2 gap-1">
-                                            <button
-                                                onClick={() => {
-                                                    setSortConfig({ key: 'subCategory', direction: 'asc' });
-                                                    setActiveToolbarFilter(null);
-                                                }}
-                                                className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${sortConfig?.key === 'subCategory' && sortConfig?.direction === 'asc' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100'}`}
-                                            >
-                                                <ArrowUp size={12} /> ASC
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    setSortConfig({ key: 'subCategory', direction: 'desc' });
-                                                    setActiveToolbarFilter(null);
-                                                }}
-                                                className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${sortConfig?.key === 'subCategory' && sortConfig?.direction === 'desc' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100'}`}
-                                            >
-                                                <ArrowDown size={12} /> DESC
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="max-h-64 overflow-y-auto p-2 scrollbar-thin">
-                                        <button
-                                            onClick={() => {
-                                                onSubCategoryChange('ALL');
-                                                setActiveToolbarFilter(null);
-                                            }}
-                                            className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${selectedSubCategory === 'ALL' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-                                        >
-                                            All Sub-Cat
-                                            {selectedSubCategory === 'ALL' && <CheckCircle2 size={12} />}
-                                        </button>
-                                        {subCategories.map(sc => (
-                                            <button
-                                                key={sc}
-                                                onClick={() => {
-                                                    onSubCategoryChange(sc);
-                                                    setActiveToolbarFilter(null);
-                                                }}
-                                                className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${selectedSubCategory === sc ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-                                            >
-                                                {sc}
-                                                {selectedSubCategory === sc && <CheckCircle2 size={12} />}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                    </div>
                     {/* Brand Filter */}
-                    <div className="relative group flex-1 min-w-[120px]">
+                    <div className="relative group w-[160px]">
                         <button
                             onClick={() => setActiveToolbarFilter(activeToolbarFilter === 'brand' ? null : 'brand')}
-                            className={`w-full flex items-center justify-between pl-9 pr-4 py-2.5 bg-white dark:bg-slate-900 border ${activeToolbarFilter === 'brand' ? 'border-emerald-500 ring-4 ring-emerald-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-emerald-400'} rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide transition-all`}
+                            className={`w-full flex items-center justify-between pl-7 pr-3 py-1.5 bg-white dark:bg-slate-900 border ${activeToolbarFilter === 'brand' ? 'border-emerald-500 ring-2 ring-emerald-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-emerald-400'} rounded-lg text-[10px] font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide transition-all`}
                         >
                             <Car size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
                             <span className="truncate">{selectedBrand === 'ALL' ? 'All Brands' : selectedBrand}</span>
@@ -830,10 +903,10 @@ export default function PricingLedgerTable({
                     </div>
 
                     {/* Model Filter */}
-                    <div className="relative group flex-1 min-w-[120px]">
+                    <div className="relative group w-[160px]">
                         <button
                             onClick={() => setActiveToolbarFilter(activeToolbarFilter === 'model' ? null : 'model')}
-                            className={`w-full flex items-center justify-between pl-9 pr-4 py-2.5 bg-white dark:bg-slate-900 border ${activeToolbarFilter === 'model' ? 'border-emerald-500 ring-4 ring-emerald-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-emerald-400'} rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide transition-all`}
+                            className={`w-full flex items-center justify-between pl-7 pr-3 py-1.5 bg-white dark:bg-slate-900 border ${activeToolbarFilter === 'model' ? 'border-emerald-500 ring-2 ring-emerald-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-emerald-400'} rounded-lg text-[10px] font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide transition-all`}
                         >
                             <Package
                                 size={12}
@@ -980,19 +1053,19 @@ export default function PricingLedgerTable({
                     )}
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1 shrink-0 mr-[18px]">
                     {/* Permanent Action Icons with Tooltips */}
-                    <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-1 gap-1 shadow-sm">
+                    <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-0.5 gap-0.5 shadow-sm">
                         {/* Save Button */}
                         <button
                             onClick={handleSave}
                             disabled={!hasUnsavedChanges || isSaving || isParentSaving}
-                            className={`p-2 rounded-lg transition-all relative group/btn ${hasUnsavedChanges ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200/50 hover:bg-emerald-700' : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'}`}
+                            className={`p-1.5 rounded transition-all relative group/btn ${hasUnsavedChanges ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200/50 hover:bg-emerald-700' : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'}`}
                         >
                             {isSaving || isParentSaving ? (
-                                <Loader2 size={16} className="animate-spin" />
+                                <Loader2 size={12} className="animate-spin" />
                             ) : (
-                                <Save size={16} />
+                                <Save size={12} />
                             )}
                             <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
                                 Save All Changes
@@ -1001,14 +1074,14 @@ export default function PricingLedgerTable({
 
                         {isAums && (
                             <>
-                                <div className="w-px h-4 bg-slate-100 dark:bg-slate-800 mx-1" />
+                                <div className="w-px h-3 bg-slate-100 dark:bg-slate-800 mx-0.5" />
 
                                 {/* Select Model */}
                                 <button
                                     onClick={selectAllForModel}
-                                    className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-all relative group/btn"
+                                    className="p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded transition-all relative group/btn"
                                 >
-                                    <Layers size={16} />
+                                    <Layers size={12} />
                                     <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
                                         Select All for Model
                                     </div>
@@ -1018,9 +1091,9 @@ export default function PricingLedgerTable({
                                 <button
                                     onClick={() => applyPublishStage('PUBLISHED')}
                                     disabled={selectedSkuIds.size === 0}
-                                    className={`p-2 rounded-lg transition-all relative group/btn ${selectedSkuIds.size > 0 ? 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20' : 'text-slate-200 dark:text-slate-800 cursor-not-allowed'}`}
+                                    className={`p-1.5 rounded transition-all relative group/btn ${selectedSkuIds.size > 0 ? 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20' : 'text-slate-200 dark:text-slate-800 cursor-not-allowed'}`}
                                 >
-                                    <Send size={16} />
+                                    <Send size={12} />
                                     <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
                                         Mark Selected Published
                                     </div>
@@ -1030,9 +1103,9 @@ export default function PricingLedgerTable({
                                 <button
                                     onClick={() => applyPublishStage('LIVE')}
                                     disabled={selectedSkuIds.size === 0}
-                                    className={`p-2 rounded-lg transition-all relative group/btn ${selectedSkuIds.size > 0 ? 'text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20' : 'text-slate-200 dark:text-slate-800 cursor-not-allowed'}`}
+                                    className={`p-1.5 rounded transition-all relative group/btn ${selectedSkuIds.size > 0 ? 'text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20' : 'text-slate-200 dark:text-slate-800 cursor-not-allowed'}`}
                                 >
-                                    <Rocket size={16} />
+                                    <Rocket size={12} />
                                     <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
                                         Activate Selected (Live)
                                     </div>
@@ -1042,11 +1115,11 @@ export default function PricingLedgerTable({
                                 <button
                                     onClick={() => onCalculate?.(Array.from(selectedSkuIds))}
                                     disabled={selectedSkuIds.size === 0 || isCalculating}
-                                    className={`p-2 rounded-lg transition-all relative group/btn ${selectedSkuIds.size > 0 && !isCalculating ? 'bg-amber-500 text-white shadow-lg shadow-amber-200/50 hover:bg-amber-600 animate-pulse' : 'text-slate-200 dark:text-slate-800 cursor-not-allowed'}`}
+                                    className={`p-1.5 rounded transition-all relative group/btn ${selectedSkuIds.size > 0 && !isCalculating ? 'bg-amber-500 text-white shadow-lg shadow-amber-200/50 hover:bg-amber-600 animate-pulse' : 'text-slate-200 dark:text-slate-800 cursor-not-allowed'}`}
                                 >
-                                    {isCalculating ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
+                                    {isCalculating ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
                                     {selectedSkuIds.size > 0 && (
-                                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[8px] font-black text-white ring-2 ring-white dark:ring-slate-900">
+                                        <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500 text-[7px] font-black text-white ring-1 ring-white dark:ring-slate-900">
                                             {selectedSkuIds.size}
                                         </span>
                                     )}
@@ -1057,14 +1130,14 @@ export default function PricingLedgerTable({
                             </>
                         )}
 
-                        <div className="w-px h-4 bg-slate-100 dark:bg-slate-800 mx-1" />
+                        <div className="w-px h-3 bg-slate-100 dark:bg-slate-800 mx-0.5" />
 
                         <button
                             onClick={handleExportPDF}
                             disabled={isExporting}
-                            className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-all relative group/btn"
+                            className="p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded transition-all relative group/btn"
                         >
-                            {isExporting ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
+                            {isExporting ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />}
                             <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
                                 Export PDF
                             </div>
@@ -1080,10 +1153,10 @@ export default function PricingLedgerTable({
                     className="h-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-black/20 relative overflow-hidden flex flex-col"
                 >
                     <div className="overflow-auto scrollbar-thin flex-1">
-                        <table className="w-full text-left border-separate border-spacing-0 min-w-[1200px]">
+                        <table className="w-full text-left border-separate border-spacing-0 min-w-[900px]">
                             <thead className="sticky top-0 z-20">
                                 <tr className="bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-md group/header">
-                                    <th className="px-4 py-4 w-10 border-b border-slate-200 dark:border-slate-800 pl-6">
+                                    <th className="px-2 py-2 w-8 border-b border-slate-200 dark:border-slate-800 pl-3">
                                         <input
                                             type="checkbox"
                                             checked={
@@ -1113,7 +1186,7 @@ export default function PricingLedgerTable({
                                         return (
                                             <th
                                                 key={key}
-                                                className={`relative px-6 py-5 text-[10px] font-black uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 group/header ${key === 'status' ? 'text-right' : 'text-slate-500 dark:text-slate-400'} ${key === 'color' ? 'min-w-[160px]' : 'whitespace-nowrap'}`}
+                                                className={`relative px-3 py-2.5 text-[9px] font-black uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 group/header ${key === 'status' ? 'text-right' : 'text-slate-500 dark:text-slate-400'} ${key === 'color' ? 'min-w-[100px]' : 'whitespace-nowrap'}`}
                                             >
                                                 <div
                                                     className={`flex items-center gap-1 ${key === 'status' ? 'justify-end' : 'justify-between'}`}
@@ -1257,7 +1330,7 @@ export default function PricingLedgerTable({
                                         );
                                     })}
 
-                                    <th className="px-6 py-5 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border-b border-emerald-100 dark:border-emerald-900/30 text-right whitespace-nowrap">
+                                    <th className="px-3 py-2.5 text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider border-b border-emerald-100 dark:border-emerald-900/30 text-right whitespace-nowrap">
                                         <div
                                             className="flex items-center gap-1 justify-end cursor-pointer hover:text-emerald-700 transition-colors"
                                             onClick={() => handleSort('exShowroom')}
@@ -1269,43 +1342,43 @@ export default function PricingLedgerTable({
 
                                     {activeCategory === 'vehicles' ? (
                                         <>
-                                            <th className="px-6 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap">
+                                            <th className="px-3 py-2.5 text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap">
                                                 RTO
                                             </th>
-                                            <th className="px-6 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap">
+                                            <th className="px-3 py-2.5 text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap">
                                                 Insurance
                                             </th>
                                         </>
                                     ) : (
                                         <>
-                                            <th className="px-6 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-right">
+                                            <th className="px-3 py-2.5 text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-right">
                                                 Base Price
                                             </th>
-                                            <th className="px-6 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-right">
+                                            <th className="px-3 py-2.5 text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-right">
                                                 GST (28%)
                                             </th>
                                         </>
                                     )}
 
                                     {activeCategory !== 'vehicles' && (
-                                        <th className="px-6 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-center min-w-[120px]">
+                                        <th className="px-3 py-2.5 text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-center min-w-[80px]">
                                             Inclusion
                                         </th>
                                     )}
 
                                     {!isAums && activeCategory === 'vehicles' && (
-                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap">
+                                        <th className="px-3 py-2.5 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap">
                                             On-Road
                                         </th>
                                     )}
 
                                     {activeCategory !== 'vehicles' && (
-                                        <th className="px-6 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 text-right">
+                                        <th className="px-3 py-2.5 text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right">
                                             Offer (₹)
                                         </th>
                                     )}
 
-                                    <th className="px-8 py-5 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border-b border-emerald-100 dark:border-emerald-900/30 text-right whitespace-nowrap bg-emerald-50/80 dark:bg-emerald-900/20">
+                                    <th className="px-3 py-2.5 text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider border-b border-emerald-100 dark:border-emerald-900/30 text-right whitespace-nowrap bg-emerald-50/80 dark:bg-emerald-900/20">
                                         {activeCategory === 'vehicles'
                                             ? isAums
                                                 ? 'On-Road'
@@ -1314,16 +1387,25 @@ export default function PricingLedgerTable({
                                     </th>
 
                                     {!isAums && activeCategory === 'vehicles' && (
-                                        <th className="px-6 py-5 text-[10px] font-black text-emerald-400 uppercase tracking-widest border-b border-white/5 text-right whitespace-nowrap">
+                                        <th className="px-3 py-2.5 text-[9px] font-black text-emerald-400 uppercase tracking-wider border-b border-white/5 text-right whitespace-nowrap">
                                             Delta
                                         </th>
                                     )}
 
-                                    <th className="px-6 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 text-right w-[140px] whitespace-nowrap">
-                                        Last Updated
+                                    <th
+                                        className="px-3 py-2.5 text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right w-[100px] whitespace-nowrap cursor-pointer hover:text-emerald-600 transition-colors"
+                                        onClick={() => handleSort('updatedAt')}
+                                    >
+                                        <div className="flex items-center justify-end gap-1">
+                                            Last Updated
+                                            <ArrowUpDown
+                                                size={10}
+                                                className={`opacity-30 ${sortConfig?.key === 'updatedAt' ? 'text-emerald-600 opacity-100' : ''}`}
+                                            />
+                                        </div>
                                     </th>
 
-                                    <th className="relative px-8 py-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 text-right group/header w-[140px] whitespace-nowrap">
+                                    <th className="relative px-3 py-2.5 text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right group/header w-[100px] whitespace-nowrap">
                                         <div className="flex items-center justify-end gap-1">
                                             <div
                                                 onClick={() => handleSort('displayState')}
@@ -1449,7 +1531,7 @@ export default function PricingLedgerTable({
                                     </th>
 
                                     {/* Popular Header */}
-                                    <th className="sticky top-0 z-20 bg-emerald-50 dark:bg-emerald-950/20 p-4 text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-widest border-r border-emerald-100 dark:border-white/10 w-24">
+                                    <th className="sticky top-0 z-20 bg-emerald-50 dark:bg-emerald-950/20 p-2 text-[9px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-wider border-r border-emerald-100 dark:border-white/10 w-16">
                                         Popular
                                     </th>
                                 </tr>
@@ -1466,14 +1548,29 @@ export default function PricingLedgerTable({
                                     const isSelected = selectedSkuIds.has(sku.id);
                                     const canEdit = isSelected;
                                     const updatedAt = sku.updatedAt || sku.publishedAt;
-                                    const updatedLabel = updatedAt ? new Date(updatedAt).toLocaleString() : '—';
+                                    const updatedLabel = (() => {
+                                        if (!updatedAt) return '—';
+                                        const now = new Date();
+                                        const then = new Date(updatedAt);
+                                        const diffMs = now.getTime() - then.getTime();
+                                        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                                        if (diffDays === 0) return 'Today';
+                                        if (diffDays === 1) return '1d ago';
+                                        return `${diffDays}d ago`;
+                                    })();
+                                    const updatedTooltip = updatedAt
+                                        ? new Date(updatedAt).toLocaleString('en-IN', {
+                                              dateStyle: 'medium',
+                                              timeStyle: 'short',
+                                          })
+                                        : '';
 
                                     return (
                                         <tr
                                             key={sku.id}
-                                            className={`group transition-all duration-200 ${isSelected ? 'bg-emerald-50/50 dark:bg-emerald-900/20' : 'even:bg-slate-50/10 dark:even:bg-slate-800/10 hover:bg-slate-50 dark:hover:bg-slate-800/30'}`}
+                                            className={`group transition-all duration-200 ${isSelected ? 'bg-emerald-50/50 dark:bg-emerald-900/20' : 'even:bg-slate-50 dark:even:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800/60'}`}
                                         >
-                                            <td className="px-4 py-3 pl-6">
+                                            <td className="px-2 py-1.5 pl-3">
                                                 <input
                                                     type="checkbox"
                                                     checked={isSelected}
@@ -1484,7 +1581,7 @@ export default function PricingLedgerTable({
 
                                             {/* VEHICLE COLUMNS */}
                                             {activeCategory === 'vehicles' && (
-                                                <td className="px-4 py-3">
+                                                <td className="px-3 py-1.5">
                                                     <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight">
                                                         {sku.variant}
                                                     </span>
@@ -1493,7 +1590,7 @@ export default function PricingLedgerTable({
 
                                             {/* ACCESSORY COLUMNS - Composite Product */}
                                             {activeCategory !== 'vehicles' && (
-                                                <td className="px-4 py-3">
+                                                <td className="px-3 py-1.5">
                                                     <div className="flex flex-col gap-0.5">
                                                         <span className="text-[10px] font-bold text-slate-900 dark:text-white uppercase tracking-tight">
                                                             {sku.category} / {sku.subCategory} / {sku.model} /{' '}
@@ -1503,21 +1600,21 @@ export default function PricingLedgerTable({
                                                 </td>
                                             )}
 
-                                            <td className="px-4 py-3 min-w-[120px]">
+                                            <td className="px-3 py-1.5 min-w-[80px]">
                                                 <span className="text-[9px] font-medium text-slate-500 dark:text-slate-400 uppercase leading-relaxed">
                                                     {sku.color}
                                                 </span>
                                             </td>
 
                                             {activeCategory === 'vehicles' && (
-                                                <td className="px-4 py-3">
+                                                <td className="px-3 py-1.5">
                                                     <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-tight">
                                                         {sku.engineCc ? `${Number(sku.engineCc).toFixed(2)}cc` : '—'}
                                                     </span>
                                                 </td>
                                             )}
 
-                                            <td className="px-4 py-3 text-right">
+                                            <td className="px-3 py-1.5 text-right">
                                                 <div className="flex justify-end items-center gap-2">
                                                     <input
                                                         type="number"
@@ -1539,7 +1636,7 @@ export default function PricingLedgerTable({
                                             </td>
                                             {activeCategory === 'vehicles' ? (
                                                 <>
-                                                    <td className="px-4 py-3 text-right relative group/tooltip">
+                                                    <td className="px-3 py-1.5 text-right relative group/tooltip">
                                                         <span
                                                             className={`font-bold text-[11px] text-slate-600 dark:text-slate-400 ${sku.rto_data ? 'cursor-help border-b border-dotted border-slate-300 dark:border-slate-700' : ''}`}
                                                         >
@@ -1702,7 +1799,7 @@ export default function PricingLedgerTable({
                                                             </div>
                                                         )}
                                                     </td>
-                                                    <td className="px-6 py-5 text-right relative group/tooltip">
+                                                    <td className="px-3 py-1.5 text-right relative group/tooltip">
                                                         <span
                                                             className={`font-bold text-[11px] text-slate-600 dark:text-slate-400 ${sku.insurance_data ? 'cursor-help border-b border-dotted border-slate-300 dark:border-slate-700' : ''}`}
                                                         >
@@ -1793,7 +1890,7 @@ export default function PricingLedgerTable({
                                                         )}
                                                     </td>
                                                     {!isAums && (
-                                                        <td className="px-8 py-5 text-right">
+                                                        <td className="px-3 py-1.5 text-right">
                                                             <span className="font-bold text-[11px] text-slate-400 dark:text-slate-500">
                                                                 {sku.onRoad ? `₹${sku.onRoad.toLocaleString()}` : '—'}
                                                             </span>
@@ -1802,7 +1899,7 @@ export default function PricingLedgerTable({
                                                 </>
                                             ) : (
                                                 <>
-                                                    <td className="px-6 py-5 text-right">
+                                                    <td className="px-3 py-1.5 text-right">
                                                         <span className="font-bold text-[11px] text-slate-500 dark:text-slate-400">
                                                             ₹
                                                             {basePrice.toLocaleString(undefined, {
@@ -1810,7 +1907,7 @@ export default function PricingLedgerTable({
                                                             })}
                                                         </span>
                                                     </td>
-                                                    <td className="px-6 py-5 text-right">
+                                                    <td className="px-3 py-1.5 text-right">
                                                         <span className="font-bold text-[11px] text-slate-500 dark:text-slate-400">
                                                             ₹
                                                             {totalGst.toLocaleString(undefined, {
@@ -1823,7 +1920,7 @@ export default function PricingLedgerTable({
 
                                             {activeCategory !== 'vehicles' && (
                                                 <>
-                                                    <td className="px-6 py-5 text-center">
+                                                    <td className="px-3 py-1.5 text-center">
                                                         <select
                                                             value={sku.inclusionType || 'OPTIONAL'}
                                                             onChange={e => {
@@ -1844,7 +1941,7 @@ export default function PricingLedgerTable({
                                                         </select>
                                                     </td>
                                                     {!isAums && (
-                                                        <td className="px-6 py-5 text-right">
+                                                        <td className="px-3 py-1.5 text-right">
                                                             {(() => {
                                                                 const delta = offerDelta;
                                                                 if (delta === 0)
@@ -1874,7 +1971,7 @@ export default function PricingLedgerTable({
                                                 </>
                                             )}
 
-                                            <td className="px-5 py-3 text-right bg-emerald-50/20 dark:bg-emerald-900/10">
+                                            <td className="px-3 py-1.5 text-right bg-emerald-50/20 dark:bg-emerald-900/10">
                                                 {isAums ? (
                                                     <span className="font-bold text-[11px] text-emerald-700 dark:text-emerald-400 tracking-tight">
                                                         {activeCategory === 'vehicles'
@@ -1937,7 +2034,7 @@ export default function PricingLedgerTable({
                                             </td>
 
                                             {!isAums && activeCategory === 'vehicles' && (
-                                                <td className="px-4 py-3 text-right">
+                                                <td className="px-3 py-1.5 text-right">
                                                     {(() => {
                                                         // Delta = OnRoad (AUMS base) - OfferOnRoad (dealer input)
                                                         // offerDelta here is the dealer's Offer On Road price
@@ -1966,13 +2063,18 @@ export default function PricingLedgerTable({
                                                 </td>
                                             )}
 
-                                            <td className="px-4 py-3 text-right w-[120px]">
+                                            <td className="px-3 py-1.5 text-right w-[90px] relative group/updated">
                                                 <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400">
                                                     {updatedLabel}
                                                 </span>
+                                                {updatedTooltip && (
+                                                    <div className="absolute bottom-full mb-1 right-0 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/updated:opacity-100 group-hover/updated:visible transition-all whitespace-nowrap z-50">
+                                                        {updatedTooltip}
+                                                    </div>
+                                                )}
                                             </td>
 
-                                            <td className="px-5 py-3 text-right w-[120px] relative">
+                                            <td className="px-3 py-1.5 text-right w-[90px] relative">
                                                 {(() => {
                                                     const state = isAums
                                                         ? sku.displayState || 'Draft'

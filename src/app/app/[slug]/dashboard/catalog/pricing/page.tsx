@@ -178,10 +178,10 @@ export default function PricingPage() {
                             id, name, type, price_base, specs, position,
                             parent:parent_id (
                                 id, name, type, price_base, specs,
-                                template:cat_templates(category, name),
+                                category,
                                 brand:cat_brands(id, name, logo_svg)
                             ),
-                            template:cat_templates(category, name),
+                            category,
                             brand:cat_brands(id, name, logo_svg)
                         )
                     )
@@ -285,23 +285,19 @@ export default function PricingPage() {
                 let variant = null;
                 let color_def = null;
 
-                if (parent1?.type === 'COLOR_DEF') {
+                if (parent1?.type === 'UNIT') {
                     color_def = parent1;
                     variant = parent2;
                     family = parent3;
                 } else if (parent1?.type === 'VARIANT') {
                     variant = parent1;
                     family = parent2;
-                } else if (parent1?.type === 'FAMILY') {
+                } else if (parent1?.type === 'PRODUCT') {
                     family = parent1;
                 }
 
                 const brand = family ? (Array.isArray(family.brand) ? family.brand[0] : family.brand) : null;
-                const familyTemplate = family
-                    ? Array.isArray(family.template)
-                        ? family.template[0]
-                        : family.template
-                    : null;
+                const familyCategory = family?.category || 'VEHICLE';
 
                 const statePrice = priceMap.get(sku.id)?.price;
                 const pricingRule = (offerData || []).find((o: any) => o.vehicle_color_id === sku.id);
@@ -336,17 +332,17 @@ export default function PricingPage() {
 
                 const finalInclusionType = stateInclusion as 'MANDATORY' | 'OPTIONAL' | 'BUNDLE';
 
-                // Determine item type from template category
+                // Determine item type from family category
                 let itemType: 'vehicles' | 'accessories' | 'service' = 'vehicles';
-                const tempCat = familyTemplate?.category?.toUpperCase();
+                const tempCat = familyCategory.toUpperCase();
 
                 if (tempCat === 'ACCESSORY') itemType = 'accessories';
                 else if (tempCat === 'SERVICE') itemType = 'service';
 
                 const categoryLabel =
-                    familyTemplate?.category ||
+                    tempCat ||
                     (itemType === 'vehicles' ? 'VEHICLE' : itemType === 'accessories' ? 'ACCESSORY' : 'SERVICE');
-                const subCategoryLabel = familyTemplate?.name || 'General';
+                const subCategoryLabel = 'General';
 
                 return {
                     id: sku.id,

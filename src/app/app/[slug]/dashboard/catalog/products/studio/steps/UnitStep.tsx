@@ -25,7 +25,7 @@ import SKUMediaManager from '@/components/catalog/SKUMediaManager';
 import { getProxiedUrl } from '@/lib/utils/urlHelper';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 
-export default function ColorStep({ family, template, existingColors, onUpdate }: any) {
+export default function UnitStep({ family, existingColors, onUpdate }: any) {
     const [isSaving, setIsSaving] = useState(false);
     const [mediaModalOpen, setMediaModalOpen] = useState(false);
     const [activeColorId, setActiveColorId] = useState<string | null>(null);
@@ -50,7 +50,14 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
     const [showReorderSaved, setShowReorderSaved] = useState(false);
     const reorderSavedTimeoutRef = useRef<number | null>(null);
 
-    const l2Label = template?.hierarchy_config?.l2 || 'Style';
+    const l2Label = 'Unit';
+    const category = family?.category || 'VEHICLE';
+    const unitPlaceholder =
+        category === 'SERVICE'
+            ? 'e.g. Standard, Premium'
+            : category === 'ACCESSORY'
+              ? 'e.g. Stainless Steel, Large'
+              : 'e.g. Matte Black, Pearl White';
     const showDebug = process.env.NEXT_PUBLIC_DEBUG_CATALOG === 'true';
 
     useEffect(() => {
@@ -103,11 +110,11 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                 .eq('id', id);
 
             if (error) throw error;
-            toast.success('Color updated successfully');
+            toast.success(`${l2Label} updated successfully`);
         } catch (error: unknown) {
             console.error('Update failed:', error);
             const message = error instanceof Error ? error.message : 'Unknown error';
-            toast.error('Failed to update color: ' + message);
+            toast.error(`Failed to update ${l2Label.toLowerCase()}: ` + message);
         } finally {
             setIsSaving(false);
         }
@@ -141,10 +148,10 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                     hex_primary: '#000000',
                     hex_secondary: null,
                 },
-                type: 'COLOR_DEF',
+                type: 'UNIT',
                 status: 'ACTIVE', // SOT: Default to ACTIVE - AUMS needs active SKUs for pricing
                 brand_id: family.brand_id,
-                template_id: family.template_id,
+                category: family.category || 'VEHICLE',
                 parent_id: family.id,
                 slug: `${family.slug}-color-${normalizedName.toLowerCase()}`.replace(/ /g, '-'),
                 position: nextPosition,
@@ -168,12 +175,12 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                         .sort((a: any, b: any) => a.position - b.position)
                 );
             }
-            toast.success('Color added successfully');
+            toast.success(`${l2Label} added successfully`);
         } catch (error: unknown) {
             console.error('Add failed:', error);
             const message = error instanceof Error ? error.message : 'Unknown error';
             setError(message);
-            toast.error('Failed to add color: ' + message);
+            toast.error(`Failed to add ${l2Label.toLowerCase()}: ` + message);
         } finally {
             setIsSaving(false);
         }
@@ -442,7 +449,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                         tabIndex={0}
                         onFocus={() => setFocusedIndex(index)}
                         className="group relative bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-white/5 rounded-3xl p-4 hover:border-indigo-500/20 transition-all shadow-xl shadow-slate-200/5 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                        title={`Debug Info:\nID: ${color.id}\nSlug: ${color.slug}\nBrand: ${color.brand_id}\nTemplate: ${color.template_id}`}
+                        title={`Debug Info:\nID: ${color.id}\nSlug: ${color.slug}\nBrand: ${color.brand_id}`}
                         aria-label={`${l2Label} ${color.name}`}
                     >
                         <div className="flex items-start justify-between">
@@ -976,6 +983,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                     initialFinish={editingColor.specs?.Finish}
                     existingNames={existingColors.filter((c: any) => c.id !== editingColor.id).map((c: any) => c.name)}
                     l2Label={l2Label}
+                    placeholder={unitPlaceholder}
                 />
             )}
 
@@ -986,6 +994,7 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                     onAdd={handleAddColor}
                     existingNames={existingColors.map((c: any) => c.name)}
                     l2Label={l2Label}
+                    placeholder={unitPlaceholder}
                 />
             )}
             {deleteModalOpen && colorToDelete && (
@@ -999,14 +1008,14 @@ export default function ColorStep({ family, template, existingColors, onUpdate }
                         const supabase = createClient();
                         const { error } = await supabase.from('cat_items').delete().eq('id', colorToDelete.id);
                         if (error) {
-                            toast.error('Failed to delete color');
+                            toast.error(`Failed to delete ${l2Label.toLowerCase()}`);
                         } else {
                             onUpdate(existingColors.filter((c: any) => c.id !== colorToDelete.id));
-                            toast.success('Color deleted successfully');
+                            toast.success(`${l2Label} deleted successfully`);
                         }
                     }}
                     title={`Delete ${l2Label}`}
-                    message={`Are you sure you want to permanently remove this color definition? This action cannot be undone.`}
+                    message={`Are you sure you want to permanently remove this ${l2Label.toLowerCase()} definition? This action cannot be undone.`}
                     itemName={colorToDelete.name}
                 />
             )}

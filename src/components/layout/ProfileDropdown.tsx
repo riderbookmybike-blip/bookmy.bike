@@ -90,13 +90,13 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
 
         const loadMemberships = async (userId: string) => {
             const { data, error } = await supabase
-                .from('id_team')
-                .select('role, tenant_id, id_tenants!inner(id, slug, name, type, studio_id)')
+                .from('memberships')
+                .select('role, tenant_id, tenants!inner(id, slug, name, type)')
                 .eq('user_id', userId)
                 .eq('status', 'ACTIVE');
 
-            if (error) {
-                console.error('Error loading memberships:', error);
+            if (error && (error.message || error.code)) {
+                console.error('Error loading memberships:', error.message || error.code);
                 return;
             }
 
@@ -104,12 +104,11 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                 setMemberships(
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     data.map((m: any) => {
-                        const tenant = Array.isArray(m.id_tenants) ? m.id_tenants[0] : m.id_tenants;
                         return {
                             role: m.role,
                             tenant_id: m.tenant_id,
                             tenants: {
-                                ...tenant,
+                                ...m.tenants,
                                 district_name: null, // Will be resolved separately if needed
                             },
                         };
