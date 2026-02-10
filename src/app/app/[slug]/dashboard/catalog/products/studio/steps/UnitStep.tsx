@@ -544,13 +544,27 @@ export default function UnitStep({ family, existingColors, onUpdate }: any) {
                                         aria-label={`Pick ${l2Label.toLowerCase()} colors for ${color.name}`}
                                     >
                                         <div
-                                            className="w-6 h-6 rounded-full shadow-lg border-2 border-white dark:border-white/10"
+                                            className="relative w-6 h-6 rounded-full border-2 border-white dark:border-white/10"
                                             style={{
                                                 background: color.specs.hex_secondary
                                                     ? `linear-gradient(135deg, ${color.specs.hex_primary || '#000000'} 50%, ${color.specs.hex_secondary} 50%)`
                                                     : color.specs.hex_primary || '#000000',
+                                                boxShadow:
+                                                    color.specs?.Finish === 'MATTE'
+                                                        ? 'none'
+                                                        : '0 2px 8px rgba(0,0,0,0.3)',
                                             }}
-                                        />
+                                        >
+                                            {color.specs?.Finish !== 'MATTE' && (
+                                                <div
+                                                    className="absolute inset-0 rounded-full"
+                                                    style={{
+                                                        background:
+                                                            'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 50%)',
+                                                    }}
+                                                />
+                                            )}
+                                        </div>
                                     </button>
 
                                     {/* Media Manager (75%) */}
