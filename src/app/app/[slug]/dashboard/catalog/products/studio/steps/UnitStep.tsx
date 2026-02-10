@@ -405,6 +405,23 @@ export default function UnitStep({ family, existingColors, onUpdate }: any) {
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700 text-left">
+            <style>{`
+                @keyframes swatchShimmer {
+                    0% { transform: translateX(-100%) rotate(25deg); }
+                    100% { transform: translateX(200%) rotate(25deg); }
+                }
+                .swatch-shimmer {
+                    background: linear-gradient(
+                        90deg,
+                        transparent 0%,
+                        rgba(255,255,255,0.5) 40%,
+                        rgba(255,255,255,0.7) 50%,
+                        rgba(255,255,255,0.5) 60%,
+                        transparent 100%
+                    );
+                    animation: swatchShimmer 3s ease-in-out infinite;
+                }
+            `}</style>
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-4">
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2 p-1 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/10">
@@ -540,27 +557,46 @@ export default function UnitStep({ family, existingColors, onUpdate }: any) {
                                     <button
                                         onClick={() => openSmartPicker(color)}
                                         className="w-1/4 flex items-center justify-center py-2 rounded-xl border-2 border-slate-50 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
-                                        title="Smart Color Picker"
+                                        title={`Smart Color Picker — ${color.specs?.Finish || 'No Finish'}`}
                                         aria-label={`Pick ${l2Label.toLowerCase()} colors for ${color.name}`}
                                     >
                                         <div
-                                            className="relative w-6 h-6 rounded-full border-2 border-white dark:border-white/10"
+                                            className="relative w-8 h-8 rounded-full border-2 overflow-hidden"
                                             style={{
                                                 background: color.specs.hex_secondary
                                                     ? `linear-gradient(135deg, ${color.specs.hex_primary || '#000000'} 50%, ${color.specs.hex_secondary} 50%)`
                                                     : color.specs.hex_primary || '#000000',
+                                                borderColor:
+                                                    color.specs?.Finish === 'MATTE'
+                                                        ? 'rgba(255,255,255,0.15)'
+                                                        : 'rgba(255,255,255,0.6)',
                                                 boxShadow:
                                                     color.specs?.Finish === 'MATTE'
-                                                        ? 'none'
-                                                        : '0 2px 8px rgba(0,0,0,0.3)',
+                                                        ? 'inset 0 1px 3px rgba(0,0,0,0.15)'
+                                                        : '0 3px 12px rgba(0,0,0,0.35), 0 1px 4px rgba(0,0,0,0.2), inset 0 -2px 4px rgba(0,0,0,0.15)',
                                             }}
                                         >
+                                            {/* GLOSSY: gloss highlight + animated shimmer sweep */}
                                             {color.specs?.Finish !== 'MATTE' && (
+                                                <>
+                                                    <div
+                                                        className="absolute inset-0 rounded-full"
+                                                        style={{
+                                                            background:
+                                                                'radial-gradient(ellipse 70% 50% at 35% 25%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.15) 40%, transparent 70%)',
+                                                        }}
+                                                    />
+                                                    <div className="absolute inset-0 rounded-full swatch-shimmer" />
+                                                </>
+                                            )}
+                                            {/* MATTE: subtle grain texture overlay */}
+                                            {color.specs?.Finish === 'MATTE' && (
                                                 <div
                                                     className="absolute inset-0 rounded-full"
                                                     style={{
-                                                        background:
-                                                            'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 50%)',
+                                                        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+                                                        opacity: 0.12,
+                                                        mixBlendMode: 'overlay',
                                                     }}
                                                 />
                                             )}
