@@ -396,7 +396,6 @@ export default async function Page({ params, searchParams }: Props) {
     }
 
     // 2.5 Fetch SKUs EARLY (Needed for Market Offer Filtering)
-    // Unified schema: Variant -> UNIT -> SKU (new) OR Variant -> SKU (legacy)
     const { data: skus } = await supabase
         .from('cat_items')
         .select('id, name, slug, specs, price_base, parent_id')

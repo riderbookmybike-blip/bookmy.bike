@@ -508,7 +508,7 @@ export default function UnifiedStudioPage() {
                             onDelete={async (id: string) => {
                                 if (
                                     confirm(
-                                        'Are you sure you want to delete this Product Family? This will delete all associated Variants and SKUs.'
+                                        'Are you sure you want to delete this Product? This will delete all associated Variants, Units, and SKUs.'
                                     )
                                 ) {
                                     const supabase = createClient();

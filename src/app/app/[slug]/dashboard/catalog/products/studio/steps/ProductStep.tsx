@@ -408,7 +408,7 @@ export default function ProductStep({
                                             {fam.name}
                                         </h4>
                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">
-                                            Product Family
+                                            Product
                                         </p>
 
                                         {/* Quick Specs Preview - Dynamic */}
@@ -838,7 +838,7 @@ export default function ProductStep({
 
                 {isMediaOpen && (
                     <SKUMediaManager
-                        skuName={formData.name || 'Product Family'}
+                        skuName={formData.name || 'Product'}
                         initialImages={formData.specs.gallery || []}
                         initialVideos={formData.specs.video_urls || []}
                         initialPdfs={formData.specs.pdf_urls || []}

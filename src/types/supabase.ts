@@ -280,6 +280,13 @@ export type Database = {
                         referencedRelation: 'id_tenants';
                         referencedColumns: ['id'];
                     },
+                    {
+                        foreignKeyName: 'cat_ingestion_ignore_rules_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
                 ];
             };
             cat_ins_rules: {
@@ -342,6 +349,65 @@ export type Database = {
                 };
                 Relationships: [];
             };
+            cat_item_compatibility: {
+                Row: {
+                    created_at: string;
+                    id: string;
+                    is_universal: boolean;
+                    sku_id: string;
+                    target_brand_id: string | null;
+                    target_family_id: string | null;
+                    target_variant_id: string | null;
+                };
+                Insert: {
+                    created_at?: string;
+                    id?: string;
+                    is_universal?: boolean;
+                    sku_id: string;
+                    target_brand_id?: string | null;
+                    target_family_id?: string | null;
+                    target_variant_id?: string | null;
+                };
+                Update: {
+                    created_at?: string;
+                    id?: string;
+                    is_universal?: boolean;
+                    sku_id?: string;
+                    target_brand_id?: string | null;
+                    target_family_id?: string | null;
+                    target_variant_id?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'cat_item_compatibility_sku_id_fkey';
+                        columns: ['sku_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_items';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'cat_item_compatibility_target_brand_id_fkey';
+                        columns: ['target_brand_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_brands';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'cat_item_compatibility_target_family_id_fkey';
+                        columns: ['target_family_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_items';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'cat_item_compatibility_target_variant_id_fkey';
+                        columns: ['target_variant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_items';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
             cat_item_ingestion_sources: {
                 Row: {
                     brand_id: string | null;
@@ -392,6 +458,13 @@ export type Database = {
                         referencedRelation: 'id_tenants';
                         referencedColumns: ['id'];
                     },
+                    {
+                        foreignKeyName: 'cat_item_ingestion_sources_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
                 ];
             };
             cat_item_suitability: {
@@ -428,8 +501,8 @@ export type Database = {
             };
             cat_items: {
                 Row: {
-                    brand_id: string | null;
-                    category: string | null;
+                    brand_id: string;
+                    category: string;
                     created_at: string | null;
                     created_by: string | null;
                     gallery_urls: Json | null;
@@ -459,8 +532,8 @@ export type Database = {
                     zoom_factor: number | null;
                 };
                 Insert: {
-                    brand_id?: string | null;
-                    category?: string | null;
+                    brand_id: string;
+                    category: string;
                     created_at?: string | null;
                     created_by?: string | null;
                     gallery_urls?: Json | null;
@@ -490,8 +563,8 @@ export type Database = {
                     zoom_factor?: number | null;
                 };
                 Update: {
-                    brand_id?: string | null;
-                    category?: string | null;
+                    brand_id?: string;
+                    category?: string;
                     created_at?: string | null;
                     created_by?: string | null;
                     gallery_urls?: Json | null;
@@ -608,6 +681,13 @@ export type Database = {
                         columns: ['tenant_id'];
                         isOneToOne: false;
                         referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'id_dealer_pricing_rules_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
                         referencedColumns: ['id'];
                     },
                     {
@@ -1112,6 +1192,13 @@ export type Database = {
                         referencedRelation: 'id_tenants';
                         referencedColumns: ['id'];
                     },
+                    {
+                        foreignKeyName: 'crm_allotments_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
                 ];
             };
             crm_assets: {
@@ -1243,6 +1330,13 @@ export type Database = {
                         columns: ['tenant_id'];
                         isOneToOne: false;
                         referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_booking_assets_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
                         referencedColumns: ['id'];
                     },
                 ];
@@ -1545,6 +1639,13 @@ export type Database = {
                         referencedRelation: 'id_tenants';
                         referencedColumns: ['id'];
                     },
+                    {
+                        foreignKeyName: 'crm_insurance_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
                 ];
             };
             crm_lead_assets: {
@@ -1597,6 +1698,13 @@ export type Database = {
                         columns: ['tenant_id'];
                         isOneToOne: false;
                         referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_lead_assets_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
                         referencedColumns: ['id'];
                     },
                 ];
@@ -1764,8 +1872,10 @@ export type Database = {
                     category: string | null;
                     created_at: string | null;
                     file_path: string;
+                    file_size: number | null;
                     file_type: string | null;
                     id: string;
+                    label: string | null;
                     member_id: string;
                     name: string;
                     updated_at: string | null;
@@ -1774,8 +1884,10 @@ export type Database = {
                     category?: string | null;
                     created_at?: string | null;
                     file_path: string;
+                    file_size?: number | null;
                     file_type?: string | null;
                     id?: string;
+                    label?: string | null;
                     member_id: string;
                     name: string;
                     updated_at?: string | null;
@@ -1784,8 +1896,10 @@ export type Database = {
                     category?: string | null;
                     created_at?: string | null;
                     file_path?: string;
+                    file_size?: number | null;
                     file_type?: string | null;
                     id?: string;
+                    label?: string | null;
                     member_id?: string;
                     name?: string;
                     updated_at?: string | null;
@@ -1878,6 +1992,13 @@ export type Database = {
                         referencedRelation: 'id_tenants';
                         referencedColumns: ['id'];
                     },
+                    {
+                        foreignKeyName: 'crm_4_payments_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
                 ];
             };
             crm_pdi: {
@@ -1933,6 +2054,13 @@ export type Database = {
                         columns: ['tenant_id'];
                         isOneToOne: false;
                         referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_pdi_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
                         referencedColumns: ['id'];
                     },
                 ];
@@ -2010,6 +2138,13 @@ export type Database = {
                         columns: ['bank_id'];
                         isOneToOne: false;
                         referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_quote_finance_attempts_bank_id_fkey';
+                        columns: ['bank_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
                         referencedColumns: ['id'];
                     },
                     {
@@ -2200,6 +2335,13 @@ export type Database = {
                         columns: ['tenant_id'];
                         isOneToOne: false;
                         referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_registration_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
                         referencedColumns: ['id'];
                     },
                 ];
@@ -2497,6 +2639,13 @@ export type Database = {
                         referencedRelation: 'id_tenants';
                         referencedColumns: ['id'];
                     },
+                    {
+                        foreignKeyName: 'id_bank_accounts_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
                 ];
             };
             id_dealer_pricing_rules: {
@@ -2604,6 +2753,13 @@ export type Database = {
                         referencedRelation: 'id_tenants';
                         referencedColumns: ['id'];
                     },
+                    {
+                        foreignKeyName: 'id_dealer_service_areas_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
                 ];
             };
             id_documents: {
@@ -2658,6 +2814,13 @@ export type Database = {
                         columns: ['tenant_id'];
                         isOneToOne: false;
                         referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'id_documents_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
                         referencedColumns: ['id'];
                     },
                 ];
@@ -2732,10 +2895,24 @@ export type Database = {
                         referencedColumns: ['id'];
                     },
                     {
+                        foreignKeyName: 'id_locations_manager_id_fkey';
+                        columns: ['manager_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'memberships';
+                        referencedColumns: ['id'];
+                    },
+                    {
                         foreignKeyName: 'id_locations_tenant_id_fkey';
                         columns: ['tenant_id'];
                         isOneToOne: false;
                         referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'id_locations_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
                         referencedColumns: ['id'];
                     },
                 ];
@@ -2845,6 +3022,13 @@ export type Database = {
                         referencedRelation: 'id_tenants';
                         referencedColumns: ['id'];
                     },
+                    {
+                        foreignKeyName: 'id_member_assets_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
                 ];
             };
             id_member_contacts: {
@@ -2931,6 +3115,13 @@ export type Database = {
                         referencedRelation: 'id_tenants';
                         referencedColumns: ['id'];
                     },
+                    {
+                        foreignKeyName: 'id_member_events_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
                 ];
             };
             id_member_spins: {
@@ -3000,6 +3191,13 @@ export type Database = {
                         referencedRelation: 'id_tenants';
                         referencedColumns: ['id'];
                     },
+                    {
+                        foreignKeyName: 'id_member_spins_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
                 ];
             };
             id_member_tenants: {
@@ -3043,6 +3241,13 @@ export type Database = {
                         columns: ['tenant_id'];
                         isOneToOne: false;
                         referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'id_member_tenants_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
                         referencedColumns: ['id'];
                     },
                 ];
@@ -3278,6 +3483,13 @@ export type Database = {
                         referencedRelation: 'id_tenants';
                         referencedColumns: ['id'];
                     },
+                    {
+                        foreignKeyName: 'id_operating_hours_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
                 ];
             };
             id_primary_dealer_districts: {
@@ -3314,6 +3526,13 @@ export type Database = {
                         columns: ['tenant_id'];
                         isOneToOne: false;
                         referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'id_primary_dealer_districts_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
                         referencedColumns: ['id'];
                     },
                 ];
@@ -3358,10 +3577,24 @@ export type Database = {
                         referencedColumns: ['id'];
                     },
                     {
+                        foreignKeyName: 'id_team_reports_to_fkey';
+                        columns: ['reports_to'];
+                        isOneToOne: false;
+                        referencedRelation: 'memberships';
+                        referencedColumns: ['id'];
+                    },
+                    {
                         foreignKeyName: 'memberships_tenant_id_fkey';
                         columns: ['tenant_id'];
                         isOneToOne: false;
                         referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'memberships_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
                         referencedColumns: ['id'];
                     },
                 ];
@@ -3829,6 +4062,13 @@ export type Database = {
                         referencedRelation: 'id_tenants';
                         referencedColumns: ['id'];
                     },
+                    {
+                        foreignKeyName: 'notifications_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
                 ];
             };
             registration_rules: {
@@ -4137,7 +4377,81 @@ export type Database = {
             };
         };
         Views: {
-            [_ in never]: never;
+            memberships: {
+                Row: {
+                    created_at: string | null;
+                    id: string | null;
+                    role: string | null;
+                    status: string | null;
+                    tenant_id: string | null;
+                    updated_at: string | null;
+                    user_id: string | null;
+                };
+                Insert: {
+                    created_at?: string | null;
+                    id?: string | null;
+                    role?: string | null;
+                    status?: string | null;
+                    tenant_id?: string | null;
+                    updated_at?: never;
+                    user_id?: string | null;
+                };
+                Update: {
+                    created_at?: string | null;
+                    id?: string | null;
+                    role?: string | null;
+                    status?: string | null;
+                    tenant_id?: string | null;
+                    updated_at?: never;
+                    user_id?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'memberships_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'memberships_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            tenants: {
+                Row: {
+                    config: Json | null;
+                    created_at: string | null;
+                    id: string | null;
+                    name: string | null;
+                    slug: string | null;
+                    status: string | null;
+                    type: string | null;
+                };
+                Insert: {
+                    config?: Json | null;
+                    created_at?: string | null;
+                    id?: string | null;
+                    name?: string | null;
+                    slug?: string | null;
+                    status?: string | null;
+                    type?: string | null;
+                };
+                Update: {
+                    config?: Json | null;
+                    created_at?: string | null;
+                    id?: string | null;
+                    name?: string | null;
+                    slug?: string | null;
+                    status?: string | null;
+                    type?: string | null;
+                };
+                Relationships: [];
+            };
         };
         Functions: {
             check_is_super_admin: { Args: { p_user_id: string }; Returns: boolean };
@@ -4169,8 +4483,8 @@ export type Database = {
             get_item_descendants_tree: {
                 Args: { root_id: string };
                 Returns: {
-                    brand_id: string | null;
-                    category: string | null;
+                    brand_id: string;
+                    category: string;
                     created_at: string | null;
                     created_by: string | null;
                     gallery_urls: Json | null;

@@ -7,7 +7,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
-const FAMILY_SLUG = 'yamaha-fascino125fihybrid';
+const PRODUCT_SLUG = 'yamaha-fascino125fihybrid';
 const AUMS_TENANT_ID = '33333333-3333-3333-3333-333333333333';
 const YAMAHA_BRAND_ID = '3170e557-4581-424a-93f5-66289b7b9982';
 
@@ -18,7 +18,7 @@ async function main() {
     const { data: family } = await supabase
         .from('cat_items')
         .select('id')
-        .eq('slug', FAMILY_SLUG)
+        .eq('slug', PRODUCT_SLUG)
         .eq('type', 'PRODUCT')
         .single();
 
@@ -36,7 +36,7 @@ async function main() {
         console.log('Renaming S (Disc) to Disc Tft...');
         await supabase
             .from('cat_items')
-            .update({ name: 'Disc Tft', slug: FAMILY_SLUG + '-disc-tft' })
+            .update({ name: 'Disc Tft', slug: PRODUCT_SLUG + '-disc-tft' })
             .eq('id', sDisc.id);
     }
 

@@ -19,30 +19,30 @@ const supabase = createClient(supabaseUrl!, serviceKey!);
 const AUMS_TENANT_ID = 'f3e6e266-3ca5-4c67-91ce-b7cc98e30ee5';
 const YAMAHA_BRAND_ID = 'e0d5b210-2d89-4a81-b369-bc7d3f11265f';
 
-const FAMILY_SLUG = 'yamaha-fascino125fihybrid';
+const PRODUCT_SLUG = 'yamaha-fascino125fihybrid';
 
 async function main() {
     console.log('Linking localized assets for Yamaha Fascino 125...');
 
     // 1. Get Product
-    const { data: family, error: familyError } = await supabase
+    const { data: product, error: productError } = await supabase
         .from('cat_items')
         .select('id, name')
-        .eq('slug', FAMILY_SLUG)
+        .eq('slug', PRODUCT_SLUG)
         .eq('type', 'PRODUCT')
         .single();
 
-    if (familyError || !family) {
-        console.error('Product not found!', familyError);
+    if (productError || !product) {
+        console.error('Product not found!', productError);
         return;
     }
-    console.log(`Found Product: ${family.name} (${family.id})`);
+    console.log(`Found Product: ${product.name} (${product.id})`);
 
     // 2. Get Variants
     const { data: variants, error: variantsError } = await supabase
         .from('cat_items')
         .select('id, name, slug')
-        .eq('parent_id', family.id)
+        .eq('parent_id', product.id)
         .eq('type', 'VARIANT');
 
     if (variantsError || !variants) {

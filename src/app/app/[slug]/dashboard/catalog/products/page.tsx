@@ -428,7 +428,7 @@ export default function UnifiedCatalogPage() {
                                 {isLoading ? '-' : stats.activeModels}
                             </div>
                             <div className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-1">
-                                Active Families
+                                Active Products
                             </div>
                         </div>
                     </div>
@@ -596,7 +596,7 @@ export default function UnifiedCatalogPage() {
                                             onClick={() => handleSort('familyName')}
                                         >
                                             <div className="flex items-center gap-1">
-                                                Model Family <ArrowUpDown size={10} />
+                                                Product <ArrowUpDown size={10} />
                                             </div>
                                         </th>
                                         <th
