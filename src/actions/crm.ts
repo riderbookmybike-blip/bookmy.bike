@@ -2967,6 +2967,12 @@ export async function getQuoteByDisplayId(
             finance: activeFinance
                 ? {
                       mode: quote.finance_mode,
+                      bankName: activeFinance.bank_name || commercials.finance?.bank_name || null,
+                      status: activeFinance.status || commercials.finance?.status || null,
+                      schemeCode: activeFinance.scheme_code || commercials.finance?.scheme_code || null,
+                      schemeName: commercials.finance?.scheme_name || null,
+                      selectionLogic: commercials.finance?.selection_logic || null,
+                      source: commercials.finance?.source || null,
                       bank: activeFinance.bank_name || commercials.finance?.bank_name || null,
                       scheme:
                           activeFinance.scheme_code ||
@@ -2976,9 +2982,12 @@ export async function getQuoteByDisplayId(
                       ltv: activeFinance.ltv ?? commercials.finance?.ltv ?? null,
                       roi: activeFinance.roi ?? commercials.finance?.roi ?? null,
                       tenure: activeFinance.tenure_months ?? commercials.finance?.tenure_months ?? null,
+                      tenureMonths: activeFinance.tenure_months ?? commercials.finance?.tenure_months ?? null,
                       emi: activeFinance.emi ?? commercials.finance?.emi ?? null,
                       downPayment: activeFinance.down_payment ?? commercials.finance?.down_payment ?? null,
                       loanAmount: activeFinance.loan_amount ?? commercials.finance?.loan_amount ?? null,
+                      loanAddons: activeFinance.loan_addons ?? commercials.finance?.loan_addons ?? null,
+                      processingFee: activeFinance.processing_fee ?? commercials.finance?.processing_fee ?? null,
                       upfrontCharges:
                           commercials.finance?.processing_fee ??
                           commercials.pricing_snapshot?.finance_upfront_charges ??

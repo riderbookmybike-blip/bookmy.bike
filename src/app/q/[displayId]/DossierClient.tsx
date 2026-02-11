@@ -9,18 +9,22 @@ import {
     Sparkles,
     CreditCard,
     ChevronRight,
+    ArrowRight,
     MapPin,
     Phone,
     Mail,
     Globe,
     Info,
     Activity,
+    Clock,
     CheckCircle2,
     LayoutDashboard,
     Package,
     Settings2,
     Truck,
     Milestone,
+    Target,
+    TrendingUp,
     Weight,
     Ruler,
     ChevronDown,
@@ -461,6 +465,13 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         </div>
                     </div>
                     <div className="a4-body">
+                        <div className="mb-4">
+                            <div className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-400">
+                                Line-Item Breakdown
+                            </div>
+                            <div className="text-xs text-slate-500 mt-1">CRM Quote Tab (SOT)</div>
+                        </div>
+
                         <div className="space-y-4">
                             <DossierGroup
                                 quote={quote}
@@ -523,11 +534,16 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                         value={formatCurrency(pricing.rtoTotal)}
                                     />
                                 )}
+                                {pricing.rtoType && (
+                                    <div className="px-8 py-2 text-[9px] uppercase tracking-widest text-slate-400">
+                                        Registration Type: {pricing.rtoType}
+                                    </div>
+                                )}
                             </DossierGroup>
 
                             <DossierGroup
                                 quote={quote}
-                                title="INSURANCE"
+                                title="INSURANCE PACKAGE"
                                 icon={ShieldCheck}
                                 total={pricing.insuranceTotal}
                             >
@@ -563,7 +579,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
 
                             <DossierGroup
                                 quote={quote}
-                                title="ACCESSORIES"
+                                title="AUTHORIZED ACCESSORIES"
                                 icon={Settings2}
                                 total={pricing.accessoriesTotal}
                             >
@@ -587,7 +603,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
 
                             <DossierGroup
                                 quote={quote}
-                                title="SERVICES & WARRANTY"
+                                title="SERVICES & WARRANTIES"
                                 icon={Sparkles}
                                 total={pricing.servicesTotal}
                             >
@@ -609,64 +625,95 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                 )}
                             </DossierGroup>
 
-                            <DossierGroup quote={quote} title="DISCOUNTS & ADJUSTMENTS" icon={AlertCircle}>
-                                {pricing.dealerDiscount ? (
-                                    <DossierRow
-                                        isSub
-                                        isSaving={pricing.dealerDiscount < 0}
-                                        label="Dealer Discount"
-                                        value={formatCurrency(pricing.dealerDiscount)}
-                                    />
-                                ) : null}
-                                {pricing.offersDelta ? (
-                                    <DossierRow
-                                        isSub
-                                        isSaving={pricing.offersDelta < 0}
-                                        label="Offers Delta"
-                                        value={formatCurrency(pricing.offersDelta)}
-                                    />
-                                ) : null}
-                                {pricing.colorDelta ? (
-                                    <DossierRow
-                                        isSub
-                                        isSaving={pricing.colorDelta < 0}
-                                        label="Color Delta"
-                                        value={formatCurrency(pricing.colorDelta)}
-                                    />
-                                ) : null}
-                                {pricing.managerDiscount ? (
-                                    <DossierRow
-                                        isSub
-                                        isSaving={pricing.managerDiscount < 0}
-                                        label="Manager Discount"
-                                        value={formatCurrency(pricing.managerDiscount)}
-                                    />
-                                ) : (
-                                    <div className="px-8 py-3 text-zinc-400 text-[10px] uppercase italic text-center">
-                                        No manager discount
+                            <div className="py-6 px-8 bg-amber-500/[0.05] rounded-[1.5rem] border border-amber-200/40">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex flex-col gap-1">
+                                        <span className="text-xs font-black text-amber-600 uppercase tracking-tight">
+                                            Manager Discretionary
+                                        </span>
+                                        <span className="text-[9px] text-amber-500/70 font-medium">
+                                            Applied for special commercial sessions
+                                        </span>
                                     </div>
-                                )}
+                                    <div className="text-sm font-black text-amber-700">
+                                        {formatCurrency(pricing.managerDiscount || 0)}
+                                    </div>
+                                </div>
                                 {quote.pricing?.managerDiscountNote && (
-                                    <div className="px-8 pb-4 text-[10px] uppercase tracking-widest text-slate-400">
-                                        Manager Note: {quote.pricing.managerDiscountNote}
+                                    <div className="mt-3 text-[10px] uppercase tracking-widest text-amber-600/70">
+                                        Note: {quote.pricing.managerDiscountNote}
                                     </div>
                                 )}
-                            </DossierGroup>
+                            </div>
 
-                            <DossierGroup quote={quote} title="TOTALS" icon={CheckCircle2}>
-                                <DossierRow
-                                    label="On-Road Total"
-                                    value={formatCurrency(pricing.onRoadTotal || 0)}
-                                    isBold
-                                />
-                                <DossierRow
-                                    label="Final Total"
-                                    value={formatCurrency(pricing.finalTotal || 0)}
-                                    isBold
-                                />
-                            </DossierGroup>
+                            <div className="px-8 py-6 bg-slate-50 rounded-[2rem] border border-slate-100 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <Share2 size={14} className="text-slate-400" />
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-black text-slate-900 uppercase tracking-tighter">
+                                            Configuration Locked
+                                        </span>
+                                        <span className="text-[9px] text-slate-500">
+                                            Modify vehicle, color, or addons on Marketplace
+                                        </span>
+                                    </div>
+                                </div>
+                                <ArrowRight size={16} className="text-slate-300" />
+                            </div>
+
+                            <div className="bg-slate-900 rounded-[2rem] p-8 text-white flex items-center justify-between">
+                                <div>
+                                    <div className="text-[9px] font-black text-white/40 uppercase tracking-[0.3em]">
+                                        Net Payable Amount
+                                    </div>
+                                    <div className="text-4xl font-black tracking-tighter">
+                                        {formatCurrency(pricing.finalTotal || 0)}
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-2 text-[9px] font-bold text-white/40 uppercase">
+                                        <CheckCircle2 size={10} className="text-emerald-400" /> On-Road Total
+                                        <span className="w-1 h-1 rounded-full bg-white/20" /> 24h Validity
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-white/40">
+                                        On-Road
+                                    </div>
+                                    <div className="text-xl font-black">{formatCurrency(pricing.onRoadTotal || 0)}</div>
+                                </div>
+                            </div>
+
+                            {quote.financeMode === 'LOAN' && quote.finance && (
+                                <div className="p-6 bg-indigo-50 rounded-[2rem] border border-indigo-100 flex items-center justify-between">
+                                    <div>
+                                        <div className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">
+                                            Estimated Finance Summary
+                                        </div>
+                                        <div className="text-sm font-black text-slate-900">
+                                            {quote.finance.bank || 'Standard Finance Scheme'}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-6">
+                                        <div className="text-right">
+                                            <div className="text-[8px] font-bold text-slate-400 uppercase">
+                                                Monthly EMI
+                                            </div>
+                                            <div className="text-lg font-black text-slate-900">
+                                                ₹{quote.finance.emi?.toLocaleString() || '0'}/mo
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-[8px] font-bold text-slate-400 uppercase">
+                                                Down Payment
+                                            </div>
+                                            <div className="text-lg font-black text-slate-900">
+                                                ₹{quote.finance.downPayment?.toLocaleString() || '0'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                    </div>
+                    </div>{' '}
                     <div className="a4-footer">
                         <div className="text-[10px] uppercase tracking-widest text-zinc-400">Page 2 of 13</div>
                         <div className="text-[10px] uppercase tracking-widest text-zinc-400">Pricing Breakup</div>
@@ -684,7 +731,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                     <div className="a4-header">
                         <PageHeader
                             title="Finance Scheme"
-                            subtitle="Loan architecture and repayment logic."
+                            subtitle="Finance tab application details from CRM."
                             accentColor={quote?.vehicle?.hexCode}
                         />
                         <div className="text-right text-sm text-zinc-500">
@@ -694,72 +741,101 @@ export default function DossierClient({ quote }: DossierClientProps) {
                     <div className="a4-body">
                         {quote.finance ? (
                             <div className="space-y-6">
-                                <DossierGroup quote={quote} title="Primary Application" icon={CreditCard}>
-                                    <DossierRow label="Mode" value={quote.finance.mode || 'CASH'} isSub />
-                                    <DossierRow label="Bank" value={quote.finance.bank || '—'} isSub />
-                                    <DossierRow label="Scheme" value={quote.finance.scheme || '—'} isSub />
+                                <DossierGroup quote={quote} title="Terms & Performance" icon={Activity}>
+                                    <DossierRow
+                                        label="Financier"
+                                        value={quote.finance.bankName || quote.finance.bank || '—'}
+                                    />
+                                    <DossierRow label="Selection Logic" value={quote.finance.selectionLogic || '—'} />
+                                    <DossierRow label="Source" value={quote.finance.source || 'MARKETPLACE'} />
+                                    <DossierRow
+                                        label="Status"
+                                        value={(quote.finance.status || 'IN_PROCESS').toUpperCase()}
+                                    />
+                                    <DossierRow
+                                        label="Scheme Name"
+                                        value={
+                                            quote.finance.schemeName ||
+                                            quote.finance.schemeCode ||
+                                            quote.finance.scheme ||
+                                            '—'
+                                        }
+                                    />
+                                    <DossierRow
+                                        label="Tenure"
+                                        value={quote.finance.tenureMonths || quote.finance.tenure || '—'}
+                                        isSub
+                                    />
+                                    <DossierRow
+                                        label="Monthly EMI"
+                                        value={formatCurrency(toNumber(quote.finance.emi, 0))}
+                                        isBold
+                                    />
+                                    <DossierRow
+                                        label="Rate of Interest"
+                                        value={
+                                            quote.finance.roi !== null && quote.finance.roi !== undefined
+                                                ? `${quote.finance.roi}%`
+                                                : '—'
+                                        }
+                                        isSub
+                                    />
                                 </DossierGroup>
 
-                                <div className="grid grid-cols-2 gap-6">
-                                    <DossierGroup quote={quote} title="Terms" icon={Activity}>
-                                        <DossierRow
-                                            label="ROI"
-                                            value={
-                                                quote.finance.roi !== null && quote.finance.roi !== undefined
-                                                    ? `${quote.finance.roi}%`
-                                                    : '—'
-                                            }
-                                            isSub
-                                        />
-                                        <DossierRow
-                                            label="LTV"
-                                            value={
-                                                quote.finance.ltv !== null && quote.finance.ltv !== undefined
-                                                    ? `${quote.finance.ltv}%`
-                                                    : '—'
-                                            }
-                                            isSub
-                                        />
-                                        <DossierRow
-                                            label="Tenure"
-                                            value={
-                                                quote.finance.tenure !== null && quote.finance.tenure !== undefined
-                                                    ? `${quote.finance.tenure} Months`
-                                                    : '—'
-                                            }
-                                            isSub
-                                        />
-                                        <DossierRow
-                                            label="EMI"
-                                            value={formatCurrency(toNumber(quote.finance.emi, 0))}
-                                            isBold
-                                        />
-                                    </DossierGroup>
-                                    <DossierGroup quote={quote} title="Amounts" icon={LayoutDashboard}>
-                                        <DossierRow
-                                            label="Down Payment"
-                                            value={formatCurrency(toNumber(quote.finance.downPayment, 0))}
-                                            isSub
-                                        />
-                                        <DossierRow
-                                            label="Loan Amount"
-                                            value={formatCurrency(toNumber(quote.finance.loanAmount, 0))}
-                                            isSub
-                                        />
-                                        <DossierRow
-                                            label="Upfront Charges"
-                                            value={formatCurrency(toNumber(quote.finance.upfrontCharges, 0))}
-                                            isSub
-                                        />
-                                        <DossierRow
-                                            label="Funded Add-ons"
-                                            value={formatCurrency(toNumber(quote.finance.fundedAddons, 0))}
-                                            isSub
-                                        />
-                                    </DossierGroup>
-                                </div>
+                                <DossierGroup quote={quote} title="Asset Settlement" icon={Target}>
+                                    <DossierRow
+                                        label="Asset Cost (Net SOT)"
+                                        value={formatCurrency(toNumber(pricing.finalTotal, 0))}
+                                    />
+                                    <DossierRow
+                                        label="Offer Discount"
+                                        value={formatCurrency(toNumber(pricing.offersDelta, 0))}
+                                        isSub
+                                    />
+                                    <DossierRow
+                                        label="Total Payable"
+                                        value={formatCurrency(
+                                            toNumber(pricing.finalTotal, 0) + toNumber(pricing.offersDelta, 0)
+                                        )}
+                                        isBold
+                                    />
+                                </DossierGroup>
 
-                                <DossierGroup quote={quote} title="Charges Breakup" icon={Info}>
+                                <DossierGroup quote={quote} title="Finance Pillars" icon={TrendingUp}>
+                                    {(() => {
+                                        const netLoan =
+                                            quote.finance.loanAmount ??
+                                            toNumber(pricing.finalTotal, 0) - toNumber(quote.finance.downPayment, 0);
+                                        const addOns = quote.finance.loanAddons ?? quote.finance.fundedAddons ?? 0;
+                                        const grossLoan = toNumber(netLoan, 0) + toNumber(addOns, 0);
+                                        return (
+                                            <>
+                                                <DossierRow
+                                                    label="Net Loan Amount"
+                                                    value={formatCurrency(toNumber(netLoan, 0))}
+                                                />
+                                                <DossierRow
+                                                    label="Loan Add-ons"
+                                                    value={formatCurrency(toNumber(addOns, 0))}
+                                                    isSub
+                                                />
+                                                <DossierRow
+                                                    label="Gross Loan Amount"
+                                                    value={formatCurrency(toNumber(grossLoan, 0))}
+                                                    isBold
+                                                />
+                                            </>
+                                        );
+                                    })()}
+                                </DossierGroup>
+
+                                <DossierGroup quote={quote} title="Upfront Obligations" icon={Clock}>
+                                    <DossierRow
+                                        label="Total Upfront Charges"
+                                        value={formatCurrency(
+                                            toNumber(quote.finance.upfrontCharges ?? quote.finance.processingFee, 0)
+                                        )}
+                                    />
                                     {Array.isArray(quote.finance.chargesBreakup) &&
                                     quote.finance.chargesBreakup.length > 0 ? (
                                         quote.finance.chargesBreakup.map((c: any, idx: number) => (
@@ -772,9 +848,14 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                         ))
                                     ) : (
                                         <div className="px-8 py-4 text-zinc-400 text-[10px] uppercase italic text-center">
-                                            No charges breakup available
+                                            No upfront breakup available
                                         </div>
                                     )}
+                                    <DossierRow
+                                        label="Down Payment"
+                                        value={formatCurrency(toNumber(quote.finance.downPayment, 0))}
+                                        isBold
+                                    />
                                 </DossierGroup>
                             </div>
                         ) : (

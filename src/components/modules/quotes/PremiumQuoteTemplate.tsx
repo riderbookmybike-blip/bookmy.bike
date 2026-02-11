@@ -30,6 +30,9 @@ import {
     Settings2,
     Truck,
     Activity,
+    Clock,
+    Target,
+    TrendingUp,
     LayoutDashboard,
     Share2,
     Instagram,
@@ -388,7 +391,6 @@ export const PremiumQuoteTemplate: React.FC<PremiumQuoteTemplateProps> = ({
                     </div>
 
                     <div className="space-y-4">
-                        {/* Ex-Showroom Group */}
                         <PDFGroup
                             quote={quote}
                             title="EX-SHOWROOM PRICE"
@@ -398,35 +400,28 @@ export const PremiumQuoteTemplate: React.FC<PremiumQuoteTemplateProps> = ({
                             {(() => {
                                 const exShowroom = quote?.pricing?.exShowroom || 0;
                                 const gstRate = quote?.pricing?.exShowroomGstRate || (exShowroom > 100000 ? 28 : 18);
-
-                                // Use values directly from SOT if available, else fallback to calculation
                                 const basePrice =
                                     quote?.pricing?.exShowroomBasePrice ?? Math.round(exShowroom / (1 + gstRate / 100));
                                 const gstAmount = quote?.pricing?.exShowroomGstAmount ?? exShowroom - basePrice;
-
                                 return (
                                     <>
                                         <PDFRow isSub label="Base Price" value={formatCurrency(basePrice)} />
                                         <PDFRow isSub label={`GST (${gstRate}%)`} value={formatCurrency(gstAmount)} />
-                                        {quote?.pricing?.colorDelta !== undefined &&
-                                            quote?.pricing?.colorDelta !== 0 && (
-                                                <PDFRow
-                                                    isSub
-                                                    isSaving={quote.pricing.colorDelta < 0}
-                                                    label={
-                                                        quote.pricing.colorDelta < 0
-                                                            ? 'Colour Discount'
-                                                            : 'Colour Surge'
-                                                    }
-                                                    value={formatCurrency(quote.pricing.colorDelta)}
-                                                />
-                                            )}
+                                        {quote?.pricing?.colorDelta !== undefined && quote.pricing.colorDelta !== 0 && (
+                                            <PDFRow
+                                                isSub
+                                                isSaving={quote.pricing.colorDelta < 0}
+                                                label={
+                                                    quote.pricing.colorDelta < 0 ? 'Colour Discount' : 'Colour Surge'
+                                                }
+                                                value={formatCurrency(quote.pricing.colorDelta)}
+                                            />
+                                        )}
                                     </>
                                 );
                             })()}
                         </PDFGroup>
 
-                        {/* Registration Group */}
                         <PDFGroup
                             quote={quote}
                             title="REGISTRATION (RTO)"
@@ -447,9 +442,13 @@ export const PremiumQuoteTemplate: React.FC<PremiumQuoteTemplateProps> = ({
                                     Standard regional levies applied
                                 </div>
                             )}
+                            {quote?.pricing?.rtoType && (
+                                <div className="px-8 py-2 text-[9px] uppercase tracking-widest text-zinc-400">
+                                    Registration Type: {quote.pricing.rtoType}
+                                </div>
+                            )}
                         </PDFGroup>
 
-                        {/* Insurance Group */}
                         <PDFGroup
                             quote={quote}
                             title="INSURANCE PACKAGE"
@@ -466,23 +465,26 @@ export const PremiumQuoteTemplate: React.FC<PremiumQuoteTemplateProps> = ({
                                 label="Own Damage (OD)"
                                 value={formatCurrency(quote?.pricing?.insuranceOD || 0)}
                             />
-                            {(quote?.pricing?.insuranceAddons?.filter((a: any) => a.selected) || []).length > 0
-                                ? (quote?.pricing?.insuranceAddons || [])
-                                      .filter((a: any) => a.selected)
-                                      .map((item: any, idx: number) => (
-                                          <PDFRow
-                                              key={idx}
-                                              isSub
-                                              label={item.name || item.label}
-                                              value={formatCurrency(
-                                                  item.discountPrice ?? item.price ?? item.amount ?? 0
-                                              )}
-                                          />
-                                      ))
-                                : null}
+                            {(quote?.pricing?.insuranceAddons?.filter((a: any) => a.selected) || []).map(
+                                (item: any, idx: number) => (
+                                    <PDFRow
+                                        key={idx}
+                                        isSub
+                                        label={item.name || item.label}
+                                        value={formatCurrency(item.discountPrice ?? item.price ?? item.amount ?? 0)}
+                                    />
+                                )
+                            )}
+                            {(quote?.pricing?.insuranceRequired || []).map((item: any, idx: number) => (
+                                <PDFRow
+                                    key={`req-${idx}`}
+                                    isSub
+                                    label={item.name || item.label}
+                                    value={formatCurrency(item.discountPrice ?? item.price ?? item.amount ?? 0)}
+                                />
+                            ))}
                         </PDFGroup>
 
-                        {/* Accessories Group */}
                         {quote?.pricing?.accessoriesTotal > 0 && (
                             <PDFGroup
                                 quote={quote}
@@ -503,7 +505,6 @@ export const PremiumQuoteTemplate: React.FC<PremiumQuoteTemplateProps> = ({
                             </PDFGroup>
                         )}
 
-                        {/* Services Group */}
                         {quote?.pricing?.servicesTotal > 0 && (
                             <PDFGroup
                                 quote={quote}
@@ -524,46 +525,15 @@ export const PremiumQuoteTemplate: React.FC<PremiumQuoteTemplateProps> = ({
                             </PDFGroup>
                         )}
 
-                        <PDFGroup quote={quote} title="DISCOUNTS & ADJUSTMENTS" icon={AlertCircle}>
-                            {quote?.pricing?.dealerDiscount ? (
-                                <PDFRow
-                                    isSub
-                                    isSaving={quote.pricing.dealerDiscount < 0}
-                                    label="Dealer Discount"
-                                    value={formatCurrency(quote.pricing.dealerDiscount)}
-                                />
-                            ) : null}
-                            {quote?.pricing?.offersDelta ? (
-                                <PDFRow
-                                    isSub
-                                    isSaving={quote.pricing.offersDelta < 0}
-                                    label="Offers Delta"
-                                    value={formatCurrency(quote.pricing.offersDelta)}
-                                />
-                            ) : null}
-                            {quote?.pricing?.colorDelta ? (
-                                <PDFRow
-                                    isSub
-                                    isSaving={quote.pricing.colorDelta < 0}
-                                    label="Color Delta"
-                                    value={formatCurrency(quote.pricing.colorDelta)}
-                                />
-                            ) : null}
-                            {quote?.pricing?.managerDiscount ? (
-                                <PDFRow
-                                    isSub
-                                    isSaving={quote.pricing.managerDiscount < 0}
-                                    label="Manager Discount"
-                                    value={formatCurrency(quote.pricing.managerDiscount)}
-                                />
-                            ) : (
-                                <div className="px-8 py-3 text-zinc-400 text-[9px] uppercase italic text-center">
-                                    No manager discount
-                                </div>
-                            )}
+                        <PDFGroup quote={quote} title="MANAGER DISCRETIONARY" icon={AlertCircle}>
+                            <PDFRow
+                                isSub
+                                label="Manager Discount"
+                                value={formatCurrency(quote?.pricing?.managerDiscount || 0)}
+                            />
                             {quote?.pricing?.managerDiscountNote && (
                                 <div className="px-8 pb-4 text-[9px] uppercase tracking-widest text-zinc-400">
-                                    Manager Note: {quote.pricing.managerDiscountNote}
+                                    Note: {quote.pricing.managerDiscountNote}
                                 </div>
                             )}
                         </PDFGroup>
@@ -580,6 +550,71 @@ export const PremiumQuoteTemplate: React.FC<PremiumQuoteTemplateProps> = ({
                                 isBold
                             />
                         </PDFGroup>
+
+                        <div className="px-8 py-6 bg-zinc-50 rounded-[2rem] border border-zinc-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <Share2 size={14} className="text-zinc-400" />
+                                <div className="flex flex-col">
+                                    <span className="text-[9px] font-black text-zinc-900 uppercase tracking-tighter">
+                                        Configuration Locked
+                                    </span>
+                                    <span className="text-[9px] text-zinc-500">
+                                        Modify vehicle, color, or addons on Marketplace
+                                    </span>
+                                </div>
+                            </div>
+                            <ChevronRight size={16} className="text-zinc-300" />
+                        </div>
+
+                        <div className="bg-zinc-900 rounded-[2rem] p-8 text-white flex items-center justify-between">
+                            <div>
+                                <div className="text-[9px] font-black text-white/40 uppercase tracking-[0.3em]">
+                                    Net Payable Amount
+                                </div>
+                                <div className="text-4xl font-black tracking-tighter">
+                                    {formatCurrency(quote?.pricing?.finalTotal || 0)}
+                                </div>
+                                <div className="flex items-center gap-2 mt-2 text-[9px] font-bold text-white/40 uppercase">
+                                    <CheckCircle2 size={10} className="text-emerald-400" /> On-Road Total
+                                    <span className="w-1 h-1 rounded-full bg-white/20" /> 24h Validity
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-[10px] font-black uppercase tracking-widest text-white/40">
+                                    On-Road
+                                </div>
+                                <div className="text-xl font-black">
+                                    {formatCurrency(quote?.pricing?.onRoadTotal || 0)}
+                                </div>
+                            </div>
+                        </div>
+
+                        {quote?.finance && quote?.finance?.mode === 'LOAN' && (
+                            <div className="p-6 bg-indigo-50 rounded-[2rem] border border-indigo-100 flex items-center justify-between">
+                                <div>
+                                    <div className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">
+                                        Estimated Finance Summary
+                                    </div>
+                                    <div className="text-sm font-black text-zinc-900">
+                                        {quote.finance.bankName || quote.finance.bank || 'Standard Finance Scheme'}
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-6">
+                                    <div className="text-right">
+                                        <div className="text-[8px] font-bold text-zinc-400 uppercase">Monthly EMI</div>
+                                        <div className="text-lg font-black text-zinc-900">
+                                            ₹{quote.finance.emi?.toLocaleString() || '0'}/mo
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-[8px] font-bold text-zinc-400 uppercase">Down Payment</div>
+                                        <div className="text-lg font-black text-zinc-900">
+                                            ₹{quote.finance.downPayment?.toLocaleString() || '0'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="mt-auto flex items-center gap-8 pt-8">
@@ -635,85 +670,124 @@ export const PremiumQuoteTemplate: React.FC<PremiumQuoteTemplateProps> = ({
                     <div className="flex-1">
                         {quote?.finance ? (
                             <div className="space-y-6">
-                                <PDFGroup title="Primary Application" icon={CreditCard}>
-                                    <div className="px-6 py-6">
-                                        <div className="text-xl font-black text-zinc-900 uppercase italic">
-                                            {quote.finance.bank || quote.finance.scheme || 'Standard Finance'}
-                                        </div>
-                                        <div className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mt-2">
-                                            {quote.finance.scheme || 'Approved Scheme'}
-                                        </div>
-                                        <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mt-2">
-                                            Mode: {quote.finance.mode || 'CASH'}
-                                        </div>
-                                    </div>
+                                <PDFGroup title="Terms & Performance" icon={Activity}>
+                                    <PDFRow
+                                        label="Financier"
+                                        value={quote.finance.bankName || quote.finance.bank || '—'}
+                                    />
+                                    <PDFRow label="Selection Logic" value={quote.finance.selectionLogic || '—'} isSub />
+                                    <PDFRow label="Source" value={quote.finance.source || 'MARKETPLACE'} isSub />
+                                    <PDFRow
+                                        label="Status"
+                                        value={(quote.finance.status || 'IN_PROCESS').toUpperCase()}
+                                        isSub
+                                    />
+                                    <PDFRow
+                                        label="Scheme Name"
+                                        value={
+                                            quote.finance.schemeName ||
+                                            quote.finance.schemeCode ||
+                                            quote.finance.scheme ||
+                                            '—'
+                                        }
+                                    />
+                                    <PDFRow
+                                        label="Tenure"
+                                        value={quote.finance.tenureMonths || quote.finance.tenure || '—'}
+                                        isSub
+                                    />
+                                    <PDFRow
+                                        label="Monthly EMI"
+                                        value={formatCurrency(toNumber(quote.finance.emi, 0))}
+                                        isBold
+                                    />
+                                    <PDFRow
+                                        label="Rate of Interest"
+                                        value={
+                                            quote.finance.roi !== null && quote.finance.roi !== undefined
+                                                ? `${quote.finance.roi}%`
+                                                : '—'
+                                        }
+                                        isSub
+                                    />
                                 </PDFGroup>
-                                <div className="grid grid-cols-2 gap-6">
-                                    <PDFGroup title="Terms" icon={Activity}>
-                                        <PDFRow isSub label="ROI" value={`${quote.finance.roi ?? '—'}%`} />
-                                        <PDFRow
-                                            isSub
-                                            label="LTV"
-                                            value={
-                                                quote.finance.ltv !== null && quote.finance.ltv !== undefined
-                                                    ? `${quote.finance.ltv}%`
-                                                    : '—'
-                                            }
-                                        />
-                                        <PDFRow isSub label="Tenure" value={`${quote.finance.tenure ?? '—'} Months`} />
-                                        <PDFRow
-                                            isSub
-                                            label="EMI"
-                                            value={formatCurrency(toNumber(quote.finance.emi, 0))}
-                                            isBold
-                                        />
-                                    </PDFGroup>
-                                    <PDFGroup title="Amounts" icon={LayoutDashboard}>
-                                        <PDFRow
-                                            isSub
-                                            label="Down Payment"
-                                            value={formatCurrency(toNumber(quote.finance.downPayment, 0))}
-                                        />
-                                        <PDFRow
-                                            isSub
-                                            label="Loan Amount"
-                                            value={formatCurrency(toNumber(quote.finance.loanAmount, 0))}
-                                        />
-                                        <PDFRow
-                                            isSub
-                                            label="Upfront Charges"
-                                            value={formatCurrency(toNumber(quote.finance.upfrontCharges, 0))}
-                                        />
-                                        <PDFRow
-                                            isSub
-                                            label="Funded Add-ons"
-                                            value={formatCurrency(toNumber(quote.finance.fundedAddons, 0))}
-                                        />
-                                        <PDFRow
-                                            isSub
-                                            label="On-Road"
-                                            value={formatCurrency(toNumber(quote?.pricing?.finalTotal, 0))}
-                                            isBold
-                                        />
-                                    </PDFGroup>
-                                </div>
 
-                                <PDFGroup title="Charges Breakup" icon={Info}>
+                                <PDFGroup title="Asset Settlement" icon={Target}>
+                                    <PDFRow
+                                        label="Asset Cost (Net SOT)"
+                                        value={formatCurrency(toNumber(quote?.pricing?.finalTotal, 0))}
+                                    />
+                                    <PDFRow
+                                        label="Offer Discount"
+                                        value={formatCurrency(toNumber(quote?.pricing?.offersDelta, 0))}
+                                        isSub
+                                    />
+                                    <PDFRow
+                                        label="Total Payable"
+                                        value={formatCurrency(
+                                            toNumber(quote?.pricing?.finalTotal, 0) +
+                                                toNumber(quote?.pricing?.offersDelta, 0)
+                                        )}
+                                        isBold
+                                    />
+                                </PDFGroup>
+
+                                <PDFGroup title="Finance Pillars" icon={TrendingUp}>
+                                    {(() => {
+                                        const netLoan =
+                                            quote.finance.loanAmount ??
+                                            toNumber(quote?.pricing?.finalTotal, 0) -
+                                                toNumber(quote.finance.downPayment, 0);
+                                        const addOns = quote.finance.loanAddons ?? quote.finance.fundedAddons ?? 0;
+                                        const grossLoan = toNumber(netLoan, 0) + toNumber(addOns, 0);
+                                        return (
+                                            <>
+                                                <PDFRow
+                                                    label="Net Loan Amount"
+                                                    value={formatCurrency(toNumber(netLoan, 0))}
+                                                />
+                                                <PDFRow
+                                                    label="Loan Add-ons"
+                                                    value={formatCurrency(toNumber(addOns, 0))}
+                                                    isSub
+                                                />
+                                                <PDFRow
+                                                    label="Gross Loan Amount"
+                                                    value={formatCurrency(toNumber(grossLoan, 0))}
+                                                    isBold
+                                                />
+                                            </>
+                                        );
+                                    })()}
+                                </PDFGroup>
+
+                                <PDFGroup title="Upfront Obligations" icon={Clock}>
+                                    <PDFRow
+                                        label="Total Upfront Charges"
+                                        value={formatCurrency(
+                                            toNumber(quote.finance.upfrontCharges ?? quote.finance.processingFee, 0)
+                                        )}
+                                    />
                                     {Array.isArray(quote.finance.chargesBreakup) &&
                                     quote.finance.chargesBreakup.length > 0 ? (
                                         quote.finance.chargesBreakup.map((c: any, idx: number) => (
                                             <PDFRow
                                                 key={idx}
-                                                isSub
                                                 label={c.label || c.name || 'Charge'}
                                                 value={formatCurrency(toNumber(c.amount, 0))}
+                                                isSub
                                             />
                                         ))
                                     ) : (
                                         <div className="px-8 py-4 text-zinc-400 text-[9px] uppercase italic text-center">
-                                            No charges breakup available
+                                            No upfront breakup available
                                         </div>
                                     )}
+                                    <PDFRow
+                                        label="Down Payment"
+                                        value={formatCurrency(toNumber(quote.finance.downPayment, 0))}
+                                        isBold
+                                    />
                                 </PDFGroup>
                             </div>
                         ) : (
@@ -730,7 +804,6 @@ export const PremiumQuoteTemplate: React.FC<PremiumQuoteTemplateProps> = ({
                             </div>
                         )}
                     </div>
-
                     <div className="mt-auto pt-8 flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-zinc-300">
                         <span>Finance</span>
                         <span>Page 3 of 13</span>
