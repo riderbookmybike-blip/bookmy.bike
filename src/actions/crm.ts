@@ -496,6 +496,8 @@ export async function getQuotes(tenantId?: string) {
         date: q.created_at.split('T')[0],
         vehicleBrand: q.commercials?.brand || '',
         vehicleModel: q.commercials?.model || '',
+        vehicleVariant: q.commercials?.variant || '',
+        vehicleColor: q.commercials?.color_name || q.commercials?.color || '',
     }));
 }
 
@@ -509,6 +511,36 @@ export async function getQuotesForLead(leadId: string) {
 
     if (error) {
         console.error('getQuotesForLead Error:', error);
+        return [];
+    }
+    return data || [];
+}
+
+export async function getQuotesForMember(memberId: string) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('crm_quotes')
+        .select('*')
+        .eq('member_id', memberId)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('getQuotesForMember Error:', error);
+        return [];
+    }
+    return data || [];
+}
+
+export async function getBookingsForMember(memberId: string) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('crm_bookings')
+        .select('*')
+        .eq('member_id', memberId)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('getBookingsForMember Error:', error);
         return [];
     }
     return data || [];
@@ -1252,13 +1284,29 @@ export interface QuoteEditorData {
         rtoTotal: number;
         insuranceOD: number;
         insuranceTP: number;
-        insuranceAddons: { id: string; name: string; amount: number; selected: boolean }[];
+        insuranceAddons: { id: string; name: string; amount: number; selected: boolean; breakdown?: any }[];
         insuranceGST: number;
         insuranceTotal: number;
         insuranceProvider?: string | null;
-        accessories: { id: string; name: string; price: number; selected: boolean }[];
+        accessories: {
+            id: string;
+            name: string;
+            price: number;
+            basePrice?: number;
+            discountPrice?: number | null;
+            qty?: number;
+            selected: boolean;
+        }[];
         accessoriesTotal: number;
-        services: { id: string; name: string; price: number; selected: boolean }[];
+        services: {
+            id: string;
+            name: string;
+            price: number;
+            basePrice?: number;
+            discountPrice?: number | null;
+            qty?: number;
+            selected: boolean;
+        }[];
         servicesTotal: number;
         insuranceGstRate: number;
         dealerDiscount: number;
@@ -1266,8 +1314,23 @@ export interface QuoteEditorData {
         managerDiscountNote: string | null;
         onRoadTotal: number;
         finalTotal: number;
+        rtoOptions?: any[];
+        insuranceRequiredItems?: any[];
+        offersItems?: any[];
+        warrantyItems?: any[];
+        referralApplied?: boolean;
+        referralBonus?: number;
     };
     financeMode?: 'CASH' | 'LOAN';
+    delivery?: {
+        serviceable?: boolean | null;
+        pincode?: string | null;
+        taluka?: string | null;
+        district?: string | null;
+        stateCode?: string | null;
+        delivery_tat_days?: number | null;
+        checked_at?: string | null;
+    } | null;
     finance?: {
         id?: string | null;
         status?: 'IN_PROCESS' | 'UNDERWRITING' | 'DOC_PENDING' | 'APPROVED' | 'REJECTED';
@@ -1275,6 +1338,9 @@ export interface QuoteEditorData {
         bankName?: string | null;
         schemeId?: string | null;
         schemeCode?: string | null;
+        selection_logic?: string | null;
+        scheme_interest_rate?: number | null;
+        scheme_interest_type?: string | null;
         ltv?: number | null;
         roi?: number | null;
         tenureMonths?: number | null;
@@ -1289,11 +1355,13 @@ export interface QuoteEditorData {
         approvedAddOns?: number | null;
         approvedProcessingFee?: number | null;
         approvedChargesBreakup?: any[] | null;
+        approvedAddonsBreakup?: any[] | null;
         approvedEmi?: number | null;
         approvedScheme?: string | null;
         approvedTenure?: number | null;
         approvedIrr?: number | null;
         approvedMarginMoney?: number | null;
+        approvedGrossLoan?: number | null;
     } | null;
     timeline: { event: string; timestamp: string; actor: string | null; actorType: 'customer' | 'team' }[];
 }
@@ -1418,6 +1486,7 @@ export async function getQuoteById(
         district: pricingSnapshot?.location?.district || null,
         financeMode: q.finance_mode || (commercials.finance?.mode as any) || 'CASH',
         tenantId: q.tenant_id || null,
+        delivery: commercials.delivery || null,
     };
 
     // Fetch Member Profile (single query to avoid slow duplicate fetches)
@@ -1675,7 +1744,8 @@ export async function getQuoteById(
                     id: a.id || a,
                     name: a.name || a,
                     amount: a.price || a.amount || 0,
-                    selected: true,
+                    selected: a.selected !== undefined ? a.selected : true,
+                    breakdown: a.breakdown || a.breakup || null,
                 })
             ),
             insuranceGST: (() => {
@@ -1717,6 +1787,9 @@ export async function getQuoteById(
                 id: a.id || a,
                 name: a.name || 'Accessory',
                 price: a.discountPrice || a.price || 0,
+                basePrice: a.price || 0,
+                discountPrice: a.discountPrice || null,
+                qty: Number(a.qty || 1),
                 selected: true,
             })),
             accessoriesTotal: pricingSnapshot.accessories_total || 0,
@@ -1724,6 +1797,9 @@ export async function getQuoteById(
                 id: s.id || s,
                 name: s.name || 'Service',
                 price: s.discountPrice || s.price || 0,
+                basePrice: s.price || 0,
+                discountPrice: s.discountPrice || null,
+                qty: Number(s.qty || 1),
                 selected: true,
             })),
             servicesTotal: pricingSnapshot.services_total || 0,
@@ -1740,9 +1816,44 @@ export async function getQuoteById(
             finalTotal:
                 (pricingSnapshot.grand_total || parseInt(q.on_road_price) || commercials.grand_total || 0) +
                 (parseInt(q.manager_discount) || 0),
+            rtoOptions: pricingSnapshot.rto_options || [],
+            insuranceRequiredItems: pricingSnapshot.insurance_required_items || [],
+            offersItems: pricingSnapshot.offers_items || [],
+            warrantyItems: pricingSnapshot.warranty_items || [],
+            referralApplied: pricingSnapshot.referral_applied || false,
+            referralBonus: pricingSnapshot.referral_bonus || 0,
         },
         finance: null,
         timeline,
+    };
+
+    const resolveBankName = async (bankId?: string | null, currentName?: string | null) => {
+        const normalized = (currentName || '').trim();
+        if (!bankId) return normalized || null;
+        if (normalized && normalized.toLowerCase() !== 'new financier') return normalized;
+        const { data: bank } = await adminClient.from('id_tenants').select('name').eq('id', bankId).maybeSingle();
+        return bank?.name || normalized || null;
+    };
+
+    const normalizeCharges = (charges: any[] = []) => {
+        return (charges || []).map(c => ({
+            label: c.label || c.name || 'Charge',
+            amount: Number(c.amount ?? c.value ?? 0),
+            impact: c.impact || undefined,
+            type: c.type || undefined,
+            calculationBasis: c.calculationBasis || undefined,
+            taxStatus: c.taxStatus || undefined,
+            taxRate: c.taxRate || undefined,
+        }));
+    };
+
+    const splitCharges = (charges: any[] = []) => {
+        const normalized = normalizeCharges(charges);
+        const upfront = normalized.filter(c => !c.impact || c.impact === 'UPFRONT');
+        const funded = normalized.filter(c => c.impact === 'FUNDED');
+        const upfrontTotal = upfront.reduce((sum, c) => sum + (c.amount || 0), 0);
+        const fundedTotal = funded.reduce((sum, c) => sum + (c.amount || 0), 0);
+        return { upfront, funded, upfrontTotal, fundedTotal };
     };
 
     if (q.active_finance_id) {
@@ -1752,44 +1863,66 @@ export async function getQuoteById(
             .eq('id', q.active_finance_id)
             .maybeSingle();
         if (attempt) {
+            const { upfront, funded, upfrontTotal, fundedTotal } = splitCharges(
+                (attempt.charges_breakup as any[]) || []
+            );
+            const resolvedBankName = await resolveBankName(attempt.bank_id, attempt.bank_name);
             result.finance = {
                 id: attempt.id,
                 status: attempt.status as any,
                 bankId: attempt.bank_id,
-                bankName: attempt.bank_name || null,
+                bankName: resolvedBankName,
                 schemeId: attempt.scheme_id,
                 schemeCode: attempt.scheme_code,
+                selection_logic: (commercials.finance as any)?.selection_logic || null,
+                scheme_interest_rate: (commercials.finance as any)?.scheme_interest_rate || null,
+                scheme_interest_type: (commercials.finance as any)?.scheme_interest_type || null,
                 ltv: attempt.ltv,
                 roi: attempt.roi,
                 tenureMonths: attempt.tenure_months,
                 downPayment: attempt.down_payment,
                 loanAmount: attempt.loan_amount,
-                loanAddons: attempt.loan_addons,
-                processingFee: attempt.processing_fee,
-                approvedProcessingFee: attempt.processing_fee,
-                chargesBreakup: attempt.charges_breakup as any,
-                approvedChargesBreakup: attempt.charges_breakup as any,
+                loanAddons: attempt.loan_addons ?? fundedTotal,
+                processingFee: upfrontTotal || attempt.processing_fee,
+                approvedProcessingFee: upfrontTotal || attempt.processing_fee,
+                chargesBreakup: upfront,
+                approvedChargesBreakup: upfront,
                 emi: attempt.emi,
                 approvedEmi: attempt.emi,
                 approvedAmount: attempt.loan_amount,
                 approvedDownPayment: attempt.down_payment,
-                approvedAddOns: attempt.loan_addons,
+                approvedAddOns: attempt.loan_addons ?? fundedTotal,
                 approvedScheme: attempt.scheme_code,
                 approvedTenure: attempt.tenure_months,
                 approvedIrr: attempt.roi,
                 approvedMarginMoney: 0,
+                approvedAddonsBreakup: funded,
+                approvedGrossLoan: (attempt.loan_amount || 0) + (attempt.loan_addons ?? fundedTotal ?? 0),
             };
         }
-    } else if (commercials.finance || pricingSnapshot.finance_bank_name) {
+    } else if (commercials.finance || pricingSnapshot.finance_bank_name || pricingSnapshot.finance_bank_id) {
+        const financeCharges =
+            (commercials.finance?.charges_breakup as any[]) || (pricingSnapshot.finance_charges_breakup as any[]) || [];
+        const { upfront, funded, upfrontTotal, fundedTotal } = splitCharges(financeCharges);
+        const resolvedBankName = await resolveBankName(
+            commercials.finance?.bank_id || pricingSnapshot.finance_bank_id || null,
+            commercials.finance?.bank_name || pricingSnapshot.finance_bank_name || null
+        );
         result.finance = {
             bankId: commercials.finance?.bank_id || pricingSnapshot.finance_bank_id || null,
-            bankName: commercials.finance?.bank_name || pricingSnapshot.finance_bank_name || null,
+            bankName: resolvedBankName,
             schemeId: commercials.finance?.scheme_id || pricingSnapshot.finance_scheme_id || null,
             schemeCode:
                 commercials.finance?.scheme_code ||
+                commercials.finance?.scheme_name ||
+                pricingSnapshot.finance_scheme_name ||
                 pricingSnapshot.finance_scheme_code ||
                 pricingSnapshot.finance_scheme_id ||
                 null,
+            selection_logic: commercials.finance?.selection_logic || null,
+            scheme_interest_rate: commercials.finance?.scheme_interest_rate || null,
+            scheme_interest_type:
+                commercials.finance?.scheme_interest_type || pricingSnapshot.finance_interest_type || null,
             ltv: commercials.finance?.ltv ?? pricingSnapshot.finance_ltv ?? null,
             roi: commercials.finance?.roi ?? pricingSnapshot.finance_roi ?? null,
             tenureMonths:
@@ -1801,17 +1934,36 @@ export async function getQuoteById(
             approvedDownPayment: commercials.finance?.down_payment ?? pricingSnapshot.down_payment ?? 0,
             loanAmount: commercials.finance?.loan_amount ?? pricingSnapshot.finance_loan_amount ?? null,
             approvedAmount: commercials.finance?.loan_amount ?? pricingSnapshot.finance_loan_amount ?? 0,
-            loanAddons: commercials.finance?.loan_addons ?? pricingSnapshot.finance_loan_addons ?? null,
-            approvedAddOns: commercials.finance?.loan_addons ?? pricingSnapshot.finance_loan_addons ?? 0,
-            processingFee: commercials.finance?.processing_fee ?? pricingSnapshot.finance_processing_fees ?? null,
-            approvedProcessingFee: commercials.finance?.processing_fee ?? pricingSnapshot.finance_processing_fees ?? 0,
-            chargesBreakup: commercials.finance?.charges_breakup ?? pricingSnapshot.finance_charges_breakup ?? null,
-            approvedChargesBreakup:
-                commercials.finance?.charges_breakup ?? pricingSnapshot.finance_charges_breakup ?? [],
+            loanAddons:
+                commercials.finance?.loan_addons ??
+                pricingSnapshot.finance_funded_addons ??
+                pricingSnapshot.finance_loan_addons ??
+                null,
+            approvedAddOns:
+                commercials.finance?.loan_addons ??
+                pricingSnapshot.finance_funded_addons ??
+                pricingSnapshot.finance_loan_addons ??
+                fundedTotal ??
+                0,
+            processingFee:
+                commercials.finance?.processing_fee ??
+                pricingSnapshot.finance_upfront_charges ??
+                pricingSnapshot.finance_processing_fees ??
+                null,
+            approvedProcessingFee:
+                commercials.finance?.processing_fee ??
+                pricingSnapshot.finance_upfront_charges ??
+                pricingSnapshot.finance_processing_fees ??
+                upfrontTotal ??
+                0,
+            chargesBreakup: upfront,
+            approvedChargesBreakup: upfront,
             emi: commercials.finance?.emi ?? pricingSnapshot.finance_emi ?? null,
             approvedEmi: commercials.finance?.emi ?? pricingSnapshot.finance_emi ?? 0,
             approvedScheme:
                 commercials.finance?.scheme_code ||
+                commercials.finance?.scheme_name ||
+                pricingSnapshot.finance_scheme_name ||
                 pricingSnapshot.finance_scheme_code ||
                 pricingSnapshot.finance_scheme_id ||
                 '',
@@ -1819,6 +1971,14 @@ export async function getQuoteById(
                 commercials.finance?.tenure_months ?? pricingSnapshot.finance_tenure ?? pricingSnapshot.emi_tenure ?? 0,
             approvedIrr: commercials.finance?.roi ?? pricingSnapshot.finance_roi ?? 0,
             approvedMarginMoney: commercials.finance?.margin_money ?? 0,
+            approvedAddonsBreakup: funded,
+            approvedGrossLoan:
+                (commercials.finance?.loan_amount ?? pricingSnapshot.finance_loan_amount ?? 0) +
+                (commercials.finance?.loan_addons ??
+                    pricingSnapshot.finance_funded_addons ??
+                    pricingSnapshot.finance_loan_addons ??
+                    fundedTotal ??
+                    0),
         };
     }
 
@@ -2272,6 +2432,10 @@ export async function updateQuotePricing(
                 : quote.manager_discount_note || null;
         updatePayload.reviewed_by = user?.id || null;
         updatePayload.reviewed_at = new Date().toISOString();
+        // Sync on_road_price so sidebar cards stay in sync
+        if (updates.grandTotal !== undefined) {
+            updatePayload.on_road_price = Math.round(updates.grandTotal);
+        }
 
         const { error } = await supabase.from('crm_quotes').update(updatePayload).eq('id', quoteId);
         if (error) {
@@ -2347,14 +2511,18 @@ export async function updateQuotePricing(
         return { success: false, error: insertError?.message || 'Failed to create new quote' };
     }
 
-    if (vehicleSkuId && quote.vehicle_sku_id === vehicleSkuId) {
+    // Supersede at VARIANT level — all open quotes for same variant get superseded
+    // regardless of colour. Only quotes converted to booking are exempt.
+    const variantId = quote.variant_id;
+    if (variantId) {
         const supersedeUpdate: any = {
             status: 'SUPERSEDED',
             updated_at: new Date().toISOString(),
         };
 
         let supersedeQuery = supabase.from('crm_quotes').update(supersedeUpdate).neq('id', newQuote.id);
-        supersedeQuery = supersedeQuery.eq('vehicle_sku_id', vehicleSkuId);
+        supersedeQuery = supersedeQuery.eq('variant_id', variantId);
+        supersedeQuery = supersedeQuery.not('status', 'in', '("CONVERTED","BOOKING")');
         if (quote.lead_id) {
             supersedeQuery = supersedeQuery.eq('lead_id', quote.lead_id);
         } else if (quote.member_id) {
@@ -2600,4 +2768,26 @@ export async function getPaymentsForEntity(leadId?: string | null, memberId?: st
         return [];
     }
     return data || [];
+}
+
+export async function getBankSchemes(bankId: string) {
+    try {
+        const { data, error } = await adminClient
+            .from('id_tenants')
+            .select('config')
+            .eq('id', bankId)
+            .eq('type', 'BANK')
+            .single();
+
+        if (error || !data?.config) {
+            console.error('[getBankSchemes] Error:', error?.message || 'No config found');
+            return [];
+        }
+
+        const schemes = (data.config as any)?.schemes || [];
+        return schemes.filter((s: any) => s.isActive !== false);
+    } catch (error: any) {
+        console.error('[getBankSchemes] Fatal:', error.message);
+        return [];
+    }
 }

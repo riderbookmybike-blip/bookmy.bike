@@ -27,6 +27,7 @@ import Modal from '@/components/ui/Modal';
 import AttributeInput from '@/components/catalog/AttributeInput';
 import { getProxiedUrl } from '@/lib/utils/urlHelper';
 import { toast } from 'sonner';
+import CopyableId from '@/components/ui/CopyableId';
 
 const getYoutubeThumbnail = (url: string) => {
     if (!url) return null;
@@ -410,6 +411,7 @@ export default function ProductStep({
                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">
                                             Product
                                         </p>
+                                        <CopyableId id={fam.id} />
 
                                         {/* Quick Specs Preview - Dynamic */}
                                         {keyAttributes.length > 0 ? (

@@ -442,7 +442,11 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
             specs,
             parent:parent_id(
               id,
-              specs
+              specs,
+              parent:parent_id(
+                id,
+                specs
+              )
             )
           )
         `
@@ -455,9 +459,17 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
                 continue;
             }
 
-            // Get brand ID from family (grandparent)
-            const brandId = (sku.parent as any)?.parent?.id;
-            const engineCC = (sku.specs as any)?.engine_cc || (sku.parent as any)?.specs?.engine_cc || 110;
+            // Get brand ID from family (great-grandparent for 4-level hierarchy)
+            const grandparent = (sku.parent as any)?.parent;
+            const greatGrandparent = grandparent?.parent;
+            const brandId = greatGrandparent?.id || grandparent?.id;
+            // Walk full hierarchy: SKU → UNIT → VARIANT → PRODUCT → fallback
+            const engineCC =
+                (sku.specs as any)?.engine_cc ||
+                (sku.parent as any)?.specs?.engine_cc ||
+                grandparent?.specs?.engine_cc ||
+                greatGrandparent?.specs?.engine_cc ||
+                110;
 
             // 2. Get current ex-showroom or create record if not exists
             const { data: existingPrice } = await (adminClient as any)
@@ -507,7 +519,12 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
             const gstRatePercent = (skuTax as any)?.item_tax_rate || 18;
 
             // Get fuel type from specs
-            const fuelType = (sku.specs as any)?.fuel_type || (sku.parent as any)?.specs?.fuel_type || 'PETROL';
+            const fuelType =
+                (sku.specs as any)?.fuel_type ||
+                (sku.parent as any)?.specs?.fuel_type ||
+                grandparent?.specs?.fuel_type ||
+                greatGrandparent?.specs?.fuel_type ||
+                'PETROL';
 
             const rtoResult = await calculateRTO(exShowroom, stateCode, engineCC, fuelType);
             const insuranceResult = await calculateInsurance(exShowroom, brandId, stateCode, engineCC, gstRatePercent);
@@ -647,7 +664,7 @@ export async function previewPrices(skuIds: string[], stateCode: string) {
             .select(
                 `
         id, name, specs,
-        parent:parent_id(specs, parent:parent_id(id, specs))
+        parent:parent_id(specs, parent:parent_id(id, specs, parent:parent_id(id, specs)))
       `
             )
             .eq('id', skuId)
@@ -665,8 +682,16 @@ export async function previewPrices(skuIds: string[], stateCode: string) {
 
         if (priceError || !price) continue;
 
-        const brandId = (sku.parent as any)?.parent?.id;
-        const engineCC = (sku.specs as any)?.engine_cc || 110;
+        const gpPreview = (sku.parent as any)?.parent;
+        const ggpPreview = gpPreview?.parent;
+        const brandId = ggpPreview?.id || gpPreview?.id;
+        // Walk full hierarchy: SKU → UNIT → VARIANT → PRODUCT → fallback
+        const engineCC =
+            (sku.specs as any)?.engine_cc ||
+            (sku.parent as any)?.specs?.engine_cc ||
+            gpPreview?.specs?.engine_cc ||
+            ggpPreview?.specs?.engine_cc ||
+            110;
 
         const rtoResult = await calculateRTO(price.ex_showroom_price, stateCode, engineCC);
         const insuranceResult = await calculateInsurance(price.ex_showroom_price, brandId, stateCode, engineCC);

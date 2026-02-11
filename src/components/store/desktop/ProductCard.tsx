@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Heart, Star, StarHalf, MapPin, Bluetooth, ArrowRight, Sparkles, Zap, CircleHelp } from 'lucide-react';
+import { Heart, Star, StarHalf, MapPin, Bluetooth, ArrowRight, Sparkles, Zap, CircleHelp, Layers } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { buildProductUrl } from '@/lib/utils/urlHelper';
+import { slugify } from '@/utils/slugs';
 import { getStableReviewCount } from '@/utils/vehicleUtils';
 import type { ProductVariant } from '@/types/productMaster';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
@@ -33,6 +34,7 @@ export const ProductCard = ({
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     onLocationClick,
     onColorChange,
+    onExplodeColors,
     isTv = false,
     bestOffer,
     leadId,
@@ -64,6 +66,7 @@ export const ProductCard = ({
         bundlePrice?: number;
     };
     onColorChange?: (colorId: string) => void;
+    onExplodeColors?: () => void;
     leadId?: string;
     basePath?: string;
     isParentCompact?: boolean;
@@ -508,6 +511,9 @@ export const ProductCard = ({
                                                 make: v.make,
                                                 model: v.model,
                                                 variant: v.variant,
+                                                color: v.availableColors?.[0]?.name
+                                                    ? slugify(v.availableColors?.[0]?.name)
+                                                    : undefined,
                                                 district: serviceability?.district || serviceability?.location,
                                                 leadId: leadId,
                                                 basePath,
@@ -560,6 +566,18 @@ export const ProductCard = ({
                 </div>
 
                 <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
+                    {onExplodeColors && (
+                        <button
+                            onClick={e => {
+                                e.stopPropagation();
+                                onExplodeColors();
+                            }}
+                            className="w-8 h-8 rounded-full bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-500 hover:text-brand-primary flex items-center justify-center shadow-[0_4px_14px_rgba(0,0,0,0.08)] transition-all hover:scale-105"
+                            title="Explode colors"
+                        >
+                            <Layers size={14} />
+                        </button>
+                    )}
                     <button
                         onClick={e => {
                             e.stopPropagation();
@@ -849,6 +867,9 @@ export const ProductCard = ({
                                         make: v.make,
                                         model: v.model,
                                         variant: v.variant,
+                                        color: v.availableColors?.[0]?.name
+                                            ? slugify(v.availableColors?.[0]?.name)
+                                            : undefined,
                                         district: serviceability?.district || serviceability?.location,
                                         leadId: leadId,
                                         basePath,

@@ -700,7 +700,10 @@ export default function ComparePage() {
                 </div>
             </section>
 
-            <div className="sticky top-16 md:top-20 z-30 bg-white/90 dark:bg-[#0f131a]/90 backdrop-blur border-y border-slate-200/60 dark:border-white/10">
+            <div
+                className="sticky z-[90] bg-white/90 dark:bg-[#0f131a]/90 backdrop-blur border-y border-slate-200/60 dark:border-white/10"
+                style={{ top: 'var(--header-h)' }}
+            >
                 <div className="max-w-6xl mx-auto px-6 md:px-10 py-4 flex flex-col md:flex-row md:items-center gap-4">
                     <div className="flex flex-wrap items-center gap-3">
                         {slotCards.map((bike, index) => (

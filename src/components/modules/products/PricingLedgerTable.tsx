@@ -31,6 +31,7 @@ import {
     Send,
     Layers,
     Rocket,
+    XCircle,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTenant } from '@/lib/tenant/tenantContext';
@@ -674,6 +675,13 @@ export default function PricingLedgerTable({
         ids.forEach(id => onUpdatePublishStage(id, stage));
     };
 
+    const applyLocalStatus = (isActive: boolean) => {
+        if (!onUpdateLocalStatus) return;
+        const ids = Array.from(selectedSkuIds);
+        if (ids.length === 0) return;
+        ids.forEach(id => onUpdateLocalStatus(id, isActive));
+    };
+
     const selectAllForModel = () => {
         const baseModel =
             (selectedSkuIds.size > 0
@@ -1125,6 +1133,52 @@ export default function PricingLedgerTable({
                                     )}
                                     <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
                                         Calculate RTO & Insurance
+                                    </div>
+                                </button>
+                            </>
+                        )}
+
+                        {!isAums && (
+                            <>
+                                <div className="w-px h-3 bg-slate-100 dark:bg-slate-800 mx-0.5" />
+
+                                {/* Select Model */}
+                                <button
+                                    onClick={selectAllForModel}
+                                    className="p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded transition-all relative group/btn"
+                                >
+                                    <Layers size={12} />
+                                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
+                                        Select All for Model
+                                    </div>
+                                </button>
+
+                                {/* Bulk Activate */}
+                                <button
+                                    onClick={() => applyLocalStatus(true)}
+                                    disabled={selectedSkuIds.size === 0}
+                                    className={`p-1.5 rounded transition-all relative group/btn ${selectedSkuIds.size > 0 ? 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20' : 'text-slate-200 dark:text-slate-800 cursor-not-allowed'}`}
+                                >
+                                    <CheckCircle2 size={12} />
+                                    {selectedSkuIds.size > 0 && (
+                                        <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 text-[7px] font-black text-white ring-1 ring-white dark:ring-slate-900">
+                                            {selectedSkuIds.size}
+                                        </span>
+                                    )}
+                                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
+                                        Activate Selected
+                                    </div>
+                                </button>
+
+                                {/* Bulk Deactivate */}
+                                <button
+                                    onClick={() => applyLocalStatus(false)}
+                                    disabled={selectedSkuIds.size === 0}
+                                    className={`p-1.5 rounded transition-all relative group/btn ${selectedSkuIds.size > 0 ? 'text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20' : 'text-slate-200 dark:text-slate-800 cursor-not-allowed'}`}
+                                >
+                                    <XCircle size={12} />
+                                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
+                                        Deactivate Selected
                                     </div>
                                 </button>
                             </>

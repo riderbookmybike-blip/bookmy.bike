@@ -824,38 +824,41 @@ export function DesktopPDP({
             {/* 1. Sticky PDP Command Bar (Floating Design) */}
             <div
                 className="hidden md:flex sticky z-[90] w-full justify-center transition-all duration-300 py-0 px-4 mb-4"
-                style={{ top: 'var(--header-h)', marginTop: 'calc(var(--header-h) + 16px)' }}
+                style={{ top: 'var(--header-h)', marginTop: '16px' }}
             >
                 <div className="page-container w-full">
                     <div className="w-full bg-white/60 dark:bg-[#0b0d10]/60 backdrop-blur-3xl border border-slate-200/60 dark:border-white/10 rounded-full h-[var(--header-h)] px-8 flex items-center justify-between shadow-2xl shadow-black/10 ring-1 ring-black/5 dark:ring-white/5">
                         {/* 1. Left: Product Identity & Actions */}
-                        <div className="flex items-center gap-8">
+                        <div className="flex items-center gap-8 min-w-0">
                             {/* Product Identity Mini */}
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 relative flex items-center justify-center bg-white dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/5 group overflow-hidden">
+                            <div className="flex items-center gap-4 min-w-0">
+                                <div className="w-14 h-14 relative flex items-center justify-center bg-white dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 group overflow-hidden shadow-sm">
                                     <Image
                                         src={getProductImage()}
                                         alt={displayModel}
                                         fill
-                                        sizes="48px"
-                                        className="object-contain drop-shadow-md group-hover:scale-110 transition-transform duration-500"
+                                        sizes="56px"
+                                        className="object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-500"
                                     />
                                 </div>
-                                <div className="flex flex-col">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm font-black text-slate-900 dark:text-white uppercase italic tracking-tighter leading-none">
+                                <div className="flex flex-col min-w-0">
+                                    <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 leading-none">
+                                        {displayMake}
+                                    </div>
+                                    <div className="flex flex-wrap items-baseline gap-2 mt-1 min-w-0">
+                                        <span className="text-sm font-black text-slate-900 dark:text-white uppercase italic tracking-tight leading-none truncate">
                                             {displayModel}
                                         </span>
-                                        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tighter leading-none pt-0.5">
+                                        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-none">
                                             {displayVariant}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-2 mt-1.5">
                                         <div
-                                            className="w-2.5 h-2.5 rounded-full border border-white/10 shadow-sm"
+                                            className="w-3 h-3 rounded-full border border-white/10 shadow-sm"
                                             style={{ backgroundColor: activeColorConfig.hex }}
                                         />
-                                        <span className="text-[8px] font-black tracking-widest text-slate-400 dark:text-slate-500 uppercase leading-none">
+                                        <span className="text-[9px] font-black tracking-widest text-slate-400 dark:text-slate-500 uppercase leading-none">
                                             {displayColor}
                                         </span>
                                     </div>
@@ -1138,7 +1141,6 @@ export function DesktopPDP({
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.8, duration: 0.6 }}
-                        className="glass-panel bg-white/90 dark:bg-[#0b0d10]/40 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-xl p-6 md:p-8"
                     >
                         <TechSpecsSection specs={product.specs} modelName={displayModel} variantName={displayVariant} />
                     </motion.div>

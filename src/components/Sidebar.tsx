@@ -62,6 +62,17 @@ export default function Sidebar({
         }));
     }, [tenantType, role]);
 
+    const iconPalette = [
+        'text-emerald-500',
+        'text-indigo-500',
+        'text-amber-500',
+        'text-rose-500',
+        'text-sky-500',
+        'text-violet-500',
+        'text-teal-500',
+        'text-orange-500',
+    ];
+
     if (!tenantType) {
         return (
             <aside className="fixed z-40 inset-y-0 left-0 bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-white/5 w-20 transition-all">
@@ -142,7 +153,7 @@ export default function Sidebar({
                             </div>
 
                             <ul className="space-y-1">
-                                {section.items.map(item => {
+                                {section.items.map((item, itemIndex) => {
                                     // Rewrite URL for Tenant Context
                                     let href = item.href;
                                     const shouldPrefix =
@@ -165,6 +176,8 @@ export default function Sidebar({
 
                                     const isActive = pathname === href;
                                     const Icon = item.icon;
+                                    const iconColor = item.color || iconPalette[itemIndex % iconPalette.length];
+
                                     return (
                                         <li key={item.href} className="relative group/item">
                                             <Link
@@ -197,7 +210,7 @@ export default function Sidebar({
                                                 )}
 
                                                 <div
-                                                    className={`relative z-10 shrink-0 ${isActive ? 'text-brand-primary' : item.color || 'text-slate-400'}`}
+                                                    className={`relative z-10 shrink-0 ${isActive ? 'text-brand-primary' : iconColor}`}
                                                 >
                                                     {Icon && <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />}
                                                 </div>
@@ -273,7 +286,7 @@ export default function Sidebar({
                                         {section.group}
                                     </h3>
                                     <div className="space-y-1">
-                                        {section.items.map(item => {
+                                        {section.items.map((item, itemIndex) => {
                                             let href = item.href;
                                             const shouldPrefix =
                                                 tenantSlug &&
@@ -290,6 +303,7 @@ export default function Sidebar({
                                                 href = `/app/${tenantSlug}${href}`;
                                             }
                                             const isActive = pathname === href;
+                                            const iconColor = item.color || iconPalette[itemIndex % iconPalette.length];
                                             return (
                                                 <Link
                                                     key={item.href}
@@ -301,7 +315,11 @@ export default function Sidebar({
                                                             : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5'
                                                     }`}
                                                 >
-                                                    {item.icon && <item.icon size={20} />}
+                                                    {item.icon && (
+                                                        <span className={isActive ? 'text-slate-900' : iconColor}>
+                                                            <item.icon size={20} />
+                                                        </span>
+                                                    )}
                                                     {item.title}
                                                 </Link>
                                             );

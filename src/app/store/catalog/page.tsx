@@ -16,5 +16,5 @@ export default async function CatalogPage(props: { searchParams: Promise<{ leadI
     // If leadId is present, the fetcher will resolve dealer context.
     const initialItems = await fetchCatalogServerSide(leadId);
 
-    return <SystemCatalogRouter initialItems={initialItems} />;
+    return <SystemCatalogRouter initialItems={initialItems} mode="smart" />;
 }

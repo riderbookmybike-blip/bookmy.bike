@@ -10,7 +10,9 @@ import {
     confirmQuoteAction,
     markQuoteInReview,
     getTasksForEntity,
+    getQuotesForMember,
     getQuotesForLead,
+    getBookingsForMember,
     getBookingsForLead,
     getPaymentsForEntity,
 } from '@/actions/crm';
@@ -77,8 +79,29 @@ export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: Quot
             const taskData = await getTasksForEntity('QUOTE', quoteId);
             setTasks(taskData || []);
 
-            if (result.data.leadId) {
-                const leadQuotes = await getQuotesForLead(result.data.leadId);
+            // Fetch ALL quotes for this MEMBER (member-level, not lead-level)
+            const memberId = result.data.customerProfile?.memberId;
+            const leadId = result.data.leadId;
+
+            if (memberId) {
+                const memberQuotes = await getQuotesForMember(memberId);
+                setRelatedQuotes(
+                    (memberQuotes || []).map((q: any) => ({
+                        id: q.id,
+                        displayId: q.display_id || q.displayId || formatDisplayId(q.id),
+                        status: q.status,
+                        createdAt: q.created_at || q.createdAt,
+                        onRoadPrice: q.on_road_price,
+                        createdBy: q.created_by,
+                        vehicleName:
+                            [q.commercials?.brand, q.commercials?.model, q.commercials?.variant]
+                                .filter(Boolean)
+                                .join(' ') || null,
+                        vehicleColor: q.commercials?.color_name || q.commercials?.color || null,
+                    }))
+                );
+            } else if (leadId) {
+                const leadQuotes = await getQuotesForLead(leadId);
                 setRelatedQuotes(
                     (leadQuotes || []).map((q: any) => ({
                         id: q.id,
@@ -87,17 +110,29 @@ export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: Quot
                         createdAt: q.created_at || q.createdAt,
                         onRoadPrice: q.on_road_price,
                         createdBy: q.created_by,
+                        vehicleName:
+                            [q.commercials?.brand, q.commercials?.model, q.commercials?.variant]
+                                .filter(Boolean)
+                                .join(' ') || null,
+                        vehicleColor: q.commercials?.color_name || q.commercials?.color || null,
                     }))
                 );
             } else {
                 setRelatedQuotes([]);
             }
 
-            // Fetch Bookings and Payments
-            if (result.data.leadId) {
+            // Fetch Bookings and Payments — member-level
+            if (memberId) {
                 const [bookingsData, paymentsData] = await Promise.all([
-                    getBookingsForLead(result.data.leadId),
-                    getPaymentsForEntity(result.data.leadId, result.data.customerProfile?.memberId),
+                    getBookingsForMember(memberId),
+                    getPaymentsForEntity(leadId || null, memberId),
+                ]);
+                setBookings(bookingsData);
+                setPayments(paymentsData);
+            } else if (leadId) {
+                const [bookingsData, paymentsData] = await Promise.all([
+                    getBookingsForLead(leadId),
+                    getPaymentsForEntity(leadId, null),
                 ]);
                 setBookings(bookingsData);
                 setPayments(paymentsData);

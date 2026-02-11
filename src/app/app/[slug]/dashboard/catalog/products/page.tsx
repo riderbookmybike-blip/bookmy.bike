@@ -11,8 +11,6 @@ import {
     Filter,
     Zap,
     ArrowUpDown,
-    Copy,
-    Check,
     Image as ImageIcon,
     FileText,
     Youtube,
@@ -20,38 +18,7 @@ import {
     ChevronRight,
 } from 'lucide-react';
 import { CatalogItem } from '@/types/store';
-
-function CopyableId({ id }: { id: string }) {
-    const [copied, setCopied] = useState(false);
-    const rawId = id.slice(-9);
-
-    // Format as 3-3-3 (e.g. abc-def-ghi)
-    const formattedId = `${rawId.slice(0, 3)}-${rawId.slice(3, 6)}-${rawId.slice(6)}`;
-
-    const handleCopy = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        navigator.clipboard.writeText(rawId);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    };
-
-    return (
-        <button
-            onClick={handleCopy}
-            className="group/btn flex items-center gap-2 mt-1 px-2 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-white/5 transition-all w-fit -ml-2"
-            title="Click to copy ID"
-        >
-            <span className="text-xs font-mono font-bold text-slate-500 group-hover/btn:text-indigo-600 transition-colors uppercase tracking-widest">
-                #{formattedId}
-            </span>
-            {copied ? (
-                <Check size={12} className="text-emerald-500" />
-            ) : (
-                <Copy size={12} className="text-slate-300 group-hover/btn:text-indigo-500" />
-            )}
-        </button>
-    );
-}
+import CopyableId from '@/components/ui/CopyableId';
 
 export default function UnifiedCatalogPage() {
     const router = useRouter();
@@ -59,7 +26,7 @@ export default function UnifiedCatalogPage() {
     const [items, setItems] = useState<CatalogItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState('ALL');
+    const [selectedCategory, setSelectedCategory] = useState('VEHICLE');
     const [selectedBrand, setSelectedBrand] = useState('ALL');
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 

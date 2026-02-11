@@ -563,6 +563,8 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                                                             <a
                                                                 key={item.label}
                                                                 href={item.href}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
                                                                 className="flex items-center gap-3 p-2.5 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 hover:border-brand-primary/30 dark:hover:border-brand-primary/30 transition-all group hover:shadow-md hover:shadow-brand-primary/5 dark:hover:bg-white/[0.06]"
                                                             >
                                                                 <div
@@ -716,6 +718,8 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                                                                                 {/* Dashboard Pill */}
                                                                                 <a
                                                                                     href={`/app/${m.tenants.slug}/dashboard`}
+                                                                                    target="_blank"
+                                                                                    rel="noopener noreferrer"
                                                                                     className="px-2.5 py-1 rounded-full bg-blue-500 hover:bg-blue-600 text-white text-[8px] font-black uppercase tracking-wider transition-all"
                                                                                     title="Go to Dashboard"
                                                                                 >
@@ -737,6 +741,8 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                                         <div className="flex items-center gap-3">
                                             <a
                                                 href="/help"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
                                                 className="flex-1 flex items-center justify-center gap-2 px-3 py-3 border border-slate-200 dark:border-white/10 rounded-2xl text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all bg-white dark:bg-white/[0.03] hover:shadow-md"
                                             >
                                                 <HelpCircle size={14} />

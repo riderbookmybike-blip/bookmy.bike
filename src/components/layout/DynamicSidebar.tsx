@@ -58,6 +58,17 @@ export default function DynamicSidebar({
         return { href, title, Icon };
     };
 
+    const iconPalette = [
+        'text-emerald-500',
+        'text-indigo-500',
+        'text-amber-500',
+        'text-rose-500',
+        'text-sky-500',
+        'text-violet-500',
+        'text-teal-500',
+        'text-orange-500',
+    ];
+
     return (
         <>
             {/* Desktop Sidebar */}
@@ -99,7 +110,7 @@ export default function DynamicSidebar({
 
                 {/* Navigation */}
                 <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-8 scrollbar-none">
-                    {config.groups.map((group) => (
+                    {config.groups.map(group => (
                         <div key={group.id} className="space-y-2">
                             {/* Section Label */}
                             <div className="h-4 flex items-center">
@@ -126,9 +137,10 @@ export default function DynamicSidebar({
                             </div>
 
                             <ul className="space-y-1">
-                                {group.items.map(itemConfig => {
+                                {group.items.map((itemConfig, index) => {
                                     const { href, title, Icon } = resolveItem(itemConfig);
                                     const isActive = pathname === href || pathname.startsWith(href + '/');
+                                    const iconColor = iconPalette[index % iconPalette.length];
 
                                     return (
                                         <li key={itemConfig.id} className="relative group/item">
@@ -136,16 +148,21 @@ export default function DynamicSidebar({
                                                 href={href}
                                                 className={`
                                                     flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-200
-                                                    ${isActive
-                                                        ? 'bg-brand-primary/[0.08] text-slate-900 shadow-sm border-l-4 border-brand-primary rounded-r-none'
-                                                        : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
+                                                    ${
+                                                        isActive
+                                                            ? 'bg-brand-primary/[0.08] text-slate-900 shadow-sm border-l-4 border-brand-primary rounded-r-none'
+                                                            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
                                                     }
                                                 `}
                                             >
                                                 <div
-                                                    className={`shrink-0 ${isActive ? 'text-brand-primary font-bold' : 'text-slate-400'}`}
+                                                    className={`shrink-0 ${isActive ? 'text-brand-primary font-bold' : iconColor}`}
                                                 >
-                                                    {Icon ? <Icon size={20} strokeWidth={isActive ? 2.5 : 2} /> : <div className="w-5 h-5 bg-slate-200 rounded-full" />}
+                                                    {Icon ? (
+                                                        <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                                                    ) : (
+                                                        <div className="w-5 h-5 bg-slate-200 rounded-full" />
+                                                    )}
                                                 </div>
 
                                                 <AnimatePresence>
@@ -190,7 +207,7 @@ export default function DynamicSidebar({
                             </button>
                         </div>
                         <nav className="flex-1 overflow-y-auto space-y-6">
-                            {config.groups.map((group) => (
+                            {config.groups.map(group => (
                                 <div key={group.id} className="space-y-3">
                                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">
                                         {group.title}

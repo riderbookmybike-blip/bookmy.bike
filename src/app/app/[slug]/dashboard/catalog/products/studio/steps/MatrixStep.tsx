@@ -31,6 +31,7 @@ import SKUMediaManager from '@/components/catalog/SKUMediaManager';
 import AttributeInput from '@/components/catalog/AttributeInput';
 import { toast } from 'sonner';
 import { INDIAN_STATES, DEFAULT_STATE_CODE, getStateName } from '@/constants/indianStates';
+import CopyableId from '@/components/ui/CopyableId';
 
 const getYoutubeThumbnail = (url: string) => {
     if (!url) return null;
@@ -677,9 +678,13 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                                                 {l1Label}
                                             </p>
                                         </div>
-                                        <div className="mt-3 text-[9px] font-mono text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest bg-slate-100 dark:bg-white/10 px-3 py-1 rounded-lg inline-block border border-slate-200 dark:border-white/5">
-                                            ID: {variant.id.toString().slice(-9)}
-                                        </div>
+                                        <CopyableId
+                                            id={variant.id}
+                                            showHash={false}
+                                            className="mt-3 bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/5 px-3 py-1 rounded-lg"
+                                            textClassName="text-[9px] text-slate-500 dark:text-slate-400"
+                                            iconClassName="hidden"
+                                        />
                                     </div>
                                 </td>
                                 {colors.map((color: any) => {
@@ -763,11 +768,14 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                                                     </div>
 
                                                     {sku && (
-                                                        <div className="text-[8px] font-mono text-slate-900 dark:text-white font-black uppercase tracking-widest bg-white/60 dark:bg-black/40 backdrop-blur-md px-2 py-1.5 rounded-lg border border-white/20 dark:border-white/5 shadow-sm whitespace-nowrap">
-                                                            {(() => {
-                                                                const raw = sku.id.toString().slice(-9).toUpperCase();
-                                                                return `${raw.slice(0, 3)}-${raw.slice(3, 6)}-${raw.slice(6)}`;
-                                                            })()}
+                                                        <div className="bg-white/60 dark:bg-black/40 backdrop-blur-md px-2 py-1.5 rounded-lg border border-white/20 dark:border-white/5 shadow-sm whitespace-nowrap">
+                                                            <CopyableId
+                                                                id={sku.id}
+                                                                showHash={false}
+                                                                className="px-0 py-0 hover:bg-transparent"
+                                                                textClassName="text-[8px] text-slate-900 dark:text-white"
+                                                                iconClassName="hidden"
+                                                            />
                                                         </div>
                                                     )}
                                                 </div>

@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { getQuotes } from '@/actions/crm';
+import { createClient } from '@/lib/supabase/client';
 import MasterListDetailLayout from '@/components/templates/MasterListDetailLayout';
 import StatsHeader from '@/components/modules/shared/StatsHeader';
 import ModuleLanding from '@/components/modules/shared/ModuleLanding';
@@ -23,6 +24,8 @@ export interface Quote {
     date: string;
     vehicleBrand: string;
     vehicleModel: string;
+    vehicleVariant: string;
+    vehicleColor: string;
 }
 
 export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string }) {
@@ -37,7 +40,7 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
     const [searchQuery, setSearchQuery] = useState('');
     const [view, setView] = useState<'grid' | 'list'>('list');
 
-    const fetchQuotes = async () => {
+    const fetchQuotes = useCallback(async () => {
         setIsLoading(true);
         try {
             const data = await getQuotes(tenantId);
@@ -48,11 +51,36 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [tenantId]);
 
     useEffect(() => {
         fetchQuotes();
-    }, [tenantId]);
+    }, [fetchQuotes]);
+
+    // ── Supabase Realtime: Live quote updates (Facebook-style) ──
+    useEffect(() => {
+        const supabase = createClient();
+        const channel = supabase
+            .channel('quotes-live')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'crm_quotes',
+                    filter: `tenant_id=eq.${tenantId}`,
+                },
+                _payload => {
+                    // Auto-refresh the quotes list on any change
+                    fetchQuotes();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [tenantId, fetchQuotes]);
 
     useEffect(() => {
         if (initialQuoteId) {
@@ -146,7 +174,10 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
                                         </h3>
 
                                         <div className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter truncate mb-6">
-                                            {quote.productName}
+                                            {[quote.vehicleBrand, quote.vehicleModel, quote.vehicleVariant]
+                                                .filter(Boolean)
+                                                .join(' ')}
+                                            {quote.vehicleColor ? ` • ${quote.vehicleColor}` : ''}
                                         </div>
 
                                         <div className="flex items-center justify-between pt-6 border-t border-slate-100 dark:border-white/5">
@@ -206,7 +237,14 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
                                             </td>
                                             <td className="p-6">
                                                 <div className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase">
-                                                    {quote.productName}
+                                                    {[quote.vehicleBrand, quote.vehicleModel, quote.vehicleVariant]
+                                                        .filter(Boolean)
+                                                        .join(' ')}
+                                                    {quote.vehicleColor ? (
+                                                        <span className="text-slate-400"> • {quote.vehicleColor}</span>
+                                                    ) : (
+                                                        ''
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="p-6">
@@ -337,8 +375,10 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
                                                 <span
                                                     className={`text-[10px] font-bold truncate ${isActive ? 'text-white/70' : 'text-slate-400'}`}
                                                 >
-                                                    {quote.vehicleBrand && quote.vehicleModel
-                                                        ? `${quote.vehicleBrand} ${quote.vehicleModel}`
+                                                    {quote.vehicleBrand
+                                                        ? [quote.vehicleBrand, quote.vehicleModel, quote.vehicleVariant]
+                                                              .filter(Boolean)
+                                                              .join(' ')
                                                         : quote.productName || '—'}
                                                 </span>
                                                 <span

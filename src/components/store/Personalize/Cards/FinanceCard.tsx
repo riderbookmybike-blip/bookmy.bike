@@ -68,15 +68,18 @@ export default function FinanceCard({
     // Standard tenures for display comparison
     const tenures = [12, 24, 36, 48, 60];
 
-    // Helper to calculate approximate EMI for other tenures for comparison
+    // Helper to calculate EMI for a given tenure — respects FLAT vs REDUCING
     const calculateEMI = (t: number) => {
+        if (loanAmount <= 0) return 0;
+
+        if (interestType === 'FLAT') {
+            // FLAT: Simple interest over entire tenure
+            const totalInterest = loanAmount * annualInterest * (t / 12);
+            return (loanAmount + totalInterest) / t;
+        }
+
+        // REDUCING: Standard amortization formula
         const monthlyRate = annualInterest / 12;
-        // Dynamically calculate loan amount based on current down payment
-        // We use the PROP downPayment (or localDP if we want live slider update)
-        // Ideally we use the prop which should update fast enough,
-        // but if we want instant feedback we might need to recalc loanAmount locally.
-        // For now, let's assume parent updates loanAmount relative to downPayment prop.
-        // Wait, calculateEMI uses `loanAmount` prop. If `downPayment` changes, `loanAmount` changes in parent.
         if (monthlyRate === 0) return loanAmount / t;
         return (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, t)) / (Math.pow(1 + monthlyRate, t) - 1);
     };
@@ -104,8 +107,10 @@ export default function FinanceCard({
         { label: 'Scheme', value: schemeId ? formatDisplayIdForUI(unformatDisplayId(schemeId)) : 'STANDARD' },
     ];
 
+    const [expandedTenure, setExpandedTenure] = useState<number | null>(null);
+
     return (
-        <div className="glass-panel dark:bg-black/60 rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col h-full border border-white/5 group/fcard">
+        <div className="glass-panel dark:bg-black/60 rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col h-full border border-white/5 group/fcard relative">
             <div className="p-6 pb-2 h-full flex flex-col">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2 text-[10px] font-black uppercase text-brand-primary tracking-widest">
@@ -182,10 +187,13 @@ export default function FinanceCard({
                     {tenures.map(t => {
                         const calculatedEmiForT = Math.round(calculateEMI(t));
                         const isSelected = emiTenure === t;
+                        const isExpanded = expandedTenure === t;
                         return (
-                            <div key={t} className="relative group/tenure">
+                            <div key={t} className="relative">
                                 <button
-                                    onClick={() => setEmiTenure && setEmiTenure(t)}
+                                    onClick={() => {
+                                        setEmiTenure && setEmiTenure(t);
+                                    }}
                                     className={`w-full group/item p-3 rounded-2xl border transition-all duration-300 flex items-center justify-between
                                         ${
                                             isSelected
@@ -217,6 +225,24 @@ export default function FinanceCard({
                                             </span>
                                         </div>
                                         <div
+                                            role="button"
+                                            tabIndex={0}
+                                            onClick={e => {
+                                                e.stopPropagation();
+                                                setExpandedTenure(prev => (prev === t ? null : t));
+                                            }}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.stopPropagation();
+                                                    setExpandedTenure(prev => (prev === t ? null : t));
+                                                }
+                                            }}
+                                            className="w-6 h-6 rounded-full border border-white/10 flex items-center justify-center text-slate-500 dark:text-slate-300 hover:text-brand-primary hover:border-brand-primary/60 transition-all cursor-pointer"
+                                            title="View breakdown"
+                                        >
+                                            <HelpCircle size={12} />
+                                        </div>
+                                        <div
                                             className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${isSelected ? 'bg-brand-primary border-brand-primary' : 'border-white/10'}`}
                                         >
                                             {isSelected && (
@@ -226,75 +252,208 @@ export default function FinanceCard({
                                     </div>
                                 </button>
 
-                                {/* Detailed Tenure Tooltip */}
-                                <div className="absolute left-full ml-4 top-1/2 -translate-y-1/2 w-64 p-4 glass-panel dark:bg-[#0b0d10]/95 backdrop-blur-3xl rounded-3xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] opacity-0 invisible group-hover/tenure:opacity-100 group-hover/tenure:visible transition-all duration-300 z-[100] translate-x-2 group-hover/tenure:translate-x-0">
-                                    <div className="space-y-4">
-                                        <div className="pb-3 border-b border-white/5">
-                                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-primary mb-1">
-                                                Plan Overview
-                                            </p>
-                                            <p className="text-sm font-black text-white uppercase italic tracking-tighter">
-                                                {t} Months Plan
-                                            </p>
-                                        </div>
+                                {isExpanded && (
+                                    <div className="mt-3 p-4 rounded-2xl border border-slate-200/60 dark:border-white/10 bg-slate-50/80 dark:bg-white/5">
+                                        {(() => {
+                                            const allCharges = scheme?.charges || [];
+                                            const upfrontCharges = allCharges.filter(
+                                                (c: any) => c.impact === 'UPFRONT'
+                                            );
+                                            const fundedCharges = allCharges.filter((c: any) => c.impact === 'FUNDED');
 
-                                        <div className="space-y-3">
-                                            {/* Financier & Scheme */}
-                                            <div className="flex flex-col gap-1">
-                                                <span className="text-[9px] font-bold uppercase text-slate-500 tracking-widest">
-                                                    Financier / Scheme
-                                                </span>
-                                                <span className="text-[10px] font-black text-white uppercase truncate">
-                                                    {bank?.name || 'Standard'} •{' '}
-                                                    {schemeId
-                                                        ? formatDisplayIdForUI(unformatDisplayId(schemeId))
-                                                        : 'Standard'}
-                                                </span>
-                                            </div>
+                                            const calcChargeAmount = (charge: any) => {
+                                                if (charge.type === 'PERCENTAGE') {
+                                                    const basis =
+                                                        charge.calculationBasis === 'LOAN_AMOUNT'
+                                                            ? loanAmount
+                                                            : totalOnRoad;
+                                                    return Math.round(basis * (charge.value / 100));
+                                                }
+                                                return charge.value || 0;
+                                            };
 
-                                            {/* ROI Detail */}
-                                            <div className="flex flex-col gap-1">
-                                                <span className="text-[9px] font-bold uppercase text-slate-500 tracking-widest">
-                                                    Interest Rate
-                                                </span>
-                                                <span className="text-xs font-black text-brand-primary font-mono">
-                                                    {(annualInterest * 100).toFixed(2)}% {interestType}
-                                                </span>
-                                            </div>
+                                            const totalUpfront = upfrontCharges.reduce(
+                                                (sum: number, c: any) => sum + calcChargeAmount(c),
+                                                0
+                                            );
+                                            const totalFunded = fundedCharges.reduce(
+                                                (sum: number, c: any) => sum + calcChargeAmount(c),
+                                                0
+                                            );
+                                            const grossLoan = loanAmount + totalFunded;
 
-                                            {/* Charges Breakdown */}
-                                            {financeCharges && financeCharges.length > 0 && (
-                                                <div className="flex flex-col gap-2 pt-2 border-t border-white/5">
-                                                    <span className="text-[9px] font-bold uppercase text-slate-500 tracking-widest">
-                                                        Upfront Charges
-                                                    </span>
-                                                    <div className="space-y-1.5">
-                                                        {financeCharges.map((charge: any) => (
-                                                            <div key={charge.id}>
-                                                                <div className="flex justify-between items-center text-[10px]">
-                                                                    <span className="font-bold text-slate-300 uppercase truncate pr-2">
-                                                                        {charge.label}
-                                                                    </span>
-                                                                    <span className="font-mono font-black text-white">
-                                                                        ₹{charge.value.toLocaleString()}
+                                            let totalInterestForT = 0;
+                                            if (interestType === 'FLAT') {
+                                                totalInterestForT = Math.round(grossLoan * annualInterest * (t / 12));
+                                            } else {
+                                                totalInterestForT = Math.round(calculatedEmiForT * t - grossLoan);
+                                            }
+                                            const totalOutflow = Math.round(
+                                                downPayment + totalUpfront + calculatedEmiForT * t
+                                            );
+
+                                            return (
+                                                <div className="space-y-3">
+                                                    <div className="pb-2 border-b border-slate-200/60 dark:border-white/5">
+                                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-primary mb-1">
+                                                            Finance Breakdown
+                                                        </p>
+                                                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
+                                                            {t} Months Plan
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="flex justify-between items-center text-[10px]">
+                                                        <span className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+                                                            Financier
+                                                        </span>
+                                                        <span className="font-black text-slate-900 dark:text-white truncate ml-2 text-right">
+                                                            {bank?.name || 'Standard'}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="flex justify-between items-center text-[10px]">
+                                                        <span className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+                                                            Scheme
+                                                        </span>
+                                                        <span className="font-black text-slate-900 dark:text-white truncate ml-2 text-right">
+                                                            {scheme?.name || 'Standard'}
+                                                        </span>
+                                                    </div>
+                                                    {schemeId && (
+                                                        <div className="flex justify-between items-center text-[10px] -mt-2">
+                                                            <span className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+                                                                Code
+                                                            </span>
+                                                            <span className="font-mono font-black text-brand-primary/70 text-[9px]">
+                                                                {formatDisplayIdForUI(unformatDisplayId(schemeId))}
+                                                            </span>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="flex justify-between items-center text-[10px]">
+                                                        <span className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+                                                            Interest
+                                                        </span>
+                                                        <span className="font-mono font-black text-brand-primary">
+                                                            {(annualInterest * 100).toFixed(2)}% ({interestType})
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="border-t border-slate-200/60 dark:border-white/5 pt-2" />
+
+                                                    <div className="flex justify-between items-center text-[10px]">
+                                                        <span className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+                                                            Loan Amount
+                                                        </span>
+                                                        <span className="font-mono font-black text-slate-900 dark:text-white">
+                                                            ₹{loanAmount.toLocaleString()}
+                                                        </span>
+                                                    </div>
+
+                                                    {upfrontCharges.length > 0 && (
+                                                        <div>
+                                                            <span className="text-[9px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest block mb-1">
+                                                                Upfront Charges
+                                                            </span>
+                                                            {upfrontCharges.map((c: any, i: number) => (
+                                                                <div
+                                                                    key={i}
+                                                                    className="flex justify-between items-start text-[9px] pl-2 py-0.5"
+                                                                >
+                                                                    <div className="flex flex-col pr-2 min-w-0">
+                                                                        <span className="text-slate-600 dark:text-slate-400 truncate">
+                                                                            {c.name}
+                                                                        </span>
+                                                                        {c.taxStatus === 'INCLUSIVE' && (
+                                                                            <span className="text-slate-400 dark:text-slate-500 text-[7px]">
+                                                                                Inclusive of GST
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <span className="font-mono font-bold text-slate-700 dark:text-slate-300 shrink-0">
+                                                                        ₹{calcChargeAmount(c).toLocaleString()}
                                                                     </span>
                                                                 </div>
-                                                                {charge.helpText && (
-                                                                    <p className="text-[8px] text-slate-500 tracking-wide mt-1 leading-relaxed">
-                                                                        {charge.helpText}
-                                                                    </p>
-                                                                )}
+                                                            ))}
+                                                            <div className="flex justify-between items-center text-[10px] mt-1 pt-1 border-t border-slate-200/60 dark:border-white/5">
+                                                                <span className="font-bold text-slate-600 dark:text-slate-400">
+                                                                    Total Upfront
+                                                                </span>
+                                                                <span className="font-mono font-black text-slate-900 dark:text-white">
+                                                                    ₹{totalUpfront.toLocaleString()}
+                                                                </span>
                                                             </div>
-                                                        ))}
+                                                        </div>
+                                                    )}
+
+                                                    {fundedCharges.length > 0 && (
+                                                        <div>
+                                                            <span className="text-[9px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest block mb-1">
+                                                                Loan Addons (Funded)
+                                                            </span>
+                                                            {fundedCharges.map((c: any, i: number) => (
+                                                                <div
+                                                                    key={i}
+                                                                    className="flex justify-between items-center text-[9px] pl-2 py-0.5"
+                                                                >
+                                                                    <span className="text-slate-600 dark:text-slate-400 truncate pr-2">
+                                                                        {c.name}
+                                                                    </span>
+                                                                    <span className="font-mono font-bold text-slate-700 dark:text-slate-300 shrink-0">
+                                                                        ₹{calcChargeAmount(c).toLocaleString()}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    {totalFunded > 0 && (
+                                                        <div className="flex justify-between items-center text-[10px] pt-1 border-t border-slate-200/60 dark:border-white/5">
+                                                            <span className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+                                                                Gross Loan
+                                                            </span>
+                                                            <span className="font-mono font-black text-slate-900 dark:text-white">
+                                                                ₹{grossLoan.toLocaleString()}
+                                                            </span>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="border-t border-slate-200/60 dark:border-white/5 pt-2" />
+
+                                                    <div className="flex justify-between items-center text-[10px]">
+                                                        <span className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+                                                            Interest ({t}mo)
+                                                        </span>
+                                                        <span className="font-mono font-bold text-amber-400">
+                                                            ₹{Math.max(0, totalInterestForT).toLocaleString()}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="flex justify-between items-center text-[10px]">
+                                                        <span className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+                                                            Monthly EMI
+                                                        </span>
+                                                        <span className="font-mono font-black text-brand-primary text-xs">
+                                                            ₹{calculatedEmiForT.toLocaleString()}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="border-t border-brand-primary/20 pt-2" />
+
+                                                    <div className="flex justify-between items-center text-[11px]">
+                                                        <span className="font-black text-slate-900 dark:text-white uppercase tracking-widest">
+                                                            Total Outflow
+                                                        </span>
+                                                        <span className="font-mono font-black text-slate-900 dark:text-white text-sm">
+                                                            ₹{totalOutflow.toLocaleString()}
+                                                        </span>
                                                     </div>
                                                 </div>
-                                            )}
-                                        </div>
+                                            );
+                                        })()}
                                     </div>
-
-                                    {/* Arrow for Tooltip */}
-                                    <div className="absolute right-full top-1/2 -translate-y-1/2 border-8 border-transparent border-r-[#0b0d10] dark:border-r-white/10" />
-                                </div>
+                                )}
                             </div>
                         );
                     })}

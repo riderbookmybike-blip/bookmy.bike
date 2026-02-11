@@ -3,6 +3,7 @@
 import React from 'react';
 import { CheckCircle2, Plus, Edit2, Box, Layers, Grid3X3 } from 'lucide-react';
 import { sanitizeSvg } from '@/lib/utils/sanitizeSvg';
+import CopyableId from '@/components/ui/CopyableId';
 
 interface BrandStepProps {
     brands: any[];
@@ -92,6 +93,9 @@ export default function BrandStep({
                                         <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1.5 leading-none">
                                             Brand Partner
                                         </p>
+                                        <div className="mt-2 flex items-center justify-center">
+                                            <CopyableId id={brand.id} />
+                                        </div>
                                     </div>
 
                                     {/* Brand Stats */}

@@ -10,9 +10,14 @@ import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 interface SystemCatalogRouterProps {
     initialItems: ProductVariant[];
     basePath?: string;
+    mode?: 'default' | 'smart';
 }
 
-export default function SystemCatalogRouter({ initialItems, basePath = '/store' }: SystemCatalogRouterProps) {
+export default function SystemCatalogRouter({
+    initialItems,
+    basePath = '/store',
+    mode = 'default',
+}: SystemCatalogRouterProps) {
     const searchParams = useSearchParams();
     const leadId = searchParams.get('leadId');
 
@@ -31,6 +36,7 @@ export default function SystemCatalogRouter({ initialItems, basePath = '/store' 
             basePath={basePath}
             items={currentItems}
             isLoading={loading}
+            mode={mode}
         />
     );
 }

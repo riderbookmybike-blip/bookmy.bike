@@ -542,6 +542,12 @@ export function useSystemPDPLogic({
         const delta = effective - base; // negative = discount, positive = surge
         return sum + delta;
     }, 0);
+    const offersItems = activeOffers.map(o => ({
+        id: o.id,
+        name: o.name,
+        price: Number(o.price || 0),
+        discountPrice: o.discountPrice !== undefined && o.discountPrice !== null ? Number(o.discountPrice) : undefined,
+    }));
     const offersDiscount = offersDelta;
     const offersDiscountAmount = offersDelta < 0 ? Math.abs(offersDelta) : 0;
     const offersSurge = offersDelta > 0 ? offersDelta : 0;
@@ -586,24 +592,45 @@ export function useSystemPDPLogic({
         } catch {}
     }, [financeScheme]);
 
-    // Calculate Max Allowed Loan based on Scheme Criteria (Lower of LTV or Amount)
+    // ── Step 1: Compute upfront charges FIRST (needed for DP constraints) ──
+    // Upfront charges are paid from the customer's pocket to the financier,
+    // NOT to the dealer. The loan amount must compensate for this gap.
+    const allCharges = financeScheme?.charges || [];
+
+    // Pre-compute total upfront charges (using totalOnRoad as basis for any %-based ones)
+    let totalUpfrontCharges = 0;
+    allCharges.forEach(charge => {
+        if (charge.impact !== 'UPFRONT') return;
+        if (charge.calculationBasis === 'FIXED') {
+            totalUpfrontCharges += charge.value;
+        } else if (charge.type === 'PERCENTAGE') {
+            // For upfront %-based charges, use totalOnRoad as the basis
+            // (loanAmount isn't known yet; LOAN_AMOUNT basis is rare for upfront)
+            totalUpfrontCharges += Math.round(totalOnRoad * (charge.value / 100));
+        } else {
+            totalUpfrontCharges += charge.value;
+        }
+    });
+
+    // ── Step 2: Max loan + Down Payment constraints (upfront-aware) ──
     const ltvMaxLoan = (totalOnRoad * (financeScheme?.maxLTV ?? 100)) / 100;
     const capMaxLoan = financeScheme?.maxLoanAmount || 300000;
     const maxAllowedLoan = Math.min(ltvMaxLoan, capMaxLoan);
 
-    // EMI & Down Payment Constraints
-    // Min Down Payment is the gap between On-Road and Max Allowed Loan
-    const minDownPayment = Math.max(0, Math.round(totalOnRoad - maxAllowedLoan));
+    // Min DP ensures: loanAmount = totalOnRoad - DP + upfront <= maxAllowedLoan
+    // => DP >= totalOnRoad + upfront - maxAllowedLoan
+    const minDownPayment = Math.max(0, Math.round(totalOnRoad + totalUpfrontCharges - maxAllowedLoan));
     const maxDownPayment = Math.round(totalOnRoad * 0.95);
-    // REQUIREMENT: Default to Zero unless user overrides
-    const defaultDownPayment = 0;
+    const defaultDownPayment = minDownPayment; // Default to minimum (covers upfront)
 
     const downPayment =
         userDownPayment !== null
             ? Math.min(Math.max(userDownPayment, minDownPayment), maxDownPayment)
             : defaultDownPayment;
 
-    const loanAmount = totalOnRoad - downPayment;
+    // ── Step 3: Loan Amount (upfront-compensated) ──
+    // Dealer receives: loanAmount (from bank) + (DP - upfront) (from customer) = totalOnRoad
+    const loanAmount = Math.min(maxAllowedLoan, totalOnRoad - downPayment + totalUpfrontCharges);
     const annualInterest = financeScheme ? financeScheme.interestRate / 100 : 0.095;
     const monthlyRate = annualInterest / 12;
 
@@ -621,17 +648,35 @@ export function useSystemPDPLogic({
         }
     }
 
-    // Dynamic Charges Calculation - Consolidate all into "Processing Charges"
-    const allCharges = financeScheme?.charges || [];
+    // ── Step 4: Full charge breakdown for display ──
     let totalChargeAmount = 0;
-    const chargeBreakup: string[] = [];
+    const financeChargeItems: {
+        id: string;
+        label: string;
+        value: number;
+        isDeduction: boolean;
+        helpText?: string;
+        impact?: 'UPFRONT' | 'FUNDED';
+        type?: string;
+        calculationBasis?: string;
+        taxStatus?: string;
+        taxRate?: number;
+        rawValue?: number;
+        basisAmount?: number;
+    }[] = [];
 
-    allCharges.forEach(charge => {
+    allCharges.forEach((charge, idx) => {
         let amount = 0;
+        let basisAmount = totalOnRoad;
+        if (charge.calculationBasis === 'LOAN_AMOUNT') {
+            basisAmount = loanAmount;
+        } else if (charge.calculationBasis === 'GROSS_LOAN_AMOUNT') {
+            basisAmount = loanAmount;
+        }
+
         if (charge.calculationBasis === 'FIXED') {
             amount = charge.value;
         } else if (charge.type === 'PERCENTAGE') {
-            const basisAmount = charge.calculationBasis === 'LOAN_AMOUNT' ? loanAmount : totalOnRoad;
             amount = Math.round(basisAmount * (charge.value / 100));
         } else {
             amount = charge.value;
@@ -646,21 +691,23 @@ export function useSystemPDPLogic({
                   ? ` + ${charge.taxRate}% GST`
                   : '';
 
-        chargeBreakup.push(`${charge.name}: ₹${Math.round(amount).toLocaleString()}${taxInfo}`);
+        financeChargeItems.push({
+            id: charge.id || `charge_${idx}`,
+            label: charge.name || 'Charge',
+            value: Math.round(amount),
+            isDeduction: false,
+            helpText: taxInfo || undefined,
+            impact: charge.impact || 'UPFRONT',
+            type: charge.type,
+            calculationBasis: charge.calculationBasis,
+            taxStatus: charge.taxStatus,
+            taxRate: charge.taxRate,
+            rawValue: charge.value,
+            basisAmount,
+        });
     });
 
-    const financeCharges =
-        allCharges.length > 0
-            ? [
-                  {
-                      id: 'processing_charges',
-                      label: 'Processing Charges',
-                      value: Math.round(totalChargeAmount),
-                      isDeduction: false,
-                      helpText: chargeBreakup.join(' • '),
-                  },
-              ]
-            : [];
+    const financeCharges = financeChargeItems;
 
     const [isReferralActive, setIsReferralActive] = useState(false);
 
@@ -694,6 +741,7 @@ export function useSystemPDPLogic({
             accessoriesPrice,
             servicesPrice,
             offersDiscount,
+            offersItems,
             colorDiscount,
             colorSurge,
             accessoriesDiscount,

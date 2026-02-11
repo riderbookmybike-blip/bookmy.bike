@@ -9,7 +9,6 @@ import {
     Image as ImageIcon,
     FileText,
     Youtube,
-    Check,
     Info,
     Search,
     Filter,
@@ -17,32 +16,7 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { format } from 'date-fns';
-
-function CopyableId({ id }: { id: string }) {
-    const [copied, setCopied] = useState(false);
-    const rawId = id.slice(-9);
-    const formattedId = `${rawId.slice(0, 3)}-${rawId.slice(3, 6)}-${rawId.slice(6)}`;
-
-    const handleCopy = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        navigator.clipboard.writeText(rawId);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    };
-
-    return (
-        <button
-            onClick={handleCopy}
-            className="group/btn flex items-center gap-2 px-2 py-0.5 rounded-md hover:bg-slate-100 dark:hover:bg-white/5 transition-all"
-            title="Click to copy ID"
-        >
-            <span className="text-[10px] font-mono font-bold text-slate-400 group-hover/btn:text-indigo-600 transition-colors uppercase tracking-widest">
-                #{formattedId}
-            </span>
-            {copied ? <Check size={10} className="text-emerald-500" /> : null}
-        </button>
-    );
-}
+import CopyableId from '@/components/ui/CopyableId';
 
 function HistoryTooltip({ history, users }: { history: any[]; users: any[] }) {
     if (!history || history.length === 0) return null;
@@ -83,7 +57,9 @@ function HistoryTooltip({ history, users }: { history: any[]; users: any[] }) {
     );
 }
 
-export default function ReviewStep({ brand, family, variants, colors, skus, onUpdate }: any) {
+export default function ReviewStep({ brand, family, variants, colors, allColors, skus, onUpdate }: any) {
+    // Use allColors (non-deduplicated) for resolution, colors (deduplicated) for filter dropdowns
+    const resolvePool = allColors && allColors.length > 0 ? allColors : colors;
     const category = family?.category || 'VEHICLE';
 
     const l2Label = 'Unit';
@@ -96,9 +72,11 @@ export default function ReviewStep({ brand, family, variants, colors, skus, onUp
 
     const resolveColorObj = (sku: any) => {
         const colorName = sku.specs?.[l2Label] || sku.color_name;
-        const directColor = colors.find((c: any) => c.id === sku.parent_id);
+        // First: direct ID match against full (non-deduplicated) pool
+        const directColor = resolvePool.find((c: any) => c.id === sku.parent_id);
         if (directColor) return directColor;
-        return colors.find((c: any) => {
+        // Fallback: name/hex match against full pool
+        return resolvePool.find((c: any) => {
             if (colorName && c.name?.toUpperCase() === colorName.toUpperCase()) return true;
             if (sku.specs?.hex_primary && c.specs?.hex_primary?.toLowerCase() === sku.specs.hex_primary.toLowerCase())
                 return true;

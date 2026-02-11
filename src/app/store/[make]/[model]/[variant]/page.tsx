@@ -316,7 +316,7 @@ export default async function Page({ params, searchParams }: Props) {
         .from('cat_items')
         .select(
             `
-            id, name, slug, price_base, specs,
+            id, name, slug, price_base, specs, parent_id,
             brand:cat_brands(name, slug),
             parent:cat_items!parent_id(name, slug)
         `
@@ -368,6 +368,19 @@ export default async function Page({ params, searchParams }: Props) {
 
     const item = variantItem as unknown as CatalogItem;
 
+    // Fetch parent PRODUCT specs separately (self-referencing FK join returns children, not parent)
+    let parentSpecs: Record<string, any> = {};
+    if ((item as any).parent_id) {
+        const { data: parentItem } = await supabase
+            .from('cat_items')
+            .select('specs')
+            .eq('id', (item as any).parent_id)
+            .single();
+        if (parentItem?.specs) {
+            parentSpecs = parentItem.specs as Record<string, any>;
+        }
+    }
+
     const makeSlug = (item.brand as any)?.slug || slugify(item.brand?.name || resolvedParams.make || '');
     const modelSlug = item.parent?.slug || slugify(item.parent?.name || resolvedParams.model || '');
     const rawVariantSlug = item.slug || slugify(item.name || resolvedParams.variant || '');
@@ -404,7 +417,7 @@ export default async function Page({ params, searchParams }: Props) {
 
     const { data: colorDefs } = await supabase
         .from('cat_items')
-        .select('id, name, slug, specs, position')
+        .select('id, name, slug, specs, position, image_url, is_primary')
         .eq('parent_id', item.id)
         .eq('type', 'UNIT')
         .order('position', { ascending: true });
@@ -414,7 +427,9 @@ export default async function Page({ params, searchParams }: Props) {
         const colorDefIds = colorDefs.map((c: any) => c.id);
         const { data: colorSkuRows } = await supabase
             .from('cat_items')
-            .select('id, name, slug, specs, price_base, parent_id')
+            .select(
+                'id, name, slug, specs, price_base, parent_id, is_primary, image_url, assets:cat_assets!item_id(id, type, url, is_primary, position)'
+            )
             .in('parent_id', colorDefIds)
             .eq('type', 'SKU');
         colorSkus = colorSkuRows || [];
@@ -713,55 +728,82 @@ export default async function Page({ params, searchParams }: Props) {
         colorSkuMap.get(sku.parent_id)!.push(sku);
     });
 
+    const pickImageFromAssets = (assets?: any[]) => {
+        if (!Array.isArray(assets)) return null;
+        const primary = assets.find(a => a.type === 'IMAGE' && a.is_primary);
+        const first = assets.find(a => a.type === 'IMAGE');
+        return primary?.url || first?.url || null;
+    };
+
     const colors =
         colorDefs && colorDefs.length > 0
-            ? colorDefs.map((color: any) => {
-                  const linkedSkus = colorSkuMap.get(color.id) || [];
-                  const sku = linkedSkus[0] || null;
-                  const cleanName = color.specs?.color || color.name;
-                  const cleanId = slugify(cleanName);
-                  const rawOffer = sku?.id ? marketOffers[sku.id] || 0 : 0;
+            ? colorDefs
+                  .map((color: any) => {
+                      const linkedSkus = colorSkuMap.get(color.id) || [];
+                      const sku = linkedSkus[0] || null;
+                      const assetImage = pickImageFromAssets(sku?.assets);
+                      const cleanName = color.specs?.color || color.name;
+                      const cleanId = slugify(cleanName);
+                      const rawOffer = sku?.id ? marketOffers[sku.id] || 0 : 0;
 
-                  return {
-                      id: cleanId,
-                      skuId: sku?.id,
-                      name: cleanName,
-                      hex:
-                          color.specs?.hex_primary ||
-                          color.specs?.hex_code ||
-                          sku?.specs?.hex_primary ||
-                          sku?.specs?.hex_code ||
-                          '#000000',
-                      image: sku?.specs?.primary_image || sku?.specs?.gallery?.[0] || null,
-                      video: sku?.video_url || sku?.specs?.video_urls?.[0] || sku?.specs?.video_url || null,
-                      priceOverride: sku?.price_base,
-                      dealerOffer: rawOffer,
-                  };
-              })
-            : (skus || []).map((sku: any) => {
-                  let cleanName = sku.specs?.color || sku.name;
-                  if (!sku.specs?.color && sku.name.includes(item.name)) {
-                      cleanName = sku.name
-                          .replace(item.name, '')
-                          .replace(item.brand?.name || '', '')
-                          .replace(item.parent?.name || '', '')
-                          .trim();
-                  }
+                      return {
+                          id: cleanId,
+                          skuId: sku?.id,
+                          name: cleanName,
+                          hex:
+                              color.specs?.hex_primary ||
+                              color.specs?.hex_code ||
+                              sku?.specs?.hex_primary ||
+                              sku?.specs?.hex_code ||
+                              '#000000',
+                          image:
+                              assetImage ||
+                              sku?.image_url ||
+                              sku?.specs?.primary_image ||
+                              sku?.specs?.gallery?.[0] ||
+                              color?.image_url ||
+                              color?.specs?.image_url ||
+                              null,
+                          video: sku?.video_url || sku?.specs?.video_urls?.[0] || sku?.specs?.video_url || null,
+                          priceOverride: sku?.price_base,
+                          dealerOffer: rawOffer,
+                          isPrimary: Boolean(sku?.is_primary || color?.is_primary),
+                      };
+                  })
+                  .sort((a: any, b: any) => Number(b.isPrimary) - Number(a.isPrimary))
+            : (skus || [])
+                  .map((sku: any) => {
+                      let cleanName = sku.specs?.color || sku.name;
+                      if (!sku.specs?.color && sku.name.includes(item.name)) {
+                          cleanName = sku.name
+                              .replace(item.name, '')
+                              .replace(item.brand?.name || '', '')
+                              .replace(item.parent?.name || '', '')
+                              .trim();
+                      }
 
-                  const cleanId = slugify(cleanName);
-                  const rawOffer = marketOffers[sku.id] || 0;
+                      const cleanId = slugify(cleanName);
+                      const rawOffer = marketOffers[sku.id] || 0;
+                      const assetImage = pickImageFromAssets(sku?.assets);
 
-                  return {
-                      id: cleanId,
-                      skuId: sku.id,
-                      name: cleanName,
-                      hex: sku.specs?.hex_primary || sku.specs?.hex_code || '#000000',
-                      image: sku.specs?.primary_image || sku.specs?.gallery?.[0] || null,
-                      video: sku.video_url || sku.specs?.video_urls?.[0] || sku.specs?.video_url || null,
-                      priceOverride: sku.price_base,
-                      dealerOffer: rawOffer,
-                  };
-              });
+                      return {
+                          id: cleanId,
+                          skuId: sku.id,
+                          name: cleanName,
+                          hex: sku.specs?.hex_primary || sku.specs?.hex_code || '#000000',
+                          image:
+                              assetImage ||
+                              sku.image_url ||
+                              sku.specs?.primary_image ||
+                              sku.specs?.gallery?.[0] ||
+                              null,
+                          video: sku.video_url || sku.specs?.video_urls?.[0] || sku.specs?.video_url || null,
+                          priceOverride: sku.price_base,
+                          dealerOffer: rawOffer,
+                          isPrimary: Boolean(sku?.is_primary),
+                      };
+                  })
+                  .sort((a: any, b: any) => Number(b.isPrimary) - Number(a.isPrimary));
 
     // If no SKUs, make a default One
     if (colors.length === 0) {
@@ -784,7 +826,7 @@ export default async function Page({ params, searchParams }: Props) {
         variant: item.name,
         basePrice: Number(baseExShowroom),
         colors: colors,
-        specs: item.specs,
+        specs: { ...parentSpecs, ...item.specs },
         tenant_id: winningDealerId, // Dealer tenant for quote creation
     };
 

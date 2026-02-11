@@ -42,9 +42,19 @@ export async function getPricingLedger(tenantId: string) {
                     id,
                     name,
                     type,
+                    specs,
                     brand_id,
                     brand:cat_brands (id, name),
-                    category
+                    category,
+                    parent:parent_id (
+                        id,
+                        name,
+                        type,
+                        specs,
+                        brand_id,
+                        brand:cat_brands (id, name),
+                        category
+                    )
                 )
             )
         `
@@ -107,20 +117,30 @@ export async function getPricingLedger(tenantId: string) {
     // 6. Map to VariantSku interface expected by frontend
     const mappedSkus = skus.map((sku: any) => {
         const variant = sku.parent || {};
-        const family = variant.parent || {};
-        const brand = family.brand || {};
+        // In 4-level hierarchy: SKU → UNIT → VARIANT → PRODUCT
+        // variant.parent could be VARIANT (if 3-level) or VARIANT (if 4-level)
+        const grandparent = variant.parent || {};
+        const greatGrandparent = grandparent.parent || {};
+        // Family = PRODUCT level (prefer great-grandparent if available)
+        const family = greatGrandparent?.id ? greatGrandparent : grandparent;
+        const brand = family.brand || grandparent.brand || {};
         const price = priceMap.get(sku.id);
         const rule = dealerRulesMap.get(sku.id);
 
         // Category normalization: DB 'VEHICLE' -> UI 'vehicles'
-        let category = (family.category || 'VEHICLE').toLowerCase();
+        let category = (family.category || grandparent.category || 'VEHICLE').toLowerCase();
         // Pluralize for UI filter compatibility
         if (category === 'vehicle') category = 'vehicles';
         else if (category === 'accessory') category = 'accessories';
         else if (category === 'service') category = 'services';
 
-        // Get engine_cc from SKU specs, or variant specs, or family specs
-        const engineCc = sku.specs?.engine_cc || variant.specs?.engine_cc || family.specs?.engine_cc || 110; // Default
+        // Get engine_cc: walk full hierarchy SKU → UNIT → VARIANT → PRODUCT
+        const engineCc =
+            sku.specs?.engine_cc ||
+            variant.specs?.engine_cc ||
+            grandparent.specs?.engine_cc ||
+            greatGrandparent?.specs?.engine_cc ||
+            110; // Default
 
         return {
             id: sku.id,

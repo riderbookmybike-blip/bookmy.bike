@@ -506,6 +506,7 @@ export function mapCatalogItems(
                                         sku.specs?.Finish ||
                                         sku.specs?.finish
                                     )?.toUpperCase(),
+                                    isPrimary: Boolean(sku.is_primary),
                                 });
                             });
                         }
@@ -533,12 +534,15 @@ export function mapCatalogItems(
                                         offsetX: Number(primaryAsset?.offset_x || sku.offset_x || 0),
                                         offsetY: Number(primaryAsset?.offset_y || sku.offset_y || 0),
                                         finish: (sku.specs?.Finish || sku.specs?.finish)?.toUpperCase(),
+                                        isPrimary: Boolean(sku.is_primary),
                                     });
                                 }
                             });
                         }
 
-                        return Array.from(colorsMap.values());
+                        return Array.from(colorsMap.values()).sort(
+                            (a: any, b: any) => Number(b.isPrimary) - Number(a.isPrimary)
+                        );
                     })(),
 
                     // Zoom factor for image normalization (from primary SKU)

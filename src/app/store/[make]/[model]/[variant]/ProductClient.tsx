@@ -260,6 +260,7 @@ export default function ProductClient({
                 price: a.price,
                 discountPrice: a.discountPrice,
                 inclusionType: a.inclusionType,
+                qty: Number(quantities?.[a.id] || 1),
             }));
 
         const selectedServiceItems = (data.activeServices || [])
@@ -269,6 +270,7 @@ export default function ProductClient({
                 name: s.name,
                 price: s.price,
                 discountPrice: s.discountPrice,
+                qty: Number(quantities?.[s.id] || 1),
             }));
 
         const selectedInsuranceAddonItems = (data.availableInsuranceAddons || [])
@@ -279,11 +281,35 @@ export default function ProductClient({
                 price: i.price,
                 discountPrice: i.discountPrice,
                 inclusionType: i.inclusionType,
+                breakdown: i.breakdown,
+                selected: true,
             }));
 
         const insuranceTotal = (data.baseInsurance || 0) + (data.insuranceAddonsPrice || 0);
         const colorDelta = (data.colorSurge || 0) - (data.colorDiscount || 0);
         const offersDelta = data.offersDiscount || 0;
+        const referralBonus = data.isReferralActive ? 5000 : 0;
+
+        const financeChargesDetailed = (data.financeCharges || []).map((c: any) => ({
+            id: c.id,
+            label: c.label,
+            amount: Number(c.value || 0),
+            impact: c.impact || 'UPFRONT',
+            type: c.type,
+            calculationBasis: c.calculationBasis,
+            taxStatus: c.taxStatus,
+            taxRate: c.taxRate,
+            rawValue: c.rawValue,
+            basisAmount: c.basisAmount,
+            helpText: c.helpText,
+        }));
+        const upfrontChargesTotal = financeChargesDetailed
+            .filter(c => (c.impact || 'UPFRONT') === 'UPFRONT')
+            .reduce((sum, c) => sum + (c.amount || 0), 0);
+        const fundedChargesTotal = financeChargesDetailed
+            .filter(c => (c.impact || 'UPFRONT') === 'FUNDED')
+            .reduce((sum, c) => sum + (c.amount || 0), 0);
+        const grossLoanAmount = (data.loanAmount || 0) + fundedChargesTotal;
 
         return {
             brand: product.make,
@@ -301,16 +327,30 @@ export default function ProductClient({
                 bank_name: data.initialFinance?.bank?.name || null,
                 scheme_id: data.initialFinance?.scheme?.id || null,
                 scheme_code: data.initialFinance?.scheme?.name || null,
+                scheme_name: data.initialFinance?.scheme?.name || null,
+                scheme_interest_rate: data.initialFinance?.scheme?.interestRate || null,
+                scheme_interest_type: data.initialFinance?.scheme?.interestType || null,
+                selection_logic: data.initialFinance?.logic || null,
                 ltv: data.initialFinance?.scheme?.maxLTV || null,
                 roi: (data.annualInterest || 0) * 100,
                 tenure_months: data.emiTenure || null,
                 down_payment: data.userDownPayment || data.downPayment || 0,
                 loan_amount: data.loanAmount || 0,
-                loan_addons: 0,
-                processing_fee: data.financeCharges?.reduce((sum: number, c: any) => sum + (c.value || 0), 0) || 0,
-                charges_breakup: data.financeCharges || [],
+                loan_addons: fundedChargesTotal,
+                gross_loan_amount: grossLoanAmount,
+                processing_fee: upfrontChargesTotal,
+                charges_breakup: financeChargesDetailed,
                 emi: data.emi || 0,
                 status: 'IN_PROCESS',
+            },
+            delivery: {
+                serviceable: bestOffer?.isServiceable ?? serverPricing?.dealer?.is_serviceable ?? null,
+                pincode: resolvedLocation?.pincode || null,
+                taluka: resolvedLocation?.taluka || null,
+                district: resolvedLocation?.district || null,
+                stateCode: resolvedLocation?.stateCode || null,
+                delivery_tat_days: 7,
+                checked_at: new Date().toISOString(),
             },
             pricing_snapshot: {
                 pricing_source: data.pricingSource,
@@ -334,7 +374,9 @@ export default function ProductClient({
                 insurance_addons_total: data.insuranceAddonsPrice || 0,
                 insurance_total: insuranceTotal,
                 insurance_breakdown: data.insuranceBreakdown || [],
+                insurance_required_items: data.insuranceRequiredItems || [],
                 offers: selectedOffers,
+                offers_items: data.offersItems || [],
                 offers_delta: offersDelta,
                 accessories_total: data.accessoriesPrice || 0,
                 accessories_discount: data.accessoriesDiscount || 0,
@@ -352,16 +394,26 @@ export default function ProductClient({
                 service_items: selectedServiceItems,
                 insurance_addons: selectedInsuranceAddons,
                 insurance_addon_items: selectedInsuranceAddonItems,
+                warranty_items: data.warrantyItems || [],
                 emi_tenure: data.emiTenure,
                 down_payment: data.userDownPayment || data.downPayment, // Use calculated downPayment if user hasn't explicitly set it
+                referral_applied: data.isReferralActive || false,
+                referral_bonus: referralBonus,
+                rto_options: data.rtoOptions || [],
                 // Finance Integration
                 finance_scheme_id: data.initialFinance?.scheme?.id || null,
+                finance_scheme_name: data.initialFinance?.scheme?.name || null,
+                finance_bank_id: data.initialFinance?.bank?.id || null,
                 finance_bank_name: data.initialFinance?.bank?.name || null,
                 finance_emi: data.emi || 0,
                 finance_roi: (data.annualInterest || 0) * 100,
+                finance_interest_type: data.initialFinance?.scheme?.interestType || null,
                 finance_loan_amount: data.loanAmount || 0,
-                finance_processing_fees:
-                    data.financeCharges?.reduce((sum: number, c: any) => sum + (c.value || 0), 0) || 0,
+                finance_gross_loan_amount: grossLoanAmount,
+                finance_funded_addons: fundedChargesTotal,
+                finance_upfront_charges: upfrontChargesTotal,
+                finance_charges_breakup: financeChargesDetailed,
+                finance_processing_fees: upfrontChargesTotal,
             },
         };
     };

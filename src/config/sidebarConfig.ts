@@ -379,6 +379,15 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 permissions: ['read'],
             },
             {
+                title: 'Audit Trail',
+                href: '/dashboard/catalog/audit',
+                icon: HistoryIcon,
+                color: 'text-slate-500',
+                allowedTenants: ['MARKETPLACE', 'AUMS'],
+                allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN'],
+                permissions: ['read'],
+            },
+            {
                 title: 'Dealership Network',
                 href: '/dashboard/dealers',
                 icon: Building2,
@@ -409,14 +418,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 color: 'text-slate-400',
                 allowedTenants: ['BANK'],
             },
-            {
-                title: 'Audit Logs',
-                href: '/audit-logs',
-                icon: HistoryIcon,
-                color: 'text-slate-400',
-                allowedTenants: ['MARKETPLACE', 'DEALER', 'BANK', 'AUMS'],
-                permissions: ['read'],
-            },
+
             {
                 title: 'Brand Guidelines',
                 href: '/dashboard/design-system',

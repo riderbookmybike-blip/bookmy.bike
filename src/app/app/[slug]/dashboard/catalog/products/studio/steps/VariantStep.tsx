@@ -7,6 +7,7 @@ import SKUMediaManager from '@/components/catalog/SKUMediaManager';
 import Modal from '@/components/ui/Modal';
 import AttributeInput from '@/components/catalog/AttributeInput';
 import { toast } from 'sonner';
+import CopyableId from '@/components/ui/CopyableId';
 
 // Helper to format text as Title Case
 function toTitleCase(str: string): string {
@@ -414,6 +415,7 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
                                 <h4 className="font-black text-lg text-slate-900 dark:text-white uppercase italic leading-none">
                                     {v.name}
                                 </h4>
+                                <CopyableId id={v.id} className="mt-2" />
                                 <div className="flex items-center gap-2 mt-2">
                                     <input
                                         type="number"

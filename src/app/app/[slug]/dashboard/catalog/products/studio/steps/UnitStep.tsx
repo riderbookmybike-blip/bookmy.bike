@@ -24,6 +24,7 @@ import ImageColorPicker from '../components/ImageColorPicker';
 import SKUMediaManager from '@/components/catalog/SKUMediaManager';
 import { getProxiedUrl } from '@/lib/utils/urlHelper';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
+import CopyableId from '@/components/ui/CopyableId';
 
 export default function UnitStep({ family, existingColors, onUpdate }: any) {
     const [isSaving, setIsSaving] = useState(false);
@@ -500,6 +501,7 @@ export default function UnitStep({ family, existingColors, onUpdate }: any) {
                                         >
                                             {color.name}
                                         </h4>
+                                        <CopyableId id={color.id} className="mt-1" />
                                         {color.specs?.Finish && (
                                             <div className="mt-1">
                                                 <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/5 text-[8px] font-black uppercase text-slate-500 tracking-wider">

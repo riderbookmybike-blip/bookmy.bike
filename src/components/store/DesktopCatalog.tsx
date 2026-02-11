@@ -46,6 +46,7 @@ interface DesktopCatalogProps {
     isLoading?: boolean;
     leadId?: string;
     basePath?: string;
+    mode?: 'default' | 'smart';
 }
 
 const StarRating = ({ rating = 4.5, size = 10 }: { rating?: number; size?: number }) => {
@@ -71,6 +72,7 @@ export const DesktopCatalog = ({
     isLoading: externalLoading = false,
     leadId,
     basePath = '/store',
+    mode = 'default',
 }: DesktopCatalogProps) => {
     // Prefer client-resolved items when available, otherwise SSR
     const isLoading = externalLoading;
@@ -121,6 +123,7 @@ export const DesktopCatalog = ({
 
     // Local State
     const [isTv] = useState(_variant === 'tv');
+    const isSmart = mode === 'smart';
     const [sortBy] = useState<'popular' | 'price' | 'emi'>('popular');
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -616,6 +619,143 @@ export const DesktopCatalog = ({
         return vehicles;
     }, [filteredVehicles, sortBy, downpayment]);
 
+    const [smartModel, setSmartModel] = useState<string | null>(null);
+    const [smartVariant, setSmartVariant] = useState<string | null>(null);
+    const [smartColor, setSmartColor] = useState<string | null>(null);
+    const [explodedVariant, setExplodedVariant] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!isSmart) return;
+        if (!searchQuery) {
+            setSmartModel(null);
+            setSmartVariant(null);
+            setSmartColor(null);
+            setExplodedVariant(null);
+        }
+    }, [isSmart, searchQuery]);
+
+    const normalize = (value?: string) => (value || '').toLowerCase().trim();
+
+    const resultsForQuery = useMemo(() => {
+        const query = normalize(searchQuery);
+        if (!query) return [];
+        return results.filter(v => {
+            const makeMatch = normalize(v.make).includes(query);
+            const modelMatch = normalize(v.model).includes(query);
+            const variantMatch = normalize(v.variant).includes(query);
+            return makeMatch || modelMatch || variantMatch;
+        });
+    }, [results, searchQuery]);
+
+    const modelCounts = useMemo(() => {
+        const map = new Map<string, number>();
+        const source = resultsForQuery.length > 0 ? resultsForQuery : [];
+        source.forEach(v => {
+            const key = v.model;
+            map.set(key, (map.get(key) || 0) + 1);
+        });
+        return map;
+    }, [resultsForQuery]);
+
+    const modelOptions = useMemo(() => {
+        const query = normalize(searchQuery);
+        if (!query) return [];
+        return Array.from(modelCounts.keys()).slice(0, 8);
+    }, [modelCounts, searchQuery]);
+
+    useEffect(() => {
+        if (!isSmart) return;
+        const query = normalize(searchQuery);
+        if (!query) return;
+        const exactMatches = resultsForQuery.filter(v => normalize(v.model) === query);
+        const uniqueModels = Array.from(new Set(exactMatches.map(v => v.model)));
+        if (uniqueModels.length === 1) {
+            const model = uniqueModels[0];
+            if (smartModel !== model) {
+                setSmartModel(model);
+                setSmartVariant(null);
+                setSmartColor(null);
+                setExplodedVariant(null);
+            }
+        } else if (uniqueModels.length === 0) {
+            setSmartModel(null);
+            setSmartVariant(null);
+            setSmartColor(null);
+            setExplodedVariant(null);
+        }
+    }, [isSmart, resultsForQuery, searchQuery, smartModel]);
+
+    const variantOptions = useMemo(() => {
+        if (!smartModel) return [];
+        const map = new Map<string, number>();
+        results
+            .filter(v => normalize(v.model) === normalize(smartModel))
+            .forEach(v => {
+                map.set(v.variant, (map.get(v.variant) || 0) + 1);
+            });
+        return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
+    }, [results, smartModel]);
+
+    const colorOptions = useMemo(() => {
+        if (!smartModel || !smartVariant) return [];
+        const map = new Map<string, { name: string; hex?: string; count: number }>();
+        results
+            .filter(
+                v => normalize(v.model) === normalize(smartModel) && normalize(v.variant) === normalize(smartVariant)
+            )
+            .forEach(v => {
+                v.availableColors?.forEach(c => {
+                    const key = c.name;
+                    const existing = map.get(key);
+                    if (existing) {
+                        existing.count += 1;
+                    } else {
+                        map.set(key, { name: c.name, hex: c.hexCode, count: 1 });
+                    }
+                });
+            });
+        return Array.from(map.values());
+    }, [results, smartModel, smartVariant]);
+
+    const smartFilteredResults = useMemo(() => {
+        if (!isSmart) return results;
+        let next = results;
+        if (smartModel) {
+            next = next.filter(v => normalize(v.model) === normalize(smartModel));
+        }
+        if (smartVariant) {
+            next = next.filter(v => normalize(v.variant) === normalize(smartVariant));
+        }
+        return next;
+    }, [isSmart, results, smartModel, smartVariant]);
+
+    const displayResults = useMemo(() => {
+        if (!isSmart) return results;
+        if (explodedVariant) {
+            const explodedOnly = smartFilteredResults.filter(
+                v => `${v.make}::${v.model}::${v.variant}` === explodedVariant
+            );
+            return explodedOnly.flatMap(v => {
+                const colors = Array.isArray(v.availableColors) ? v.availableColors : [];
+                const filteredColors = smartColor
+                    ? colors.filter(c => normalize(c.name) === normalize(smartColor))
+                    : colors;
+                if (filteredColors.length === 0) return [v];
+                return filteredColors.map(color => ({
+                    ...v,
+                    color: color.name,
+                    imageUrl: color.imageUrl || v.imageUrl,
+                    zoomFactor: color.zoomFactor ?? v.zoomFactor,
+                    isFlipped: color.isFlipped ?? v.isFlipped,
+                    offsetX: color.offsetX ?? v.offsetX,
+                    offsetY: color.offsetY ?? v.offsetY,
+                    availableColors: [color, ...colors.filter(c => c.id !== color.id)],
+                }));
+            });
+        }
+        return smartFilteredResults;
+    }, [isSmart, results, smartFilteredResults, smartColor, explodedVariant]);
+
     // Location gate removed: location resolves silently in background
 
     return (
@@ -623,7 +763,7 @@ export const DesktopCatalog = ({
             <div className="flex-1 page-container pt-0 pb-10 md:pb-16">
                 <header
                     className="hidden md:block sticky z-[90] py-0 mb-4 transition-all duration-300"
-                    style={{ top: 'var(--header-h)', marginTop: 'calc(var(--header-h) + 16px)' }}
+                    style={{ top: 'var(--header-h)', marginTop: '16px' }}
                 >
                     <div className="w-full">
                         <div className="rounded-full bg-slate-50/15 dark:bg-[#0b0d10]/25 backdrop-blur-3xl border border-slate-200 dark:border-white/10 shadow-2xl h-14 px-4 flex items-center">
@@ -633,10 +773,10 @@ export const DesktopCatalog = ({
                                         <Search size={14} className="text-slate-400" />
                                         <input
                                             type="text"
-                                            placeholder="Search model, brand, variant"
+                                            placeholder="Search brand, product, variant"
                                             value={searchQuery}
                                             onChange={e => setSearchQuery(e.target.value)}
-                                            className="flex-1 min-w-[160px] bg-transparent text-[11px] font-black tracking-widest uppercase focus:outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                                            className="flex-1 min-w-[140px] bg-transparent text-[11px] font-black tracking-widest uppercase focus:outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600"
                                         />
                                         {searchQuery && (
                                             <button
@@ -646,122 +786,146 @@ export const DesktopCatalog = ({
                                                 <X size={14} />
                                             </button>
                                         )}
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            {!allBrandSelected &&
-                                                selectedMakes.map(brand => (
-                                                    <span
-                                                        key={`brand-${brand}`}
-                                                        className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 dark:bg-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80"
-                                                    >
-                                                        {brand}
+                                        {explodedVariant && (
+                                            <button
+                                                onClick={() => setExplodedVariant(null)}
+                                                className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 dark:bg-white/10 text-[9px] font-black uppercase tracking-widest text-slate-600 dark:text-white/70"
+                                                title="Collapse Colors"
+                                            >
+                                                Collapse Colors
+                                                <X size={10} />
+                                            </button>
+                                        )}
+                                        {!isSmart && (
+                                            <div className="flex items-center gap-2">
+                                                {bodyOptions.map(body => {
+                                                    const active = selectedBodyTypes.includes(body);
+                                                    return (
                                                         <button
-                                                            onClick={() =>
-                                                                setSelectedMakes(
-                                                                    selectedMakes.filter(item => item !== brand)
-                                                                )
-                                                            }
-                                                            className="text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                                                            key={`body-pill-${body}`}
+                                                            onClick={() => {
+                                                                if (active) {
+                                                                    setSelectedBodyTypes(
+                                                                        selectedBodyTypes.filter(item => item !== body)
+                                                                    );
+                                                                } else {
+                                                                    setSelectedBodyTypes([body]);
+                                                                }
+                                                            }}
+                                                            className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${
+                                                                active
+                                                                    ? 'bg-brand-primary/10 border-brand-primary text-brand-primary'
+                                                                    : 'bg-white/70 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-700 dark:text-white/80 hover:border-brand-primary/40 hover:text-brand-primary'
+                                                            }`}
                                                         >
-                                                            <X size={10} />
+                                                            {body === 'MOTORCYCLE'
+                                                                ? 'Motorcycle'
+                                                                : body === 'SCOOTER'
+                                                                  ? 'Scooter'
+                                                                  : 'Moped'}
+                                                            {active && <X size={10} />}
                                                         </button>
-                                                    </span>
-                                                ))}
-                                            {selectedBodyTypes.map(body => (
-                                                <span
-                                                    key={`body-${body}`}
-                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 dark:bg-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80"
-                                                >
-                                                    {body}
-                                                    <button
-                                                        onClick={() =>
-                                                            setSelectedBodyTypes(
-                                                                selectedBodyTypes.filter(item => item !== body)
-                                                            )
-                                                        }
-                                                        className="text-slate-500 hover:text-slate-900 dark:hover:text-white"
-                                                    >
-                                                        <X size={10} />
-                                                    </button>
-                                                </span>
-                                            ))}
-                                            {selectedFuels.map(fuel => (
-                                                <span
-                                                    key={`fuel-${fuel}`}
-                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 dark:bg-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80"
-                                                >
-                                                    {fuel}
-                                                    <button
-                                                        onClick={() =>
-                                                            setSelectedFuels(
-                                                                selectedFuels.filter(item => item !== fuel)
-                                                            )
-                                                        }
-                                                        className="text-slate-500 hover:text-slate-900 dark:hover:text-white"
-                                                    >
-                                                        <X size={10} />
-                                                    </button>
-                                                </span>
-                                            ))}
-                                            {selectedBrakes.map(brake => (
-                                                <span
-                                                    key={`brake-${brake}`}
-                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 dark:bg-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80"
-                                                >
-                                                    {brake}
-                                                    <button
-                                                        onClick={() => toggleFilter(setSelectedBrakes, brake)}
-                                                        className="text-slate-500 hover:text-slate-900 dark:hover:text-white"
-                                                    >
-                                                        <X size={10} />
-                                                    </button>
-                                                </span>
-                                            ))}
-                                            {selectedFinishes.map(finish => (
-                                                <span
-                                                    key={`finish-${finish}`}
-                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 dark:bg-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80"
-                                                >
-                                                    {finish}
-                                                    <button
-                                                        onClick={() => toggleFilter(setSelectedFinishes, finish)}
-                                                        className="text-slate-500 hover:text-slate-900 dark:hover:text-white"
-                                                    >
-                                                        <X size={10} />
-                                                    </button>
-                                                </span>
-                                            ))}
-                                            {selectedSeatHeight.map(height => (
-                                                <span
-                                                    key={`seat-${height}`}
-                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 dark:bg-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80"
-                                                >
-                                                    {height}
-                                                    <button
-                                                        onClick={() => toggleFilter(setSelectedSeatHeight, height)}
-                                                        className="text-slate-500 hover:text-slate-900 dark:hover:text-white"
-                                                    >
-                                                        <X size={10} />
-                                                    </button>
-                                                </span>
-                                            ))}
-                                            {selectedWeights.map(weight => (
-                                                <span
-                                                    key={`weight-${weight}`}
-                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 dark:bg-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80"
-                                                >
-                                                    {weight}
-                                                    <button
-                                                        onClick={() => toggleFilter(setSelectedWeights, weight)}
-                                                        className="text-slate-500 hover:text-slate-900 dark:hover:text-white"
-                                                    >
-                                                        <X size={10} />
-                                                    </button>
-                                                </span>
-                                            ))}
-                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-
+                                {isSmart && (
+                                    <div className="flex-1 flex items-center justify-end gap-2">
+                                        <div className="flex flex-wrap items-center gap-2 max-w-[900px] justify-end">
+                                            {!smartModel && (
+                                                <>
+                                                    {modelOptions.map(model => (
+                                                        <button
+                                                            key={`model-${model}`}
+                                                            onClick={() => {
+                                                                setSmartModel(model);
+                                                                setSmartVariant(null);
+                                                                setSmartColor(null);
+                                                                setSearchQuery(model);
+                                                            }}
+                                                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80 hover:border-brand-primary/40 hover:text-brand-primary transition-all"
+                                                        >
+                                                            {model}
+                                                            <span className="text-slate-400">•</span>
+                                                            <span className="text-brand-primary">
+                                                                {modelCounts.get(model) || 0}
+                                                            </span>
+                                                        </button>
+                                                    ))}
+                                                </>
+                                            )}
+                                            {smartModel && !smartVariant && (
+                                                <>
+                                                    <button
+                                                        onClick={() => {
+                                                            setSmartModel(null);
+                                                            setSmartVariant(null);
+                                                            setSmartColor(null);
+                                                            setSearchQuery('');
+                                                        }}
+                                                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80"
+                                                    >
+                                                        {smartModel}
+                                                        <X size={10} />
+                                                    </button>
+                                                    {variantOptions.map(v => (
+                                                        <button
+                                                            key={`variant-${v.name}`}
+                                                            onClick={() => {
+                                                                setSmartVariant(v.name);
+                                                                setSmartColor(null);
+                                                            }}
+                                                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80 hover:border-brand-primary/40 hover:text-brand-primary transition-all"
+                                                        >
+                                                            {v.name}
+                                                            <span className="text-slate-400">•</span>
+                                                            <span className="text-brand-primary">{v.count}</span>
+                                                        </button>
+                                                    ))}
+                                                </>
+                                            )}
+                                            {smartModel && smartVariant && (
+                                                <>
+                                                    <button
+                                                        onClick={() => {
+                                                            setSmartVariant(null);
+                                                            setSmartColor(null);
+                                                        }}
+                                                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80"
+                                                    >
+                                                        {smartVariant}
+                                                        <X size={10} />
+                                                    </button>
+                                                    {colorOptions.map(c => (
+                                                        <button
+                                                            key={`color-${c.name}`}
+                                                            onClick={() => {
+                                                                setSmartColor(c.name);
+                                                            }}
+                                                            className={`w-5 h-5 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.15)] relative hover:scale-110 transition-all duration-300 cursor-pointer overflow-hidden ${
+                                                                normalize(smartColor) === normalize(c.name)
+                                                                    ? 'ring-2 ring-brand-primary/40'
+                                                                    : ''
+                                                            }`}
+                                                            style={{ background: c.hex || '#999' }}
+                                                            title={c.name}
+                                                        />
+                                                    ))}
+                                                    {smartColor && (
+                                                        <button
+                                                            onClick={() => setSmartColor(null)}
+                                                            className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 dark:bg-white/10 text-[9px] font-black uppercase tracking-widest text-slate-500"
+                                                        >
+                                                            Clear
+                                                        </button>
+                                                    )}
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                                 <button
                                     onClick={() => setIsFilterOpen(true)}
                                     className="flex items-center justify-center w-10 h-10 rounded-full bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/70 hover:text-slate-900 dark:hover:text-white"
@@ -782,7 +946,7 @@ export const DesktopCatalog = ({
                             <Search size={14} className="text-slate-400" />
                             <input
                                 type="text"
-                                placeholder="Search model, brand, variant"
+                                placeholder="Search brand, product, variant"
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
                                 className="flex-1 bg-transparent text-[11px] font-black tracking-widest uppercase focus:outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600"
@@ -1069,10 +1233,11 @@ export const DesktopCatalog = ({
                             }`}
                         >
                             {/* Results Grid */}
-                            {results.map(v => {
+                            {displayResults.map((v, idx) => {
+                                const key = `${v.id}-${(v as any).color || v.imageUrl || idx}`;
                                 return (
                                     <ProductCard
-                                        key={v.id}
+                                        key={key}
                                         v={v}
                                         viewMode={viewMode}
                                         downpayment={downpayment}
@@ -1081,6 +1246,14 @@ export const DesktopCatalog = ({
                                         onLocationClick={() => setIsLocationPickerOpen(true)}
                                         isTv={isTv}
                                         leadId={leadId}
+                                        onExplodeColors={
+                                            isSmart
+                                                ? () => {
+                                                      const key = `${v.make}::${v.model}::${v.variant}`;
+                                                      setExplodedVariant(prev => (prev === key ? null : key));
+                                                  }
+                                                : undefined
+                                        }
                                     />
                                 );
                             })}

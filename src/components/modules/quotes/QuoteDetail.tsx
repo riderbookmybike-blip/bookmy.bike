@@ -2,6 +2,7 @@ import React from 'react';
 import { Quote } from './QuoteList';
 import { Printer, Download, Share2, ChevronLeft, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import jsPDF from 'jspdf';
 
 interface QuoteDetailProps {
     quote: Quote;
@@ -9,6 +10,63 @@ interface QuoteDetailProps {
 }
 
 export default function QuoteDetail({ quote, onBack }: QuoteDetailProps) {
+    const handleDownload = () => {
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        let y = 16;
+
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(16);
+        pdf.text('QUOTATION', 14, y);
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(quote.displayId, pageWidth - 14, y, { align: 'right' });
+        y += 10;
+
+        pdf.setFontSize(9);
+        pdf.setTextColor(120);
+        pdf.text(`Date: ${quote.date}`, 14, y);
+        pdf.text(`Status: ${quote.status}`, pageWidth - 14, y, { align: 'right' });
+        y += 8;
+
+        pdf.setTextColor(0);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Customer', 14, y);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(quote.customerName, 40, y);
+        y += 6;
+
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Product', 14, y);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(quote.productName, 40, y);
+        y += 6;
+
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('SKU', 14, y);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(quote.productSku || '-', 40, y);
+        y += 10;
+
+        pdf.setDrawColor(220);
+        pdf.line(14, y, pageWidth - 14, y);
+        y += 8;
+
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Total Amount', 14, y);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(
+            new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(
+                quote.price
+            ),
+            pageWidth - 14,
+            y,
+            { align: 'right' }
+        );
+
+        pdf.save(`Quote_${quote.displayId}.pdf`);
+    };
+
     return (
         <div className="h-full flex flex-col bg-slate-50 dark:bg-[#0b0d10]">
             {/* Header */}
@@ -38,7 +96,7 @@ export default function QuoteDetail({ quote, onBack }: QuoteDetailProps) {
                         <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl">
                             <Printer size={16} />
                         </Button>
-                        <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl">
+                        <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl" onClick={handleDownload}>
                             <Download size={16} />
                         </Button>
                         <Button className="h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-white dark:text-black dark:hover:bg-slate-200 text-white font-bold text-xs">

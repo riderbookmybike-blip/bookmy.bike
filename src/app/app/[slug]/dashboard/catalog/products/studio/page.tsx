@@ -59,7 +59,31 @@ export default function UnifiedStudioPage() {
         }
     }, [tenantType, tenantSlug, router]);
 
-    const [currentStep, setCurrentStep] = useState(0);
+    const stepParam = searchParams.get('step');
+    const initialStep = stepParam ? STEPS.findIndex(s => s.id === stepParam) : 0;
+    const [currentStep, setCurrentStep] = useState(initialStep >= 0 ? initialStep : 0);
+
+    // Sync step + context to URL
+    const updateStepUrl = (step: number) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('step', STEPS[step].id);
+
+        if (brand?.id) params.set('brandId', brand.id);
+        else params.delete('brandId');
+
+        if (selectedCategory) params.set('category', selectedCategory);
+        else params.delete('category');
+
+        if (familyData?.id) {
+            params.set('productId', familyData.id);
+            params.set('familyId', familyData.id); // legacy support
+        } else {
+            params.delete('productId');
+            params.delete('familyId');
+        }
+
+        router.replace(`?${params.toString()}`, { scroll: false });
+    };
 
     // Global Data
     const [brands, setBrands] = useState<any[]>([]);
@@ -88,6 +112,10 @@ export default function UnifiedStudioPage() {
     useEffect(() => {
         fetchInitialData();
     }, [tenantId]);
+
+    useEffect(() => {
+        updateStepUrl(currentStep);
+    }, [currentStep, brand?.id, selectedCategory, familyData?.id]);
 
     useEffect(() => {
         const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -297,28 +325,70 @@ export default function UnifiedStudioPage() {
             }
 
             // Check for edit mode
-            const familyId = searchParams.get('familyId');
+            const legacyFamilyId = searchParams.get('familyId');
+            const productId = searchParams.get('productId') || legacyFamilyId;
             const brandId = searchParams.get('brandId');
+            const categoryParam = searchParams.get('category');
+            const variantId = searchParams.get('variantId');
+            const unitId = searchParams.get('unitId');
+            const skuId = searchParams.get('skuId');
             const stepParam = searchParams.get('step');
 
-            if (familyId) {
-                const { data: fData } = await supabase.from('cat_items').select('*').eq('id', familyId).single();
-                if (fData) {
-                    setFamilyData(fData as unknown as CatalogItem);
-                    if (brandId) {
-                        const brnd = bData?.find(b => b.id === brandId);
-                        if (brnd) setBrand(brnd);
-                    }
+            const itemMap = new Map(allItems.map(i => [i.id, i]));
 
-                    // Handle Deep Linking to specific step
-                    if (stepParam) {
-                        const stepIndex = parseInt(stepParam);
-                        if (!isNaN(stepIndex) && stepIndex >= 0 && stepIndex < STEPS.length) {
-                            setCurrentStep(stepIndex);
-                        }
-                    }
-                    if (fData.category) setSelectedCategory(fData.category);
+            const resolveItemById = async (id: string | null) => {
+                if (!id) return null;
+                const local = itemMap.get(id);
+                if (local) return local;
+                const { data } = await supabase.from('cat_items').select('*').eq('id', id).maybeSingle();
+                return data || null;
+            };
+
+            const resolveProductFromId = async (id: string | null) => {
+                let current = await resolveItemById(id);
+                let depth = 0;
+                while (current && depth < 5) {
+                    if (current.type === 'PRODUCT') return current;
+                    if (!current.parent_id) break;
+                    current = await resolveItemById(current.parent_id);
+                    depth += 1;
                 }
+                return null;
+            };
+
+            let productItem: any = null;
+            if (productId) productItem = await resolveProductFromId(productId);
+            if (!productItem && variantId) productItem = await resolveProductFromId(variantId);
+            if (!productItem && unitId) productItem = await resolveProductFromId(unitId);
+            if (!productItem && skuId) productItem = await resolveProductFromId(skuId);
+
+            if (productItem) {
+                setFamilyData(productItem as CatalogItem);
+                if (productItem.category) setSelectedCategory(productItem.category);
+            }
+
+            if (categoryParam) setSelectedCategory(categoryParam);
+
+            if (brandId) {
+                const brnd = bData?.find(b => b.id === brandId);
+                if (brnd) setBrand(brnd);
+            } else if (productItem?.brand_id) {
+                const brnd = bData?.find(b => b.id === productItem.brand_id);
+                if (brnd) setBrand(brnd);
+            }
+
+            // Handle Deep Linking to specific step
+            if (stepParam) {
+                const stepIndex = STEPS.findIndex(s => s.id === stepParam);
+                if (stepIndex >= 0) {
+                    setCurrentStep(stepIndex);
+                }
+            } else {
+                if (skuId) setCurrentStep(STEPS.findIndex(s => s.id === 'sku'));
+                else if (unitId) setCurrentStep(STEPS.findIndex(s => s.id === 'colors'));
+                else if (variantId) setCurrentStep(STEPS.findIndex(s => s.id === 'variants'));
+                else if (productItem) setCurrentStep(STEPS.findIndex(s => s.id === 'model'));
+                else if (brandId) setCurrentStep(STEPS.findIndex(s => s.id === 'category'));
             }
         } finally {
             setIsLoading(false);
@@ -326,15 +396,22 @@ export default function UnifiedStudioPage() {
     };
 
     const handleNext = async () => {
-        if (currentStep < STEPS.length - 1) setCurrentStep(c => c + 1);
-        else {
+        if (currentStep < STEPS.length - 1) {
+            const next = currentStep + 1;
+            setCurrentStep(next);
+            updateStepUrl(next);
+        } else {
             const base = tenantSlug ? `/app/${tenantSlug}/dashboard/catalog/products` : '/dashboard/catalog/products';
             router.push(base);
         }
     };
 
     const handleBack = () => {
-        if (currentStep > 0) setCurrentStep(c => c - 1);
+        if (currentStep > 0) {
+            const prev = currentStep - 1;
+            setCurrentStep(prev);
+            updateStepUrl(prev);
+        }
     };
 
     if (isLoading) {
@@ -415,7 +492,12 @@ export default function UnifiedStudioPage() {
                             return (
                                 <button
                                     key={step.id}
-                                    onClick={() => isPast && setCurrentStep(idx)}
+                                    onClick={() => {
+                                        if (isPast) {
+                                            setCurrentStep(idx);
+                                            updateStepUrl(idx);
+                                        }
+                                    }}
                                     className={`relative flex flex-col xl:flex-row items-center justify-center gap-3 py-4 px-2 rounded-2xl transition-all duration-300 border-2 ${
                                         isActive
                                             ? 'bg-slate-900 text-white border-slate-900 shadow-xl shadow-slate-900/10 scale-105 z-10'
@@ -566,6 +648,7 @@ export default function UnifiedStudioPage() {
                             family={familyData}
                             variants={variants}
                             colors={colors}
+                            allColors={allColors}
                             skus={skus}
                             onUpdate={setSkus}
                         />

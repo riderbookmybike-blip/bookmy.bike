@@ -262,15 +262,51 @@ export default function SKUMediaManager({
         if (!primaryImage) return;
         setIsRemovingBg(true);
         try {
+            const BG_TIMEOUT_MS = 20000;
+            const MAX_BG_DIM = 1600;
+            const withTimeout = <T,>(promise: Promise<T>, ms: number) =>
+                Promise.race([
+                    promise,
+                    new Promise<T>((_, reject) => setTimeout(() => reject(new Error('BG removal timed out')), ms)),
+                ]);
+
+            const normalizeImageBlob = async (blob: Blob) => {
+                try {
+                    const img = await createImageBitmap(blob);
+                    const maxDim = Math.max(img.width, img.height);
+                    if (maxDim <= MAX_BG_DIM) return blob;
+
+                    const scale = MAX_BG_DIM / maxDim;
+                    const width = Math.max(1, Math.round(img.width * scale));
+                    const height = Math.max(1, Math.round(img.height * scale));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) return blob;
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const resizedBlob = await new Promise<Blob>((resolve, reject) => {
+                        canvas.toBlob(b => (b ? resolve(b) : reject(new Error('Resize failed'))), 'image/png', 0.92);
+                    });
+                    return resizedBlob;
+                } catch {
+                    return blob;
+                }
+            };
+
             const { removeBackground } = await import('@imgly/background-removal');
             const imageResponse = await fetch(getProxiedUrl(primaryImage));
             const imageBlob = await imageResponse.blob();
 
-            const resultBlob = await removeBackground(imageBlob, {
-                progress: (key, current, total) => {
-                    console.log(`[BG Removal] ${key}: ${Math.round((current / total) * 100)}%`);
-                },
-            });
+            const optimizedBlob = await normalizeImageBlob(imageBlob);
+            const resultBlob = await withTimeout(
+                removeBackground(optimizedBlob, {
+                    progress: (key, current, total) => {
+                        console.log(`[BG Removal] ${key}: ${Math.round((current / total) * 100)}%`);
+                    },
+                }),
+                BG_TIMEOUT_MS
+            );
 
             const supabase = createClient();
             const fileName = `catalog/nobg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.png`;
@@ -714,52 +750,36 @@ export default function SKUMediaManager({
                                             </span>
                                         </button>
 
-                                        <div className="relative group">
-                                            <button
-                                                onClick={() => handleSmartCrop()}
-                                                disabled={!primaryImage || isCropping}
-                                                className={`w-full flex flex-col items-center justify-center p-4 rounded-3xl border-2 transition-all ${isCropping ? 'border-amber-600 bg-amber-50 dark:bg-amber-600/10 text-amber-600' : 'border-slate-100 dark:border-white/5 bg-white dark:bg-white/5 text-slate-400 hover:border-amber-400 hover:text-amber-600'} disabled:opacity-50 disabled:cursor-not-allowed`}
-                                            >
+                                        <div className="col-span-3 flex flex-col gap-3 p-4 rounded-3xl border-2 border-slate-100 dark:border-white/5 bg-white dark:bg-white/5">
+                                            <div className="flex items-center gap-2">
                                                 {isCropping ? (
-                                                    <Loader2 size={20} className="mb-2 animate-spin" />
+                                                    <Loader2 size={14} className="animate-spin text-amber-600" />
                                                 ) : (
-                                                    <Crop size={20} className="mb-2" />
+                                                    <Crop size={14} className="text-slate-400" />
                                                 )}
-                                                <span className="text-[9px] font-black uppercase tracking-widest">
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
                                                     Smart Crop
                                                 </span>
-                                            </button>
-                                            <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-white/10 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 py-2">
-                                                <button
-                                                    onClick={() => handleSmartCrop()}
-                                                    className="w-full px-4 py-2 text-left text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10"
-                                                >
-                                                    Auto Trim
-                                                </button>
-                                                <button
-                                                    onClick={() => handleSmartCrop(1)}
-                                                    className="w-full px-4 py-2 text-left text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10"
-                                                >
-                                                    1:1 Square
-                                                </button>
-                                                <button
-                                                    onClick={() => handleSmartCrop(4 / 3)}
-                                                    className="w-full px-4 py-2 text-left text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10"
-                                                >
-                                                    4:3 Standard
-                                                </button>
-                                                <button
-                                                    onClick={() => handleSmartCrop(16 / 9)}
-                                                    className="w-full px-4 py-2 text-left text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10"
-                                                >
-                                                    16:9 Wide
-                                                </button>
-                                                <button
-                                                    onClick={() => handleSmartCrop(300 / 344)}
-                                                    className="w-full px-4 py-2 text-left text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10"
-                                                >
-                                                    Card (300×344)
-                                                </button>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                {(
+                                                    [
+                                                        { label: 'Auto Trim', ratio: undefined },
+                                                        { label: '1:1', ratio: 1 },
+                                                        { label: '4:3', ratio: 4 / 3 },
+                                                        { label: '16:9', ratio: 16 / 9 },
+                                                        { label: 'Card', ratio: 300 / 344 },
+                                                    ] as { label: string; ratio: number | undefined }[]
+                                                ).map(opt => (
+                                                    <button
+                                                        key={opt.label}
+                                                        onClick={() => handleSmartCrop(opt.ratio)}
+                                                        disabled={!primaryImage || isCropping}
+                                                        className="px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/20 text-slate-500 dark:text-slate-400 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-600/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                                                    >
+                                                        {opt.label}
+                                                    </button>
+                                                ))}
                                             </div>
                                         </div>
 
@@ -925,6 +945,49 @@ export default function SKUMediaManager({
                                                 </div>
                                             </div>
                                         </div>
+                                    </div>
+                                </div>
+
+                                {/* Quick Tools Card */}
+                                <div className="pt-6 border-t border-slate-100 dark:border-white/5 space-y-4">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1.5 bg-violet-100 text-violet-600 rounded-lg">
+                                            <Upload size={14} />
+                                        </div>
+                                        <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">
+                                            Quick Tools
+                                        </h3>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <label className="flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-dashed border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02] text-slate-400 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all cursor-pointer">
+                                            <Upload size={18} className="mb-1.5" />
+                                            <span className="text-[9px] font-black uppercase tracking-widest">
+                                                Upload
+                                            </span>
+                                            <input
+                                                type="file"
+                                                hidden
+                                                accept="image/*"
+                                                multiple
+                                                onChange={e => handleFileUpload(e, 'image')}
+                                            />
+                                        </label>
+
+                                        <button
+                                            onClick={() => handleSmartCrop(300 / 344)}
+                                            disabled={!primaryImage || isCropping}
+                                            className="flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02] text-slate-400 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                                        >
+                                            {isCropping ? (
+                                                <Loader2 size={18} className="mb-1.5 animate-spin" />
+                                            ) : (
+                                                <Crop size={18} className="mb-1.5" />
+                                            )}
+                                            <span className="text-[9px] font-black uppercase tracking-widest">
+                                                Smart Crop
+                                            </span>
+                                        </button>
                                     </div>
                                 </div>
 

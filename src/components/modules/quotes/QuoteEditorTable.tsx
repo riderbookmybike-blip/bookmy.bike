@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { SchemeCharge, BankScheme, MOCK_BANK_PARTNERS } from '@/types/bankPartner';
+import { SchemeCharge, BankScheme } from '@/types/bankPartner';
+import { getBankSchemes } from '@/actions/crm';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Save,
@@ -43,6 +44,7 @@ import {
     TrendingUp,
     XCircle,
     PlusCircle,
+    ShieldCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -100,6 +102,15 @@ export interface QuoteData {
     district?: string | null;
     tenantId?: string | null;
     financeMode?: 'CASH' | 'LOAN';
+    delivery?: {
+        serviceable?: boolean | null;
+        pincode?: string | null;
+        taluka?: string | null;
+        district?: string | null;
+        stateCode?: string | null;
+        delivery_tat_days?: number | null;
+        checked_at?: string | null;
+    } | null;
     customerProfile?: {
         memberId?: string | null;
         fullName?: string | null;
@@ -141,6 +152,9 @@ export interface QuoteData {
         bankName?: string | null;
         schemeId?: string | null;
         schemeCode?: string | null;
+        selection_logic?: string | null;
+        scheme_interest_rate?: number | null;
+        scheme_interest_type?: string | null;
         ltv?: number | null;
         roi?: number | null;
         tenureMonths?: number | null;
@@ -148,7 +162,7 @@ export interface QuoteData {
         loanAmount?: number | null;
         loanAddons?: number | null;
         processingFee?: number | null;
-        chargesBreakup?: { label: string; amount: number }[] | null;
+        chargesBreakup?: { label: string; amount: number; impact?: 'UPFRONT' | 'FUNDED' }[] | null;
         addonsBreakup?: { label: string; amount: number }[] | null;
         emi?: number | null;
         approvedAmount?: number | null;
@@ -163,13 +177,14 @@ export interface QuoteData {
         approvedMarginMoney?: number | null;
         approvedGrossLoan?: number | null;
         approvedIrr?: number | null;
-        approvedChargesBreakup?: { label: string; amount: number }[] | null;
-        approvedAddonsBreakup?: { label: string; amount: number }[] | null;
+        approvedChargesBreakup?: { label: string; amount: number; impact?: 'UPFRONT' | 'FUNDED' }[] | null;
+        approvedAddonsBreakup?: { label: string; amount: number; impact?: 'UPFRONT' | 'FUNDED' }[] | null;
         bankLogo?: string | null;
         companyName?: string | null;
         branchName?: string | null;
         executiveName?: string | null;
         executivePhone?: string | null;
+        creditScore?: string | number | null;
     };
 
     customer: {
@@ -197,20 +212,42 @@ export interface QuoteData {
         rtoTotal: number;
         insuranceOD: number;
         insuranceTP: number;
-        insuranceAddons: { id: string; name: string; amount: number; selected: boolean }[];
+        insuranceAddons: { id: string; name: string; amount: number; selected: boolean; breakdown?: any }[];
         insuranceGST: number;
         insuranceTotal: number;
         insuranceProvider?: string | null;
         insuranceGstRate: number;
-        accessories: { id: string; name: string; price: number; selected: boolean }[];
+        accessories: {
+            id: string;
+            name: string;
+            price: number;
+            basePrice?: number;
+            discountPrice?: number | null;
+            qty?: number;
+            selected: boolean;
+        }[];
         accessoriesTotal: number;
-        services: { id: string; name: string; price: number; selected: boolean }[];
+        services: {
+            id: string;
+            name: string;
+            price: number;
+            basePrice?: number;
+            discountPrice?: number | null;
+            qty?: number;
+            selected: boolean;
+        }[];
         servicesTotal: number;
         dealerDiscount: number;
         managerDiscount: number;
         managerDiscountNote?: string | null;
         onRoadTotal: number;
         finalTotal: number;
+        rtoOptions?: any[];
+        insuranceRequiredItems?: any[];
+        offersItems?: any[];
+        warrantyItems?: any[];
+        referralApplied?: boolean;
+        referralBonus?: number;
     };
     timeline: {
         event: string;
@@ -234,6 +271,8 @@ interface QuoteEditorTableProps {
         createdAt?: string | null;
         onRoadPrice?: string | number | null;
         createdBy?: string | null;
+        vehicleName?: string | null;
+        vehicleColor?: string | null;
     }[];
     bookings?: any[];
     payments?: any[];
@@ -525,19 +564,19 @@ export default function QuoteEditorTable({
         pdf.setFont('helvetica', 'bold');
         pdf.text('Customer', 14, y);
         pdf.setFont('helvetica', 'normal');
-        pdf.text(quote.customerName || '-', 40, y);
+        pdf.text(quote.customer.name || '-', 40, y);
         y += 6;
 
         pdf.setFont('helvetica', 'bold');
         pdf.text('Product', 14, y);
         pdf.setFont('helvetica', 'normal');
-        pdf.text(quote.productName || '-', 40, y);
+        pdf.text(`${quote.vehicle.brand} ${quote.vehicle.model}` || '-', 40, y);
         y += 6;
 
         pdf.setFont('helvetica', 'bold');
         pdf.text('SKU', 14, y);
         pdf.setFont('helvetica', 'normal');
-        pdf.text(quote.productSku || '-', 40, y);
+        pdf.text(quote.vehicle.skuId || '-', 40, y);
         y += 10;
 
         pdf.setDrawColor(220);
@@ -549,7 +588,7 @@ export default function QuoteEditorTable({
         pdf.setFont('helvetica', 'bold');
         pdf.text(
             new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(
-                quote.price || 0
+                quote.pricing.finalTotal || 0
             ),
             pageWidth - 14,
             y,
@@ -585,7 +624,8 @@ export default function QuoteEditorTable({
     const [isResolvingPincode, setIsResolvingPincode] = useState(false);
 
     // Finance Editing State
-    const [isPrimaryFinanceExpanded, setIsPrimaryFinanceExpanded] = useState(true);
+    const [isPrimaryFinanceExpanded, setIsPrimaryFinanceExpanded] = useState(false);
+    const [creditScore, setCreditScore] = useState<string>(String(quote.finance?.creditScore || ''));
     const [newFinanceEntries, setNewFinanceEntries] = useState<
         {
             id: string;
@@ -618,6 +658,7 @@ export default function QuoteEditorTable({
     >([]);
     const [newEntryExpandedMap, setNewEntryExpandedMap] = useState<Record<string, boolean>>({});
     const [availableBanks, setAvailableBanks] = useState<{ id: string; name: string }[]>([]);
+    const [bankSchemesCache, setBankSchemesCache] = useState<Record<string, BankScheme[]>>({});
 
     // Fetch available financiers/banks
     useEffect(() => {
@@ -819,10 +860,14 @@ export default function QuoteEditorTable({
     };
 
     // Helper: Get schemes for a selected bank
+    const fetchSchemesForBank = async (bankId: string) => {
+        if (!bankId || bankSchemesCache[bankId]) return;
+        const schemes = await getBankSchemes(bankId);
+        setBankSchemesCache(prev => ({ ...prev, [bankId]: schemes as BankScheme[] }));
+    };
+
     const getSchemesForBank = (bankId: string): BankScheme[] => {
-        // Use MOCK_BANK_PARTNERS for now; can be replaced with DB fetch later
-        const bank = MOCK_BANK_PARTNERS?.find(b => b.id === bankId);
-        return bank?.schemes || [];
+        return bankSchemesCache[bankId] || [];
     };
 
     const handleAddNewFinance = () => {
@@ -861,8 +906,62 @@ export default function QuoteEditorTable({
                 selectedScheme: null,
             },
         ]);
-        setNewEntryExpandedMap(prev => ({ ...prev, [newId]: true }));
+        // Collapse primary and all existing entries, only expand the new one
+        setIsPrimaryFinanceExpanded(false);
+        setNewEntryExpandedMap(prev => {
+            const collapsed: Record<string, boolean> = {};
+            Object.keys(prev).forEach(k => {
+                collapsed[k] = false;
+            });
+            collapsed[newId] = true;
+            return collapsed;
+        });
         toast.success('New finance entry added — select Financier & Executive to begin');
+    };
+
+    const handleSaveFinanceEntry = async (entryId: string) => {
+        const entry = newFinanceEntries.find(e => e.id === entryId);
+        if (!entry) return;
+
+        if (!entry.bankName || !entry.bankId) {
+            toast.error('Select a financier before saving');
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const allCharges = [
+                ...(entry.upfrontCharges || []).map(c => ({ ...c, impact: 'UPFRONT' })),
+                ...(entry.fundedAddons || []).map(c => ({ ...c, impact: 'FUNDED' })),
+            ];
+
+            const result = await createQuoteFinanceAttempt(quote.id, {
+                bankId: entry.bankId,
+                bankName: entry.bankName,
+                schemeId: entry.schemeId || null,
+                schemeCode: entry.schemeName || null,
+                roi: parseFloat(entry.roi) || null,
+                tenureMonths: parseInt(entry.tenure) || null,
+                downPayment: parseInt(entry.marginMoney) || null,
+                loanAmount: parseInt(entry.loanAmount) || null,
+                loanAddons: parseInt(entry.loanAddOns) || null,
+                processingFee: parseInt(entry.processingFee) || null,
+                chargesBreakup: allCharges,
+                emi: parseInt(entry.emi) || null,
+            });
+
+            if (result.success) {
+                toast.success('Finance entry saved');
+                // Remove from local state after successful save
+                setNewFinanceEntries(prev => prev.filter(e => e.id !== entryId));
+            } else {
+                toast.error(result.error || 'Failed to save');
+            }
+        } catch (err: any) {
+            toast.error(err.message || 'Save failed');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleTaskStatus = async (taskId: string, status: 'OPEN' | 'IN_PROGRESS' | 'DONE') => {
@@ -908,10 +1007,12 @@ export default function QuoteEditorTable({
 
     // Recalculation engine
     useEffect(() => {
-        const accessoriesTotal = localPricing.accessories.filter(a => a.selected).reduce((sum, a) => sum + a.price, 0);
+        const accessoriesTotal = localPricing.accessories
+            .filter(a => a.selected)
+            .reduce((sum, a) => sum + a.price * (a.qty || 1), 0);
         const servicesTotal = (localPricing.services || [])
             .filter((s: any) => s.selected)
-            .reduce((sum: number, s: any) => sum + s.price, 0);
+            .reduce((sum: number, s: any) => sum + s.price * (s.qty || 1), 0);
         const insuranceAddonsTotal = localPricing.insuranceAddons
             .filter(a => a.selected)
             .reduce((sum, a) => sum + a.amount, 0);
@@ -2157,6 +2258,41 @@ export default function QuoteEditorTable({
                                     {/* Line Items - Conditional Rendering */}
                                     {groups.pricing && (
                                         <div className="flex flex-col animate-in fade-in slide-in-from-top-2 duration-300">
+                                            {quote.delivery && (
+                                                <div className="px-8 py-4 bg-slate-50/60 dark:bg-white/[0.02] border-b border-slate-100 dark:border-white/5">
+                                                    <div className="flex items-center justify-between">
+                                                        <div>
+                                                            <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                                Delivery & Serviceability
+                                                            </div>
+                                                            <div className="text-xs font-bold text-slate-700 dark:text-white mt-1">
+                                                                {quote.delivery.serviceable === false
+                                                                    ? 'Not Serviceable'
+                                                                    : 'Serviceable'}
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                                Location
+                                                            </div>
+                                                            <div className="text-xs font-bold text-slate-700 dark:text-white">
+                                                                {quote.delivery.district ||
+                                                                    quote.delivery.taluka ||
+                                                                    quote.delivery.pincode ||
+                                                                    '—'}
+                                                                {quote.delivery.pincode
+                                                                    ? ` (${quote.delivery.pincode})`
+                                                                    : ''}
+                                                            </div>
+                                                            {quote.delivery.delivery_tat_days ? (
+                                                                <div className="text-[9px] font-bold text-slate-400 mt-1">
+                                                                    TAT: {quote.delivery.delivery_tat_days} days
+                                                                </div>
+                                                            ) : null}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
                                             {/* Base Pricing Section */}
                                             <PricingRow
                                                 isBold
@@ -2190,6 +2326,23 @@ export default function QuoteEditorTable({
                                                                 Locked. Edit on Marketplace to change RTO type.
                                                             </span>
                                                         </div>
+                                                        {(localPricing.rtoOptions || []).length > 0 && (
+                                                            <div className="mt-2 grid grid-cols-1 gap-1">
+                                                                {(localPricing.rtoOptions || []).map(
+                                                                    (opt: any, idx: number) => (
+                                                                        <div
+                                                                            key={`${opt.id || opt.type || idx}`}
+                                                                            className="text-[8px] font-bold text-slate-400 uppercase tracking-widest"
+                                                                        >
+                                                                            {opt.label || opt.type || 'RTO'}: ₹
+                                                                            {Number(
+                                                                                opt.total || opt.amount || 0
+                                                                            ).toLocaleString('en-IN')}
+                                                                        </div>
+                                                                    )
+                                                                )}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 }
                                             />
@@ -2250,6 +2403,38 @@ export default function QuoteEditorTable({
                                                         )
                                                     }
                                                 />
+                                                {(localPricing.insuranceRequiredItems || []).length > 0 &&
+                                                    localPricing.insuranceRequiredItems.map(
+                                                        (item: any, idx: number) => (
+                                                            <PricingRow
+                                                                key={item.id || idx}
+                                                                isSub
+                                                                label={item.name || item.label || 'Required Cover'}
+                                                                value={formatCurrency(
+                                                                    Number(item.price || item.amount || 0)
+                                                                )}
+                                                                description={
+                                                                    item.breakdown && Array.isArray(item.breakdown) ? (
+                                                                        <div className="flex flex-col gap-1">
+                                                                            {item.breakdown.map(
+                                                                                (b: any, bIdx: number) => (
+                                                                                    <span
+                                                                                        key={`${item.id || idx}-b-${bIdx}`}
+                                                                                        className="text-[8px] text-slate-400 uppercase font-bold tracking-widest"
+                                                                                    >
+                                                                                        {b.label}: ₹
+                                                                                        {Number(
+                                                                                            b.amount || 0
+                                                                                        ).toLocaleString('en-IN')}
+                                                                                    </span>
+                                                                                )
+                                                                            )}
+                                                                        </div>
+                                                                    ) : undefined
+                                                                }
+                                                            />
+                                                        )
+                                                    )}
                                                 {localPricing.insuranceAddons.map(addon => (
                                                     <PricingRow
                                                         key={addon.id}
@@ -2259,6 +2444,23 @@ export default function QuoteEditorTable({
                                                             addon.selected
                                                                 ? formatCurrency(addon.amount || 0)
                                                                 : 'Not Selected'
+                                                        }
+                                                        description={
+                                                            addon.breakdown && Array.isArray(addon.breakdown) ? (
+                                                                <div className="flex flex-col gap-1">
+                                                                    {addon.breakdown.map((b: any, bIdx: number) => (
+                                                                        <span
+                                                                            key={`${addon.id}-b-${bIdx}`}
+                                                                            className="text-[8px] text-slate-400 uppercase font-bold tracking-widest"
+                                                                        >
+                                                                            {b.label}: ₹
+                                                                            {Number(b.amount || 0).toLocaleString(
+                                                                                'en-IN'
+                                                                            )}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            ) : undefined
                                                         }
                                                         extra={
                                                             <div className="flex items-center gap-2">
@@ -2306,7 +2508,7 @@ export default function QuoteEditorTable({
                                                     <PricingRow
                                                         key={acc.id}
                                                         isSub
-                                                        label={acc.name}
+                                                        label={`${acc.name}${acc.qty && acc.qty > 1 ? ` ×${acc.qty}` : ''}`}
                                                         value={acc.selected ? formatCurrency(acc.price) : 'Excluded'}
                                                         extra={
                                                             <div className="flex items-center gap-2">
@@ -2338,7 +2540,7 @@ export default function QuoteEditorTable({
                                                         <PricingRow
                                                             key={svc.id}
                                                             isSub
-                                                            label={svc.name}
+                                                            label={`${svc.name}${svc.qty && svc.qty > 1 ? ` ×${svc.qty}` : ''}`}
                                                             value={
                                                                 svc.selected ? formatCurrency(svc.price) : 'Excluded'
                                                             }
@@ -2360,8 +2562,93 @@ export default function QuoteEditorTable({
                                                 </PricingGroup>
                                             )}
 
+                                            {(localPricing.warrantyItems || []).length > 0 && (
+                                                <div className="border-b border-slate-100 dark:border-white/5 last:border-0">
+                                                    <div className="w-full flex items-center justify-between py-4 px-6">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-500 dark:text-white/40">
+                                                                <ShieldCheck size={16} />
+                                                            </div>
+                                                            <span className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-tight">
+                                                                Warranty & Protection
+                                                            </span>
+                                                        </div>
+                                                        <span className="text-sm font-black text-slate-900 dark:text-white tabular-nums">
+                                                            Included
+                                                        </span>
+                                                    </div>
+                                                    <div className="bg-slate-50/20 dark:bg-white/[0.005]">
+                                                        {(localPricing.warrantyItems || []).map(
+                                                            (w: any, idx: number) => (
+                                                                <PricingRow
+                                                                    key={w.id || idx}
+                                                                    isSub
+                                                                    label={w.name || w.label || 'Warranty'}
+                                                                    value={
+                                                                        w.price
+                                                                            ? formatCurrency(Number(w.price || 0))
+                                                                            : 'Included'
+                                                                    }
+                                                                />
+                                                            )
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             {/* Discount Section */}
                                             <div className="bg-emerald-500/[0.03] dark:bg-emerald-500/[0.01]">
+                                                {(localPricing.offersItems || []).length > 0 && (
+                                                    <PricingRow
+                                                        label="Offers / Plans"
+                                                        value={formatCurrency(
+                                                            (localPricing.offersItems || []).reduce(
+                                                                (sum: number, o: any) => {
+                                                                    const base = Number(o.price || 0);
+                                                                    const effective =
+                                                                        o.discountPrice !== undefined &&
+                                                                        o.discountPrice !== null
+                                                                            ? Number(o.discountPrice)
+                                                                            : base;
+                                                                    return sum + (effective - base);
+                                                                },
+                                                                0
+                                                            )
+                                                        )}
+                                                        description={
+                                                            <div className="flex flex-col gap-1">
+                                                                {(localPricing.offersItems || []).map(
+                                                                    (o: any, idx: number) => {
+                                                                        const base = Number(o.price || 0);
+                                                                        const effective =
+                                                                            o.discountPrice !== undefined &&
+                                                                            o.discountPrice !== null
+                                                                                ? Number(o.discountPrice)
+                                                                                : base;
+                                                                        const delta = effective - base;
+                                                                        return (
+                                                                            <span
+                                                                                key={`${o.id || idx}`}
+                                                                                className="text-[8px] text-slate-400 uppercase font-bold tracking-widest"
+                                                                            >
+                                                                                {o.name}: {delta < 0 ? '-' : ''}₹
+                                                                                {Math.abs(delta).toLocaleString(
+                                                                                    'en-IN'
+                                                                                )}
+                                                                            </span>
+                                                                        );
+                                                                    }
+                                                                )}
+                                                            </div>
+                                                        }
+                                                    />
+                                                )}
+                                                {localPricing.referralApplied && (
+                                                    <PricingRow
+                                                        label="Referral Bonus"
+                                                        value={formatCurrency(-Number(localPricing.referralBonus || 0))}
+                                                    />
+                                                )}
                                                 <PricingRow
                                                     label="Dealer Discount"
                                                     value={formatCurrency(localPricing.dealerDiscount)}
@@ -2581,13 +2868,42 @@ export default function QuoteEditorTable({
                                                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                                             PRIMARY
                                                         </span>
+                                                        {quote.finance?.approvedScheme || quote.finance?.schemeCode ? (
+                                                            <>
+                                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                                    •
+                                                                </span>
+                                                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                                                    {quote.finance?.approvedScheme ||
+                                                                        quote.finance?.schemeCode}
+                                                                </span>
+                                                            </>
+                                                        ) : null}
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div
-                                                className={`transition-transform duration-300 ${isPrimaryFinanceExpanded ? 'rotate-180' : ''}`}
-                                            >
-                                                <ChevronDown size={20} className="text-slate-400" />
+                                            <div className="flex items-center gap-4">
+                                                {/* Credit Score Badge */}
+                                                <div
+                                                    className="flex items-center gap-2"
+                                                    onClick={e => e.stopPropagation()}
+                                                >
+                                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                                                        CIBIL
+                                                    </span>
+                                                    <input
+                                                        type="text"
+                                                        value={creditScore}
+                                                        onChange={e => setCreditScore(e.target.value)}
+                                                        placeholder="—"
+                                                        className="w-14 text-center bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-1 py-1 text-sm font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-colors"
+                                                    />
+                                                </div>
+                                                <div
+                                                    className={`transition-transform duration-300 ${isPrimaryFinanceExpanded ? 'rotate-180' : ''}`}
+                                                >
+                                                    <ChevronDown size={20} className="text-slate-400" />
+                                                </div>
                                             </div>
                                         </div>
 
@@ -2596,6 +2912,163 @@ export default function QuoteEditorTable({
                                             <>
                                                 {/* Card content - Broken down by Logic Sections */}
                                                 <div className="p-8 space-y-10">
+                                                    {/* SECTION D: TERMS & PERFORMANCE (moved to top) */}
+                                                    <div className="space-y-2">
+                                                        <div className="flex items-center gap-3 mb-6">
+                                                            <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-white/5 flex items-center justify-center text-indigo-500">
+                                                                <Clock size={18} />
+                                                            </div>
+                                                            <h4 className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-[0.25em]">
+                                                                Terms & Performance
+                                                            </h4>
+                                                            <div className="flex-1 h-px bg-slate-100 dark:bg-white/5" />
+                                                        </div>
+                                                        <div className="bg-slate-50/50 dark:bg-white/[0.01] rounded-[2rem] border border-slate-100 dark:border-white/5 overflow-hidden">
+                                                            <PricingRow
+                                                                label="Financier"
+                                                                value={quote.finance?.bankName || '—'}
+                                                            />
+                                                            <PricingRow
+                                                                label="Status"
+                                                                value={
+                                                                    <span
+                                                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${
+                                                                            quote.finance?.status === 'APPROVED'
+                                                                                ? 'bg-emerald-500/10 text-emerald-600'
+                                                                                : quote.finance?.status === 'REJECTED'
+                                                                                  ? 'bg-red-500/10 text-red-600'
+                                                                                  : 'bg-blue-500/10 text-blue-600'
+                                                                        }`}
+                                                                    >
+                                                                        {quote.finance?.status || 'IN_PROCESS'}
+                                                                    </span>
+                                                                }
+                                                            />
+                                                            <PricingRow
+                                                                label="Scheme Name"
+                                                                value={
+                                                                    isEditingFinance ? (
+                                                                        <input
+                                                                            type="text"
+                                                                            value={financeDraft.approvedScheme || ''}
+                                                                            onChange={e =>
+                                                                                setFinanceDraft(p => ({
+                                                                                    ...p,
+                                                                                    approvedScheme: e.target.value,
+                                                                                }))
+                                                                            }
+                                                                            className="w-48 bg-transparent border-b border-indigo-500/30 focus:border-indigo-500 outline-none text-right font-black text-sm p-0"
+                                                                            placeholder="e.g. SPECIAL 2024"
+                                                                        />
+                                                                    ) : (
+                                                                        financeDraft.approvedScheme ||
+                                                                        quote.finance?.approvedScheme ||
+                                                                        'STANDARD'
+                                                                    )
+                                                                }
+                                                            />
+                                                            <PricingRow
+                                                                label="Tenure"
+                                                                value={
+                                                                    isEditingFinance ? (
+                                                                        <div className="flex items-center gap-2">
+                                                                            <input
+                                                                                type="number"
+                                                                                value={financeDraft.approvedTenure || 0}
+                                                                                onChange={e =>
+                                                                                    setFinanceDraft(p => ({
+                                                                                        ...p,
+                                                                                        approvedTenure:
+                                                                                            parseInt(e.target.value) ||
+                                                                                            0,
+                                                                                    }))
+                                                                                }
+                                                                                className="w-16 bg-transparent border-b border-indigo-500/30 focus:border-indigo-500 outline-none text-right font-black text-sm p-0"
+                                                                            />
+                                                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                                                                                Months
+                                                                            </span>
+                                                                        </div>
+                                                                    ) : (
+                                                                        `${quote.finance?.approvedTenure || 0} Months`
+                                                                    )
+                                                                }
+                                                                description={
+                                                                    <span className="text-[8px] text-slate-400 uppercase font-black tracking-widest italic">
+                                                                        Applied: {quote.finance?.tenureMonths || 0} MO
+                                                                    </span>
+                                                                }
+                                                            />
+                                                            <PricingRow
+                                                                isBold
+                                                                label="Monthly EMI"
+                                                                value={
+                                                                    isEditingFinance ? (
+                                                                        <div className="flex items-center gap-1">
+                                                                            <span className="text-slate-400 text-xs font-bold">
+                                                                                ₹
+                                                                            </span>
+                                                                            <input
+                                                                                type="number"
+                                                                                value={financeDraft.approvedEmi || 0}
+                                                                                onChange={e =>
+                                                                                    setFinanceDraft(p => ({
+                                                                                        ...p,
+                                                                                        approvedEmi:
+                                                                                            parseInt(e.target.value) ||
+                                                                                            0,
+                                                                                    }))
+                                                                                }
+                                                                                className="w-28 bg-transparent border-b border-indigo-500/30 focus:border-indigo-500 outline-none text-right font-black text-sm p-0"
+                                                                            />
+                                                                        </div>
+                                                                    ) : (
+                                                                        formatCurrency(quote.finance?.approvedEmi || 0)
+                                                                    )
+                                                                }
+                                                                description={
+                                                                    <span className="text-[8px] text-emerald-500 uppercase font-extrabold tracking-widest italic">
+                                                                        Approved Repayment Amount
+                                                                    </span>
+                                                                }
+                                                            />
+                                                            <PricingRow
+                                                                label="ROI (IRR / ROI)"
+                                                                value={
+                                                                    isEditingFinance ? (
+                                                                        <div className="flex items-center gap-1">
+                                                                            <input
+                                                                                type="number"
+                                                                                value={financeDraft.approvedIrr || 0}
+                                                                                step="0.01"
+                                                                                onChange={e =>
+                                                                                    setFinanceDraft(p => ({
+                                                                                        ...p,
+                                                                                        approvedIrr:
+                                                                                            parseFloat(
+                                                                                                e.target.value
+                                                                                            ) || 0,
+                                                                                    }))
+                                                                                }
+                                                                                className="w-16 bg-transparent border-b border-indigo-500/30 focus:border-indigo-500 outline-none text-right font-black text-sm p-0"
+                                                                            />
+                                                                            <span className="text-xs font-bold text-slate-400">
+                                                                                %
+                                                                            </span>
+                                                                        </div>
+                                                                    ) : (
+                                                                        `${quote.finance?.approvedIrr || 0}%`
+                                                                    )
+                                                                }
+                                                                description={
+                                                                    <span className="text-[8px] text-slate-400 uppercase font-black tracking-widest italic">
+                                                                        Applied: {quote.finance?.roi || 0}%
+                                                                    </span>
+                                                                }
+                                                            />
+                                                        </div>
+                                                    </div>
+
                                                     {/* SECTION A: ASSET SETTLEMENT */}
                                                     <div className="space-y-2">
                                                         <div className="flex items-center gap-3 mb-6">
@@ -3091,143 +3564,6 @@ export default function QuoteEditorTable({
                                                             />
                                                         </div>
                                                     </div>
-
-                                                    {/* SECTION D: TERMS & PERFORMANCE */}
-                                                    <div className="space-y-2">
-                                                        <div className="flex items-center gap-3 mb-6">
-                                                            <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-white/5 flex items-center justify-center text-indigo-500">
-                                                                <Clock size={18} />
-                                                            </div>
-                                                            <h4 className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-[0.25em]">
-                                                                Terms & Performance
-                                                            </h4>
-                                                            <div className="flex-1 h-px bg-slate-100 dark:bg-white/5" />
-                                                        </div>
-                                                        <div className="bg-slate-50/50 dark:bg-white/[0.01] rounded-[2rem] border border-slate-100 dark:border-white/5 overflow-hidden">
-                                                            <PricingRow
-                                                                label="Scheme Name"
-                                                                value={
-                                                                    isEditingFinance ? (
-                                                                        <input
-                                                                            type="text"
-                                                                            value={financeDraft.approvedScheme || ''}
-                                                                            onChange={e =>
-                                                                                setFinanceDraft(p => ({
-                                                                                    ...p,
-                                                                                    approvedScheme: e.target.value,
-                                                                                }))
-                                                                            }
-                                                                            className="w-48 bg-transparent border-b border-indigo-500/30 focus:border-indigo-500 outline-none text-right font-black text-sm p-0"
-                                                                            placeholder="e.g. SPECIAL 2024"
-                                                                        />
-                                                                    ) : (
-                                                                        financeDraft.approvedScheme ||
-                                                                        quote.finance?.approvedScheme ||
-                                                                        'STANDARD'
-                                                                    )
-                                                                }
-                                                            />
-                                                            <PricingRow
-                                                                label="Tenure"
-                                                                value={
-                                                                    isEditingFinance ? (
-                                                                        <div className="flex items-center gap-2">
-                                                                            <input
-                                                                                type="number"
-                                                                                value={financeDraft.approvedTenure || 0}
-                                                                                onChange={e =>
-                                                                                    setFinanceDraft(p => ({
-                                                                                        ...p,
-                                                                                        approvedTenure:
-                                                                                            parseInt(e.target.value) ||
-                                                                                            0,
-                                                                                    }))
-                                                                                }
-                                                                                className="w-16 bg-transparent border-b border-indigo-500/30 focus:border-indigo-500 outline-none text-right font-black text-sm p-0"
-                                                                            />
-                                                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                                                                                Months
-                                                                            </span>
-                                                                        </div>
-                                                                    ) : (
-                                                                        `${quote.finance?.approvedTenure || 0} Months`
-                                                                    )
-                                                                }
-                                                                description={
-                                                                    <span className="text-[8px] text-slate-400 uppercase font-black tracking-widest italic">
-                                                                        Applied: {quote.finance?.tenureMonths || 0} MO
-                                                                    </span>
-                                                                }
-                                                            />
-                                                            <PricingRow
-                                                                isBold
-                                                                label="Monthly EMI"
-                                                                value={
-                                                                    isEditingFinance ? (
-                                                                        <div className="flex items-center gap-1">
-                                                                            <span className="text-slate-400 text-xs font-bold">
-                                                                                ₹
-                                                                            </span>
-                                                                            <input
-                                                                                type="number"
-                                                                                value={financeDraft.approvedEmi || 0}
-                                                                                onChange={e =>
-                                                                                    setFinanceDraft(p => ({
-                                                                                        ...p,
-                                                                                        approvedEmi:
-                                                                                            parseInt(e.target.value) ||
-                                                                                            0,
-                                                                                    }))
-                                                                                }
-                                                                                className="w-28 bg-transparent border-b border-indigo-500/30 focus:border-indigo-500 outline-none text-right font-black text-sm p-0"
-                                                                            />
-                                                                        </div>
-                                                                    ) : (
-                                                                        formatCurrency(quote.finance?.approvedEmi || 0)
-                                                                    )
-                                                                }
-                                                                description={
-                                                                    <span className="text-[8px] text-emerald-500 uppercase font-extrabold tracking-widest italic">
-                                                                        Approved Repayment Amount
-                                                                    </span>
-                                                                }
-                                                            />
-                                                            <PricingRow
-                                                                label="ROI (IRR / ROI)"
-                                                                value={
-                                                                    isEditingFinance ? (
-                                                                        <div className="flex items-center gap-1">
-                                                                            <input
-                                                                                type="number"
-                                                                                value={financeDraft.approvedIrr || 0}
-                                                                                step="0.01"
-                                                                                onChange={e =>
-                                                                                    setFinanceDraft(p => ({
-                                                                                        ...p,
-                                                                                        approvedIrr:
-                                                                                            parseFloat(
-                                                                                                e.target.value
-                                                                                            ) || 0,
-                                                                                    }))
-                                                                                }
-                                                                                className="w-16 bg-transparent border-b border-indigo-500/30 focus:border-indigo-500 outline-none text-right font-black text-sm p-0"
-                                                                            />
-                                                                            <span className="text-xs font-bold text-slate-400">
-                                                                                %
-                                                                            </span>
-                                                                        </div>
-                                                                    ) : (
-                                                                        `${quote.finance?.approvedIrr || 0}%`
-                                                                    )
-                                                                }
-                                                                description={
-                                                                    <span className="text-[8px] text-slate-400 uppercase font-black tracking-widest italic">
-                                                                        Applied: {quote.finance?.roi || 0}%
-                                                                    </span>
-                                                                }
-                                                            />
-                                                        </div>
-                                                    </div>
                                                 </div>
 
                                                 {/* Card Footer - Save/Cancel Actions */}
@@ -3267,6 +3603,207 @@ export default function QuoteEditorTable({
                                             </>
                                         )}
                                     </div>
+
+                                    {/* FINANCE SNAPSHOT (READ-ONLY) */}
+                                    {quote.finance && (
+                                        <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[2rem] p-6 shadow-xl shadow-indigo-500/5">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div>
+                                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                        Finance Snapshot
+                                                    </div>
+                                                    <div className="text-sm font-black text-slate-900 dark:text-white">
+                                                        Audit Summary
+                                                    </div>
+                                                </div>
+                                                {quote.finance.status && (
+                                                    <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-600">
+                                                        {quote.finance.status}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="bg-slate-50/70 dark:bg-white/[0.02] rounded-2xl p-4 border border-slate-100 dark:border-white/5">
+                                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                                                        Party & Scheme
+                                                    </div>
+                                                    <div className="space-y-1 text-[12px] font-bold text-slate-700 dark:text-slate-200">
+                                                        <div className="flex items-center gap-2">
+                                                            {quote.finance.bankLogo ? (
+                                                                <img
+                                                                    src={quote.finance.bankLogo}
+                                                                    alt={quote.finance.bankName || 'Bank'}
+                                                                    className="w-5 h-5 rounded-md object-contain bg-white dark:bg-white/5 p-0.5 border border-slate-100 dark:border-white/10"
+                                                                />
+                                                            ) : null}
+                                                            <span>Bank: {quote.finance.bankName || '—'}</span>
+                                                        </div>
+                                                        <div>
+                                                            Scheme:{' '}
+                                                            {quote.finance.approvedScheme ||
+                                                                quote.finance.schemeCode ||
+                                                                '—'}
+                                                        </div>
+                                                        <div>Scheme ID: {quote.finance.schemeId || '—'}</div>
+                                                        <div>
+                                                            Selection Logic:{' '}
+                                                            {(quote as any).finance?.selection_logic || '—'}
+                                                        </div>
+                                                        <div>
+                                                            Scheme ROI: {quote.finance.scheme_interest_rate ?? '—'}%
+                                                        </div>
+                                                        <div>
+                                                            Interest Type: {quote.finance.scheme_interest_type || '—'}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-slate-50/70 dark:bg-white/[0.02] rounded-2xl p-4 border border-slate-100 dark:border-white/5">
+                                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                                                        Terms
+                                                    </div>
+                                                    <div className="space-y-1 text-[12px] font-bold text-slate-700 dark:text-slate-200">
+                                                        <div>
+                                                            ROI: {quote.finance.approvedIrr ?? quote.finance.roi ?? '—'}
+                                                            %
+                                                        </div>
+                                                        <div>
+                                                            Tenure:{' '}
+                                                            {quote.finance.approvedTenure ??
+                                                                quote.finance.tenureMonths ??
+                                                                '—'}{' '}
+                                                            months
+                                                        </div>
+                                                        <div>
+                                                            EMI:{' '}
+                                                            {formatCurrency(
+                                                                quote.finance.approvedEmi ?? quote.finance.emi ?? 0
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            Down Payment:{' '}
+                                                            {formatCurrency(
+                                                                quote.finance.approvedDownPayment ??
+                                                                    quote.finance.downPayment ??
+                                                                    0
+                                                            )}
+                                                        </div>
+                                                        <div>LTV: {quote.finance.ltv ?? '—'}%</div>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-slate-50/70 dark:bg-white/[0.02] rounded-2xl p-4 border border-slate-100 dark:border-white/5">
+                                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                                                        Loan Amounts
+                                                    </div>
+                                                    <div className="space-y-1 text-[12px] font-bold text-slate-700 dark:text-slate-200">
+                                                        <div>
+                                                            Net Loan:{' '}
+                                                            {formatCurrency(
+                                                                quote.finance.approvedAmount ??
+                                                                    quote.finance.loanAmount ??
+                                                                    0
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            Funded Add-ons:{' '}
+                                                            {formatCurrency(
+                                                                quote.finance.approvedAddOns ??
+                                                                    quote.finance.loanAddons ??
+                                                                    0
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            Gross Loan:{' '}
+                                                            {formatCurrency(
+                                                                quote.finance.approvedGrossLoan ??
+                                                                    (quote.finance.approvedAmount ??
+                                                                        quote.finance.loanAmount ??
+                                                                        0) +
+                                                                        (quote.finance.approvedAddOns ??
+                                                                            quote.finance.loanAddons ??
+                                                                            0)
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-slate-50/70 dark:bg-white/[0.02] rounded-2xl p-4 border border-slate-100 dark:border-white/5">
+                                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                                                        Charges
+                                                    </div>
+                                                    <div className="space-y-1 text-[12px] font-bold text-slate-700 dark:text-slate-200">
+                                                        <div>
+                                                            Upfront Total:{' '}
+                                                            {formatCurrency(
+                                                                quote.finance.approvedProcessingFee ??
+                                                                    quote.finance.processingFee ??
+                                                                    0
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            Upfront Items:{' '}
+                                                            {
+                                                                (
+                                                                    quote.finance.approvedChargesBreakup ||
+                                                                    quote.finance.chargesBreakup ||
+                                                                    []
+                                                                ).length
+                                                            }
+                                                        </div>
+                                                        <div>
+                                                            Funded Items:{' '}
+                                                            {
+                                                                (
+                                                                    quote.finance.approvedAddonsBreakup ||
+                                                                    quote.finance.addonsBreakup ||
+                                                                    []
+                                                                ).length
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {(
+                                                quote.finance.approvedChargesBreakup ||
+                                                quote.finance.chargesBreakup ||
+                                                []
+                                            ).length > 0 && (
+                                                <div className="mt-4 bg-slate-50/70 dark:bg-white/[0.02] rounded-2xl p-4 border border-slate-100 dark:border-white/5">
+                                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                                                        Upfront Charges Breakdown
+                                                    </div>
+                                                    <div className="space-y-1 text-[12px] font-bold text-slate-700 dark:text-slate-200">
+                                                        {(
+                                                            quote.finance.approvedChargesBreakup ||
+                                                            quote.finance.chargesBreakup ||
+                                                            []
+                                                        ).map((c: any, idx: number) => (
+                                                            <div key={`upfront-${idx}`}>
+                                                                {c.label}: {formatCurrency(Number(c.amount || 0))}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {(quote.finance.approvedAddonsBreakup || quote.finance.addonsBreakup || [])
+                                                .length > 0 && (
+                                                <div className="mt-4 bg-slate-50/70 dark:bg-white/[0.02] rounded-2xl p-4 border border-slate-100 dark:border-white/5">
+                                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                                                        Funded Add-ons Breakdown
+                                                    </div>
+                                                    <div className="space-y-1 text-[12px] font-bold text-slate-700 dark:text-slate-200">
+                                                        {(
+                                                            quote.finance.approvedAddonsBreakup ||
+                                                            quote.finance.addonsBreakup ||
+                                                            []
+                                                        ).map((c: any, idx: number) => (
+                                                            <div key={`funded-${idx}`}>
+                                                                {c.label}: {formatCurrency(Number(c.amount || 0))}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
 
                                     {/* NEW FINANCE ENTRY CARDS — Exact Clone of Primary APPLICATION Card */}
                                     {newFinanceEntries.map((entry, idx) => (
@@ -3311,6 +3848,8 @@ export default function QuoteEditorTable({
                                                                     const bankObj = availableBanks.find(
                                                                         b => b.name === val
                                                                     );
+                                                                    // Fetch schemes for the selected bank
+                                                                    if (bankObj?.id) fetchSchemesForBank(bankObj.id);
                                                                     setNewFinanceEntries(prev =>
                                                                         prev.map(en => {
                                                                             if (en.id !== entry.id) return en;
@@ -3318,6 +3857,12 @@ export default function QuoteEditorTable({
                                                                                 ...en,
                                                                                 bankName: val,
                                                                                 bankId: bankObj?.id || '',
+                                                                                // Reset scheme selection on bank change
+                                                                                schemeId: '',
+                                                                                schemeName: '',
+                                                                                selectedScheme: null,
+                                                                                upfrontCharges: [],
+                                                                                fundedAddons: [],
                                                                                 status: val
                                                                                     ? 'APPLICATION'
                                                                                     : 'IN_PROCESS',
@@ -3463,7 +4008,24 @@ export default function QuoteEditorTable({
                                                                                 setNewFinanceEntries(prev =>
                                                                                     prev.map(en =>
                                                                                         en.id === entry.id
-                                                                                            ? { ...en, assetCost: val }
+                                                                                            ? {
+                                                                                                  ...en,
+                                                                                                  assetCost: val,
+                                                                                                  offerDiscount: String(
+                                                                                                      Math.max(
+                                                                                                          0,
+                                                                                                          (parseInt(
+                                                                                                              val
+                                                                                                          ) || 0) +
+                                                                                                              (parseInt(
+                                                                                                                  en.accessoriesCharges
+                                                                                                              ) || 0) -
+                                                                                                              (parseInt(
+                                                                                                                  en.finalAmountPayable
+                                                                                                              ) || 0)
+                                                                                                      )
+                                                                                                  ),
+                                                                                              }
                                                                                             : en
                                                                                     )
                                                                                 );
@@ -3497,6 +4059,20 @@ export default function QuoteEditorTable({
                                                                                                   ...en,
                                                                                                   accessoriesCharges:
                                                                                                       val,
+                                                                                                  offerDiscount: String(
+                                                                                                      Math.max(
+                                                                                                          0,
+                                                                                                          (parseInt(
+                                                                                                              en.assetCost
+                                                                                                          ) || 0) +
+                                                                                                              (parseInt(
+                                                                                                                  val
+                                                                                                              ) || 0) -
+                                                                                                              (parseInt(
+                                                                                                                  en.finalAmountPayable
+                                                                                                              ) || 0)
+                                                                                                      )
+                                                                                                  ),
                                                                                               }
                                                                                             : en
                                                                                     )
@@ -3514,6 +4090,23 @@ export default function QuoteEditorTable({
                                                             />
                                                             <PricingRow
                                                                 label="Discount"
+                                                                value={formatCurrency(
+                                                                    Math.max(
+                                                                        0,
+                                                                        (parseInt(entry.assetCost) || 0) +
+                                                                            (parseInt(entry.accessoriesCharges) || 0) -
+                                                                            (parseInt(entry.finalAmountPayable) || 0)
+                                                                    )
+                                                                )}
+                                                                description={
+                                                                    <span className="text-[8px] text-slate-400 uppercase font-black tracking-widest">
+                                                                        Asset Cost + Accessories − Quote Amount
+                                                                    </span>
+                                                                }
+                                                            />
+                                                            <PricingRow
+                                                                isBold
+                                                                label="Final Amount Payable"
                                                                 value={
                                                                     <div className="flex items-center gap-1">
                                                                         <span className="text-slate-400 text-xs font-bold">
@@ -3521,7 +4114,7 @@ export default function QuoteEditorTable({
                                                                         </span>
                                                                         <input
                                                                             type="number"
-                                                                            value={entry.offerDiscount || 0}
+                                                                            value={entry.finalAmountPayable || 0}
                                                                             onChange={e => {
                                                                                 const val = e.target.value;
                                                                                 setNewFinanceEntries(prev =>
@@ -3529,33 +4122,34 @@ export default function QuoteEditorTable({
                                                                                         en.id === entry.id
                                                                                             ? {
                                                                                                   ...en,
-                                                                                                  offerDiscount: val,
+                                                                                                  finalAmountPayable:
+                                                                                                      val,
+                                                                                                  offerDiscount: String(
+                                                                                                      Math.max(
+                                                                                                          0,
+                                                                                                          (parseInt(
+                                                                                                              en.assetCost
+                                                                                                          ) || 0) +
+                                                                                                              (parseInt(
+                                                                                                                  en.accessoriesCharges
+                                                                                                              ) || 0) -
+                                                                                                              (parseInt(
+                                                                                                                  val
+                                                                                                              ) || 0)
+                                                                                                      )
+                                                                                                  ),
                                                                                               }
                                                                                             : en
                                                                                     )
                                                                                 );
                                                                             }}
-                                                                            className="w-24 bg-transparent border-b border-indigo-500/30 focus:border-indigo-500 outline-none text-right font-black text-sm p-0"
+                                                                            className="w-32 bg-transparent border-b border-indigo-500/30 focus:border-indigo-500 outline-none text-right font-black text-sm p-0"
                                                                         />
                                                                     </div>
                                                                 }
                                                                 description={
-                                                                    <span className="text-[8px] text-slate-400 uppercase font-black tracking-widest">
-                                                                        Offer / Scheme Discount
-                                                                    </span>
-                                                                }
-                                                            />
-                                                            <PricingRow
-                                                                isBold
-                                                                label="Final Amount Payable"
-                                                                value={formatCurrency(
-                                                                    (parseInt(entry.assetCost) || 0) +
-                                                                        (parseInt(entry.accessoriesCharges) || 0) -
-                                                                        (parseInt(entry.offerDiscount) || 0)
-                                                                )}
-                                                                description={
                                                                     <span className="text-[8px] text-emerald-500 uppercase font-extrabold tracking-widest italic">
-                                                                        Asset + Accessories − Discount
+                                                                        Quote Amount (Prefilled)
                                                                     </span>
                                                                 }
                                                             />
@@ -4034,6 +4628,18 @@ export default function QuoteEditorTable({
                                                                 }
                                                             />
                                                         </div>
+                                                    </div>
+
+                                                    {/* Save Finance Entry Button */}
+                                                    <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-white/5">
+                                                        <button
+                                                            onClick={() => handleSaveFinanceEntry(entry.id)}
+                                                            disabled={isSaving}
+                                                            className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-600/20 transition-all active:scale-95 disabled:opacity-60 flex items-center gap-2"
+                                                        >
+                                                            <Save size={14} />
+                                                            {isSaving ? 'Saving...' : 'Save Finance Entry'}
+                                                        </button>
                                                     </div>
                                                 </div>
                                             )}
@@ -4533,7 +5139,16 @@ export default function QuoteEditorTable({
                                                             {formatDisplayId(q.displayId)}
                                                         </td>
                                                         <td className="px-4 py-3 text-[10px] font-bold text-slate-600 dark:text-slate-300">
-                                                            {quote.vehicle?.brand} {quote.vehicle?.model}
+                                                            {q.vehicleName ||
+                                                                `${quote.vehicle?.brand} ${quote.vehicle?.model}`}
+                                                            {q.vehicleColor ? (
+                                                                <span className="text-slate-400">
+                                                                    {' '}
+                                                                    • {q.vehicleColor}
+                                                                </span>
+                                                            ) : (
+                                                                ''
+                                                            )}
                                                         </td>
                                                         <td className="px-4 py-3 text-[10px] font-black text-slate-900 dark:text-white tabular-nums">
                                                             {q.onRoadPrice
