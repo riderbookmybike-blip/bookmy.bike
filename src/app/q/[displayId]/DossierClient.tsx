@@ -1207,7 +1207,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                 </div>
             </section>
 
-            {/* Page 12 - Features & Tech + Final Summary */}
+            {/* Page 12 - Features & Tech */}
             <section className="a4-page relative overflow-hidden flex flex-col bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
@@ -1252,7 +1252,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                 </div>
             </section>
 
-            {/* Page 13 - Marketplace Footer */}
+            {/* Page 13 - Reach Us */}
             <section className="a4-page relative overflow-hidden flex flex-col bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"

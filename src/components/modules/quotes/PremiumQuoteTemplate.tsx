@@ -131,26 +131,63 @@ interface PremiumQuoteTemplateProps {
 const A4_WIDTH = '210mm';
 const A4_HEIGHT = '297mm';
 
+const normalizeFeatureList = (val: any): string[] => {
+    if (Array.isArray(val)) {
+        return val.filter(Boolean);
+    }
+    if (typeof val === 'string') {
+        return val
+            .split(',')
+            .map(v => v.trim())
+            .filter(Boolean);
+    }
+    return [];
+};
+
+const formatSpecValue = (val: any, suffix?: string) => {
+    if (val === null || val === undefined || val === '') return '—';
+    const text = String(val);
+    if (suffix) {
+        const lower = text.toLowerCase();
+        if (!lower.includes(suffix.toLowerCase())) {
+            return `${text} ${suffix}`;
+        }
+    }
+    return text;
+};
+
 export const PremiumQuoteTemplate: React.FC<PremiumQuoteTemplateProps> = ({
     quote,
     dealerInfo,
     qrCodes,
     alternativeBikes,
 }) => {
-    const savingsTotal =
+    const savingsFromDeltas =
         Math.abs(quote?.pricing?.offersDelta || 0) +
         Math.abs(quote?.pricing?.dealerDiscount || 0) +
         Math.abs(quote?.pricing?.managerDiscount || 0) +
         Math.abs(quote?.pricing?.referralBonus || 0);
-
-    const standardValuation = (quote?.pricing?.finalTotal || 0) + savingsTotal;
+    const savingsTotal =
+        quote?.pricing?.totalSavings !== undefined && quote?.pricing?.totalSavings !== null
+            ? Number(quote?.pricing?.totalSavings || 0)
+            : savingsFromDeltas;
+    const offerOnRoad = Number(quote?.pricing?.onRoadTotal ?? quote?.pricing?.finalTotal ?? 0);
+    const standardValuation = offerOnRoad + savingsTotal;
     const accessories = (quote?.pricing?.accessories || []).filter((a: any) => a?.selected);
     const services = (quote?.pricing?.services || []).filter((s: any) => s?.selected);
     const insuranceAddons = (quote?.pricing?.insuranceAddons || []).filter((a: any) => a?.selected);
     const insuranceRequired = quote?.pricing?.insuranceRequired || [];
     const warrantyItems = quote?.pricing?.warrantyItems || [];
-    const features = quote?.vehicle?.features || [];
     const specs = quote?.vehicle?.specs || {};
+    const specEngine = specs.engine || {};
+    const specPerformance = specs.performance || {};
+    const specTransmission = specs.transmission || {};
+    const specDimensions = specs.dimensions || specs.dimension || {};
+    const specBrakes = specs.brakes || {};
+    const specChassis = specs.chassis || {};
+    const features = normalizeFeatureList(
+        quote?.vehicle?.features ?? specs.features ?? specs.key_features ?? specs.feature_list ?? specs.features_list
+    );
 
     return (
         <div className="flex flex-col bg-zinc-100 overflow-hidden print:bg-white">
@@ -569,8 +606,6 @@ export const PremiumQuoteTemplate: React.FC<PremiumQuoteTemplateProps> = ({
                                         label="Financier"
                                         value={quote.finance.bankName || quote.finance.bank || '—'}
                                     />
-                                    <PDFRow label="Selection Logic" value={quote.finance.selectionLogic || '—'} isSub />
-                                    <PDFRow label="Source" value={quote.finance.source || 'MARKETPLACE'} isSub />
                                     <PDFRow
                                         label="Status"
                                         value={(quote.finance.status || 'IN_PROCESS').toUpperCase()}
@@ -607,23 +642,9 @@ export const PremiumQuoteTemplate: React.FC<PremiumQuoteTemplateProps> = ({
                                 </PDFGroup>
 
                                 <PDFGroup title="Asset Settlement" icon={Target}>
-                                    <PDFRow
-                                        label="Asset Cost (Net SOT)"
-                                        value={formatCurrency(toNumber(quote?.pricing?.finalTotal, 0))}
-                                    />
-                                    <PDFRow
-                                        label="Offer Discount"
-                                        value={formatCurrency(toNumber(quote?.pricing?.offersDelta, 0))}
-                                        isSub
-                                    />
-                                    <PDFRow
-                                        label="Total Payable"
-                                        value={formatCurrency(
-                                            toNumber(quote?.pricing?.finalTotal, 0) +
-                                                toNumber(quote?.pricing?.offersDelta, 0)
-                                        )}
-                                        isBold
-                                    />
+                                    <PDFRow label="Asset Cost (Net SOT)" value={formatCurrency(standardValuation)} />
+                                    <PDFRow label="Offer Discount" value={formatCurrency(savingsTotal)} isSub />
+                                    <PDFRow label="Total Payable" value={formatCurrency(offerOnRoad)} isBold />
                                 </PDFGroup>
 
                                 <PDFGroup title="Finance Pillars" icon={TrendingUp}>
@@ -1000,12 +1021,33 @@ export const PremiumQuoteTemplate: React.FC<PremiumQuoteTemplateProps> = ({
                     </div>
 
                     <PDFGroup title="Performance Metrics" icon={Zap}>
-                        <PDFRow isSub label="Displacement" value={specs?.engine?.displacement || '—'} />
-                        <PDFRow isSub label="Max Power" value={specs?.engine?.power || '—'} />
-                        <PDFRow isSub label="Max Torque" value={specs?.engine?.torque || '—'} />
-                        <PDFRow isSub label="Transmission" value={specs?.transmission?.type || '—'} />
-                        <PDFRow isSub label="Top Speed" value={specs?.performance?.topSpeed || '—'} />
-                        <PDFRow isSub label="Acceleration" value={specs?.performance?.acceleration || '—'} />
+                        <PDFRow
+                            isSub
+                            label="Displacement"
+                            value={formatSpecValue(
+                                specEngine.displacement ?? specs.engine_cc ?? specs.displacement ?? specs.cc,
+                                'cc'
+                            )}
+                        />
+                        <PDFRow isSub label="Max Power" value={formatSpecValue(specEngine.power ?? specs.power)} />
+                        <PDFRow isSub label="Max Torque" value={formatSpecValue(specEngine.torque ?? specs.torque)} />
+                        <PDFRow
+                            isSub
+                            label="Transmission"
+                            value={formatSpecValue(
+                                specTransmission.type ?? specs.transmission ?? specs.gearbox ?? specs.gear_box
+                            )}
+                        />
+                        <PDFRow
+                            isSub
+                            label="Top Speed"
+                            value={formatSpecValue(specPerformance.topSpeed ?? specs.top_speed, 'km/h')}
+                        />
+                        <PDFRow
+                            isSub
+                            label="Acceleration"
+                            value={formatSpecValue(specPerformance.acceleration ?? specs.acceleration)}
+                        />
                     </PDFGroup>
 
                     <div className="mt-auto pt-8 flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-zinc-300">
@@ -1039,11 +1081,43 @@ export const PremiumQuoteTemplate: React.FC<PremiumQuoteTemplateProps> = ({
                     </div>
 
                     <PDFGroup title="Chassis Architecture" icon={Activity}>
-                        <PDFRow isSub label="Kerb Weight" value={specs?.dimensions?.weight || '—'} />
-                        <PDFRow isSub label="Seat Height" value={specs?.dimensions?.seatHeight || '—'} />
-                        <PDFRow isSub label="Ground Clearance" value={specs?.dimensions?.groundClearance || '—'} />
-                        <PDFRow isSub label="Wheelbase" value={specs?.dimensions?.wheelbase || '—'} />
-                        <PDFRow isSub label="Fuel Capacity" value={specs?.dimensions?.fuelCapacity || '—'} />
+                        <PDFRow
+                            isSub
+                            label="Kerb Weight"
+                            value={formatSpecValue(specDimensions.weight ?? specs.kerb_weight ?? specs.weight, 'kg')}
+                        />
+                        <PDFRow
+                            isSub
+                            label="Seat Height"
+                            value={formatSpecValue(
+                                specDimensions.seatHeight ?? specs.seat_height ?? specs.seatHeight,
+                                'mm'
+                            )}
+                        />
+                        <PDFRow
+                            isSub
+                            label="Ground Clearance"
+                            value={formatSpecValue(
+                                specDimensions.groundClearance ?? specs.ground_clearance ?? specs.groundClearance,
+                                'mm'
+                            )}
+                        />
+                        <PDFRow
+                            isSub
+                            label="Wheelbase"
+                            value={formatSpecValue(specDimensions.wheelbase ?? specs.wheelbase, 'mm')}
+                        />
+                        <PDFRow
+                            isSub
+                            label="Fuel Capacity"
+                            value={formatSpecValue(
+                                specDimensions.fuelCapacity ??
+                                    specs.fuel_tank_capacity ??
+                                    specs.fuel_capacity ??
+                                    specs.fuelCapacity,
+                                'L'
+                            )}
+                        />
                     </PDFGroup>
 
                     <div className="mt-auto pt-8 flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-zinc-300">
@@ -1077,11 +1151,35 @@ export const PremiumQuoteTemplate: React.FC<PremiumQuoteTemplateProps> = ({
                     </div>
 
                     <PDFGroup title="Safety Grid" icon={ShieldCheck}>
-                        <PDFRow isSub label="Front Brake" value={specs?.brakes?.front || '—'} />
-                        <PDFRow isSub label="Rear Brake" value={specs?.brakes?.rear || '—'} />
-                        <PDFRow isSub label="ABS Variant" value={specs?.brakes?.abs || '—'} />
-                        <PDFRow isSub label="Front Suspension" value={specs?.chassis?.suspensionFront || '—'} />
-                        <PDFRow isSub label="Rear Suspension" value={specs?.chassis?.suspensionRear || '—'} />
+                        <PDFRow
+                            isSub
+                            label="Front Brake"
+                            value={formatSpecValue(specBrakes.front ?? specs.front_brake_type ?? specs.front_brake)}
+                        />
+                        <PDFRow
+                            isSub
+                            label="Rear Brake"
+                            value={formatSpecValue(specBrakes.rear ?? specs.rear_brake_type ?? specs.rear_brake)}
+                        />
+                        <PDFRow
+                            isSub
+                            label="ABS Variant"
+                            value={formatSpecValue(specBrakes.abs ?? specs.abs ?? specs.abs_type)}
+                        />
+                        <PDFRow
+                            isSub
+                            label="Front Suspension"
+                            value={formatSpecValue(
+                                specChassis.suspensionFront ?? specs.front_suspension ?? specs.suspension_front
+                            )}
+                        />
+                        <PDFRow
+                            isSub
+                            label="Rear Suspension"
+                            value={formatSpecValue(
+                                specChassis.suspensionRear ?? specs.rear_suspension ?? specs.suspension_rear
+                            )}
+                        />
                     </PDFGroup>
 
                     <div className="mt-auto pt-8 flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-zinc-300">
@@ -1152,7 +1250,7 @@ export const PremiumQuoteTemplate: React.FC<PremiumQuoteTemplateProps> = ({
                     <div className="flex justify-between items-end mb-12">
                         <div>
                             <div className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-400 mb-2">
-                                Marketplace
+                                Reach Us
                             </div>
                             <h3 className="text-4xl font-black text-zinc-900 uppercase">Stay Connected</h3>
                         </div>
@@ -1240,7 +1338,7 @@ export const PremiumQuoteTemplate: React.FC<PremiumQuoteTemplateProps> = ({
                     </div>
 
                     <div className="mt-auto pt-8 flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-zinc-300">
-                        <span>Marketplace</span>
+                        <span>Reach Us</span>
                         <span>Page 13 of 13</span>
                     </div>
                 </div>
