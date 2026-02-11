@@ -157,7 +157,6 @@ const DossierGroup = ({
                     <span className="text-sm font-black text-slate-900 dark:text-white tabular-nums">
                         {typeof total === 'number' ? formatCurrency(total) : total}
                     </span>
-                    <ChevronDown size={18} className="text-slate-300" />
                 </div>
             )}
         </div>
@@ -174,6 +173,31 @@ const PageHeader = ({ title, subtitle, accentColor }: { title: string; subtitle?
         {subtitle && <p className="text-sm font-medium text-slate-500 max-w-xl italic">{subtitle}</p>}
     </div>
 );
+
+const normalizeFeatureList = (val: any): string[] => {
+    if (Array.isArray(val)) {
+        return val.filter(Boolean);
+    }
+    if (typeof val === 'string') {
+        return val
+            .split(',')
+            .map(v => v.trim())
+            .filter(Boolean);
+    }
+    return [];
+};
+
+const formatSpecValue = (val: any, suffix?: string) => {
+    if (val === null || val === undefined || val === '') return '—';
+    const text = String(val);
+    if (suffix) {
+        const lower = text.toLowerCase();
+        if (!lower.includes(suffix.toLowerCase())) {
+            return `${text} ${suffix}`;
+        }
+    }
+    return text;
+};
 
 /**
  * Utility to determine if text should be black or white based on background color luminance
@@ -197,11 +221,23 @@ export default function DossierClient({ quote }: DossierClientProps) {
     const warrantyItems = pricing.warrantyItems || [];
     const rtoOptions = pricing.rtoOptions || [];
     const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+    const specs = quote.vehicle?.specs || {};
+    const specEngine = specs.engine || {};
+    const specPerformance = specs.performance || {};
+    const specTransmission = specs.transmission || {};
+    const specDimensions = specs.dimensions || specs.dimension || {};
+    const specBrakes = specs.brakes || {};
+    const specChassis = specs.chassis || {};
+    const featureList = normalizeFeatureList(
+        quote.vehicle?.features ?? specs.features ?? specs.key_features ?? specs.feature_list ?? specs.features_list
+    );
 
     const accessoriesBase = calcItemsTotal(accessories, false);
     const accessoriesOffer = calcItemsTotal(accessories, true);
     const servicesBase = calcItemsTotal(services, false);
     const servicesOffer = calcItemsTotal(services, true);
+    const platformDiscount = Math.max(0, toNumber(pricing.totalSavings, 0));
+    const studioSurge = Math.max(0, toNumber(pricing.totalSurge, 0));
 
     const insuranceAddonsBase = (insuranceAddons || []).reduce((sum: number, i: any) => {
         if (i.basePrice !== undefined) return sum + toNumber(i.basePrice, 0);
@@ -460,7 +496,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                             subtitle="Transparent breakup as seen on PDP and CRM."
                             accentColor={quote?.vehicle?.hexCode}
                         />
-                        <div className="text-right text-sm text-zinc-500">
+                        <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
                             Quote: {formatDisplayId(quote.display_id)}
                         </div>
                     </div>
@@ -478,173 +514,58 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                 title="EX-SHOWROOM PRICE"
                                 icon={Package}
                                 total={pricing.exShowroom}
-                            >
-                                {(() => {
-                                    const exShowroom = pricing.exShowroom || 0;
-                                    const gstRate = quote.pricing?.exShowroomGstRate || (exShowroom > 100000 ? 28 : 18);
-                                    const basePrice =
-                                        quote.pricing?.exShowroomBasePrice ??
-                                        Math.round(exShowroom / (1 + gstRate / 100));
-                                    const gstAmount = quote.pricing?.exShowroomGstAmount ?? exShowroom - basePrice;
-                                    return (
-                                        <>
-                                            <DossierRow isSub label="Base Price" value={formatCurrency(basePrice)} />
-                                            <DossierRow
-                                                isSub
-                                                label={`GST (${gstRate}%)`}
-                                                value={formatCurrency(gstAmount)}
-                                            />
-                                            {quote.pricing?.colorDelta !== undefined &&
-                                                quote.pricing?.colorDelta !== 0 && (
-                                                    <DossierRow
-                                                        isSub
-                                                        isSaving={quote.pricing.colorDelta < 0}
-                                                        label={
-                                                            quote.pricing.colorDelta < 0
-                                                                ? 'Colour Discount'
-                                                                : 'Colour Surge'
-                                                        }
-                                                        value={formatCurrency(quote.pricing.colorDelta)}
-                                                    />
-                                                )}
-                                        </>
-                                    );
-                                })()}
-                            </DossierGroup>
+                            ></DossierGroup>
 
                             <DossierGroup
                                 quote={quote}
                                 title="REGISTRATION (RTO)"
                                 icon={Milestone}
                                 total={pricing.rtoTotal}
-                            >
-                                {pricing.rtoBreakdown && pricing.rtoBreakdown.length > 0 ? (
-                                    pricing.rtoBreakdown.map((item: any, idx: number) => (
-                                        <DossierRow
-                                            key={idx}
-                                            isSub
-                                            label={item.label || item.name}
-                                            value={formatCurrency(item.amount || item.price || 0)}
-                                        />
-                                    ))
-                                ) : (
-                                    <DossierRow
-                                        isSub
-                                        label="Standard Registration"
-                                        value={formatCurrency(pricing.rtoTotal)}
-                                    />
-                                )}
-                                {pricing.rtoType && (
-                                    <div className="px-8 py-2 text-[9px] uppercase tracking-widest text-slate-400">
-                                        Registration Type: {pricing.rtoType}
-                                    </div>
-                                )}
-                            </DossierGroup>
+                            ></DossierGroup>
 
                             <DossierGroup
                                 quote={quote}
                                 title="INSURANCE PACKAGE"
                                 icon={ShieldCheck}
                                 total={pricing.insuranceTotal}
-                            >
-                                <DossierRow
-                                    isSub
-                                    label="Third Party (Basic)"
-                                    value={formatCurrency(pricing.insuranceTP)}
-                                />
-                                <DossierRow isSub label="Own Damage (OD)" value={formatCurrency(pricing.insuranceOD)} />
-                                {insuranceAddons.length > 0 &&
-                                    insuranceAddons.map((addon: any, idx: number) => (
-                                        <DossierRow
-                                            key={addon.id || idx}
-                                            isSub
-                                            label={addon.name || addon.label}
-                                            value={formatCurrency(
-                                                toNumber(addon.discountPrice ?? addon.price ?? addon.amount, 0)
-                                            )}
-                                        />
-                                    ))}
-                                {insuranceRequired.length > 0 &&
-                                    insuranceRequired.map((addon: any, idx: number) => (
-                                        <DossierRow
-                                            key={`req-${addon.id || idx}`}
-                                            isSub
-                                            label={addon.name || addon.label}
-                                            value={formatCurrency(
-                                                toNumber(addon.discountPrice ?? addon.price ?? addon.amount, 0)
-                                            )}
-                                        />
-                                    ))}
-                            </DossierGroup>
+                            ></DossierGroup>
 
                             <DossierGroup
                                 quote={quote}
                                 title="AUTHORIZED ACCESSORIES"
                                 icon={Settings2}
                                 total={pricing.accessoriesTotal}
-                            >
-                                {accessories.length > 0 ? (
-                                    accessories.map((item: any, idx: number) => (
-                                        <DossierRow
-                                            key={item.id || idx}
-                                            isSub
-                                            label={item.name}
-                                            value={formatCurrency(
-                                                toNumber(item.discountPrice ?? item.price ?? item.amount, 0)
-                                            )}
-                                        />
-                                    ))
-                                ) : (
-                                    <div className="px-8 py-4 text-zinc-400 text-[10px] uppercase italic text-center">
-                                        No accessories selected
-                                    </div>
-                                )}
-                            </DossierGroup>
+                            ></DossierGroup>
 
                             <DossierGroup
                                 quote={quote}
-                                title="SERVICES & WARRANTIES"
+                                title="SERVICES"
                                 icon={Sparkles}
                                 total={pricing.servicesTotal}
-                            >
-                                {services.length > 0 ? (
-                                    services.map((item: any, idx: number) => (
-                                        <DossierRow
-                                            key={item.id || idx}
-                                            isSub
-                                            label={item.name}
-                                            value={formatCurrency(
-                                                toNumber(item.discountPrice ?? item.price ?? item.amount, 0)
-                                            )}
-                                        />
-                                    ))
-                                ) : (
-                                    <div className="px-8 py-4 text-zinc-400 text-[10px] uppercase italic text-center">
-                                        Standard service plan active
-                                    </div>
-                                )}
-                            </DossierGroup>
+                            ></DossierGroup>
 
-                            <div className="py-6 px-8 bg-amber-500/[0.05] rounded-[1.5rem] border border-amber-200/40">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex flex-col gap-1">
-                                        <span className="text-xs font-black text-amber-600 uppercase tracking-tight">
-                                            Manager Discretionary
-                                        </span>
-                                        <span className="text-[9px] text-amber-500/70 font-medium">
-                                            Applied for special commercial sessions
-                                        </span>
-                                    </div>
-                                    <div className="text-sm font-black text-amber-700">
-                                        {formatCurrency(pricing.managerDiscount || 0)}
-                                    </div>
-                                </div>
-                                {quote.pricing?.managerDiscountNote && (
-                                    <div className="mt-3 text-[10px] uppercase tracking-widest text-amber-600/70">
-                                        Note: {quote.pricing.managerDiscountNote}
-                                    </div>
-                                )}
-                            </div>
+                            <DossierGroup quote={quote} title="WARRANTY" icon={ShieldCheck} total={0}></DossierGroup>
+
+                            <DossierGroup
+                                quote={quote}
+                                title="PLATFORM DISCOUNT"
+                                icon={Zap}
+                                total={platformDiscount}
+                            ></DossierGroup>
+
+                            <DossierGroup
+                                quote={quote}
+                                title="STUDIO SURGE CHARGES"
+                                icon={AlertCircle}
+                                total={studioSurge}
+                            ></DossierGroup>
+
+                            <DossierGroup
+                                quote={quote}
+                                title="DEALERSHIP DISCOUNT"
+                                icon={AlertCircle}
+                                total={pricing.managerDiscount || 0}
+                            ></DossierGroup>
 
                             <div className="px-8 py-6 bg-slate-50 rounded-[2rem] border border-slate-100 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
@@ -734,7 +655,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                             subtitle="Finance tab application details from CRM."
                             accentColor={quote?.vehicle?.hexCode}
                         />
-                        <div className="text-right text-sm text-zinc-500">
+                        <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
                             Quote: {formatDisplayId(quote.display_id)}
                         </div>
                     </div>
@@ -746,8 +667,6 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                         label="Financier"
                                         value={quote.finance.bankName || quote.finance.bank || '—'}
                                     />
-                                    <DossierRow label="Selection Logic" value={quote.finance.selectionLogic || '—'} />
-                                    <DossierRow label="Source" value={quote.finance.source || 'MARKETPLACE'} />
                                     <DossierRow
                                         label="Status"
                                         value={(quote.finance.status || 'IN_PROCESS').toUpperCase()}
@@ -783,22 +702,9 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                 </DossierGroup>
 
                                 <DossierGroup quote={quote} title="Asset Settlement" icon={Target}>
-                                    <DossierRow
-                                        label="Asset Cost (Net SOT)"
-                                        value={formatCurrency(toNumber(pricing.finalTotal, 0))}
-                                    />
-                                    <DossierRow
-                                        label="Offer Discount"
-                                        value={formatCurrency(toNumber(pricing.offersDelta, 0))}
-                                        isSub
-                                    />
-                                    <DossierRow
-                                        label="Total Payable"
-                                        value={formatCurrency(
-                                            toNumber(pricing.finalTotal, 0) + toNumber(pricing.offersDelta, 0)
-                                        )}
-                                        isBold
-                                    />
+                                    <DossierRow label="Asset Cost (Net SOT)" value={formatCurrency(baseOnRoad)} />
+                                    <DossierRow label="Offer Discount" value={formatCurrency(totalSavings)} isSub />
+                                    <DossierRow label="Total Payable" value={formatCurrency(offerOnRoad)} isBold />
                                 </DossierGroup>
 
                                 <DossierGroup quote={quote} title="Finance Pillars" icon={TrendingUp}>
@@ -879,75 +785,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                 </div>
             </section>
 
-            {/* Page 4 - Product Details */}
-            <section className="a4-page relative overflow-hidden flex flex-col bg-white">
-                <div
-                    className="absolute left-0 top-0 bottom-0 w-2"
-                    style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
-                />
-                <div className="a4-grid flex-1 relative z-10 border-l border-zinc-200">
-                    <div className="a4-header flex justify-between items-end mb-12">
-                        <div>
-                            <div className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-400 mb-2">
-                                Technical Portfolio
-                            </div>
-                            <h3 className="text-4xl font-black text-zinc-900 uppercase">Product Details</h3>
-                        </div>
-                        <div className="text-right">
-                            <div className="text-[10px] font-black uppercase tracking-[0.4em] text-[#F4B000] mb-1">
-                                {quote?.vehicle?.brand}
-                            </div>
-                            <h4 className="text-2xl font-black text-zinc-900 uppercase tracking-tighter">
-                                {quote?.vehicle?.model}
-                            </h4>
-                            <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-1">
-                                {quote?.vehicle?.variant}
-                            </div>
-                        </div>
-                    </div>
-                    <div className="a4-body">
-                        <div className="space-y-3 text-sm text-zinc-700">
-                            <div className="text-[9px] font-black uppercase tracking-widest text-zinc-400 pt-2">
-                                Specification Summary
-                            </div>
-                            <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
-                                <span className="font-medium flex items-center gap-2">
-                                    <Zap size={12} className="text-[#F4B000]" />
-                                    Cubic Capacity
-                                </span>
-                                <span>{quote.vehicle?.engine_cc ? `${quote.vehicle.engine_cc} cc` : '—'}</span>
-                            </div>
-                            <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
-                                <span className="font-medium flex items-center gap-2">
-                                    <Info size={12} className="text-[#F4B000]" />
-                                    Fuel Type
-                                </span>
-                                <span>{quote.vehicle?.fuel_type || 'Petrol'}</span>
-                            </div>
-                            <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
-                                <span className="font-medium flex items-center gap-2">
-                                    <Weight size={12} className="text-[#F4B000]" />
-                                    Kerb Weight
-                                </span>
-                                <span>{quote.vehicle?.kerb_weight ? `${quote.vehicle.kerb_weight} kg` : '—'}</span>
-                            </div>
-                            <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
-                                <span className="font-medium flex items-center gap-2">
-                                    <ShieldCheck size={12} className="text-[#F4B000]" />
-                                    Braking Setup
-                                </span>
-                                <span>{quote.vehicle?.front_brake || 'Disc Brakes'}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="a4-footer">
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Page 4 of 13</div>
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Product Details</div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Page 5 - Accessories */}
+            {/* Page 4 - Accessories */}
             <section className="a4-page relative overflow-hidden flex flex-col bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
@@ -960,7 +798,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                             subtitle="Genuine enhancements and protection."
                             accentColor={quote?.vehicle?.hexCode}
                         />
-                        <div className="text-right text-sm text-zinc-500">
+                        <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
                             Quote: {formatDisplayId(quote.display_id)}
                         </div>
                     </div>
@@ -992,13 +830,13 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         )}
                     </div>
                     <div className="a4-footer">
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Page 5 of 13</div>
+                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Page 4 of 13</div>
                         <div className="text-[10px] uppercase tracking-widest text-zinc-400">Accessories</div>
                     </div>
                 </div>
             </section>
 
-            {/* Page 6 - Insurance */}
+            {/* Page 5 - Insurance */}
             <section className="a4-page relative overflow-hidden flex flex-col bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
@@ -1011,7 +849,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                             subtitle="Comprehensive protection for your ride."
                             accentColor={quote?.vehicle?.hexCode}
                         />
-                        <div className="text-right text-sm text-zinc-500">
+                        <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
                             Quote: {formatDisplayId(quote.display_id)}
                         </div>
                     </div>
@@ -1047,13 +885,13 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         </div>
                     </div>
                     <div className="a4-footer">
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Page 6 of 13</div>
+                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Page 5 of 13</div>
                         <div className="text-[10px] uppercase tracking-widest text-zinc-400">Insurance</div>
                     </div>
                 </div>
             </section>
 
-            {/* Page 7 - Registration (RTO) */}
+            {/* Page 6 - Registration (RTO) */}
             <section className="a4-page relative overflow-hidden flex flex-col bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
@@ -1066,7 +904,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                             subtitle="Statutory levies and RTO documentation."
                             accentColor={quote?.vehicle?.hexCode}
                         />
-                        <div className="text-right text-sm text-zinc-500">
+                        <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
                             Quote: {formatDisplayId(quote.display_id)}
                         </div>
                     </div>
@@ -1091,13 +929,13 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         </DossierGroup>
                     </div>
                     <div className="a4-footer">
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Page 7 of 13</div>
+                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Page 6 of 13</div>
                         <div className="text-[10px] uppercase tracking-widest text-zinc-400">Registration</div>
                     </div>
                 </div>
             </section>
 
-            {/* Page 8 - Service & Warranty */}
+            {/* Page 7 - Service Packages */}
             <section className="a4-page relative overflow-hidden flex flex-col bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
@@ -1106,58 +944,82 @@ export default function DossierClient({ quote }: DossierClientProps) {
                 <div className="a4-grid flex-1 relative z-10 border-l border-zinc-200">
                     <div className="a4-header">
                         <PageHeader
-                            title="Service & Warranty"
-                            subtitle="Maintenance and extended security."
+                            title="Service Packages"
+                            subtitle="Maintenance architecture and protocols."
                             accentColor={quote?.vehicle?.hexCode}
                         />
-                        <div className="text-right text-sm text-zinc-500">
+                        <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
                             Quote: {formatDisplayId(quote.display_id)}
                         </div>
                     </div>
                     <div className="a4-body">
-                        <div className="space-y-4">
-                            <DossierGroup
-                                quote={quote}
-                                title="Service Selection"
-                                icon={Settings2}
-                                total={pricing.servicesTotal}
-                            >
-                                {(services || []).length > 0 ? (
-                                    services.map((svc: any, idx: number) => (
-                                        <DossierRow
-                                            key={idx}
-                                            isSub
-                                            label={svc.name}
-                                            value={formatCurrency(toNumber(svc.discountPrice ?? svc.price, 0))}
-                                        />
-                                    ))
-                                ) : (
-                                    <div className="px-8 py-4 text-zinc-400 text-[10px] uppercase italic text-center">
-                                        Manufacturer standard service active
-                                    </div>
-                                )}
-                            </DossierGroup>
-                            <DossierGroup quote={quote} title="Warranty Plan" icon={ShieldCheck}>
-                                {(warrantyItems || []).length > 0 ? (
-                                    warrantyItems.map((w: any, idx: number) => (
-                                        <DossierRow
-                                            key={idx}
-                                            isSub
-                                            label={w.name || w.label || 'Extended Warranty'}
-                                            value="Included"
-                                        />
-                                    ))
-                                ) : (
-                                    <div className="px-8 py-4 text-zinc-400 text-[10px] uppercase italic text-center">
-                                        Standard Warranty Active
-                                    </div>
-                                )}
-                            </DossierGroup>
+                        <DossierGroup
+                            quote={quote}
+                            title="Service Selection"
+                            icon={Settings2}
+                            total={pricing.servicesTotal}
+                        >
+                            {(services || []).length > 0 ? (
+                                services.map((svc: any, idx: number) => (
+                                    <DossierRow
+                                        key={idx}
+                                        isSub
+                                        label={svc.name}
+                                        value={formatCurrency(toNumber(svc.discountPrice ?? svc.price, 0))}
+                                    />
+                                ))
+                            ) : (
+                                <div className="px-8 py-4 text-zinc-400 text-[10px] uppercase italic text-center">
+                                    Manufacturer standard service active
+                                </div>
+                            )}
+                        </DossierGroup>
+                    </div>
+                    <div className="a4-footer">
+                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Page 7 of 13</div>
+                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Service</div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Page 8 - Warranty */}
+            <section className="a4-page relative overflow-hidden flex flex-col bg-white">
+                <div
+                    className="absolute left-0 top-0 bottom-0 w-2"
+                    style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
+                />
+                <div className="a4-grid flex-1 relative z-10 border-l border-zinc-200">
+                    <div className="a4-header">
+                        <PageHeader
+                            title="Warranty"
+                            subtitle="Extended protection and asset security."
+                            accentColor={quote?.vehicle?.hexCode}
+                        />
+                        <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
+                            Quote: {formatDisplayId(quote.display_id)}
                         </div>
+                    </div>
+                    <div className="a4-body">
+                        <DossierGroup quote={quote} title="Warranty Plan" icon={ShieldCheck}>
+                            {(warrantyItems || []).length > 0 ? (
+                                warrantyItems.map((w: any, idx: number) => (
+                                    <DossierRow
+                                        key={idx}
+                                        isSub
+                                        label={w.name || w.label || 'Extended Warranty'}
+                                        value="Included"
+                                    />
+                                ))
+                            ) : (
+                                <div className="px-8 py-4 text-zinc-400 text-[10px] uppercase italic text-center">
+                                    Standard Warranty Active
+                                </div>
+                            )}
+                        </DossierGroup>
                     </div>
                     <div className="a4-footer">
                         <div className="text-[10px] uppercase tracking-widest text-zinc-400">Page 8 of 13</div>
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Service & Warranty</div>
+                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Warranty</div>
                     </div>
                 </div>
             </section>
@@ -1175,7 +1037,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                             subtitle="The heart of the machine."
                             accentColor={quote?.vehicle?.hexCode}
                         />
-                        <div className="text-right text-sm text-zinc-500">
+                        <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
                             Quote: {formatDisplayId(quote.display_id)}
                         </div>
                     </div>
@@ -1183,24 +1045,37 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <DossierGroup quote={quote} title="Performance Metrics" icon={Zap}>
                             <DossierRow
                                 label="Cubic Capacity"
-                                value={quote.vehicle?.specs?.engine?.displacement || '—'}
+                                value={formatSpecValue(
+                                    specEngine.displacement ?? specs.engine_cc ?? specs.displacement ?? specs.cc,
+                                    'cc'
+                                )}
                                 isSub
                             />
-                            <DossierRow label="Max Power" value={quote.vehicle?.specs?.engine?.power || '—'} isSub />
-                            <DossierRow label="Max Torque" value={quote.vehicle?.specs?.engine?.torque || '—'} isSub />
+                            <DossierRow
+                                label="Max Power"
+                                value={formatSpecValue(specEngine.power ?? specs.power)}
+                                isSub
+                            />
+                            <DossierRow
+                                label="Max Torque"
+                                value={formatSpecValue(specEngine.torque ?? specs.torque)}
+                                isSub
+                            />
                             <DossierRow
                                 label="Transmission"
-                                value={quote.vehicle?.specs?.transmission?.type || '—'}
+                                value={formatSpecValue(
+                                    specTransmission.type ?? specs.transmission ?? specs.gearbox ?? specs.gear_box
+                                )}
                                 isSub
                             />
                             <DossierRow
                                 label="Top Speed"
-                                value={quote.vehicle?.specs?.performance?.topSpeed || '—'}
+                                value={formatSpecValue(specPerformance.topSpeed ?? specs.top_speed, 'km/h')}
                                 isSub
                             />
                             <DossierRow
                                 label="Acceleration"
-                                value={quote.vehicle?.specs?.performance?.acceleration || '—'}
+                                value={formatSpecValue(specPerformance.acceleration ?? specs.acceleration)}
                                 isSub
                             />
                         </DossierGroup>
@@ -1225,7 +1100,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                             subtitle="Structural integrity and footprint."
                             accentColor={quote?.vehicle?.hexCode}
                         />
-                        <div className="text-right text-sm text-zinc-500">
+                        <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
                             Quote: {formatDisplayId(quote.display_id)}
                         </div>
                     </div>
@@ -1233,27 +1108,42 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <DossierGroup quote={quote} title="Chassis Architecture" icon={Activity}>
                             <DossierRow
                                 label="Kerb Weight"
-                                value={quote.vehicle?.specs?.dimensions?.weight || '—'}
+                                value={formatSpecValue(
+                                    specDimensions.weight ?? specs.kerb_weight ?? specs.weight,
+                                    'kg'
+                                )}
                                 isSub
                             />
                             <DossierRow
                                 label="Seat Height"
-                                value={quote.vehicle?.specs?.dimensions?.seatHeight || '—'}
+                                value={formatSpecValue(
+                                    specDimensions.seatHeight ?? specs.seat_height ?? specs.seatHeight,
+                                    'mm'
+                                )}
                                 isSub
                             />
                             <DossierRow
                                 label="Ground Clearance"
-                                value={quote.vehicle?.specs?.dimensions?.groundClearance || '—'}
+                                value={formatSpecValue(
+                                    specDimensions.groundClearance ?? specs.ground_clearance ?? specs.groundClearance,
+                                    'mm'
+                                )}
                                 isSub
                             />
                             <DossierRow
                                 label="Wheelbase"
-                                value={quote.vehicle?.specs?.dimensions?.wheelbase || '—'}
+                                value={formatSpecValue(specDimensions.wheelbase ?? specs.wheelbase, 'mm')}
                                 isSub
                             />
                             <DossierRow
                                 label="Fuel Capacity"
-                                value={quote.vehicle?.specs?.dimensions?.fuelCapacity || '—'}
+                                value={formatSpecValue(
+                                    specDimensions.fuelCapacity ??
+                                        specs.fuel_tank_capacity ??
+                                        specs.fuel_capacity ??
+                                        specs.fuelCapacity,
+                                    'L'
+                                )}
                                 isSub
                             />
                         </DossierGroup>
@@ -1278,22 +1168,34 @@ export default function DossierClient({ quote }: DossierClientProps) {
                             subtitle="Protective systems and stopping power."
                             accentColor={quote?.vehicle?.hexCode}
                         />
-                        <div className="text-right text-sm text-zinc-500">
+                        <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
                             Quote: {formatDisplayId(quote.display_id)}
                         </div>
                     </div>
                     <div className="a4-body">
                         <DossierGroup quote={quote} title="Safety Grid" icon={ShieldCheck}>
-                            <DossierRow label="Braking" value={quote.vehicle?.specs?.brakes?.front || '—'} isSub />
-                            <DossierRow label="ABS Variant" value={quote.vehicle?.specs?.brakes?.abs || '—'} isSub />
+                            <DossierRow
+                                label="Braking"
+                                value={formatSpecValue(specBrakes.front ?? specs.front_brake_type ?? specs.front_brake)}
+                                isSub
+                            />
+                            <DossierRow
+                                label="ABS Variant"
+                                value={formatSpecValue(specBrakes.abs ?? specs.abs ?? specs.abs_type)}
+                                isSub
+                            />
                             <DossierRow
                                 label="Front Suspension"
-                                value={quote.vehicle?.specs?.chassis?.suspensionFront || '—'}
+                                value={formatSpecValue(
+                                    specChassis.suspensionFront ?? specs.front_suspension ?? specs.suspension_front
+                                )}
                                 isSub
                             />
                             <DossierRow
                                 label="Rear Suspension"
-                                value={quote.vehicle?.specs?.chassis?.suspensionRear || '—'}
+                                value={formatSpecValue(
+                                    specChassis.suspensionRear ?? specs.rear_suspension ?? specs.suspension_rear
+                                )}
                                 isSub
                             />
                         </DossierGroup>
@@ -1318,14 +1220,14 @@ export default function DossierClient({ quote }: DossierClientProps) {
                             subtitle="Digital ecosystem and connectivity."
                             accentColor={quote?.vehicle?.hexCode}
                         />
-                        <div className="text-right text-sm text-zinc-500">
+                        <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
                             Quote: {formatDisplayId(quote.display_id)}
                         </div>
                     </div>
                     <div className="a4-body">
                         <DossierGroup quote={quote} title="Smart Features" icon={Zap}>
                             <div className="grid grid-cols-2 gap-2 p-2">
-                                {(quote.vehicle?.features || []).slice(0, 10).map((f: string, i: number) => (
+                                {featureList.slice(0, 10).map((f: string, i: number) => (
                                     <div
                                         key={i}
                                         className="text-[10px] font-black uppercase text-slate-500 flex items-center gap-2"
@@ -1333,7 +1235,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                         <div className="w-1 h-1 rounded-full bg-slate-300" /> {f}
                                     </div>
                                 ))}
-                                {(quote.vehicle?.features || []).length === 0 && (
+                                {featureList.length === 0 && (
                                     <div className="col-span-2 text-center text-zinc-300 uppercase text-[9px] py-4">
                                         Standard Smart Interface Included
                                     </div>
@@ -1341,34 +1243,11 @@ export default function DossierClient({ quote }: DossierClientProps) {
                             </div>
                         </DossierGroup>
 
-                        {/* Final Summary Component in Page 12 */}
-                        <div className="pt-12 border-t-2 border-slate-900 mt-auto">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">
-                                        Final Conclusion
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <CheckCircle2 size={24} className="text-emerald-500" />
-                                        <div className="text-6xl font-black text-slate-900 uppercase tracking-tighter italic">
-                                            On-Road
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <div className="text-7xl font-black text-slate-900 tracking-tighter">
-                                        {formatCurrency(pricing.finalTotal)}
-                                    </div>
-                                    <div className="text-[10px] font-black text-[#F4B000] uppercase tracking-widest mt-2 flex items-center justify-end gap-2">
-                                        <Sparkles size={12} /> Verified Best-Market Pricing
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        {/* Final Summary removed */}
                     </div>
                     <div className="a4-footer">
                         <div className="text-[10px] uppercase tracking-widest text-zinc-400">Page 12 of 13</div>
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Final Summary</div>
+                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Features</div>
                     </div>
                 </div>
             </section>
@@ -1382,11 +1261,11 @@ export default function DossierClient({ quote }: DossierClientProps) {
                 <div className="a4-grid flex-1 relative z-10 border-l border-zinc-200">
                     <div className="a4-header">
                         <PageHeader
-                            title="Marketplace & Sharing"
+                            title="Reach Us"
                             subtitle="Stay connected with BookMyBike across platforms."
                             accentColor={quote?.vehicle?.hexCode}
                         />
-                        <div className="text-right text-sm text-zinc-500">
+                        <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
                             Quote: {formatDisplayId(quote.display_id)}
                         </div>
                     </div>
@@ -1471,7 +1350,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                     </div>
                     <div className="a4-footer">
                         <div className="text-[10px] uppercase tracking-widest text-zinc-400">Page 13 of 13</div>
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Marketplace</div>
+                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Reach Us</div>
                     </div>
                 </div>
             </section>

@@ -396,94 +396,21 @@ export const PremiumQuoteTemplate: React.FC<PremiumQuoteTemplateProps> = ({
                             title="EX-SHOWROOM PRICE"
                             icon={Package}
                             total={formatCurrency(quote?.pricing?.exShowroom || 0)}
-                        >
-                            {(() => {
-                                const exShowroom = quote?.pricing?.exShowroom || 0;
-                                const gstRate = quote?.pricing?.exShowroomGstRate || (exShowroom > 100000 ? 28 : 18);
-                                const basePrice =
-                                    quote?.pricing?.exShowroomBasePrice ?? Math.round(exShowroom / (1 + gstRate / 100));
-                                const gstAmount = quote?.pricing?.exShowroomGstAmount ?? exShowroom - basePrice;
-                                return (
-                                    <>
-                                        <PDFRow isSub label="Base Price" value={formatCurrency(basePrice)} />
-                                        <PDFRow isSub label={`GST (${gstRate}%)`} value={formatCurrency(gstAmount)} />
-                                        {quote?.pricing?.colorDelta !== undefined && quote.pricing.colorDelta !== 0 && (
-                                            <PDFRow
-                                                isSub
-                                                isSaving={quote.pricing.colorDelta < 0}
-                                                label={
-                                                    quote.pricing.colorDelta < 0 ? 'Colour Discount' : 'Colour Surge'
-                                                }
-                                                value={formatCurrency(quote.pricing.colorDelta)}
-                                            />
-                                        )}
-                                    </>
-                                );
-                            })()}
-                        </PDFGroup>
+                        ></PDFGroup>
 
                         <PDFGroup
                             quote={quote}
                             title="REGISTRATION (RTO)"
                             icon={MapPin}
                             total={formatCurrency(quote?.pricing?.rtoTotal || 0)}
-                        >
-                            {quote?.pricing?.rtoBreakdown && quote.pricing.rtoBreakdown.length > 0 ? (
-                                quote.pricing.rtoBreakdown.map((item: any, idx: number) => (
-                                    <PDFRow
-                                        key={idx}
-                                        isSub
-                                        label={item.label || item.name}
-                                        value={formatCurrency(item.amount || item.price || 0)}
-                                    />
-                                ))
-                            ) : (
-                                <div className="px-8 py-4 text-zinc-400 text-[9px] uppercase italic text-center">
-                                    Standard regional levies applied
-                                </div>
-                            )}
-                            {quote?.pricing?.rtoType && (
-                                <div className="px-8 py-2 text-[9px] uppercase tracking-widest text-zinc-400">
-                                    Registration Type: {quote.pricing.rtoType}
-                                </div>
-                            )}
-                        </PDFGroup>
+                        ></PDFGroup>
 
                         <PDFGroup
                             quote={quote}
                             title="INSURANCE PACKAGE"
                             icon={ShieldCheck}
                             total={formatCurrency(quote?.pricing?.insuranceTotal || 0)}
-                        >
-                            <PDFRow
-                                isSub
-                                label="Third Party (Basic)"
-                                value={formatCurrency(quote?.pricing?.insuranceTP || 0)}
-                            />
-                            <PDFRow
-                                isSub
-                                label="Own Damage (OD)"
-                                value={formatCurrency(quote?.pricing?.insuranceOD || 0)}
-                            />
-                            {(quote?.pricing?.insuranceAddons?.filter((a: any) => a.selected) || []).map(
-                                (item: any, idx: number) => (
-                                    <PDFRow
-                                        key={idx}
-                                        isSub
-                                        label={item.name || item.label}
-                                        value={formatCurrency(item.discountPrice ?? item.price ?? item.amount ?? 0)}
-                                    />
-                                )
-                            )}
-                            {(quote?.pricing?.insuranceRequired || []).map((item: any, idx: number) => (
-                                <PDFRow
-                                    key={`req-${idx}`}
-                                    isSub
-                                    label={item.name || item.label}
-                                    value={formatCurrency(item.discountPrice ?? item.price ?? item.amount ?? 0)}
-                                />
-                            ))}
-                        </PDFGroup>
+                        ></PDFGroup>
 
                         {quote?.pricing?.accessoriesTotal > 0 && (
                             <PDFGroup
@@ -491,65 +418,32 @@ export const PremiumQuoteTemplate: React.FC<PremiumQuoteTemplateProps> = ({
                                 title="AUTHORIZED ACCESSORIES"
                                 icon={Settings2}
                                 total={formatCurrency(quote?.pricing?.accessoriesTotal || 0)}
-                            >
-                                {(quote?.pricing?.accessories?.filter((a: any) => a.selected) || []).map(
-                                    (item: any, idx: number) => (
-                                        <PDFRow
-                                            key={idx}
-                                            isSub
-                                            label={item.name}
-                                            value={formatCurrency(item.discountPrice ?? item.price ?? item.amount ?? 0)}
-                                        />
-                                    )
-                                )}
-                            </PDFGroup>
+                            ></PDFGroup>
                         )}
 
                         {quote?.pricing?.servicesTotal > 0 && (
                             <PDFGroup
                                 quote={quote}
-                                title="SERVICES & WARRANTIES"
+                                title="SERVICES"
                                 icon={Sparkles}
                                 total={formatCurrency(quote?.pricing?.servicesTotal || 0)}
-                            >
-                                {(quote?.pricing?.services?.filter((s: any) => s.selected) || []).map(
-                                    (item: any, idx: number) => (
-                                        <PDFRow
-                                            key={idx}
-                                            isSub
-                                            label={item.name}
-                                            value={formatCurrency(item.discountPrice ?? item.price ?? item.amount ?? 0)}
-                                        />
-                                    )
-                                )}
-                            </PDFGroup>
+                            ></PDFGroup>
                         )}
+                        <PDFGroup
+                            quote={quote}
+                            title="WARRANTY"
+                            icon={ShieldCheck}
+                            total={formatCurrency(0)}
+                        ></PDFGroup>
 
-                        <PDFGroup quote={quote} title="MANAGER DISCRETIONARY" icon={AlertCircle}>
-                            <PDFRow
-                                isSub
-                                label="Manager Discount"
-                                value={formatCurrency(quote?.pricing?.managerDiscount || 0)}
-                            />
-                            {quote?.pricing?.managerDiscountNote && (
-                                <div className="px-8 pb-4 text-[9px] uppercase tracking-widest text-zinc-400">
-                                    Note: {quote.pricing.managerDiscountNote}
-                                </div>
-                            )}
-                        </PDFGroup>
+                        <PDFGroup
+                            quote={quote}
+                            title="DEALERSHIP DISCOUNT"
+                            icon={AlertCircle}
+                            total={formatCurrency(quote?.pricing?.managerDiscount || 0)}
+                        ></PDFGroup>
 
-                        <PDFGroup quote={quote} title="TOTALS" icon={CheckCircle2}>
-                            <PDFRow
-                                label="On-Road Total"
-                                value={formatCurrency(quote?.pricing?.onRoadTotal || 0)}
-                                isBold
-                            />
-                            <PDFRow
-                                label="Final Total"
-                                value={formatCurrency(quote?.pricing?.finalTotal || 0)}
-                                isBold
-                            />
-                        </PDFGroup>
+                        <PDFGroup quote={quote} title="TOTALS" icon={CheckCircle2}></PDFGroup>
 
                         <div className="px-8 py-6 bg-zinc-50 rounded-[2rem] border border-zinc-100 flex items-center justify-between">
                             <div className="flex items-center gap-3">

@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/server';
 import DebugPortal from '@/components/debug/DebugPortal';
 import { TenantType, TenantProvider, TenantConfig, Membership } from '@/lib/tenant/tenantContext';
 import { CelebrationProvider } from '@/components/providers/CelebrationProvider';
+import { getAuthUser } from '@/lib/auth/resolver';
+import { GitReminder } from '@/components/system/GitReminder';
 
 interface Tenant {
     id: string;
@@ -23,8 +25,6 @@ interface LocalMembership extends Omit<Membership, 'tenants'> {
     tenant_type?: string;
     tenant_config?: TenantConfig;
 }
-
-import { getAuthUser } from '@/lib/auth/resolver';
 
 export default async function TenantDashboardLayout({
     children,
@@ -123,6 +123,7 @@ export default async function TenantDashboardLayout({
                 <ShellLayout>{children}</ShellLayout>
             </CelebrationProvider>
             <DebugPortal />
+            <GitReminder />
         </TenantProvider>
     );
 }

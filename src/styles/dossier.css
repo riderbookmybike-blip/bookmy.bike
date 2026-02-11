@@ -21,10 +21,9 @@
 
 .a4-page {
     width: var(--a4-width);
-    min-height: var(--a4-height);
+    height: var(--a4-height);
     background: #ffffff;
     border-radius: 4px;
-    /* More standard paper feel */
     box-shadow: 0 40px 100px rgba(0, 0, 0, 0.4);
     border: 1px solid rgba(255, 255, 255, 0.1);
     display: block;
@@ -60,8 +59,7 @@
 }
 
 .a4-grid {
-    height: 100%;
-    min-height: var(--a4-height);
+    height: var(--a4-height);
     display: grid;
     grid-template-rows: auto 1fr auto;
     gap: 32px;
