@@ -15,6 +15,7 @@ export interface AuditLogEntry {
     created_at: string;
     // Resolved fields (joined)
     record_name?: string;
+    actor_name?: string | null;
 }
 
 export interface AuditLogFilters {
@@ -78,6 +79,15 @@ export async function fetchAuditLogs(filters: AuditLogFilters = {}) {
         items?.forEach(item => nameMap.set(item.id, `${item.name} (${item.type})`));
     }
 
+    const actorIds = Array.from(new Set(logs.map(l => l.actor_id).filter(Boolean))) as string[];
+    const actorNameMap = new Map<string, string>();
+    if (actorIds.length > 0) {
+        const { data: members } = await adminClient.from('id_members').select('id, full_name').in('id', actorIds);
+        members?.forEach(m => {
+            if (m.id && m.full_name) actorNameMap.set(m.id, m.full_name);
+        });
+    }
+
     // Enrich logs with resolved names
     const enriched: AuditLogEntry[] = logs.map(log => {
         let recordName = nameMap.get(log.record_id) || log.record_id;
@@ -87,7 +97,11 @@ export async function fetchAuditLogs(filters: AuditLogFilters = {}) {
                 recordName = nameMap.get(vcId)!;
             }
         }
-        return { ...log, record_name: recordName };
+        return {
+            ...log,
+            record_name: recordName,
+            actor_name: log.actor_id ? actorNameMap.get(log.actor_id) || null : null,
+        };
     });
 
     return { logs: enriched, total: count || 0, error: null };

@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useMemo } from 'react';
 import { ICON_PATHS, TAGLINE_PATHS, BRAND_GOLD } from './paths';
 import { useTheme } from '@/components/providers/ThemeProvider';
@@ -68,7 +70,9 @@ export const Logo: React.FC<LogoProps> = ({
         if (mode !== 'auto') return mode;
         if (theme === 'dark') return 'dark';
         if (theme === 'system') {
-            return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light';
         }
         return 'light';
     }, [mode, theme, mounted]);

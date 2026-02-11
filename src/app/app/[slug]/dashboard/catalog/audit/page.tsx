@@ -406,7 +406,8 @@ export default function AuditLogPage() {
                                                         </span>
                                                         {log.actor_id && (
                                                             <span>
-                                                                <strong>Actor:</strong> {log.actor_id.substring(0, 8)}…
+                                                                <strong>Actor:</strong>{' '}
+                                                                {log.actor_name || `${log.actor_id.substring(0, 8)}…`}
                                                             </span>
                                                         )}
                                                     </div>

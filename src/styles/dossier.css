@@ -1,0 +1,153 @@
+:root {
+    --a4-width: 210mm;
+    --a4-height: 297mm;
+    --brand-gold: #ffd700;
+    --brand-gold-muted: #f4c430;
+    --brand-black: #0b0d10;
+    --brand-accent: #f4b000;
+}
+
+.dossier-stage {
+    background: #0b0d10;
+    /* Darker backdrop for premium feel */
+    background-image: radial-gradient(circle at 50% 50%, #1a1c20 0%, #0b0d10 100%);
+    padding: 48px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 32px;
+    min-height: 100vh;
+}
+
+.a4-page {
+    width: var(--a4-width);
+    min-height: var(--a4-height);
+    background: #ffffff;
+    border-radius: 4px;
+    /* More standard paper feel */
+    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: block;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Edge Splashes */
+.a4-page::before {
+    content: '';
+    position: absolute;
+    top: -100px;
+    right: -100px;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, var(--brand-gold) 0%, transparent 70%);
+    opacity: 0.03;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.a4-page::after {
+    content: '';
+    position: absolute;
+    bottom: -100px;
+    left: -100px;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, var(--brand-gold) 0%, transparent 70%);
+    opacity: 0.03;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.a4-grid {
+    height: 100%;
+    min-height: var(--a4-height);
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 32px;
+    padding: 20mm 18mm 18mm;
+    box-sizing: border-box;
+    position: relative;
+    z-index: 1;
+}
+
+.a4-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    border-bottom: 2px solid var(--brand-black);
+    padding-bottom: 12px;
+}
+
+.a4-body {
+    display: block;
+}
+
+.a4-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 12px;
+}
+
+/* Printing logic */
+@media screen and (max-width: 980px) {
+    .dossier-stage {
+        padding: 16px 10px 32px;
+        background: #0b0d10;
+    }
+
+    .a4-page {
+        width: 100%;
+        min-height: auto;
+        border-radius: 12px;
+    }
+
+    .a4-grid {
+        min-height: auto;
+        padding: 24px;
+    }
+}
+
+@media print {
+    @page {
+        size: A4 portrait;
+        margin: 0;
+    }
+
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+    .dossier-stage {
+        background: #ffffff !important;
+        padding: 0 !important;
+        gap: 0 !important;
+    }
+
+    .a4-page {
+        width: var(--a4-width) !important;
+        height: var(--a4-height) !important;
+        min-height: var(--a4-height) !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        page-break-after: always;
+        break-after: page;
+    }
+
+    .a4-grid {
+        min-height: var(--a4-height) !important;
+        padding: 20mm 18mm 18mm !important;
+    }
+}

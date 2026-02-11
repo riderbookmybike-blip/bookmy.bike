@@ -23,6 +23,7 @@ import {
 import { Lead } from './LeadList';
 import { getCustomerHistory } from '@/actions/crm';
 import { formatDisplayId } from '@/utils/displayId';
+import { createClient } from '@/lib/supabase/client';
 
 // Tab 1: Overview
 export function LeadOverview({ lead }: { lead: Lead }) {
@@ -376,6 +377,7 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
     const [loading, setLoading] = React.useState(true);
     const [expandedQuoteId, setExpandedQuoteId] = React.useState<string | null>(null);
     const [isUpdating, setIsUpdating] = React.useState<string | null>(null);
+    const [creatorNameMap, setCreatorNameMap] = React.useState<Record<string, string>>({});
 
     const fetchQuotes = React.useCallback(() => {
         import('@/actions/crm').then(({ getQuotesForLead }) => {
@@ -394,6 +396,24 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
     React.useEffect(() => {
         fetchQuotes();
     }, [fetchQuotes]);
+
+    React.useEffect(() => {
+        const ids = Array.from(new Set((quotes || []).map(q => q.created_by).filter(Boolean))) as string[];
+        if (ids.length === 0) return;
+        const supabase = createClient();
+        supabase
+            .from('id_members')
+            .select('id, full_name')
+            .in('id', ids)
+            .then(({ data }) => {
+                const map: Record<string, string> = {};
+                (data || []).forEach(m => {
+                    if (m.id && m.full_name) map[m.id] = m.full_name;
+                });
+                setCreatorNameMap(map);
+            })
+            .catch(() => null);
+    }, [quotes]);
 
     const handleAction = async (quoteId: string, actionType: 'ACCEPT' | 'CONFIRM' | 'LOCK') => {
         setIsUpdating(quoteId);
@@ -909,7 +929,8 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                                                             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                                                                 Saved by{' '}
                                                                 {row.current.created_by
-                                                                    ? row.current.created_by.slice(0, 6).toUpperCase()
+                                                                    ? creatorNameMap[row.current.created_by] ||
+                                                                      row.current.created_by.slice(0, 6).toUpperCase()
                                                                     : 'System'}
                                                             </p>
                                                         </div>

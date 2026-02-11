@@ -57,11 +57,17 @@ import {
     updateMemberAvatar,
     getQuotePdpUrl,
     setQuoteFinanceMode,
-    updateQuoteFinanceStatus,
     createQuoteFinanceAttempt,
+    updateQuoteFinanceStatus,
+    getQuoteMarketplaceUrl,
+    getDealershipInfo,
+    getAlternativeRecommendations,
 } from '@/actions/crm';
+import { generatePremiumPDF } from '@/utils/pdfGenerator';
+import { PremiumQuoteTemplate } from './PremiumQuoteTemplate';
 import MemberMediaManager from './MemberMediaManager';
 import { createClient } from '@/lib/supabase/client';
+import { getProxiedUrl } from '@/lib/utils/urlHelper';
 import { formatDisplayId } from '@/utils/displayId';
 import jsPDF from 'jspdf';
 
@@ -207,12 +213,21 @@ export interface QuoteData {
 
     pricing: {
         exShowroom: number;
+        exShowroomGstRate?: number;
         rtoType: 'STATE' | 'BH' | 'COMPANY';
         rtoBreakdown: { label: string; amount: number }[];
         rtoTotal: number;
         insuranceOD: number;
         insuranceTP: number;
-        insuranceAddons: { id: string; name: string; amount: number; selected: boolean; breakdown?: any }[];
+        insuranceAddons: {
+            id: string;
+            name: string;
+            amount: number;
+            basePrice?: number;
+            discountPrice?: number | null;
+            selected: boolean;
+            breakdown?: any;
+        }[];
         insuranceGST: number;
         insuranceTotal: number;
         insuranceProvider?: string | null;
@@ -238,6 +253,8 @@ export interface QuoteData {
         }[];
         servicesTotal: number;
         dealerDiscount: number;
+        colorDelta?: number;
+        offersDelta?: number;
         managerDiscount: number;
         managerDiscountNote?: string | null;
         onRoadTotal: number;
@@ -495,6 +512,65 @@ const TransactionSection = ({
     </div>
 );
 
+const AlternativeBikesSection = ({ recommendations }: { recommendations: any[] }) => {
+    if (!recommendations || recommendations.length === 0) return null;
+
+    return (
+        <div className="mx-8 mb-8 p-8 bg-slate-50 dark:bg-white/[0.02] rounded-[2.5rem] border border-slate-100 dark:border-white/10">
+            <div className="flex items-center gap-3 mb-6">
+                <div className="w-8 h-8 rounded-xl bg-amber-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/20">
+                    <Target size={16} />
+                </div>
+                <div className="flex flex-col">
+                    <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">
+                        Smart Recommendations
+                    </span>
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white italic uppercase tracking-tight">
+                        Alternative <span className="opacity-50">Configurations</span>
+                    </h3>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {recommendations.map(bike => (
+                    <div
+                        key={bike.id}
+                        className="bg-white dark:bg-[#0b0d10] p-4 rounded-3xl border border-slate-100 dark:border-white/5 hover:border-indigo-500/30 transition-all group cursor-pointer shadow-sm hover:shadow-xl hover:-translate-y-1"
+                    >
+                        <div className="aspect-[4/3] rounded-2xl bg-slate-50 dark:bg-white/5 mb-4 overflow-hidden relative">
+                            {bike.image ? (
+                                <img
+                                    src={getProxiedUrl(bike.image)}
+                                    alt={bike.name}
+                                    className="w-full h-full object-contain p-4 group-hover:scale-110 transition-transform duration-500"
+                                />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-slate-200">
+                                    <Bike size={32} />
+                                </div>
+                            )}
+                            <div className="absolute top-2 right-2 px-2 py-1 bg-white/90 dark:bg-black/50 backdrop-blur-md rounded-lg text-[9px] font-black text-slate-900 dark:text-white">
+                                ₹{bike.price?.toLocaleString()}
+                            </div>
+                        </div>
+                        <h4 className="text-xs font-black text-slate-900 dark:text-white truncate uppercase tracking-tight">
+                            {bike.brand} {bike.name}
+                        </h4>
+                        <div className="mt-3 flex items-center justify-between">
+                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">
+                                Compare now
+                            </span>
+                            <div className="w-6 h-6 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                                <ArrowRight size={10} />
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 // Helper for bank initials
 const getBankInitials = (name: string) => {
     return name
@@ -526,6 +602,20 @@ export default function QuoteEditorTable({
     );
     const [managerNote, setManagerNote] = useState(quote.pricing.managerDiscountNote || '');
     const [isSaving, setIsSaving] = useState(false);
+    const [dealerInfo, setDealerInfo] = useState<any>(null);
+    const [alternativeBikes, setAlternativeBikes] = useState<any[]>([]);
+    const [pdfLoading, setPdfLoading] = useState(false);
+    const [qrCodes, setQrCodes] = useState({ bookNow: '', viewQuote: '' });
+
+    // Pre-fetch dealer and alternatives
+    useEffect(() => {
+        if (quote.tenantId) {
+            getDealershipInfo(quote.tenantId).then(setDealerInfo);
+        }
+        if (quote.vehicle?.skuId) {
+            getAlternativeRecommendations(quote.vehicle.skuId).then(setAlternativeBikes);
+        }
+    }, [quote.tenantId, quote.vehicle?.skuId]);
     const [hasChanges, setHasChanges] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [pendingChanges, setPendingChanges] = useState<QuoteChange[]>([]);
@@ -542,60 +632,77 @@ export default function QuoteEditorTable({
     const [selectedAssignee, setSelectedAssignee] = useState<string>('');
     const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
 
-    const handleDownload = () => {
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        let y = 16;
+    const handleShareDossier = async () => {
+        if (!quote) return;
+        const baseUrl = window.location.origin;
+        const dossierUrl = `${baseUrl}/q/${quote.displayId || formatDisplayId(quote.id)}`;
 
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(16);
-        pdf.text('QUOTATION', 14, y);
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'normal');
-        pdf.text(formatDisplayId(quote.displayId), pageWidth - 14, y, { align: 'right' });
-        y += 10;
+        try {
+            await navigator.clipboard.writeText(dossierUrl);
+            toast.success('Dossier link copied to clipboard');
+            window.open(dossierUrl, '_blank');
+        } catch (err) {
+            console.error('Failed to copy link:', err);
+            toast.error('Failed to copy link');
+        }
+    };
 
-        pdf.setFontSize(9);
-        pdf.setTextColor(120);
-        pdf.text(`Status: ${quote.status}`, 14, y);
-        y += 8;
+    const handleDownload = async () => {
+        if (!quote) return;
+        setPdfLoading(true);
 
-        pdf.setTextColor(0);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Customer', 14, y);
-        pdf.setFont('helvetica', 'normal');
-        pdf.text(quote.customer.name || '-', 40, y);
-        y += 6;
+        try {
+            // Get accurate Marketplace URL from server action
+            const { url: quoteUrl } = await getQuoteMarketplaceUrl(quote.id);
+            if (!quoteUrl) throw new Error('Could not resolve marketplace URL');
 
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Product', 14, y);
-        pdf.setFont('helvetica', 'normal');
-        pdf.text(`${quote.vehicle.brand} ${quote.vehicle.model}` || '-', 40, y);
-        y += 6;
+            const baseUrl = window.location.origin;
+            const fullViewUrl = `${baseUrl}${quoteUrl}`;
+            const fullBookUrl = `${fullViewUrl}&book=true`;
 
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('SKU', 14, y);
-        pdf.setFont('helvetica', 'normal');
-        pdf.text(quote.vehicle.skuId || '-', 40, y);
-        y += 10;
+            const qrs = {
+                bookNow: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(fullBookUrl)}`,
+                viewQuote: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(fullViewUrl)}`,
+            };
+            setQrCodes(qrs);
 
-        pdf.setDrawColor(220);
-        pdf.line(14, y, pageWidth - 14, y);
-        y += 8;
+            // Wait for QR images to load and layout to stabilize
+            await new Promise(resolve => setTimeout(resolve, 1500));
 
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Total Amount', 14, y);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(
-            new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(
-                quote.pricing.finalTotal || 0
-            ),
-            pageWidth - 14,
-            y,
-            { align: 'right' }
-        );
+            // Diagnostic check
+            console.log(
+                '[PDF] Checking for capture area in DOM:',
+                document.getElementById('premium-quote-capture-area')
+            );
+            console.log('[PDF] Checking for page-1 in DOM:', document.getElementById('pdf-page-1'));
 
-        pdf.save(`Quote_${formatDisplayId(quote.displayId)}.pdf`);
+            const fileName = `BMB_Quote_${formatDisplayId(quote.displayId)}_${quote.customer?.name?.replace(/\s+/g, '_') || 'Customer'}.pdf`;
+            await generatePremiumPDF(
+                [
+                    'pdf-page-1',
+                    'pdf-page-2',
+                    'pdf-page-3',
+                    'pdf-page-4',
+                    'pdf-page-5',
+                    'pdf-page-6',
+                    'pdf-page-7',
+                    'pdf-page-8',
+                    'pdf-page-9',
+                    'pdf-page-10',
+                    'pdf-page-11',
+                    'pdf-page-12',
+                    'pdf-page-13',
+                ],
+                fileName
+            );
+
+            toast.success('Premium PDF generated successfully');
+        } catch (error) {
+            console.error('PDF Generation Error:', error);
+            toast.error('Failed to generate premium PDF');
+        } finally {
+            setPdfLoading(false);
+        }
     };
 
     const refreshTasks = async () => {
@@ -625,7 +732,9 @@ export default function QuoteEditorTable({
 
     // Finance Editing State
     const [isPrimaryFinanceExpanded, setIsPrimaryFinanceExpanded] = useState(false);
-    const [creditScore, setCreditScore] = useState<string>(String(quote.finance?.creditScore || ''));
+    const [creditScore, setCreditScore] = useState<string>(
+        quote.finance?.creditScore ? String(quote.finance.creditScore) : '-1'
+    );
     const [newFinanceEntries, setNewFinanceEntries] = useState<
         {
             id: string;
@@ -975,6 +1084,8 @@ export default function QuoteEditorTable({
     };
 
     const [groups, setGroups] = useState({
+        exShowroom: true,
+        registration: true,
         insurance: false,
         accessories: false,
         services: false,
@@ -1023,8 +1134,11 @@ export default function QuoteEditorTable({
 
         const subtotal =
             localPricing.exShowroom + localPricing.rtoTotal + insuranceTotal + accessoriesTotal + servicesTotal;
+        const colorDelta = Number(localPricing.colorDelta || 0);
+        const offersDelta = Number(localPricing.offersDelta || 0);
+        const dealerDiscount = Number(localPricing.dealerDiscount || 0);
         const managerDiscount = parseFloat(managerDiscountInput) || 0;
-        const finalTotal = subtotal - Math.abs(localPricing.dealerDiscount) - managerDiscount;
+        const finalTotal = subtotal + colorDelta + offersDelta + dealerDiscount - Math.abs(managerDiscount);
 
         setLocalPricing(prev => ({
             ...prev,
@@ -1032,7 +1146,7 @@ export default function QuoteEditorTable({
             servicesTotal,
             insuranceGST,
             insuranceTotal,
-            onRoadTotal: subtotal,
+            onRoadTotal: subtotal + colorDelta + offersDelta + dealerDiscount,
             managerDiscount: -Math.abs(managerDiscount),
             finalTotal,
         }));
@@ -1045,6 +1159,8 @@ export default function QuoteEditorTable({
         localPricing.accessories,
         localPricing.services,
         localPricing.dealerDiscount,
+        localPricing.colorDelta,
+        localPricing.offersDelta,
         managerDiscountInput,
     ]);
 
@@ -1232,6 +1348,20 @@ export default function QuoteEditorTable({
 
     return (
         <div className="w-full flex flex-col h-full bg-slate-50 dark:bg-[#0b0d10] overflow-hidden antialiased">
+            {/* Hidden PDF Template for capturing - rendered off-screen but visible to capture engine */}
+            <div
+                id="premium-quote-capture-area"
+                className="fixed left-0 top-0 pointer-events-none opacity-0"
+                style={{ zIndex: -100, transform: 'translateY(-1000%)' }}
+            >
+                <PremiumQuoteTemplate
+                    quote={{ ...quote, pricing: localPricing }}
+                    dealerInfo={dealerInfo}
+                    qrCodes={qrCodes}
+                    alternativeBikes={alternativeBikes}
+                />
+            </div>
+
             {confirmOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6">
                     <div className="w-full max-w-3xl rounded-2xl bg-white dark:bg-[#0b0d10] border border-slate-200 dark:border-white/10 shadow-2xl p-6 space-y-6">
@@ -1323,6 +1453,44 @@ export default function QuoteEditorTable({
                         <h1 className="text-xl font-black italic uppercase tracking-tighter text-slate-900 dark:text-white truncate leading-tight">
                             {quote.customer.name}
                         </h1>
+
+                        {/* Customer Age/DOB Section */}
+                        {quote.customerProfile?.dob && (
+                            <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-[10px] font-bold text-slate-400 tabular-nums">
+                                    {new Date(quote.customerProfile.dob).toLocaleDateString('en-IN', {
+                                        day: '2-digit',
+                                        month: 'short',
+                                        year: 'numeric',
+                                    })}
+                                </span>
+                                {(() => {
+                                    const dob = new Date(quote.customerProfile.dob);
+                                    const today = new Date();
+                                    let age = today.getFullYear() - dob.getFullYear();
+                                    const m = today.getMonth() - dob.getMonth();
+                                    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+
+                                    const color =
+                                        age < 18
+                                            ? 'bg-red-500 text-white'
+                                            : age < 21
+                                              ? 'bg-orange-500 text-white'
+                                              : 'bg-emerald-500 text-white';
+
+                                    return (
+                                        <div
+                                            className={cn(
+                                                'px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter shadow-sm',
+                                                color
+                                            )}
+                                        >
+                                            AGE: {age}Y
+                                        </div>
+                                    );
+                                })()}
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -1353,8 +1521,18 @@ export default function QuoteEditorTable({
                             size="sm"
                             className="h-8 rounded-lg text-slate-500 hover:text-slate-900"
                             onClick={handleDownload}
+                            disabled={pdfLoading}
                         >
-                            <Download size={14} />
+                            {pdfLoading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 rounded-lg text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400"
+                            onClick={handleShareDossier}
+                            title="Share Digital Dossier"
+                        >
+                            <Share2 size={14} />
                         </Button>
                         {(quote.status === 'DRAFT' || quote.status === 'IN_REVIEW') && (
                             <Button
@@ -1421,10 +1599,10 @@ export default function QuoteEditorTable({
                 </div>
             </div>
 
-            {/* MAIN CONTENT AREA - GRID SPLIT */}
+            {/* MAIN CONTENT AREA - FULL WIDTH */}
             <div className="flex-1 flex min-h-0 overflow-hidden">
-                {/* LEFT: PRICING EDITOR (flex-1) */}
-                <div className="flex-1 overflow-y-auto no-scrollbar pb-24 border-r border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-slate-950">
+                {/* CONTENT (full width) */}
+                <div className="flex-1 overflow-y-auto no-scrollbar pb-24 bg-slate-50 dark:bg-slate-950">
                     {/* Tabs - Sticky */}
                     <div
                         className="sticky top-0 z-10 bg-white/20 dark:bg-white/[0.03] backdrop-blur-xl mx-4 mt-4 rounded-2xl overflow-hidden border border-white/20 dark:border-white/5 shadow-sm"
@@ -2293,59 +2471,165 @@ export default function QuoteEditorTable({
                                                     </div>
                                                 </div>
                                             )}
-                                            {/* Base Pricing Section */}
-                                            <PricingRow
-                                                isBold
-                                                label="Ex-Showroom Price"
-                                                value={formatCurrency(localPricing.exShowroom)}
-                                            />
-                                            <PricingRow
-                                                isSub
-                                                label="Registration (RTO)"
-                                                value={formatCurrency(localPricing.rtoTotal)}
-                                                description={
-                                                    <div className="flex flex-col gap-3 mt-3">
-                                                        <div className="flex gap-1.5">
-                                                            {(['STATE', 'BH', 'COMPANY'] as const).map(type => (
-                                                                <div
-                                                                    key={type}
-                                                                    className={cn(
-                                                                        'px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all opacity-60 cursor-not-allowed',
-                                                                        localPricing.rtoType === type
-                                                                            ? 'bg-indigo-600 dark:bg-white text-white dark:text-black shadow-md shadow-indigo-600/20 dark:shadow-white/10'
-                                                                            : 'bg-slate-100 dark:bg-white/5 text-slate-400'
-                                                                    )}
-                                                                >
-                                                                    {type}
-                                                                </div>
-                                                            ))}
+                                            {/* Ex-Showroom Group */}
+                                            <PricingGroup
+                                                title="Ex-Showroom Price"
+                                                icon={Building2}
+                                                total={formatCurrency(
+                                                    localPricing.exShowroom +
+                                                        (localPricing.colorDelta || 0) -
+                                                        (localPricing.dealerDiscount || 0) +
+                                                        (localPricing.offersDelta || 0)
+                                                )}
+                                                isExpanded={groups.exShowroom}
+                                                onToggle={() => setGroups(g => ({ ...g, exShowroom: !g.exShowroom }))}
+                                            >
+                                                <PricingRow
+                                                    isSub
+                                                    label="Base Price"
+                                                    value={formatCurrency(
+                                                        Math.floor(
+                                                            localPricing.exShowroom /
+                                                                (1 + (localPricing.exShowroomGstRate || 28) / 100)
+                                                        )
+                                                    )}
+                                                />
+                                                <PricingRow
+                                                    isSub
+                                                    label={`GST (${localPricing.exShowroomGstRate || 28}%)`}
+                                                    value={formatCurrency(
+                                                        localPricing.exShowroom -
+                                                            Math.floor(
+                                                                localPricing.exShowroom /
+                                                                    (1 + (localPricing.exShowroomGstRate || 28) / 100)
+                                                            )
+                                                    )}
+                                                />
+                                                {localPricing.colorDelta !== undefined &&
+                                                    localPricing.colorDelta !== 0 && (
+                                                        <PricingRow
+                                                            isSub
+                                                            isSaving={localPricing.colorDelta < 0}
+                                                            label={
+                                                                localPricing.colorDelta < 0
+                                                                    ? 'Colour Discount'
+                                                                    : 'Colour Surge'
+                                                            }
+                                                            value={formatCurrency(localPricing.colorDelta)}
+                                                        />
+                                                    )}
+                                                {(localPricing.offersItems || []).length > 0 &&
+                                                    (localPricing.offersItems || []).map((o: any, idx: number) => {
+                                                        const base = Number(o.price || 0);
+                                                        const effective =
+                                                            o.discountPrice !== undefined && o.discountPrice !== null
+                                                                ? Number(o.discountPrice)
+                                                                : base;
+                                                        const delta = effective - base;
+                                                        if (delta === 0) return null;
+                                                        return (
+                                                            <PricingRow
+                                                                key={`veh-offer-${o.id || idx}`}
+                                                                isSub
+                                                                isSaving
+                                                                label={o.name}
+                                                                value={formatCurrency(delta)}
+                                                            />
+                                                        );
+                                                    })}
+                                                {localPricing.dealerDiscount !== undefined &&
+                                                    localPricing.dealerDiscount !== 0 && (
+                                                        <PricingRow
+                                                            isSub
+                                                            isSaving
+                                                            label="Dealer Discount"
+                                                            value={formatCurrency(-localPricing.dealerDiscount)}
+                                                        />
+                                                    )}
+                                            </PricingGroup>
+
+                                            {/* Registration Group */}
+                                            <PricingGroup
+                                                title="Registration (RTO)"
+                                                icon={MapPin}
+                                                total={formatCurrency(localPricing.rtoTotal)}
+                                                isExpanded={groups.registration}
+                                                onToggle={() =>
+                                                    setGroups(g => ({ ...g, registration: !g.registration }))
+                                                }
+                                            >
+                                                {/* Fixed Charges */}
+                                                {(localPricing.rtoBreakdown || [])
+                                                    .filter(b =>
+                                                        [
+                                                            'Postal Charges',
+                                                            'Smart Card Charges',
+                                                            'Registration Charges',
+                                                        ].includes(b.label)
+                                                    )
+                                                    .map((opt: any, idx: number) => (
+                                                        <PricingRow
+                                                            key={`${opt.label || idx}`}
+                                                            isSub
+                                                            label={opt.label || 'RTO Fee'}
+                                                            value={formatCurrency(opt.amount || 0)}
+                                                        />
+                                                    ))}
+
+                                                {/* Registration Type Selector (in the middle) */}
+                                                <div className="px-6 py-4 bg-slate-50/50 dark:bg-white/[0.02] border-y border-slate-100 dark:border-white/5">
+                                                    <div className="flex flex-col gap-3">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                                Registration Type
+                                                            </span>
+                                                            <div className="flex gap-1.5">
+                                                                {(['STATE', 'BH', 'COMPANY'] as const).map(type => (
+                                                                    <div
+                                                                        key={type}
+                                                                        className={cn(
+                                                                            'px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all opacity-60 cursor-not-allowed',
+                                                                            localPricing.rtoType === type
+                                                                                ? 'bg-indigo-600 dark:bg-white text-white dark:text-black shadow-md shadow-indigo-600/20 dark:shadow-white/10'
+                                                                                : 'bg-slate-100 dark:bg-white/5 text-slate-400'
+                                                                        )}
+                                                                    >
+                                                                        {type}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
                                                         </div>
-                                                        <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 dark:bg-white/[0.02] rounded-xl border border-dashed border-slate-200 dark:border-white/10">
+                                                        <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-100/50 dark:bg-white/[0.02] rounded-xl border border-dashed border-slate-200 dark:border-white/10">
                                                             <Clock size={10} className="text-slate-400" />
                                                             <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tight">
                                                                 Locked. Edit on Marketplace to change RTO type.
                                                             </span>
                                                         </div>
-                                                        {(localPricing.rtoOptions || []).length > 0 && (
-                                                            <div className="mt-2 grid grid-cols-1 gap-1">
-                                                                {(localPricing.rtoOptions || []).map(
-                                                                    (opt: any, idx: number) => (
-                                                                        <div
-                                                                            key={`${opt.id || opt.type || idx}`}
-                                                                            className="text-[8px] font-bold text-slate-400 uppercase tracking-widest"
-                                                                        >
-                                                                            {opt.label || opt.type || 'RTO'}: ₹
-                                                                            {Number(
-                                                                                opt.total || opt.amount || 0
-                                                                            ).toLocaleString('en-IN')}
-                                                                        </div>
-                                                                    )
-                                                                )}
-                                                            </div>
-                                                        )}
                                                     </div>
-                                                }
-                                            />
+                                                </div>
+
+                                                {/* Variable Taxes/Charges */}
+                                                {(localPricing.rtoBreakdown || [])
+                                                    .filter(b => ['Road Tax', 'Cess Amount'].includes(b.label))
+                                                    .map((opt: any, idx: number) => (
+                                                        <PricingRow
+                                                            key={`${opt.label || idx}`}
+                                                            isSub
+                                                            label={opt.label || 'RTO Tax'}
+                                                            value={formatCurrency(opt.amount || 0)}
+                                                        />
+                                                    ))}
+
+                                                {/* Fallback for legacy quotes with no breakdown */}
+                                                {(!localPricing.rtoBreakdown ||
+                                                    localPricing.rtoBreakdown.length === 0) && (
+                                                    <PricingRow
+                                                        isSub
+                                                        label="MV Tax & Cess"
+                                                        value={formatCurrency(localPricing.rtoTotal)}
+                                                    />
+                                                )}
+                                            </PricingGroup>
 
                                             {/* Insurance Group */}
                                             <PricingGroup
@@ -2355,128 +2639,234 @@ export default function QuoteEditorTable({
                                                 isExpanded={groups.insurance}
                                                 onToggle={() => setGroups(g => ({ ...g, insurance: !g.insurance }))}
                                             >
-                                                <PricingRow
-                                                    isSub
-                                                    label="Third Party (Basic)"
-                                                    value={
-                                                        isEditable ? (
-                                                            <div className="flex items-center gap-1">
-                                                                <span className="text-slate-400">₹</span>
-                                                                <input
-                                                                    type="number"
-                                                                    value={localPricing.insuranceTP}
-                                                                    onChange={e =>
-                                                                        setLocalPricing(p => ({
-                                                                            ...p,
-                                                                            insuranceTP: parseInt(e.target.value) || 0,
-                                                                        }))
-                                                                    }
-                                                                    className="w-20 bg-transparent border-b border-slate-200 dark:border-white/10 focus:border-indigo-500 outline-none text-right font-black"
-                                                                />
-                                                            </div>
-                                                        ) : (
-                                                            formatCurrency(localPricing.insuranceTP)
-                                                        )
-                                                    }
-                                                />
-                                                <PricingRow
-                                                    isSub
-                                                    label="Own Damage (OD)"
-                                                    value={
-                                                        isEditable ? (
-                                                            <div className="flex items-center gap-1">
-                                                                <span className="text-slate-400">₹</span>
-                                                                <input
-                                                                    type="number"
-                                                                    value={localPricing.insuranceOD}
-                                                                    onChange={e =>
-                                                                        setLocalPricing(p => ({
-                                                                            ...p,
-                                                                            insuranceOD: parseInt(e.target.value) || 0,
-                                                                        }))
-                                                                    }
-                                                                    className="w-20 bg-transparent border-b border-slate-200 dark:border-white/10 focus:border-indigo-500 outline-none text-right font-black"
-                                                                />
-                                                            </div>
-                                                        ) : (
-                                                            formatCurrency(localPricing.insuranceOD)
-                                                        )
-                                                    }
-                                                />
-                                                {(localPricing.insuranceRequiredItems || []).length > 0 &&
-                                                    localPricing.insuranceRequiredItems.map(
-                                                        (item: any, idx: number) => (
+                                                {(() => {
+                                                    const tpItems = (localPricing.insuranceRequiredItems || []).filter(
+                                                        item =>
+                                                            (item.name || item.label || '')
+                                                                .toLowerCase()
+                                                                .includes('liability only')
+                                                    );
+                                                    const odItems = (localPricing.insuranceRequiredItems || []).filter(
+                                                        item =>
+                                                            (item.name || item.label || '')
+                                                                .toLowerCase()
+                                                                .includes('comprehensive')
+                                                    );
+                                                    const optionalRequired = (
+                                                        localPricing.insuranceRequiredItems || []
+                                                    ).filter(
+                                                        item => !tpItems.includes(item) && !odItems.includes(item)
+                                                    );
+                                                    const allAddons = [
+                                                        ...optionalRequired,
+                                                        ...localPricing.insuranceAddons,
+                                                    ];
+
+                                                    return (
+                                                        <>
+                                                            {/* THIRD PARTY (BASIC) */}
                                                             <PricingRow
-                                                                key={item.id || idx}
                                                                 isSub
-                                                                label={item.name || item.label || 'Required Cover'}
-                                                                value={formatCurrency(
-                                                                    Number(item.price || item.amount || 0)
-                                                                )}
-                                                                description={
-                                                                    item.breakdown && Array.isArray(item.breakdown) ? (
-                                                                        <div className="flex flex-col gap-1">
-                                                                            {item.breakdown.map(
-                                                                                (b: any, bIdx: number) => (
-                                                                                    <span
-                                                                                        key={`${item.id || idx}-b-${bIdx}`}
-                                                                                        className="text-[8px] text-slate-400 uppercase font-bold tracking-widest"
-                                                                                    >
-                                                                                        {b.label}: ₹
-                                                                                        {Number(
-                                                                                            b.amount || 0
-                                                                                        ).toLocaleString('en-IN')}
-                                                                                    </span>
-                                                                                )
-                                                                            )}
+                                                                label="Third Party (Basic)"
+                                                                value={
+                                                                    isEditable ? (
+                                                                        <div className="flex items-center gap-1">
+                                                                            <span className="text-slate-400">₹</span>
+                                                                            <input
+                                                                                type="number"
+                                                                                value={localPricing.insuranceTP}
+                                                                                onChange={e =>
+                                                                                    setLocalPricing(p => ({
+                                                                                        ...p,
+                                                                                        insuranceTP:
+                                                                                            parseInt(e.target.value) ||
+                                                                                            0,
+                                                                                    }))
+                                                                                }
+                                                                                className="w-20 bg-transparent border-b border-slate-200 dark:border-white/10 focus:border-indigo-500 outline-none text-right font-black"
+                                                                            />
                                                                         </div>
-                                                                    ) : undefined
+                                                                    ) : (
+                                                                        formatCurrency(localPricing.insuranceTP)
+                                                                    )
                                                                 }
                                                             />
-                                                        )
-                                                    )}
-                                                {localPricing.insuranceAddons.map(addon => (
-                                                    <PricingRow
-                                                        key={addon.id}
-                                                        isSub
-                                                        label={addon.name}
-                                                        value={
-                                                            addon.selected
-                                                                ? formatCurrency(addon.amount || 0)
-                                                                : 'Not Selected'
-                                                        }
-                                                        description={
-                                                            addon.breakdown && Array.isArray(addon.breakdown) ? (
-                                                                <div className="flex flex-col gap-1">
-                                                                    {addon.breakdown.map((b: any, bIdx: number) => (
-                                                                        <span
-                                                                            key={`${addon.id}-b-${bIdx}`}
-                                                                            className="text-[8px] text-slate-400 uppercase font-bold tracking-widest"
-                                                                        >
-                                                                            {b.label}: ₹
-                                                                            {Number(b.amount || 0).toLocaleString(
-                                                                                'en-IN'
-                                                                            )}
+                                                            {tpItems.map((item, idx) => (
+                                                                <PricingRow
+                                                                    key={`tp-item-${item.id || idx}`}
+                                                                    isSub
+                                                                    label={
+                                                                        <span className="text-[10px] opacity-70 italic">
+                                                                            {item.name || item.label}
                                                                         </span>
-                                                                    ))}
+                                                                    }
+                                                                    value={formatCurrency(
+                                                                        Number(item.price || item.amount || 0)
+                                                                    )}
+                                                                    description={
+                                                                        item.breakdown &&
+                                                                        Array.isArray(item.breakdown) && (
+                                                                            <div className="flex flex-col gap-1">
+                                                                                {item.breakdown.map(
+                                                                                    (b: any, bIdx: number) => (
+                                                                                        <span
+                                                                                            key={`${item.id || idx}-b-${bIdx}`}
+                                                                                            className="text-[8px] text-slate-400 uppercase font-bold tracking-widest"
+                                                                                        >
+                                                                                            {b.label}: ₹
+                                                                                            {Number(
+                                                                                                b.amount || 0
+                                                                                            ).toLocaleString('en-IN')}
+                                                                                        </span>
+                                                                                    )
+                                                                                )}
+                                                                            </div>
+                                                                        )
+                                                                    }
+                                                                />
+                                                            ))}
+
+                                                            {/* OWN DAMAGE (OD) */}
+                                                            <PricingRow
+                                                                isSub
+                                                                label="Own Damage (OD)"
+                                                                value={
+                                                                    isEditable ? (
+                                                                        <div className="flex items-center gap-1">
+                                                                            <span className="text-slate-400">₹</span>
+                                                                            <input
+                                                                                type="number"
+                                                                                value={localPricing.insuranceOD}
+                                                                                onChange={e =>
+                                                                                    setLocalPricing(p => ({
+                                                                                        ...p,
+                                                                                        insuranceOD:
+                                                                                            parseInt(e.target.value) ||
+                                                                                            0,
+                                                                                    }))
+                                                                                }
+                                                                                className="w-20 bg-transparent border-b border-slate-200 dark:border-white/10 focus:border-indigo-500 outline-none text-right font-black"
+                                                                            />
+                                                                        </div>
+                                                                    ) : (
+                                                                        formatCurrency(localPricing.insuranceOD)
+                                                                    )
+                                                                }
+                                                            />
+                                                            {odItems.map((item, idx) => (
+                                                                <PricingRow
+                                                                    key={`od-item-${item.id || idx}`}
+                                                                    isSub
+                                                                    label={
+                                                                        <span className="text-[10px] opacity-70 italic">
+                                                                            {item.name || item.label}
+                                                                        </span>
+                                                                    }
+                                                                    value={formatCurrency(
+                                                                        Number(item.price || item.amount || 0)
+                                                                    )}
+                                                                    description={
+                                                                        item.breakdown &&
+                                                                        Array.isArray(item.breakdown) && (
+                                                                            <div className="flex flex-col gap-1">
+                                                                                {item.breakdown.map(
+                                                                                    (b: any, bIdx: number) => (
+                                                                                        <span
+                                                                                            key={`${item.id || idx}-b-${bIdx}`}
+                                                                                            className="text-[8px] text-slate-400 uppercase font-bold tracking-widest"
+                                                                                        >
+                                                                                            {b.label}: ₹
+                                                                                            {Number(
+                                                                                                b.amount || 0
+                                                                                            ).toLocaleString('en-IN')}
+                                                                                        </span>
+                                                                                    )
+                                                                                )}
+                                                                            </div>
+                                                                        )
+                                                                    }
+                                                                />
+                                                            ))}
+
+                                                            {/* OPTIONAL ADD-ONS */}
+                                                            <div className="py-2 px-6 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
+                                                                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                                                    Optional Add-ons
                                                                 </div>
-                                                            ) : undefined
-                                                        }
-                                                        extra={
-                                                            <div className="flex items-center gap-2">
-                                                                {addon.selected ? (
-                                                                    <div className="flex items-center gap-1 px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded text-[8px] font-black uppercase tracking-widest">
-                                                                        <CheckCircle2 size={10} /> Active
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="text-[8px] font-bold text-slate-400 uppercase">
-                                                                        None
-                                                                    </div>
-                                                                )}
                                                             </div>
-                                                        }
-                                                    />
-                                                ))}
+                                                            {allAddons.map((addon, idx) => (
+                                                                <PricingRow
+                                                                    key={addon.id || `addon-${idx}`}
+                                                                    isSub
+                                                                    label={addon.name || addon.label}
+                                                                    value={
+                                                                        addon.selected !== undefined
+                                                                            ? addon.selected
+                                                                                ? formatCurrency(
+                                                                                      addon.amount || addon.price || 0
+                                                                                  )
+                                                                                : 'Not Selected'
+                                                                            : formatCurrency(
+                                                                                  addon.amount || addon.price || 0
+                                                                              )
+                                                                    }
+                                                                    description={
+                                                                        <div className="flex flex-col gap-1">
+                                                                            {addon.breakdown &&
+                                                                                Array.isArray(addon.breakdown) &&
+                                                                                addon.breakdown.map(
+                                                                                    (b: any, bIdx: number) => (
+                                                                                        <span
+                                                                                            key={`${addon.id || idx}-b-${bIdx}`}
+                                                                                            className="text-[8px] text-slate-400 uppercase font-bold tracking-widest"
+                                                                                        >
+                                                                                            {b.label}: ₹
+                                                                                            {Number(
+                                                                                                b.amount || 0
+                                                                                            ).toLocaleString('en-IN')}
+                                                                                        </span>
+                                                                                    )
+                                                                                )}
+                                                                            {addon.basePrice !== undefined && (
+                                                                                <span className="text-[8px] text-slate-400 uppercase font-bold tracking-widest">
+                                                                                    Base: ₹
+                                                                                    {Number(
+                                                                                        addon.basePrice || 0
+                                                                                    ).toLocaleString('en-IN')}
+                                                                                </span>
+                                                                            )}
+                                                                            {addon.discountPrice !== null &&
+                                                                                addon.discountPrice !== undefined && (
+                                                                                    <span className="text-[8px] text-emerald-500 uppercase font-bold tracking-widest">
+                                                                                        Offer: ₹
+                                                                                        {Number(
+                                                                                            addon.discountPrice || 0
+                                                                                        ).toLocaleString('en-IN')}
+                                                                                    </span>
+                                                                                )}
+                                                                        </div>
+                                                                    }
+                                                                    extra={
+                                                                        addon.selected !== undefined && (
+                                                                            <div className="flex items-center gap-2">
+                                                                                {addon.selected ? (
+                                                                                    <div className="flex items-center gap-1 px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded text-[8px] font-black uppercase tracking-widest">
+                                                                                        <CheckCircle2 size={10} />{' '}
+                                                                                        Active
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    <div className="text-[8px] font-bold text-slate-400 uppercase">
+                                                                                        None
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        )
+                                                                    }
+                                                                />
+                                                            ))}
+                                                        </>
+                                                    );
+                                                })()}
                                                 <PricingRow
                                                     isSub
                                                     isBold
@@ -2509,7 +2899,39 @@ export default function QuoteEditorTable({
                                                         key={acc.id}
                                                         isSub
                                                         label={`${acc.name}${acc.qty && acc.qty > 1 ? ` ×${acc.qty}` : ''}`}
-                                                        value={acc.selected ? formatCurrency(acc.price) : 'Excluded'}
+                                                        value={
+                                                            acc.selected
+                                                                ? formatCurrency((acc.price || 0) * (acc.qty || 1))
+                                                                : 'Excluded'
+                                                        }
+                                                        description={
+                                                            acc.selected &&
+                                                            ((acc.basePrice || 0) > 0 || acc.discountPrice !== null) ? (
+                                                                <div className="flex flex-col gap-1">
+                                                                    <span className="text-[8px] text-slate-400 uppercase font-bold tracking-widest">
+                                                                        Base: ₹
+                                                                        {Number(
+                                                                            acc.basePrice || acc.price || 0
+                                                                        ).toLocaleString('en-IN')}
+                                                                    </span>
+                                                                    {acc.price === 0 && (acc.basePrice || 0) > 0 ? (
+                                                                        <span className="text-[8px] text-emerald-500 uppercase font-bold tracking-widest">
+                                                                            100% Discount (Bundle)
+                                                                        </span>
+                                                                    ) : (
+                                                                        acc.discountPrice !== null &&
+                                                                        acc.discountPrice !== undefined && (
+                                                                            <span className="text-[8px] text-emerald-500 uppercase font-bold tracking-widest">
+                                                                                Offer: ₹
+                                                                                {Number(
+                                                                                    acc.discountPrice || 0
+                                                                                ).toLocaleString('en-IN')}
+                                                                            </span>
+                                                                        )
+                                                                    )}
+                                                                </div>
+                                                            ) : undefined
+                                                        }
                                                         extra={
                                                             <div className="flex items-center gap-2">
                                                                 {acc.selected ? (
@@ -2542,7 +2964,30 @@ export default function QuoteEditorTable({
                                                             isSub
                                                             label={`${svc.name}${svc.qty && svc.qty > 1 ? ` ×${svc.qty}` : ''}`}
                                                             value={
-                                                                svc.selected ? formatCurrency(svc.price) : 'Excluded'
+                                                                svc.selected
+                                                                    ? formatCurrency((svc.price || 0) * (svc.qty || 1))
+                                                                    : 'Excluded'
+                                                            }
+                                                            description={
+                                                                svc.selected && (svc.basePrice || svc.discountPrice) ? (
+                                                                    <div className="flex flex-col gap-1">
+                                                                        <span className="text-[8px] text-slate-400 uppercase font-bold tracking-widest">
+                                                                            Base: ₹
+                                                                            {Number(
+                                                                                svc.basePrice || svc.price || 0
+                                                                            ).toLocaleString('en-IN')}
+                                                                        </span>
+                                                                        {svc.discountPrice !== null &&
+                                                                            svc.discountPrice !== undefined && (
+                                                                                <span className="text-[8px] text-emerald-500 uppercase font-bold tracking-widest">
+                                                                                    Offer: ₹
+                                                                                    {Number(
+                                                                                        svc.discountPrice || 0
+                                                                                    ).toLocaleString('en-IN')}
+                                                                                </span>
+                                                                            )}
+                                                                    </div>
+                                                                ) : undefined
                                                             }
                                                             extra={
                                                                 <div className="flex items-center gap-2">
@@ -2598,99 +3043,48 @@ export default function QuoteEditorTable({
 
                                             {/* Discount Section */}
                                             <div className="bg-emerald-500/[0.03] dark:bg-emerald-500/[0.01]">
-                                                {(localPricing.offersItems || []).length > 0 && (
-                                                    <PricingRow
-                                                        label="Offers / Plans"
-                                                        value={formatCurrency(
-                                                            (localPricing.offersItems || []).reduce(
-                                                                (sum: number, o: any) => {
-                                                                    const base = Number(o.price || 0);
-                                                                    const effective =
-                                                                        o.discountPrice !== undefined &&
-                                                                        o.discountPrice !== null
-                                                                            ? Number(o.discountPrice)
-                                                                            : base;
-                                                                    return sum + (effective - base);
-                                                                },
-                                                                0
-                                                            )
-                                                        )}
-                                                        description={
-                                                            <div className="flex flex-col gap-1">
-                                                                {(localPricing.offersItems || []).map(
-                                                                    (o: any, idx: number) => {
-                                                                        const base = Number(o.price || 0);
-                                                                        const effective =
-                                                                            o.discountPrice !== undefined &&
-                                                                            o.discountPrice !== null
-                                                                                ? Number(o.discountPrice)
-                                                                                : base;
-                                                                        const delta = effective - base;
-                                                                        return (
-                                                                            <span
-                                                                                key={`${o.id || idx}`}
-                                                                                className="text-[8px] text-slate-400 uppercase font-bold tracking-widest"
-                                                                            >
-                                                                                {o.name}: {delta < 0 ? '-' : ''}₹
-                                                                                {Math.abs(delta).toLocaleString(
-                                                                                    'en-IN'
-                                                                                )}
-                                                                            </span>
-                                                                        );
-                                                                    }
-                                                                )}
-                                                            </div>
-                                                        }
-                                                    />
-                                                )}
                                                 {localPricing.referralApplied && (
                                                     <PricingRow
                                                         label="Referral Bonus"
                                                         value={formatCurrency(-Number(localPricing.referralBonus || 0))}
                                                     />
                                                 )}
-                                                <PricingRow
-                                                    label="Dealer Discount"
-                                                    value={formatCurrency(localPricing.dealerDiscount)}
-                                                />
-                                                <div className="py-6 px-8 bg-amber-500/[0.05] dark:bg-amber-500/[0.02]">
-                                                    <div className="flex items-center justify-between group">
-                                                        <div className="flex flex-col gap-1">
-                                                            <span className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-tight">
-                                                                Manager Discretionary
-                                                            </span>
-                                                            <span className="text-[9px] text-amber-500/60 font-medium">
-                                                                Applied for special commercial sessions
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2 bg-white dark:bg-white/5 rounded-xl border border-amber-200/50 dark:border-amber-500/20 p-2 shadow-sm transition-all focus-within:ring-2 focus-within:ring-amber-500/30">
-                                                            <span className="text-xs font-black text-amber-600">
-                                                                -₹
-                                                            </span>
-                                                            <input
-                                                                type="number"
-                                                                value={managerDiscountInput}
-                                                                onChange={e => {
-                                                                    setManagerDiscountInput(e.target.value);
-                                                                    setHasChanges(true);
-                                                                }}
-                                                                className="w-24 bg-transparent text-right font-black text-amber-700 dark:text-amber-400 focus:outline-none placeholder-amber-200 text-sm"
-                                                                placeholder="0"
-                                                            />
-                                                        </div>
+                                            </div>
+                                            <div className="py-6 px-8 bg-amber-500/[0.05] dark:bg-amber-500/[0.02]">
+                                                <div className="flex items-center justify-between group">
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-tight">
+                                                            Manager Discretionary
+                                                        </span>
+                                                        <span className="text-[9px] text-amber-500/60 font-medium">
+                                                            Applied for special commercial sessions
+                                                        </span>
                                                     </div>
-                                                    <div className="mt-4">
+                                                    <div className="flex items-center gap-2 bg-white dark:bg-white/5 rounded-xl border border-amber-200/50 dark:border-amber-500/20 p-2 shadow-sm transition-all focus-within:ring-2 focus-within:ring-amber-500/30">
+                                                        <span className="text-xs font-black text-amber-600">-₹</span>
                                                         <input
-                                                            type="text"
-                                                            value={managerNote}
+                                                            type="number"
+                                                            value={managerDiscountInput}
                                                             onChange={e => {
-                                                                setManagerNote(e.target.value);
+                                                                setManagerDiscountInput(e.target.value);
                                                                 setHasChanges(true);
                                                             }}
-                                                            className="w-full bg-white dark:bg-white/5 border border-amber-200/50 dark:border-amber-500/20 rounded-xl px-4 py-2.5 text-[10px] font-bold text-amber-900 dark:text-amber-400 placeholder:text-amber-500/30 focus:outline-none focus:ring-1 focus:ring-amber-500/30 shadow-sm"
-                                                            placeholder="Note: Reason for discretionary discount..."
+                                                            className="w-24 bg-transparent text-right font-black text-amber-700 dark:text-amber-400 focus:outline-none placeholder-amber-200 text-sm"
+                                                            placeholder="0"
                                                         />
                                                     </div>
+                                                </div>
+                                                <div className="mt-4">
+                                                    <input
+                                                        type="text"
+                                                        value={managerNote}
+                                                        onChange={e => {
+                                                            setManagerNote(e.target.value);
+                                                            setHasChanges(true);
+                                                        }}
+                                                        className="w-full bg-white dark:bg-white/5 border border-amber-200/50 dark:border-amber-500/20 rounded-xl px-4 py-2.5 text-[10px] font-bold text-amber-900 dark:text-amber-400 placeholder:text-amber-500/30 focus:outline-none focus:ring-1 focus:ring-amber-500/30 shadow-sm"
+                                                        placeholder="Note: Reason for discretionary discount..."
+                                                    />
                                                 </div>
                                             </div>
 
@@ -2802,6 +3196,8 @@ export default function QuoteEditorTable({
                                             </div>
                                         </div>
                                     )}
+                                    {/* ALTERNATIVE RECOMMENDATIONS */}
+                                    <AlternativeBikesSection recommendations={alternativeBikes} />
                                 </div>
                             </div>
                         </>
@@ -2885,19 +3281,27 @@ export default function QuoteEditorTable({
                                             <div className="flex items-center gap-4">
                                                 {/* Credit Score Badge */}
                                                 <div
-                                                    className="flex items-center gap-2"
+                                                    className="flex items-center gap-3 px-4 py-2 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl shadow-sm transition-all hover:border-indigo-500/30 group/cibil"
                                                     onClick={e => e.stopPropagation()}
                                                 >
-                                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
-                                                        CIBIL
-                                                    </span>
-                                                    <input
-                                                        type="text"
-                                                        value={creditScore}
-                                                        onChange={e => setCreditScore(e.target.value)}
-                                                        placeholder="—"
-                                                        className="w-14 text-center bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-1 py-1 text-sm font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-colors"
-                                                    />
+                                                    <div className="w-6 h-6 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500 group-hover/cibil:scale-110 transition-transform">
+                                                        <TrendingUp size={12} />
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-none">
+                                                            CIBIL
+                                                        </span>
+                                                        <input
+                                                            type="text"
+                                                            value={creditScore}
+                                                            onChange={e => {
+                                                                setCreditScore(e.target.value);
+                                                                setHasChanges(true);
+                                                            }}
+                                                            placeholder="—"
+                                                            className="w-10 bg-transparent p-0 text-xs font-black text-slate-900 dark:text-white outline-none placeholder-slate-300"
+                                                        />
+                                                    </div>
                                                 </div>
                                                 <div
                                                     className={`transition-transform duration-300 ${isPrimaryFinanceExpanded ? 'rotate-180' : ''}`}
@@ -2927,6 +3331,34 @@ export default function QuoteEditorTable({
                                                             <PricingRow
                                                                 label="Financier"
                                                                 value={quote.finance?.bankName || '—'}
+                                                            />
+                                                            {quote.finance?.selection_logic && (
+                                                                <PricingRow
+                                                                    label="Selection Logic"
+                                                                    value={
+                                                                        <span className="text-[10px] font-mono text-slate-500">
+                                                                            {quote.finance.selection_logic}
+                                                                        </span>
+                                                                    }
+                                                                />
+                                                            )}
+                                                            <PricingRow
+                                                                label="Source"
+                                                                value={
+                                                                    <span className="text-[10px] font-bold text-indigo-600 uppercase">
+                                                                        {(() => {
+                                                                            const createdEvent = quote.timeline?.find(
+                                                                                t => t.event === 'Quote Created'
+                                                                            );
+                                                                            if (
+                                                                                createdEvent?.actorType === 'customer'
+                                                                            ) {
+                                                                                return `Created by ${quote.customer.name}`;
+                                                                            }
+                                                                            return createdEvent?.actor || 'MARKETPLACE';
+                                                                        })()}
+                                                                    </span>
+                                                                }
                                                             />
                                                             <PricingRow
                                                                 label="Status"
@@ -3033,7 +3465,7 @@ export default function QuoteEditorTable({
                                                                 }
                                                             />
                                                             <PricingRow
-                                                                label="ROI (IRR / ROI)"
+                                                                label="Rate of Interest (Flat/Reducing)"
                                                                 value={
                                                                     isEditingFinance ? (
                                                                         <div className="flex items-center gap-1">
@@ -3062,7 +3494,7 @@ export default function QuoteEditorTable({
                                                                 }
                                                                 description={
                                                                     <span className="text-[8px] text-slate-400 uppercase font-black tracking-widest italic">
-                                                                        Applied: {quote.finance?.roi || 0}%
+                                                                        Actual IRR (System): {quote.finance?.roi ?? 0}%
                                                                     </span>
                                                                 }
                                                             />
@@ -3603,207 +4035,6 @@ export default function QuoteEditorTable({
                                             </>
                                         )}
                                     </div>
-
-                                    {/* FINANCE SNAPSHOT (READ-ONLY) */}
-                                    {quote.finance && (
-                                        <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[2rem] p-6 shadow-xl shadow-indigo-500/5">
-                                            <div className="flex items-center justify-between mb-4">
-                                                <div>
-                                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                        Finance Snapshot
-                                                    </div>
-                                                    <div className="text-sm font-black text-slate-900 dark:text-white">
-                                                        Audit Summary
-                                                    </div>
-                                                </div>
-                                                {quote.finance.status && (
-                                                    <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-600">
-                                                        {quote.finance.status}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div className="bg-slate-50/70 dark:bg-white/[0.02] rounded-2xl p-4 border border-slate-100 dark:border-white/5">
-                                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
-                                                        Party & Scheme
-                                                    </div>
-                                                    <div className="space-y-1 text-[12px] font-bold text-slate-700 dark:text-slate-200">
-                                                        <div className="flex items-center gap-2">
-                                                            {quote.finance.bankLogo ? (
-                                                                <img
-                                                                    src={quote.finance.bankLogo}
-                                                                    alt={quote.finance.bankName || 'Bank'}
-                                                                    className="w-5 h-5 rounded-md object-contain bg-white dark:bg-white/5 p-0.5 border border-slate-100 dark:border-white/10"
-                                                                />
-                                                            ) : null}
-                                                            <span>Bank: {quote.finance.bankName || '—'}</span>
-                                                        </div>
-                                                        <div>
-                                                            Scheme:{' '}
-                                                            {quote.finance.approvedScheme ||
-                                                                quote.finance.schemeCode ||
-                                                                '—'}
-                                                        </div>
-                                                        <div>Scheme ID: {quote.finance.schemeId || '—'}</div>
-                                                        <div>
-                                                            Selection Logic:{' '}
-                                                            {(quote as any).finance?.selection_logic || '—'}
-                                                        </div>
-                                                        <div>
-                                                            Scheme ROI: {quote.finance.scheme_interest_rate ?? '—'}%
-                                                        </div>
-                                                        <div>
-                                                            Interest Type: {quote.finance.scheme_interest_type || '—'}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="bg-slate-50/70 dark:bg-white/[0.02] rounded-2xl p-4 border border-slate-100 dark:border-white/5">
-                                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
-                                                        Terms
-                                                    </div>
-                                                    <div className="space-y-1 text-[12px] font-bold text-slate-700 dark:text-slate-200">
-                                                        <div>
-                                                            ROI: {quote.finance.approvedIrr ?? quote.finance.roi ?? '—'}
-                                                            %
-                                                        </div>
-                                                        <div>
-                                                            Tenure:{' '}
-                                                            {quote.finance.approvedTenure ??
-                                                                quote.finance.tenureMonths ??
-                                                                '—'}{' '}
-                                                            months
-                                                        </div>
-                                                        <div>
-                                                            EMI:{' '}
-                                                            {formatCurrency(
-                                                                quote.finance.approvedEmi ?? quote.finance.emi ?? 0
-                                                            )}
-                                                        </div>
-                                                        <div>
-                                                            Down Payment:{' '}
-                                                            {formatCurrency(
-                                                                quote.finance.approvedDownPayment ??
-                                                                    quote.finance.downPayment ??
-                                                                    0
-                                                            )}
-                                                        </div>
-                                                        <div>LTV: {quote.finance.ltv ?? '—'}%</div>
-                                                    </div>
-                                                </div>
-                                                <div className="bg-slate-50/70 dark:bg-white/[0.02] rounded-2xl p-4 border border-slate-100 dark:border-white/5">
-                                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
-                                                        Loan Amounts
-                                                    </div>
-                                                    <div className="space-y-1 text-[12px] font-bold text-slate-700 dark:text-slate-200">
-                                                        <div>
-                                                            Net Loan:{' '}
-                                                            {formatCurrency(
-                                                                quote.finance.approvedAmount ??
-                                                                    quote.finance.loanAmount ??
-                                                                    0
-                                                            )}
-                                                        </div>
-                                                        <div>
-                                                            Funded Add-ons:{' '}
-                                                            {formatCurrency(
-                                                                quote.finance.approvedAddOns ??
-                                                                    quote.finance.loanAddons ??
-                                                                    0
-                                                            )}
-                                                        </div>
-                                                        <div>
-                                                            Gross Loan:{' '}
-                                                            {formatCurrency(
-                                                                quote.finance.approvedGrossLoan ??
-                                                                    (quote.finance.approvedAmount ??
-                                                                        quote.finance.loanAmount ??
-                                                                        0) +
-                                                                        (quote.finance.approvedAddOns ??
-                                                                            quote.finance.loanAddons ??
-                                                                            0)
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="bg-slate-50/70 dark:bg-white/[0.02] rounded-2xl p-4 border border-slate-100 dark:border-white/5">
-                                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
-                                                        Charges
-                                                    </div>
-                                                    <div className="space-y-1 text-[12px] font-bold text-slate-700 dark:text-slate-200">
-                                                        <div>
-                                                            Upfront Total:{' '}
-                                                            {formatCurrency(
-                                                                quote.finance.approvedProcessingFee ??
-                                                                    quote.finance.processingFee ??
-                                                                    0
-                                                            )}
-                                                        </div>
-                                                        <div>
-                                                            Upfront Items:{' '}
-                                                            {
-                                                                (
-                                                                    quote.finance.approvedChargesBreakup ||
-                                                                    quote.finance.chargesBreakup ||
-                                                                    []
-                                                                ).length
-                                                            }
-                                                        </div>
-                                                        <div>
-                                                            Funded Items:{' '}
-                                                            {
-                                                                (
-                                                                    quote.finance.approvedAddonsBreakup ||
-                                                                    quote.finance.addonsBreakup ||
-                                                                    []
-                                                                ).length
-                                                            }
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            {(
-                                                quote.finance.approvedChargesBreakup ||
-                                                quote.finance.chargesBreakup ||
-                                                []
-                                            ).length > 0 && (
-                                                <div className="mt-4 bg-slate-50/70 dark:bg-white/[0.02] rounded-2xl p-4 border border-slate-100 dark:border-white/5">
-                                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
-                                                        Upfront Charges Breakdown
-                                                    </div>
-                                                    <div className="space-y-1 text-[12px] font-bold text-slate-700 dark:text-slate-200">
-                                                        {(
-                                                            quote.finance.approvedChargesBreakup ||
-                                                            quote.finance.chargesBreakup ||
-                                                            []
-                                                        ).map((c: any, idx: number) => (
-                                                            <div key={`upfront-${idx}`}>
-                                                                {c.label}: {formatCurrency(Number(c.amount || 0))}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                            {(quote.finance.approvedAddonsBreakup || quote.finance.addonsBreakup || [])
-                                                .length > 0 && (
-                                                <div className="mt-4 bg-slate-50/70 dark:bg-white/[0.02] rounded-2xl p-4 border border-slate-100 dark:border-white/5">
-                                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
-                                                        Funded Add-ons Breakdown
-                                                    </div>
-                                                    <div className="space-y-1 text-[12px] font-bold text-slate-700 dark:text-slate-200">
-                                                        {(
-                                                            quote.finance.approvedAddonsBreakup ||
-                                                            quote.finance.addonsBreakup ||
-                                                            []
-                                                        ).map((c: any, idx: number) => (
-                                                            <div key={`funded-${idx}`}>
-                                                                {c.label}: {formatCurrency(Number(c.amount || 0))}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
 
                                     {/* NEW FINANCE ENTRY CARDS — Exact Clone of Primary APPLICATION Card */}
                                     {newFinanceEntries.map((entry, idx) => (
@@ -4600,7 +4831,7 @@ export default function QuoteEditorTable({
                                                                 }
                                                             />
                                                             <PricingRow
-                                                                label="ROI (IRR)"
+                                                                label="Rate of Interest (Flat/Reducing)"
                                                                 value={
                                                                     <div className="flex items-center gap-1">
                                                                         <input
@@ -4625,6 +4856,11 @@ export default function QuoteEditorTable({
                                                                             %
                                                                         </span>
                                                                     </div>
+                                                                }
+                                                                description={
+                                                                    <span className="text-[8px] text-slate-400 uppercase font-black tracking-widest italic">
+                                                                        Actual IRR (System): {entry.roi ?? 0}%
+                                                                    </span>
                                                                 }
                                                             />
                                                         </div>
@@ -4929,6 +5165,12 @@ export default function QuoteEditorTable({
                                 'Before 11 AM',
                             ];
 
+                            const lastEvent = sortedEvents[0];
+                            const lastActor =
+                                lastEvent?.actorType === 'team'
+                                    ? teamMembers.find(m => m.id === lastEvent.actor)?.name || lastEvent.actor
+                                    : lastEvent?.actor;
+
                             return (
                                 <div className="p-6">
                                     <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[2rem] p-6">
@@ -4940,6 +5182,28 @@ export default function QuoteEditorTable({
                                                 {quote.timeline.length} events
                                             </div>
                                         </div>
+                                        {lastEvent && (
+                                            <div className="mb-6 flex flex-wrap items-center gap-3 text-[9px] font-bold text-slate-400">
+                                                <span className="px-2 py-1 rounded-lg bg-slate-50 dark:bg-white/[0.03] text-slate-500">
+                                                    Last activity: {formatDate(lastEvent.timestamp)}
+                                                </span>
+                                                {lastActor && (
+                                                    <span className="px-2 py-1 rounded-lg bg-slate-50 dark:bg-white/[0.03] text-slate-500">
+                                                        By: {lastActor}
+                                                    </span>
+                                                )}
+                                                <span
+                                                    className={cn(
+                                                        'px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest',
+                                                        STATUS_CONFIG[quote.status || 'DRAFT']?.bg || 'bg-slate-100',
+                                                        STATUS_CONFIG[quote.status || 'DRAFT']?.color ||
+                                                            'text-slate-600'
+                                                    )}
+                                                >
+                                                    {quote.status}
+                                                </span>
+                                            </div>
+                                        )}
 
                                         {quote.timeline.length === 0 ? (
                                             <div className="py-12 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
@@ -5031,9 +5295,24 @@ export default function QuoteEditorTable({
                                                                                                             'customer'
                                                                                                                 ? '👤'
                                                                                                                 : '🏢'}{' '}
-                                                                                                            {
-                                                                                                                event.actor
-                                                                                                            }
+                                                                                                            {(() => {
+                                                                                                                if (
+                                                                                                                    event.actorType ===
+                                                                                                                    'team'
+                                                                                                                ) {
+                                                                                                                    const resolved =
+                                                                                                                        teamMembers.find(
+                                                                                                                            m =>
+                                                                                                                                m.id ===
+                                                                                                                                event.actor
+                                                                                                                        )?.name;
+                                                                                                                    return (
+                                                                                                                        resolved ||
+                                                                                                                        event.actor
+                                                                                                                    );
+                                                                                                                }
+                                                                                                                return event.actor;
+                                                                                                            })()}
                                                                                                         </span>
                                                                                                         {event.actorDesignation && (
                                                                                                             <span className="text-[8px] font-black text-indigo-500 bg-indigo-500/10 px-1.5 py-0.5 rounded uppercase tracking-widest">

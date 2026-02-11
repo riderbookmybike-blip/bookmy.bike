@@ -149,6 +149,9 @@ export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: Quot
 
         const result = await updateQuotePricing(quoteId, {
             rtoType: data.pricing?.rtoType,
+            rtoTotal: data.pricing?.rtoTotal,
+            rtoBreakdown: data.pricing?.rtoBreakdown,
+            rtoOptions: data.pricing?.rtoOptions,
             // Pass full objects for insurance addons to persist amounts
             insuranceAddons: data.pricing?.insuranceAddons?.filter(a => a.selected) as any,
             insuranceTotal: data.pricing?.insuranceTotal,

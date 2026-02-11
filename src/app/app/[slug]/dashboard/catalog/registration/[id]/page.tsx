@@ -89,10 +89,18 @@ export default function RegistrationDetailPage() {
             .limit(20);
 
         if (!error && data) {
+            const actorIds = Array.from(new Set(data.map((log: any) => log.actor_id).filter(Boolean)));
+            let actorNameMap: Record<string, string> = {};
+            if (actorIds.length > 0) {
+                const { data: members } = await supabase.from('id_members').select('id, full_name').in('id', actorIds);
+                (members || []).forEach((m: any) => {
+                    if (m.id && m.full_name) actorNameMap[m.id] = m.full_name;
+                });
+            }
             const formatted = data.map((log: any) => ({
                 id: log.id,
                 action: log.action.replace('REGISTRATION_RULE_', ''),
-                user: 'User ' + (log.actor_id ? log.actor_id.substring(0, 4) : 'Sys'),
+                user: log.actor_id ? actorNameMap[log.actor_id] || `User ${log.actor_id.substring(0, 4)}` : 'System',
                 timestamp: new Date(log.created_at).toLocaleString(),
                 details: JSON.stringify(log.metadata) === '{}' ? undefined : JSON.stringify(log.metadata),
             }));
