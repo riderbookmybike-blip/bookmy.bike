@@ -34,8 +34,13 @@ export default function BankDetailView({ partner }: BankDetailViewProps) {
                         <h1 className="text-2xl font-bold mb-1">{localPartner.name}</h1>
                         <p className="text-slate-400 text-sm font-mono">{localPartner.displayId}</p>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${localPartner.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-500/10 text-slate-500'
-                        }`}>
+                    <span
+                        className={`px-3 py-1 rounded-full text-xs font-bold ${
+                            localPartner.status === 'ACTIVE'
+                                ? 'bg-emerald-500/10 text-emerald-500'
+                                : 'bg-slate-500/10 text-slate-500'
+                        }`}
+                    >
                         {localPartner.status}
                     </span>
                 </div>
@@ -50,14 +55,15 @@ export default function BankDetailView({ partner }: BankDetailViewProps) {
                         { id: 'locations', label: 'Locations', icon: MapPin },
                         { id: 'team', label: 'Team', icon: Users },
                         { id: 'schemes', label: 'Schemes', icon: Calculator },
-                    ].map((tab) => (
+                    ].map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id
-                                ? 'border-blue-500 text-blue-400'
-                                : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-white/10'
-                                }`}
+                            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                                activeTab === tab.id
+                                    ? 'border-blue-500 text-blue-400'
+                                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-white/10'
+                            }`}
                         >
                             <tab.icon size={16} />
                             {tab.label}
@@ -74,20 +80,22 @@ export default function BankDetailView({ partner }: BankDetailViewProps) {
                 {activeTab === 'charges' && (
                     <ChargesTab
                         partner={localPartner}
-                        onSaveSuccess={(chargesMaster) => {
-                            setLocalPartner(prev => prev ? { ...prev, chargesMaster } : prev);
+                        onSaveSuccess={chargesMaster => {
+                            setLocalPartner(prev => (prev ? { ...prev, chargesMaster } : prev));
                         }}
                     />
                 )}
                 {activeTab === 'locations' && <LocationsTab locations={localPartner.locations} />}
-                {activeTab === 'team' && <TeamTab team={localPartner.team} admin={localPartner.admin} />}
+                {activeTab === 'team' && (
+                    <TeamTab team={localPartner.team} admin={localPartner.admin} tenantId={localPartner.id} />
+                )}
                 {activeTab === 'schemes' && (
                     <SchemesTab
                         schemes={localPartner.schemes}
                         bankId={localPartner.id}
                         chargesMaster={localPartner.chargesMaster}
-                        onSchemesUpdated={(schemes) => {
-                            setLocalPartner(prev => prev ? { ...prev, schemes } : prev);
+                        onSchemesUpdated={schemes => {
+                            setLocalPartner(prev => (prev ? { ...prev, schemes } : prev));
                         }}
                     />
                 )}

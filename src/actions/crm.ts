@@ -3440,7 +3440,7 @@ export async function getQuoteByDisplayId(
                     name: a.label,
                     price: priceWithGst,
                     description: a.type === 'PERCENTAGE' ? `${a.percentage}% of ${a.basis}` : 'Fixed Coverage',
-                    discountPrice: 0,
+                    discountPrice: null,
                     isMandatory: inclusionType === 'MANDATORY',
                     inclusionType,
                     breakdown: [
@@ -3479,7 +3479,7 @@ export async function getQuoteByDisplayId(
             name: addon.label,
             price: resolvedPrice,
             description: 'Coverage',
-            discountPrice: 0,
+            discountPrice: null,
             isMandatory: addon.default === true || ruleMatch?.isMandatory,
             inclusionType: resolvedInclusionType,
             breakdown: resolvedBreakdown,

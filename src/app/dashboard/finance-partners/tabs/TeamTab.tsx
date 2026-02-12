@@ -12,7 +12,6 @@ import {
     AlertCircle,
     CheckCircle2,
     Search,
-    Filter,
     ShieldCheck,
     Briefcase,
     Trophy,
@@ -49,9 +48,11 @@ const MOCK_LOCATIONS = {
 export default function TeamTab({
     team: initialTeam,
     admin,
+    tenantId,
 }: {
     team: BankTeamMember[];
     admin?: { name: string; phone: string; email: string };
+    tenantId?: string;
 }) {
     const [team, setTeam] = useState<BankTeamMember[]>(initialTeam);
     const [selectedMember, setSelectedMember] = useState<BankTeamMember | null>(null);
@@ -62,6 +63,14 @@ export default function TeamTab({
     const [isSearching, setIsSearching] = useState(false);
     const [hasFoundExisting, setHasFoundExisting] = useState(false);
     const [newMemberData, setNewMemberData] = useState({ name: '', email: '', phone: '' });
+    const [foundMemberId, setFoundMemberId] = useState<string | null>(null);
+    const [lookupError, setLookupError] = useState('');
+    const [submitError, setSubmitError] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [newMemberMeta, setNewMemberMeta] = useState({
+        designation: 'EXECUTIVE' as BankDesignation,
+        status: 'ACTIVE' as MemberStatus,
+    });
 
     const [searchQuery, setSearchQuery] = useState('');
     const [dealerSearch, setDealerSearch] = useState('');
@@ -137,13 +146,21 @@ export default function TeamTab({
             m.phone.includes(searchQuery)
     );
 
-    const handleLookup = () => {
+    const normalizePhoneDigits = (value: string) => {
+        const digits = (value || '').replace(/\D/g, '');
+        return digits.length > 10 ? digits.slice(-10) : digits;
+    };
+
+    const handleLookup = async () => {
         setIsSearching(true);
-        setTimeout(() => {
-            setIsSearching(false);
+        setLookupError('');
+        setSubmitError('');
+
+        try {
+            const lookupDigits = normalizePhoneDigits(lookupMobile);
 
             // 1. Check current team
-            const existingInTeam = team.find(m => m.phone === lookupMobile);
+            const existingInTeam = team.find(m => normalizePhoneDigits(m.phone) === lookupDigits);
             if (existingInTeam) {
                 setSelectedMember(existingInTeam);
                 setHasFoundExisting(true);
@@ -151,22 +168,98 @@ export default function TeamTab({
             }
 
             // 2. Check Admin (since it's passed separately)
-            if (admin && admin.phone === lookupMobile) {
+            if (admin && normalizePhoneDigits(admin.phone) === lookupDigits) {
                 setNewMemberData({ name: admin.name, email: admin.email, phone: admin.phone });
+                setFoundMemberId(null);
                 setHasFoundExisting(true);
                 return;
             }
 
-            // 3. Simulated Global Lookup (e.g. User's number)
-            if (lookupMobile === '9820760596' || lookupMobile === '9876543210') {
-                const foundName = lookupMobile === '9820760596' ? 'Ajit Singh Rajpurohit' : 'Amit Sharma';
-                const foundEmail = lookupMobile === '9820760596' ? 'ajit@bookmy.bike' : 'amit@hdfc.com';
-                setNewMemberData({ name: foundName, email: foundEmail, phone: lookupMobile });
-            } else {
-                setNewMemberData({ name: '', email: '', phone: lookupMobile });
+            // 3. Secure lookup (BMB user required)
+            const response = await fetch('/api/finance-partners/lookup-member', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: lookupMobile }),
+            });
+
+            if (!response.ok) {
+                const body = await response.json().catch(() => ({}));
+                throw new Error(body?.error || 'User not found');
             }
+
+            const data = await response.json();
+            setNewMemberData({
+                name: data?.member?.full_name || '',
+                email: data?.member?.primary_email || '',
+                phone: data?.member?.primary_phone || lookupMobile,
+            });
+            setFoundMemberId(data?.member?.id || null);
             setHasFoundExisting(true);
-        }, 800);
+        } catch (error: any) {
+            setLookupError(error?.message || 'Unable to find user');
+            setHasFoundExisting(false);
+            setFoundMemberId(null);
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
+    const handleConfirmAdd = async () => {
+        if (!tenantId || !foundMemberId) {
+            setSubmitError('Tenant or member information missing.');
+            return;
+        }
+
+        setIsSubmitting(true);
+        setSubmitError('');
+
+        try {
+            const response = await fetch('/api/finance-partners/add-member', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tenantId,
+                    memberId: foundMemberId,
+                    designation: newMemberMeta.designation,
+                    status: newMemberMeta.status,
+                    serviceability: { states: [], areas: [], dealerIds: [] },
+                }),
+            });
+
+            if (!response.ok) {
+                const body = await response.json().catch(() => ({}));
+                throw new Error(body?.error || 'Unable to add member');
+            }
+
+            const data = await response.json();
+            if (data?.member?.id) {
+                setTeam(prev => {
+                    if (prev.some(m => m.id === data.member.id)) return prev;
+                    return [
+                        ...prev,
+                        {
+                            id: data.member.id,
+                            name: data.member.name,
+                            email: data.member.email,
+                            phone: data.member.phone,
+                            designation: newMemberMeta.designation,
+                            status: newMemberMeta.status,
+                            serviceability: { states: [], areas: [], dealerIds: [] },
+                        },
+                    ];
+                });
+            }
+
+            setIsModalOpen(false);
+            setHasFoundExisting(false);
+            setLookupMobile('');
+            setNewMemberData({ name: '', email: '', phone: '' });
+            setFoundMemberId(null);
+        } catch (error: any) {
+            setSubmitError(error?.message || 'Unable to add member');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -187,6 +280,13 @@ export default function TeamTab({
                     onClick={() => {
                         setSelectedMember(null);
                         setIsModalOpen(true);
+                        setHasFoundExisting(false);
+                        setLookupMobile('');
+                        setNewMemberData({ name: '', email: '', phone: '' });
+                        setFoundMemberId(null);
+                        setLookupError('');
+                        setSubmitError('');
+                        setNewMemberMeta({ designation: 'EXECUTIVE', status: 'ACTIVE' });
                     }}
                     className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl flex items-center gap-2 font-black uppercase tracking-widest text-[10px] transition-all shadow-lg shadow-blue-500/20"
                 >
@@ -332,6 +432,10 @@ export default function TeamTab({
                                         setHasFoundExisting(false);
                                         setLookupMobile('');
                                         setNewMemberData({ name: '', email: '', phone: '' });
+                                        setFoundMemberId(null);
+                                        setLookupError('');
+                                        setSubmitError('');
+                                        setNewMemberMeta({ designation: 'EXECUTIVE', status: 'ACTIVE' });
                                     }}
                                     className="bg-slate-100 dark:bg-white/5 p-3 rounded-2xl hover:bg-red-500/10 hover:text-red-500 transition-all"
                                 >
@@ -385,6 +489,11 @@ export default function TeamTab({
                                         )}
                                         Proceed to Onboard
                                     </button>
+                                    {lookupError && (
+                                        <div className="text-[11px] text-red-500 font-bold uppercase tracking-widest">
+                                            {lookupError} • User must be registered on BookMyBike
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <>
@@ -396,72 +505,135 @@ export default function TeamTab({
                                                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">
                                                         Full Name
                                                     </label>
-                                                    <input
-                                                        type="text"
-                                                        defaultValue={selectedMember?.name || newMemberData.name}
-                                                        className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-sm font-bold outline-none focus:border-blue-500 transition-all"
-                                                    />
+                                                    {selectedMember ? (
+                                                        <input
+                                                            type="text"
+                                                            defaultValue={selectedMember?.name}
+                                                            className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-sm font-bold outline-none focus:border-blue-500 transition-all"
+                                                        />
+                                                    ) : (
+                                                        <input
+                                                            type="text"
+                                                            value={newMemberData.name}
+                                                            readOnly
+                                                            className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-sm font-bold outline-none focus:border-blue-500 transition-all"
+                                                        />
+                                                    )}
                                                 </div>
                                                 <div>
                                                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">
                                                         Email Address
                                                     </label>
-                                                    <input
-                                                        type="email"
-                                                        defaultValue={selectedMember?.email || newMemberData.email}
-                                                        className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-sm font-bold outline-none focus:border-blue-500 transition-all"
-                                                    />
+                                                    {selectedMember ? (
+                                                        <input
+                                                            type="email"
+                                                            defaultValue={selectedMember?.email}
+                                                            className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-sm font-bold outline-none focus:border-blue-500 transition-all"
+                                                        />
+                                                    ) : (
+                                                        <input
+                                                            type="email"
+                                                            value={newMemberData.email}
+                                                            readOnly
+                                                            className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-sm font-bold outline-none focus:border-blue-500 transition-all"
+                                                        />
+                                                    )}
                                                 </div>
                                                 <div>
                                                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">
                                                         Phone Number
                                                     </label>
-                                                    <input
-                                                        type="text"
-                                                        defaultValue={selectedMember?.phone || newMemberData.phone}
-                                                        onInput={e => {
-                                                            e.currentTarget.value = normalizeIndianPhone(
-                                                                e.currentTarget.value
-                                                            );
-                                                        }}
-                                                        onPaste={e => {
-                                                            const text = e.clipboardData.getData('text');
-                                                            const normalized = normalizeIndianPhone(text);
-                                                            if (normalized) {
-                                                                e.preventDefault();
-                                                                e.currentTarget.value = normalized;
-                                                            }
-                                                        }}
-                                                        className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-sm font-bold font-mono outline-none focus:border-blue-500 transition-all"
-                                                    />
+                                                    {selectedMember ? (
+                                                        <input
+                                                            type="text"
+                                                            defaultValue={selectedMember?.phone}
+                                                            onInput={e => {
+                                                                e.currentTarget.value = normalizeIndianPhone(
+                                                                    e.currentTarget.value
+                                                                );
+                                                            }}
+                                                            onPaste={e => {
+                                                                const text = e.clipboardData.getData('text');
+                                                                const normalized = normalizeIndianPhone(text);
+                                                                if (normalized) {
+                                                                    e.preventDefault();
+                                                                    e.currentTarget.value = normalized;
+                                                                }
+                                                            }}
+                                                            className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-sm font-bold font-mono outline-none focus:border-blue-500 transition-all"
+                                                        />
+                                                    ) : (
+                                                        <input
+                                                            type="text"
+                                                            value={newMemberData.phone}
+                                                            readOnly
+                                                            className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-sm font-bold font-mono outline-none focus:border-blue-500 transition-all"
+                                                        />
+                                                    )}
                                                 </div>
                                                 <div>
                                                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">
                                                         Designation
                                                     </label>
-                                                    <select
-                                                        defaultValue={selectedMember?.designation}
-                                                        className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-xs font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-all appearance-none"
-                                                    >
-                                                        {DESIGNATIONS.map(d => (
-                                                            <option key={d.value} value={d.value}>
-                                                                {d.label}
-                                                            </option>
-                                                        ))}
-                                                    </select>
+                                                    {selectedMember ? (
+                                                        <select
+                                                            defaultValue={selectedMember?.designation}
+                                                            className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-xs font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-all appearance-none"
+                                                        >
+                                                            {DESIGNATIONS.map(d => (
+                                                                <option key={d.value} value={d.value}>
+                                                                    {d.label}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    ) : (
+                                                        <select
+                                                            value={newMemberMeta.designation}
+                                                            onChange={e =>
+                                                                setNewMemberMeta(prev => ({
+                                                                    ...prev,
+                                                                    designation: e.target.value as BankDesignation,
+                                                                }))
+                                                            }
+                                                            className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-xs font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-all appearance-none"
+                                                        >
+                                                            {DESIGNATIONS.map(d => (
+                                                                <option key={d.value} value={d.value}>
+                                                                    {d.label}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    )}
                                                 </div>
                                                 <div>
                                                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">
                                                         Member Status
                                                     </label>
-                                                    <select
-                                                        defaultValue={selectedMember?.status}
-                                                        className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-xs font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-all appearance-none"
-                                                    >
-                                                        <option value="ACTIVE">Active</option>
-                                                        <option value="ON_NOTICE">On Notice Period</option>
-                                                        <option value="RELEASED">Released / Exited</option>
-                                                    </select>
+                                                    {selectedMember ? (
+                                                        <select
+                                                            defaultValue={selectedMember?.status}
+                                                            className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-xs font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-all appearance-none"
+                                                        >
+                                                            <option value="ACTIVE">Active</option>
+                                                            <option value="ON_NOTICE">On Notice Period</option>
+                                                            <option value="RELEASED">Released / Exited</option>
+                                                        </select>
+                                                    ) : (
+                                                        <select
+                                                            value={newMemberMeta.status}
+                                                            onChange={e =>
+                                                                setNewMemberMeta(prev => ({
+                                                                    ...prev,
+                                                                    status: e.target.value as MemberStatus,
+                                                                }))
+                                                            }
+                                                            className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-xs font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-all appearance-none"
+                                                        >
+                                                            <option value="ACTIVE">Active</option>
+                                                            <option value="ON_NOTICE">On Notice Period</option>
+                                                            <option value="RELEASED">Released / Exited</option>
+                                                        </select>
+                                                    )}
                                                 </div>
                                             </div>
 
@@ -619,26 +791,25 @@ export default function TeamTab({
                                     <div className="mt-12 flex gap-4">
                                         <button
                                             onClick={() => {
-                                                if (!selectedMember) {
-                                                    setTeam(prev => [
-                                                        ...prev,
-                                                        {
-                                                            id: `t${prev.length + 1}`,
-                                                            ...newMemberData,
-                                                            designation: 'EXECUTIVE',
-                                                            status: 'ACTIVE',
-                                                            serviceability: { states: [], areas: [], dealerIds: [] },
-                                                        },
-                                                    ]);
+                                                if (selectedMember) {
+                                                    setIsModalOpen(false);
+                                                    setHasFoundExisting(false);
+                                                    setLookupMobile('');
+                                                    setNewMemberData({ name: '', email: '', phone: '' });
+                                                    setFoundMemberId(null);
+                                                    return;
                                                 }
-                                                setIsModalOpen(false);
-                                                setHasFoundExisting(false);
-                                                setLookupMobile('');
-                                                setNewMemberData({ name: '', email: '', phone: '' });
+
+                                                handleConfirmAdd();
                                             }}
-                                            className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:shadow-lg hover:shadow-blue-500/30 text-white font-black uppercase tracking-widest py-4 rounded-[20px] text-xs transition-all ring-offset-2 focus:ring-2 ring-blue-500"
+                                            disabled={!selectedMember && (isSubmitting || !foundMemberId)}
+                                            className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:shadow-lg hover:shadow-blue-500/30 text-white font-black uppercase tracking-widest py-4 rounded-[20px] text-xs transition-all ring-offset-2 focus:ring-2 ring-blue-500 disabled:opacity-50"
                                         >
-                                            {selectedMember ? 'Update Personnel Detail' : 'Confirm & Add Member'}
+                                            {isSubmitting
+                                                ? 'Adding Member...'
+                                                : selectedMember
+                                                  ? 'Update Personnel Detail'
+                                                  : 'Confirm & Add Member'}
                                         </button>
                                         {selectedMember && (
                                             <button className="px-8 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl flex items-center justify-center hover:bg-red-500 hover:text-white transition-all text-slate-400">
@@ -646,6 +817,11 @@ export default function TeamTab({
                                             </button>
                                         )}
                                     </div>
+                                    {submitError && (
+                                        <div className="mt-3 text-[11px] text-red-500 font-bold uppercase tracking-widest">
+                                            {submitError}
+                                        </div>
+                                    )}
                                 </>
                             )}
                         </div>

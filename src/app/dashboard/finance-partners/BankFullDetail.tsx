@@ -45,10 +45,7 @@ export default function BankFullDetail({ id }: BankFullDetailProps) {
             const supabase = createClient();
             const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
-            let query = supabase
-                .from('id_tenants')
-                .select('*')
-                .eq('type', 'BANK');
+            let query = supabase.from('id_tenants').select('*').eq('type', 'BANK');
 
             if (isUUID) {
                 query = query.eq('id', id);
@@ -66,24 +63,25 @@ export default function BankFullDetail({ id }: BankFullDetailProps) {
                     status: data.status === 'ACTIVE' ? 'ACTIVE' : 'INACTIVE',
                     identity: {
                         fullLogo: data.config?.fullLogo,
-                        iconLogo: data.config?.iconLogo
+                        iconLogo: data.config?.iconLogo,
                     },
                     admin: data.config?.admin,
                     overview: {
-                        description: data.config?.overview?.description || 'Financing partner on the BookMyBike platform.',
+                        description:
+                            data.config?.overview?.description || 'Financing partner on the BookMyBike platform.',
                         website: data.config?.overview?.website || data.config?.website || 'https://bookmy.bike',
                         supportEmail: data.config?.overview?.supportEmail,
                         supportPhone: data.config?.overview?.supportPhone,
                         whatsapp: data.config?.overview?.whatsapp,
                         customerCare: data.config?.overview?.customerCare,
                         helpline: data.config?.overview?.helpline,
-                        appLinks: data.config?.overview?.appLinks
+                        appLinks: data.config?.overview?.appLinks,
                     },
                     locations: data.config?.locations || [],
                     team: data.config?.team || [],
                     schemes: data.config?.schemes || [],
                     chargesMaster: data.config?.chargesMaster || [],
-                    management: data.config?.management || { states: [], areas: [], dealerIds: [] }
+                    management: data.config?.management || { states: [], areas: [], dealerIds: [] },
                 };
                 setRealPartner(mapped);
             }
@@ -100,7 +98,9 @@ export default function BankFullDetail({ id }: BankFullDetailProps) {
         return (
             <div className="p-10 text-center">
                 <h2 className="text-xl font-bold text-red-500">Finance Partner Not Found</h2>
-                <button onClick={() => router.back()} className="mt-4 text-blue-500 underline">Go Back</button>
+                <button onClick={() => router.back()} className="mt-4 text-blue-500 underline">
+                    Go Back
+                </button>
             </div>
         );
     }
@@ -124,26 +124,42 @@ export default function BankFullDetail({ id }: BankFullDetailProps) {
                         <div className="flex items-center gap-6">
                             {partner.identity?.iconLogo && (
                                 <div className="w-20 h-20 rounded-[28px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center p-3 shadow-2xl shadow-blue-500/10 dark:shadow-blue-500/5 ring-8 ring-blue-500/[0.02] -rotate-3 hover:rotate-0 transition-transform duration-500">
-                                    <img src={partner.identity.iconLogo} alt={partner.name} className="w-full h-full object-contain" />
+                                    <img
+                                        src={partner.identity.iconLogo}
+                                        alt={partner.name}
+                                        className="w-full h-full object-contain"
+                                    />
                                 </div>
                             )}
                             <div>
                                 <div className="flex items-center gap-4 mb-2">
-                                    <span className="text-[10px] font-black text-blue-600 dark:text-blue-500 uppercase tracking-[0.4em]">Finance Partner</span>
+                                    <span className="text-[10px] font-black text-blue-600 dark:text-blue-500 uppercase tracking-[0.4em]">
+                                        Finance Partner
+                                    </span>
                                     <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-800" />
-                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">Partner Entity</span>
+                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">
+                                        Partner Entity
+                                    </span>
                                 </div>
                                 <h1 className="text-8xl font-black italic text-slate-900 dark:text-white uppercase tracking-tighter leading-none drop-shadow-sm dark:drop-shadow-2xl">
                                     {partner.name}
                                 </h1>
                                 <div className="flex items-center gap-4 mt-5">
                                     <div className="flex items-center gap-2 bg-slate-100 dark:bg-white/5 px-3 py-1.5 rounded-full border border-slate-200 dark:border-white/5">
-                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">ID</span>
-                                        <span className="text-[10px] font-mono font-bold text-blue-600 dark:text-blue-400">{formatDisplayIdForUI(partner.displayId)}</span>
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                            ID
+                                        </span>
+                                        <span className="text-[10px] font-mono font-bold text-blue-600 dark:text-blue-400">
+                                            {formatDisplayIdForUI(partner.displayId)}
+                                        </span>
                                     </div>
                                     <div className="flex items-center gap-2 bg-slate-100 dark:bg-white/5 px-3 py-1.5 rounded-full border border-slate-200 dark:border-white/5 hidden md:flex">
-                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Web</span>
-                                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 tracking-wider transition-colors hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer">{partner.overview.website}</span>
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                            Web
+                                        </span>
+                                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 tracking-wider transition-colors hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer">
+                                            {partner.overview.website}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -152,11 +168,16 @@ export default function BankFullDetail({ id }: BankFullDetailProps) {
 
                     <div className="flex flex-col items-end gap-6 pt-2">
                         <div className="relative">
-                            <div className={`absolute inset-0 blur-xl opacity-20 ${partner.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-slate-500'}`} />
-                            <span className={`relative px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.3em] border shadow-sm dark:shadow-2xl ${partner.status === 'ACTIVE'
-                                ? 'bg-emerald-500 text-white dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-500/20 shadow-emerald-500/10'
-                                : 'bg-slate-100 text-slate-500 dark:bg-slate-500/10 dark:text-slate-400 border-slate-200 dark:border-white/10'
-                                }`}>
+                            <div
+                                className={`absolute inset-0 blur-xl opacity-20 ${partner.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-slate-500'}`}
+                            />
+                            <span
+                                className={`relative px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.3em] border shadow-sm dark:shadow-2xl ${
+                                    partner.status === 'ACTIVE'
+                                        ? 'bg-emerald-500 text-white dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-500/20 shadow-emerald-500/10'
+                                        : 'bg-slate-100 text-slate-500 dark:bg-slate-500/10 dark:text-slate-400 border-slate-200 dark:border-white/10'
+                                }`}
+                            >
                                 {partner.status}
                             </span>
                         </div>
@@ -176,14 +197,15 @@ export default function BankFullDetail({ id }: BankFullDetailProps) {
                         { id: 'apr', label: 'APR', icon: Calculator },
                         { id: 'team', label: 'Team', icon: Users },
                         { id: 'locations', label: 'Locations', icon: MapPin },
-                    ].map((tab) => (
+                    ].map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-[24px] text-[10px] font-black uppercase tracking-widest transition-all flex-1 min-w-fit whitespace-nowrap ${activeTab === tab.id
-                                ? 'bg-blue-600 text-white shadow-lg dark:shadow-2xl dark:shadow-blue-500/40 scale-[1.02]'
-                                : 'text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5'
-                                }`}
+                            className={`flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-[24px] text-[10px] font-black uppercase tracking-widest transition-all flex-1 min-w-fit whitespace-nowrap ${
+                                activeTab === tab.id
+                                    ? 'bg-blue-600 text-white shadow-lg dark:shadow-2xl dark:shadow-blue-500/40 scale-[1.02]'
+                                    : 'text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5'
+                            }`}
                         >
                             <tab.icon size={14} className={activeTab === tab.id ? 'opacity-100' : 'opacity-40'} />
                             {tab.label}
@@ -200,8 +222,8 @@ export default function BankFullDetail({ id }: BankFullDetailProps) {
                 {activeTab === 'charges' && (
                     <ChargesTab
                         partner={partner}
-                        onSaveSuccess={(chargesMaster) => {
-                            setRealPartner(prev => prev ? { ...prev, chargesMaster } : prev);
+                        onSaveSuccess={chargesMaster => {
+                            setRealPartner(prev => (prev ? { ...prev, chargesMaster } : prev));
                         }}
                     />
                 )}
@@ -209,14 +231,14 @@ export default function BankFullDetail({ id }: BankFullDetailProps) {
                 {activeTab === 'payouts' && <PayoutsTab partner={partner} />}
                 {activeTab === 'apr' && <APRTab partner={partner} />}
                 {activeTab === 'locations' && <LocationsTab locations={partner.locations} />}
-                {activeTab === 'team' && <TeamTab team={partner.team} admin={partner.admin} />}
+                {activeTab === 'team' && <TeamTab team={partner.team} admin={partner.admin} tenantId={partner.id} />}
                 {activeTab === 'schemes' && (
                     <SchemesTab
                         schemes={partner.schemes}
                         bankId={partner.id}
                         chargesMaster={partner.chargesMaster}
-                        onSchemesUpdated={(schemes) => {
-                            setRealPartner(prev => prev ? { ...prev, schemes } : prev);
+                        onSchemesUpdated={schemes => {
+                            setRealPartner(prev => (prev ? { ...prev, schemes } : prev));
                         }}
                     />
                 )}
