@@ -8,33 +8,24 @@ import {
     Zap,
     Sparkles,
     CreditCard,
-    ChevronRight,
-    ArrowRight,
     MapPin,
     Phone,
     Mail,
     Globe,
-    Info,
     Activity,
     Clock,
     CheckCircle2,
-    LayoutDashboard,
     Package,
     Settings2,
-    Truck,
     Milestone,
     Target,
     TrendingUp,
-    Weight,
     Ruler,
-    ChevronDown,
     AlertCircle,
-    Share2,
     Instagram,
     Facebook,
     Twitter,
     Linkedin,
-    Newspaper,
 } from 'lucide-react';
 
 import { formatDisplayId } from '@/utils/displayId';
@@ -167,7 +158,9 @@ const OptionRow = ({
                             </span>
                         )}
                     </div>
-                    {description && <div className="text-[9px] text-slate-400 mt-0.5">{description}</div>}
+                    {description && String(description).toLowerCase() !== 'mandatory' && (
+                        <div className="text-[9px] text-slate-400 mt-0.5">{description}</div>
+                    )}
                 </div>
             </div>
             <div className="shrink-0 text-right">
@@ -199,7 +192,7 @@ const DossierGroup = ({
     title: React.ReactNode;
     icon: any;
     total?: React.ReactNode;
-    children: React.ReactNode;
+    children?: React.ReactNode;
     quote: any;
 }) => (
     <div className="border-b border-slate-100 last:border-0 bg-white">
@@ -618,8 +611,6 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         </div>
                     </div>
                     <div className="a4-body">
-                        <div className="mb-4"></div>
-
                         <div className="space-y-4">
                             <DossierGroup
                                 quote={quote}
