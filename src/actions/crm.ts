@@ -3893,12 +3893,11 @@ export async function reassignQuoteDealership(
             },
         };
 
-        // 4. Atomic update: tenant_id, studio_id, and commercials
+        // 4. Atomic update: tenant_id and commercials
         const { error: updateError } = await adminClient
             .from('crm_quotes')
             .update({
                 tenant_id: dealer.id,
-                studio_id: studioId,
                 commercials: updatedCommercials,
             })
             .eq('id', quoteId);
