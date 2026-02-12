@@ -1,21 +1,39 @@
 import { adminClient } from '@/lib/supabase/admin';
-import { BankScheme, FinanceRoutingTable, DayOfWeek } from '@/types/bankPartner';
+import { BankScheme } from '@/types/bankPartner';
 
-export async function resolveFinanceScheme(make: string, model: string, leadId?: string) {
+export type ViewerPersona = 'CUSTOMER' | 'DEALER' | 'BANKER';
+
+export interface ViewerContext {
+    persona: ViewerPersona;
+    tenantId?: string; // Bank tenant ID for BANKER persona
+}
+
+export type FinanceLogic =
+    | 'PREFERRED_FINANCIER'
+    | 'CUSTOMER_BEST_EMI'
+    | 'DEALER_BEST_PAYOUT'
+    | 'BANKER_PRIMARY'
+    | 'FALLBACK';
+
+export async function resolveFinanceScheme(
+    make: string,
+    model: string,
+    leadId?: string,
+    viewerContext?: ViewerContext
+) {
     const supabase = adminClient;
-    const dayNames: DayOfWeek[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const today = dayNames[new Date().getDay()];
+    const persona = viewerContext?.persona || 'CUSTOMER';
 
-    // 0. Fetch all bank partners first (optimization: needed for both paths)
+    // 0. Fetch all active bank partners
     const { data: allBanks } = await supabase
         .from('id_tenants')
         .select('id, name, config')
         .eq('type', 'BANK')
         .eq('status', 'ACTIVE');
 
-    if (!allBanks) return null;
+    if (!allBanks || allBanks.length === 0) return null;
 
-    // 0.5 Check for Lead Preferred Financier
+    // P0: Lead's Preferred Financier (highest priority, regardless of persona)
     if (leadId) {
         const { data: lead } = await supabase
             .from('crm_leads')
@@ -23,72 +41,192 @@ export async function resolveFinanceScheme(make: string, model: string, leadId?:
             .eq('id', leadId)
             .single();
 
-        if (lead && lead.preferred_financier_id) {
+        if (lead?.preferred_financier_id) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const preferredBank = allBanks.find((b: any) => b.id === lead.preferred_financier_id);
             if (preferredBank) {
                 const scheme = findBestSchemeForBank(preferredBank, make, model);
-                if (scheme) return { bank: preferredBank, scheme, logic: 'PREFERRED_FINANCIER' };
+                if (scheme) return { bank: preferredBank, scheme, logic: 'PREFERRED_FINANCIER' as FinanceLogic };
             }
         }
     }
 
-    // 1. Fetch Routing Config (Standard Routing)
-    // Dynamic Fetch by Type AUMS to avoid hardcoded ID mismatch
-    const { data: aums } = await supabase
-        .from('id_tenants')
-        .select('config')
-        .eq('type', 'AUMS')
-        .eq('status', 'ACTIVE')
-        .limit(1)
-        .single();
+    // P1: Persona-Based Resolution
+    switch (persona) {
+        case 'BANKER':
+            return resolveForBanker(allBanks, make, model, viewerContext?.tenantId);
 
-    const routing: FinanceRoutingTable | undefined = aums?.config?.financeRouting;
+        case 'DEALER':
+            return resolveForDealer(allBanks, make, model);
 
-    // Fallback: If no AUMS routing, use first active bank
-    if (!routing || !routing[today]) {
-        console.warn('[Finance Resolver] No AUMS routing found, using fallback: first active bank');
-        const fallbackBank = allBanks.find((b: any) => (b.config?.schemes?.length || 0) > 0);
-        if (fallbackBank) {
-            const scheme = findBestSchemeForBank(fallbackBank, make, model);
-            if (scheme) return { bank: fallbackBank, scheme, logic: 'FALLBACK_NO_ROUTING' };
+        case 'CUSTOMER':
+        default:
+            return resolveForCustomer(allBanks, make, model);
+    }
+}
+
+/**
+ * CUSTOMER: Pick the scheme with the lowest interest rate across ALL banks.
+ * This gives the customer the best possible EMI.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function resolveForCustomer(allBanks: any[], make: string, model: string) {
+    let bestResult: { bank: any; scheme: BankScheme; rate: number } | null = null;
+
+    for (const bank of allBanks) {
+        const eligible = getEligibleSchemes(bank, make, model);
+        for (const scheme of eligible) {
+            const effectiveRate = scheme.interestRate ?? Infinity;
+            if (!bestResult || effectiveRate < bestResult.rate) {
+                bestResult = { bank, scheme, rate: effectiveRate };
+            }
         }
-        return null;
     }
 
-    const dayConfig = routing[today];
-    const priorities = [dayConfig.p1, dayConfig.p2, dayConfig.p3].filter(p => p && p !== '');
+    if (bestResult) {
+        return { bank: bestResult.bank, scheme: bestResult.scheme, logic: 'CUSTOMER_BEST_EMI' as FinanceLogic };
+    }
 
-    // 3. Resolution Logic
-    for (const partnerId of priorities) {
-        if (partnerId === 'ANY') {
-            // Pick first available bank with at least one active scheme
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const anyBank = allBanks.find((b: any) => (b.config?.schemes?.length || 0) > 0);
-            if (anyBank) {
-                const scheme = findBestSchemeForBank(anyBank, make, model);
-                if (scheme) return { bank: anyBank, scheme, logic: `DAY_ROUTING_${today.toUpperCase()}` };
+    // Fallback: any active scheme
+    return fallbackFirstScheme(allBanks, make, model);
+}
+
+/**
+ * DEALER: Pick the scheme with the highest payout (dealer commission) across ALL banks.
+ * Payout can be FIXED (₹) or PERCENTAGE (%). We normalize to compare.
+ * Since we don't have the exact loan amount here, for PERCENTAGE payouts we use
+ * a normalized score (percentage * 1000) to compare against fixed amounts.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function resolveForDealer(allBanks: any[], make: string, model: string) {
+    let bestResult: { bank: any; scheme: BankScheme; payoutScore: number } | null = null;
+
+    for (const bank of allBanks) {
+        const eligible = getEligibleSchemes(bank, make, model);
+        for (const scheme of eligible) {
+            const payoutScore = normalizePayoutScore(scheme);
+            if (!bestResult || payoutScore > bestResult.payoutScore) {
+                bestResult = { bank, scheme, payoutScore };
             }
-            continue;
         }
+    }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const bank = allBanks.find((b: any) => b.id === partnerId);
-        if (!bank) continue;
+    if (bestResult) {
+        return { bank: bestResult.bank, scheme: bestResult.scheme, logic: 'DEALER_BEST_PAYOUT' as FinanceLogic };
+    }
 
+    // Fallback: any active scheme
+    return fallbackFirstScheme(allBanks, make, model);
+}
+
+/**
+ * BANKER: Only show schemes from the banker's own bank.
+ * Priority: isPrimary > first active scheme.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function resolveForBanker(allBanks: any[], make: string, model: string, bankTenantId?: string) {
+    if (!bankTenantId) {
+        // No bank ID — fall back to customer logic
+        return resolveForCustomer(allBanks, make, model);
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const bank = allBanks.find((b: any) => b.id === bankTenantId);
+    if (!bank) {
+        return resolveForCustomer(allBanks, make, model);
+    }
+
+    const eligible = getEligibleSchemes(bank, make, model);
+    if (eligible.length === 0) {
+        // Bank has no eligible schemes for this product — fall back to customer
+        return resolveForCustomer(allBanks, make, model);
+    }
+
+    // Prefer isPrimary, then first eligible
+    const primary = eligible.find(s => s.isPrimary);
+    const scheme = primary || eligible[0];
+
+    return { bank, scheme, logic: 'BANKER_PRIMARY' as FinanceLogic };
+}
+
+// ─── Helpers ───────────────────────────────────────────────
+
+/**
+ * Get all eligible (active + applicable) schemes for a bank given make/model.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getEligibleSchemes(bank: any, make: string, model: string): BankScheme[] {
+    const schemes: BankScheme[] = bank.config?.schemes || [];
+    return schemes.filter(s => {
+        if (!s.isActive) return false;
+        return isApplicable(s, make, model);
+    });
+}
+
+/**
+ * Check if a scheme applies to this make/model.
+ * A scheme applies if:
+ * - applicability.models includes the model (exact match)
+ * - applicability.brands includes the make (exact match)
+ * - applicability is 'ALL' or not set (universal)
+ */
+function isApplicable(scheme: BankScheme, make: string, model: string): boolean {
+    const app = scheme.applicability;
+    if (!app) return true; // No restrictions = universal
+
+    // Check model-level restriction
+    if (Array.isArray(app.models) && app.models.length > 0) {
+        const modelMatch = app.models.some(m => m.toLowerCase() === model.toLowerCase());
+        if (modelMatch) return true;
+        // If explicit model list exists but doesn't match, check brand
+    }
+
+    // Check brand-level restriction
+    if (Array.isArray(app.brands) && app.brands.length > 0) {
+        const brandMatch = app.brands.some(b => b.toLowerCase() === make.toLowerCase());
+        if (brandMatch) return true;
+        // If explicit brand list but no match, this scheme doesn't apply
+        return false;
+    }
+
+    // If brands/models are 'ALL' or not arrays, it's universal
+    return true;
+}
+
+/**
+ * Normalize payout to a comparable score.
+ * PERCENTAGE payouts are multiplied by 1000 (assumes ~₹1L loan as baseline).
+ * FIXED payouts are taken as-is.
+ */
+function normalizePayoutScore(scheme: BankScheme): number {
+    const payout = scheme.payout || 0;
+    if (scheme.payoutType === 'PERCENTAGE') {
+        return payout * 1000; // 2% = 2000 score (equivalent to ₹2000 on ₹1L)
+    }
+    return payout; // Fixed ₹ amount
+}
+
+/**
+ * Last resort fallback: pick the first active scheme from any bank.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function fallbackFirstScheme(allBanks: any[], make: string, model: string) {
+    for (const bank of allBanks) {
         const scheme = findBestSchemeForBank(bank, make, model);
-        if (scheme) return { bank: bank, scheme, logic: `DAY_ROUTING_${today.toUpperCase()}` };
+        if (scheme) return { bank, scheme, logic: 'FALLBACK' as FinanceLogic };
     }
-
     return null;
 }
 
+/**
+ * Legacy helper: find any applicable scheme for a bank (model > brand > primary > first).
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function findBestSchemeForBank(bank: any, make: string, model: string) {
     const schemes: BankScheme[] = bank.config?.schemes || [];
     const activeSchemes = schemes.filter(s => s.isActive);
 
-    // a. Try Targeted (Model exact match)
+    // a. Model-targeted
     const modelTargeted = activeSchemes.find(
         s =>
             Array.isArray(s.applicability?.models) &&
@@ -96,7 +234,7 @@ function findBestSchemeForBank(bank: any, make: string, model: string) {
     );
     if (modelTargeted) return modelTargeted;
 
-    // b. Try Targeted (Brand exact match)
+    // b. Brand-targeted
     const brandTargeted = activeSchemes.find(
         s =>
             Array.isArray(s.applicability?.brands) &&
@@ -104,10 +242,10 @@ function findBestSchemeForBank(bank: any, make: string, model: string) {
     );
     if (brandTargeted) return brandTargeted;
 
-    // c. Fallback to Primary
+    // c. Primary
     const primary = activeSchemes.find(s => s.isPrimary);
     if (primary) return primary;
 
-    // d. Final fallback: First active scheme
+    // d. First active
     return activeSchemes[0] || null;
 }

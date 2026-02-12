@@ -6,8 +6,8 @@ import { adminClient } from '@/lib/supabase/admin';
 import { slugify } from '@/utils/slugs';
 import ProductClient from './ProductClient';
 import { cookies } from 'next/headers';
-import { resolveFinanceScheme } from '@/utils/financeResolver';
-import { BankPartner, BankScheme } from '@/types/bankPartner';
+import { resolveFinanceScheme, ViewerContext } from '@/utils/financeResolver';
+import { BankScheme } from '@/types/bankPartner';
 import { resolvePricingContext } from '@/lib/server/pricingContext';
 import { getSitemapData } from '@/lib/server/sitemapFetcher';
 
@@ -911,8 +911,31 @@ export default async function Page({ params, searchParams }: Props) {
         durationMonths: s.duration_months,
     }));
 
-    // 7. Resolve Finance Scheme
-    const resolvedFinance = await resolveFinanceScheme(product.make, product.model, leadId);
+    // 7. Resolve Finance Scheme (Persona-Based)
+    let viewerContext: ViewerContext | undefined;
+    const dealerSessionCookie = cookieStore.get('bmb_dealer_session')?.value;
+    if (dealerSessionCookie) {
+        try {
+            const sessionData = JSON.parse(decodeURIComponent(dealerSessionCookie));
+            if (sessionData?.mode === 'TEAM' && sessionData?.activeTenantId) {
+                // Check if the session tenant is a BANK or DEALER
+                const { data: sessionTenant } = await supabase
+                    .from('id_tenants')
+                    .select('type')
+                    .eq('id', sessionData.activeTenantId)
+                    .single();
+
+                if (sessionTenant?.type === 'BANK') {
+                    viewerContext = { persona: 'BANKER', tenantId: sessionData.activeTenantId };
+                } else if (sessionTenant?.type === 'DEALER') {
+                    viewerContext = { persona: 'DEALER' };
+                }
+            }
+        } catch {
+            // ignore parse errors
+        }
+    }
+    const resolvedFinance = await resolveFinanceScheme(product.make, product.model, leadId, viewerContext);
 
     const jsonLd: Record<string, any> = {
         '@context': 'https://schema.org',

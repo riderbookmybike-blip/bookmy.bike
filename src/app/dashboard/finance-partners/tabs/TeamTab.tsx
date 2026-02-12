@@ -1,7 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { BankTeamMember, BankDesignation, MemberStatus } from '@/types/bankPartner';
-import { User, Phone, Mail, Plus, Trash2, Calendar, MapPin, ChevronRight, AlertCircle, CheckCircle2, Search, Filter, ShieldCheck, Briefcase, Trophy, Loader2 } from 'lucide-react';
+import {
+    User,
+    Phone,
+    Mail,
+    Plus,
+    Trash2,
+    Calendar,
+    MapPin,
+    ChevronRight,
+    AlertCircle,
+    CheckCircle2,
+    Search,
+    Filter,
+    ShieldCheck,
+    Briefcase,
+    Trophy,
+    Loader2,
+} from 'lucide-react';
 import { normalizeIndianPhone, parseDateToISO } from '@/lib/utils/inputFormatters';
+import { createClient } from '@/lib/supabase/client';
 
 const DESIGNATIONS: { value: BankDesignation; label: string; level: number }[] = [
     { value: 'SYSTEM_ADMIN', label: 'System Admin', level: 7 },
@@ -16,19 +34,25 @@ const DESIGNATIONS: { value: BankDesignation; label: string; level: number }[] =
 const MOCK_LOCATIONS = {
     states: ['Maharashtra', 'Gujarat', 'Karnataka', 'Delhi'],
     areas: {
-        'Maharashtra': ['Pune', 'Mumbai', 'Nagpur', 'Nashik'],
-        'Gujarat': ['Ahmedabad', 'Surat', 'Vadodara'],
-        'Karnataka': ['Bangalore', 'Mysore'],
-        'Delhi': ['Central Delhi', 'South Delhi']
+        Maharashtra: ['Pune', 'Mumbai', 'Nagpur', 'Nashik'],
+        Gujarat: ['Ahmedabad', 'Surat', 'Vadodara'],
+        Karnataka: ['Bangalore', 'Mysore'],
+        Delhi: ['Central Delhi', 'South Delhi'],
     },
     dealers: {
-        'Pune': ['Pashankar Auto', 'Seva TVS', 'BMB Pune Central'],
-        'Mumbai': ['BMB Seawoods', 'Linkway Honda'],
-        'Ahmedabad': ['BMB Ahmedabad West', 'Karnavati Suzuki']
-    }
+        Pune: ['Pashankar Auto', 'Seva TVS', 'BMB Pune Central'],
+        Mumbai: ['BMB Seawoods', 'Linkway Honda'],
+        Ahmedabad: ['BMB Ahmedabad West', 'Karnavati Suzuki'],
+    },
 };
 
-export default function TeamTab({ team: initialTeam, admin }: { team: BankTeamMember[], admin?: { name: string; phone: string; email: string } }) {
+export default function TeamTab({
+    team: initialTeam,
+    admin,
+}: {
+    team: BankTeamMember[];
+    admin?: { name: string; phone: string; email: string };
+}) {
     const [team, setTeam] = useState<BankTeamMember[]>(initialTeam);
     const [selectedMember, setSelectedMember] = useState<BankTeamMember | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -40,12 +64,77 @@ export default function TeamTab({ team: initialTeam, admin }: { team: BankTeamMe
     const [newMemberData, setNewMemberData] = useState({ name: '', email: '', phone: '' });
 
     const [searchQuery, setSearchQuery] = useState('');
+    const [dealerSearch, setDealerSearch] = useState('');
+    const [dealers, setDealers] = useState<any[]>([]);
+    const [dealerLoading, setDealerLoading] = useState(false);
+
+    useEffect(() => {
+        const fetchDealers = async () => {
+            setDealerLoading(true);
+            const supabase = createClient();
+            const { data: dealerTenants, error } = await supabase
+                .from('id_tenants')
+                .select('id, name, status')
+                .eq('type', 'DEALER')
+                .order('name', { ascending: true });
+
+            if (error) {
+                console.error('Dealer fetch failed:', error);
+                setDealerLoading(false);
+                return;
+            }
+
+            const dealerIds = (dealerTenants || []).map(d => d.id);
+            let locations: any[] = [];
+            if (dealerIds.length > 0) {
+                const { data: locs, error: locErr } = await supabase
+                    .from('id_locations')
+                    .select('tenant_id, district, state')
+                    .in('tenant_id', dealerIds);
+                if (locErr) {
+                    console.error('Dealer locations fetch failed:', locErr);
+                } else {
+                    locations = locs || [];
+                }
+            }
+
+            const locMap = new Map<string, any>();
+            locations.forEach(l => {
+                if (!locMap.has(l.tenant_id)) locMap.set(l.tenant_id, l);
+            });
+
+            const mapped = (dealerTenants || []).map(d => ({
+                id: d.id,
+                name: d.name,
+                status: d.status,
+                district: locMap.get(d.id)?.district || '',
+                state: locMap.get(d.id)?.state || '',
+            }));
+
+            setDealers(mapped);
+            setDealerLoading(false);
+        };
+
+        fetchDealers();
+    }, []);
+
+    const filteredDealers = useMemo(() => {
+        const q = dealerSearch.trim().toLowerCase();
+        if (!q) return dealers;
+        return dealers.filter(
+            d =>
+                d.name.toLowerCase().includes(q) ||
+                d.district.toLowerCase().includes(q) ||
+                d.state.toLowerCase().includes(q)
+        );
+    }, [dealerSearch, dealers]);
 
     // If admin is provide but not in team list, we should consider it as part of the team for display purposes if filtered
-    const filteredTeam = team.filter(m =>
-        m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        m.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        m.phone.includes(searchQuery)
+    const filteredTeam = team.filter(
+        m =>
+            m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            m.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            m.phone.includes(searchQuery)
     );
 
     const handleLookup = () => {
@@ -109,11 +198,11 @@ export default function TeamTab({ team: initialTeam, admin }: { team: BankTeamMe
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* Auto-display Admin */}
                 {admin && (
-                    <div
-                        className="group bg-blue-600/5 dark:bg-blue-600/10 border-2 border-dashed border-blue-500/30 dark:border-blue-500/20 rounded-[32px] p-6 shadow-sm hover:shadow-2xl hover:border-blue-500 transition-all relative overflow-hidden"
-                    >
+                    <div className="group bg-blue-600/5 dark:bg-blue-600/10 border-2 border-dashed border-blue-500/30 dark:border-blue-500/20 rounded-[32px] p-6 shadow-sm hover:shadow-2xl hover:border-blue-500 transition-all relative overflow-hidden">
                         <div className="absolute top-6 right-6">
-                            <span className="bg-blue-600 text-white text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-widest shadow-lg shadow-blue-500/40">Partner Admin</span>
+                            <span className="bg-blue-600 text-white text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-widest shadow-lg shadow-blue-500/40">
+                                Partner Admin
+                            </span>
                         </div>
 
                         <div className="flex items-center gap-4 mb-6">
@@ -121,7 +210,9 @@ export default function TeamTab({ team: initialTeam, admin }: { team: BankTeamMe
                                 <ShieldCheck size={28} />
                             </div>
                             <div>
-                                <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-tighter">{admin.name}</h4>
+                                <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-tighter">
+                                    {admin.name}
+                                </h4>
                                 <div className="flex items-center gap-2">
                                     <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">
                                         Chief Administrator
@@ -141,13 +232,15 @@ export default function TeamTab({ team: initialTeam, admin }: { team: BankTeamMe
                             </div>
                             <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center gap-2">
                                 <CheckCircle2 size={14} className="text-blue-500" />
-                                <span className="text-[9px] font-black text-blue-600 uppercase tracking-widest leading-none">System Root Contact</span>
+                                <span className="text-[9px] font-black text-blue-600 uppercase tracking-widest leading-none">
+                                    System Root Contact
+                                </span>
                             </div>
                         </div>
                     </div>
                 )}
 
-                {filteredTeam.map((member) => (
+                {filteredTeam.map(member => (
                     <div
                         key={member.id}
                         className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-[32px] p-6 shadow-sm hover:shadow-2xl hover:border-blue-500/30 transition-all cursor-pointer relative overflow-hidden"
@@ -157,20 +250,28 @@ export default function TeamTab({ team: initialTeam, admin }: { team: BankTeamMe
                         }}
                     >
                         {/* Status Light */}
-                        <div className={`absolute top-6 right-6 w-2 h-2 rounded-full ${member.status === 'ACTIVE' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' :
-                            member.status === 'ON_NOTICE' ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]' :
-                                'bg-red-500 opacity-50'
-                            }`} />
+                        <div
+                            className={`absolute top-6 right-6 w-2 h-2 rounded-full ${
+                                member.status === 'ACTIVE'
+                                    ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]'
+                                    : member.status === 'ON_NOTICE'
+                                      ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                                      : 'bg-red-500 opacity-50'
+                            }`}
+                        />
 
                         <div className="flex items-center gap-4 mb-6">
                             <div className="w-14 h-14 bg-slate-100 dark:bg-white/5 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-blue-500/10 group-hover:text-blue-500 transition-colors border border-dashed border-slate-300 dark:border-white/10">
                                 <User size={24} />
                             </div>
                             <div>
-                                <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-tighter">{member.name}</h4>
+                                <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-tighter">
+                                    {member.name}
+                                </h4>
                                 <div className="flex items-center gap-2">
                                     <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">
-                                        {DESIGNATIONS.find(d => d.value === member.designation)?.label || member.designation}
+                                        {DESIGNATIONS.find(d => d.value === member.designation)?.label ||
+                                            member.designation}
                                     </span>
                                 </div>
                             </div>
@@ -188,7 +289,8 @@ export default function TeamTab({ team: initialTeam, admin }: { team: BankTeamMe
                             <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
                                 <MapPin size={14} className="text-slate-300" />
                                 <span className="font-bold uppercase tracking-tighter italic">
-                                    {member.serviceability.states.join(', ')} • {member.serviceability.areas.length} Areas
+                                    {member.serviceability.states.join(', ')} • {member.serviceability.areas.length}{' '}
+                                    Areas
                                 </span>
                             </div>
                         </div>
@@ -196,7 +298,9 @@ export default function TeamTab({ team: initialTeam, admin }: { team: BankTeamMe
                         {member.status === 'ON_NOTICE' && (
                             <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center gap-2">
                                 <AlertCircle size={14} className="text-amber-500" />
-                                <span className="text-[9px] font-black text-amber-600 uppercase tracking-widest">On Notice Period</span>
+                                <span className="text-[9px] font-black text-amber-600 uppercase tracking-widest">
+                                    On Notice Period
+                                </span>
                             </div>
                         )}
                     </div>
@@ -218,14 +322,19 @@ export default function TeamTab({ team: initialTeam, admin }: { team: BankTeamMe
                                             {selectedMember ? 'Manage Team Member' : 'Add New Member'}
                                         </h2>
                                     </div>
-                                    <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em] ml-11">Personnel Detail & Serviceability Engine</p>
+                                    <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em] ml-11">
+                                        Personnel Detail & Serviceability Engine
+                                    </p>
                                 </div>
-                                <button onClick={() => {
-                                    setIsModalOpen(false);
-                                    setHasFoundExisting(false);
-                                    setLookupMobile('');
-                                    setNewMemberData({ name: '', email: '', phone: '' });
-                                }} className="bg-slate-100 dark:bg-white/5 p-3 rounded-2xl hover:bg-red-500/10 hover:text-red-500 transition-all">
+                                <button
+                                    onClick={() => {
+                                        setIsModalOpen(false);
+                                        setHasFoundExisting(false);
+                                        setLookupMobile('');
+                                        setNewMemberData({ name: '', email: '', phone: '' });
+                                    }}
+                                    className="bg-slate-100 dark:bg-white/5 p-3 rounded-2xl hover:bg-red-500/10 hover:text-red-500 transition-all"
+                                >
                                     <Plus size={24} className="rotate-45" />
                                 </button>
                             </div>
@@ -236,17 +345,24 @@ export default function TeamTab({ team: initialTeam, admin }: { team: BankTeamMe
                                         <Search size={32} />
                                     </div>
                                     <div>
-                                        <h3 className="text-xl font-black uppercase tracking-tighter italic mb-2 text-slate-900 dark:text-white">Mobile Lookup</h3>
-                                        <p className="text-xs text-slate-500 uppercase font-bold tracking-widest">Enter phone number to check if member already exists</p>
+                                        <h3 className="text-xl font-black uppercase tracking-tighter italic mb-2 text-slate-900 dark:text-white">
+                                            Mobile Lookup
+                                        </h3>
+                                        <p className="text-xs text-slate-500 uppercase font-bold tracking-widest">
+                                            Enter phone number to check if member already exists
+                                        </p>
                                     </div>
                                     <div className="relative">
-                                        <Phone className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                                        <Phone
+                                            className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400"
+                                            size={20}
+                                        />
                                         <input
                                             type="text"
                                             placeholder="98765 43210"
                                             value={lookupMobile}
-                                            onChange={(e) => setLookupMobile(normalizeIndianPhone(e.target.value))}
-                                            onPaste={(e) => {
+                                            onChange={e => setLookupMobile(normalizeIndianPhone(e.target.value))}
+                                            onPaste={e => {
                                                 const text = e.clipboardData.getData('text');
                                                 const normalized = normalizeIndianPhone(text);
                                                 if (normalized) {
@@ -262,7 +378,11 @@ export default function TeamTab({ team: initialTeam, admin }: { team: BankTeamMe
                                         disabled={lookupMobile.length < 10 || isSearching}
                                         className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-black uppercase tracking-widest py-6 rounded-[24px] shadow-xl shadow-blue-500/20 flex items-center justify-center gap-3 transition-all active:scale-95"
                                     >
-                                        {isSearching ? <Loader2 size={24} className="animate-spin" /> : <ChevronRight size={24} />}
+                                        {isSearching ? (
+                                            <Loader2 size={24} className="animate-spin" />
+                                        ) : (
+                                            <ChevronRight size={24} />
+                                        )}
                                         Proceed to Onboard
                                     </button>
                                 </div>
@@ -273,22 +393,38 @@ export default function TeamTab({ team: initialTeam, admin }: { team: BankTeamMe
                                         <div className="col-span-12 md:col-span-7 space-y-8">
                                             <div className="grid grid-cols-2 gap-6">
                                                 <div className="col-span-2">
-                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Full Name</label>
-                                                    <input type="text" defaultValue={selectedMember?.name || newMemberData.name} className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-sm font-bold outline-none focus:border-blue-500 transition-all" />
+                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">
+                                                        Full Name
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        defaultValue={selectedMember?.name || newMemberData.name}
+                                                        className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-sm font-bold outline-none focus:border-blue-500 transition-all"
+                                                    />
                                                 </div>
                                                 <div>
-                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Email Address</label>
-                                                    <input type="email" defaultValue={selectedMember?.email || newMemberData.email} className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-sm font-bold outline-none focus:border-blue-500 transition-all" />
+                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">
+                                                        Email Address
+                                                    </label>
+                                                    <input
+                                                        type="email"
+                                                        defaultValue={selectedMember?.email || newMemberData.email}
+                                                        className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-sm font-bold outline-none focus:border-blue-500 transition-all"
+                                                    />
                                                 </div>
                                                 <div>
-                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Phone Number</label>
+                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">
+                                                        Phone Number
+                                                    </label>
                                                     <input
                                                         type="text"
                                                         defaultValue={selectedMember?.phone || newMemberData.phone}
-                                                        onInput={(e) => {
-                                                            e.currentTarget.value = normalizeIndianPhone(e.currentTarget.value);
+                                                        onInput={e => {
+                                                            e.currentTarget.value = normalizeIndianPhone(
+                                                                e.currentTarget.value
+                                                            );
                                                         }}
-                                                        onPaste={(e) => {
+                                                        onPaste={e => {
                                                             const text = e.clipboardData.getData('text');
                                                             const normalized = normalizeIndianPhone(text);
                                                             if (normalized) {
@@ -300,16 +436,28 @@ export default function TeamTab({ team: initialTeam, admin }: { team: BankTeamMe
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Designation</label>
-                                                    <select defaultValue={selectedMember?.designation} className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-xs font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-all appearance-none">
+                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">
+                                                        Designation
+                                                    </label>
+                                                    <select
+                                                        defaultValue={selectedMember?.designation}
+                                                        className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-xs font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-all appearance-none"
+                                                    >
                                                         {DESIGNATIONS.map(d => (
-                                                            <option key={d.value} value={d.value}>{d.label}</option>
+                                                            <option key={d.value} value={d.value}>
+                                                                {d.label}
+                                                            </option>
                                                         ))}
                                                     </select>
                                                 </div>
                                                 <div>
-                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Member Status</label>
-                                                    <select defaultValue={selectedMember?.status} className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-xs font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-all appearance-none">
+                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">
+                                                        Member Status
+                                                    </label>
+                                                    <select
+                                                        defaultValue={selectedMember?.status}
+                                                        className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-xs font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-all appearance-none"
+                                                    >
                                                         <option value="ACTIVE">Active</option>
                                                         <option value="ON_NOTICE">On Notice Period</option>
                                                         <option value="RELEASED">Released / Exited</option>
@@ -319,11 +467,13 @@ export default function TeamTab({ team: initialTeam, admin }: { team: BankTeamMe
 
                                             <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-100 dark:border-white/5">
                                                 <div>
-                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block flex items-center gap-1.5"><Calendar size={12} /> DOB</label>
+                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block flex items-center gap-1.5">
+                                                        <Calendar size={12} /> DOB
+                                                    </label>
                                                     <input
                                                         type="date"
                                                         defaultValue={selectedMember?.dob}
-                                                        onPaste={(e) => {
+                                                        onPaste={e => {
                                                             const text = e.clipboardData.getData('text');
                                                             const parsed = parseDateToISO(text);
                                                             if (parsed) {
@@ -335,11 +485,13 @@ export default function TeamTab({ team: initialTeam, admin }: { team: BankTeamMe
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block flex items-center gap-1.5"><ShieldCheck size={12} /> DOJ</label>
+                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block flex items-center gap-1.5">
+                                                        <ShieldCheck size={12} /> DOJ
+                                                    </label>
                                                     <input
                                                         type="date"
                                                         defaultValue={selectedMember?.doj}
-                                                        onPaste={(e) => {
+                                                        onPaste={e => {
                                                             const text = e.clipboardData.getData('text');
                                                             const parsed = parseDateToISO(text);
                                                             if (parsed) {
@@ -351,11 +503,13 @@ export default function TeamTab({ team: initialTeam, admin }: { team: BankTeamMe
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block flex items-center gap-1.5"><Trophy size={12} /> Anniv.</label>
+                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block flex items-center gap-1.5">
+                                                        <Trophy size={12} /> Anniv.
+                                                    </label>
                                                     <input
                                                         type="date"
                                                         defaultValue={selectedMember?.anniversary}
-                                                        onPaste={(e) => {
+                                                        onPaste={e => {
                                                             const text = e.clipboardData.getData('text');
                                                             const parsed = parseDateToISO(text);
                                                             if (parsed) {
@@ -376,16 +530,23 @@ export default function TeamTab({ team: initialTeam, admin }: { team: BankTeamMe
                                                     <MapPin size={16} className="text-emerald-500" />
                                                     Serviceability Engine
                                                 </h4>
-                                                <button className="text-[9px] font-black text-blue-600 uppercase tracking-widest hover:underline">Select All States</button>
+                                                <button className="text-[9px] font-black text-blue-600 uppercase tracking-widest hover:underline">
+                                                    Select All States
+                                                </button>
                                             </div>
 
                                             <div className="space-y-6">
                                                 {/* State Selection */}
                                                 <div className="space-y-3">
-                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1 italic opacity-60">1. Territories (States)</label>
+                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1 italic opacity-60">
+                                                        1. Territories (States)
+                                                    </label>
                                                     <div className="flex flex-wrap gap-2">
                                                         {MOCK_LOCATIONS.states.map(s => (
-                                                            <button key={s} className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 text-[10px] font-black uppercase tracking-tighter hover:border-blue-500/50 transition-all">
+                                                            <button
+                                                                key={s}
+                                                                className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 text-[10px] font-black uppercase tracking-tighter hover:border-blue-500/50 transition-all"
+                                                            >
                                                                 {s}
                                                             </button>
                                                         ))}
@@ -394,34 +555,61 @@ export default function TeamTab({ team: initialTeam, admin }: { team: BankTeamMe
 
                                                 {/* Cascading Area Selection */}
                                                 <div className="space-y-3 opacity-60 hover:opacity-100 transition-opacity">
-                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1 italic">2. Serviceable Areas</label>
+                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1 italic">
+                                                        2. Serviceable Areas
+                                                    </label>
                                                     <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl min-h-[80px] flex flex-wrap gap-2 items-center">
-                                                        <p className="text-[10px] text-slate-400 font-bold uppercase italic mx-auto">Select states to view areas</p>
+                                                        <p className="text-[10px] text-slate-400 font-bold uppercase italic mx-auto">
+                                                            Select states to view areas
+                                                        </p>
                                                     </div>
                                                 </div>
 
                                                 {/* Cascading Dealer Selection */}
                                                 <div className="space-y-3 opacity-60 hover:opacity-100 transition-opacity">
-                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1 italic">3. Linked Dealerships (BMB Connect)</label>
+                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1 italic">
+                                                        3. Linked Dealerships (BMB Connect)
+                                                    </label>
                                                     <div className="relative">
-                                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
-                                                        <input type="text" placeholder="Search BMB Dealer Network..." className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl pl-9 pr-4 py-3 text-[10px] font-bold outline-none" />
+                                                        <Search
+                                                            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                                                            size={12}
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Search BMB Dealer Network..."
+                                                            value={dealerSearch}
+                                                            onChange={e => setDealerSearch(e.target.value)}
+                                                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl pl-9 pr-4 py-3 text-[10px] font-bold outline-none"
+                                                        />
                                                     </div>
                                                     <div className="space-y-2 mt-2 max-h-[120px] overflow-y-auto pr-2">
-                                                        <div className="flex items-center justify-between p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition-colors">
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                                                                <span className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">Pashankar Auto</span>
+                                                        {dealerLoading ? (
+                                                            <div className="text-[10px] text-slate-400 font-bold uppercase italic px-2 py-3">
+                                                                Loading dealers...
                                                             </div>
-                                                            <span className="text-[8px] font-black text-slate-400 italic">Pune</span>
-                                                        </div>
-                                                        <div className="flex items-center justify-between p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition-colors">
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                                                                <span className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">BMB Pune Central</span>
+                                                        ) : filteredDealers.length === 0 ? (
+                                                            <div className="text-[10px] text-slate-400 font-bold uppercase italic px-2 py-3">
+                                                                No dealers found
                                                             </div>
-                                                            <span className="text-[8px] font-black text-slate-400 italic">Pune</span>
-                                                        </div>
+                                                        ) : (
+                                                            filteredDealers.map((d: any) => (
+                                                                <div
+                                                                    key={d.id}
+                                                                    className="flex items-center justify-between p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition-colors"
+                                                                >
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                                                        <span className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">
+                                                                            {d.name}
+                                                                        </span>
+                                                                    </div>
+                                                                    <span className="text-[8px] font-black text-slate-400 italic">
+                                                                        {d.district || d.state || '—'}
+                                                                    </span>
+                                                                </div>
+                                                            ))
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -432,13 +620,16 @@ export default function TeamTab({ team: initialTeam, admin }: { team: BankTeamMe
                                         <button
                                             onClick={() => {
                                                 if (!selectedMember) {
-                                                    setTeam(prev => [...prev, {
-                                                        id: `t${prev.length + 1}`,
-                                                        ...newMemberData,
-                                                        designation: 'EXECUTIVE',
-                                                        status: 'ACTIVE',
-                                                        serviceability: { states: [], areas: [], dealerIds: [] }
-                                                    }]);
+                                                    setTeam(prev => [
+                                                        ...prev,
+                                                        {
+                                                            id: `t${prev.length + 1}`,
+                                                            ...newMemberData,
+                                                            designation: 'EXECUTIVE',
+                                                            status: 'ACTIVE',
+                                                            serviceability: { states: [], areas: [], dealerIds: [] },
+                                                        },
+                                                    ]);
                                                 }
                                                 setIsModalOpen(false);
                                                 setHasFoundExisting(false);
