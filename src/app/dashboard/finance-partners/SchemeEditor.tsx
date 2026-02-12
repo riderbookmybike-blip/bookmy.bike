@@ -156,6 +156,7 @@ export default function SchemeEditor({ initialScheme, onSave, onCancel, chargesM
         const emiResults = tenuresToCalculate.map(n => {
             let fundedChargesTotal = 0;
             let upfrontChargesTotal = 0;
+            let monthlyAddonTotal = 0;
 
             scheme.charges.forEach(ch => {
                 let amount = 0;
@@ -165,7 +166,8 @@ export default function SchemeEditor({ initialScheme, onSave, onCancel, chargesM
                 else if (ch.calculationBasis === 'GROSS_LOAN_AMOUNT') basis = activeLoan + fundedChargesTotal;
                 else if (ch.calculationBasis === 'LOAN_AMOUNT') basis = activeLoan;
 
-                if (ch.type === 'FIXED') amount = ch.value;
+                if (ch.type === 'MONTHLY_FIXED') amount = ch.value;
+                else if (ch.type === 'FIXED') amount = ch.value;
                 else if (ch.type === 'PERCENTAGE') amount = (basis * ch.value) / 100;
                 else if (ch.type === 'TABLE' && ch.tableData) {
                     const sortedRules = [...ch.tableData].sort((a, b) => a.tenure - b.tenure);
@@ -176,7 +178,10 @@ export default function SchemeEditor({ initialScheme, onSave, onCancel, chargesM
                 }
 
                 if (ch.taxStatus === 'EXCLUSIVE' && ch.taxRate) amount = amount + (amount * ch.taxRate) / 100;
-                if (ch.impact === 'FUNDED') fundedChargesTotal += amount;
+
+                // Route by impact: MONTHLY charges go to EMI addon, not loan or downpayment
+                if (ch.impact === 'MONTHLY') monthlyAddonTotal += amount;
+                else if (ch.impact === 'FUNDED') fundedChargesTotal += amount;
                 else upfrontChargesTotal += amount;
             });
 
@@ -193,6 +198,9 @@ export default function SchemeEditor({ initialScheme, onSave, onCancel, chargesM
                 if (rRate === 0) emi = grossLoanAmount / n;
                 else emi = (grossLoanAmount * rRate * Math.pow(1 + rRate, n)) / (Math.pow(1 + rRate, n) - 1);
             }
+
+            // Add monthly fixed charges ON TOP of base EMI (doesn't affect loan principal)
+            emi += monthlyAddonTotal;
 
             const waiverCount = scheme.emiWaiverCount || 0;
             const adjustedTotalCost = emi * (n - waiverCount) + totalDownpayment;
@@ -951,7 +959,12 @@ export default function SchemeEditor({ initialScheme, onSave, onCancel, chargesM
                                             {!isAlreadyAdded && (
                                                 <span className="ml-1 opacity-40 font-bold">
                                                     ({master.value}
-                                                    {master.type === 'PERCENTAGE' ? '%' : '₹'})
+                                                    {master.type === 'PERCENTAGE'
+                                                        ? '%'
+                                                        : master.type === 'MONTHLY_FIXED'
+                                                          ? '₹/mo'
+                                                          : '₹'}
+                                                    )
                                                 </span>
                                             )}
                                         </button>
@@ -1004,7 +1017,9 @@ export default function SchemeEditor({ initialScheme, onSave, onCancel, chargesM
                                                     ? '% Percentage'
                                                     : charge.type === 'FIXED'
                                                       ? '₹ Fixed'
-                                                      : 'Matrix'}
+                                                      : charge.type === 'MONTHLY_FIXED'
+                                                        ? '₹/mo Fixed'
+                                                        : 'Matrix'}
                                             </span>
 
                                             {/* Value Badge (if not Matrix) */}
@@ -1012,7 +1027,9 @@ export default function SchemeEditor({ initialScheme, onSave, onCancel, chargesM
                                                 <span className="px-3 py-1 rounded-lg bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 text-xs font-bold border border-slate-200 dark:border-white/10">
                                                     {charge.type === 'PERCENTAGE'
                                                         ? `${charge.value}%`
-                                                        : `₹${charge.value}`}
+                                                        : charge.type === 'MONTHLY_FIXED'
+                                                          ? `₹${charge.value}/mo`
+                                                          : `₹${charge.value}`}
                                                     {charge.type === 'PERCENTAGE' && charge.calculationBasis && (
                                                         <span className="ml-1.5 text-[9px] text-slate-500">
                                                             {charge.calculationBasis === 'LOAN_AMOUNT'
@@ -1030,10 +1047,16 @@ export default function SchemeEditor({ initialScheme, onSave, onCancel, chargesM
                                                 className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${
                                                     charge.impact === 'UPFRONT'
                                                         ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/20'
-                                                        : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20'
+                                                        : charge.impact === 'MONTHLY'
+                                                          ? 'bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-500/20'
+                                                          : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20'
                                                 }`}
                                             >
-                                                {charge.impact === 'UPFRONT' ? 'Upfront' : 'Funded'}
+                                                {charge.impact === 'UPFRONT'
+                                                    ? 'Upfront'
+                                                    : charge.impact === 'MONTHLY'
+                                                      ? 'EMI Add-On'
+                                                      : 'Funded'}
                                             </span>
 
                                             {/* GST Badge */}

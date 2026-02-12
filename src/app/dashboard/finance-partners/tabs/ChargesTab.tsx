@@ -200,17 +200,23 @@ export default function ChargesTab({
                                         </h4>
                                         <div className="flex items-center gap-3 mt-1">
                                             <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest bg-blue-500/10 px-2 py-0.5 rounded">
-                                                {charge.type === 'TABLE' ? 'MATRIX' : charge.type} •{' '}
-                                                {charge.calculationBasis.replace(/_/g, ' ')}
+                                                {charge.type === 'TABLE'
+                                                    ? 'MATRIX'
+                                                    : charge.type === 'MONTHLY_FIXED'
+                                                      ? 'MONTHLY'
+                                                      : charge.type}{' '}
+                                                • {charge.calculationBasis.replace(/_/g, ' ')}
                                             </span>
                                             <span
                                                 className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${
                                                     charge.impact === 'UPFRONT'
                                                         ? 'bg-amber-500/10 text-amber-600'
-                                                        : 'bg-emerald-500/10 text-emerald-600'
+                                                        : charge.impact === 'MONTHLY'
+                                                          ? 'bg-violet-500/10 text-violet-600'
+                                                          : 'bg-emerald-500/10 text-emerald-600'
                                                 }`}
                                             >
-                                                {charge.impact}
+                                                {charge.impact === 'MONTHLY' ? 'EMI ADD-ON' : charge.impact}
                                             </span>
                                         </div>
                                     </div>
@@ -222,6 +228,8 @@ export default function ChargesTab({
                                                 <span className="flex items-center gap-1">
                                                     <Grid3X3 size={18} /> Matrix
                                                 </span>
+                                            ) : charge.type === 'MONTHLY_FIXED' ? (
+                                                `₹${charge.value.toLocaleString()}/mo`
                                             ) : charge.type === 'PERCENTAGE' ? (
                                                 `${charge.value}%`
                                             ) : (
@@ -391,11 +399,17 @@ export default function ChargesTab({
                                     </label>
                                     <select
                                         value={newCharge.type}
-                                        onChange={e => setNewCharge({ ...newCharge, type: e.target.value as any })}
+                                        onChange={e => {
+                                            const type = e.target.value as any;
+                                            const updates: any = { type };
+                                            if (type === 'MONTHLY_FIXED') updates.impact = 'MONTHLY';
+                                            setNewCharge({ ...newCharge, ...updates });
+                                        }}
                                         className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-2xl px-6 py-4 text-xs font-black uppercase outline-none focus:border-blue-500 transition-all appearance-none"
                                     >
                                         <option value="FIXED">Fixed Amount (₹)</option>
                                         <option value="PERCENTAGE">Percentage (%)</option>
+                                        <option value="MONTHLY_FIXED">Monthly Fixed (₹/mo in EMI)</option>
                                         <option value="TABLE">Matrix (Premium Table)</option>
                                     </select>
                                 </div>
@@ -667,19 +681,32 @@ export default function ChargesTab({
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
                                     Customer Impact
+                                    {newCharge.type === 'MONTHLY_FIXED' && (
+                                        <span className="ml-2 text-violet-500 normal-case tracking-normal font-bold">
+                                            (auto-set to Monthly for this type)
+                                        </span>
+                                    )}
                                 </label>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-3 gap-3">
                                     <button
                                         onClick={() => setNewCharge({ ...newCharge, impact: 'UPFRONT' })}
-                                        className={`px-6 py-4 rounded-2xl border font-black uppercase tracking-widest text-[10px] transition-all ${newCharge.impact === 'UPFRONT' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-slate-50 dark:bg-black/40 border-slate-200 dark:border-white/10 text-slate-500 hover:border-blue-500'}`}
+                                        disabled={newCharge.type === 'MONTHLY_FIXED'}
+                                        className={`px-4 py-4 rounded-2xl border font-black uppercase tracking-widest text-[10px] transition-all disabled:opacity-30 disabled:cursor-not-allowed ${newCharge.impact === 'UPFRONT' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-slate-50 dark:bg-black/40 border-slate-200 dark:border-white/10 text-slate-500 hover:border-blue-500'}`}
                                     >
-                                        Upfront Payment
+                                        Upfront
                                     </button>
                                     <button
                                         onClick={() => setNewCharge({ ...newCharge, impact: 'FUNDED' })}
-                                        className={`px-6 py-4 rounded-2xl border font-black uppercase tracking-widest text-[10px] transition-all ${newCharge.impact === 'FUNDED' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-slate-50 dark:bg-black/40 border-slate-200 dark:border-white/10 text-slate-500 hover:border-blue-500'}`}
+                                        disabled={newCharge.type === 'MONTHLY_FIXED'}
+                                        className={`px-4 py-4 rounded-2xl border font-black uppercase tracking-widest text-[10px] transition-all disabled:opacity-30 disabled:cursor-not-allowed ${newCharge.impact === 'FUNDED' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-slate-50 dark:bg-black/40 border-slate-200 dark:border-white/10 text-slate-500 hover:border-blue-500'}`}
                                     >
-                                        Funded in Loan
+                                        Funded
+                                    </button>
+                                    <button
+                                        onClick={() => setNewCharge({ ...newCharge, impact: 'MONTHLY' })}
+                                        className={`px-4 py-4 rounded-2xl border font-black uppercase tracking-widest text-[10px] transition-all ${newCharge.impact === 'MONTHLY' ? 'bg-violet-600 border-violet-600 text-white' : 'bg-slate-50 dark:bg-black/40 border-slate-200 dark:border-white/10 text-slate-500 hover:border-violet-500'}`}
+                                    >
+                                        EMI Add-On
                                     </button>
                                 </div>
                             </div>

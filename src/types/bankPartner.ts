@@ -53,14 +53,14 @@ export interface BankTeamMember {
 }
 
 export type InterestType = 'REDUCING' | 'FLAT';
-export type ChargeType = 'FIXED' | 'PERCENTAGE' | 'TABLE';
+export type ChargeType = 'FIXED' | 'PERCENTAGE' | 'TABLE' | 'MONTHLY_FIXED';
 export type ChargeCalculationBasis =
     | 'LOAN_AMOUNT'
     | 'GROSS_LOAN_AMOUNT'
     | 'VEHICLE_PRICE'
     | 'DISBURSAL_AMOUNT'
     | 'FIXED';
-export type ChargeImpact = 'UPFRONT' | 'FUNDED';
+export type ChargeImpact = 'UPFRONT' | 'FUNDED' | 'MONTHLY';
 
 export interface SchemeTableEntry {
     minAge: number;
