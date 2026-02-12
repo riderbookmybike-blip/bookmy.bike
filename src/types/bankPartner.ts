@@ -15,7 +15,14 @@ export interface BankLocation {
 }
 
 export type MemberStatus = 'ACTIVE' | 'ON_NOTICE' | 'RELEASED';
-export type BankDesignation = 'SYSTEM_ADMIN' | 'EXECUTIVE' | 'TEAM_LEADER' | 'AREA_SALES_MANAGER' | 'REGIONAL_SALES_MANAGER' | 'ZONAL_MANAGER' | 'NATIONAL_SALES_MANAGER';
+export type BankDesignation =
+    | 'SYSTEM_ADMIN'
+    | 'EXECUTIVE'
+    | 'TEAM_LEADER'
+    | 'AREA_SALES_MANAGER'
+    | 'REGIONAL_SALES_MANAGER'
+    | 'ZONAL_MANAGER'
+    | 'NATIONAL_SALES_MANAGER';
 
 export interface BankTeamMember {
     id: string;
@@ -40,14 +47,19 @@ export interface BankTeamMember {
     // Serviceability
     serviceability: {
         states: string[]; // ['Maharashtra', 'Gujarat'] or ['ALL'] for NSM
-        areas: string[];  // ['Pune', 'Mumbai']
+        areas: string[]; // ['Pune', 'Mumbai']
         dealerIds: string[]; // Specific BMB Dealer IDs
     };
 }
 
 export type InterestType = 'REDUCING' | 'FLAT';
 export type ChargeType = 'FIXED' | 'PERCENTAGE' | 'TABLE';
-export type ChargeCalculationBasis = 'LOAN_AMOUNT' | 'GROSS_LOAN_AMOUNT' | 'VEHICLE_PRICE' | 'DISBURSAL_AMOUNT' | 'FIXED';
+export type ChargeCalculationBasis =
+    | 'LOAN_AMOUNT'
+    | 'GROSS_LOAN_AMOUNT'
+    | 'VEHICLE_PRICE'
+    | 'DISBURSAL_AMOUNT'
+    | 'FIXED';
 export type ChargeImpact = 'UPFRONT' | 'FUNDED';
 
 export interface SchemeTableEntry {
@@ -55,6 +67,13 @@ export interface SchemeTableEntry {
     maxAge: number;
     tenure: number;
     rate: number; // Rate %
+}
+
+export interface PremiumTableCell {
+    tenure: number; // e.g. 12, 18, 24, 36 months
+    minLA: number; // Loan Amount range start
+    maxLA: number; // Loan Amount range end
+    value: number; // Charge amount (₹) for this cell
 }
 
 export type TaxStatus = 'INCLUSIVE' | 'EXCLUSIVE' | 'NOT_APPLICABLE';
@@ -68,7 +87,8 @@ export interface SchemeCharge {
     impact: ChargeImpact;
     taxStatus: TaxStatus;
     taxRate?: number; // e.g., 18 for 18% GST
-    tableData?: SchemeTableEntry[]; // Used if type === 'TABLE'
+    tableData?: SchemeTableEntry[]; // Used if type === 'TABLE' (legacy)
+    premiumTable?: PremiumTableCell[]; // Tenure × LA Range matrix
 
     // Integration
     masterChargeId?: string; // Link to a template in chargesMaster
@@ -181,7 +201,7 @@ export const MOCK_BANK_PARTNERS: BankPartner[] = [
         name: 'HDFC Bank',
         identity: {
             fullLogo: 'https://logos-world.net/wp-content/uploads/2021/09/HDFC-Bank-Logo.png',
-            iconLogo: 'https://vignette.wikia.nocookie.net/logopedia/images/e/e4/HDFC_Bank_Logo.png'
+            iconLogo: 'https://vignette.wikia.nocookie.net/logopedia/images/e/e4/HDFC_Bank_Logo.png',
         },
         status: 'ACTIVE',
         overview: {
@@ -194,16 +214,26 @@ export const MOCK_BANK_PARTNERS: BankPartner[] = [
             helpline: '1800-202-6162',
             appLinks: {
                 android: 'https://play.google.com/store/apps/details?id=com.snapwork.hdfc',
-                ios: 'https://apps.apple.com/in/app/hdfc-bank-mobilebanking/id461304235'
-            }
+                ios: 'https://apps.apple.com/in/app/hdfc-bank-mobilebanking/id461304235',
+            },
         },
         admin: {
             name: 'Kshitij Anand',
             phone: '9888877777',
-            email: 'kshitij.anand@hdfcbank.com'
+            email: 'kshitij.anand@hdfcbank.com',
         },
         locations: [
-            { id: 'l1', branchName: 'M G Road', type: 'BRANCH', taluka: 'Pune', state: 'Maharashtra', pincode: '411001', address: '123 MG Road', contactNumber: '020-12345678', isPrimary: true }
+            {
+                id: 'l1',
+                branchName: 'M G Road',
+                type: 'BRANCH',
+                taluka: 'Pune',
+                state: 'Maharashtra',
+                pincode: '411001',
+                address: '123 MG Road',
+                contactNumber: '020-12345678',
+                isPrimary: true,
+            },
         ],
         team: [
             {
@@ -215,7 +245,7 @@ export const MOCK_BANK_PARTNERS: BankPartner[] = [
                 status: 'ACTIVE',
                 dob: '1990-05-15',
                 doj: '2020-01-10',
-                serviceability: { states: ['Maharashtra'], areas: ['Pune'], dealerIds: [] }
+                serviceability: { states: ['Maharashtra'], areas: ['Pune'], dealerIds: [] },
             },
             {
                 id: 't2',
@@ -225,8 +255,8 @@ export const MOCK_BANK_PARTNERS: BankPartner[] = [
                 phone: '9876543211',
                 reportingToId: 't1',
                 status: 'ACTIVE',
-                serviceability: { states: ['Maharashtra'], areas: ['Pune'], dealerIds: [] }
-            }
+                serviceability: { states: ['Maharashtra'], areas: ['Pune'], dealerIds: [] },
+            },
         ],
         schemes: [
             {
@@ -245,20 +275,60 @@ export const MOCK_BANK_PARTNERS: BankPartner[] = [
                 payout: 1.5,
                 payoutType: 'PERCENTAGE',
                 charges: [
-                    { id: 'ch1', name: 'Processing Fee', type: 'PERCENTAGE', value: 2, calculationBasis: 'GROSS_LOAN_AMOUNT', impact: 'UPFRONT', taxStatus: 'NOT_APPLICABLE' },
-                    { id: 'ch2', name: 'Documentation', type: 'FIXED', value: 2065, calculationBasis: 'FIXED', impact: 'UPFRONT', taxStatus: 'NOT_APPLICABLE' }, // 'FIXED' basis is redundant but keeps type safe
-                    { id: 'ch3', name: 'Stamp Duty', type: 'FIXED', value: 590, calculationBasis: 'FIXED', impact: 'UPFRONT', taxStatus: 'NOT_APPLICABLE' },
-                    { id: 'ch4', name: 'Hypothecation', type: 'FIXED', value: 500, calculationBasis: 'FIXED', impact: 'UPFRONT', taxStatus: 'NOT_APPLICABLE' },
-                    { id: 'ch5', name: 'Credit Life Insurance', type: 'FIXED', value: 3000, calculationBasis: 'FIXED', impact: 'FUNDED', taxStatus: 'NOT_APPLICABLE' } // Funded = Added to Loan
+                    {
+                        id: 'ch1',
+                        name: 'Processing Fee',
+                        type: 'PERCENTAGE',
+                        value: 2,
+                        calculationBasis: 'GROSS_LOAN_AMOUNT',
+                        impact: 'UPFRONT',
+                        taxStatus: 'NOT_APPLICABLE',
+                    },
+                    {
+                        id: 'ch2',
+                        name: 'Documentation',
+                        type: 'FIXED',
+                        value: 2065,
+                        calculationBasis: 'FIXED',
+                        impact: 'UPFRONT',
+                        taxStatus: 'NOT_APPLICABLE',
+                    }, // 'FIXED' basis is redundant but keeps type safe
+                    {
+                        id: 'ch3',
+                        name: 'Stamp Duty',
+                        type: 'FIXED',
+                        value: 590,
+                        calculationBasis: 'FIXED',
+                        impact: 'UPFRONT',
+                        taxStatus: 'NOT_APPLICABLE',
+                    },
+                    {
+                        id: 'ch4',
+                        name: 'Hypothecation',
+                        type: 'FIXED',
+                        value: 500,
+                        calculationBasis: 'FIXED',
+                        impact: 'UPFRONT',
+                        taxStatus: 'NOT_APPLICABLE',
+                    },
+                    {
+                        id: 'ch5',
+                        name: 'Credit Life Insurance',
+                        type: 'FIXED',
+                        value: 3000,
+                        calculationBasis: 'FIXED',
+                        impact: 'FUNDED',
+                        taxStatus: 'NOT_APPLICABLE',
+                    }, // Funded = Added to Loan
                 ],
                 applicability: {
                     brands: 'ALL',
                     models: 'ALL',
-                    dealerships: 'ALL'
-                }
-            }
+                    dealerships: 'ALL',
+                },
+            },
         ],
         chargesMaster: [],
-        management: { states: [], areas: [], dealerIds: [] }
-    }
+        management: { states: [], areas: [], dealerIds: [] },
+    },
 ];

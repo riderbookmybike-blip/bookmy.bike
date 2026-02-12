@@ -122,13 +122,6 @@
         margin: 0;
     }
 
-    html,
-    body {
-        width: auto !important;
-        height: auto !important;
-        overflow: visible !important;
-    }
-
     * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
@@ -149,24 +142,30 @@
         padding: 0 !important;
         gap: 0 !important;
         display: block !important;
-        min-height: auto !important;
+        min-height: 0 !important;
     }
 
     .a4-page {
         width: var(--a4-width) !important;
         height: var(--a4-height) !important;
-        min-height: var(--a4-height) !important;
+        min-height: 0 !important;
         border-radius: 0 !important;
         box-shadow: none !important;
         border: none !important;
         page-break-after: always;
         break-after: page;
         break-inside: avoid;
-        overflow: visible !important;
+        overflow: hidden !important;
     }
 
     .a4-grid {
-        min-height: var(--a4-height) !important;
+        height: var(--a4-height) !important;
+        min-height: 0 !important;
         padding: 20mm 18mm 18mm !important;
+    }
+
+    .a4-page:last-child {
+        page-break-after: auto;
+        break-after: auto;
     }
 }

@@ -27,6 +27,7 @@ import {
     Facebook,
     Twitter,
     Linkedin,
+    Download,
 } from 'lucide-react';
 
 import { formatDisplayId } from '@/utils/displayId';
@@ -181,6 +182,17 @@ const OptionRow = ({
             </div>
         )}
     </div>
+);
+
+const FooterPrintButton = ({ onClick }: { onClick: () => void }) => (
+    <button
+        onClick={onClick}
+        className="no-print w-8 h-8 rounded-full border border-slate-200 bg-white/80 text-slate-600 hover:text-slate-900 hover:border-slate-300 hover:bg-white transition"
+        title="Download PDF"
+        aria-label="Download PDF"
+    >
+        <Download size={14} className="mx-auto" />
+    </button>
 );
 
 const DossierGroup = ({
@@ -590,13 +602,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                 <div className="h-4 w-px bg-slate-100" />
                                 <div className="text-[10px] uppercase tracking-widest text-slate-400">Page 1 of 13</div>
                             </div>
-                            <button
-                                onClick={handlePrint}
-                                disabled={isPdfGenerating}
-                                className="no-print px-6 py-2 rounded-full bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-900/20 active:scale-95 transition-transform disabled:opacity-50"
-                            >
-                                {isPdfGenerating ? 'Generating...' : 'Download PDF'}
-                            </button>
+                            <FooterPrintButton onClick={handlePrint} />
                         </div>
                     </div>
                 </div>
@@ -746,6 +752,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
                         </div>
+                        <FooterPrintButton onClick={handlePrint} />
                     </div>
                 </div>
             </section>
@@ -905,6 +912,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
                         </div>
+                        <FooterPrintButton onClick={handlePrint} />
                     </div>
                 </div>
             </section>
@@ -971,6 +979,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
                         </div>
+                        <FooterPrintButton onClick={handlePrint} />
                     </div>
                 </div>
             </section>
@@ -1073,6 +1082,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
                         </div>
+                        <FooterPrintButton onClick={handlePrint} />
                     </div>
                 </div>
             </section>
@@ -1138,6 +1148,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
                         </div>
+                        <FooterPrintButton onClick={handlePrint} />
                     </div>
                 </div>
             </section>
@@ -1198,6 +1209,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
                         </div>
+                        <FooterPrintButton onClick={handlePrint} />
                     </div>
                 </div>
             </section>
@@ -1263,6 +1275,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
                         </div>
+                        <FooterPrintButton onClick={handlePrint} />
                     </div>
                 </div>
             </section>
@@ -1342,6 +1355,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
                         </div>
+                        <FooterPrintButton onClick={handlePrint} />
                     </div>
                 </div>
             </section>
@@ -1426,6 +1440,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
                         </div>
+                        <FooterPrintButton onClick={handlePrint} />
                     </div>
                 </div>
             </section>
@@ -1494,6 +1509,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
                         </div>
+                        <FooterPrintButton onClick={handlePrint} />
                     </div>
                 </div>
             </section>
@@ -1553,6 +1569,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
                         </div>
+                        <FooterPrintButton onClick={handlePrint} />
                     </div>
                 </div>
             </section>
@@ -1635,7 +1652,10 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                 Official & Verified
                             </span>
                         </div>
-                        <div className="text-[10px] uppercase tracking-widest text-slate-400">Page 13 of 13</div>
+                        <div className="flex items-center gap-3">
+                            <div className="text-[10px] uppercase tracking-widest text-slate-400">Page 13 of 13</div>
+                            <FooterPrintButton onClick={handlePrint} />
+                        </div>
                     </div>
                 </div>
             </section>
