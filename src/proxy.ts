@@ -60,6 +60,9 @@ export async function proxy(request: NextRequest) {
                             name,
                             value,
                             ...options,
+                            path: '/',
+                            sameSite: 'lax',
+                            secure: !isLocalhost,
                             ...(cookieDomain && !options?.domain ? { domain: cookieDomain } : {}),
                         });
                     });

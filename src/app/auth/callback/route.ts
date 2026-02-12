@@ -12,6 +12,8 @@ export async function GET(request: NextRequest) {
 
     if (code) {
         const cookieStore = await cookies();
+        const host = request.headers.get('host') || '';
+        const isLocalhost = host.includes('localhost') || host.startsWith('127.') || host.startsWith('0.0.0.0');
         const supabase = createServerClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -22,7 +24,14 @@ export async function GET(request: NextRequest) {
                     },
                     setAll(cookiesToSet) {
                         try {
-                            cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
+                            cookiesToSet.forEach(({ name, value, options }) =>
+                                cookieStore.set(name, value, {
+                                    ...options,
+                                    path: '/',
+                                    sameSite: 'lax',
+                                    secure: !isLocalhost,
+                                })
+                            );
                         } catch {
                             // The `setAll` method was called from a Server Component.
                             // This can be ignored if you have middleware refreshing
@@ -35,12 +44,10 @@ export async function GET(request: NextRequest) {
 
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (!error) {
-
             const forwardedHost = request.headers.get('x-forwarded-host'); // original origin before load balancer
             const isLocalEnv = process.env.NODE_ENV === 'development';
 
             // Log environment details
-
 
             if (isLocalEnv) {
                 return NextResponse.redirect(`${origin}${next}`);

@@ -1,11 +1,14 @@
 import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { AccessDenied } from '@/components/auth/AccessDenied';
 import { RegistrationConsent } from '@/components/auth/RegistrationConsent';
 
 export default async function VerifyAccessPage({ searchParams }: { searchParams?: { next?: string } }) {
     const cookieStore = await cookies();
+    const headerList = await headers();
+    const host = headerList.get('host') || '';
+    const isLocalhost = host.includes('localhost') || host.startsWith('127.') || host.startsWith('0.0.0.0');
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -15,7 +18,14 @@ export default async function VerifyAccessPage({ searchParams }: { searchParams?
                     return cookieStore.getAll();
                 },
                 setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
+                    cookiesToSet.forEach(({ name, value, options }) =>
+                        cookieStore.set(name, value, {
+                            ...options,
+                            path: '/',
+                            sameSite: 'lax',
+                            secure: !isLocalhost,
+                        })
+                    );
                 },
             },
         }
