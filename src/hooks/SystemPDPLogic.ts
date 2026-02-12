@@ -598,6 +598,7 @@ export function useSystemPDPLogic({
 
     // Dynamic Finance Logic
     const financeScheme = initialFinance?.scheme;
+    const financeBank = initialFinance?.bank;
     useEffect(() => {
         if (typeof window === 'undefined' || !financeScheme) return;
         try {
@@ -611,6 +612,7 @@ export function useSystemPDPLogic({
                     maxLoanAmount: financeScheme.maxLoanAmount,
                     charges: financeScheme.charges || [],
                 },
+                bankName: financeBank?.name || null,
                 cachedAt: Date.now(),
                 expiresAt: Date.now() + 24 * 60 * 60 * 1000,
             };

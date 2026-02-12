@@ -89,11 +89,9 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
         const supabase = createClient();
 
         const loadMemberships = async (userId: string) => {
-            const { data, error } = await supabase
-                .from('memberships')
-                .select('role, tenant_id, tenants!inner(id, slug, name, type)')
-                .eq('user_id', userId)
-                .eq('status', 'ACTIVE');
+            const { data: rawMemberships, error } = await supabase.rpc('get_user_memberships', {
+                p_user_id: userId,
+            });
 
             if (error && (error.message || error.code)) {
                 const message = (error.message || error.code || '').toString();
@@ -104,21 +102,46 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                 return;
             }
 
-            if (data) {
-                setMemberships(
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    data.map((m: any) => {
-                        return {
-                            role: m.role,
-                            tenant_id: m.tenant_id,
-                            tenants: {
-                                ...m.tenants,
-                                district_name: null, // Will be resolved separately if needed
-                            },
-                        };
-                    })
-                );
+            const mapped = (Array.isArray(rawMemberships) ? rawMemberships : []).map((m: any) => ({
+                role: m.role,
+                tenant_id: m.tenant_id,
+                tenants: {
+                    id: m.tenant_id,
+                    slug: m.tenant_slug || '',
+                    name: m.tenant_name || '',
+                    type: m.tenant_type || '',
+                    studio_id: m.studio_id || null,
+                    district_name: m.district_name || null,
+                },
+            })) as Membership[];
+
+            if (mapped.length === 0) {
+                const { data: fallbackMemberships } = await supabase
+                    .from('id_team')
+                    .select('id, user_id, tenant_id, role, status, id_tenants!inner(id, name, slug, type, studio_id)')
+                    .eq('user_id', userId)
+                    .eq('status', 'ACTIVE');
+
+                const fallback = (fallbackMemberships || []).map((m: any) => {
+                    const t = Array.isArray(m.id_tenants) ? m.id_tenants[0] : m.id_tenants;
+                    return {
+                        role: m.role,
+                        tenant_id: m.tenant_id,
+                        tenants: {
+                            id: t?.id,
+                            slug: t?.slug || '',
+                            name: t?.name || '',
+                            type: t?.type || '',
+                            studio_id: t?.studio_id || null,
+                            district_name: null,
+                        },
+                    } as Membership;
+                });
+                setMemberships(fallback);
+                return;
             }
+
+            setMemberships(mapped);
         };
 
         const fetchData = async () => {
@@ -625,6 +648,8 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                                                                 })
                                                                 .map(m => {
                                                                     const isDealer = m.tenants.type === 'DEALER';
+                                                                    const isBank = m.tenants.type === 'BANK';
+                                                                    const isTeamTenant = isDealer || isBank;
                                                                     const isActive =
                                                                         isTeamMode && activeTenantId === m.tenant_id;
 
@@ -678,7 +703,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                                                                             {/* Simple Pill Buttons */}
                                                                             <div className="flex items-center gap-1.5 shrink-0">
                                                                                 {/* Green/Red Toggle for Dealers */}
-                                                                                {isDealer && (
+                                                                                {isTeamTenant && (
                                                                                     <button
                                                                                         onClick={e => {
                                                                                             e.preventDefault();

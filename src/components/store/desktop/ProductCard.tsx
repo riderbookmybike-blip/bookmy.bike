@@ -92,6 +92,8 @@ export const ProductCard = ({
     const [cachedScheme, setCachedScheme] = useState<{
         interestRate: number;
         interestType?: 'FLAT' | 'REDUCING';
+        schemeName?: string;
+        bankName?: string;
     } | null>(null);
 
     useEffect(() => {
@@ -105,6 +107,8 @@ export const ProductCard = ({
                 setCachedScheme({
                     interestRate: parsed.scheme.interestRate,
                     interestType: parsed.scheme.interestType,
+                    schemeName: parsed.scheme.name || parsed.scheme.id || undefined,
+                    bankName: parsed.bankName || undefined,
                 });
             }
         } catch {}
@@ -447,7 +451,7 @@ export const ProductCard = ({
                                     </div>
                                 </div>
                             </div>
-                            <div className="space-y-1">
+                            <div className="space-y-1 group/emilist relative">
                                 <p className="text-[9px] font-bold text-slate-400 dark:text-slate-300 uppercase tracking-widest">
                                     EMI
                                 </p>
@@ -461,6 +465,30 @@ export const ProductCard = ({
                                         </p>
                                     </div>
                                 </div>
+                                {emiValue !== null && (
+                                    <div className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-slate-900 dark:bg-slate-800 text-white text-[10px] rounded-xl shadow-xl opacity-0 invisible group-hover/emilist:opacity-100 group-hover/emilist:visible transition-all duration-200 z-50 pointer-events-none">
+                                        {(cachedScheme?.bankName || cachedScheme?.schemeName) && (
+                                            <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-white/10">
+                                                <span className="font-black text-brand-primary uppercase tracking-wider">
+                                                    {cachedScheme.bankName || 'Financier'}
+                                                </span>
+                                                {cachedScheme.schemeName && (
+                                                    <span className="text-slate-400">· {cachedScheme.schemeName}</span>
+                                                )}
+                                            </div>
+                                        )}
+                                        <p className="leading-relaxed">
+                                            EMI on{' '}
+                                            <span className="font-bold text-green-400">
+                                                ₹{(downpayment || 0).toLocaleString('en-IN')}
+                                            </span>{' '}
+                                            downpayment at{' '}
+                                            <span className="font-bold text-green-400">{tenure} months</span>
+                                            {emiIsApprox ? ' (approx)' : ''}.
+                                        </p>
+                                        <div className="absolute bottom-0 left-6 translate-y-1/2 rotate-45 w-2 h-2 bg-slate-900 dark:bg-slate-800"></div>
+                                    </div>
+                                )}
                             </div>
                             {districtLabelDisplay && (
                                 <div className="mt-2">
@@ -830,6 +858,16 @@ export const ProductCard = ({
                         </div>
                         {emiValue !== null && (
                             <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-slate-900 dark:bg-slate-800 text-white text-[10px] rounded-xl shadow-xl opacity-0 invisible group-hover/emi:opacity-100 group-hover/emi:visible transition-all duration-200 z-50 pointer-events-none">
+                                {(cachedScheme?.bankName || cachedScheme?.schemeName) && (
+                                    <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-white/10">
+                                        <span className="font-black text-brand-primary uppercase tracking-wider">
+                                            {cachedScheme.bankName || 'Financier'}
+                                        </span>
+                                        {cachedScheme.schemeName && (
+                                            <span className="text-slate-400">· {cachedScheme.schemeName}</span>
+                                        )}
+                                    </div>
+                                )}
                                 <p className="leading-relaxed">
                                     This EMI is calculated on{' '}
                                     <span className="font-bold text-green-400">
