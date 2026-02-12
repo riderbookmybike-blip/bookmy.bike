@@ -3813,6 +3813,112 @@ export async function getDealershipInfo(tenantId: string) {
 }
 
 /**
+ * Lists all dealership-type tenants for assignment.
+ */
+export async function getDealerships() {
+    const { data, error } = await adminClient
+        .from('id_tenants')
+        .select('id, name, location, studio_id, display_id')
+        .eq('type', 'DEALER')
+        .order('name', { ascending: true });
+
+    if (error) {
+        console.error('Error fetching dealerships:', error);
+        return [];
+    }
+
+    return (data || []).map((d: any) => ({
+        id: d.id,
+        name: d.name,
+        location: d.location,
+        studioId: d.studio_id || d.display_id || null,
+    }));
+}
+
+/**
+ * Reassigns a quote to a different dealership.
+ * Updates tenant_id, studio_id, and commercials.dealer.
+ */
+export async function reassignQuoteDealership(
+    quoteId: string,
+    dealerTenantId: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        // 1. Fetch dealer info
+        const { data: dealer, error: dealerError } = await adminClient
+            .from('id_tenants')
+            .select('id, name, location, studio_id, display_id')
+            .eq('id', dealerTenantId)
+            .single();
+
+        if (dealerError || !dealer) {
+            return { success: false, error: 'Dealership not found' };
+        }
+
+        // 2. Fetch current quote commercials
+        const { data: quote, error: quoteError } = await adminClient
+            .from('crm_quotes')
+            .select('commercials')
+            .eq('id', quoteId)
+            .single();
+
+        if (quoteError || !quote) {
+            return { success: false, error: 'Quote not found' };
+        }
+
+        const commercials = (quote as any).commercials || {};
+        const studioId = dealer.studio_id || dealer.display_id || null;
+
+        // 3. Update commercials.dealer + commercials.pricing_snapshot.dealer
+        const updatedCommercials = {
+            ...commercials,
+            dealer: {
+                ...(commercials.dealer || {}),
+                dealer_id: dealer.id,
+                dealer_name: dealer.name,
+                name: dealer.name,
+                studio_id: studioId,
+                location: dealer.location,
+            },
+            pricing_snapshot: {
+                ...(commercials.pricing_snapshot || {}),
+                dealer: {
+                    ...(commercials.pricing_snapshot?.dealer || {}),
+                    dealer_id: dealer.id,
+                    dealer_name: dealer.name,
+                    name: dealer.name,
+                    id: dealer.id,
+                    studio_id: studioId,
+                },
+            },
+        };
+
+        // 4. Atomic update: tenant_id, studio_id, and commercials
+        const { error: updateError } = await adminClient
+            .from('crm_quotes')
+            .update({
+                tenant_id: dealer.id,
+                studio_id: studioId,
+                commercials: updatedCommercials,
+            })
+            .eq('id', quoteId);
+
+        if (updateError) {
+            console.error('reassignQuoteDealership Error:', updateError);
+            return { success: false, error: updateError.message };
+        }
+
+        // 5. Log the event
+        await logQuoteEvent(quoteId, `Dealership changed to ${dealer.name}`, null, 'team');
+
+        return { success: true };
+    } catch (error: any) {
+        console.error('reassignQuoteDealership Error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
  * Fetches 3 alternative products for recommendations.
  * Checks cat_recommendations table first, fallbacks to similarity logic.
  */

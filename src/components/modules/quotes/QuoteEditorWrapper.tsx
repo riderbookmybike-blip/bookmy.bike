@@ -313,6 +313,7 @@ export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: Quot
             onSave={handleSave}
             onSendToCustomer={handleSendToCustomer}
             onConfirmBooking={handleConfirmBooking}
+            onRefresh={loadQuote}
             isEditable={quote.status === 'DRAFT' || quote.status === 'IN_REVIEW'}
         />
     );

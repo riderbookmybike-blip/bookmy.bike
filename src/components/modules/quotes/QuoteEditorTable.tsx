@@ -62,6 +62,8 @@ import {
     getQuoteMarketplaceUrl,
     getDealershipInfo,
     getAlternativeRecommendations,
+    getDealerships,
+    reassignQuoteDealership,
 } from '@/actions/crm';
 import { generatePremiumPDF } from '@/utils/pdfGenerator';
 import { PremiumQuoteTemplate } from './PremiumQuoteTemplate';
@@ -296,6 +298,7 @@ interface QuoteEditorTableProps {
     onSave: (data: Partial<QuoteData>) => Promise<void>;
     onSendToCustomer: () => Promise<void>;
     onConfirmBooking: () => Promise<void>;
+    onRefresh?: () => void;
     isEditable?: boolean;
 }
 
@@ -594,6 +597,7 @@ export default function QuoteEditorTable({
     onSave,
     onSendToCustomer,
     onConfirmBooking,
+    onRefresh,
     isEditable = true,
 }: QuoteEditorTableProps) {
     const [localPricing, setLocalPricing] = useState(quote.pricing);
@@ -616,6 +620,18 @@ export default function QuoteEditorTable({
             getAlternativeRecommendations(quote.vehicle.skuId).then(setAlternativeBikes);
         }
     }, [quote.tenantId, quote.vehicle?.skuId]);
+
+    // Dealer reassignment
+    const [dealerList, setDealerList] = useState<
+        { id: string; name: string; location: string; studioId: string | null }[]
+    >([]);
+    const [dealerDropdownOpen, setDealerDropdownOpen] = useState(false);
+    const [dealerSearchQuery, setDealerSearchQuery] = useState('');
+    const [isReassigningDealer, setIsReassigningDealer] = useState(false);
+
+    useEffect(() => {
+        getDealerships().then(setDealerList);
+    }, []);
     const [hasChanges, setHasChanges] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [pendingChanges, setPendingChanges] = useState<QuoteChange[]>([]);
@@ -1689,19 +1705,111 @@ export default function QuoteEditorTable({
                                         </p>
                                     </div>
 
-                                    {quote.studioName && (
-                                        <div className="flex items-center gap-1.5 mt-1 pt-1 border-t border-slate-100 dark:border-white/5">
-                                            <Building2 size={10} className="text-indigo-500 dark:text-white" />
-                                            <span className="text-[9px] font-bold text-indigo-600 dark:text-white uppercase tracking-tight">
-                                                {quote.studioName}
+                                    <div className="relative">
+                                        <button
+                                            onClick={() => setDealerDropdownOpen(!dealerDropdownOpen)}
+                                            className={`flex items-center gap-1.5 mt-1 pt-1 border-t border-slate-100 dark:border-white/5 cursor-pointer hover:opacity-80 transition-opacity ${
+                                                !quote.studioName ? 'animate-pulse' : ''
+                                            }`}
+                                        >
+                                            <Building2
+                                                size={10}
+                                                className={
+                                                    quote.studioName
+                                                        ? 'text-indigo-500 dark:text-white'
+                                                        : 'text-amber-500'
+                                                }
+                                            />
+                                            <span
+                                                className={`text-[9px] font-bold uppercase tracking-tight ${
+                                                    quote.studioName
+                                                        ? 'text-indigo-600 dark:text-white'
+                                                        : 'text-amber-600 dark:text-amber-400'
+                                                }`}
+                                            >
+                                                {quote.studioName || 'SELECT DEALERSHIP'}
                                                 {quote.studioId && (
                                                     <span className="opacity-50 ml-1">
                                                         #{quote.studioId.slice(0, 6)}
                                                     </span>
                                                 )}
                                             </span>
-                                        </div>
-                                    )}
+                                            <ChevronDown size={10} className="text-slate-400" />
+                                        </button>
+                                        {dealerDropdownOpen && (
+                                            <div className="absolute top-full left-0 mt-1 w-72 bg-white dark:bg-[#1a1d23] border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+                                                <div className="p-2 border-b border-slate-100 dark:border-white/5">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search dealerships..."
+                                                        value={dealerSearchQuery}
+                                                        onChange={e => setDealerSearchQuery(e.target.value)}
+                                                        className="w-full text-[11px] px-3 py-2 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-white placeholder:text-slate-400"
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                                <div className="max-h-48 overflow-y-auto">
+                                                    {dealerList
+                                                        .filter(
+                                                            d =>
+                                                                !dealerSearchQuery ||
+                                                                d.name
+                                                                    .toLowerCase()
+                                                                    .includes(dealerSearchQuery.toLowerCase()) ||
+                                                                (d.location &&
+                                                                    d.location
+                                                                        .toLowerCase()
+                                                                        .includes(dealerSearchQuery.toLowerCase()))
+                                                        )
+                                                        .map(d => (
+                                                            <button
+                                                                key={d.id}
+                                                                disabled={isReassigningDealer}
+                                                                onClick={async () => {
+                                                                    setIsReassigningDealer(true);
+                                                                    const result = await reassignQuoteDealership(
+                                                                        quote.id,
+                                                                        d.id
+                                                                    );
+                                                                    setIsReassigningDealer(false);
+                                                                    setDealerDropdownOpen(false);
+                                                                    setDealerSearchQuery('');
+                                                                    if (result.success) {
+                                                                        toast.success(
+                                                                            `Dealership changed to ${d.name}`
+                                                                        );
+                                                                        onRefresh?.();
+                                                                    } else {
+                                                                        toast.error(
+                                                                            result.error || 'Failed to reassign'
+                                                                        );
+                                                                    }
+                                                                }}
+                                                                className={`w-full text-left px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors border-b border-slate-50 dark:border-white/5 last:border-0 ${
+                                                                    d.id === quote.tenantId
+                                                                        ? 'bg-indigo-50 dark:bg-indigo-500/10'
+                                                                        : ''
+                                                                }`}
+                                                            >
+                                                                <p className="text-[10px] font-black text-slate-800 dark:text-white uppercase tracking-wider">
+                                                                    {d.name}
+                                                                </p>
+                                                                {d.location && (
+                                                                    <p className="text-[9px] text-slate-400 mt-0.5">
+                                                                        {d.location}
+                                                                    </p>
+                                                                )}
+                                                            </button>
+                                                        ))}
+                                                    {dealerList.length === 0 && (
+                                                        <p className="text-[10px] text-slate-400 text-center py-4">
+                                                            No dealerships found
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
