@@ -403,7 +403,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
     }, [quote.vehicle?.imageUrl, quote.display_id]);
 
     return (
-        <div className="dossier-stage">
+        <div className="dossier-stage a4-debug-outline">
             {/* Page 1 - Welcome */}
             <section
                 id="dossier-page-1"

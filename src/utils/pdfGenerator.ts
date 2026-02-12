@@ -46,41 +46,31 @@ export const generatePremiumPDF = async (elementIds: string[], fileName: string)
                 backgroundColor: '#ffffff',
                 scrollX: 0,
                 scrollY: -window.scrollY,
-                onclone: clonedDoc => {
-                    console.log('[PDF] Aggressively sanitizing cloned document styles...');
+                onclone: (clonedDoc: Document, clonedElement: HTMLElement) => {
+                    console.log('[PDF] Inlining computed styles for pixel-perfect capture...');
 
-                    // 1. Sanitize all <style> tags
-                    const styleTags = clonedDoc.querySelectorAll('style');
-                    styleTags.forEach((style, idx) => {
-                        const original = style.innerHTML;
-                        if (original.includes('lab(') || original.includes('oklch(')) {
-                            console.log(`[PDF] Stripping modern colors from style tag #${idx}`);
-                            // Replace with a regex that handles various spacing/formats
-                            style.innerHTML = original
-                                .replace(/lab\([^)]+\)/gi, '#000000')
-                                .replace(/oklch\([^)]+\)/gi, '#000000');
-                        }
-                    });
+                    // getComputedStyle ALWAYS returns colors as rgb()/rgba(),
+                    // never modern oklab/oklch/lab — so this is inherently safe.
+                    const view = clonedDoc.defaultView;
+                    if (view) {
+                        const inlineComputed = (el: Element) => {
+                            if (!(el instanceof HTMLElement)) return;
+                            try {
+                                const computed = view.getComputedStyle(el);
+                                // Copy all computed properties as inline styles
+                                el.style.cssText = computed.cssText;
+                            } catch {
+                                // Skip elements that can't be introspected
+                            }
+                        };
+                        inlineComputed(clonedElement);
+                        clonedElement.querySelectorAll('*').forEach(inlineComputed);
+                    }
 
-                    // 2. Scan all elements for inline styles
-                    const allElements = clonedDoc.querySelectorAll('*');
-                    allElements.forEach(el => {
-                        const styleAttr = el.getAttribute('style');
-                        if (styleAttr && (styleAttr.includes('lab(') || styleAttr.includes('oklch('))) {
-                            const sanitized = styleAttr
-                                .replace(/lab\([^)]+\)/gi, '#000000')
-                                .replace(/oklch\([^)]+\)/gi, '#000000');
-                            el.setAttribute('style', sanitized);
-                        }
-                    });
+                    // Now safe to remove ALL stylesheets — every style is inlined
+                    clonedDoc.querySelectorAll('style, link[rel="stylesheet"]').forEach(s => s.remove());
 
-                    // 3. Remove all <link> tags to external stylesheets to prevent html2canvas
-                    // from trying to parse external modern CSS (Tailwind/Next.js)
-                    // We only want the internal styles we've sanitized or that are safe
-                    const links = clonedDoc.querySelectorAll('link[rel="stylesheet"]');
-                    links.forEach(link => link.remove());
-
-                    console.log('[PDF] Sanitization complete.');
+                    console.log('[PDF] Style inlining complete.');
                 },
             });
 

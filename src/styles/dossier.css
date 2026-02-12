@@ -31,6 +31,12 @@
     overflow: visible;
 }
 
+/* Debug: show A4 outline for layout alignment */
+.a4-debug-outline .a4-page {
+    outline: 1px dashed rgba(59, 130, 246, 0.7);
+    outline-offset: -1px;
+}
+
 /* Edge Splashes */
 .a4-page::before {
     content: '';
@@ -116,6 +122,13 @@
         margin: 0;
     }
 
+    html,
+    body {
+        width: auto !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
     * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
@@ -135,6 +148,8 @@
         background: #ffffff !important;
         padding: 0 !important;
         gap: 0 !important;
+        display: block !important;
+        min-height: auto !important;
     }
 
     .a4-page {
@@ -146,7 +161,8 @@
         border: none !important;
         page-break-after: always;
         break-after: page;
-        overflow: hidden !important;
+        break-inside: avoid;
+        overflow: visible !important;
     }
 
     .a4-grid {
