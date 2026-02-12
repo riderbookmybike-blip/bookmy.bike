@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
 
         const { data: member } = await adminClient
             .from('id_members')
-            .select('id, full_name, primary_email, primary_phone')
+            .select('id, display_id, full_name, primary_email, primary_phone, date_of_birth, email, phone, whatsapp')
             .in('primary_phone', candidates)
             .order('created_at', { ascending: true })
             .maybeSingle();
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
 
         const { data: contactMember } = await adminClient
             .from('id_members')
-            .select('id, full_name, primary_email, primary_phone')
+            .select('id, display_id, full_name, primary_email, primary_phone, date_of_birth, email, phone, whatsapp')
             .eq('id', contact.member_id)
             .maybeSingle();
 

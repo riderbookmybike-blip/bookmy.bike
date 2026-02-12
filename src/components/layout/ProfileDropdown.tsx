@@ -96,7 +96,11 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                 .eq('status', 'ACTIVE');
 
             if (error && (error.message || error.code)) {
-                console.error('Error loading memberships:', error.message || error.code);
+                const message = (error.message || error.code || '').toString();
+                if (message.includes('AbortError')) {
+                    return;
+                }
+                console.error('Error loading memberships:', message);
                 return;
             }
 

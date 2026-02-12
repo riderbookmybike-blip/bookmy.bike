@@ -5,14 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { generateDisplayId } from '@/lib/displayId';
 import { FinanceRoutingTable } from '@/types/bankPartner';
 
-
-
-export async function onboardBank(formData: {
-    bankName: string;
-    website: string;
-    adminPhone: string;
-    slug?: string;
-}) {
+export async function onboardBank(formData: { bankName: string; website: string; adminPhone: string; slug?: string }) {
     console.log('[OnboardBank] Starting onboarding for:', formData.bankName);
 
     try {
@@ -46,9 +39,9 @@ export async function onboardBank(formData: {
                 type: 'BANK',
                 status: 'ACTIVE',
                 config: {
-                    website: formData.website
+                    website: formData.website,
                 },
-                location: 'Headquarters' // Default
+                location: 'Headquarters', // Default
             })
             .select()
             .single();
@@ -86,14 +79,12 @@ export async function onboardBank(formData: {
         console.log('[OnboardBank] Member ID resolved:', memberId);
 
         // 5. Link Member to Tenant in id_team
-        const { error: teamError } = await adminClient
-            .from('id_team')
-            .insert({
-                tenant_id: tenant.id,
-                user_id: memberId,
-                role: 'OWNER',
-                status: 'ACTIVE'
-            });
+        const { error: teamError } = await adminClient.from('id_team').insert({
+            tenant_id: tenant.id,
+            user_id: memberId,
+            role: 'OWNER',
+            status: 'ACTIVE',
+        });
 
         if (teamError) {
             console.error('[OnboardBank] Team Error:', teamError);
@@ -128,7 +119,7 @@ export async function updateBankSchemes(bankId: string, schemes: any[]) {
         // 2. Update config with new schemes
         const newConfig = {
             ...(tenant.config || {}),
-            schemes
+            schemes,
         };
 
         const { error: updateError } = await adminClient
@@ -146,16 +137,19 @@ export async function updateBankSchemes(bankId: string, schemes: any[]) {
     }
 }
 
-export async function updateBankIdentity(bankId: string, updates: {
-    fullLogo?: string;
-    iconLogo?: string;
-    description?: string;
-    website?: string;
-    whatsapp?: string;
-    customerCare?: string;
-    helpline?: string;
-    appLinks?: { android?: string; ios?: string };
-}) {
+export async function updateBankIdentity(
+    bankId: string,
+    updates: {
+        fullLogo?: string;
+        iconLogo?: string;
+        description?: string;
+        website?: string;
+        whatsapp?: string;
+        customerCare?: string;
+        helpline?: string;
+        appLinks?: { android?: string; ios?: string };
+    }
+) {
     console.log('[UpdateBankIdentity] Updating identity for:', bankId);
 
     try {
@@ -180,9 +174,9 @@ export async function updateBankIdentity(bankId: string, updates: {
                 helpline: updates.helpline || tenant.config?.overview?.helpline,
                 appLinks: {
                     ...(tenant.config?.overview?.appLinks || {}),
-                    ...(updates.appLinks || {})
-                }
-            }
+                    ...(updates.appLinks || {}),
+                },
+            },
         };
 
         const { error: updateError } = await adminClient
@@ -244,7 +238,7 @@ export async function saveFinanceRouting(routing: FinanceRoutingTable) {
 
         const newConfig = {
             ...(tenant.config || {}),
-            financeRouting: routing
+            financeRouting: routing,
         };
 
         const { error: updateError } = await adminClient
@@ -260,6 +254,62 @@ export async function saveFinanceRouting(routing: FinanceRoutingTable) {
         return { success: false, error: error.message };
     }
 }
+export async function getBankActivityLog(bankId: string, limit = 10) {
+    try {
+        // 1. Fetch recent finance attempts for this bank
+        const { data: attempts, error } = await adminClient
+            .from('crm_quote_finance_attempts')
+            .select('id, quote_id, status, scheme_code, loan_amount, emi, created_at, updated_at, bank_name')
+            .eq('bank_id', bankId)
+            .order('created_at', { ascending: false })
+            .limit(limit);
+
+        if (error) throw error;
+
+        // 2. Build activity items from attempts
+        const activities = (attempts || []).map((a: any) => {
+            const statusLabels: Record<string, string> = {
+                IN_PROCESS: 'Application In Process',
+                UNDERWRITING: 'Underwriting Review',
+                DOC_PENDING: 'Documents Pending',
+                APPROVED: 'Loan Approved',
+                REJECTED: 'Application Rejected',
+            };
+
+            const statusColors: Record<string, string> = {
+                IN_PROCESS: 'blue',
+                UNDERWRITING: 'amber',
+                DOC_PENDING: 'orange',
+                APPROVED: 'emerald',
+                REJECTED: 'rose',
+            };
+
+            const detail =
+                [
+                    a.scheme_code ? `Scheme: ${a.scheme_code}` : null,
+                    a.loan_amount ? `Loan: ₹${Number(a.loan_amount).toLocaleString('en-IN')}` : null,
+                    a.emi ? `EMI: ₹${Number(a.emi).toLocaleString('en-IN')}` : null,
+                ]
+                    .filter(Boolean)
+                    .join(' · ') || 'Finance attempt created';
+
+            return {
+                id: a.id,
+                title: statusLabels[a.status] || a.status,
+                detail,
+                time: a.updated_at || a.created_at,
+                color: statusColors[a.status] || 'blue',
+                quoteId: a.quote_id,
+            };
+        });
+
+        return { success: true, activities };
+    } catch (error: any) {
+        console.error('[getBankActivityLog] Error:', error);
+        return { success: false, error: error.message, activities: [] };
+    }
+}
+
 export async function updateBankChargesMaster(bankId: string, chargesMaster: any[]) {
     console.log('[UpdateBankChargesMaster] Updating charges master for:', bankId);
 
@@ -274,7 +324,7 @@ export async function updateBankChargesMaster(bankId: string, chargesMaster: any
 
         const newConfig = {
             ...(tenant.config || {}),
-            chargesMaster
+            chargesMaster,
         };
 
         const { error: updateError } = await adminClient

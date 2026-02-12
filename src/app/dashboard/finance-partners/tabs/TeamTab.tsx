@@ -11,6 +11,7 @@ import {
     ChevronRight,
     AlertCircle,
     CheckCircle2,
+    Check,
     Search,
     ShieldCheck,
     Briefcase,
@@ -63,6 +64,14 @@ export default function TeamTab({
     const [isSearching, setIsSearching] = useState(false);
     const [hasFoundExisting, setHasFoundExisting] = useState(false);
     const [newMemberData, setNewMemberData] = useState({ name: '', email: '', phone: '' });
+    const [newMemberDetails, setNewMemberDetails] = useState({
+        id: '',
+        displayId: '',
+        dob: '',
+        email: '',
+        phone: '',
+        whatsapp: '',
+    });
     const [foundMemberId, setFoundMemberId] = useState<string | null>(null);
     const [lookupError, setLookupError] = useState('');
     const [submitError, setSubmitError] = useState('');
@@ -76,6 +85,7 @@ export default function TeamTab({
     const [dealerSearch, setDealerSearch] = useState('');
     const [dealers, setDealers] = useState<any[]>([]);
     const [dealerLoading, setDealerLoading] = useState(false);
+    const [selectedDealerIds, setSelectedDealerIds] = useState<string[]>([]);
 
     useEffect(() => {
         const fetchDealers = async () => {
@@ -151,6 +161,12 @@ export default function TeamTab({
         return digits.length > 10 ? digits.slice(-10) : digits;
     };
 
+    const toggleDealerSelection = (dealerId: string) => {
+        setSelectedDealerIds(prev =>
+            prev.includes(dealerId) ? prev.filter(id => id !== dealerId) : [...prev, dealerId]
+        );
+    };
+
     const handleLookup = async () => {
         setIsSearching(true);
         setLookupError('');
@@ -167,15 +183,7 @@ export default function TeamTab({
                 return;
             }
 
-            // 2. Check Admin (since it's passed separately)
-            if (admin && normalizePhoneDigits(admin.phone) === lookupDigits) {
-                setNewMemberData({ name: admin.name, email: admin.email, phone: admin.phone });
-                setFoundMemberId(null);
-                setHasFoundExisting(true);
-                return;
-            }
-
-            // 3. Secure lookup (BMB user required)
+            // 2. Secure lookup (BMB user required)
             const response = await fetch('/api/finance-partners/lookup-member', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -193,6 +201,17 @@ export default function TeamTab({
                 email: data?.member?.primary_email || '',
                 phone: data?.member?.primary_phone || lookupMobile,
             });
+            setNewMemberDetails({
+                id: data?.member?.id || '',
+                displayId: data?.member?.display_id || '',
+                dob: data?.member?.date_of_birth || '',
+                email: data?.member?.primary_email || data?.member?.email || '',
+                phone: data?.member?.primary_phone || data?.member?.phone || lookupMobile,
+                whatsapp: data?.member?.whatsapp || '',
+            });
+            if (admin && normalizePhoneDigits(admin.phone) === lookupDigits && !data?.member?.full_name) {
+                setNewMemberData({ name: admin.name, email: admin.email, phone: admin.phone });
+            }
             setFoundMemberId(data?.member?.id || null);
             setHasFoundExisting(true);
         } catch (error: any) {
@@ -222,7 +241,7 @@ export default function TeamTab({
                     memberId: foundMemberId,
                     designation: newMemberMeta.designation,
                     status: newMemberMeta.status,
-                    serviceability: { states: [], areas: [], dealerIds: [] },
+                    serviceability: { states: [], areas: [], dealerIds: selectedDealerIds },
                 }),
             });
 
@@ -244,7 +263,7 @@ export default function TeamTab({
                             phone: data.member.phone,
                             designation: newMemberMeta.designation,
                             status: newMemberMeta.status,
-                            serviceability: { states: [], areas: [], dealerIds: [] },
+                            serviceability: { states: [], areas: [], dealerIds: selectedDealerIds },
                         },
                     ];
                 });
@@ -254,6 +273,15 @@ export default function TeamTab({
             setHasFoundExisting(false);
             setLookupMobile('');
             setNewMemberData({ name: '', email: '', phone: '' });
+            setNewMemberDetails({
+                id: '',
+                displayId: '',
+                dob: '',
+                email: '',
+                phone: '',
+                whatsapp: '',
+            });
+            setSelectedDealerIds([]);
             setFoundMemberId(null);
         } catch (error: any) {
             setSubmitError(error?.message || 'Unable to add member');
@@ -283,6 +311,15 @@ export default function TeamTab({
                         setHasFoundExisting(false);
                         setLookupMobile('');
                         setNewMemberData({ name: '', email: '', phone: '' });
+                        setNewMemberDetails({
+                            id: '',
+                            displayId: '',
+                            dob: '',
+                            email: '',
+                            phone: '',
+                            whatsapp: '',
+                        });
+                        setSelectedDealerIds([]);
                         setFoundMemberId(null);
                         setLookupError('');
                         setSubmitError('');
@@ -432,6 +469,15 @@ export default function TeamTab({
                                         setHasFoundExisting(false);
                                         setLookupMobile('');
                                         setNewMemberData({ name: '', email: '', phone: '' });
+                                        setNewMemberDetails({
+                                            id: '',
+                                            displayId: '',
+                                            dob: '',
+                                            email: '',
+                                            phone: '',
+                                            whatsapp: '',
+                                        });
+                                        setSelectedDealerIds([]);
                                         setFoundMemberId(null);
                                         setLookupError('');
                                         setSubmitError('');
@@ -497,6 +543,72 @@ export default function TeamTab({
                                 </div>
                             ) : (
                                 <>
+                                    {!selectedMember && (
+                                        <div className="mb-8 bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-[24px] p-6">
+                                            <div className="flex items-center justify-between">
+                                                <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                                    Member Match Found
+                                                </div>
+                                                <div className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">
+                                                    Verified
+                                                </div>
+                                            </div>
+                                            <div className="mt-4 grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                                        Member ID (9)
+                                                    </div>
+                                                    <div className="text-xs font-black text-slate-900 dark:text-white font-mono">
+                                                        {(
+                                                            newMemberDetails.displayId ||
+                                                            newMemberDetails.id.slice(0, 9) ||
+                                                            '—'
+                                                        ).toString()}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                                        Member UUID
+                                                    </div>
+                                                    <div className="text-xs font-bold text-slate-700 dark:text-slate-300 font-mono break-all">
+                                                        {newMemberDetails.id || '—'}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                                        Email
+                                                    </div>
+                                                    <div className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                                        {newMemberDetails.email || '—'}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                                        Phone
+                                                    </div>
+                                                    <div className="text-xs font-bold text-slate-700 dark:text-slate-300 font-mono">
+                                                        {newMemberDetails.phone || '—'}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                                        DOB
+                                                    </div>
+                                                    <div className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                                        {newMemberDetails.dob || '—'}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                                        WhatsApp
+                                                    </div>
+                                                    <div className="text-xs font-bold text-slate-700 dark:text-slate-300 font-mono">
+                                                        {newMemberDetails.whatsapp || '—'}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                     <div className="grid grid-cols-12 gap-10">
                                         {/* Left: Profile Info */}
                                         <div className="col-span-12 md:col-span-7 space-y-8">
@@ -742,6 +854,19 @@ export default function TeamTab({
                                                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1 italic">
                                                         3. Linked Dealerships (BMB Connect)
                                                     </label>
+                                                    <div className="flex items-center justify-between px-1">
+                                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                            Selected: {selectedDealerIds.length}
+                                                        </span>
+                                                        {selectedDealerIds.length > 0 && (
+                                                            <button
+                                                                onClick={() => setSelectedDealerIds([])}
+                                                                className="text-[9px] font-black uppercase tracking-widest text-blue-600 hover:underline"
+                                                            >
+                                                                Clear
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                     <div className="relative">
                                                         <Search
                                                             className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -766,12 +891,26 @@ export default function TeamTab({
                                                             </div>
                                                         ) : (
                                                             filteredDealers.map((d: any) => (
-                                                                <div
+                                                                <button
+                                                                    type="button"
                                                                     key={d.id}
-                                                                    className="flex items-center justify-between p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition-colors"
+                                                                    onClick={() => toggleDealerSelection(d.id)}
+                                                                    className={`w-full flex items-center justify-between p-2 rounded-lg border transition-colors ${
+                                                                        selectedDealerIds.includes(d.id)
+                                                                            ? 'bg-emerald-500/10 border-emerald-500/30'
+                                                                            : 'bg-transparent border-transparent hover:bg-white dark:hover:bg-slate-800'
+                                                                    }`}
                                                                 >
                                                                     <div className="flex items-center gap-2">
-                                                                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                                                        <div
+                                                                            className={`w-5 h-5 rounded-md border flex items-center justify-center ${
+                                                                                selectedDealerIds.includes(d.id)
+                                                                                    ? 'bg-emerald-500 border-emerald-500 text-white'
+                                                                                    : 'border-slate-200 dark:border-white/10 text-transparent'
+                                                                            }`}
+                                                                        >
+                                                                            <Check size={12} />
+                                                                        </div>
                                                                         <span className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">
                                                                             {d.name}
                                                                         </span>
@@ -779,7 +918,7 @@ export default function TeamTab({
                                                                     <span className="text-[8px] font-black text-slate-400 italic">
                                                                         {d.district || d.state || '—'}
                                                                     </span>
-                                                                </div>
+                                                                </button>
                                                             ))
                                                         )}
                                                     </div>

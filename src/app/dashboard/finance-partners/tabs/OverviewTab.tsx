@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Building2,
     Activity,
@@ -22,11 +22,35 @@ import {
 } from 'lucide-react';
 import { BankPartner } from '@/types/bankPartner';
 import { createClient } from '@/lib/supabase/client';
-import { updateBankIdentity } from '../actions';
+import { updateBankIdentity, getBankActivityLog } from '../actions';
+
+type ActivityItem = {
+    id: string;
+    title: string;
+    detail: string;
+    time: string;
+    color: string;
+    quoteId?: string;
+};
 
 export default function OverviewTab({ partner: initialPartner }: { partner: BankPartner }) {
     const [partner, setPartner] = useState(initialPartner);
     const [uploading, setUploading] = useState<'FULL' | 'ICON' | null>(null);
+    const [activityLog, setActivityLog] = useState<ActivityItem[]>([]);
+    const [activityLoading, setActivityLoading] = useState(true);
+
+    // Fetch real activity log
+    useEffect(() => {
+        const fetchActivity = async () => {
+            setActivityLoading(true);
+            const res = await getBankActivityLog(partner.id);
+            if (res.success && res.activities) {
+                setActivityLog(res.activities as ActivityItem[]);
+            }
+            setActivityLoading(false);
+        };
+        fetchActivity();
+    }, [partner.id]);
 
     const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'FULL' | 'ICON') => {
         const file = e.target.files?.[0];
@@ -417,26 +441,63 @@ export default function OverviewTab({ partner: initialPartner }: { partner: Bank
                             Activity Log
                         </h3>
                         <div className="space-y-6">
-                            {[
-                                { title: 'Scheme Updated', detail: 'Festive Offer 2.0 edited by Ajit', time: '2h ago' },
-                                { title: 'Status Changed', detail: 'HDFC Bank marked as ACTIVE', time: '1d ago' },
-                                { title: 'New Scheme Added', detail: 'Super Saver 2W created', time: '3d ago' },
-                            ].map((log, i) => (
-                                <div key={i} className="flex gap-3">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0" />
-                                    <div>
-                                        <div className="text-[10px] font-black text-slate-800 dark:text-slate-300 uppercase tracking-wider">
-                                            {log.title}
-                                        </div>
-                                        <div className="text-[11px] text-slate-500 mt-0.5">{log.detail}</div>
-                                        <div className="text-[9px] text-slate-400 mt-1">{log.time}</div>
-                                    </div>
+                            {activityLoading ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <Loader2 size={20} className="animate-spin text-blue-500" />
                                 </div>
-                            ))}
+                            ) : activityLog.length === 0 ? (
+                                <div className="text-center py-8">
+                                    <Activity size={24} className="mx-auto text-slate-300 dark:text-slate-600 mb-3" />
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                                        No finance activity yet
+                                    </p>
+                                </div>
+                            ) : (
+                                activityLog.map(log => {
+                                    const dotColor: Record<string, string> = {
+                                        blue: 'bg-blue-500',
+                                        amber: 'bg-amber-500',
+                                        orange: 'bg-orange-500',
+                                        emerald: 'bg-emerald-500',
+                                        rose: 'bg-rose-500',
+                                    };
+
+                                    // Relative time
+                                    const diff = Date.now() - new Date(log.time).getTime();
+                                    const mins = Math.floor(diff / 60000);
+                                    const hrs = Math.floor(mins / 60);
+                                    const days = Math.floor(hrs / 24);
+                                    const timeAgo =
+                                        mins < 1
+                                            ? 'Just now'
+                                            : mins < 60
+                                              ? `${mins}m ago`
+                                              : hrs < 24
+                                                ? `${hrs}h ago`
+                                                : days < 30
+                                                  ? `${days}d ago`
+                                                  : new Date(log.time).toLocaleDateString('en-IN', {
+                                                        day: 'numeric',
+                                                        month: 'short',
+                                                    });
+
+                                    return (
+                                        <div key={log.id} className="flex gap-3">
+                                            <div
+                                                className={`w-1.5 h-1.5 rounded-full ${dotColor[log.color] || 'bg-blue-500'} mt-1.5 shrink-0`}
+                                            />
+                                            <div>
+                                                <div className="text-[10px] font-black text-slate-800 dark:text-slate-300 uppercase tracking-wider">
+                                                    {log.title}
+                                                </div>
+                                                <div className="text-[11px] text-slate-500 mt-0.5">{log.detail}</div>
+                                                <div className="text-[9px] text-slate-400 mt-1">{timeAgo}</div>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
                         </div>
-                        <button className="w-full mt-8 py-2 border border-slate-200 dark:border-white/5 rounded-xl text-[9px] font-black text-slate-500 uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
-                            View Full History
-                        </button>
                     </div>
                 </div>
             </div>

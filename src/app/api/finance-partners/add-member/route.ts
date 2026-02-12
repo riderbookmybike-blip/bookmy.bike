@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
 
         const { data: member, error: memberError } = await adminClient
             .from('id_members')
-            .select('id, full_name, primary_email, primary_phone')
+            .select('id, display_id, full_name, primary_email, primary_phone, date_of_birth, email, phone, whatsapp')
             .eq('id', memberId)
             .maybeSingle();
 
@@ -45,39 +45,36 @@ export async function POST(req: NextRequest) {
         const { data: tenant } = await adminClient.from('id_tenants').select('config').eq('id', tenantId).maybeSingle();
 
         const existingTeam = Array.isArray(tenant?.config?.team) ? tenant?.config?.team : [];
-        const alreadyInConfig = existingTeam.some((m: any) => m?.id === member.id);
-        if (!alreadyInConfig) {
-            const updatedTeam = [
-                ...existingTeam,
-                {
-                    id: member.id,
-                    name: member.full_name || 'Unnamed Member',
-                    designation: designation || 'EXECUTIVE',
-                    email: member.primary_email || '',
-                    phone: member.primary_phone || '',
-                    status: status || 'ACTIVE',
-                    serviceability: serviceability || { states: [], areas: [], dealerIds: [] },
-                },
-            ];
+        const updatedTeam = existingTeam.filter((m: any) => m?.id !== member.id);
+        updatedTeam.push({
+            id: member.id,
+            name: member.full_name || 'Unnamed Member',
+            designation: designation || 'EXECUTIVE',
+            email: member.primary_email || '',
+            phone: member.primary_phone || '',
+            status: status || 'ACTIVE',
+            serviceability: serviceability || { states: [], areas: [], dealerIds: [] },
+        });
 
-            await adminClient
-                .from('id_tenants')
-                .update({
-                    config: {
-                        ...(tenant?.config || {}),
-                        team: updatedTeam,
-                    },
-                })
-                .eq('id', tenantId);
-        }
+        await adminClient
+            .from('id_tenants')
+            .update({
+                config: {
+                    ...(tenant?.config || {}),
+                    team: updatedTeam,
+                },
+            })
+            .eq('id', tenantId);
 
         return NextResponse.json({
             success: true,
             member: {
                 id: member.id,
+                display_id: member.display_id,
                 name: member.full_name || 'Unnamed Member',
                 email: member.primary_email || '',
                 phone: member.primary_phone || '',
+                date_of_birth: member.date_of_birth || null,
             },
             alreadyMember: !!existing,
         });
