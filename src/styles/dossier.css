@@ -116,11 +116,15 @@
         margin: 0;
     }
 
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+    }
+
     body {
         margin: 0 !important;
         padding: 0 !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
     }
 
     .no-print {
@@ -142,6 +146,7 @@
         border: none !important;
         page-break-after: always;
         break-after: page;
+        overflow: hidden !important;
     }
 
     .a4-grid {

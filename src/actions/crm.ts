@@ -680,6 +680,17 @@ export async function createQuoteAction(data: {
         return { success: false, message: error.message };
     }
 
+    // Supersede older quotes for same Lead + SKU (one SKU = one active quote per lead)
+    if (data.lead_id && vehicleSkuId) {
+        await adminClient
+            .from('crm_quotes')
+            .update({ status: 'SUPERSEDED', updated_at: new Date().toISOString() })
+            .eq('lead_id', data.lead_id)
+            .eq('vehicle_sku_id', vehicleSkuId)
+            .neq('id', quote.id)
+            .not('status', 'in', '("CONVERTED","BOOKING","BOOKED")');
+    }
+
     const finance = (data.commercials as any)?.finance || null;
     if (finance?.scheme_id || finance?.bank_id) {
         const { data: attempt, error: financeError } = await adminClient
@@ -916,6 +927,21 @@ export async function createBookingFromQuote(quoteId: string) {
 
     // 3. Update Quote status to BOOKED
     await supabase.from('crm_quotes').update({ status: 'BOOKED' }).eq('id', quoteId);
+
+    // 4. Close Lead + cancel all other quotes for same lead
+    if (quote.lead_id) {
+        await adminClient
+            .from('crm_leads')
+            .update({ status: 'CLOSED', updated_at: new Date().toISOString() })
+            .eq('id', quote.lead_id);
+
+        await adminClient
+            .from('crm_quotes')
+            .update({ status: 'CANCELED', updated_at: new Date().toISOString() })
+            .eq('lead_id', quote.lead_id)
+            .neq('id', quote.id)
+            .not('status', 'in', '("BOOKED","BOOKING")');
+    }
 
     revalidatePath('/app/[slug]/sales-orders');
     revalidatePath('/profile');
@@ -2333,6 +2359,79 @@ export async function updateTaskStatus(taskId: string, status: 'OPEN' | 'IN_PROG
     return { success: true };
 }
 
+// Auto-segregate stale leads: >15 days since last activity, unless future tasks exist
+export async function autoJunkInactiveLeads(days = 15) {
+    const supabase = await adminClient;
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const { data: leads, error: leadsError } = await supabase.from('crm_leads').select('*').neq('status', 'JUNK');
+
+    if (leadsError) {
+        console.error('autoJunkInactiveLeads lead fetch error:', leadsError);
+        return { success: false, error: leadsError.message };
+    }
+
+    const { data: tasks, error: tasksError } = await supabase
+        .from('crm_tasks')
+        .select('*')
+        .eq('linked_type', 'LEAD')
+        .in(
+            'linked_id',
+            (leads || []).map((l: any) => l.id)
+        );
+
+    if (tasksError) {
+        console.error('autoJunkInactiveLeads task fetch error:', tasksError);
+        return { success: false, error: tasksError.message };
+    }
+
+    const tasksByLead = new Map<string, any[]>();
+    (tasks || []).forEach((t: any) => {
+        const arr = tasksByLead.get(t.linked_id) || [];
+        arr.push(t);
+        tasksByLead.set(t.linked_id, arr);
+    });
+
+    const hasFutureTask = (task: any) => {
+        const candidates = [task.due_at, task.due_date, task.scheduled_at, task.scheduled_for, task.reminder_at].filter(
+            Boolean
+        );
+        if (candidates.length === 0) return false;
+        return candidates.some((d: any) => new Date(d).getTime() > Date.now());
+    };
+
+    const staleLeadIds: string[] = [];
+    (leads || []).forEach((lead: any) => {
+        const lastActivity = lead.updated_at || lead.last_activity_at || lead.last_activity || lead.created_at;
+        if (!lastActivity) return;
+        if (new Date(lastActivity) >= cutoff) return;
+
+        const leadTasks = tasksByLead.get(lead.id) || [];
+        if (leadTasks.some(t => t.status !== 'DONE' && hasFutureTask(t))) return;
+
+        staleLeadIds.push(lead.id);
+    });
+
+    if (staleLeadIds.length > 0) {
+        const { error: updateError } = await supabase
+            .from('crm_leads')
+            .update({
+                status: 'JUNK',
+                updated_at: new Date().toISOString(),
+                auto_segregated: true,
+                segregation_reason: `No activity for ${days} days`,
+            })
+            .in('id', staleLeadIds);
+
+        if (updateError) {
+            console.error('autoJunkInactiveLeads update error:', updateError);
+            return { success: false, error: updateError.message };
+        }
+    }
+
+    return { success: true, junked: staleLeadIds.length };
+}
+
 export async function getTeamMembersForTenant(tenantId: string) {
     const supabase = await createClient();
     const { data, error } = await supabase
@@ -2609,15 +2708,15 @@ export async function updateQuotePricing(
 
     // Supersede at VARIANT level — all open quotes for same variant get superseded
     // regardless of colour. Only quotes converted to booking are exempt.
-    const variantId = quote.variant_id;
-    if (variantId) {
+    const skuId = newQuote.vehicle_sku_id || quote.vehicle_sku_id || quote.color_id || quote.variant_id;
+    if (skuId) {
         const supersedeUpdate: any = {
             status: 'SUPERSEDED',
             updated_at: new Date().toISOString(),
         };
 
         let supersedeQuery = supabase.from('crm_quotes').update(supersedeUpdate).neq('id', newQuote.id);
-        supersedeQuery = supersedeQuery.eq('variant_id', variantId);
+        supersedeQuery = supersedeQuery.eq('vehicle_sku_id', skuId);
         supersedeQuery = supersedeQuery.not('status', 'in', '("CONVERTED","BOOKING")');
         if (quote.lead_id) {
             supersedeQuery = supersedeQuery.eq('lead_id', quote.lead_id);

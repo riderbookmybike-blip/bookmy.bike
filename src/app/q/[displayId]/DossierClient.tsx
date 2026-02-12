@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Logo } from '@/components/brand/Logo';
+import { generatePremiumPDF } from '@/utils/pdfGenerator';
 import { getProxiedUrl } from '@/lib/utils/urlHelper';
 import {
     ShieldCheck,
@@ -373,28 +374,42 @@ export default function DossierClient({ quote }: DossierClientProps) {
     const createdDate = quote.created_at ? new Date(quote.created_at) : null;
     const validDate = quote.valid_until ? new Date(quote.valid_until) : null;
 
+    const [isPdfGenerating, setIsPdfGenerating] = useState(false);
+
     const handlePrint = useCallback(async () => {
-        const imageUrl = quote.vehicle?.imageUrl;
-        if (imageUrl) {
-            await new Promise<void>(resolve => {
-                const img = new Image();
-                img.crossOrigin = 'anonymous';
-                img.src = getProxiedUrl(imageUrl);
-                if (img.complete) return resolve();
-                img.onload = () => resolve();
-                img.onerror = () => resolve();
-            });
+        setIsPdfGenerating(true);
+        try {
+            const imageUrl = quote.vehicle?.imageUrl;
+            if (imageUrl) {
+                await new Promise<void>(resolve => {
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    img.src = getProxiedUrl(imageUrl);
+                    if (img.complete) return resolve();
+                    img.onload = () => resolve();
+                    img.onerror = () => resolve();
+                });
+            }
+            const pageIds = Array.from({ length: 13 }, (_, i) => `dossier-page-${i + 1}`);
+            const fileName = `BookMyBike_Dossier_${formatDisplayId(quote.display_id)}.pdf`;
+            await generatePremiumPDF(pageIds, fileName);
+        } catch (err) {
+            console.error('[Dossier] PDF generation failed:', err);
+            // Fallback to browser print
+            window.print();
+        } finally {
+            setIsPdfGenerating(false);
         }
-        window.print();
-    }, [quote.vehicle?.imageUrl]);
+    }, [quote.vehicle?.imageUrl, quote.display_id]);
 
     return (
         <div className="dossier-stage">
             {/* Page 1 - Welcome */}
             <section
+                id="dossier-page-1"
                 className="a4-page relative overflow-hidden"
                 style={{
-                    backgroundColor: '#FAFAFA', // Light base like Catalog
+                    backgroundColor: '#FAFAFA',
                 }}
             >
                 {/* Secondary background layer for the dynamic tint (Catalog-card parity, 30% opacity) */}
@@ -577,9 +592,10 @@ export default function DossierClient({ quote }: DossierClientProps) {
                             </div>
                             <button
                                 onClick={handlePrint}
-                                className="no-print px-6 py-2 rounded-full bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-900/20 active:scale-95 transition-transform"
+                                disabled={isPdfGenerating}
+                                className="no-print px-6 py-2 rounded-full bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-900/20 active:scale-95 transition-transform disabled:opacity-50"
                             >
-                                Download PDF
+                                {isPdfGenerating ? 'Generating...' : 'Download PDF'}
                             </button>
                         </div>
                     </div>
@@ -587,7 +603,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
             </section>
 
             {/* Page 2 - Pricing */}
-            <section className="a4-page relative overflow-hidden bg-white">
+            <section id="dossier-page-2" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -735,7 +751,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
             </section>
 
             {/* Page 3 - Finance Scheme */}
-            <section className="a4-page relative overflow-hidden bg-white">
+            <section id="dossier-page-3" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -894,7 +910,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
             </section>
 
             {/* Page 4 - Accessories */}
-            <section className="a4-page relative overflow-hidden bg-white">
+            <section id="dossier-page-4" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -960,7 +976,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
             </section>
 
             {/* Page 5 - Insurance */}
-            <section className="a4-page relative overflow-hidden bg-white">
+            <section id="dossier-page-5" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -1062,7 +1078,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
             </section>
 
             {/* Page 6 - Registration (RTO) */}
-            <section className="a4-page relative overflow-hidden bg-white">
+            <section id="dossier-page-6" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -1127,7 +1143,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
             </section>
 
             {/* Page 7 - Service Packages */}
-            <section className="a4-page relative overflow-hidden bg-white">
+            <section id="dossier-page-7" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -1187,7 +1203,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
             </section>
 
             {/* Page 8 - Warranty */}
-            <section className="a4-page relative overflow-hidden bg-white">
+            <section id="dossier-page-8" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -1252,7 +1268,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
             </section>
 
             {/* Page 9 - Engine & Performance */}
-            <section className="a4-page relative overflow-hidden bg-white">
+            <section id="dossier-page-9" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -1331,7 +1347,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
             </section>
 
             {/* Page 10 - Dimension & Chassis */}
-            <section className="a4-page relative overflow-hidden bg-white">
+            <section id="dossier-page-10" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -1415,7 +1431,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
             </section>
 
             {/* Page 11 - Brakes & Safety */}
-            <section className="a4-page relative overflow-hidden bg-white">
+            <section id="dossier-page-11" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -1483,7 +1499,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
             </section>
 
             {/* Page 12 - Features & Tech */}
-            <section className="a4-page relative overflow-hidden bg-white">
+            <section id="dossier-page-12" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -1544,7 +1560,11 @@ export default function DossierClient({ quote }: DossierClientProps) {
             {/* Page 13 - Reach Us */}
 
             {/* Page 13 - Reach Us */}
-            <section className="a4-page relative overflow-hidden" style={{ backgroundColor: '#FAFAFA' }}>
+            <section
+                id="dossier-page-13"
+                className="a4-page relative overflow-hidden"
+                style={{ backgroundColor: '#FAFAFA' }}
+            >
                 <div
                     className="absolute inset-0 z-0"
                     style={{
