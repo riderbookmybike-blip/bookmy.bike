@@ -17,7 +17,6 @@ import {
     getPaymentsForEntity,
 } from '@/actions/crm';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
 import { formatDisplayId } from '@/utils/displayId';
 
 interface QuoteEditorWrapperProps {
@@ -208,10 +207,80 @@ export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: Quot
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-screen bg-slate-50 dark:bg-[#0b0d10]">
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="w-8 h-8 animate-spin text-brand-primary dark:text-white" />
-                    <p className="text-slate-500 dark:text-white/60 text-sm">Loading quote...</p>
+            <div className="h-full bg-slate-50 dark:bg-[#0b0d10] p-6 md:p-8 space-y-6 overflow-hidden">
+                {/* Skeleton: Header Bar */}
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="w-28 h-5 bg-slate-200 dark:bg-white/10 rounded-lg animate-pulse" />
+                        <div className="w-20 h-5 bg-indigo-100 dark:bg-indigo-500/10 rounded-full animate-pulse" />
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <div className="w-24 h-8 bg-slate-200 dark:bg-white/10 rounded-xl animate-pulse" />
+                        <div className="w-24 h-8 bg-slate-200 dark:bg-white/10 rounded-xl animate-pulse" />
+                    </div>
+                </div>
+
+                {/* Skeleton: Customer + Vehicle Info */}
+                <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 space-y-4">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-white/10 animate-pulse" />
+                        <div className="flex-1 space-y-2">
+                            <div className="w-48 h-5 bg-slate-200 dark:bg-white/10 rounded-lg animate-pulse" />
+                            <div className="w-32 h-3 bg-slate-100 dark:bg-white/5 rounded animate-pulse" />
+                        </div>
+                        <div className="w-28 h-7 bg-slate-100 dark:bg-white/5 rounded-xl animate-pulse" />
+                    </div>
+                    <div className="border-t border-slate-100 dark:border-white/5 pt-4 flex gap-6">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="flex-1 space-y-2">
+                                <div className="w-16 h-2.5 bg-slate-100 dark:bg-white/5 rounded animate-pulse" />
+                                <div className="w-24 h-4 bg-slate-200 dark:bg-white/10 rounded-lg animate-pulse" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Skeleton: Pricing Rows */}
+                <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden">
+                    {/* Table Header */}
+                    <div className="flex items-center gap-4 px-6 py-4 border-b border-slate-100 dark:border-white/5">
+                        <div className="w-40 h-3 bg-slate-100 dark:bg-white/5 rounded animate-pulse" />
+                        <div className="flex-1" />
+                        <div className="w-20 h-3 bg-slate-100 dark:bg-white/5 rounded animate-pulse" />
+                        <div className="w-24 h-3 bg-slate-100 dark:bg-white/5 rounded animate-pulse" />
+                    </div>
+                    {/* Rows */}
+                    {[1, 2, 3, 4, 5, 6].map(i => (
+                        <div
+                            key={i}
+                            className="flex items-center gap-4 px-6 py-4 border-b border-slate-50 dark:border-white/[0.03] last:border-0"
+                        >
+                            <div
+                                className={`h-4 bg-slate-200 dark:bg-white/10 rounded-lg animate-pulse`}
+                                style={{ width: `${100 + (i % 3) * 40}px`, animationDelay: `${i * 100}ms` }}
+                            />
+                            <div className="flex-1" />
+                            <div
+                                className="w-16 h-4 bg-slate-100 dark:bg-white/5 rounded animate-pulse"
+                                style={{ animationDelay: `${i * 100 + 50}ms` }}
+                            />
+                            <div
+                                className="w-20 h-4 bg-slate-200 dark:bg-white/10 rounded-lg animate-pulse"
+                                style={{ animationDelay: `${i * 100 + 100}ms` }}
+                            />
+                        </div>
+                    ))}
+                    {/* Total Row */}
+                    <div className="flex items-center justify-between px-6 py-5 bg-slate-50 dark:bg-white/[0.03] border-t border-slate-200 dark:border-white/10">
+                        <div className="w-32 h-5 bg-slate-300 dark:bg-white/15 rounded-lg animate-pulse" />
+                        <div className="w-28 h-6 bg-indigo-200 dark:bg-indigo-500/20 rounded-lg animate-pulse" />
+                    </div>
+                </div>
+
+                {/* Skeleton: Action Buttons */}
+                <div className="flex items-center justify-end gap-3 pt-2">
+                    <div className="w-32 h-10 bg-slate-200 dark:bg-white/10 rounded-xl animate-pulse" />
+                    <div className="w-36 h-10 bg-indigo-200 dark:bg-indigo-500/15 rounded-xl animate-pulse" />
                 </div>
             </div>
         );

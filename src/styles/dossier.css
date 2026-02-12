@@ -21,14 +21,14 @@
 
 .a4-page {
     width: var(--a4-width);
-    height: var(--a4-height);
+    min-height: var(--a4-height);
     background: #ffffff;
     border-radius: 4px;
     box-shadow: 0 40px 100px rgba(0, 0, 0, 0.4);
     border: 1px solid rgba(255, 255, 255, 0.1);
     display: block;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
 }
 
 /* Edge Splashes */
@@ -59,10 +59,10 @@
 }
 
 .a4-grid {
-    height: var(--a4-height);
+    min-height: var(--a4-height);
     display: grid;
     grid-template-rows: auto 1fr auto;
-    gap: 32px;
+    gap: 24px;
     padding: 20mm 18mm 18mm;
     box-sizing: border-box;
     position: relative;
@@ -74,7 +74,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 24px;
-    border-bottom: 2px solid var(--brand-black);
+    border-bottom: 1px solid #e2e8f0;
     padding-bottom: 12px;
 }
 
@@ -87,7 +87,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    border-top: 1px solid #f1f5f9;
+    border-top: 1px solid #e2e8f0;
     padding-top: 12px;
 }
 

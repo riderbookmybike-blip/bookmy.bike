@@ -91,38 +91,101 @@ const DossierRow = ({
 }) => (
     <div
         className={cn(
-            'group flex items-start justify-between py-2 px-6 border-b border-slate-100 dark:border-white/5',
-            isSub && 'bg-slate-50/30 dark:bg-white/[0.01]',
-            isBold && 'bg-slate-50/50 dark:bg-white/[0.02]'
+            'group flex items-start justify-between py-2 px-6 border-b border-slate-100',
+            isSub && 'bg-slate-50/30',
+            isBold && 'bg-slate-50/50'
         )}
     >
         <div className="flex flex-col gap-0.5 min-w-0">
             <div className="flex items-center gap-2">
-                {isSub && <span className="text-slate-300 dark:text-white/20 select-none">└</span>}
                 <div
                     className={cn(
-                        'text-sm font-medium',
-                        isBold ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-white/70',
-                        isSub && 'text-xs'
+                        isBold ? 'text-[12px] font-black text-slate-900' : 'text-[11px] font-medium text-slate-600',
+                        isSub && 'text-[11px] pl-3'
                     )}
                 >
                     {label}
                 </div>
                 {extra}
             </div>
-            {description && <div className="pl-4 text-[10px] text-slate-400 dark:text-white/40">{description}</div>}
+            {description && <div className="pl-3 text-[10px] text-slate-400">{description}</div>}
         </div>
         <div className="flex items-center gap-3 shrink-0">
             <span
                 className={cn(
-                    'text-sm font-bold tabular-nums',
-                    isBold ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-white/80',
-                    isSub && 'text-xs'
+                    'tabular-nums',
+                    isBold ? 'text-[12px] font-black text-slate-900' : 'text-[11px] font-bold text-slate-700',
+                    isSub && 'text-[11px]'
                 )}
             >
                 {value}
             </span>
         </div>
+    </div>
+);
+
+const OptionRow = ({
+    label,
+    price,
+    selected,
+    description,
+    isMandatory,
+    breakdown,
+}: {
+    label: React.ReactNode;
+    price?: number | null;
+    selected: boolean;
+    description?: React.ReactNode;
+    isMandatory?: boolean;
+    breakdown?: { label: string; amount: number }[];
+}) => (
+    <div className="border border-slate-100 rounded-xl overflow-hidden bg-white">
+        <div className="flex items-start justify-between gap-3 px-4 py-2.5">
+            <div className="flex items-start gap-2 min-w-0">
+                <div
+                    className={cn(
+                        'mt-0.5 w-4 h-4 rounded-full flex items-center justify-center border',
+                        selected
+                            ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                            : 'bg-slate-50 border-slate-200 text-slate-300'
+                    )}
+                >
+                    {selected ? <CheckCircle2 size={10} /> : <AlertCircle size={10} />}
+                </div>
+                <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-700">{label}</span>
+
+                        {selected && (
+                            <span className="text-[8px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200">
+                                Included
+                            </span>
+                        )}
+                        {!selected && (
+                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-md border border-slate-200">
+                                Not Included
+                            </span>
+                        )}
+                    </div>
+                    {description && <div className="text-[9px] text-slate-400 mt-0.5">{description}</div>}
+                </div>
+            </div>
+            <div className="shrink-0 text-right">
+                <div className="text-[10px] font-black text-slate-900 tabular-nums">
+                    {price !== undefined && price !== null ? formatCurrency(price) : '—'}
+                </div>
+            </div>
+        </div>
+        {breakdown && breakdown.length > 0 && (
+            <div className="px-6 pb-2 space-y-1">
+                {breakdown.map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-[9px] text-slate-400">
+                        <span>{item.label}</span>
+                        <span className="tabular-nums">{formatCurrency(Number(item.amount || 0))}</span>
+                    </div>
+                ))}
+            </div>
+        )}
     </div>
 );
 
@@ -139,40 +202,66 @@ const DossierGroup = ({
     children: React.ReactNode;
     quote: any;
 }) => (
-    <div className="border-b border-slate-100 dark:border-white/5 last:border-0 bg-white dark:bg-[#0b0d10]">
-        <div className="w-full flex items-center justify-between py-4 px-6 relative overflow-hidden bg-white dark:bg-[#0b0d10]">
+    <div className="border-b border-slate-100 last:border-0 bg-white">
+        <div className="w-full flex items-center justify-between py-3 px-6 relative overflow-hidden bg-white">
             <div className="flex items-center gap-3">
                 <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm border border-slate-100"
-                    style={{ backgroundColor: 'white', color: '#64748B' }}
+                    className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm border"
+                    style={{
+                        backgroundColor: quote?.vehicle?.hexCode ? `${quote.vehicle.hexCode}1A` : '#f8fafc',
+                        borderColor: quote?.vehicle?.hexCode ? `${quote.vehicle.hexCode}33` : '#e2e8f0',
+                        color: quote?.vehicle?.hexCode || '#64748B',
+                    }}
                 >
                     <Icon size={16} />
                 </div>
-                <span className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-tight">
-                    {title}
-                </span>
+                <span className="text-xs font-bold text-slate-900 uppercase tracking-tight">{title}</span>
             </div>
             {total !== undefined && (
                 <div className="flex items-center gap-4">
-                    <span className="text-sm font-black text-slate-900 dark:text-white tabular-nums">
+                    <span className="text-xs font-black text-slate-900 tabular-nums font-mono">
                         {typeof total === 'number' ? formatCurrency(total) : total}
                     </span>
                 </div>
             )}
         </div>
-        <div className="bg-slate-50/20 dark:bg-white/[0.005]">{children}</div>
+        <div className="bg-slate-50/20">{children}</div>
     </div>
 );
 
-const PageHeader = ({ title, subtitle, accentColor }: { title: string; subtitle?: string; accentColor?: string }) => (
-    <div className="space-y-4">
-        <div className="flex items-center gap-2">
-            <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">BookMyBike Strategy</div>
+const PageHeader = ({
+    title,
+    subtitle,
+    accentColor,
+    icon: Icon,
+}: {
+    title: string;
+    subtitle?: string;
+    accentColor?: string;
+    icon?: any;
+}) => {
+    const badgeBg = accentColor ? `${accentColor}1A` : 'rgba(244, 176, 0, 0.12)';
+    const badgeBorder = accentColor ? `${accentColor}33` : 'rgba(244, 176, 0, 0.35)';
+    const badgeColor = accentColor || '#F4B000';
+    return (
+        <div className="space-y-2">
+            <div className="flex items-center gap-3">
+                {Icon && (
+                    <div
+                        className="w-9 h-9 rounded-2xl flex items-center justify-center border shadow-sm"
+                        style={{ backgroundColor: badgeBg, borderColor: badgeBorder, color: badgeColor }}
+                    >
+                        <Icon size={16} />
+                    </div>
+                )}
+                <h1 className="text-2xl font-black uppercase tracking-tighter text-slate-900 leading-none italic">
+                    {title}
+                </h1>
+            </div>
+            {subtitle && <p className="text-xs font-medium text-slate-400 max-w-xl">{subtitle}</p>}
         </div>
-        <h1 className="text-4xl font-black uppercase tracking-tight text-slate-900 leading-none">{title}</h1>
-        {subtitle && <p className="text-sm font-medium text-slate-500 max-w-xl italic">{subtitle}</p>}
-    </div>
-);
+    );
+};
 
 const normalizeFeatureList = (val: any): string[] => {
     if (Array.isArray(val)) {
@@ -214,13 +303,20 @@ const getContrastColor = (hex: string) => {
 
 export default function DossierClient({ quote }: DossierClientProps) {
     const pricing = quote.pricing || {};
+    const pdpOptions = quote.pdpOptions || {};
     const accessories = pricing.accessories || [];
     const services = pricing.services || [];
     const insuranceAddons = pricing.insuranceAddons || [];
     const insuranceRequired = pricing.insuranceRequired || [];
+    const optionAccessories = pdpOptions.accessories || [];
+    const optionServices = pdpOptions.services || [];
+    const optionInsuranceAddons = pdpOptions.insuranceAddons || [];
+    const optionInsuranceRequired = pdpOptions.insuranceRequiredItems || [];
+    const optionRtoList = pdpOptions.rtoOptions || pricing.rtoOptions || [];
+    const optionWarrantyItems = pdpOptions.warrantyItems || quote.vehicle?.specs?.warranty || [];
     const warrantyItems = pricing.warrantyItems || [];
     const rtoOptions = pricing.rtoOptions || [];
-    const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+    const shareUrl = `https://bookmy.bike/q/${formatDisplayId(quote.display_id)}`;
     const specs = quote.vehicle?.specs || {};
     const specEngine = specs.engine || {};
     const specPerformance = specs.performance || {};
@@ -267,6 +363,20 @@ export default function DossierClient({ quote }: DossierClientProps) {
     const deltaAmount = Math.abs(baseOnRoad - offerOnRoad);
     const deltaIsSaving = baseOnRoad >= offerOnRoad;
 
+    const extractIds = (items: any[]) =>
+        (items || [])
+            .map(i =>
+                typeof i === 'string' || typeof i === 'number' ? String(i) : i?.id || i?.name || i?.label || i?.title
+            )
+            .filter(Boolean);
+    const selectedAccessoryIds = new Set(extractIds(accessories));
+    const selectedServiceIds = new Set(extractIds(services));
+    const selectedInsuranceAddonIds = new Set(extractIds(insuranceAddons));
+    const selectedWarrantyIds = new Set(extractIds(warrantyItems));
+    const warrantyHasSelection = selectedWarrantyIds.size > 0;
+    const selectedRtoType = pricing.rtoType || pricing.rto_type || 'STATE';
+    const warrantyOptions = optionWarrantyItems.length > 0 ? optionWarrantyItems : warrantyItems;
+
     const createdDate = quote.created_at ? new Date(quote.created_at) : null;
     const validDate = quote.valid_until ? new Date(quote.valid_until) : null;
 
@@ -289,7 +399,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
         <div className="dossier-stage">
             {/* Page 1 - Welcome */}
             <section
-                className="a4-page relative overflow-hidden flex flex-col"
+                className="a4-page relative overflow-hidden"
                 style={{
                     backgroundColor: '#FAFAFA', // Light base like Catalog
                 }}
@@ -484,10 +594,16 @@ export default function DossierClient({ quote }: DossierClientProps) {
             </section>
 
             {/* Page 2 - Pricing */}
-            <section className="a4-page relative overflow-hidden flex flex-col bg-white">
+            <section className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
+                />
+                <div
+                    className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none z-0"
+                    style={{
+                        background: `linear-gradient(to top, ${quote?.vehicle?.hexCode || '#F4B000'}33, transparent)`,
+                    }}
                 />
                 <div className="a4-grid flex-1 relative z-10 border-l border-zinc-200">
                     <div className="a4-header">
@@ -495,18 +611,14 @@ export default function DossierClient({ quote }: DossierClientProps) {
                             title="Pricing"
                             subtitle="Transparent breakup as seen on PDP and CRM."
                             accentColor={quote?.vehicle?.hexCode}
+                            icon={CreditCard}
                         />
                         <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
                             Quote: {formatDisplayId(quote.display_id)}
                         </div>
                     </div>
                     <div className="a4-body">
-                        <div className="mb-4">
-                            <div className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-400">
-                                Line-Item Breakdown
-                            </div>
-                            <div className="text-xs text-slate-500 mt-1">CRM Quote Tab (SOT)</div>
-                        </div>
+                        <div className="mb-4"></div>
 
                         <div className="space-y-4">
                             <DossierGroup
@@ -532,7 +644,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
 
                             <DossierGroup
                                 quote={quote}
-                                title="AUTHORIZED ACCESSORIES"
+                                title="ACCESSORIES"
                                 icon={Settings2}
                                 total={pricing.accessoriesTotal}
                             ></DossierGroup>
@@ -567,39 +679,17 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                 total={pricing.managerDiscount || 0}
                             ></DossierGroup>
 
-                            <div className="px-8 py-6 bg-slate-50 rounded-[2rem] border border-slate-100 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <Share2 size={14} className="text-slate-400" />
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-black text-slate-900 uppercase tracking-tighter">
-                                            Configuration Locked
-                                        </span>
-                                        <span className="text-[9px] text-slate-500">
-                                            Modify vehicle, color, or addons on Marketplace
+                            <div className="border border-slate-100 rounded-xl overflow-hidden bg-white">
+                                <div className="flex items-center justify-between px-4 py-3">
+                                    <div className="flex items-center gap-2">
+                                        <CheckCircle2 size={14} className="text-emerald-500" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                            Net Payable Amount
                                         </span>
                                     </div>
-                                </div>
-                                <ArrowRight size={16} className="text-slate-300" />
-                            </div>
-
-                            <div className="bg-slate-900 rounded-[2rem] p-8 text-white flex items-center justify-between">
-                                <div>
-                                    <div className="text-[9px] font-black text-white/40 uppercase tracking-[0.3em]">
-                                        Net Payable Amount
-                                    </div>
-                                    <div className="text-4xl font-black tracking-tighter">
+                                    <div className="text-sm font-black text-slate-900 tabular-nums">
                                         {formatCurrency(pricing.finalTotal || 0)}
                                     </div>
-                                    <div className="flex items-center gap-2 mt-2 text-[9px] font-bold text-white/40 uppercase">
-                                        <CheckCircle2 size={10} className="text-emerald-400" /> On-Road Total
-                                        <span className="w-1 h-1 rounded-full bg-white/20" /> 24h Validity
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <div className="text-[10px] font-black uppercase tracking-widest text-white/40">
-                                        On-Road
-                                    </div>
-                                    <div className="text-xl font-black">{formatCurrency(pricing.onRoadTotal || 0)}</div>
                                 </div>
                             </div>
 
@@ -636,17 +726,34 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         </div>
                     </div>{' '}
                     <div className="a4-footer">
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Page 2 of 13</div>
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Pricing Breakup</div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 2 of 13</span>
+                            <div
+                                className="w-1 h-1 rounded-full"
+                                style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
+                            />
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">
+                                Pricing Breakup
+                            </span>
+                        </div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                            {formatDisplayId(quote.display_id)}
+                        </div>
                     </div>
                 </div>
             </section>
 
             {/* Page 3 - Finance Scheme */}
-            <section className="a4-page relative overflow-hidden flex flex-col bg-white">
+            <section className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
+                />
+                <div
+                    className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none z-0"
+                    style={{
+                        background: `linear-gradient(to top, ${quote?.vehicle?.hexCode || '#F4B000'}33, transparent)`,
+                    }}
                 />
                 <div className="a4-grid flex-1 relative z-10 border-l border-zinc-200">
                     <div className="a4-header">
@@ -654,6 +761,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                             title="Finance Scheme"
                             subtitle="Finance tab application details from CRM."
                             accentColor={quote?.vehicle?.hexCode}
+                            icon={TrendingUp}
                         />
                         <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
                             Quote: {formatDisplayId(quote.display_id)}
@@ -779,68 +887,98 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         )}
                     </div>{' '}
                     <div className="a4-footer">
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Page 3 of 13</div>
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Finance Scheme</div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 3 of 13</span>
+                            <div
+                                className="w-1 h-1 rounded-full"
+                                style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
+                            />
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Finance Scheme</span>
+                        </div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                            {formatDisplayId(quote.display_id)}
+                        </div>
                     </div>
                 </div>
             </section>
 
             {/* Page 4 - Accessories */}
-            <section className="a4-page relative overflow-hidden flex flex-col bg-white">
+            <section className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
                 />
+                <div
+                    className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none z-0"
+                    style={{
+                        background: `linear-gradient(to top, ${quote?.vehicle?.hexCode || '#F4B000'}33, transparent)`,
+                    }}
+                />
                 <div className="a4-grid flex-1 relative z-10 border-l border-zinc-200">
                     <div className="a4-header">
                         <PageHeader
-                            title="Authorized Accessories"
+                            title="Accessories"
                             subtitle="Genuine enhancements and protection."
                             accentColor={quote?.vehicle?.hexCode}
+                            icon={Settings2}
                         />
                         <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
                             Quote: {formatDisplayId(quote.display_id)}
                         </div>
                     </div>
                     <div className="a4-body">
-                        {accessories.length > 0 ? (
-                            <DossierGroup
-                                quote={quote}
-                                title="Selection"
-                                icon={Settings2}
-                                total={pricing.accessoriesTotal}
-                            >
-                                {accessories.map((item: any, idx: number) => (
-                                    <DossierRow
-                                        key={item.id || idx}
-                                        isSub
-                                        label={item.name}
-                                        value={formatCurrency(
-                                            toNumber(item.discountPrice ?? item.price ?? item.amount, 0)
-                                        )}
-                                    />
-                                ))}
-                            </DossierGroup>
-                        ) : (
-                            <div className="h-full flex items-center justify-center border-4 border-dashed border-slate-100 rounded-[3rem]">
-                                <span className="text-slate-300 uppercase text-[10px] font-black tracking-widest">
-                                    No Accessories Selected
-                                </span>
-                            </div>
-                        )}
+                        <div className="space-y-2">
+                            {(optionAccessories.length > 0 ? optionAccessories : accessories).length > 0 ? (
+                                <div className="space-y-2 p-2">
+                                    {(optionAccessories.length > 0 ? optionAccessories : accessories).map(
+                                        (item: any, idx: number) => (
+                                            <OptionRow
+                                                key={item.id || idx}
+                                                label={item.description || item.displayName || item.name}
+                                                price={toNumber(item.discountPrice ?? item.price ?? item.amount, 0)}
+                                                selected={selectedAccessoryIds.has(String(item.id))}
+                                                description={item.brand ? `Brand: ${item.brand}` : undefined}
+                                                isMandatory={item.isMandatory || item.inclusionType === 'MANDATORY'}
+                                            />
+                                        )
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="h-full flex items-center justify-center border-4 border-dashed border-slate-100 rounded-[3rem]">
+                                    <span className="text-slate-300 uppercase text-[10px] font-black tracking-widest">
+                                        No Accessories Available
+                                    </span>
+                                </div>
+                            )}
+                        </div>
                     </div>
                     <div className="a4-footer">
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Page 4 of 13</div>
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Accessories</div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 4 of 13</span>
+                            <div
+                                className="w-1 h-1 rounded-full"
+                                style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
+                            />
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Accessories</span>
+                        </div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                            {formatDisplayId(quote.display_id)}
+                        </div>
                     </div>
                 </div>
             </section>
 
             {/* Page 5 - Insurance */}
-            <section className="a4-page relative overflow-hidden flex flex-col bg-white">
+            <section className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
+                />
+                <div
+                    className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none z-0"
+                    style={{
+                        background: `linear-gradient(to top, ${quote?.vehicle?.hexCode || '#F4B000'}33, transparent)`,
+                    }}
                 />
                 <div className="a4-grid flex-1 relative z-10 border-l border-zinc-200">
                     <div className="a4-header">
@@ -848,6 +986,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                             title="Insurance"
                             subtitle="Comprehensive protection for your ride."
                             accentColor={quote?.vehicle?.hexCode}
+                            icon={ShieldCheck}
                         />
                         <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
                             Quote: {formatDisplayId(quote.display_id)}
@@ -861,41 +1000,87 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                 icon={ShieldCheck}
                                 total={pricing.insuranceTotal}
                             >
-                                <DossierRow
-                                    isSub
-                                    label="Third Party Liability"
-                                    value={formatCurrency(pricing.insuranceTP)}
-                                />
-                                <DossierRow isSub label="Own Damage" value={formatCurrency(pricing.insuranceOD)} />
+                                <div className="space-y-2 p-2">
+                                    {(optionInsuranceRequired.length > 0 ? optionInsuranceRequired : insuranceRequired)
+                                        .length > 0 ? (
+                                        (optionInsuranceRequired.length > 0
+                                            ? optionInsuranceRequired
+                                            : insuranceRequired
+                                        ).map((item: any, idx: number) => (
+                                            <OptionRow
+                                                key={item.id || idx}
+                                                label={item.name || item.label}
+                                                price={toNumber(item.price ?? item.amount, 0)}
+                                                selected
+                                                description={item.description}
+                                                isMandatory
+                                                breakdown={item.breakdown}
+                                            />
+                                        ))
+                                    ) : (
+                                        <div className="text-center text-[9px] text-slate-300 uppercase py-2">
+                                            No insurance covers available
+                                        </div>
+                                    )}
+                                </div>
                             </DossierGroup>
-                            {insuranceAddons.length > 0 && (
-                                <DossierGroup quote={quote} title="Add-ons" icon={Sparkles}>
-                                    {insuranceAddons.map((addon: any, idx: number) => (
-                                        <DossierRow
-                                            key={addon.id || idx}
-                                            isSub
-                                            label={addon.name || addon.label}
-                                            value={formatCurrency(
-                                                toNumber(addon.discountPrice ?? addon.price ?? addon.amount, 0)
-                                            )}
-                                        />
-                                    ))}
-                                </DossierGroup>
-                            )}
+
+                            <DossierGroup quote={quote} title="Add-ons" icon={Sparkles}>
+                                <div className="space-y-2 p-2">
+                                    {(optionInsuranceAddons.length > 0 ? optionInsuranceAddons : insuranceAddons)
+                                        .length > 0 ? (
+                                        (optionInsuranceAddons.length > 0
+                                            ? optionInsuranceAddons
+                                            : insuranceAddons
+                                        ).map((addon: any, idx: number) => (
+                                            <OptionRow
+                                                key={addon.id || idx}
+                                                label={addon.name || addon.label}
+                                                price={toNumber(addon.discountPrice ?? addon.price ?? addon.amount, 0)}
+                                                selected={
+                                                    selectedInsuranceAddonIds.has(String(addon.id)) || addon.selected
+                                                }
+                                                description={addon.description}
+                                                isMandatory={addon.isMandatory || addon.inclusionType === 'BUNDLE'}
+                                                breakdown={addon.breakdown}
+                                            />
+                                        ))
+                                    ) : (
+                                        <div className="text-center text-[9px] text-slate-300 uppercase py-2">
+                                            No insurance add-ons available
+                                        </div>
+                                    )}
+                                </div>
+                            </DossierGroup>
                         </div>
                     </div>
                     <div className="a4-footer">
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Page 5 of 13</div>
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Insurance</div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 5 of 13</span>
+                            <div
+                                className="w-1 h-1 rounded-full"
+                                style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
+                            />
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Insurance</span>
+                        </div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                            {formatDisplayId(quote.display_id)}
+                        </div>
                     </div>
                 </div>
             </section>
 
             {/* Page 6 - Registration (RTO) */}
-            <section className="a4-page relative overflow-hidden flex flex-col bg-white">
+            <section className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
+                />
+                <div
+                    className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none z-0"
+                    style={{
+                        background: `linear-gradient(to top, ${quote?.vehicle?.hexCode || '#F4B000'}33, transparent)`,
+                    }}
                 />
                 <div className="a4-grid flex-1 relative z-10 border-l border-zinc-200">
                     <div className="a4-header">
@@ -903,43 +1088,64 @@ export default function DossierClient({ quote }: DossierClientProps) {
                             title="Registration"
                             subtitle="Statutory levies and RTO documentation."
                             accentColor={quote?.vehicle?.hexCode}
+                            icon={Milestone}
                         />
                         <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
                             Quote: {formatDisplayId(quote.display_id)}
                         </div>
                     </div>
                     <div className="a4-body">
-                        <DossierGroup quote={quote} title="RTO Breakdown" icon={Milestone} total={pricing.rtoTotal}>
-                            {pricing.rtoBreakdown && pricing.rtoBreakdown.length > 0 ? (
-                                pricing.rtoBreakdown.map((item: any, idx: number) => (
-                                    <DossierRow
-                                        key={idx}
-                                        isSub
-                                        label={item.label || item.name}
-                                        value={formatCurrency(item.amount || item.price || 0)}
-                                    />
-                                ))
+                        <div className="space-y-2 p-2">
+                            {(optionRtoList.length > 0 ? optionRtoList : rtoOptions).length > 0 ? (
+                                (optionRtoList.length > 0 ? optionRtoList : rtoOptions).map(
+                                    (item: any, idx: number) => (
+                                        <OptionRow
+                                            key={item.id || idx}
+                                            label={item.name || item.label || item.type || 'Registration'}
+                                            price={toNumber(item.price ?? item.amount ?? item.total, 0)}
+                                            selected={
+                                                String(selectedRtoType || '').toUpperCase() ===
+                                                String(item.id || item.type || '').toUpperCase()
+                                            }
+                                            description={item.description}
+                                            breakdown={item.breakdown}
+                                        />
+                                    )
+                                )
                             ) : (
-                                <DossierRow
-                                    isSub
-                                    label="Standard Registration"
-                                    value={formatCurrency(pricing.rtoTotal)}
-                                />
+                                <div className="text-center text-[9px] text-slate-300 uppercase py-2">
+                                    No registration options available
+                                </div>
                             )}
-                        </DossierGroup>
+                        </div>
                     </div>
                     <div className="a4-footer">
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Page 6 of 13</div>
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Registration</div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 6 of 13</span>
+                            <div
+                                className="w-1 h-1 rounded-full"
+                                style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
+                            />
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Registration</span>
+                        </div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                            {formatDisplayId(quote.display_id)}
+                        </div>
                     </div>
                 </div>
             </section>
 
             {/* Page 7 - Service Packages */}
-            <section className="a4-page relative overflow-hidden flex flex-col bg-white">
+            <section className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
+                />
+                <div
+                    className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none z-0"
+                    style={{
+                        background: `linear-gradient(to top, ${quote?.vehicle?.hexCode || '#F4B000'}33, transparent)`,
+                    }}
                 />
                 <div className="a4-grid flex-1 relative z-10 border-l border-zinc-200">
                     <div className="a4-header">
@@ -947,46 +1153,59 @@ export default function DossierClient({ quote }: DossierClientProps) {
                             title="Service Packages"
                             subtitle="Maintenance architecture and protocols."
                             accentColor={quote?.vehicle?.hexCode}
+                            icon={Settings2}
                         />
                         <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
                             Quote: {formatDisplayId(quote.display_id)}
                         </div>
                     </div>
                     <div className="a4-body">
-                        <DossierGroup
-                            quote={quote}
-                            title="Service Selection"
-                            icon={Settings2}
-                            total={pricing.servicesTotal}
-                        >
-                            {(services || []).length > 0 ? (
-                                services.map((svc: any, idx: number) => (
-                                    <DossierRow
-                                        key={idx}
-                                        isSub
+                        <div className="space-y-2 p-2">
+                            {(optionServices.length > 0 ? optionServices : services).length > 0 ? (
+                                (optionServices.length > 0 ? optionServices : services).map((svc: any, idx: number) => (
+                                    <OptionRow
+                                        key={svc.id || idx}
                                         label={svc.name}
-                                        value={formatCurrency(toNumber(svc.discountPrice ?? svc.price, 0))}
+                                        price={toNumber(svc.discountPrice ?? svc.price, 0)}
+                                        selected={selectedServiceIds.has(String(svc.id))}
+                                        description={svc.description}
+                                        isMandatory={svc.isMandatory}
                                     />
                                 ))
                             ) : (
-                                <div className="px-8 py-4 text-zinc-400 text-[10px] uppercase italic text-center">
-                                    Manufacturer standard service active
+                                <div className="px-8 py-4 text-zinc-300 text-[10px] uppercase italic text-center">
+                                    No services available
                                 </div>
                             )}
-                        </DossierGroup>
+                        </div>
                     </div>
                     <div className="a4-footer">
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Page 7 of 13</div>
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Service</div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 7 of 13</span>
+                            <div
+                                className="w-1 h-1 rounded-full"
+                                style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
+                            />
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Service</span>
+                        </div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                            {formatDisplayId(quote.display_id)}
+                        </div>
                     </div>
                 </div>
             </section>
 
             {/* Page 8 - Warranty */}
-            <section className="a4-page relative overflow-hidden flex flex-col bg-white">
+            <section className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
+                />
+                <div
+                    className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none z-0"
+                    style={{
+                        background: `linear-gradient(to top, ${quote?.vehicle?.hexCode || '#F4B000'}33, transparent)`,
+                    }}
                 />
                 <div className="a4-grid flex-1 relative z-10 border-l border-zinc-200">
                     <div className="a4-header">
@@ -994,20 +1213,28 @@ export default function DossierClient({ quote }: DossierClientProps) {
                             title="Warranty"
                             subtitle="Extended protection and asset security."
                             accentColor={quote?.vehicle?.hexCode}
+                            icon={CheckCircle2}
                         />
                         <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
                             Quote: {formatDisplayId(quote.display_id)}
                         </div>
                     </div>
                     <div className="a4-body">
-                        <DossierGroup quote={quote} title="Warranty Plan" icon={ShieldCheck}>
-                            {(warrantyItems || []).length > 0 ? (
-                                warrantyItems.map((w: any, idx: number) => (
-                                    <DossierRow
-                                        key={idx}
-                                        isSub
+                        <div className="space-y-2 p-2">
+                            {warrantyOptions.length > 0 ? (
+                                warrantyOptions.map((w: any, idx: number) => (
+                                    <OptionRow
+                                        key={w.id || idx}
                                         label={w.name || w.label || 'Extended Warranty'}
-                                        value="Included"
+                                        price={toNumber(w.discountPrice ?? w.price ?? w.amount, 0)}
+                                        selected={
+                                            warrantyHasSelection
+                                                ? selectedWarrantyIds.has(String(w.id || w.name || w.label || ''))
+                                                : true
+                                        }
+                                        description={w.description}
+                                        isMandatory
+                                        breakdown={w.breakdown}
                                     />
                                 ))
                             ) : (
@@ -1015,20 +1242,35 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                     Standard Warranty Active
                                 </div>
                             )}
-                        </DossierGroup>
+                        </div>
                     </div>
                     <div className="a4-footer">
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Page 8 of 13</div>
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Warranty</div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 8 of 13</span>
+                            <div
+                                className="w-1 h-1 rounded-full"
+                                style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
+                            />
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Warranty</span>
+                        </div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                            {formatDisplayId(quote.display_id)}
+                        </div>
                     </div>
                 </div>
             </section>
 
             {/* Page 9 - Engine & Performance */}
-            <section className="a4-page relative overflow-hidden flex flex-col bg-white">
+            <section className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
+                />
+                <div
+                    className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none z-0"
+                    style={{
+                        background: `linear-gradient(to top, ${quote?.vehicle?.hexCode || '#F4B000'}33, transparent)`,
+                    }}
                 />
                 <div className="a4-grid flex-1 relative z-10 border-l border-zinc-200">
                     <div className="a4-header">
@@ -1036,13 +1278,14 @@ export default function DossierClient({ quote }: DossierClientProps) {
                             title="Engine & Performance"
                             subtitle="The heart of the machine."
                             accentColor={quote?.vehicle?.hexCode}
+                            icon={Zap}
                         />
                         <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
                             Quote: {formatDisplayId(quote.display_id)}
                         </div>
                     </div>
                     <div className="a4-body">
-                        <DossierGroup quote={quote} title="Performance Metrics" icon={Zap}>
+                        <div>
                             <DossierRow
                                 label="Cubic Capacity"
                                 value={formatSpecValue(
@@ -1078,20 +1321,35 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                 value={formatSpecValue(specPerformance.acceleration ?? specs.acceleration)}
                                 isSub
                             />
-                        </DossierGroup>
+                        </div>
                     </div>
                     <div className="a4-footer">
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Page 9 of 13</div>
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Engine</div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 9 of 13</span>
+                            <div
+                                className="w-1 h-1 rounded-full"
+                                style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
+                            />
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Engine</span>
+                        </div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                            {formatDisplayId(quote.display_id)}
+                        </div>
                     </div>
                 </div>
             </section>
 
             {/* Page 10 - Dimension & Chassis */}
-            <section className="a4-page relative overflow-hidden flex flex-col bg-white">
+            <section className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
+                />
+                <div
+                    className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none z-0"
+                    style={{
+                        background: `linear-gradient(to top, ${quote?.vehicle?.hexCode || '#F4B000'}33, transparent)`,
+                    }}
                 />
                 <div className="a4-grid flex-1 relative z-10 border-l border-zinc-200">
                     <div className="a4-header">
@@ -1099,13 +1357,14 @@ export default function DossierClient({ quote }: DossierClientProps) {
                             title="Dimension & Chassis"
                             subtitle="Structural integrity and footprint."
                             accentColor={quote?.vehicle?.hexCode}
+                            icon={Ruler}
                         />
                         <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
                             Quote: {formatDisplayId(quote.display_id)}
                         </div>
                     </div>
                     <div className="a4-body">
-                        <DossierGroup quote={quote} title="Chassis Architecture" icon={Activity}>
+                        <div>
                             <DossierRow
                                 label="Kerb Weight"
                                 value={formatSpecValue(
@@ -1146,20 +1405,35 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                 )}
                                 isSub
                             />
-                        </DossierGroup>
+                        </div>
                     </div>
                     <div className="a4-footer">
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Page 10 of 13</div>
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Dimensions</div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 10 of 13</span>
+                            <div
+                                className="w-1 h-1 rounded-full"
+                                style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
+                            />
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Dimensions</span>
+                        </div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                            {formatDisplayId(quote.display_id)}
+                        </div>
                     </div>
                 </div>
             </section>
 
             {/* Page 11 - Brakes & Safety */}
-            <section className="a4-page relative overflow-hidden flex flex-col bg-white">
+            <section className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
+                />
+                <div
+                    className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none z-0"
+                    style={{
+                        background: `linear-gradient(to top, ${quote?.vehicle?.hexCode || '#F4B000'}33, transparent)`,
+                    }}
                 />
                 <div className="a4-grid flex-1 relative z-10 border-l border-zinc-200">
                     <div className="a4-header">
@@ -1167,13 +1441,14 @@ export default function DossierClient({ quote }: DossierClientProps) {
                             title="Brakes & Safety"
                             subtitle="Protective systems and stopping power."
                             accentColor={quote?.vehicle?.hexCode}
+                            icon={ShieldCheck}
                         />
                         <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
                             Quote: {formatDisplayId(quote.display_id)}
                         </div>
                     </div>
                     <div className="a4-body">
-                        <DossierGroup quote={quote} title="Safety Grid" icon={ShieldCheck}>
+                        <div>
                             <DossierRow
                                 label="Braking"
                                 value={formatSpecValue(specBrakes.front ?? specs.front_brake_type ?? specs.front_brake)}
@@ -1198,20 +1473,35 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                 )}
                                 isSub
                             />
-                        </DossierGroup>
+                        </div>
                     </div>
                     <div className="a4-footer">
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Page 11 of 13</div>
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Safety</div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 11 of 13</span>
+                            <div
+                                className="w-1 h-1 rounded-full"
+                                style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
+                            />
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Safety</span>
+                        </div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                            {formatDisplayId(quote.display_id)}
+                        </div>
                     </div>
                 </div>
             </section>
 
             {/* Page 12 - Features & Tech */}
-            <section className="a4-page relative overflow-hidden flex flex-col bg-white">
+            <section className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
+                />
+                <div
+                    className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none z-0"
+                    style={{
+                        background: `linear-gradient(to top, ${quote?.vehicle?.hexCode || '#F4B000'}33, transparent)`,
+                    }}
                 />
                 <div className="a4-grid flex-1 relative z-10 border-l border-zinc-200">
                     <div className="a4-header">
@@ -1219,138 +1509,122 @@ export default function DossierClient({ quote }: DossierClientProps) {
                             title="Features & Tech"
                             subtitle="Digital ecosystem and connectivity."
                             accentColor={quote?.vehicle?.hexCode}
+                            icon={Sparkles}
                         />
                         <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
                             Quote: {formatDisplayId(quote.display_id)}
                         </div>
                     </div>
                     <div className="a4-body">
-                        <DossierGroup quote={quote} title="Smart Features" icon={Zap}>
-                            <div className="grid grid-cols-2 gap-2 p-2">
-                                {featureList.slice(0, 10).map((f: string, i: number) => (
-                                    <div
-                                        key={i}
-                                        className="text-[10px] font-black uppercase text-slate-500 flex items-center gap-2"
-                                    >
-                                        <div className="w-1 h-1 rounded-full bg-slate-300" /> {f}
-                                    </div>
-                                ))}
-                                {featureList.length === 0 && (
-                                    <div className="col-span-2 text-center text-zinc-300 uppercase text-[9px] py-4">
-                                        Standard Smart Interface Included
-                                    </div>
-                                )}
-                            </div>
-                        </DossierGroup>
+                        <div className="grid grid-cols-2 gap-2 p-2">
+                            {featureList.slice(0, 10).map((f: string, i: number) => (
+                                <div
+                                    key={i}
+                                    className="text-[10px] font-black uppercase text-slate-500 flex items-center gap-2"
+                                >
+                                    <div className="w-1 h-1 rounded-full bg-slate-300" /> {f}
+                                </div>
+                            ))}
+                            {featureList.length === 0 && (
+                                <div className="col-span-2 text-center text-zinc-300 uppercase text-[9px] py-4">
+                                    Standard Smart Interface Included
+                                </div>
+                            )}
+                        </div>
 
                         {/* Final Summary removed */}
                     </div>
                     <div className="a4-footer">
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Page 12 of 13</div>
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Features</div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 12 of 13</span>
+                            <div
+                                className="w-1 h-1 rounded-full"
+                                style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
+                            />
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Features</span>
+                        </div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                            {formatDisplayId(quote.display_id)}
+                        </div>
                     </div>
                 </div>
             </section>
 
             {/* Page 13 - Reach Us */}
-            <section className="a4-page relative overflow-hidden flex flex-col bg-white">
+
+            {/* Page 13 - Reach Us */}
+            <section className="a4-page relative overflow-hidden" style={{ backgroundColor: '#FAFAFA' }}>
                 <div
-                    className="absolute left-0 top-0 bottom-0 w-2"
-                    style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
+                    className="absolute inset-0 z-0"
+                    style={{
+                        backgroundColor: quote?.vehicle?.hexCode ? `${quote.vehicle.hexCode}4D` : 'transparent',
+                    }}
                 />
-                <div className="a4-grid flex-1 relative z-10 border-l border-zinc-200">
-                    <div className="a4-header">
-                        <PageHeader
-                            title="Reach Us"
-                            subtitle="Stay connected with BookMyBike across platforms."
-                            accentColor={quote?.vehicle?.hexCode}
-                        />
-                        <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
-                            Quote: {formatDisplayId(quote.display_id)}
+                <div className="a4-grid flex-1 relative z-10">
+                    <div className="flex items-center justify-between">
+                        <Logo size={42} variant="full" />
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            {formatDisplayId(quote.display_id)}
                         </div>
                     </div>
-                    <div className="a4-body">
-                        <div className="grid grid-cols-2 gap-6">
-                            <DossierGroup quote={quote} title="Share This Quote" icon={Share2}>
-                                <div className="px-6 py-4 space-y-3">
-                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                        Share Link
-                                    </div>
-                                    <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-[11px] font-mono text-slate-700 break-all">
-                                        {shareUrl || `https://bookmy.bike/q/${formatDisplayId(quote.display_id)}`}
-                                    </div>
-                                    <div className="flex items-center gap-3 pt-2 text-slate-500">
-                                        <Newspaper size={16} />
-                                        <Instagram size={16} />
-                                        <Twitter size={16} />
-                                        <Linkedin size={16} />
-                                        <Facebook size={16} />
-                                    </div>
-                                </div>
-                            </DossierGroup>
-
-                            <DossierGroup quote={quote} title="Download Our App" icon={Globe}>
-                                <div className="px-6 py-6 space-y-4">
-                                    <div className="text-sm font-black text-slate-900 uppercase tracking-tight">
-                                        BookMyBike App
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <div className="px-4 py-2 rounded-full border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-600">
-                                            iOS App
-                                        </div>
-                                        <div className="px-4 py-2 rounded-full border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-600">
-                                            Android App
-                                        </div>
-                                    </div>
-                                    <div className="text-[10px] text-slate-400 uppercase tracking-widest">
-                                        Search “BookMyBike” on your app store
-                                    </div>
-                                </div>
-                            </DossierGroup>
+                    <div className="flex flex-col items-center justify-center text-center gap-12">
+                        <div className="space-y-6">
+                            <div
+                                className="h-px w-24 mx-auto"
+                                style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
+                            />
+                            <div className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-400">
+                                Find Us Online
+                            </div>
+                            <h2 className="text-5xl font-black text-slate-900 tracking-tight">www.bookmy.bike</h2>
+                            <div
+                                className="h-px w-24 mx-auto"
+                                style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
+                            />
                         </div>
-
-                        <div className="grid grid-cols-2 gap-6 mt-6">
-                            <DossierGroup quote={quote} title="Connect With Us" icon={Instagram}>
-                                <div className="px-6 py-4 space-y-2 text-[11px] font-bold text-slate-600">
-                                    <div className="flex items-center gap-2">
-                                        <Newspaper size={14} /> /blog
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Instagram size={14} /> @bookmybike
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Twitter size={14} /> @bookmybike
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Linkedin size={14} /> /company/bookmybike
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Facebook size={14} /> /bookmybike
-                                    </div>
+                        <div className="flex flex-col items-center gap-6">
+                            <div className="bg-white rounded-3xl p-6 shadow-xl shadow-black/10 border border-slate-100">
+                                <img
+                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(shareUrl)}&bgcolor=FFFFFF&color=1e293b&format=svg`}
+                                    alt="Quote QR Code"
+                                    className="w-[180px] h-[180px]"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <div className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">
+                                    Scan to View & Edit Quote
                                 </div>
-                            </DossierGroup>
-
-                            <DossierGroup quote={quote} title="Studio & Support" icon={Phone}>
-                                <div className="px-6 py-4 space-y-2 text-[11px] font-bold text-slate-600">
-                                    <div className="flex items-center gap-2">
-                                        <MapPin size={14} />{' '}
-                                        {quote?.pricing?.dealer?.dealer_name ||
-                                            quote?.pricing?.dealer?.name ||
-                                            'BookMyBike Studio'}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Phone size={14} /> {quote?.pricing?.dealer?.phone || '+91 00000 00000'}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Mail size={14} /> {quote?.pricing?.dealer?.email || 'support@bookmy.bike'}
-                                    </div>
+                                <div className="text-[11px] font-mono text-slate-400 break-all max-w-xs">
+                                    {shareUrl}
                                 </div>
-                            </DossierGroup>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-8">
+                            {[
+                                { Icon: Instagram, label: '@bookmybike' },
+                                { Icon: Facebook, label: '/bookmybike' },
+                                { Icon: Twitter, label: '@bookmybike' },
+                                { Icon: Linkedin, label: '/bookmybike' },
+                            ].map(({ Icon, label }, idx) => (
+                                <div key={`${label}-${idx}`} className="flex flex-col items-center gap-2">
+                                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center border border-slate-200 bg-white/60">
+                                        <Icon size={20} className="text-slate-600" />
+                                    </div>
+                                    <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                                        {label}
+                                    </span>
+                                </div>
+                            ))}
                         </div>
                     </div>
-                    <div className="a4-footer">
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Page 13 of 13</div>
-                        <div className="text-[10px] uppercase tracking-widest text-zinc-400">Reach Us</div>
+                    <div className="flex items-center justify-between border-t border-slate-200 pt-4">
+                        <div className="flex items-center gap-3">
+                            <ShieldCheck size={14} className="text-slate-300" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                Official & Verified
+                            </span>
+                        </div>
+                        <div className="text-[10px] uppercase tracking-widest text-slate-400">Page 13 of 13</div>
                     </div>
                 </div>
             </section>

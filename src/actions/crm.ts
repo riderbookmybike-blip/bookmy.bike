@@ -2783,7 +2783,7 @@ export async function getQuoteByDisplayId(
     if (colorId && stateCode) {
         const { data: priceData } = await supabase
             .from('cat_price_state')
-            .select('gst_rate, rto, hsn_code')
+            .select('gst_rate, rto, hsn_code, insurance')
             .eq('vehicle_color_id', colorId)
             .eq('state_code', stateCode)
             .or(`district.eq.${district},district.eq.ALL`)
@@ -2834,13 +2834,226 @@ export async function getQuoteByDisplayId(
         resolveHex(vehicleSpecs?.fields?.ColorHexCode) ||
         null;
 
+    const normalizeSuitabilityTag = (value: string) =>
+        value
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, ' ')
+            .trim();
+
+    const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    const COLOR_WORDS = new Set([
+        'black',
+        'white',
+        'silver',
+        'grey',
+        'gray',
+        'red',
+        'blue',
+        'green',
+        'yellow',
+        'orange',
+        'gold',
+        'brown',
+        'maroon',
+        'navy',
+        'beige',
+        'cream',
+        'copper',
+        'bronze',
+        'teal',
+        'purple',
+        'pink',
+    ]);
+
+    const COLOR_MODIFIERS = new Set([
+        'matte',
+        'gloss',
+        'glossy',
+        'metallic',
+        'pearl',
+        'satin',
+        'chrome',
+        'carbon',
+        'gunmetal',
+        'midnight',
+    ]);
+
+    const extractColorFromName = (name: string) => {
+        const trimmed = (name || '').trim();
+        if (!trimmed) return { baseName: name, color: '' };
+
+        const parts = trimmed.split(/\s+/);
+        if (parts.length === 0) return { baseName: name, color: '' };
+
+        const last = parts[parts.length - 1];
+        const lastNorm = normalizeSuitabilityTag(last);
+        const second = parts.length > 1 ? parts[parts.length - 2] : '';
+        const secondNorm = normalizeSuitabilityTag(second);
+
+        if (COLOR_WORDS.has(lastNorm)) {
+            if (second && COLOR_MODIFIERS.has(secondNorm)) {
+                return {
+                    baseName: parts.slice(0, -2).join(' ').trim(),
+                    color: `${second} ${last}`,
+                };
+            }
+            return {
+                baseName: parts.slice(0, -1).join(' ').trim(),
+                color: last,
+            };
+        }
+
+        return { baseName: name, color: '' };
+    };
+
+    const stripColorFromName = (name: string, color: string) => {
+        if (!name || !color) return name;
+        const colorNorm = normalizeSuitabilityTag(color);
+        if (!colorNorm) return name;
+
+        const suffixPattern = new RegExp(`\\s*${escapeRegExp(color)}\\s*$`, 'i');
+        if (suffixPattern.test(name)) {
+            return name.replace(suffixPattern, '').trim();
+        }
+
+        return name;
+    };
+
+    const matchesAccessoryCompatibility = (
+        suitableFor: string | null | undefined,
+        brand: string,
+        model: string,
+        variant: string
+    ) => {
+        const suitabilityRaw = Array.isArray(suitableFor) ? suitableFor.join(',') : suitableFor;
+        if (!suitabilityRaw || suitabilityRaw.trim() === '') return false;
+
+        const tags = suitabilityRaw
+            .split(',')
+            .map(t => t.trim())
+            .filter(Boolean);
+        if (tags.length === 0) return false;
+
+        const brandNorm = normalizeSuitabilityTag(brand || '');
+        const modelNorm = normalizeSuitabilityTag(model || '');
+        const variantNorm = normalizeSuitabilityTag(variant || '');
+
+        const buildKey = (...parts: string[]) => parts.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+
+        const variantHasModel = Boolean(modelNorm && variantNorm.includes(modelNorm));
+        const variantHasBrand = Boolean(brandNorm && variantNorm.includes(brandNorm));
+
+        const brandModel = buildKey(brandNorm, modelNorm);
+        const brandVariant = buildKey(variantHasBrand ? '' : brandNorm, variantNorm);
+        const modelVariant = buildKey(variantHasModel ? '' : modelNorm, variantNorm);
+        const brandModelVariant = buildKey(
+            variantHasBrand ? '' : brandNorm,
+            variantHasModel ? '' : modelNorm,
+            variantNorm
+        );
+
+        const matchKeys = new Set(
+            [brandNorm, modelNorm, variantNorm, brandModel, brandVariant, modelVariant, brandModelVariant].filter(
+                Boolean
+            )
+        );
+
+        return tags.some(tag => {
+            const normalized = normalizeSuitabilityTag(tag);
+            if (!normalized) return false;
+
+            if (normalized.includes('universal') || normalized === 'all') {
+                return true;
+            }
+
+            if (normalized.includes('all models')) {
+                return Boolean(brandNorm && normalized.includes(brandNorm));
+            }
+
+            if (normalized.includes('all variants')) {
+                return Boolean(
+                    brandNorm && modelNorm && normalized.includes(brandNorm) && normalized.includes(modelNorm)
+                );
+            }
+
+            if (brandNorm && normalized.startsWith(brandNorm) && normalized.includes('all models')) return true;
+            if (matchKeys.has(normalized)) return true;
+
+            return false;
+        });
+    };
+
+    const resolveProductIdentity = async (skuId?: string | null) => {
+        const resolved = { brand: '', model: '', variant: '' };
+        if (!skuId) return resolved;
+
+        const { data: sku } = await supabase
+            .from('cat_items')
+            .select('id, name, parent_id, type')
+            .eq('id', skuId)
+            .maybeSingle();
+
+        if (!sku) return resolved;
+
+        let variantItem: any = null;
+        if (sku.type === 'VARIANT') {
+            variantItem = sku;
+        } else if (sku.parent_id) {
+            const { data: variant } = await supabase
+                .from('cat_items')
+                .select('id, name, parent_id')
+                .eq('id', sku.parent_id)
+                .maybeSingle();
+            variantItem = variant || null;
+        }
+
+        if (variantItem?.name) resolved.variant = variantItem.name;
+
+        if (variantItem?.parent_id) {
+            const { data: model } = await supabase
+                .from('cat_items')
+                .select('id, name, brand_id')
+                .eq('id', variantItem.parent_id)
+                .maybeSingle();
+            if (model?.name) resolved.model = model.name;
+            if (model?.brand_id) {
+                const { data: brand } = await supabase
+                    .from('cat_brands')
+                    .select('name')
+                    .eq('id', model.brand_id)
+                    .maybeSingle();
+                if (brand?.name) resolved.brand = brand.name;
+            }
+        }
+
+        return resolved;
+    };
+
+    const parseRtoData = (val: any): { total: number; breakdown: any[] } | null => {
+        if (val === null || val === undefined) return null;
+        if (typeof val === 'number') return { total: val, breakdown: [] };
+        if (typeof val === 'object' && 'total' in val) {
+            const b = [
+                { label: 'Road Tax', amount: val.roadTax },
+                { label: 'Reg. Charges', amount: val.registrationCharges },
+                { label: 'Smart Card', amount: val.smartCardCharges },
+                { label: 'Hypothecation', amount: val.hypothecationCharges },
+                { label: 'Postal Charges', amount: val.postalCharges },
+                { label: 'Cess', amount: val.cessAmount },
+            ].filter(x => x.amount > 0);
+            return { total: val.total, breakdown: b };
+        }
+        return null;
+    };
+
     if (
         (!resolvedImageUrl || Object.keys(vehicleSpecs).length === 0 || !itemHex) &&
         (quote.color_id || quote.variant_id)
     ) {
         const { data: item } = await supabase
             .from('cat_items')
-            .select('image_url, specs')
+            .select('image_url, specs, type, parent_id')
             .eq('id', quote.color_id || quote.variant_id)
             .maybeSingle();
 
@@ -2849,10 +3062,40 @@ export async function getQuoteByDisplayId(
                 resolvedImageUrl = item.image_url;
             }
             if (item.specs) {
-                // Merge specs if they were missing or provide better ones
-                vehicleSpecs = { ...vehicleSpecs, ...item.specs };
+                // Merge DB specs as source of truth (SKU/Variant/Model)
+                let modelSpecs: any = {};
+                let variantSpecs: any = {};
+                let skuSpecs: any = item.specs || {};
+
+                if (item.type === 'SKU' && item.parent_id) {
+                    const { data: variantItem } = await supabase
+                        .from('cat_items')
+                        .select('specs, parent_id')
+                        .eq('id', item.parent_id)
+                        .maybeSingle();
+                    if (variantItem?.specs) variantSpecs = variantItem.specs;
+
+                    if (variantItem?.parent_id) {
+                        const { data: modelItem } = await supabase
+                            .from('cat_items')
+                            .select('specs')
+                            .eq('id', variantItem.parent_id)
+                            .maybeSingle();
+                        if (modelItem?.specs) modelSpecs = modelItem.specs;
+                    }
+                } else if (item.type === 'VARIANT' && item.parent_id) {
+                    const { data: modelItem } = await supabase
+                        .from('cat_items')
+                        .select('specs')
+                        .eq('id', item.parent_id)
+                        .maybeSingle();
+                    if (modelItem?.specs) modelSpecs = modelItem.specs;
+                }
+
+                vehicleSpecs = { ...vehicleSpecs, ...modelSpecs, ...variantSpecs, ...skuSpecs };
+
                 if (!itemHex) {
-                    const s = item.specs as any;
+                    const s = vehicleSpecs as any;
                     // Check all variants of hex fields in TVS/AUMS data
                     itemHex =
                         resolveHex(s?.color_hex) ||
@@ -2868,6 +3111,285 @@ export async function getQuoteByDisplayId(
     }
 
     const hexCode = itemHex || null;
+
+    const selectedSkuId = quote.color_id || quote.variant_id || null;
+    const identity = await resolveProductIdentity(selectedSkuId);
+    const productMake = commercials.brand || identity.brand || '';
+    const productModel = commercials.model || identity.model || '';
+    const productVariant = commercials.variant || identity.variant || '';
+
+    const dealerId =
+        pricingSnapshot?.dealer?.id || pricingSnapshot?.dealer_id || commercials?.dealer_id || quote.studio_id || null;
+
+    // PDP Options: Accessories + Services
+    const { data: accessoriesData } = await supabase
+        .from('cat_items')
+        .select('*, brand:cat_brands(name), category')
+        .eq('category', 'ACCESSORY')
+        .eq('type', 'SKU')
+        .eq('status', 'ACTIVE');
+
+    const { data: servicesData } = await supabase.from('cat_services').select('*').eq('status', 'ACTIVE');
+
+    const accessoryIds = (accessoriesData || []).map((a: any) => a.id);
+    const accessoryRules: Map<string, { offer: number; inclusion: string; isActive: boolean }> = new Map();
+    const bundleIdsForDealer: Set<string> = new Set();
+
+    if (accessoryIds.length > 0 && dealerId && stateCode) {
+        const { data: rules } = await supabase
+            .from('cat_price_dealer')
+            .select('vehicle_color_id, offer_amount, inclusion_type, is_active')
+            .in('vehicle_color_id', accessoryIds)
+            .eq('tenant_id', dealerId)
+            .eq('state_code', stateCode);
+
+        rules?.forEach((r: any) => {
+            accessoryRules.set(r.vehicle_color_id, {
+                offer: Number(r.offer_amount),
+                inclusion: r.inclusion_type,
+                isActive: r.is_active,
+            });
+        });
+
+        const { data: bundleRules } = await supabase
+            .from('cat_price_dealer')
+            .select('vehicle_color_id')
+            .eq('tenant_id', dealerId)
+            .eq('state_code', stateCode)
+            .eq('inclusion_type', 'BUNDLE');
+
+        bundleRules?.forEach((r: any) => {
+            if (r.vehicle_color_id) bundleIdsForDealer.add(r.vehicle_color_id);
+        });
+    }
+
+    const pdpAccessories = (accessoriesData || [])
+        .filter((a: any) =>
+            matchesAccessoryCompatibility(a.specs?.suitable_for, productMake, productModel, productVariant)
+        )
+        .map((a: any) => {
+            const rule = accessoryRules.get(a.id);
+            const offer = rule ? rule.offer : 0;
+            const basePrice = Number(a.price_base);
+            const discountPrice = Math.max(0, basePrice + offer);
+            const inclusionType =
+                rule?.inclusion ||
+                (bundleIdsForDealer.has(a.id) ? 'BUNDLE' : undefined) ||
+                a.inclusion_type ||
+                'OPTIONAL';
+            const isMandatory = inclusionType === 'MANDATORY';
+
+            let colorLabel = a.specs?.color || a.specs?.colour || a.specs?.finish || a.specs?.shade || '';
+            let nameBase = a.name;
+
+            if (!colorLabel) {
+                const inferred = extractColorFromName(a.name);
+                colorLabel = inferred.color;
+                nameBase = inferred.baseName || a.name;
+            } else {
+                nameBase = stripColorFromName(a.name, colorLabel);
+            }
+
+            const accessoryName = nameBase || a.name;
+            const displayName = [a.brand?.name, a.name].filter(Boolean).join(' ');
+            const descriptionLabel = [accessoryName, colorLabel].filter(Boolean).join(' ');
+
+            return {
+                id: a.id,
+                name: a.name,
+                displayName,
+                description: descriptionLabel,
+                suitableFor: a.specs?.suitable_for || '',
+                price: basePrice,
+                discountPrice,
+                maxQty: 1,
+                isMandatory,
+                inclusionType,
+                category: a.category || 'OTHERS',
+                brand: a.brand?.name || null,
+                subCategory: null,
+            };
+        });
+
+    const pdpServices = (servicesData || []).map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        description: s.description,
+        price: Number(s.price),
+        discountPrice: Number(s.discount_price),
+        maxQty: s.max_qty,
+        isMandatory: s.is_mandatory,
+        durationMonths: s.duration_months,
+    }));
+
+    // PDP Options: Registration + Insurance
+    const rtoJson = highFidelityPricing?.rto;
+    const rtoByType = {
+        STATE: parseRtoData(rtoJson?.STATE),
+        BH: parseRtoData(rtoJson?.BH),
+        COMPANY: parseRtoData(rtoJson?.COMPANY),
+    };
+
+    let pdpRtoOptions: any[] = [];
+    if (rtoJson) {
+        pdpRtoOptions = [
+            {
+                id: 'STATE',
+                name: 'State Registration',
+                price: rtoByType.STATE?.total ?? 0,
+                description: 'Standard RTO charges for your state.',
+                breakdown: rtoByType.STATE?.breakdown || [],
+            },
+            {
+                id: 'BH',
+                name: 'Bharat Series (BH)',
+                price: rtoByType.BH?.total ?? 0,
+                description: 'For frequent interstate travel.',
+                breakdown: rtoByType.BH?.breakdown || [],
+            },
+            {
+                id: 'COMPANY',
+                name: 'Company Registration',
+                price: rtoByType.COMPANY?.total ?? 0,
+                description: 'Corporate entity registration.',
+                breakdown: rtoByType.COMPANY?.breakdown || [],
+            },
+        ];
+    } else if (Array.isArray(pricingSnapshot?.rto_options)) {
+        pdpRtoOptions = pricingSnapshot.rto_options;
+    }
+
+    const insuranceJson = highFidelityPricing?.insurance;
+    const insuranceGstRate = Number(
+        insuranceJson?.gst_rate ?? pricingSnapshot?.insurance_gst_rate ?? pricingSnapshot?.insurance_gst ?? 18
+    );
+    const odData = insuranceJson?.od;
+    const tpData = insuranceJson?.tp;
+    const odWithGst = typeof odData === 'object' ? Number(odData?.total || 0) : Number(odData || 0);
+    const tpWithGst = typeof tpData === 'object' ? Number(tpData?.total || 0) : Number(tpData || 0);
+
+    let pdpInsuranceRequiredItems: any[] = [];
+    if (insuranceJson || pricingSnapshot?.insurance_required_items) {
+        pdpInsuranceRequiredItems = pricingSnapshot?.insurance_required_items || [
+            {
+                id: 'insurance-tp',
+                name: 'Liability Only (5 Years Cover)',
+                price: tpWithGst,
+                description: 'Mandatory',
+                isMandatory: true,
+                breakdown: [
+                    { label: 'Base Premium', amount: Math.max(0, tpWithGst) },
+                    { label: `GST (${insuranceGstRate}%)`, amount: 0 },
+                ],
+            },
+            {
+                id: 'insurance-od',
+                name: 'Comprehensive (1 Year Cover)',
+                price: odWithGst,
+                description: 'Mandatory',
+                isMandatory: true,
+                breakdown: [
+                    { label: 'Base Premium', amount: Math.max(0, odWithGst) },
+                    { label: `GST (${insuranceGstRate}%)`, amount: 0 },
+                ],
+            },
+        ];
+    }
+
+    const normalizeAddonKey = (val: any) =>
+        String(val || '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, ' ')
+            .trim();
+
+    const jsonAddons = (insuranceJson?.addons || []) as {
+        id: string;
+        label: string;
+        price: number;
+        gst: number;
+        total: number;
+        default: boolean;
+    }[];
+
+    let ruleAddons: any[] = [];
+    if (stateCode) {
+        const { data: insuranceRuleData } = await supabase
+            .from('cat_ins_rules')
+            .select('*')
+            .eq('status', 'ACTIVE')
+            .eq('vehicle_type', 'TWO_WHEELER')
+            .or(`state_code.eq.${stateCode},state_code.eq.ALL`)
+            .order('state_code', { ascending: false })
+            .limit(1);
+
+        const insuranceRule: any = insuranceRuleData?.[0];
+        const baseExShowroom = quote.ex_showroom_price || commercials.base_price || 0;
+        ruleAddons =
+            insuranceRule?.addons?.map((a: any) => {
+                const inclusionType = a.inclusion_type || a.inclusionType || 'OPTIONAL';
+                const baseAmount =
+                    a.type === 'FIXED'
+                        ? a.amount || 0
+                        : Math.round(
+                              ((a.percentage || 0) * (a.basis === 'EX_SHOWROOM' ? baseExShowroom : 100000)) / 100
+                          );
+                const priceWithGst = Math.round(baseAmount + (baseAmount * insuranceGstRate) / 100);
+                const gstAmount = Math.max(0, priceWithGst - baseAmount);
+
+                return {
+                    id: a.id,
+                    name: a.label,
+                    price: priceWithGst,
+                    description: a.type === 'PERCENTAGE' ? `${a.percentage}% of ${a.basis}` : 'Fixed Coverage',
+                    discountPrice: 0,
+                    isMandatory: inclusionType === 'MANDATORY',
+                    inclusionType,
+                    breakdown: [
+                        { label: 'Base Premium', amount: baseAmount },
+                        { label: `GST (${insuranceGstRate}%)`, amount: gstAmount },
+                    ],
+                };
+            }) || [];
+    }
+
+    const ruleAddonIndex = new Map<string, any>();
+    ruleAddons.forEach(a => {
+        ruleAddonIndex.set(normalizeAddonKey(a.id), a);
+        ruleAddonIndex.set(normalizeAddonKey(a.name), a);
+    });
+
+    const mappedJsonAddons = jsonAddons.map(addon => {
+        const addonTotal = Number(addon.total ?? (addon.price || 0) + (addon.gst || 0));
+        const ruleMatch =
+            ruleAddonIndex.get(normalizeAddonKey(addon.id)) || ruleAddonIndex.get(normalizeAddonKey(addon.label));
+        const resolvedPrice = addonTotal > 0 ? addonTotal : Number(ruleMatch?.price || addonTotal || 0);
+        const resolvedBreakdown =
+            addonTotal > 0
+                ? [
+                      { label: 'Base Premium', amount: addon.price },
+                      { label: `GST (${insuranceGstRate}%)`, amount: addon.gst },
+                  ]
+                : ruleMatch?.breakdown || [
+                      { label: 'Base Premium', amount: addon.price },
+                      { label: `GST (${insuranceGstRate}%)`, amount: addon.gst },
+                  ];
+        const resolvedInclusionType = addon.default ? 'BUNDLE' : ruleMatch?.inclusionType || 'OPTIONAL';
+
+        return {
+            id: addon.id,
+            name: addon.label,
+            price: resolvedPrice,
+            description: 'Coverage',
+            discountPrice: 0,
+            isMandatory: addon.default === true || ruleMatch?.isMandatory,
+            inclusionType: resolvedInclusionType,
+            breakdown: resolvedBreakdown,
+        };
+    });
+
+    const jsonAddonIds = new Set(mappedJsonAddons.map(a => a.id));
+    const missingRuleAddons = ruleAddons.filter(a => !jsonAddonIds.has(a.id));
+    const pdpInsuranceAddons = [...mappedJsonAddons, ...missingRuleAddons];
 
     return {
         success: true,
@@ -2915,9 +3437,23 @@ export async function getQuoteByDisplayId(
                 tyre_type: vehicleSpecs.tyre_type || '',
             },
             alternativeBikes: await getAlternativeRecommendations(quote.variant_id || quote.color_id || ''),
+            pdpOptions: {
+                accessories: pdpAccessories,
+                services: pdpServices,
+                insuranceAddons: pdpInsuranceAddons,
+                insuranceRequiredItems: pdpInsuranceRequiredItems,
+                rtoOptions: pdpRtoOptions,
+                warrantyItems: vehicleSpecs?.warranty || pricingSnapshot?.warranty_items || [],
+            },
             pricing: {
                 exShowroom: quote.ex_showroom_price || commercials.base_price || 0,
-                exShowroomGstRate: pricingSnapshot?.gst_rate || 28,
+                exShowroomGstRate: highFidelityPricing?.gst_rate
+                    ? Math.round(
+                          Number(highFidelityPricing.gst_rate) * (Number(highFidelityPricing.gst_rate) < 1 ? 100 : 1)
+                      )
+                    : pricingSnapshot?.gst_rate
+                      ? Math.round(Number(pricingSnapshot.gst_rate) * (Number(pricingSnapshot.gst_rate) < 1 ? 100 : 1))
+                      : 28,
                 exShowroomBasePrice: pricingSnapshot?.ex_showroom_base_price,
                 exShowroomGstAmount: pricingSnapshot?.ex_showroom_gst_amount,
                 rtoTotal: quote.rto_amount || pricingSnapshot?.rto_total || 0,
@@ -3215,35 +3751,28 @@ export async function getAlternativeRecommendations(variantId: string) {
         });
     }
 
-    // 2. Fallback: Get current variant's category and price
+    // 2. Fallback: Get current variant's parent (FAMILY) and price
     const { data: current, error: currentError } = await adminClient
         .from('cat_items')
-        .select('category, price_base, brand_id')
+        .select('parent_id, price_base, brand_id')
         .eq('id', variantId)
         .single();
 
-    if (currentError || !current) {
+    if (currentError || !current || !current.parent_id) {
         console.error('Error fetching current variant for alternatives:', currentError);
         return [];
     }
 
-    // 3. Fallback: Fetch up to 3 similar variants
-    const minPrice = Number(current.price_base) * 0.8;
-    const maxPrice = Number(current.price_base) * 1.2;
+    // 3. Fallback: Fetch up to 3 sibling variants from the same FAMILY within ±20% price
+    const basePrice = Number(current.price_base) || 0;
+    const minPrice = basePrice * 0.8;
+    const maxPrice = basePrice * 1.2;
 
     const { data: alternatives, error: altError } = await adminClient
         .from('cat_items')
-        .select(
-            `
-            id,
-            name,
-            image_url,
-            price_base,
-            brand:cat_brands!cat_items_brand_id_fkey(name)
-        `
-        )
+        .select('id, name, image_url, price_base, brand_id')
         .eq('type', 'VARIANT')
-        .eq('category', current.category)
+        .eq('parent_id', current.parent_id)
         .neq('id', variantId)
         .gte('price_base', minPrice)
         .lte('price_base', maxPrice)
@@ -3254,10 +3783,10 @@ export async function getAlternativeRecommendations(variantId: string) {
         return [];
     }
 
-    return alternatives.map(a => ({
+    return (alternatives || []).map((a: any) => ({
         id: a.id,
         name: a.name,
-        brand: (a.brand as any)?.name || '',
+        brand: a.brand_id || '',
         price: Number(a.price_base),
         image: a.image_url,
     }));

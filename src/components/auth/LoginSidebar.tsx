@@ -479,8 +479,18 @@ export default function LoginSidebar({
         }
     };
 
+    const loginTriggeredRef = useRef(false);
+
+    // Reset the guard when user goes back to OTP entry (e.g. clears OTP)
     useEffect(() => {
-        if (step === 'OTP' && otp.length === OTP_LENGTH && !loading) {
+        if (otp.length < OTP_LENGTH) {
+            loginTriggeredRef.current = false;
+        }
+    }, [otp]);
+
+    useEffect(() => {
+        if (step === 'OTP' && otp.length === OTP_LENGTH && !loading && !loginTriggeredRef.current) {
+            loginTriggeredRef.current = true;
             handleLogin();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps

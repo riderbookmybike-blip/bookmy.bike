@@ -335,6 +335,11 @@ export function useSystemPDPLogic({
     const otherCharges = 0;
 
     // SOT Phase 3: Build addons from JSON + Fallback Merge
+    const normalizeAddonKey = (val: any) =>
+        String(val || '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, ' ')
+            .trim();
     const jsonAddons = (insuranceJson?.addons || []) as {
         id: string;
         label: string;
@@ -343,21 +348,6 @@ export function useSystemPDPLogic({
         total: number;
         default: boolean;
     }[];
-
-    // Map JSON addons to UI format
-    const mappedJsonAddons = jsonAddons.map(addon => ({
-        id: addon.id,
-        name: addon.label,
-        price: addon.total,
-        description: 'Coverage',
-        discountPrice: 0,
-        isMandatory: addon.default === true,
-        inclusionType: addon.default ? 'BUNDLE' : 'OPTIONAL',
-        breakdown: [
-            { label: 'Base Premium', amount: addon.price },
-            { label: `GST (${insuranceGstRate}%)`, amount: addon.gst },
-        ],
-    }));
 
     // Map Rule addons to UI format (Fallback source)
     const ruleAddons =
@@ -384,6 +374,42 @@ export function useSystemPDPLogic({
                 ],
             };
         }) || [];
+
+    const ruleAddonIndex = new Map<string, any>();
+    ruleAddons.forEach(a => {
+        ruleAddonIndex.set(normalizeAddonKey(a.id), a);
+        ruleAddonIndex.set(normalizeAddonKey(a.name), a);
+    });
+
+    // Map JSON addons to UI format (with rule fallback when totals are missing/zero)
+    const mappedJsonAddons = jsonAddons.map(addon => {
+        const addonTotal = Number(addon.total ?? (addon.price || 0) + (addon.gst || 0));
+        const ruleMatch =
+            ruleAddonIndex.get(normalizeAddonKey(addon.id)) || ruleAddonIndex.get(normalizeAddonKey(addon.label));
+        const resolvedPrice = addonTotal > 0 ? addonTotal : Number(ruleMatch?.price || addonTotal || 0);
+        const resolvedBreakdown =
+            addonTotal > 0
+                ? [
+                      { label: 'Base Premium', amount: addon.price },
+                      { label: `GST (${insuranceGstRate}%)`, amount: addon.gst },
+                  ]
+                : ruleMatch?.breakdown || [
+                      { label: 'Base Premium', amount: addon.price },
+                      { label: `GST (${insuranceGstRate}%)`, amount: addon.gst },
+                  ];
+        const resolvedInclusionType = addon.default ? 'BUNDLE' : ruleMatch?.inclusionType || 'OPTIONAL';
+
+        return {
+            id: addon.id,
+            name: addon.label,
+            price: resolvedPrice,
+            description: 'Coverage',
+            discountPrice: 0,
+            isMandatory: addon.default === true || ruleMatch?.isMandatory,
+            inclusionType: resolvedInclusionType,
+            breakdown: resolvedBreakdown,
+        };
+    });
 
     // Merge: Prefer JSON addons, append missing ones from Rules
     // This allows SOT to override prices but falls back to rule engine for missing options

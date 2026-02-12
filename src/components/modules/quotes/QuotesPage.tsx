@@ -305,6 +305,50 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-3 space-y-1.5 no-scrollbar">
+                        {isLoading && filteredQuotes.length === 0 && (
+                            <>
+                                {[1, 2, 3, 4, 5, 6].map(i => (
+                                    <div
+                                        key={i}
+                                        className="w-full rounded-xl border border-slate-100 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] overflow-hidden"
+                                        style={{ animationDelay: `${i * 80}ms` }}
+                                    >
+                                        <div className="flex">
+                                            <div className="w-1 shrink-0 bg-slate-200 dark:bg-white/10 animate-pulse" />
+                                            <div className="flex-1 px-3.5 py-3 space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <div
+                                                        className="w-16 h-2.5 bg-slate-200 dark:bg-white/10 rounded animate-pulse"
+                                                        style={{ animationDelay: `${i * 80}ms` }}
+                                                    />
+                                                    <div
+                                                        className="w-12 h-2.5 bg-slate-100 dark:bg-white/5 rounded animate-pulse"
+                                                        style={{ animationDelay: `${i * 80 + 40}ms` }}
+                                                    />
+                                                </div>
+                                                <div
+                                                    className={`h-3.5 bg-slate-200 dark:bg-white/10 rounded-lg animate-pulse`}
+                                                    style={{
+                                                        width: `${60 + (i % 3) * 20}%`,
+                                                        animationDelay: `${i * 80 + 80}ms`,
+                                                    }}
+                                                />
+                                                <div className="flex items-center justify-between">
+                                                    <div
+                                                        className="w-24 h-2.5 bg-slate-100 dark:bg-white/5 rounded animate-pulse"
+                                                        style={{ animationDelay: `${i * 80 + 120}ms` }}
+                                                    />
+                                                    <div
+                                                        className="w-14 h-3 bg-slate-200 dark:bg-white/10 rounded animate-pulse"
+                                                        style={{ animationDelay: `${i * 80 + 160}ms` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </>
+                        )}
                         {filteredQuotes.map(quote => {
                             const isActive = selectedQuoteId === quote.id;
                             const statusColor =
