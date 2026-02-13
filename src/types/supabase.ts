@@ -1341,6 +1341,48 @@ export type Database = {
                     },
                 ];
             };
+            crm_audit_log: {
+                Row: {
+                    id: string;
+                    entity_type: string;
+                    entity_id: string;
+                    action: string;
+                    old_data: Json | null;
+                    new_data: Json | null;
+                    changed_fields: string[] | null;
+                    performed_by: string | null;
+                    performed_at: string;
+                    source: string | null;
+                    ip_address: string | null;
+                };
+                Insert: {
+                    id?: string;
+                    entity_type: string;
+                    entity_id: string;
+                    action: string;
+                    old_data?: Json | null;
+                    new_data?: Json | null;
+                    changed_fields?: string[] | null;
+                    performed_by?: string | null;
+                    performed_at?: string;
+                    source?: string | null;
+                    ip_address?: string | null;
+                };
+                Update: {
+                    id?: string;
+                    entity_type?: string;
+                    entity_id?: string;
+                    action?: string;
+                    old_data?: Json | null;
+                    new_data?: Json | null;
+                    changed_fields?: string[] | null;
+                    performed_by?: string | null;
+                    performed_at?: string;
+                    source?: string | null;
+                    ip_address?: string | null;
+                };
+                Relationships: [];
+            };
             crm_bookings: {
                 Row: {
                     allotment_status: Database['public']['Enums']['allotment_status'] | null;
@@ -2099,9 +2141,12 @@ export type Database = {
                     charges_breakup: Json | null;
                     created_at: string | null;
                     created_by: string | null;
+                    deleted_at: string | null;
+                    deleted_by: string | null;
                     down_payment: number | null;
                     emi: number | null;
                     id: string;
+                    is_deleted: boolean | null;
                     loan_addons: number | null;
                     loan_amount: number | null;
                     ltv: number | null;
@@ -2121,9 +2166,12 @@ export type Database = {
                     charges_breakup?: Json | null;
                     created_at?: string | null;
                     created_by?: string | null;
+                    deleted_at?: string | null;
+                    deleted_by?: string | null;
                     down_payment?: number | null;
                     emi?: number | null;
                     id?: string;
+                    is_deleted?: boolean | null;
                     loan_addons?: number | null;
                     loan_amount?: number | null;
                     ltv?: number | null;
@@ -2143,9 +2191,12 @@ export type Database = {
                     charges_breakup?: Json | null;
                     created_at?: string | null;
                     created_by?: string | null;
+                    deleted_at?: string | null;
+                    deleted_by?: string | null;
                     down_payment?: number | null;
                     emi?: number | null;
                     id?: string;
+                    is_deleted?: boolean | null;
                     loan_addons?: number | null;
                     loan_amount?: number | null;
                     ltv?: number | null;

@@ -1944,6 +1944,7 @@ export async function getQuoteById(
             .from('crm_quote_finance_attempts')
             .select('*')
             .eq('id', q.active_finance_id)
+            .eq('is_deleted', false)
             .maybeSingle();
         if (attempt) {
             const { upfront, funded, upfrontTotal, fundedTotal } = splitCharges(
@@ -2179,6 +2180,7 @@ export async function getQuoteFinanceAttempts(quoteId: string) {
         .from('crm_quote_finance_attempts')
         .select('*')
         .eq('quote_id', quoteId)
+        .eq('is_deleted', false)
         .order('created_at', { ascending: false });
     if (error) {
         console.error('getQuoteFinanceAttempts Error:', error);
@@ -2262,6 +2264,7 @@ export async function updateQuoteFinanceStatus(
         .from('crm_quote_finance_attempts')
         .select('id, quote_id')
         .eq('id', attemptId)
+        .eq('is_deleted', false)
         .single();
     if (fetchError || !attempt) {
         return { success: false, error: 'Attempt not found' };
@@ -2911,6 +2914,7 @@ export async function getQuoteByDisplayId(
             .from('crm_quote_finance_attempts')
             .select('*')
             .eq('id', quote.active_finance_id)
+            .eq('is_deleted', false)
             .maybeSingle();
         activeFinance = finance;
     }

@@ -67,7 +67,7 @@ ORDER BY created_at DESC LIMIT 10;
 
 ✅ `snap_*` fields populated for all recent quotes.
 
-## 6. Audit Triggers (7 total)
+## 6. Audit Triggers (5 CRM + 2 pre-existing)
 
 ```sql
 SELECT DISTINCT trigger_name, event_object_table
@@ -76,7 +76,8 @@ WHERE trigger_name LIKE 'trg_audit%'
 ORDER BY event_object_table;
 ```
 
-✅ Triggers on: `cat_items`, `cat_price_state`, `crm_bookings`, `crm_leads`, `crm_payments`, `crm_quote_finance_attempts`, `crm_quotes`.
+✅ **This migration creates 5**: `crm_bookings`, `crm_leads`, `crm_payments`, `crm_quote_finance_attempts`, `crm_quotes`.
+✅ **Pre-existing (other migrations)**: `cat_items`, `cat_price_state`.
 
 ## 7. Transactional Booking RPC
 
