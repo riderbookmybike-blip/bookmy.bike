@@ -784,6 +784,18 @@ export default function QuoteEditorTable({
     const [newEntryExpandedMap, setNewEntryExpandedMap] = useState<Record<string, boolean>>({});
     const [availableBanks, setAvailableBanks] = useState<{ id: string; name: string }[]>([]);
     const [bankSchemesCache, setBankSchemesCache] = useState<Record<string, BankScheme[]>>({});
+    const [bankTeamCache, setBankTeamCache] = useState<Record<string, { id: string; name: string; role: string }[]>>(
+        {}
+    );
+
+    // Fetch team members for a selected bank (financier)
+    const fetchBankTeam = async (bankId: string) => {
+        if (!bankId || bankTeamCache[bankId]) return;
+        const members = await getTeamMembersForTenant(bankId);
+        setBankTeamCache(prev => ({ ...prev, [bankId]: (members as any[]) || [] }));
+    };
+
+    const getBankTeam = (bankId: string) => bankTeamCache[bankId] || [];
 
     // Fetch available financiers/banks
     useEffect(() => {
@@ -4188,7 +4200,10 @@ export default function QuoteEditorTable({
                                                                         b => b.name === val
                                                                     );
                                                                     // Fetch schemes for the selected bank
-                                                                    if (bankObj?.id) fetchSchemesForBank(bankObj.id);
+                                                                    if (bankObj?.id) {
+                                                                        fetchSchemesForBank(bankObj.id);
+                                                                        fetchBankTeam(bankObj.id);
+                                                                    }
                                                                     setNewFinanceEntries(prev =>
                                                                         prev.map(en => {
                                                                             if (en.id !== entry.id) return en;
@@ -4277,7 +4292,10 @@ export default function QuoteEditorTable({
                                                                 className="text-sm font-black text-slate-900 dark:text-white bg-transparent border-b-2 border-dashed border-indigo-500/40 focus:border-indigo-500 outline-none cursor-pointer min-w-[140px] text-right"
                                                             >
                                                                 <option value="">Select...</option>
-                                                                {teamMembers.map(member => (
+                                                                {(entry.bankId
+                                                                    ? getBankTeam(entry.bankId)
+                                                                    : teamMembers
+                                                                ).map(member => (
                                                                     <option key={member.id} value={member.name}>
                                                                         {member.name}
                                                                     </option>
