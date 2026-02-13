@@ -474,12 +474,7 @@ export async function getQuotes(tenantId?: string) {
     const supabase = await createClient();
     let query = supabase
         .from('crm_quotes')
-        .select(
-            `
-        *,
-        leads:crm_leads (customer_name)
-    `
-        )
+        .select('*')
         .eq('is_deleted', false)
         .order('created_at', { ascending: false });
 
@@ -493,10 +488,20 @@ export async function getQuotes(tenantId?: string) {
         return [];
     }
 
+    // Resolve customer names via adminClient (bypasses crm_leads RLS)
+    const leadIds = [...new Set(data.map((q: any) => q.lead_id).filter(Boolean))];
+    let leadNameMap: Record<string, string> = {};
+    if (leadIds.length > 0) {
+        const { data: leads } = await adminClient.from('crm_leads').select('id, customer_name').in('id', leadIds);
+        if (leads) {
+            leadNameMap = Object.fromEntries(leads.map((l: any) => [l.id, l.customer_name]));
+        }
+    }
+
     return data.map((q: any) => ({
         id: q.id,
         displayId: q.display_id || `QT-${q.id.slice(0, 4).toUpperCase()}`,
-        customerName: q.leads?.customer_name || 'N/A',
+        customerName: leadNameMap[q.lead_id] || 'N/A',
         productName: q.commercials?.label || q.snap_variant || 'Custom Quote',
         productSku: q.variant_id || 'N/A',
         price: q.on_road_price || q.commercials?.grand_total || 0,
