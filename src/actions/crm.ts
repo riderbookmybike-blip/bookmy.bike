@@ -298,6 +298,7 @@ export async function createLeadAction(data: {
 }) {
     const interestModel = data.interest_model || data.model || 'GENERAL_ENQUIRY';
     const startTime = Date.now();
+    const authUser = await getAuthUser();
 
     await serverLog({
         component: 'CRM',
@@ -384,6 +385,72 @@ export async function createLeadAction(data: {
         }
 
         console.log('[DEBUG] Step 1 Complete. CustomerId:', customerId);
+
+        // 1.5. Prevent duplicate active leads for same customer (by id OR phone)
+        const { data: existingLead, error: existingLeadError } = await adminClient
+            .from('crm_leads')
+            .select('id, status, events_log, customer_id, customer_phone')
+            .eq('is_deleted', false)
+            .eq('owner_tenant_id', effectiveOwnerId)
+            .or(`customer_id.eq.${customerId},customer_phone.eq.${strictPhone}`)
+            .not('status', 'in', '("CLOSED")')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (existingLeadError) {
+            console.error('[DEBUG] Existing lead check failed:', existingLeadError);
+        }
+
+        if (existingLead) {
+            const nowIso = new Date().toISOString();
+            const duplicateEvent = {
+                type: 'DUPLICATE_LEAD_ATTEMPT',
+                at: nowIso,
+                attempted_by: authUser?.id || null,
+                attempted_phone: strictPhone,
+                attempted_name: data.customer_name || null,
+                source: data.source || 'UNKNOWN',
+                note: 'Active lead exists; reusing lead for quote creation.',
+            };
+
+            const existingEvents = (existingLead.events_log as any[]) || [];
+            await adminClient
+                .from('crm_leads')
+                .update({ events_log: [...existingEvents, duplicateEvent], updated_at: nowIso })
+                .eq('id', existingLead.id);
+
+            try {
+                await adminClient.from('crm_audit_log').insert({
+                    entity_type: 'LEAD',
+                    entity_id: existingLead.id,
+                    action: 'DUPLICATE_ATTEMPT',
+                    new_data: {
+                        attempted_by: authUser?.id || null,
+                        attempted_phone: strictPhone,
+                        attempted_name: data.customer_name || null,
+                        source: data.source || 'UNKNOWN',
+                        owner_tenant_id: effectiveOwnerId,
+                    },
+                    performed_by: authUser?.id || null,
+                    performed_at: nowIso,
+                    source: 'APP',
+                });
+            } catch (auditError) {
+                console.error('[DEBUG] crm_audit_log insert failed:', auditError);
+            }
+
+            await serverLog({
+                component: 'CRM',
+                action: 'createLeadAction',
+                status: 'SKIP',
+                message: `Duplicate lead attempt detected; using existing lead ${existingLead.id}`,
+                payload: { existingLeadId: existingLead.id, customerId },
+                duration_ms: Date.now() - startTime,
+            });
+
+            return { success: true, leadId: existingLead.id, duplicate: true };
+        }
 
         // 2. Automated Segregation Logic (Pincode & Junking)
         let status = 'NEW';
@@ -869,7 +936,7 @@ export async function getBookings(tenantId?: string) {
         .select(
             `
         *,
-        quotes:crm_quotes (commercials, leads:crm_leads(customer_name))
+        quotes:crm_quotes (commercials, leads:crm_leads!quotes_lead_id_fkey(customer_name))
     `
         )
         .eq('is_deleted', false)
@@ -1412,7 +1479,7 @@ export async function getQuoteById(
         .select(
             `
             *,
-            lead:crm_leads(id, customer_name, customer_phone, utm_data, events_log, customer_id, referral_data, referred_by_name, referred_by_id)
+            lead:crm_leads!quotes_lead_id_fkey(id, customer_name, customer_phone, utm_data, events_log, customer_id, referral_data, referred_by_name, referred_by_id)
         `
         )
         .eq('id', quoteId)
