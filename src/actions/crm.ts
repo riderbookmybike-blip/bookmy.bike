@@ -167,7 +167,11 @@ export async function checkExistingCustomer(phone: string) {
 export async function getLeads(tenantId?: string, status?: string) {
     console.log('Fetching leads for tenantId:', tenantId);
     const supabase = await createClient();
-    let query = supabase.from('crm_leads').select('*').order('created_at', { ascending: false });
+    let query = supabase
+        .from('crm_leads')
+        .select('*')
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false });
 
     if (status && status !== 'ALL') {
         query = query.eq('status', status);
@@ -225,6 +229,7 @@ export async function getCustomerHistory(customerId: string) {
     const { data: leads } = await supabase
         .from('crm_leads')
         .select('*')
+        .eq('is_deleted', false)
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false });
 
@@ -232,6 +237,7 @@ export async function getCustomerHistory(customerId: string) {
     const { data: quotes } = await supabase
         .from('crm_quotes')
         .select('*')
+        .eq('is_deleted', false)
         .eq('lead_id', leads?.[0]?.id || '') // Simplification for now, better to link quotes to customer_id too later
         .order('created_at', { ascending: false });
 
@@ -239,6 +245,7 @@ export async function getCustomerHistory(customerId: string) {
     const { data: bookings } = await supabase
         .from('crm_bookings')
         .select('*')
+        .eq('is_deleted', false)
         .in('lead_id', leads?.map(l => l.id) || [])
         .order('created_at', { ascending: false });
 
@@ -473,6 +480,7 @@ export async function getQuotes(tenantId?: string) {
         leads:crm_leads (customer_name)
     `
         )
+        .eq('is_deleted', false)
         .order('created_at', { ascending: false });
 
     if (tenantId) {
@@ -489,15 +497,15 @@ export async function getQuotes(tenantId?: string) {
         id: q.id,
         displayId: q.display_id || `QT-${q.id.slice(0, 4).toUpperCase()}`,
         customerName: q.leads?.customer_name || 'N/A',
-        productName: q.commercials?.label || 'Custom Quote',
+        productName: q.commercials?.label || q.snap_variant || 'Custom Quote',
         productSku: q.variant_id || 'N/A',
         price: q.on_road_price || q.commercials?.grand_total || 0,
         status: q.status,
         date: q.created_at.split('T')[0],
-        vehicleBrand: q.commercials?.brand || '',
-        vehicleModel: q.commercials?.model || '',
-        vehicleVariant: q.commercials?.variant || '',
-        vehicleColor: q.commercials?.color_name || q.commercials?.color || '',
+        vehicleBrand: q.commercials?.brand || q.snap_brand || '',
+        vehicleModel: q.commercials?.model || q.snap_model || '',
+        vehicleVariant: q.commercials?.variant || q.snap_variant || '',
+        vehicleColor: q.commercials?.color_name || q.commercials?.color || q.snap_color || '',
     }));
 }
 
@@ -507,6 +515,7 @@ export async function getQuotesForLead(leadId: string) {
         .from('crm_quotes')
         .select('*')
         .eq('lead_id', leadId)
+        .eq('is_deleted', false)
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -522,6 +531,7 @@ export async function getQuotesForMember(memberId: string) {
         .from('crm_quotes')
         .select('*')
         .eq('member_id', memberId)
+        .eq('is_deleted', false)
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -537,6 +547,7 @@ export async function getBookingsForMember(memberId: string) {
         .from('crm_bookings')
         .select('*')
         .eq('member_id', memberId)
+        .eq('is_deleted', false)
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -612,6 +623,7 @@ export async function createQuoteAction(data: {
         const { data: lead } = await supabase
             .from('crm_leads')
             .select('customer_id, referred_by_id')
+            .eq('is_deleted', false)
             .eq('id', data.lead_id)
             .maybeSingle();
         if (lead) {
@@ -656,12 +668,19 @@ export async function createQuoteAction(data: {
             vehicle_sku_id: vehicleSkuId, // Use SKU (color) when available
             commercials: data.commercials,
 
-            // New Flat Columns
+            // Flat Columns (analytics + redundancy)
             on_road_price: onRoadPrice,
             ex_showroom_price: exShowroom,
             insurance_amount: insuranceAmount,
             rto_amount: rtoAmount,
             accessories_amount: accessoriesAmount,
+
+            // Snapshot Redundancy — survives even if commercials JSONB corrupts
+            snap_brand: comms.brand || '',
+            snap_model: comms.model || '',
+            snap_variant: comms.variant || '',
+            snap_color: comms.color_name || comms.color || '',
+            snap_dealer_name: dealer?.dealer_name || '',
 
             status: 'DRAFT',
             created_by: createdBy,
@@ -848,6 +867,7 @@ export async function getBookings(tenantId?: string) {
         quotes:crm_quotes (commercials, leads:crm_leads(customer_name))
     `
         )
+        .eq('is_deleted', false)
         .order('created_at', { ascending: false });
 
     if (tenantId) {
@@ -879,7 +899,12 @@ export async function getBookings(tenantId?: string) {
 
 export async function getBookingForLead(leadId: string) {
     const supabase = await createClient();
-    const { data, error } = await supabase.from('crm_bookings').select('*').eq('lead_id', leadId).maybeSingle();
+    const { data, error } = await supabase
+        .from('crm_bookings')
+        .select('*')
+        .eq('lead_id', leadId)
+        .eq('is_deleted', false)
+        .maybeSingle();
 
     if (error) {
         console.error('getBookingForLead Error:', error);
@@ -889,58 +914,25 @@ export async function getBookingForLead(leadId: string) {
 }
 
 export async function createBookingFromQuote(quoteId: string) {
-    const supabase = await createClient();
+    const { data: bookingId, error: rpcError } = await adminClient.rpc('create_booking_from_quote', {
+        quote_id: quoteId,
+    });
 
-    // 1. Get Quote Details
-    const { data: quote } = await supabase.from('crm_quotes').select('*').eq('id', quoteId).single();
-
-    if (!quote) throw new Error('Quote not found');
-    if (quote.status !== 'CONFIRMED') {
-        throw new Error('Quote must be CONFIRMED before converting to Booking');
+    if (rpcError) {
+        console.error('Create Booking Error:', rpcError);
+        return { success: false, message: rpcError.message };
     }
 
-    // 2. Create Booking with enhanced commercial tracking
-    const { data: booking, error } = await supabase
+    const { data: booking, error: bookingError } = await adminClient
         .from('crm_bookings')
-        .insert({
-            tenant_id: quote.tenant_id,
-            quote_id: quote.id,
-            lead_id: quote.lead_id,
-            variant_id: quote.variant_id,
-            color_id: quote.color_id,
-            grand_total: quote.on_road_price || (quote.commercials as any)?.grand_total || 0,
-            base_price: quote.ex_showroom_price || (quote.commercials as any)?.ex_showroom || 0,
-            vehicle_details: {
-                variant_id: quote.variant_id,
-                commercial_snapshot: quote.commercials,
-            },
-            status: 'BOOKED',
-            current_stage: 'BOOKING',
-        })
-        .select()
+        .select('*')
+        .eq('id', bookingId)
+        .eq('is_deleted', false)
         .single();
 
-    if (error) {
-        console.error('Create Booking Error:', error);
-        return { success: false, message: error.message };
-    }
-
-    // 3. Update Quote status to BOOKED
-    await supabase.from('crm_quotes').update({ status: 'BOOKED' }).eq('id', quoteId);
-
-    // 4. Close Lead + cancel all other quotes for same lead
-    if (quote.lead_id) {
-        await adminClient
-            .from('crm_leads')
-            .update({ status: 'CLOSED', updated_at: new Date().toISOString() })
-            .eq('id', quote.lead_id);
-
-        await adminClient
-            .from('crm_quotes')
-            .update({ status: 'CANCELED', updated_at: new Date().toISOString() })
-            .eq('lead_id', quote.lead_id)
-            .neq('id', quote.id)
-            .not('status', 'in', '("BOOKED","BOOKING")');
+    if (bookingError) {
+        console.error('Fetch Booking Error:', bookingError);
+        return { success: false, message: bookingError.message };
     }
 
     revalidatePath('/app/[slug]/sales-orders');
@@ -1167,6 +1159,7 @@ export async function getQuotePdpUrl(quoteId: string) {
     const { data: quote, error: quoteError } = await supabase
         .from('crm_quotes')
         .select('variant_id, lead_id')
+        .eq('is_deleted', false)
         .eq('id', quoteId)
         .single();
 
@@ -1418,6 +1411,7 @@ export async function getQuoteById(
         `
         )
         .eq('id', quoteId)
+        .eq('is_deleted', false)
         .single();
 
     if (error || !quote) {
@@ -2086,6 +2080,7 @@ export async function updateQuoteManagerDiscount(
     const { data: quote, error: fetchError } = await supabase
         .from('crm_quotes')
         .select('on_road_price, commercials')
+        .eq('is_deleted', false)
         .eq('id', quoteId)
         .single();
 
@@ -2124,6 +2119,7 @@ export async function markQuoteInReview(quoteId: string): Promise<{ success: boo
     const { data: quote, error: fetchError } = await supabase
         .from('crm_quotes')
         .select('status, quote_owner_id')
+        .eq('is_deleted', false)
         .eq('id', quoteId)
         .single();
 
@@ -2211,7 +2207,12 @@ export async function createQuoteFinanceAttempt(
 ) {
     const user = await getAuthUser();
     const supabase = await createClient();
-    const { data: quote } = await supabase.from('crm_quotes').select('tenant_id').eq('id', quoteId).single();
+    const { data: quote } = await supabase
+        .from('crm_quotes')
+        .select('tenant_id')
+        .eq('is_deleted', false)
+        .eq('id', quoteId)
+        .single();
 
     const { data, error } = await supabase
         .from('crm_quote_finance_attempts')
@@ -2364,7 +2365,11 @@ export async function autoJunkInactiveLeads(days = 15) {
     const supabase = await adminClient;
     const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-    const { data: leads, error: leadsError } = await supabase.from('crm_leads').select('*').neq('status', 'JUNK');
+    const { data: leads, error: leadsError } = await supabase
+        .from('crm_leads')
+        .select('*')
+        .eq('is_deleted', false)
+        .neq('status', 'JUNK');
 
     if (leadsError) {
         console.error('autoJunkInactiveLeads lead fetch error:', leadsError);
@@ -2501,6 +2506,7 @@ export async function updateQuotePricing(
         .select(
             'id, status, commercials, lead_id, tenant_id, member_id, lead_referrer_id, quote_owner_id, variant_id, color_id, vehicle_sku_id, finance_mode, active_finance_id, discount_amount, manager_discount, manager_discount_note, created_by'
         )
+        .eq('is_deleted', false)
         .eq('id', quoteId)
         .single();
 
@@ -2766,7 +2772,12 @@ export async function getQuoteMarketplaceUrl(
     const supabase = await createClient();
 
     // Fetch quote with vehicle details
-    const { data: quoteData, error } = await supabase.from('crm_quotes').select('*').eq('id', quoteId).single();
+    const { data: quoteData, error } = await supabase
+        .from('crm_quotes')
+        .select('*')
+        .eq('is_deleted', false)
+        .eq('id', quoteId)
+        .single();
 
     if (error || !quoteData) {
         return { success: false, error: 'Quote not found' };
@@ -2854,6 +2865,7 @@ export async function getQuoteByDisplayId(
         `
         )
         .eq('display_id', displayId)
+        .eq('is_deleted', false)
         .maybeSingle();
 
     if (error) {
@@ -3652,6 +3664,7 @@ export async function logQuoteEvent(
     const { data: quote, error: fetchError } = await supabase
         .from('crm_quotes')
         .select('tenant_id, commercials')
+        .eq('is_deleted', false)
         .eq('id', quoteId)
         .single();
 
@@ -3735,6 +3748,7 @@ export async function getBookingsForLead(leadId: string) {
     const { data, error } = await supabase
         .from('crm_bookings')
         .select('*')
+        .eq('is_deleted', false)
         .eq('lead_id', leadId)
         .order('created_at', { ascending: false });
     if (error) {
@@ -3746,7 +3760,11 @@ export async function getBookingsForLead(leadId: string) {
 
 export async function getPaymentsForEntity(leadId?: string | null, memberId?: string | null) {
     const supabase = await createClient();
-    let query = supabase.from('crm_payments').select('*').order('created_at', { ascending: false });
+    let query = supabase
+        .from('crm_payments')
+        .select('*')
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false });
 
     if (leadId && memberId) {
         query = query.or(`lead_id.eq.${leadId},member_id.eq.${memberId}`);
@@ -3859,6 +3877,7 @@ export async function reassignQuoteDealership(
         const { data: quote, error: quoteError } = await adminClient
             .from('crm_quotes')
             .select('commercials')
+            .eq('is_deleted', false)
             .eq('id', quoteId)
             .single();
 

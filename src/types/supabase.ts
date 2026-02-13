@@ -1351,6 +1351,8 @@ export type Database = {
                     created_at: string | null;
                     current_stage: string | null;
                     customer_details: Json | null;
+                    deleted_at: string | null;
+                    deleted_by: string | null;
                     delivery_date: string | null;
                     delivery_status: string | null;
                     display_id: string | null;
@@ -1362,6 +1364,7 @@ export type Database = {
                     insurance_provider: string | null;
                     insurance_status: string | null;
                     inventory_status: string | null;
+                    is_deleted: boolean | null;
                     operational_stage: Database['public']['Enums']['crm_operational_stage'] | null;
                     payment_status: string | null;
                     pdi_status: string | null;
@@ -1390,6 +1393,8 @@ export type Database = {
                     created_at?: string | null;
                     current_stage?: string | null;
                     customer_details?: Json | null;
+                    deleted_at?: string | null;
+                    deleted_by?: string | null;
                     delivery_date?: string | null;
                     delivery_status?: string | null;
                     display_id?: string | null;
@@ -1401,6 +1406,7 @@ export type Database = {
                     insurance_provider?: string | null;
                     insurance_status?: string | null;
                     inventory_status?: string | null;
+                    is_deleted?: boolean | null;
                     operational_stage?: Database['public']['Enums']['crm_operational_stage'] | null;
                     payment_status?: string | null;
                     pdi_status?: string | null;
@@ -1429,6 +1435,8 @@ export type Database = {
                     created_at?: string | null;
                     current_stage?: string | null;
                     customer_details?: Json | null;
+                    deleted_at?: string | null;
+                    deleted_by?: string | null;
                     delivery_date?: string | null;
                     delivery_status?: string | null;
                     display_id?: string | null;
@@ -1440,6 +1448,7 @@ export type Database = {
                     insurance_provider?: string | null;
                     insurance_status?: string | null;
                     inventory_status?: string | null;
+                    is_deleted?: boolean | null;
                     operational_stage?: Database['public']['Enums']['crm_operational_stage'] | null;
                     payment_status?: string | null;
                     pdi_status?: string | null;
@@ -1759,6 +1768,8 @@ export type Database = {
                     customer_phone: string;
                     customer_pincode: string | null;
                     customer_taluka: string | null;
+                    deleted_at: string | null;
+                    deleted_by: string | null;
                     display_id: string | null;
                     events_log: Json | null;
                     id: string;
@@ -1768,6 +1779,7 @@ export type Database = {
                     interest_text: string | null;
                     interest_variant: string | null;
                     is_serviceable: boolean | null;
+                    is_deleted: boolean | null;
                     notes: string | null;
                     owner_tenant_id: string | null;
                     permanent_address: string | null;
@@ -1793,6 +1805,8 @@ export type Database = {
                     customer_phone: string;
                     customer_pincode?: string | null;
                     customer_taluka?: string | null;
+                    deleted_at?: string | null;
+                    deleted_by?: string | null;
                     display_id?: string | null;
                     events_log?: Json | null;
                     id?: string;
@@ -1802,6 +1816,7 @@ export type Database = {
                     interest_text?: string | null;
                     interest_variant?: string | null;
                     is_serviceable?: boolean | null;
+                    is_deleted?: boolean | null;
                     notes?: string | null;
                     owner_tenant_id?: string | null;
                     permanent_address?: string | null;
@@ -1827,6 +1842,8 @@ export type Database = {
                     customer_phone?: string;
                     customer_pincode?: string | null;
                     customer_taluka?: string | null;
+                    deleted_at?: string | null;
+                    deleted_by?: string | null;
                     display_id?: string | null;
                     events_log?: Json | null;
                     id?: string;
@@ -1836,6 +1853,7 @@ export type Database = {
                     interest_text?: string | null;
                     interest_variant?: string | null;
                     is_serviceable?: boolean | null;
+                    is_deleted?: boolean | null;
                     notes?: string | null;
                     owner_tenant_id?: string | null;
                     permanent_address?: string | null;
@@ -1920,8 +1938,11 @@ export type Database = {
                     booking_id: string | null;
                     created_at: string | null;
                     currency: string | null;
+                    deleted_at: string | null;
+                    deleted_by: string | null;
                     display_id: string | null;
                     id: string;
+                    is_deleted: boolean | null;
                     lead_id: string | null;
                     member_id: string | null;
                     method: string | null;
@@ -1936,8 +1957,11 @@ export type Database = {
                     booking_id?: string | null;
                     created_at?: string | null;
                     currency?: string | null;
+                    deleted_at?: string | null;
+                    deleted_by?: string | null;
                     display_id?: string | null;
                     id?: string;
+                    is_deleted?: boolean | null;
                     lead_id?: string | null;
                     member_id?: string | null;
                     method?: string | null;
@@ -1952,8 +1976,11 @@ export type Database = {
                     booking_id?: string | null;
                     created_at?: string | null;
                     currency?: string | null;
+                    deleted_at?: string | null;
+                    deleted_by?: string | null;
                     display_id?: string | null;
                     id?: string;
+                    is_deleted?: boolean | null;
                     lead_id?: string | null;
                     member_id?: string | null;
                     method?: string | null;
@@ -2165,6 +2192,8 @@ export type Database = {
                     commercials: Json | null;
                     created_at: string | null;
                     created_by: string | null;
+                    deleted_at: string | null;
+                    deleted_by: string | null;
                     discount_amount: number | null;
                     display_id: string | null;
                     ex_showroom_price: number | null;
@@ -2179,10 +2208,16 @@ export type Database = {
                     member_id: string | null;
                     on_road_price: number | null;
                     operational_stage: Database['public']['Enums']['crm_operational_stage'] | null;
+                    is_deleted: boolean | null;
                     quote_owner_id: string | null;
                     reviewed_at: string | null;
                     reviewed_by: string | null;
                     rto_amount: number | null;
+                    snap_brand: string | null;
+                    snap_color: string | null;
+                    snap_dealer_name: string | null;
+                    snap_model: string | null;
+                    snap_variant: string | null;
                     stage_updated_at: string | null;
                     stage_updated_by: string | null;
                     status: string | null;
@@ -2202,6 +2237,8 @@ export type Database = {
                     commercials?: Json | null;
                     created_at?: string | null;
                     created_by?: string | null;
+                    deleted_at?: string | null;
+                    deleted_by?: string | null;
                     discount_amount?: number | null;
                     display_id?: string | null;
                     ex_showroom_price?: number | null;
@@ -2216,10 +2253,16 @@ export type Database = {
                     member_id?: string | null;
                     on_road_price?: number | null;
                     operational_stage?: Database['public']['Enums']['crm_operational_stage'] | null;
+                    is_deleted?: boolean | null;
                     quote_owner_id?: string | null;
                     reviewed_at?: string | null;
                     reviewed_by?: string | null;
                     rto_amount?: number | null;
+                    snap_brand?: string | null;
+                    snap_color?: string | null;
+                    snap_dealer_name?: string | null;
+                    snap_model?: string | null;
+                    snap_variant?: string | null;
                     stage_updated_at?: string | null;
                     stage_updated_by?: string | null;
                     status?: string | null;
@@ -2239,6 +2282,8 @@ export type Database = {
                     commercials?: Json | null;
                     created_at?: string | null;
                     created_by?: string | null;
+                    deleted_at?: string | null;
+                    deleted_by?: string | null;
                     discount_amount?: number | null;
                     display_id?: string | null;
                     ex_showroom_price?: number | null;
@@ -2253,10 +2298,16 @@ export type Database = {
                     member_id?: string | null;
                     on_road_price?: number | null;
                     operational_stage?: Database['public']['Enums']['crm_operational_stage'] | null;
+                    is_deleted?: boolean | null;
                     quote_owner_id?: string | null;
                     reviewed_at?: string | null;
                     reviewed_by?: string | null;
                     rto_amount?: number | null;
+                    snap_brand?: string | null;
+                    snap_color?: string | null;
+                    snap_dealer_name?: string | null;
+                    snap_model?: string | null;
+                    snap_variant?: string | null;
                     stage_updated_at?: string | null;
                     stage_updated_by?: string | null;
                     status?: string | null;
