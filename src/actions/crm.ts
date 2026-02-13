@@ -372,16 +372,18 @@ export async function createLeadAction(data: {
 
         console.log('[DEBUG] Step 1 Complete. CustomerId:', customerId);
 
-        // update extra fields that createOrLinkMember might not handle (like dob, taluka)
-        if (data.customer_dob || data.customer_pincode || data.customer_taluka) {
-            await adminClient
-                .from('id_members')
-                .update({
-                    date_of_birth: data.customer_dob || null,
-                    aadhaar_pincode: data.customer_pincode || null,
-                    taluka: data.customer_taluka || null,
-                })
-                .eq('id', customerId);
+        // Update member with any collected profile fields (only non-null values, to avoid wiping existing data)
+        const memberUpdate: Record<string, any> = {};
+        if (data.customer_dob) memberUpdate.date_of_birth = data.customer_dob;
+        if (data.customer_pincode) {
+            memberUpdate.pincode = data.customer_pincode;
+            memberUpdate.aadhaar_pincode = data.customer_pincode;
+        }
+        if (data.customer_taluka) memberUpdate.taluka = data.customer_taluka;
+        if (data.customer_name) memberUpdate.full_name = data.customer_name;
+
+        if (Object.keys(memberUpdate).length > 0) {
+            await adminClient.from('id_members').update(memberUpdate).eq('id', customerId);
         }
 
         console.log('[DEBUG] Step 1 Complete. CustomerId:', customerId);
@@ -1697,6 +1699,7 @@ export async function getQuoteById(
                         'district',
                         'state',
                         'pincode',
+                        'aadhaar_pincode',
                         'date_of_birth',
                         'avatar_url',
                     ].join(', ')
@@ -1751,7 +1754,7 @@ export async function getQuoteById(
                 primaryEmail: resolvedMember.primary_email,
                 email: resolvedMember.email,
                 dob: resolvedMember.date_of_birth,
-                pincode: resolvedMember.pincode,
+                pincode: resolvedMember.pincode || resolvedMember.aadhaar_pincode,
                 taluka: resolvedMember.taluka,
                 district: resolvedMember.district,
                 state: resolvedMember.state,
