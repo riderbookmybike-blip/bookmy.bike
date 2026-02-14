@@ -222,6 +222,38 @@ export async function getLeads(tenantId?: string, status?: string) {
     });
 }
 
+export async function getLeadById(leadId: string) {
+    const supabase = await createClient();
+    const { data, error } = await supabase.from('crm_leads').select('*').eq('id', leadId).single();
+    if (error) {
+        console.error('getLeadById Error:', error);
+        return null;
+    }
+    if (!data) return null;
+
+    const last9 = data.id.replace(/-/g, '').slice(-9).toUpperCase();
+    const displayId = `${last9.slice(0, 3)}-${last9.slice(3, 6)}-${last9.slice(6, 9)}`;
+
+    return {
+        id: data.id,
+        displayId,
+        customerId: data.customer_id,
+        customerName: data.customer_name,
+        phone: data.customer_phone,
+        pincode: data.customer_pincode,
+        taluka: data.customer_taluka,
+        dob: data.customer_dob,
+        status: data.status,
+        source: data.utm_data?.utm_source || 'WEBSITE',
+        interestModel: data.interest_model,
+        created_at: data.created_at,
+        intentScore: data.intent_score || 'COLD',
+        referralSource: data.referral_data?.referred_by_name || data.referral_data?.source,
+        events_log: data.events_log || [],
+        raw: data,
+    };
+}
+
 export async function getCustomerHistory(customerId: string) {
     const supabase = await createClient();
 
@@ -987,6 +1019,23 @@ export async function getBookingForLead(leadId: string) {
     return data;
 }
 
+export async function getBookingById(bookingId: string) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('crm_bookings')
+        .select('*')
+        .eq('id', bookingId)
+        .eq('is_deleted', false)
+        .single();
+
+    if (error) {
+        console.error('getBookingById Error:', error);
+        return { success: false, error: error.message };
+    }
+
+    return { success: true, booking: data };
+}
+
 export async function createBookingFromQuote(quoteId: string) {
     const { data: bookingId, error: rpcError } = await adminClient.rpc('create_booking_from_quote', {
         quote_id: quoteId,
@@ -1012,6 +1061,23 @@ export async function createBookingFromQuote(quoteId: string) {
     revalidatePath('/app/[slug]/sales-orders');
     revalidatePath('/profile');
     return { success: true, data: booking };
+}
+
+export async function confirmSalesOrder(bookingId: string): Promise<{ success: boolean; message?: string }> {
+    const supabase = await createClient();
+    const { error } = await supabase
+        .from('crm_bookings')
+        .update({ status: 'CONFIRMED', updated_at: new Date().toISOString() })
+        .eq('id', bookingId);
+
+    if (error) {
+        console.error('Confirm Sales Order Error:', error);
+        return { success: false, message: error.message };
+    }
+
+    revalidatePath('/app/[slug]/sales-orders');
+    revalidatePath('/profile');
+    return { success: true };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1467,6 +1533,23 @@ export interface QuoteEditorData {
         approvedMarginMoney?: number | null;
         approvedGrossLoan?: number | null;
     } | null;
+    financeAttempts?: {
+        id: string;
+        status: 'IN_PROCESS' | 'UNDERWRITING' | 'DOC_PENDING' | 'APPROVED' | 'REJECTED';
+        bankId?: string | null;
+        bankName?: string | null;
+        schemeId?: string | null;
+        schemeCode?: string | null;
+        roi?: number | null;
+        tenureMonths?: number | null;
+        downPayment?: number | null;
+        loanAmount?: number | null;
+        loanAddons?: number | null;
+        processingFee?: number | null;
+        chargesBreakup?: any[] | null;
+        emi?: number | null;
+        createdAt?: string | null;
+    }[];
     timeline: { event: string; timestamp: string; actor: string | null; actorType: 'customer' | 'team' }[];
 }
 
@@ -2141,6 +2224,40 @@ export async function getQuoteById(
         };
     }
 
+    const { data: financeAttemptsRaw } = await supabase
+        .from('crm_quote_finance_attempts')
+        .select(
+            'id, status, bank_id, bank_name, scheme_id, scheme_code, roi, tenure_months, down_payment, loan_amount, loan_addons, processing_fee, charges_breakup, emi, created_at'
+        )
+        .eq('quote_id', quoteId)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false });
+
+    if (financeAttemptsRaw && financeAttemptsRaw.length > 0) {
+        const resolvedAttempts = await Promise.all(
+            financeAttemptsRaw.map(async attempt => ({
+                id: attempt.id,
+                status: attempt.status as any,
+                bankId: attempt.bank_id || null,
+                bankName: await resolveBankName(attempt.bank_id, attempt.bank_name),
+                schemeId: attempt.scheme_id || null,
+                schemeCode: attempt.scheme_code || null,
+                roi: attempt.roi ?? null,
+                tenureMonths: attempt.tenure_months ?? null,
+                downPayment: attempt.down_payment ?? null,
+                loanAmount: attempt.loan_amount ?? null,
+                loanAddons: attempt.loan_addons ?? null,
+                processingFee: attempt.processing_fee ?? null,
+                chargesBreakup: (attempt.charges_breakup as any[]) || [],
+                emi: attempt.emi ?? null,
+                createdAt: attempt.created_at || null,
+            }))
+        );
+        result.financeAttempts = resolvedAttempts;
+    } else {
+        result.financeAttempts = [];
+    }
+
     return { success: true, data: result };
 }
 
@@ -2328,6 +2445,69 @@ export async function createQuoteFinanceAttempt(
     await logQuoteEvent(quoteId, 'New Finance Attempt Created', 'Team Member', 'team', { source: 'CRM' });
     revalidatePath('/app/[slug]/quotes');
     return { success: true, id: data.id };
+}
+
+export async function updateQuoteFinanceAttempt(
+    attemptId: string,
+    payload: {
+        bankId?: string | null;
+        bankName?: string | null;
+        schemeId?: string | null;
+        schemeCode?: string | null;
+        roi?: number | null;
+        tenureMonths?: number | null;
+        downPayment?: number | null;
+        loanAmount?: number | null;
+        loanAddons?: number | null;
+        processingFee?: number | null;
+        chargesBreakup?: any[];
+        emi?: number | null;
+    }
+) {
+    const supabase = await createClient();
+    const { error } = await supabase
+        .from('crm_quote_finance_attempts')
+        .update({
+            bank_id: payload.bankId ?? null,
+            bank_name: payload.bankName ?? null,
+            scheme_id: payload.schemeId ?? null,
+            scheme_code: payload.schemeCode ?? null,
+            roi: payload.roi ?? null,
+            tenure_months: payload.tenureMonths ?? null,
+            down_payment: payload.downPayment ?? null,
+            loan_amount: payload.loanAmount ?? null,
+            loan_addons: payload.loanAddons ?? null,
+            processing_fee: payload.processingFee ?? null,
+            charges_breakup: payload.chargesBreakup || [],
+            emi: payload.emi ?? null,
+            updated_at: new Date().toISOString(),
+        })
+        .eq('id', attemptId)
+        .eq('is_deleted', false);
+
+    if (error) {
+        console.error('updateQuoteFinanceAttempt Error:', error);
+        return { success: false, error: error.message };
+    }
+
+    return { success: true };
+}
+
+export async function setQuoteActiveFinanceAttempt(quoteId: string, attemptId: string) {
+    const supabase = await createClient();
+    const { error } = await supabase
+        .from('crm_quotes')
+        .update({ active_finance_id: attemptId, finance_mode: 'LOAN', updated_at: new Date().toISOString() })
+        .eq('id', quoteId)
+        .eq('is_deleted', false);
+
+    if (error) {
+        console.error('setQuoteActiveFinanceAttempt Error:', error);
+        return { success: false, error: error.message };
+    }
+
+    await logQuoteEvent(quoteId, 'Primary Finance Attempt Updated', 'Team Member', 'team', { source: 'CRM' });
+    return { success: true };
 }
 
 export async function updateQuoteFinanceStatus(
@@ -3837,10 +4017,10 @@ export async function getBookingsForLead(leadId: string) {
     return data || [];
 }
 
-export async function getPaymentsForEntity(leadId?: string | null, memberId?: string | null) {
+export async function getReceiptsForEntity(leadId?: string | null, memberId?: string | null) {
     const supabase = await createClient();
     let query = supabase
-        .from('crm_payments')
+        .from('crm_receipts' as any)
         .select('*')
         .eq('is_deleted', false)
         .order('created_at', { ascending: false });
@@ -3857,10 +4037,99 @@ export async function getPaymentsForEntity(leadId?: string | null, memberId?: st
 
     const { data, error } = await query;
     if (error) {
-        console.error('getPaymentsForEntity Error:', error);
+        console.error('getReceiptsForEntity Error:', error);
         return [];
     }
     return data || [];
+}
+
+export async function getReceiptsForTenant(tenantId?: string) {
+    const supabase = await createClient();
+    let query = supabase
+        .from('crm_receipts' as any)
+        .select('*')
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false });
+
+    if (tenantId) {
+        query = query.eq('tenant_id', tenantId);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+        console.error('getReceiptsForTenant Error:', error);
+        return [];
+    }
+    return data || [];
+}
+
+export async function getReceiptById(receiptId: string) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('crm_receipts' as any)
+        .select('*')
+        .eq('id', receiptId)
+        .eq('is_deleted', false)
+        .single();
+
+    if (error) {
+        console.error('getReceiptById Error:', error);
+        return { success: false, error: error.message };
+    }
+
+    return { success: true, receipt: data };
+}
+
+export async function updateReceipt(receiptId: string, updates: Record<string, any>) {
+    const { data: existing, error: fetchError } = await adminClient
+        .from('crm_receipts' as any)
+        .select('is_reconciled')
+        .eq('id', receiptId)
+        .maybeSingle();
+
+    if (fetchError) {
+        return { success: false, error: fetchError.message };
+    }
+
+    if (existing?.is_reconciled) {
+        return { success: false, error: 'Receipt already reconciled' };
+    }
+
+    const { error } = await adminClient
+        .from('crm_receipts' as any)
+        .update({
+            ...updates,
+            updated_at: new Date().toISOString(),
+        })
+        .eq('id', receiptId);
+
+    if (error) {
+        return { success: false, error: error.message };
+    }
+
+    return { success: true };
+}
+
+export async function reconcileReceipt(receiptId: string) {
+    const supabase = await createClient();
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData?.user?.id || null;
+
+    const { error } = await adminClient
+        .from('crm_receipts' as any)
+        .update({
+            is_reconciled: true,
+            reconciled_at: new Date().toISOString(),
+            reconciled_by: userId,
+            updated_at: new Date().toISOString(),
+        })
+        .eq('id', receiptId);
+
+    if (error) {
+        return { success: false, error: error.message };
+    }
+
+    return { success: true };
 }
 
 export async function getBankSchemes(bankId: string) {
