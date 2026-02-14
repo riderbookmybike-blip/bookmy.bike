@@ -7,14 +7,14 @@ import {
     getQuoteById,
     updateQuotePricing,
     sendQuoteToCustomer,
-    confirmQuoteAction,
     markQuoteInReview,
     getTasksForEntity,
     getQuotesForMember,
     getQuotesForLead,
     getBookingsForMember,
     getBookingsForLead,
-    getPaymentsForEntity,
+    getReceiptsForEntity,
+    createBookingFromQuote,
 } from '@/actions/crm';
 import { toast } from 'sonner';
 import { formatDisplayId } from '@/utils/displayId';
@@ -124,14 +124,14 @@ export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: Quot
             if (memberId) {
                 const [bookingsData, paymentsData] = await Promise.all([
                     getBookingsForMember(memberId),
-                    getPaymentsForEntity(leadId || null, memberId),
+                    getReceiptsForEntity(leadId || null, memberId),
                 ]);
                 setBookings(bookingsData);
                 setPayments(paymentsData);
             } else if (leadId) {
                 const [bookingsData, paymentsData] = await Promise.all([
                     getBookingsForLead(leadId),
-                    getPaymentsForEntity(leadId, null),
+                    getReceiptsForEntity(leadId, null),
                 ]);
                 setBookings(bookingsData);
                 setPayments(paymentsData);
@@ -194,20 +194,22 @@ export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: Quot
     };
 
     const handleConfirmBooking = async () => {
-        const result = await confirmQuoteAction(quoteId);
+        const result = await createBookingFromQuote(quoteId);
 
-        if (result.success) {
-            toast.success('Booking confirmed!');
-            await loadQuote();
+        if (result.success && result.data?.id) {
+            toast.success('Sales order created');
             onRefresh?.();
+            if (slug) {
+                window.location.href = `/app/${slug}/sales-orders/${result.data.id}?stage=BOOKING`;
+            }
         } else {
-            toast.error(result.message || 'Failed to confirm booking');
+            toast.error(result.message || 'Failed to create sales order');
         }
     };
 
     if (loading) {
         return (
-            <div className="h-full bg-slate-50 dark:bg-[#0b0d10] p-6 md:p-8 space-y-6 overflow-hidden">
+            <div className="h-full bg-slate-50 dark:bg-[#0b0d10] p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6 overflow-hidden">
                 {/* Skeleton: Header Bar */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -221,20 +223,20 @@ export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: Quot
                 </div>
 
                 {/* Skeleton: Customer + Vehicle Info */}
-                <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 space-y-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-white/10 animate-pulse" />
-                        <div className="flex-1 space-y-2">
-                            <div className="w-48 h-5 bg-slate-200 dark:bg-white/10 rounded-lg animate-pulse" />
-                            <div className="w-32 h-3 bg-slate-100 dark:bg-white/5 rounded animate-pulse" />
+                <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-4 sm:p-6 space-y-4">
+                    <div className="flex items-center gap-3 sm:gap-4">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-slate-200 dark:bg-white/10 animate-pulse shrink-0" />
+                        <div className="flex-1 min-w-0 space-y-2">
+                            <div className="w-3/4 max-w-[192px] h-5 bg-slate-200 dark:bg-white/10 rounded-lg animate-pulse" />
+                            <div className="w-1/2 max-w-[128px] h-3 bg-slate-100 dark:bg-white/5 rounded animate-pulse" />
                         </div>
-                        <div className="w-28 h-7 bg-slate-100 dark:bg-white/5 rounded-xl animate-pulse" />
+                        <div className="w-20 sm:w-28 h-7 bg-slate-100 dark:bg-white/5 rounded-xl animate-pulse shrink-0 hidden sm:block" />
                     </div>
-                    <div className="border-t border-slate-100 dark:border-white/5 pt-4 flex gap-6">
+                    <div className="border-t border-slate-100 dark:border-white/5 pt-4 flex gap-4 sm:gap-6">
                         {[1, 2, 3].map(i => (
                             <div key={i} className="flex-1 space-y-2">
-                                <div className="w-16 h-2.5 bg-slate-100 dark:bg-white/5 rounded animate-pulse" />
-                                <div className="w-24 h-4 bg-slate-200 dark:bg-white/10 rounded-lg animate-pulse" />
+                                <div className="w-12 sm:w-16 h-2.5 bg-slate-100 dark:bg-white/5 rounded animate-pulse" />
+                                <div className="w-16 sm:w-24 h-4 bg-slate-200 dark:bg-white/10 rounded-lg animate-pulse" />
                             </div>
                         ))}
                     </div>

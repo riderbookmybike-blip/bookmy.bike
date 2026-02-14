@@ -1745,6 +1745,22 @@ export default function QuoteEditorTable({
                                     {isSaving ? 'Updating...' : 'Save'}
                                 </Button>
                             )}
+                            {mode === 'quote' && (
+                                <Button
+                                    onClick={onConfirmBooking}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-5 h-10 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
+                                >
+                                    Convert to Sales Order
+                                </Button>
+                            )}
+                            {mode === 'booking' && (
+                                <Button
+                                    onClick={onConfirmBooking}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-5 h-10 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
+                                >
+                                    Confirm Sales Order
+                                </Button>
+                            )}
 
                             <div className="flex items-center bg-slate-100 dark:bg-white/5 rounded-xl p-1 gap-1">
                                 <Button
