@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import type { Metadata } from 'next';
 import ShellLayout from '@/components/layout/ShellLayout';
 import TenantHydrator from '@/components/tenant/TenantHydrator';
 import { createClient } from '@/lib/supabase/server';
@@ -6,7 +7,30 @@ import DebugPortal from '@/components/debug/DebugPortal';
 import { TenantType, TenantProvider, TenantConfig, Membership } from '@/lib/tenant/tenantContext';
 import { CelebrationProvider } from '@/components/providers/CelebrationProvider';
 import { getAuthUser } from '@/lib/auth/resolver';
-import { GitReminder } from '@/components/system/GitReminder';
+
+// Dynamic browser tab title + favicon — shows tenant name and logo
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+    const { slug } = await params;
+    const supabase = await createClient();
+    const { data: tenant } = await supabase
+        .from('id_tenants')
+        .select('name, logo_url, favicon_url')
+        .eq('slug', slug.toLowerCase())
+        .maybeSingle();
+    const tenantName = tenant?.name || slug.toUpperCase();
+    const faviconUrl = tenant?.favicon_url || tenant?.logo_url;
+    return {
+        title: tenantName,
+        ...(faviconUrl
+            ? {
+                  icons: {
+                      icon: faviconUrl,
+                      apple: faviconUrl,
+                  },
+              }
+            : {}),
+    };
+}
 
 interface Tenant {
     id: string;
@@ -123,7 +147,6 @@ export default async function TenantDashboardLayout({
                 <ShellLayout>{children}</ShellLayout>
             </CelebrationProvider>
             <DebugPortal />
-            <GitReminder />
         </TenantProvider>
     );
 }

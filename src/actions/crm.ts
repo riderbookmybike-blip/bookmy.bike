@@ -4043,6 +4043,9 @@ export async function getReceiptsForEntity(leadId?: string | null, memberId?: st
     return data || [];
 }
 
+// Alias: QuoteEditorWrapper uses getPaymentsForEntity
+export const getPaymentsForEntity = getReceiptsForEntity;
+
 export async function getReceiptsForTenant(tenantId?: string) {
     const supabase = await createClient();
     let query = supabase
