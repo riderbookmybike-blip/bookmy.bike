@@ -9,6 +9,8 @@ import MasterListDetailLayout from '@/components/templates/MasterListDetailLayou
 import StatsHeader from '@/components/modules/shared/StatsHeader';
 import ModuleLanding from '@/components/modules/shared/ModuleLanding';
 import QuoteEditorWrapper from '@/components/modules/quotes/QuoteEditorWrapper';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { useCrmMobile } from '@/hooks/useCrmMobile';
 import { FileText, FileCheck, Clock, BarChart3, AlertCircle, LayoutGrid, Search as SearchIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDisplayId } from '@/utils/displayId';
@@ -33,6 +35,10 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
     const router = useRouter();
     const params = useParams();
     const slug = typeof params?.slug === 'string' ? params.slug : Array.isArray(params?.slug) ? params.slug[0] : '';
+    const { device } = useBreakpoint();
+    const { isReadOnly } = useCrmMobile();
+    const isPhone = device === 'phone';
+    const isCompact = isPhone || device === 'tablet';
 
     const [quotes, setQuotes] = useState<Quote[]>([]);
     const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(initialQuoteId || null);
@@ -57,7 +63,7 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
         fetchQuotes();
     }, [fetchQuotes]);
 
-    // ── Supabase Realtime: Live quote updates (Facebook-style) ──
+    // ── Supabase Realtime: Live quote updates ──
     useEffect(() => {
         const supabase = createClient();
         const channel = supabase
@@ -71,7 +77,6 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
                     filter: `tenant_id=eq.${tenantId}`,
                 },
                 _payload => {
-                    // Auto-refresh the quotes list on any change
                     fetchQuotes();
                 }
             )
@@ -123,33 +128,41 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
 
     const handleOpenQuote = (quoteId: string) => {
         setSelectedQuoteId(quoteId);
-        if (slug) {
+        if (!isCompact && slug) {
             router.push(`/app/${slug}/quotes/${quoteId}`);
         }
     };
 
     const handleCloseDetail = () => {
         setSelectedQuoteId(null);
-        if (slug) {
+        if (!isCompact && slug) {
             router.push(`/app/${slug}/quotes`);
         }
     };
 
+    // Responsive negative margin: phone=-m-3, tablet=-m-5, desktop=-m-6 md:-m-8
+    const negativeMargin = isPhone ? '-m-3' : device === 'tablet' ? '-m-5' : '-m-6 md:-m-8';
+
+    // Phone forces list view
+    const effectiveView = isPhone ? 'list' : view;
+
     // --- LANDING VIEW ---
     if (!selectedQuoteId) {
         return (
-            <div className="h-full bg-slate-50 dark:bg-[#0b0d10] -m-6 md:-m-8">
+            <div className={`h-full bg-slate-50 dark:bg-[#0b0d10] ${negativeMargin}`}>
                 <ModuleLanding
                     title="Quotes"
                     subtitle="Commercial Proposals"
                     onNew={handleNewQuote}
                     searchPlaceholder="Search Quotes Index..."
                     onSearch={setSearchQuery}
-                    statsContent={<StatsHeader stats={stats} />}
-                    view={view}
+                    statsContent={<StatsHeader stats={stats} device={device} />}
+                    view={effectiveView}
                     onViewChange={setView}
+                    device={device}
+                    hideActions={isReadOnly}
                 >
-                    {view === 'grid' ? (
+                    {effectiveView === 'grid' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
                             {filteredQuotes.map(quote => (
                                 <div
@@ -195,6 +208,75 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
                                     </div>
                                 </div>
                             ))}
+                        </div>
+                    ) : /* ── LIST VIEW: Phone-optimized cards vs Desktop table ── */
+                    isPhone ? (
+                        <div className="space-y-2 pb-20">
+                            {filteredQuotes.map(quote => {
+                                const statusColor =
+                                    quote.status === 'APPROVED' || quote.status === 'SENT'
+                                        ? 'emerald'
+                                        : quote.status === 'IN_REVIEW'
+                                          ? 'amber'
+                                          : 'indigo';
+                                return (
+                                    <button
+                                        key={quote.id}
+                                        onClick={() => handleOpenQuote(quote.id)}
+                                        className="w-full text-left bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden transition-all active:scale-[0.98] min-h-[56px]"
+                                        data-crm-allow
+                                    >
+                                        <div className="flex">
+                                            <div
+                                                className={`w-1 shrink-0 ${
+                                                    statusColor === 'emerald'
+                                                        ? 'bg-emerald-500'
+                                                        : statusColor === 'amber'
+                                                          ? 'bg-amber-500'
+                                                          : 'bg-indigo-500'
+                                                }`}
+                                            />
+                                            <div className="flex-1 px-3.5 py-3 min-w-0">
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                                                        {formatDisplayId(quote.displayId)}
+                                                    </span>
+                                                    <span
+                                                        className={`text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${
+                                                            statusColor === 'emerald'
+                                                                ? 'bg-emerald-500/10 text-emerald-600'
+                                                                : statusColor === 'amber'
+                                                                  ? 'bg-amber-500/10 text-amber-600'
+                                                                  : 'bg-indigo-500/10 text-indigo-600'
+                                                        }`}
+                                                    >
+                                                        {quote.status}
+                                                    </span>
+                                                </div>
+                                                <div className="text-[13px] font-black tracking-tight uppercase truncate text-slate-900 dark:text-white mb-0.5">
+                                                    {quote.customerName}
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-[10px] font-bold text-slate-400 truncate">
+                                                        {quote.vehicleBrand
+                                                            ? [
+                                                                  quote.vehicleBrand,
+                                                                  quote.vehicleModel,
+                                                                  quote.vehicleVariant,
+                                                              ]
+                                                                  .filter(Boolean)
+                                                                  .join(' ')
+                                                            : quote.productName || '—'}
+                                                    </span>
+                                                    <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 tabular-nums shrink-0 ml-2">
+                                                        ₹{Number(quote.price).toLocaleString('en-IN')}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </button>
+                                );
+                            })}
                         </div>
                     ) : (
                         <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden shadow-sm">
@@ -276,8 +358,14 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
 
     // --- DETAIL VIEW ---
     return (
-        <div className="h-full bg-slate-50 dark:bg-slate-950 flex overflow-hidden font-sans -m-6 md:-m-8">
-            <MasterListDetailLayout mode="list-detail" listPosition="left">
+        <div className={`h-full bg-slate-50 dark:bg-slate-950 flex overflow-hidden font-sans ${negativeMargin}`}>
+            <MasterListDetailLayout
+                mode="list-detail"
+                listPosition="left"
+                device={device}
+                hasActiveDetail={!!selectedQuoteId}
+                onBack={handleCloseDetail}
+            >
                 {/* Sidebar List */}
                 <div className="h-full flex flex-col bg-white dark:bg-[#0b0d10] border-r border-slate-200 dark:border-white/5 w-full">
                     <div className="p-6 border-b border-slate-100 dark:border-white/5 space-y-4">
