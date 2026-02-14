@@ -27,6 +27,7 @@ import {
     Share2,
     Heart,
     ArrowRight,
+    Shield,
 } from 'lucide-react';
 import DynamicHeader from './Personalize/DynamicHeader';
 import { formatDisplayIdForUI } from '@/lib/displayId';
@@ -38,6 +39,7 @@ import CascadingAccessorySelector from './Personalize/CascadingAccessorySelector
 import { ServiceOption } from '@/types/store';
 import { useI18n } from '@/components/providers/I18nProvider';
 import { toDevanagariScript } from '@/lib/i18n/transliterate';
+import { computeOClubPricing } from '@/lib/oclub/coin';
 
 // Lazy load tab components for code splitting
 const FinanceTab = dynamic(() => import('./Personalize/Tabs/FinanceTab'), {
@@ -106,6 +108,8 @@ interface DesktopPDPProps {
     };
     initialLocation?: any;
     bestOffer?: any;
+    walletCoins?: number | null;
+    showOClubPrompt?: boolean;
 }
 
 const FullLayoutDebugger = () => {
@@ -222,6 +226,8 @@ export function DesktopPDP({
     basePath = '/store',
     initialLocation,
     bestOffer,
+    walletCoins = null,
+    showOClubPrompt = false,
 }: DesktopPDPProps) {
     const { language } = useI18n();
     // Configuration Constants
@@ -244,6 +250,9 @@ export function DesktopPDP({
         rtoBreakdown,
         baseInsurance,
         insuranceBreakdown,
+        insuranceOD,
+        insuranceTP,
+        insuranceGstRate,
         insuranceAddonsPrice,
         otherCharges,
         accessoriesPrice,
@@ -275,6 +284,10 @@ export function DesktopPDP({
         warrantyItems,
         initialFinance,
     } = data;
+
+    const coinPricing =
+        typeof walletCoins === 'number' && walletCoins > 0 ? computeOClubPricing(totalOnRoad, walletCoins) : null;
+    const displayOnRoad = coinPricing?.effectivePrice ?? totalOnRoad;
 
     const {
         handleColorChange,
@@ -508,200 +521,826 @@ export function DesktopPDP({
 
     const renderCategoryContent = (categoryId: string) => {
         if (categoryId === 'ACCESSORIES') {
+            // Selected items float to top, then sort by price within each group
+            const sortedAccessories = [...activeAccessories].sort((a: any, b: any) => {
+                const aSelected = a.isMandatory || selectedAccessories.includes(a.id) ? 1 : 0;
+                const bSelected = b.isMandatory || selectedAccessories.includes(b.id) ? 1 : 0;
+                if (aSelected !== bSelected) return bSelected - aSelected; // selected first
+                return (a.discountPrice ?? a.price) - (b.discountPrice ?? b.price); // then by price
+            });
+
+            // Helper: title case
+            const toTitle = (s: string) => s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+
             return (
-                <div className="space-y-8">
-                    {activeAccessories.filter((a: any) => a.isMandatory).length > 0 && (
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-3 px-2">
-                                <Package size={14} className="text-brand-primary" />
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                                    Mandatory Extras
-                                </span>
-                                <div className="flex-1 h-px bg-slate-200 dark:bg-white/5" />
-                            </div>
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                {activeAccessories
-                                    .filter((a: any) => a.isMandatory)
-                                    .map((acc: any) => (
-                                        <ConfigItemRow
-                                            key={acc.id}
-                                            item={acc}
-                                            isSelected={true}
-                                            onToggle={() => {}}
-                                            isMandatory={true}
+                <div className="rounded-2xl border border-slate-200/80 dark:border-white/5 bg-white dark:bg-white/[0.02] overflow-hidden shadow-sm">
+                    {sortedAccessories.map((acc: any, idx: number) => {
+                        const isSelected = acc.isMandatory || selectedAccessories.includes(acc.id);
+                        const finalPrice = acc.discountPrice > 0 ? acc.discountPrice : acc.price;
+                        const hasDiscount = acc.discountPrice > 0 && acc.discountPrice < acc.price;
+                        const savings = hasDiscount ? acc.price - acc.discountPrice : 0;
+                        const savingsPct = hasDiscount ? Math.round((savings / acc.price) * 100) : 0;
+                        const quantity = isSelected ? quantities[acc.id] || 1 : 0;
+                        const maxQty = acc.maxQty || 99;
+                        const skuImg = acc.image || null;
+
+                        // Two-line label
+                        const line1 = toTitle([acc.productGroup, acc.variantName].filter(Boolean).join(' · '));
+                        const line2 = toTitle([acc.unit, acc.brand].filter(Boolean).join(' · '));
+
+                        return (
+                            <div
+                                key={acc.id}
+                                onClick={() => !acc.isMandatory && toggleAccessory(acc.id)}
+                                className={`group flex items-center gap-3 px-4 py-3 transition-all duration-200 cursor-pointer border-l-[3px] ${
+                                    isSelected
+                                        ? 'border-l-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/10'
+                                        : 'border-l-transparent hover:bg-slate-50 dark:hover:bg-white/[0.02]'
+                                } ${idx > 0 ? 'border-t border-t-slate-100/80 dark:border-t-white/5' : ''}`}
+                            >
+                                {/* Checkbox */}
+                                <div
+                                    className={`w-[18px] h-[18px] rounded-full flex items-center justify-center transition-all shrink-0 ${
+                                        isSelected
+                                            ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-200 dark:shadow-emerald-900/40'
+                                            : 'border-2 border-slate-300 dark:border-zinc-600 group-hover:border-emerald-400'
+                                    }`}
+                                >
+                                    {isSelected && <CheckCircle2 size={12} strokeWidth={3} />}
+                                </div>
+
+                                {/* Image */}
+                                <div
+                                    className={`w-11 h-11 rounded-xl flex items-center justify-center overflow-hidden shrink-0 transition-all ${
+                                        skuImg
+                                            ? 'bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 shadow-sm'
+                                            : 'bg-slate-50 dark:bg-white/5 border border-dashed border-slate-200 dark:border-white/10'
+                                    }`}
+                                >
+                                    {skuImg ? (
+                                        <Image
+                                            src={skuImg}
+                                            alt={acc.name}
+                                            width={36}
+                                            height={36}
+                                            className="object-contain"
                                         />
-                                    ))}
+                                    ) : (
+                                        <Package size={16} className="text-slate-300 dark:text-zinc-600" />
+                                    )}
+                                </div>
+
+                                {/* Name — two lines */}
+                                <div className="flex-1 min-w-0">
+                                    <p
+                                        className={`text-[12px] font-semibold leading-tight truncate ${
+                                            isSelected
+                                                ? 'text-slate-900 dark:text-white'
+                                                : 'text-slate-700 dark:text-zinc-300'
+                                        }`}
+                                    >
+                                        {line1 || toTitle(acc.name)}
+                                    </p>
+                                    {line2 && (
+                                        <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-0.5 truncate leading-tight">
+                                            {line2}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Qty ± */}
+                                {isSelected && (
+                                    <div className="flex items-center gap-1 shrink-0 bg-slate-100/80 dark:bg-white/5 rounded-lg px-1 py-0.5">
+                                        <button
+                                            onClick={e => {
+                                                e.stopPropagation();
+                                                updateQuantity(acc.id, Math.max(1, quantity - 1));
+                                            }}
+                                            className="w-6 h-6 rounded-md flex items-center justify-center text-slate-500 dark:text-zinc-400 text-sm font-bold hover:bg-white dark:hover:bg-white/10 transition-colors"
+                                        >
+                                            −
+                                        </button>
+                                        <span className="w-5 text-center text-[11px] font-black text-slate-700 dark:text-zinc-300">
+                                            {quantity}
+                                        </span>
+                                        <button
+                                            onClick={e => {
+                                                e.stopPropagation();
+                                                updateQuantity(acc.id, Math.min(maxQty, quantity + 1));
+                                            }}
+                                            className="w-6 h-6 rounded-md flex items-center justify-center text-slate-500 dark:text-zinc-400 text-sm font-bold hover:bg-white dark:hover:bg-white/10 transition-colors"
+                                        >
+                                            +
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Price block */}
+                                <div className="flex flex-col items-end shrink-0 min-w-[72px]">
+                                    <span
+                                        className={`text-[13px] font-extrabold tabular-nums ${
+                                            isSelected
+                                                ? 'text-emerald-600 dark:text-emerald-400'
+                                                : 'text-slate-800 dark:text-zinc-200'
+                                        }`}
+                                    >
+                                        {finalPrice === 0 ? 'FREE' : `₹${finalPrice.toLocaleString()}`}
+                                    </span>
+                                    {hasDiscount && (
+                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                            <span className="text-[10px] text-slate-400 dark:text-zinc-600 line-through tabular-nums">
+                                                ₹{acc.price.toLocaleString()}
+                                            </span>
+                                            <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-1.5 py-0.5 rounded-full leading-none">
+                                                {savingsPct}% off
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    )}
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-3 px-2">
-                            <Plus size={14} className="text-brand-primary" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                                Personalize Your Ride
-                            </span>
-                            <div className="flex-1 h-px bg-slate-200 dark:bg-white/5" />
-                        </div>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            {activeAccessories
-                                .filter((a: any) => !a.isMandatory)
-                                .map((acc: any) => (
-                                    <ConfigItemRow
-                                        key={acc.id}
-                                        item={acc}
-                                        isSelected={selectedAccessories.includes(acc.id)}
-                                        onToggle={() => toggleAccessory(acc.id)}
-                                    />
-                                ))}
-                        </div>
-                    </div>
+                        );
+                    })}
                 </div>
             );
         }
 
-        if (categoryId === 'INSURANCE') {
+        // Shared flat-row renderer for Insurance / Registration / Services / Warranty
+        const renderFlatItemList = (
+            items: any[],
+            {
+                getSelected,
+                onToggle,
+                isMandatory = false,
+                isRadio = false,
+            }: {
+                getSelected: (id: string) => boolean;
+                onToggle: (id: string) => void;
+                isMandatory?: boolean;
+                isRadio?: boolean;
+            }
+        ) => {
+            const toTitle = (s: string) => s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
             return (
-                <div className="space-y-8">
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-3 px-2">
-                            <ShieldCheck size={14} className="text-brand-primary" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                                Standard Protection
-                            </span>
-                            <div className="flex-1 h-px bg-slate-200 dark:bg-white/5" />
-                        </div>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            {insuranceRequiredItems.map((item: any) => (
-                                <ConfigItemRow
-                                    key={item.id}
-                                    item={item}
-                                    isSelected={true}
-                                    onToggle={() => {}}
-                                    isMandatory={true}
-                                    breakdown={item.breakdown}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-3 px-2">
-                            <Zap size={14} className="text-brand-primary" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                                Enhanced Coverage Add-ons
-                            </span>
-                            <div className="flex-1 h-px bg-slate-200 dark:bg-white/5" />
-                        </div>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            {availableInsuranceAddons.map((item: any) => (
-                                <ConfigItemRow
-                                    key={item.id}
-                                    item={item}
-                                    isSelected={selectedInsuranceAddons.includes(item.id)}
-                                    onToggle={() => toggleInsuranceAddon(item.id)}
-                                    breakdown={item.breakdown}
-                                />
-                            ))}
-                        </div>
-                    </div>
+                <div className="rounded-2xl border border-slate-200/80 dark:border-white/5 bg-white dark:bg-white/[0.02] overflow-hidden shadow-sm">
+                    {items.map((item: any, idx: number) => {
+                        const selected = getSelected(item.id);
+                        const finalPrice = item.discountPrice > 0 ? item.discountPrice : item.price;
+                        const hasDiscount = item.discountPrice > 0 && item.discountPrice < item.price;
+                        const savings = hasDiscount ? item.price - item.discountPrice : 0;
+                        const savingsPct = hasDiscount ? Math.round((savings / item.price) * 100) : 0;
+
+                        return (
+                            <div
+                                key={item.id}
+                                onClick={() => !isMandatory && onToggle(item.id)}
+                                className={`group flex items-center gap-3 px-4 py-3 transition-all duration-200 cursor-pointer border-l-[3px] ${
+                                    selected
+                                        ? 'border-l-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/10'
+                                        : 'border-l-transparent hover:bg-slate-50 dark:hover:bg-white/[0.02]'
+                                } ${idx > 0 ? 'border-t border-t-slate-100/80 dark:border-t-white/5' : ''} ${isMandatory ? 'cursor-default' : ''}`}
+                            >
+                                {/* Checkbox / Radio */}
+                                <div
+                                    className={`w-[18px] h-[18px] rounded-full flex items-center justify-center transition-all shrink-0 ${
+                                        selected
+                                            ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-200 dark:shadow-emerald-900/40'
+                                            : 'border-2 border-slate-300 dark:border-zinc-600 group-hover:border-emerald-400'
+                                    }`}
+                                >
+                                    {selected &&
+                                        (isRadio ? (
+                                            <div className="w-2 h-2 rounded-full bg-white" />
+                                        ) : (
+                                            <CheckCircle2 size={12} strokeWidth={3} />
+                                        ))}
+                                </div>
+
+                                {/* Name + description */}
+                                <div className="flex-1 min-w-0">
+                                    <p
+                                        className={`text-[12px] font-semibold leading-tight truncate ${
+                                            selected
+                                                ? 'text-slate-900 dark:text-white'
+                                                : 'text-slate-700 dark:text-zinc-300'
+                                        }`}
+                                    >
+                                        {toTitle(item.displayName || item.name)}
+                                    </p>
+                                    {item.description && (
+                                        <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-0.5 truncate leading-tight">
+                                            {item.description}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Breakdown info icon */}
+                                {item.breakdown && item.breakdown.length > 0 && (
+                                    <div className="relative group/tip shrink-0">
+                                        <div
+                                            className={`p-1 rounded-full transition-colors ${selected ? 'text-emerald-500' : 'text-slate-400 hover:text-emerald-500'}`}
+                                        >
+                                            <Info size={13} />
+                                        </div>
+                                        <div className="absolute right-0 bottom-full mb-2 z-50 w-56 p-3 rounded-xl bg-[#15191e] border border-white/10 shadow-2xl opacity-0 invisible group-hover/tip:opacity-100 group-hover/tip:visible transition-all duration-300 pointer-events-none">
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-emerald-400 mb-2">
+                                                Breakdown
+                                            </p>
+                                            {item.breakdown.map((b: any, i: number) => (
+                                                <div
+                                                    key={i}
+                                                    className="flex justify-between items-center py-1 border-b border-white/5 last:border-0"
+                                                >
+                                                    <span className="text-[9px] text-slate-400">
+                                                        {b.label || b.name}
+                                                    </span>
+                                                    <span className="text-[10px] font-bold text-white">
+                                                        ₹{(b.amount || b.value || 0).toLocaleString()}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Price block */}
+                                <div className="flex flex-col items-end shrink-0 min-w-[72px]">
+                                    <span
+                                        className={`text-[13px] font-extrabold tabular-nums ${
+                                            selected
+                                                ? 'text-emerald-600 dark:text-emerald-400'
+                                                : 'text-slate-800 dark:text-zinc-200'
+                                        }`}
+                                    >
+                                        {finalPrice === 0 ? 'FREE' : `₹${finalPrice.toLocaleString()}`}
+                                    </span>
+                                    {hasDiscount && (
+                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                            <span className="text-[10px] text-slate-400 dark:text-zinc-600 line-through tabular-nums">
+                                                ₹{item.price.toLocaleString()}
+                                            </span>
+                                            <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-1.5 py-0.5 rounded-full leading-none">
+                                                {savingsPct}% off
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
+            );
+        };
+
+        if (categoryId === 'INSURANCE') {
+            const allInsurance = [...insuranceRequiredItems, ...availableInsuranceAddons];
+            const mandatoryIds = new Set(insuranceRequiredItems.map((i: any) => i.id));
+
+            // Compute totals
+            const activeAddons = availableInsuranceAddons.filter((a: any) => selectedInsuranceAddons.includes(a.id));
+            const addonsTotal = activeAddons.reduce((sum: number, a: any) => sum + Number(a.price || 0), 0);
+            const totalInsurance = baseInsurance + addonsTotal;
+
+            // Net Premium (sum of all base premiums before GST)
+            const tpBase = insuranceRequiredItems.find((i: any) => i.id === 'insurance-tp');
+            const odBase = insuranceRequiredItems.find((i: any) => i.id === 'insurance-od');
+            const tpBasePremium = tpBase?.breakdown?.[0]?.amount || insuranceTP || 0;
+            const odBasePremium = odBase?.breakdown?.[0]?.amount || insuranceOD || 0;
+            const addonsBasePremium = activeAddons.reduce((sum: number, a: any) => {
+                const base = a.breakdown?.find((b: any) => b.label === 'Base Premium');
+                return sum + Number(base?.amount || a.price || 0);
+            }, 0);
+            const netPremium = Number(tpBasePremium) + Number(odBasePremium) + Number(addonsBasePremium);
+            const totalGst = Math.max(0, totalInsurance - netPremium);
+
+            const TreeLine = () => (
+                <span className="text-slate-300 dark:text-zinc-700 mr-2 text-[13px] font-light select-none">└</span>
+            );
+
+            // Tooltip descriptions for insurance components
+            const tipMap: Record<string, string> = {
+                tp: 'Covers damage you cause to other people or their property in an accident. This is mandatory by law for 5 years.',
+                od: 'Covers repair or replacement costs if your vehicle gets damaged in an accident, theft, fire, or natural disaster. Valid for 1 year.',
+                'zero depreciation':
+                    'Without this, insurance deducts value for wear & tear on parts. With Zero Dep, you get full claim amount without any deduction.',
+                'personal accident':
+                    'Provides compensation to you (the owner-driver) for injuries or death in a road accident. Covers up to ₹15 lakh.',
+                'roadside assistance':
+                    'Get help if your vehicle breaks down — towing, flat tyre, battery jumpstart, fuel delivery, anywhere in India.',
+                'engine protect':
+                    'Covers engine damage from water logging or oil leakage, which is not covered under regular insurance.',
+                'return to invoice':
+                    'If your vehicle is stolen or totally damaged, you get the full invoice amount back instead of depreciated value.',
+                consumables:
+                    'Covers cost of consumables like engine oil, nuts, bolts, and washers used during repairs — normally not covered.',
+                'key replacement':
+                    'Covers the cost of replacing your vehicle keys if they are lost, stolen, or damaged.',
+                net_premium:
+                    'The total of all your insurance charges before GST is added. This is the base cost of your coverage.',
+                gst: 'Government Service Tax applied on insurance premiums. Currently 18% on all motor insurance.',
+            };
+
+            const getAddonTip = (name: string): string | undefined => {
+                const key = name.toLowerCase();
+                for (const [k, v] of Object.entries(tipMap)) {
+                    if (key.includes(k)) return v;
+                }
+                return undefined;
+            };
+
+            // InfoTip: hover on desktop, tap (i) on mobile
+            const InfoTip = ({ tip }: { tip?: string }) => {
+                if (!tip) return null;
+                return (
+                    <span className="relative group/tip inline-flex ml-1">
+                        <span className="w-3.5 h-3.5 rounded-full bg-slate-100 dark:bg-zinc-800 inline-flex items-center justify-center cursor-help shrink-0 hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors">
+                            <span className="text-[8px] font-bold text-slate-400 dark:text-zinc-500 leading-none select-none">
+                                i
+                            </span>
+                        </span>
+                        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 px-3 py-2 rounded-lg bg-slate-800 dark:bg-zinc-200 text-[10px] leading-relaxed text-white dark:text-zinc-900 font-medium shadow-lg opacity-0 invisible group-hover/tip:opacity-100 group-hover/tip:visible transition-all duration-200 z-50 pointer-events-none">
+                            {tip}
+                            <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800 dark:border-t-zinc-200" />
+                        </span>
+                    </span>
+                );
+            };
+
+            return (
+                <>
+                    <div className="rounded-2xl border border-slate-200/80 dark:border-white/5 bg-white dark:bg-white/[0.02] shadow-sm overflow-visible">
+                        {/* Header: INSURANCE PACKAGE */}
+                        <div className="px-4 py-3 border-b border-slate-100 dark:border-white/5 flex items-center gap-2">
+                            <Shield size={14} className="text-emerald-500" />
+                            <span className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-zinc-400">
+                                Insurance Package
+                            </span>
+                        </div>
+
+                        {/* Third Party (Basic) */}
+                        <div className="px-4 py-2.5 border-b border-slate-50 dark:border-white/[0.03]">
+                            <div className="flex items-center justify-between">
+                                <span className="flex items-center text-[11px] font-semibold text-slate-700 dark:text-zinc-300">
+                                    <TreeLine />
+                                    Third Party (Basic)
+                                    <InfoTip tip={tipMap['tp']} />
+                                </span>
+                                <span className="text-[12px] font-bold tabular-nums text-slate-700 dark:text-zinc-300">
+                                    ₹{Number(insuranceTP || 0).toLocaleString()}
+                                </span>
+                            </div>
+                            <div className="ml-6 mt-1 space-y-0.5">
+                                <div className="flex items-center justify-between">
+                                    <span className="flex items-center text-[10px] text-slate-500 dark:text-zinc-500 italic">
+                                        <TreeLine />
+                                        Liability Only (5 Years Cover)
+                                    </span>
+                                    <span className="text-[10px] tabular-nums text-slate-500 dark:text-zinc-500">
+                                        ₹{Number(insuranceTP || 0).toLocaleString()}
+                                    </span>
+                                </div>
+                                {tpBase?.breakdown
+                                    ?.filter((b: any) => !b.label.toLowerCase().includes('gst'))
+                                    .map((b: any, i: number) => (
+                                        <div key={i} className="flex items-center justify-between ml-5">
+                                            <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-400 dark:text-zinc-600">
+                                                {b.label}: ₹{Number(b.amount || 0).toLocaleString()}
+                                            </span>
+                                        </div>
+                                    ))}
+                            </div>
+                        </div>
+
+                        {/* Own Damage (OD) */}
+                        <div className="px-4 py-2.5 border-b border-slate-50 dark:border-white/[0.03]">
+                            <div className="flex items-center justify-between">
+                                <span className="flex items-center text-[11px] font-semibold text-slate-700 dark:text-zinc-300">
+                                    <TreeLine />
+                                    Own Damage (OD)
+                                    <InfoTip tip={tipMap['od']} />
+                                </span>
+                                <span className="text-[12px] font-bold tabular-nums text-slate-700 dark:text-zinc-300">
+                                    ₹{Number(insuranceOD || 0).toLocaleString()}
+                                </span>
+                            </div>
+                            <div className="ml-6 mt-1 space-y-0.5">
+                                <div className="flex items-center justify-between">
+                                    <span className="flex items-center text-[10px] text-slate-500 dark:text-zinc-500 italic">
+                                        <TreeLine />
+                                        Comprehensive (1 Year Cover)
+                                    </span>
+                                    <span className="text-[10px] tabular-nums text-slate-500 dark:text-zinc-500">
+                                        ₹{Number(insuranceOD || 0).toLocaleString()}
+                                    </span>
+                                </div>
+                                {odBase?.breakdown
+                                    ?.filter((b: any) => !b.label.toLowerCase().includes('gst'))
+                                    .map((b: any, i: number) => (
+                                        <div key={i} className="flex items-center justify-between ml-5">
+                                            <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-400 dark:text-zinc-600">
+                                                {b.label}: ₹{Number(b.amount || 0).toLocaleString()}
+                                            </span>
+                                        </div>
+                                    ))}
+                            </div>
+                        </div>
+
+                        {/* OPTIONAL ADD-ONS section */}
+                        {availableInsuranceAddons.length > 0 && (
+                            <div className="border-t border-slate-200/80 dark:border-white/10">
+                                <div className="px-4 py-2 bg-slate-50/60 dark:bg-white/[0.015]">
+                                    <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-zinc-500">
+                                        Optional Add-Ons
+                                    </span>
+                                </div>
+                                {availableInsuranceAddons.map((addon: any) => {
+                                    const isActive = selectedInsuranceAddons.includes(addon.id);
+                                    const isBundled = addon.inclusionType === 'BUNDLE' || addon.isMandatory;
+                                    const addonPrice = Number(addon.discountPrice || addon.price || 0);
+                                    const effectivePrice = isBundled ? 0 : addonPrice;
+                                    const hasOffer = isBundled || addon.discountPrice === 0;
+                                    return (
+                                        <div
+                                            key={addon.id}
+                                            onClick={() => {
+                                                if (!isBundled) toggleInsuranceAddon(addon.id);
+                                            }}
+                                            className={`px-4 py-2.5 border-t border-slate-50 dark:border-white/[0.03] transition-all duration-200 ${!isBundled ? 'cursor-pointer hover:bg-slate-50/50 dark:hover:bg-white/[0.015]' : ''}`}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2.5">
+                                                    {/* Toggle checkbox */}
+                                                    {!isBundled ? (
+                                                        <div
+                                                            className={`w-4 h-4 rounded flex items-center justify-center shrink-0 transition-all duration-200 ${
+                                                                isActive
+                                                                    ? 'bg-emerald-500 shadow-sm shadow-emerald-200 dark:shadow-emerald-900/40'
+                                                                    : 'border-[1.5px] border-slate-300 dark:border-zinc-600 hover:border-emerald-400'
+                                                            }`}
+                                                        >
+                                                            {isActive && (
+                                                                <svg
+                                                                    className="w-2.5 h-2.5 text-white"
+                                                                    fill="none"
+                                                                    viewBox="0 0 24 24"
+                                                                    stroke="currentColor"
+                                                                    strokeWidth={3}
+                                                                >
+                                                                    <path
+                                                                        strokeLinecap="round"
+                                                                        strokeLinejoin="round"
+                                                                        d="M5 13l4 4L19 7"
+                                                                    />
+                                                                </svg>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="w-4 h-4 rounded bg-slate-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
+                                                            <svg
+                                                                className="w-2.5 h-2.5 text-slate-400 dark:text-zinc-500"
+                                                                fill="none"
+                                                                viewBox="0 0 24 24"
+                                                                stroke="currentColor"
+                                                                strokeWidth={2.5}
+                                                            >
+                                                                <path
+                                                                    strokeLinecap="round"
+                                                                    strokeLinejoin="round"
+                                                                    d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
+                                                                />
+                                                            </svg>
+                                                        </div>
+                                                    )}
+                                                    <span
+                                                        className={`text-[11px] font-semibold ${isActive || isBundled ? 'text-slate-700 dark:text-zinc-300' : 'text-slate-500 dark:text-zinc-500'}`}
+                                                    >
+                                                        {addon.name}
+                                                        <InfoTip tip={getAddonTip(addon.name)} />
+                                                    </span>
+                                                    {isBundled && (
+                                                        <span className="text-[8px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-1.5 py-0.5 rounded-full">
+                                                            Included
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <span
+                                                    className={`text-[12px] font-bold tabular-nums ${hasOffer && (isActive || isBundled) ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-700 dark:text-zinc-300'}`}
+                                                >
+                                                    {effectivePrice === 0 && (isActive || isBundled)
+                                                        ? 'FREE'
+                                                        : `₹${effectivePrice.toLocaleString()}`}
+                                                </span>
+                                            </div>
+                                            {/* Breakdown details */}
+                                            {addon.breakdown &&
+                                                addon.breakdown.length > 0 &&
+                                                (isActive || isBundled) && (
+                                                    <div className="ml-6 mt-1 flex flex-wrap gap-x-4 gap-y-0.5">
+                                                        {addon.breakdown
+                                                            .filter((b: any) => !b.label.toLowerCase().includes('gst'))
+                                                            .map((b: any, i: number) => (
+                                                                <span
+                                                                    key={i}
+                                                                    className="text-[9px] font-semibold uppercase tracking-wider text-slate-400 dark:text-zinc-600"
+                                                                >
+                                                                    {b.label}: ₹{Number(b.amount || 0).toLocaleString()}
+                                                                </span>
+                                                            ))}
+                                                        {hasOffer && (
+                                                            <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-500">
+                                                                Offer: ₹0
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {/* Net Premium */}
+                        <div className="flex items-center justify-between px-4 py-2 border-t border-slate-200/80 dark:border-white/10">
+                            <span className="flex items-center text-[11px] text-slate-600 dark:text-zinc-400 font-medium">
+                                <TreeLine />
+                                Net Premium
+                                <InfoTip tip={tipMap['net_premium']} />
+                            </span>
+                            <span className="text-[12px] font-bold tabular-nums text-slate-700 dark:text-zinc-300">
+                                ₹{netPremium.toLocaleString()}
+                            </span>
+                        </div>
+
+                        {/* GST */}
+                        <div className="flex items-center justify-between px-4 py-2 border-t border-slate-50 dark:border-white/[0.03]">
+                            <span className="flex items-center text-[11px] text-slate-600 dark:text-zinc-400 font-medium">
+                                <TreeLine />
+                                GST ({insuranceGstRate}% GST)
+                                <InfoTip tip={tipMap['gst']} />
+                            </span>
+                            <span className="text-[12px] font-bold tabular-nums text-slate-700 dark:text-zinc-300">
+                                ₹{totalGst.toLocaleString()}
+                            </span>
+                        </div>
+
+                        {/* Total Insurance footer */}
+                        <div className="flex items-center justify-between px-4 py-2.5 border-t-2 border-slate-200 dark:border-white/10 bg-slate-50/40 dark:bg-white/[0.015]">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-zinc-400">
+                                Total Insurance
+                            </span>
+                            <span className="text-[13px] font-black tabular-nums text-slate-900 dark:text-white">
+                                ₹{totalInsurance.toLocaleString()}
+                            </span>
+                        </div>
+                    </div>
+                </>
             );
         }
 
         if (categoryId === 'REGISTRATION') {
             const fallbackOptions = [
-                {
-                    id: 'STATE',
-                    name: 'State Registration',
-                    price: Math.round((data.baseExShowroom || 0) * 0.12),
-                    description: 'Standard RTO charges for your state.',
-                },
+                { id: 'STATE', name: 'State', price: Math.round((data.baseExShowroom || 0) * 0.12), breakdown: [] },
                 {
                     id: 'BH',
-                    name: 'Bharat Series (BH)',
+                    name: 'Bharat Series',
                     price: Math.round((data.baseExShowroom || 0) * 0.08),
-                    description: 'For frequent interstate travel.',
+                    breakdown: [],
                 },
-                {
-                    id: 'COMPANY',
-                    name: 'Company Registration',
-                    price: Math.round((data.baseExShowroom || 0) * 0.2),
-                    description: 'Corporate entity registration.',
-                },
+                { id: 'COMPANY', name: 'Company', price: Math.round((data.baseExShowroom || 0) * 0.2), breakdown: [] },
             ];
             const items = data.rtoOptions && data.rtoOptions.length > 0 ? data.rtoOptions : fallbackOptions;
+            const selectedItem = items.find((i: any) => i.id === regType) || items[0];
+            const breakdown = selectedItem?.breakdown || [];
+
+            // Split breakdown into fixed vs variable (Road Tax, Cess change per type)
+            const variableLabels = new Set(['Road Tax', 'Cess', 'Cess Amount']);
+            const fixedCharges = breakdown.filter((b: any) => !variableLabels.has(b.label));
+            const roadTaxEntry = breakdown.find((b: any) => b.label === 'Road Tax');
+            const cessEntry = breakdown.find((b: any) => b.label === 'Cess' || b.label === 'Cess Amount');
+
+            // Get road tax amount per type for radio display
+            const getRoadTax = (typeId: string) => {
+                const opt = items.find((i: any) => i.id === typeId);
+                const bd = opt?.breakdown || [];
+                const rt = bd.find((b: any) => b.label === 'Road Tax');
+                return Number(rt?.amount || 0);
+            };
+
+            // Tree connector component
+            const TreeLine = () => (
+                <span className="text-slate-300 dark:text-zinc-700 mr-2 text-[13px] font-light select-none">└</span>
+            );
+
             return (
-                <div className="space-y-4">
-                    <div className="flex items-center gap-3 px-2">
-                        <ClipboardList size={14} className="text-brand-primary" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                            Select Registration Type
-                        </span>
-                        <div className="flex-1 h-px bg-slate-200 dark:bg-white/5" />
+                <>
+                    <div className="rounded-2xl border border-slate-200/80 dark:border-white/5 bg-white dark:bg-white/[0.02] overflow-hidden shadow-sm">
+                        {/* Header: REGISTRATION (RTO) + Total */}
+                        <div className="px-4 py-3 border-b border-slate-100 dark:border-white/5 flex items-center gap-2">
+                            <ClipboardList size={14} className="text-emerald-500" />
+                            <span className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-zinc-400">
+                                Registration (RTO)
+                            </span>
+                        </div>
+
+                        {/* Fixed Charges — tree lines */}
+                        {fixedCharges.length > 0 && (
+                            <div>
+                                {fixedCharges.map((b: any, i: number) => (
+                                    <div
+                                        key={i}
+                                        className={`flex items-center justify-between px-4 py-2 ${i > 0 ? 'border-t border-slate-50 dark:border-white/[0.03]' : ''}`}
+                                    >
+                                        <span className="flex items-center text-[11px] text-slate-600 dark:text-zinc-400 font-medium">
+                                            <TreeLine />
+                                            {b.label}
+                                        </span>
+                                        <span className="text-[12px] font-bold tabular-nums text-slate-700 dark:text-zinc-300">
+                                            ₹{Number(b.amount || 0).toLocaleString()}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Road Tax — section header + 3 vertical radio rows */}
+                        <div className="border-t border-slate-200/80 dark:border-white/10">
+                            <div className="px-4 py-2 bg-slate-50/60 dark:bg-white/[0.015]">
+                                <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-zinc-500">
+                                    Road Tax
+                                </span>
+                            </div>
+                            {(['BH', 'STATE', 'COMPANY'] as const).map(typeId => {
+                                const opt = items.find((i: any) => i.id === typeId);
+                                if (!opt) return null;
+                                const isActive = regType === typeId;
+                                const roadTaxAmt = getRoadTax(typeId);
+                                const stateNameMap: Record<string, string> = {
+                                    MH: 'Maharashtra',
+                                    DL: 'Delhi',
+                                    KA: 'Karnataka',
+                                    TN: 'Tamil Nadu',
+                                    UP: 'Uttar Pradesh',
+                                    GJ: 'Gujarat',
+                                    RJ: 'Rajasthan',
+                                    WB: 'West Bengal',
+                                    MP: 'Madhya Pradesh',
+                                    AP: 'Andhra Pradesh',
+                                    TS: 'Telangana',
+                                    KL: 'Kerala',
+                                    PB: 'Punjab',
+                                    HR: 'Haryana',
+                                    BR: 'Bihar',
+                                    JH: 'Jharkhand',
+                                    AS: 'Assam',
+                                    OR: 'Odisha',
+                                    CG: 'Chhattisgarh',
+                                    UK: 'Uttarakhand',
+                                    HP: 'Himachal Pradesh',
+                                    GA: 'Goa',
+                                    TR: 'Tripura',
+                                    ML: 'Meghalaya',
+                                    MN: 'Manipur',
+                                    NL: 'Nagaland',
+                                    MZ: 'Mizoram',
+                                    AR: 'Arunachal Pradesh',
+                                    SK: 'Sikkim',
+                                    JK: 'Jammu & Kashmir',
+                                    CT: 'Chhattisgarh',
+                                };
+                                const stateName = data.stateCode
+                                    ? stateNameMap[data.stateCode.toUpperCase()] || data.stateCode
+                                    : null;
+                                const displayName =
+                                    typeId === 'STATE'
+                                        ? stateName
+                                            ? `State (${stateName})`
+                                            : 'State'
+                                        : typeId === 'BH'
+                                          ? 'Bharat Series'
+                                          : 'Company';
+                                return (
+                                    <div
+                                        key={typeId}
+                                        onClick={() => setRegType(typeId)}
+                                        className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all duration-200 border-l-[3px] border-t border-t-slate-50 dark:border-t-white/[0.03] ${
+                                            isActive
+                                                ? 'border-l-emerald-500 bg-emerald-50/40 dark:bg-emerald-900/10'
+                                                : 'border-l-transparent hover:bg-slate-50/50 dark:hover:bg-white/[0.015]'
+                                        }`}
+                                    >
+                                        {/* Radio dot */}
+                                        <div
+                                            className={`w-4 h-4 rounded-full flex items-center justify-center transition-all shrink-0 ${
+                                                isActive
+                                                    ? 'bg-emerald-500 shadow-sm shadow-emerald-200 dark:shadow-emerald-900/40'
+                                                    : 'border-[1.5px] border-slate-300 dark:border-zinc-600'
+                                            }`}
+                                        >
+                                            {isActive && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                        </div>
+                                        <span
+                                            className={`flex-1 text-[11px] font-semibold ${
+                                                isActive
+                                                    ? 'text-slate-900 dark:text-white'
+                                                    : 'text-slate-600 dark:text-zinc-400'
+                                            }`}
+                                        >
+                                            {displayName}
+                                        </span>
+                                        <span
+                                            className={`text-[12px] font-bold tabular-nums ${
+                                                isActive
+                                                    ? 'text-emerald-600 dark:text-emerald-400'
+                                                    : 'text-slate-700 dark:text-zinc-300'
+                                            }`}
+                                        >
+                                            ₹{roadTaxAmt.toLocaleString()}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Cess — tree line, auto-updates per type */}
+                        {cessEntry && (
+                            <div className="flex items-center justify-between px-4 py-2 border-t border-slate-200/80 dark:border-white/10">
+                                <span className="flex items-center text-[11px] text-slate-600 dark:text-zinc-400 font-medium">
+                                    <TreeLine />
+                                    Cess Amount
+                                </span>
+                                <span className="text-[12px] font-bold tabular-nums text-slate-700 dark:text-zinc-300">
+                                    ₹{Number(cessEntry.amount || 0).toLocaleString()}
+                                </span>
+                            </div>
+                        )}
+
+                        {/* Total footer */}
+                        <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-200/80 dark:border-white/10 bg-slate-50/40 dark:bg-white/[0.01]">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-zinc-400">
+                                Total Registration
+                            </span>
+                            <span className="text-[13px] font-black tabular-nums text-slate-900 dark:text-white">
+                                ₹{(selectedItem?.price || 0).toLocaleString()}
+                            </span>
+                        </div>
                     </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        {items.map((item: any) => (
-                            <ConfigItemRow
-                                key={item.id}
-                                item={item}
-                                isSelected={regType === item.id}
-                                onToggle={() => setRegType(item.id as any)}
-                                isRadio
-                                breakdown={item.breakdown}
-                            />
-                        ))}
+
+                    {/* Info: Required Documents / Process for selected type */}
+                    <div className="mt-3 rounded-xl border border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.01] px-4 py-3">
+                        {regType === 'STATE' && (
+                            <div className="space-y-1.5">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-zinc-500">
+                                    State Registration
+                                </p>
+                                <p className="text-[10.5px] text-slate-500 dark:text-zinc-400 leading-relaxed">
+                                    Valid for the state of registration. You will need to provide Aadhaar Card, Address
+                                    Proof, Passport-size Photos, and PAN Card. Processing takes 7–15 working days at the
+                                    local RTO.
+                                </p>
+                            </div>
+                        )}
+                        {regType === 'BH' && (
+                            <div className="space-y-1.5">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-zinc-500">
+                                    Bharat Series (BH)
+                                </p>
+                                <p className="text-[10.5px] text-slate-500 dark:text-zinc-400 leading-relaxed">
+                                    Pan-India validity — no re-registration needed when moving states. Ideal for
+                                    Defence, Central Govt, PSU employees &amp; private-sector transferees. You will need
+                                    Aadhaar Card, Address Proof, Passport-size Photos, PAN Card, and Employer Transfer
+                                    Certificate or Posting Order.
+                                </p>
+                            </div>
+                        )}
+                        {regType === 'COMPANY' && (
+                            <div className="space-y-1.5">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-zinc-500">
+                                    Company Registration
+                                </p>
+                                <p className="text-[10.5px] text-slate-500 dark:text-zinc-400 leading-relaxed">
+                                    Registered under a corporate entity. You will need Company PAN Card, GST
+                                    Certificate, Board Resolution or Authorization Letter, and Certificate of
+                                    Incorporation. Higher road tax applies.
+                                </p>
+                            </div>
+                        )}
                     </div>
-                </div>
+                </>
             );
         }
 
         if (categoryId === 'SERVICES') {
-            return (
-                <div className="space-y-4">
-                    <div className="flex items-center gap-3 px-2">
-                        <Wrench size={14} className="text-brand-primary" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                            Care & Maintenance Plans
-                        </span>
-                        <div className="flex-1 h-px bg-slate-200 dark:bg-white/5" />
-                    </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        {activeServices.map((service: any) => (
-                            <ConfigItemRow
-                                key={service.id}
-                                item={service}
-                                isSelected={selectedServices.includes(service.id)}
-                                onToggle={() => toggleService(service.id)}
-                                breakdown={service.breakdown}
-                            />
-                        ))}
-                    </div>
-                </div>
-            );
+            return renderFlatItemList(activeServices, {
+                getSelected: id => selectedServices.includes(id),
+                onToggle: id => toggleService(id),
+            });
         }
 
         if (categoryId === 'WARRANTY') {
-            return (
-                <div className="space-y-4">
-                    <div className="flex items-center gap-3 px-2">
-                        <Gift size={14} className="text-brand-primary" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                            Longevity Protection
-                        </span>
-                        <div className="flex-1 h-px bg-slate-200 dark:bg-white/5" />
-                    </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        {warrantyItems.map((item: any) => (
-                            <ConfigItemRow
-                                key={item.id}
-                                item={item}
-                                isSelected={true}
-                                onToggle={() => {}}
-                                isMandatory={true}
-                            />
-                        ))}
-                    </div>
-                </div>
-            );
+            return renderFlatItemList(warrantyItems, {
+                getSelected: () => true,
+                onToggle: () => {},
+                isMandatory: true,
+            });
         }
 
         return null;
@@ -917,12 +1556,23 @@ export function DesktopPDP({
                                         </div>
                                     )}
                                     <p
-                                        key={totalOnRoad}
+                                        key={displayOnRoad}
                                         className="text-xl font-black text-[#FFD700] font-mono leading-none animate-in fade-in zoom-in-95 duration-500"
                                     >
-                                        ₹{totalOnRoad.toLocaleString()}
+                                        ₹{displayOnRoad.toLocaleString()}
                                     </p>
                                 </div>
+                                {coinPricing && (
+                                    <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-emerald-500 text-right">
+                                        O-Club: {coinPricing.coinsUsed} coins · Save ₹
+                                        {coinPricing.discount.toLocaleString()}
+                                    </p>
+                                )}
+                                {!coinPricing && showOClubPrompt && (
+                                    <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-indigo-500 text-right">
+                                        Signup & get 13 O-Club coins
+                                    </p>
+                                )}
                             </div>
 
                             {/* CTA Button */}
@@ -969,9 +1619,11 @@ export function DesktopPDP({
                             product={product}
                             variantName={displayVariant}
                             activeColor={{ name: displayColor || activeColorConfig.name, hex: activeColorConfig.hex }}
-                            totalOnRoad={totalOnRoad}
+                            totalOnRoad={displayOnRoad}
                             totalSavings={totalSavings}
                             originalPrice={totalOnRoad + totalSavings}
+                            coinPricing={coinPricing}
+                            showOClubPrompt={showOClubPrompt}
                             priceBreakup={priceBreakupData}
                             productImage={getProductImage()}
                             pricingSource={
@@ -1158,9 +1810,19 @@ export function DesktopPDP({
                                 </span>
                             )}
                             <span className="text-lg font-black text-[#FFD700] font-mono">
-                                ₹{totalOnRoad.toLocaleString()}
+                                ₹{displayOnRoad.toLocaleString()}
                             </span>
                         </div>
+                        {coinPricing && (
+                            <span className="mt-1 text-[9px] font-black uppercase tracking-widest text-emerald-500">
+                                {coinPricing.coinsUsed} coins · Save ₹{coinPricing.discount.toLocaleString()}
+                            </span>
+                        )}
+                        {!coinPricing && showOClubPrompt && (
+                            <span className="mt-1 text-[9px] font-black uppercase tracking-widest text-indigo-500">
+                                Signup & get 13 O-Club coins
+                            </span>
+                        )}
                     </div>
                     <button
                         onClick={handleBookingRequest}

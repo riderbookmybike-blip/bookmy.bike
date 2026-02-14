@@ -796,6 +796,7 @@ export function useSystemPDPLogic({
             warrantyItems: product?.specs?.warranty || [],
             regType,
             rtoOptions,
+            stateCode: registrationRule?.state_code || null,
             emiTenure,
             configTab,
             selectedAccessories,
